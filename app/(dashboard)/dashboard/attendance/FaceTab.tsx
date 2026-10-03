@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -12,6 +11,7 @@ import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { apiErrorText } from '@/lib/api-error-text'
 import type { TranslationKey } from '@/lib/translations'
+import { FacePhoto as Photo, useWatermark } from '@/components/FacePhoto'
 
 /**
  * Face verification for whoever holds attendance.approve_face
@@ -132,12 +132,10 @@ export default function FaceTab({ q }: { q: string }) {
 function ReviewModal({ review, onClose, onDecided }: { review: Review; onClose: () => void; onDecided: () => void }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const { data: session } = useSession()
     const [rejecting, setRejecting] = useState(false)
     const [busy, setBusy] = useState(false)
     // Fixed when the photos open: the time a screenshot would show.
-    const [openedAt] = useState(() => new Date().toISOString().slice(0, 16).replace('T', ' '))
-    const mark = `${session?.user?.name ?? session?.user?.email ?? ''} · ${openedAt}`
+    const mark = useWatermark()
 
     const decide = async (approve: boolean, reason?: string) => {
         setBusy(true)
@@ -175,22 +173,5 @@ function ReviewModal({ review, onClose, onDecided }: { review: Review; onClose: 
                 onCancel={() => setRejecting(false)}
             />
         </Modal>
-    )
-}
-
-function Photo({ src, label, mark }: { src: string; label: string; mark: string }) {
-    return (
-        <figure style={{ margin: 0, display: 'grid', gap: '0.35rem' }}>
-            <div style={{ position: 'relative', borderRadius: '0.75rem', overflow: 'hidden', background: 'var(--glass-bg)', userSelect: 'none' }} onContextMenu={e => e.preventDefault()}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- streamed through a checked, uncached endpoint; next/image would cache it */}
-                <img src={src} alt={label} draggable={false} style={{ display: 'block', width: '100%', maxHeight: '22rem', objectFit: 'contain' }} />
-                <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'grid', alignContent: 'space-around', justifyItems: 'center', overflow: 'hidden' }}>
-                    {[0, 1, 2].map(i => (
-                        <span key={i} style={{ transform: 'rotate(-24deg)', color: 'var(--chip-solid-fg)', background: 'var(--chip-solid-bg)', padding: '0 0.35rem', borderRadius: '0.25rem', opacity: 0.55, fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{mark}</span>
-                    ))}
-                </div>
-            </div>
-            <figcaption style={soft}>{label}</figcaption>
-        </figure>
     )
 }

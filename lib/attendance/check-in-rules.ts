@@ -13,13 +13,13 @@ import { ipInRanges } from "./ip-ranges"
  * - Flagged: something did not check out but could be innocent, so a person
  *   decides. Outside the place's circle, a fix too vague to tell, not on the
  *   office's network where one is set, the app not verified while
- *   attestation is in testing.
+ *   attestation is in testing, the face check failed (§9.5).
  * - Held: from a phone still waiting for approval; it counts, or is flagged,
  *   once the phone is approved (§9.3).
  * - Accepted: everything checked out.
  */
 
-export type FlagReason = "OUTSIDE_AREA" | "IMPRECISE_LOCATION" | "OFFICE_IP_MISMATCH" | "ATTESTATION_UNVERIFIED"
+export type FlagReason = "OUTSIDE_AREA" | "IMPRECISE_LOCATION" | "OFFICE_IP_MISMATCH" | "ATTESTATION_UNVERIFIED" | "FACE_UNVERIFIED"
 export type RefusalReason = "NOT_REGISTERED_PHONE" | "PHONE_SUSPENDED" | "MOCK_LOCATION" | "ATTESTATION_FAILED" | "NO_WORK_LOCATION"
 
 /** A fix vaguer than this, or than the place's own circle if that is wider, says nothing about being in it. */
@@ -36,6 +36,12 @@ export type CheckInFacts = {
     /** The phone's own word that the location was simulated (Android mock provider, iOS isSimulatedBySoftware). */
     mocked: boolean
     attestation: { verified: boolean; required: boolean }
+    /**
+     * Face verification (§9.5), when it is in use for the person: whether the
+     * phone's face check passed. A failed or missing one is flagged, never
+     * refused: faces change, and refusing would lock honest people out.
+     */
+    face?: { required: boolean; verified: boolean }
     places: PlaceToCheck[]
     /** The address the request came from, as the server saw it. */
     ip: string | null
@@ -60,6 +66,7 @@ export function judgeCheckIn(f: CheckInFacts): Verdict {
     if (f.fix.accuracyMeters > Math.max(MAX_ACCURACY_METERS, place.radiusMeters)) reasons.push("IMPRECISE_LOCATION")
     if (place.officeIpRanges.length > 0 && !(f.ip && ipInRanges(f.ip, place.officeIpRanges))) reasons.push("OFFICE_IP_MISMATCH")
     if (!f.attestation.verified) reasons.push("ATTESTATION_UNVERIFIED")
+    if (f.face?.required && !f.face.verified) reasons.push("FACE_UNVERIFIED")
 
     const outcome = f.phone.status === "PENDING" ? "HELD" : reasons.length > 0 ? "FLAGGED" : "ACCEPTED"
     return { outcome, reasons, place, distanceMeters: Math.round(distance) }

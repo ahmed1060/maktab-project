@@ -22,8 +22,35 @@ export function signedText(purpose: SignedPurpose, nonce: string, details: reado
  */
 export function checkInText(input: {
     nonce: string; keyFingerprint: string; latitude: number; longitude: number; accuracyMeters: number; mocked: boolean; direction?: "IN" | "OUT" | null
+    face?: FaceResult | null
 }): string {
-    return signedText("CHECK_IN", input.nonce, [input.keyFingerprint, input.latitude, input.longitude, input.accuracyMeters, input.mocked ? 1 : 0, input.direction ?? ""])
+    const base = [input.keyFingerprint, input.latitude, input.longitude, input.accuracyMeters, input.mocked ? 1 : 0, input.direction ?? ""]
+    // The face check's result, when there was one (§9.5), signed with the rest so
+    // a modified app can't simply claim "verified". Absent, the text is as before.
+    const face = input.face
+        ? [face0(input.face.verified), input.face.score, input.face.liveness, input.face.modelVersion, input.face.attempts, input.face.frameSha256 ?? ""]
+        : []
+    return signedText("CHECK_IN", input.nonce, [...base, ...face])
+}
+
+const face0 = (verified: boolean) => (verified ? "face:1" : "face:0")
+
+/**
+ * What the phone's face check found at a check-in (§9.5): the result only,
+ * never the face. When it failed, the hash of the last frame, which is sent
+ * with the check-in for a person to look at (§13.8).
+ */
+export type FaceResult = {
+    verified: boolean
+    /** Match score, 0..1. */
+    score: number
+    /** Liveness score, 0..1. */
+    liveness: number
+    modelVersion: string
+    /** Tries before this result, 1..3. */
+    attempts: number
+    /** sha256 hex of the frame sent with a failed check, else null. */
+    frameSha256?: string | null
 }
 
 /**

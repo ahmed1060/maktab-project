@@ -28,4 +28,15 @@ export const checkInSchema = z.object({
     mocked: z.boolean(),
     direction: z.enum(["IN", "OUT"]).nullish(),
     attestation: z.string().max(20_000).nullish(),
+    /** The face check's result, when face verification is asked of the person (§9.5). */
+    face: z.object({
+        verified: z.boolean(),
+        score: z.number().finite().min(0).max(1),
+        liveness: z.number().finite().min(0).max(1),
+        modelVersion: z.string().min(1).max(60),
+        attempts: z.number().int().min(1).max(10),
+        frameSha256: z.string().regex(/^[0-9a-f]{64}$/).nullish(),
+    }).nullish(),
+    /** The last frame of a failed face check, JPEG base64 (§13.8). */
+    faceFrame: z.string().max(560_000).nullish(),
 })

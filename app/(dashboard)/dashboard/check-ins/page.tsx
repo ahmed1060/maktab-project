@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
+import { FlaggedFaceModal } from '@/components/FacePhoto'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
@@ -46,6 +47,7 @@ export default function CheckInReviewPage() {
     const { data, error, mutate } = useSWR(superAdmin ? '/api/admin/check-ins' : null, fetcher)
     const [rejecting, setRejecting] = useState<Waiting | null>(null)
     const [busy, setBusy] = useState(false)
+    const [faceOf, setFaceOf] = useState<{ id: string; name: string } | null>(null)
 
     useEffect(() => {
         setTitle(t('chk_title'))
@@ -76,6 +78,7 @@ export default function CheckInReviewPage() {
 
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
+            {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.name} onClose={() => setFaceOf(null)} />}
             <section className="glass" style={box}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('chk_queue')}</h2>
                 <p style={{ margin: 0, ...soft }}>{t('chk_queue_hint')}</p>
@@ -91,6 +94,9 @@ export default function CheckInReviewPage() {
                                         <td style={{ whiteSpace: 'nowrap' }}><bdi>{w.at.slice(0, 10)} {w.at.slice(11, 16)}</bdi><div style={soft}>{w.workLocation?.name ?? '—'}</div></td>
                                         <td>
                                             {w.flagReasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}
+                                            {w.flagReasons.includes('FACE_UNVERIFIED') && (
+                                                <> · <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand-primary-text)', cursor: 'pointer' }} onClick={() => setFaceOf({ id: w.id, name: w.name })}>{t('face_flag_see')}</button></>
+                                            )}
                                             <div style={soft}>
                                                 {[
                                                     w.checkIn?.distanceMeters !== undefined && t('req_flagged_distance').replace('{n}', String(w.checkIn.distanceMeters)),

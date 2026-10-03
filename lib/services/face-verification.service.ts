@@ -112,6 +112,11 @@ export class FaceVerificationService {
             if (!person) fail("USER_NOT_FOUND")
             if (person.faceVerificationRequired === required) return
             await tx.user.update({ where: { id: userId }, data: { faceVerificationRequired: required } })
+            // No longer asked: what was enrolled goes, photos and phone templates alike (§10.4).
+            if (!required) {
+                const { FaceReviewService } = await import("./face-review.service")
+                await FaceReviewService.forget(tx, userId)
+            }
             await AuditLogService.log(required ? "REQUIRE_FACE_VERIFICATION" : "STOP_FACE_VERIFICATION", "USER", userId, {
                 tx, ...(actorIsSuperAdmin ? { superAdminId: actorId } : { userId: actorId }), details: { companyId, userId },
             })

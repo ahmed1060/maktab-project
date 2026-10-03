@@ -725,6 +725,45 @@ model FaceReview {
   @@index([userId, status])
 }
 
+/// The server's half of the key that protects a phone's face templates
+/// (§10.4, crypto-shredding). The phone combines it with a key in its secure
+/// hardware; neither half is biometric. Destroying it (key null) makes the
+/// templates on that phone unreadable at once, whether or not the phone is
+/// ever seen again. A trigger destroys it when the phone leaves use or its
+/// owner is archived; withdrawal and purge destroy it too.
+model FaceWrappingKey {
+  id          String    @id @default(uuid())
+  phoneId     String    @unique
+  userId      String
+  key         Bytes?
+  createdAt   DateTime  @default(now())
+  destroyedAt DateTime?
+  /// The phone said it deleted its (by then unreadable) templates.
+  deleteAckAt DateTime?
+}
+
+/// The frame captured when a check-in failed the face check (§13.8),
+/// encrypted like the verification photos, kept only while the flag is open.
+model FaceFrame {
+  id        String   @id @default(uuid())
+  punchId   String          @unique
+  companyId String
+  userId    String
+  photo     Bytes
+  createdAt DateTime        @default(now())
+  punch     AttendancePunch @relation(fields: [punchId], references: [id], onDelete: Cascade)
+}
+
+/// A pause-and-purge of face verification (§10.4): what was destroyed at once,
+/// and how many phones have since acknowledged deleting their templates.
+model FacePurge {
+  id             String   @id @default(uuid())
+  at             DateTime @default(now())
+  bySuperAdminId String
+  keysDestroyed  Int
+  photosDeleted  Int
+}
+
 enum NotificationPriority {
   NORMAL
   HIGH
@@ -1911,6 +1950,7 @@ model AttendancePunch {
   /// fix, its accuracy, the distance to the place, the address it came from,
   /// whether the app was verified. Never a photo or anything biometric.
   checkIn              Json?
+  faceFrame            FaceFrame?
 
   @@unique([companyId, source, sourceKey])
   @@index([companyId, userId, punchAtLocal])

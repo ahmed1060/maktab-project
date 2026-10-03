@@ -162,6 +162,24 @@ export class FaceReviewService {
     }
 
     /**
+     * A flagged check-in's failed frame, or the person's reference photo
+     * beside it (§13.8): only while the flag is open, every view audited.
+     */
+    static async flaggedPhoto(punchId: string, which: "frame" | "reference", viewer: Reviewer): Promise<Buffer> {
+        const punch = await prisma.attendancePunch.findUnique({ where: { id: punchId }, select: { id: true, companyId: true, userId: true, status: true, voidedAt: true, faceFrame: { select: { photo: true } } } })
+        if (!punch || !punch.userId || punch.status !== "FLAGGED" || punch.voidedAt) fail("FACE_REVIEW_CLOSED")
+        const stored = which === "frame"
+            ? punch.faceFrame?.photo ?? null
+            : (await prisma.faceReview.findFirst({ where: { userId: punch.userId, status: "APPROVED", photo: { not: null } }, select: { photo: true } }))?.photo ?? null
+        if (!stored) fail("FACE_PHOTO_NONE")
+        await AuditLogService.log("VIEW_FACE_PHOTO", "ATTENDANCE_PUNCH", punch.id, {
+            ...(viewer.isSuperAdmin ? { superAdminId: viewer.id } : { userId: viewer.id }),
+            details: { companyId: punch.companyId, userId: punch.userId, which },
+        })
+        return decryptFacePhoto(Buffer.from(stored))
+    }
+
+    /**
      * Approves or rejects an open review. Approval makes the new photo the
      * reference, deleting the one before, and activates face verification on
      * the phone. Rejection deletes the new photo; an earlier reference stays,
@@ -215,8 +233,9 @@ export class FaceReviewService {
     }
 
     /**
-     * Deletes every face photo of a person and resets their phones' face state:
-     * on consent withdrawal (§10.4). Records stay, without photos.
+     * Deletes every face photo of a person, resets their phones' face state and
+     * destroys their phones' wrapping keys: on consent withdrawal, or when it
+     * is no longer asked of them (§10.4). Records stay, without photos.
      */
     static async forget(tx: Prisma.TransactionClient, userId: string) {
         const waiting = await tx.faceReview.findMany({ where: { userId, status: "PENDING" }, select: { id: true } })
@@ -224,6 +243,8 @@ export class FaceReviewService {
         await tx.faceReview.updateMany({ where: { userId, status: "PENDING" }, data: { status: "WITHDRAWN", photo: null, decidedAt: new Date() } })
         await tx.faceReview.updateMany({ where: { userId, photo: { not: null } }, data: { photo: null } })
         await tx.checkInPhone.updateMany({ where: { userId }, data: { faceStatus: "NONE", faceEnrolledAt: null, faceModelVersion: null } })
+        // And the templates on their phones become unreadable at once (§10.4, lib/services/face-key.service.ts).
+        await tx.faceWrappingKey.updateMany({ where: { userId, key: { not: null } }, data: { key: null, destroyedAt: new Date() } })
         await tx.user.update({ where: { id: userId }, data: { faceReverifyRequestedAt: null, faceReverifyRequestedById: null } })
     }
 }
