@@ -49,7 +49,7 @@ export function correctsPerson(session: any, target: { companyId: string; userId
 }
 
 /** The two permissions that decide requests (P0.6). Missing punches are decided by attendance.correct. */
-export type DecidingPermission = "attendance.approve_permissions" | "attendance.approve_overtime" | "attendance.correct"
+export type DecidingPermission = "attendance.approve_permissions" | "attendance.approve_overtime" | "attendance.correct" | "attendance.approve_devices"
 
 /** Whose requests this person may decide: the company's, their team's, or nobody's. */
 export function decidesFor(session: any, permission: DecidingPermission): Visibility | null {
