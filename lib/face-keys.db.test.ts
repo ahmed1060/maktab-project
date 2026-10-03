@@ -196,6 +196,31 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         await expect(db.query(`UPDATE "FaceWrappingKey" SET key = '\\x01' WHERE "userId" = 'e2'`)).rejects.toThrow(/destroyed_is_gone/)
     })
 
+    it("a key fetch that arrives during a withdrawal waits for it, and gets no key (review on #27)", async () => {
+        const url = new URL(ADMIN_URL!)
+        url.pathname = `/${dbName}`
+        const other = new Client({ connectionString: url.toString() })
+        await other.connect()
+        // The number first: issuing one touches the person's row, which would wait on its own.
+        const { nonce } = await Challenges.issue("e1", "FACE")
+        // A withdrawal in flight: the person locked, consent withdrawn, the key destroyed, not yet committed.
+        await other.query("BEGIN")
+        await other.query(`SELECT id FROM "User" WHERE id = 'e1' FOR UPDATE`)
+        await other.query(`UPDATE "BiometricConsent" SET "withdrawnAt" = now() WHERE "userId" = 'e1'`)
+        await other.query(`UPDATE "FaceWrappingKey" SET key = NULL, "destroyedAt" = now() WHERE "userId" = 'e1'`)
+        let settled = false
+        const fetching = Keys.fetch("c1", "e1", { nonce, keyFingerprint: phones.e1.fingerprint, signature: signAs("e1", keyText(nonce, phones.e1.fingerprint)) }).finally(() => { settled = true })
+        await new Promise(r => setTimeout(r, 500))
+        expect(settled).toBe(false)
+        await other.query("COMMIT")
+        await other.end()
+        expect(await fetching).toEqual({ key: null, deleteTemplates: true })
+        expect(await keyRow("e1")).toMatchObject({ held: false, destroyed: true })
+        // Back as before for what follows.
+        await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
+        expect((await fetchKey("e1")).key).toBeTruthy()
+    })
+
     it("destroys the key on withdrawal and tells the phone to delete its templates, which it acknowledges", async () => {
         await Face.withdrawConsent("e1")
         expect(await keyRow("e1")).toMatchObject({ held: false, destroyed: true })
@@ -221,5 +246,12 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         expect(await Keys.lastPurge()).toMatchObject({ acknowledged: 1 })
         const { rows } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'PURGE_FACE_VERIFICATION'`)
         expect(rows).toEqual([{ details: { faceVerification: { old: "ON", new: "OFF" }, keysDestroyed: 1, photosDeleted: 1 } }])
+    })
+
+    it("removes a key with its phone, even when the phone is deleted outright (review on #27)", async () => {
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p-x', 'c1', 'e1', 'k', $1, 'ANDROID', 'PENDING')`, ["f".repeat(64)])
+        await db.query(`INSERT INTO "FaceWrappingKey"(id, "phoneId", "userId", key) VALUES ('k-x', 'p-x', 'e1', '\\x01')`)
+        await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p-x'`)
+        expect((await db.query(`SELECT count(*)::int AS n FROM "FaceWrappingKey" WHERE id = 'k-x'`)).rows[0].n).toBe(0)
     })
 })

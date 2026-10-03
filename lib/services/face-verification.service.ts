@@ -108,6 +108,7 @@ export class FaceVerificationService {
     static async setRequired(companyId: string, userId: string, required: boolean, actorId: string, actorIsSuperAdmin: boolean) {
         if (required && !(await this.companyStatus(companyId)).allowed) fail("FACE_NOT_AVAILABLE")
         await prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
             const person = await tx.user.findFirst({ where: { id: userId, companyId }, select: { faceVerificationRequired: true } })
             if (!person) fail("USER_NOT_FOUND")
             if (person.faceVerificationRequired === required) return
@@ -159,6 +160,8 @@ export class FaceVerificationService {
      */
     static async withdrawConsent(userId: string) {
         await prisma.$transaction(async tx => {
+            // The lock a key fetch takes: none can make a key again past this (face-key.service.ts).
+            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
             const { count } = await tx.biometricConsent.updateMany({ where: { userId, withdrawnAt: null }, data: { withdrawnAt: new Date() } })
             if (count === 0) return
             // Every photo of them goes, and their phone's face state with it (§10.4).

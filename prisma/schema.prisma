@@ -532,6 +532,7 @@ model User {
   faceReverifyRequestedAt    DateTime?
   faceReverifyRequestedById  String?
   faceReviews                FaceReview[]
+  faceWrappingKeys           FaceWrappingKey[]
   biometricConsents          BiometricConsent[]
   attendanceChallenges       AttendanceChallenge[]
   checkInRefusals            CheckInRefusal[]
@@ -740,6 +741,8 @@ model FaceWrappingKey {
   destroyedAt DateTime?
   /// The phone said it deleted its (by then unreadable) templates.
   deleteAckAt DateTime?
+  phone       CheckInPhone @relation(fields: [phoneId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// The frame captured when a check-in failed the face check (§13.8),
@@ -2422,6 +2425,7 @@ model CheckInPhone {
   faceStatus       PhoneFaceStatus    @default(NONE)
   faceEnrolledAt   DateTime?
   faceModelVersion String?
+  faceWrappingKey  FaceWrappingKey?
   status         CheckInPhoneStatus @default(PENDING)
   requestedAt    DateTime           @default(now())
   decidedAt      DateTime?

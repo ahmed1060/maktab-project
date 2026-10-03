@@ -43,10 +43,18 @@ export class FaceKeyService {
         if (!phone) fail("FACE_PHONE_NOT_ACTIVE")
         const key = parsePhoneKey(phone.publicKey)
         if (!key || !signatureValid(key.key, faceKeyText(input.nonce, input.keyFingerprint), input.signature)) fail("PHONE_SIGNATURE_INVALID")
-        const status = await FaceVerificationService.statusFor(userId)
-        const person = await prisma.user.findUnique({ where: { id: userId }, select: { faceVerificationRequired: true } })
         return prisma.$transaction(async tx => {
             if (!(await AttendanceChallengeService.consume(tx, userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+            // The locks every path that destroys keys takes (withdrawal, no longer
+            // asked, purge, the phone leaving use), then the state read again under
+            // them: a key one of them just destroyed can't be made again by a fetch
+            // that read the state before it (review on #27).
+            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+            await tx.$queryRaw`SELECT id FROM "SystemSettings" WHERE id = 'default' FOR SHARE`
+            const [current] = await tx.$queryRaw<{ status: string }[]>`SELECT status FROM "CheckInPhone" WHERE id = ${phone.id} FOR SHARE`
+            if (current?.status !== "ACTIVE") fail("FACE_PHONE_NOT_ACTIVE")
+            const status = await FaceVerificationService.statusFor(userId)
+            const person = await tx.user.findUnique({ where: { id: userId }, select: { faceVerificationRequired: true } })
             if (!status.consent || !person?.faceVerificationRequired) {
                 await destroy(tx, { phoneId: phone.id })
                 return { key: null, deleteTemplates: true }
@@ -91,6 +99,8 @@ export class FaceKeyService {
         if (session.user.role !== "SUPER_ADMIN" || !session.user.isProtected) fail("FACE_PROTECTED_ONLY")
         await assertRecentStepUp(session)
         return prisma.$transaction(async tx => {
+            // Key fetches wait for this, and see the system off once it is done.
+            await tx.$queryRaw`SELECT id FROM "SystemSettings" WHERE id = 'default' FOR UPDATE`
             const keysDestroyed = await destroy(tx, {})
             const reviewPhotos = await tx.faceReview.count({ where: { photo: { not: null } } })
             await tx.faceReview.updateMany({ where: { status: "PENDING" }, data: { status: "WITHDRAWN", photo: null, decidedAt: new Date() } })
