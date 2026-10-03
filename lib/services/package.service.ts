@@ -56,6 +56,8 @@ export class PackageService {
                 priceLifetime: input.priceLifetime ?? null,
                 hasCompanyManagement: input.hasCompanyManagement,
                 hasHR: input.hasHR,
+                hasAttendanceTerminals: input.hasAttendanceTerminals ?? false,
+                hasAttendanceMobile: input.hasAttendanceMobile ?? false,
             },
         })
 
@@ -66,6 +68,8 @@ export class PackageService {
                 name: pkg.name,
                 hasCompanyManagement: pkg.hasCompanyManagement,
                 hasHR: pkg.hasHR,
+                hasAttendanceTerminals: pkg.hasAttendanceTerminals,
+                hasAttendanceMobile: pkg.hasAttendanceMobile,
             },
         })
 
@@ -103,6 +107,19 @@ export class PackageService {
         if (rest.priceLifetime !== undefined) data.priceLifetime = rest.priceLifetime
         if (rest.hasCompanyManagement !== undefined) data.hasCompanyManagement = rest.hasCompanyManagement
         if (rest.hasHR !== undefined) data.hasHR = rest.hasHR
+        if (rest.hasAttendanceTerminals !== undefined) data.hasAttendanceTerminals = rest.hasAttendanceTerminals
+        if (rest.hasAttendanceMobile !== undefined) data.hasAttendanceMobile = rest.hasAttendanceMobile
+
+        // Attendance only on top of HR (ATTENDANCE_PLAN.md §16). Turning HR
+        // off turns both add-ons off with it, which the form says before
+        // saving; asking for an add-on on a package that will not have HR is
+        // refused, since there would be no payroll for attendance to feed.
+        const willHaveHR = rest.hasHR ?? existing.hasHR
+        if (!willHaveHR) {
+            if (rest.hasAttendanceTerminals || rest.hasAttendanceMobile) throw new Error("ATTENDANCE_REQUIRES_HR")
+            data.hasAttendanceTerminals = false
+            data.hasAttendanceMobile = false
+        }
 
         const updated = await prisma.package.update({
             where: { id },
@@ -118,6 +135,11 @@ export class PackageService {
         }
         if (rest.hasHR !== undefined && rest.hasHR !== existing.hasHR) {
             bundleChanges.hasHR = { from: existing.hasHR, to: rest.hasHR }
+        }
+        // From what was written, not what was asked: an add-on that went off
+        // because HR did is a change the log has to show.
+        for (const key of ["hasAttendanceTerminals", "hasAttendanceMobile"] as const) {
+            if (updated[key] !== existing[key]) bundleChanges[key] = { from: existing[key], to: updated[key] }
         }
 
         const { AuditLogService } = await import("./audit-log.service")

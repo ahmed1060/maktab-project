@@ -27,7 +27,7 @@ type Company = {
     id: string
     name: string
     isBanned?: boolean
-    package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean } | null
+    package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
     hasUnpaidPayment?: boolean
     subscription?: { state: SubscriptionState; date: string | null; daysRemaining: number | null }
     needsAttention?: boolean

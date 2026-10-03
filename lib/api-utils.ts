@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
 import { knownRefusal } from "./api-errors"
-import { moduleForApiPath, requireFeature } from "@/lib/features"
+import { BUNDLE_NAMES, moduleForApiPath, requireFeature } from "@/lib/features"
 import { isBlockedBySubscription } from "@/lib/billing/state"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
@@ -277,7 +277,7 @@ export function withStandardHandler(
                 const decision = requireFeature(session, gatedModule, { onDeny: 'lock' })
                 if (!decision.allowed) {
                     return ApiResponse.forbidden(
-                        `This feature is not included in your current package (${decision.bundle === 'HR' ? 'HR' : 'Company Management'}).`
+                        `This feature is not included in your current package (${decision.bundles.map(b => BUNDLE_NAMES[b]).join(' or ')}).`
                     )
                 }
             }

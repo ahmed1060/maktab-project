@@ -538,7 +538,7 @@ export const authOptions: NextAuthOptions = {
                                                 // Same reasoning: assigning or changing a package
                                                 // has to take effect promptly, not only after the
                                                 // customer next signs in.
-                                                package: { select: { hasCompanyManagement: true, hasHR: true } },
+                                                package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
                                                 // The furthest-reaching confirmed period,
                                                 // for the subscription state. NULLs sort
                                                 // first on DESC in Postgres, so a lifetime

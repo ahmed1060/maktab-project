@@ -24,6 +24,8 @@ type Pkg = {
     priceLifetime: number | null
     hasCompanyManagement: boolean
     hasHR: boolean
+    hasAttendanceTerminals: boolean
+    hasAttendanceMobile: boolean
     _count?: { companies: number }
 }
 
@@ -37,6 +39,8 @@ const EMPTY = {
     priceLifetime: '',
     hasCompanyManagement: false,
     hasHR: false,
+    hasAttendanceTerminals: false,
+    hasAttendanceMobile: false,
 }
 
 export default function PackagesPage() {
@@ -86,6 +90,8 @@ export default function PackagesPage() {
             priceLifetime: pkg.priceLifetime === null ? '' : String(pkg.priceLifetime),
             hasCompanyManagement: pkg.hasCompanyManagement,
             hasHR: pkg.hasHR,
+            hasAttendanceTerminals: pkg.hasAttendanceTerminals,
+            hasAttendanceMobile: pkg.hasAttendanceMobile,
         })
         setError('')
         setShowModal(true)
@@ -106,6 +112,8 @@ export default function PackagesPage() {
             priceLifetime: form.priceLifetime === '' ? null : Number(form.priceLifetime),
             hasCompanyManagement: form.hasCompanyManagement,
             hasHR: form.hasHR,
+            hasAttendanceTerminals: form.hasAttendanceTerminals,
+            hasAttendanceMobile: form.hasAttendanceMobile,
         }
         if (editing) payload.id = editing.id
 
@@ -190,6 +198,16 @@ export default function PackagesPage() {
                                     {pkg.hasHR && (
                                         <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--ok-bg)', color: 'var(--ok-fg)' }}>
                                             {t('bundle_hr' as any)}
+                                        </span>
+                                    )}
+                                    {pkg.hasAttendanceTerminals && (
+                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--warn-bg)', color: 'var(--warn-fg)' }}>
+                                            {t('bundle_attendance_terminals' as any)}
+                                        </span>
+                                    )}
+                                    {pkg.hasAttendanceMobile && (
+                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--warn-bg)', color: 'var(--warn-fg)' }}>
+                                            {t('bundle_attendance_mobile' as any)}
                                         </span>
                                     )}
                                 </div>
@@ -278,13 +296,35 @@ export default function PackagesPage() {
                                 {t('bundle_company_management' as any)}
                             </label>
                             <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem' }}>
-                                <input type="checkbox" checked={form.hasHR} onChange={e => setForm({ ...form, hasHR: e.target.checked })} />
+                                {/* The add-ons sit on top of HR, so HR going off takes them with it. */}
+                                <input type="checkbox" checked={form.hasHR} onChange={e => setForm({
+                                    ...form,
+                                    hasHR: e.target.checked,
+                                    ...(e.target.checked ? {} : { hasAttendanceTerminals: false, hasAttendanceMobile: false }),
+                                })} />
                                 {t('bundle_hr' as any)}
+                            </label>
+                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem', opacity: form.hasHR ? 1 : 0.6 }}>
+                                <input type="checkbox" disabled={!form.hasHR} aria-describedby="attendance-requires-hr" checked={form.hasAttendanceTerminals} onChange={e => setForm({ ...form, hasAttendanceTerminals: e.target.checked })} />
+                                {t('bundle_attendance_terminals' as any)}
+                            </label>
+                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem', opacity: form.hasHR ? 1 : 0.6 }}>
+                                <input type="checkbox" disabled={!form.hasHR} aria-describedby="attendance-requires-hr" checked={form.hasAttendanceMobile} onChange={e => setForm({ ...form, hasAttendanceMobile: e.target.checked })} />
+                                {t('bundle_attendance_mobile' as any)}
                             </label>
                         </div>
                         {!form.hasCompanyManagement && !form.hasHR && (
                             <div style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginTop: '0.4rem' }}>
                                 {t('core_only' as any)}
+                            </div>
+                        )}
+                        <div id="attendance-requires-hr" style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginTop: '0.4rem' }}>
+                            {t('attendance_requires_hr' as any)}
+                        </div>
+                        {/* Said before saving: an edit applies to every company on the package at once. */}
+                        {editing && !form.hasHR && (editing.hasAttendanceTerminals || editing.hasAttendanceMobile) && (
+                            <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--warn-fg)', background: 'var(--warn-bg)', borderRadius: '0.5rem', padding: '0.5rem 0.65rem', marginTop: '0.4rem' }}>
+                                {t('attendance_removed_with_hr' as any)}
                             </div>
                         )}
                     </div>
