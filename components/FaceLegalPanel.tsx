@@ -15,7 +15,7 @@ import { apiErrorText } from '@/lib/api-error-text'
  * is nothing to confirm.
  */
 export function useFaceLegal(companyId: string | undefined) {
-    return useSWR<{ data: { system: 'OFF' | 'ON' | 'PAUSED'; legalConfirmedAt: string | null } }>(companyId ? `/api/attendance/face/legal?companyId=${companyId}` : null, fetcher)
+    return useSWR<{ data: { system: 'OFF' | 'ON' | 'PAUSED'; mobileApp: boolean; legalConfirmedAt: string | null } }>(companyId ? `/api/attendance/face/legal?companyId=${companyId}` : null, fetcher)
 }
 
 export default function FaceLegalPanel({ companyId, readOnly }: { companyId: string; readOnly: boolean }) {
@@ -23,7 +23,8 @@ export default function FaceLegalPanel({ companyId, readOnly }: { companyId: str
     const { showToast } = useToast()
     const { data, mutate } = useFaceLegal(companyId)
     const [asking, setAsking] = useState<boolean | null>(null)
-    if (!data || data.data.system === 'OFF') return null
+    // Face verification is part of the Mobile App add-on: nothing to confirm without it.
+    if (!data || data.data.system === 'OFF' || data.data.mobileApp === false) return null
     const confirmedAt = data.data.legalConfirmedAt
 
     const save = async (confirmed: boolean) => {

@@ -488,7 +488,7 @@ type Simulation = { month: string; moneyHidden?: boolean; people: { userId: stri
 function FacePolicyFields({ companyId, policy, onChange }: { companyId: string; policy: PolicyBody; onChange: (p: PolicyBody) => void }) {
     const { t } = useLanguage()
     const { data } = useFaceLegal(companyId)
-    const offerable = !!data && data.data.system !== 'OFF' && !!data.data.legalConfirmedAt
+    const offerable = !!data && data.data.system !== 'OFF' && data.data.mobileApp !== false && !!data.data.legalConfirmedAt
     if (!offerable && !policy.faceVerificationAvailable) return null
     return (
         <fieldset style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.85rem', margin: 0, display: 'grid', gap: '0.6rem' }}>

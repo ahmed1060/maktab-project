@@ -122,4 +122,15 @@ describe.skipIf(!ADMIN_URL)("face verification switches and consent, in Postgres
             "ACCEPT_FACE_CONSENT", "SET_FACE_VERIFICATION", "SET_FACE_VERIFICATION", "WITHDRAW_FACE_LEGAL",
         ])
     })
+
+    it("needs the Mobile App add-on: a terminals-only company can't offer it (review on #27)", async () => {
+        await Face.setLegalConfirmed("c1", true, "a1", false)
+        expect(await Face.statusFor("e1")).toMatchObject({ company: { allowed: true } })
+        await db.query(`INSERT INTO "Package"(id, name, "hasHR", "hasAttendanceTerminals", "hasAttendanceMobile", "updatedAt") VALUES ('terms', 'Terminals only', true, true, false, now())`)
+        await db.query(`UPDATE "Company" SET "packageId" = 'terms' WHERE id = 'c1'`)
+        expect(await Face.statusFor("e1")).toMatchObject({ active: false, required: false, company: { allowed: false, reason: "NO_MOBILE_APP" } })
+        expect(await reason(Policy.saveVersion("c1", { effectiveFrom: "2026-04-01", body: { ...STANDARD_OFFICE, faceVerificationAvailable: true } }, "a1"))).toBe("FACE_NOT_ALLOWED")
+        expect(await reason(Face.setRequired("c1", "e1", true, "a1", false))).toBe("FACE_NOT_AVAILABLE")
+        await db.query(`UPDATE "Company" SET "packageId" = NULL WHERE id = 'c1'`)
+    })
 })

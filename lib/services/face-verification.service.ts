@@ -5,6 +5,8 @@ import { assertRecentStepUp } from "@/lib/step-up"
 import { AttendancePolicyService } from "./attendance-policy.service"
 import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { AuditLogService } from "./audit-log.service"
+import { CompanyService } from "./company.service"
+import { hasBundle, resolveBundles } from "@/lib/features/bundles"
 
 /**
  * Face verification's switches and consent (ATTENDANCE_PLAN.md §9.5, §10.4).
@@ -13,8 +15,9 @@ import { AuditLogService } from "./audit-log.service"
  * - the system: on, which only the protected Super Admin can turn it, with a
  *   fresh authenticator code. Paused stops it everywhere and keeps
  *   enrolments.
- * - the company: has confirmed it holds whatever licence biometric
- *   processing needs, and its policy in force makes the feature available;
+ * - the company: holds the Mobile App add-on, has confirmed it holds
+ *   whatever licence biometric processing needs, and its policy in force
+ *   makes the feature available;
  * - the person: someone with attendance.approve_face asked it of them, and
  *   they accepted the current consent text.
  *
@@ -89,15 +92,23 @@ export class FaceVerificationService {
      * the company confirmed its legal readiness, and the policy in force makes
      * it available. With the reason when it can't.
      */
-    static async companyStatus(companyId: string): Promise<{ allowed: boolean; reason: "SYSTEM_OFF" | "SYSTEM_PAUSED" | "LEGAL_NOT_CONFIRMED" | "POLICY_OFF" | null; reverifyMonths: number | null }> {
+    static async companyStatus(companyId: string): Promise<{ allowed: boolean; reason: "SYSTEM_OFF" | "SYSTEM_PAUSED" | "NO_MOBILE_APP" | "LEGAL_NOT_CONFIRMED" | "POLICY_OFF" | null; reverifyMonths: number | null }> {
         const system = await this.systemState()
         if (system !== "ON") return { allowed: false, reason: system === "PAUSED" ? "SYSTEM_PAUSED" : "SYSTEM_OFF", reverifyMonths: null }
+        // The face check happens in the app: a company without it has nowhere to use it (review on #27).
+        if (!(await this.hasMobileApp(companyId))) return { allowed: false, reason: "NO_MOBILE_APP", reverifyMonths: null }
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { faceLegalConfirmedAt: true } })
         if (!company?.faceLegalConfirmedAt) return { allowed: false, reason: "LEGAL_NOT_CONFIRMED", reverifyMonths: null }
         const today = await AttendanceCalendarService.today(companyId)
         const policy = policyOn(await AttendancePolicyService.versions(companyId), today)
         if (!policy?.body.faceVerificationAvailable) return { allowed: false, reason: "POLICY_OFF", reverifyMonths: null }
         return { allowed: true, reason: null, reverifyMonths: policy.body.faceReverifyMonths }
+    }
+
+    /** Whether the company holds the Mobile App add-on, which face verification is part of (§16). */
+    static async hasMobileApp(companyId: string): Promise<boolean> {
+        const company = await CompanyService.settingsExposure(companyId)
+        return !!company && hasBundle(resolveBundles(company.package), "ATTENDANCE_MOBILE")
     }
 
     /**

@@ -84,6 +84,9 @@ export class AttendancePolicyService {
                 prisma.company.findUnique({ where: { id: companyId }, select: { faceLegalConfirmedAt: true } }),
             ])
             if ((settings?.faceVerification ?? "OFF") === "OFF" || !company?.faceLegalConfirmedAt) fail("FACE_NOT_ALLOWED")
+            // Imported here: the face service reads policies through this one.
+            const { FaceVerificationService } = await import("./face-verification.service")
+            if (!(await FaceVerificationService.hasMobileApp(companyId))) fail("FACE_NOT_ALLOWED")
         }
         const today = await AttendanceCalendarService.today(companyId)
 

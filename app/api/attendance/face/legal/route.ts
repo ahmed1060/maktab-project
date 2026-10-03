@@ -14,11 +14,12 @@ export const GET = withStandardHandler(async (req, session) => {
     const companyId = attendanceCompanyFor(session, new URL(req.url).searchParams.get("companyId"))
     const denied = await denyAttendanceSettings(session, companyId, "view")
     if (denied) return denied
-    const [company, system] = await Promise.all([
+    const [company, system, mobileApp] = await Promise.all([
         prisma.company.findUnique({ where: { id: companyId! }, select: { faceLegalConfirmedAt: true } }),
         FaceVerificationService.systemState(),
+        FaceVerificationService.hasMobileApp(companyId!),
     ])
-    return ApiResponse.success({ system, legalConfirmedAt: company?.faceLegalConfirmedAt ?? null })
+    return ApiResponse.success({ system, mobileApp, legalConfirmedAt: company?.faceLegalConfirmedAt ?? null })
 })
 
 const schema = z.object({ companyId: z.string().optional(), confirmed: z.boolean() })
