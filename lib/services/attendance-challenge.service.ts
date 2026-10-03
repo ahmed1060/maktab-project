@@ -9,7 +9,7 @@ import type { Prisma } from "@prisma/client"
  * for one purpose cannot be used for the other. Kept only as a hash.
  */
 
-export type ChallengePurpose = "REGISTER" | "CHECK_IN"
+export type ChallengePurpose = "REGISTER" | "CHECK_IN" | "FACE"
 
 /** How long a number may be used for. Long enough to get a fix and sign; short enough to be worthless if seen. */
 export const CHALLENGE_TTL_MS = 5 * 60_000

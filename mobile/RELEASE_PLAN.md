@@ -162,6 +162,58 @@ reminder endpoints.
       registration and per check-in. Ask Google for more before a large
       rollout.
 
+## Face verification, once its SDK is in the app
+
+Only when face verification will actually be used (mobile/README.md, Face
+verification).
+
+- [ ] **Choose the SDK.** It must match **on the phone**: no face may go to
+      the SDK's maker or a cloud service. Shortlist (October 2026; prices
+      come from sales, and most offer a free trial licence):
+
+      | SDK | Why | Check with the vendor |
+      | --- | --- | --- |
+      | **Innovatrics DOT** (Smart Face) | First pick. Passive liveness fully on the phone (under 300 ms, about 1 GB RAM), strong NIST FRTE results, active in Africa and the Middle East | Matching on the phone too |
+      | **Aware Knomi** ("Knomi D") | Liveness, template storage and matching all on the phone, the same design as ours | Price per device or user |
+      | **Neurotechnology Face Verification / VeriLook** | Works offline; vendor says its algorithm ranked among the top in NIST's 1:1 test; ISO 30107-3 liveness; usually the best value | The mobile build's NIST result |
+      | **Regula Face SDK** ("Core Match") | Offline matching; iBeta Level 1 and 2 | Only if liveness also runs with no server, in writing |
+
+      Not suitable:
+      - FaceTec: liveness and matching run on its server.
+      - AWS Rekognition, Azure Face: cloud.
+      - Google ML Kit, Apple Vision: they don't recognise faces.
+      - Open-source models: non-commercial weights, no certified liveness.
+
+      Cheaper options: KBY-AI, FaceOnLive, FacePlugin, 3DiVi. Check their
+      iBeta letters on iBeta's site and their NIST FRTE listing yourself.
+
+      For each candidate:
+      1. Ask for:
+         - the NIST FRTE 1:1 result of the algorithm in the *mobile* SDK;
+         - the iBeta / ISO 30107-3 letter;
+         - written confirmation that nothing leaves the phone.
+      2. Confirm it hands the app the templates as data. The plugin
+         encrypts them itself and keeps new ones waiting until approval.
+         See mobile/README.md, "The plugin's methods".
+      3. Try it on the employees' own phones, cheap Android ones too, in
+         poor light and with glasses and headscarves. Compare false
+         rejections.
+- [ ] **The plugin**: the `NizmoFace` plugin written around the chosen SDK
+      (mobile/README.md) and in a new store release. It replaces the free
+      prototype; remove `NEXT_PUBLIC_FACE_PROTOTYPE` and
+      `FACE_ALLOW_PROTOTYPE` everywhere.
+- [ ] **`FACE_PHOTO_KEY`** on the server: 32 random bytes in base64 (for
+      example `openssl rand -base64 32`). It encrypts the stored photos.
+      Keep a copy somewhere safe: without it they can't be read.
+- [ ] **Store declarations** must change before that release:
+      - Play Data safety: add photos (the verification photo) and say the
+        face data is processed on the device.
+      - Apple privacy labels: add photos.
+      - Both privacy policies must cover face data.
+- [ ] **Legal**: each company confirms its own readiness in Company
+      Settings → Attendance. The protected Super Admin turns the system
+      switch on only after that.
+
 ## 5. Every later release
 
 - Most changes need **no store release**: the app shows the website, so

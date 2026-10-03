@@ -6,7 +6,10 @@ import { AttendanceLocationService } from "./attendance-location.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
 import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
-import { checkInText } from "@/lib/attendance/signed-text"
+import { checkInText, type FaceResult } from "@/lib/attendance/signed-text"
+import { encryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
+import { FaceVerificationService } from "./face-verification.service"
+import { MAX_PHOTO_BYTES } from "./face-review.service"
 import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
 import { addDays, formatMinutes, toDateString } from "@/lib/attendance/calendar"
@@ -42,6 +45,10 @@ export type CheckInInput = {
     mocked: boolean
     direction?: "IN" | "OUT" | null
     attestation?: string | null
+    /** The phone's face check, when face verification is in use for the person (§9.5). */
+    face?: FaceResult | null
+    /** The last frame of a failed face check, JPEG base64, for the reviewer (§13.8). */
+    faceFrame?: string | null
 }
 
 export type CheckInResult =
@@ -78,6 +85,13 @@ export class AttendanceCheckInService {
         let attestation: AttestationResult = worthAsking
             ? await verifyAttestation({ platform: phone.platform, token: input.attestation, challenge: input.nonce, purpose: "CHECK_IN", phone })
             : { verified: false, reason: "NOT_CHECKED" }
+        // Face verification, when it is in use for the person (§9.5): the result
+        // the phone signed, and the frame of a failed check if it matches its hash.
+        // While a re-verification photo waits, the app still matches against the
+        // approved templates and keeps the new ones aside until approval
+        // (lib/mobile/face.ts), so check-ins keep working (§9.5, review on #27).
+        const faceRequired = worthAsking && (await FaceVerificationService.statusFor(userId)).active
+        const frame = faceRequired ? frameOf(input) : null
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
         const local = new Date(now.getTime() + offsetMsIn(now, timeZone)).toISOString().slice(0, 19)
@@ -112,6 +126,7 @@ export class AttendanceCheckInService {
                 fix: { latitude: input.latitude, longitude: input.longitude, accuracyMeters: input.accuracyMeters },
                 mocked: input.mocked,
                 attestation: { verified: attestation.verified, required: attestationMode() === "required" },
+                face: { required: faceRequired, verified: !!input.face?.verified },
                 places, ip,
             })
             if (verdict.outcome === "REFUSED") {
@@ -140,9 +155,15 @@ export class AttendanceCheckInService {
                     checkIn: {
                         latitude: input.latitude, longitude: input.longitude, accuracyMeters: input.accuracyMeters,
                         distanceMeters: verdict.distanceMeters, ip, attested: attestation.verified, attestationReason: attestation.reason,
+                        // The result only, never the face (§9.5).
+                        ...(faceRequired ? { face: input.face ? { verified: input.face.verified, score: input.face.score, liveness: input.face.liveness, modelVersion: input.face.modelVersion, attempts: input.face.attempts } : null } : {}),
                     },
                 },
             })
+            // The failed check's frame, kept encrypted only while the flag is open (§13.8).
+            if (frame && verdict.reasons.includes("FACE_UNVERIFIED")) {
+                await tx.faceFrame.create({ data: { punchId: punch.id, companyId, userId, photo: new Uint8Array(frame) } })
+            }
             return {
                 result: { outcome: verdict.outcome, reasons: verdict.reasons, place: { id: verdict.place.id, name: verdict.place.name }, distanceMeters: verdict.distanceMeters, at: local, late: null },
                 counts: verdict.outcome === "ACCEPTED",
@@ -252,4 +273,17 @@ export class AttendanceCheckInService {
     private static async refuse(db: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {
         await db.checkInRefusal.create({ data: { companyId, userId, phoneId, reason, ip, at, ...(details && { details }) } })
     }
+}
+
+/**
+ * The frame sent with a failed face check, encrypted, when it is a photo and
+ * is the one the phone signed for; null otherwise. A frame that doesn't match
+ * is dropped, not refused: the check-in is flagged either way.
+ */
+function frameOf(input: CheckInInput): Buffer | null {
+    if (!input.faceFrame || !input.face || input.face.verified || !input.face.frameSha256) return null
+    const photo = Buffer.from(input.faceFrame, "base64")
+    if (photo.length === 0 || photo.length > MAX_PHOTO_BYTES || !isJpeg(photo)) return null
+    if (createHash("sha256").update(photo).digest("hex") !== input.face.frameSha256) return null
+    return encryptFacePhoto(photo)
 }

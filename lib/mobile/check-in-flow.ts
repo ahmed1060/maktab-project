@@ -1,5 +1,6 @@
 import { attestedText, checkInText, signedText } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
+import { faceCheck, type FaceVerifier } from "./face"
 
 /**
  * The two things the app does with the server (ATTENDANCE_PLAN.md §9.2–§9.4),
@@ -47,16 +48,34 @@ export type CheckInAnswer =
     }
 
 /**
- * Checks in: the fix first, so the number is asked for only once there is
- * something to sign — it lasts five minutes, and a slow fix shouldn't spend it.
+ * Checks in: the face check when it is in use for the person (§9.5), then
+ * the fix, and only then the number, once there is something to sign — it
+ * lasts five minutes, and a slow face check or fix shouldn't spend it. The
+ * face check's result is signed with the rest.
  */
-export async function checkIn(device: CheckInDevice, post: Post, direction: "IN" | "OUT" | null): Promise<CheckInAnswer> {
+export async function checkIn(device: CheckInDevice, post: Post, direction: "IN" | "OUT" | null, face?: FaceVerifier | null): Promise<CheckInAnswer> {
     const publicKey = await device.publicKey()
     if (!publicKey) throw new Error("NO_PHONE_KEY")
     const keyFingerprint = await fingerprintOf(publicKey)
+    let checked: Awaited<ReturnType<typeof faceCheck>> = null
+    if (face) {
+        try {
+            checked = await faceCheck(device, face, post)
+        } catch (e) {
+            // The person closed the camera: nothing is sent. Anything else (the
+            // SDK, the camera, the network) mustn't stop them checking in: it goes
+            // without a face check, and waits for a review (review on #27).
+            if (errorCode(e) === "FACE_CANCELLED") throw e
+        }
+    }
     const fix = await device.location()
     const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "CHECK_IN" })
-    const body = { nonce, keyFingerprint, ...fix, direction }
+    const body = { nonce, keyFingerprint, ...fix, direction, ...(checked ? { face: checked.face } : {}) }
     const [signature, attestation] = await Promise.all([device.sign(checkInText(body)), device.attestation(attestedText("CHECK_IN", nonce), "CHECK_IN")])
-    return post("/api/attendance/check-in", { ...body, signature, attestation })
+    return post("/api/attendance/check-in", { ...body, signature, attestation, ...(checked?.frame ? { faceFrame: checked.frame } : {}) })
+}
+
+/** The code a plugin rejected with (Capacitor puts it in `code`), or the message. */
+export function errorCode(e: unknown): string | undefined {
+    return (e as { code?: string })?.code ?? (e as Error)?.message
 }

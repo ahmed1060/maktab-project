@@ -1,7 +1,8 @@
 import { withStandardHandler } from "@/lib/api-utils"
-import { can } from "@/lib/permissions/can"
+import { can, canCompanyWide } from "@/lib/permissions/can"
 import { ApiResponse } from "@/lib/api-response"
 import { AttendanceExceptionService } from "@/lib/services/attendance-exception.service"
+import { FaceVerificationService } from "@/lib/services/face-verification.service"
 import { punchCompany, visibilityFor, decidesFor, correctsCompany } from "@/lib/attendance/punch-access"
 import { isDateString, addDays } from "@/lib/attendance/calendar"
 
@@ -31,8 +32,12 @@ export const GET = withStandardHandler(async (req, session) => {
     const redact = <T extends { userId: string; teamLeaderId: string | null; deductionMinor: number | null; overtimeMinor: number | null }>(rows: T[]) =>
         rows.map(d => d.userId === me || can(session.user, "salary.view", { companyId: access.companyId, userId: d.userId, teamLeaderId: d.teamLeaderId })
             ? d : { ...d, deductionMinor: null, overtimeMinor: null })
+    // Re-verifications left undone (§9.5), counted for those who decide face verification; they open on its tab.
+    const decidesFace = canCompanyWide(session.user, "attendance.approve_face") && can(session.user, "attendance.approve_face", { companyId: access.companyId })
+    const faceOverdue = decidesFace ? (await FaceVerificationService.overdueReverifications(access.companyId)).filter(o => o.userId !== me).length : null
     return ApiResponse.success({
         ...out,
+        counts: { ...out.counts, faceOverdue },
         late: redact(out.late), early: redact(out.early), absent: redact(out.absent), incomplete: redact(out.incomplete), overtime: redact(out.overtime),
     })
 })
