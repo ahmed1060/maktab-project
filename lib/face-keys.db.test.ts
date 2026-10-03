@@ -9,6 +9,7 @@ import { AttendancePolicyService as Policy } from "@/lib/services/attendance-pol
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
 import { AttendanceCheckInService as CheckIns } from "@/lib/services/attendance-check-in.service"
 import { AttendanceFlagService as Flags } from "@/lib/services/attendance-flag.service"
+import { AttendancePunchService as Punches } from "@/lib/services/attendance-punch.service"
 import { FaceVerificationService as Face, FACE_CONSENT_VERSION } from "@/lib/services/face-verification.service"
 import { FaceReviewService as Reviews } from "@/lib/services/face-review.service"
 import { FaceKeyService as Keys } from "@/lib/services/face-key.service"
@@ -141,6 +142,26 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         // A frame that isn't the one signed for is dropped; the check-in is flagged all the same.
         await checkIn("e2", { verified: false, score: 0.2, liveness: 0.9, modelVersion: "m1", attempts: 3, frameSha256: sha }, { faceFrame: jpeg().toString("base64") })
         expect((await db.query(`SELECT count(*)::int AS n FROM "FaceFrame"`)).rows[0].n).toBe(0)
+    })
+
+    it("deletes a failed check's frame when its check-in is voided instead, and when the person withdraws (review on #27)", async () => {
+        const failedWithFrame = async () => {
+            const frame = jpeg()
+            await checkIn("e2", { verified: false, score: 0.2, liveness: 0.9, modelVersion: "m1", attempts: 3, frameSha256: createHash("sha256").update(frame).digest("hex") }, { faceFrame: frame.toString("base64") })
+            return (await db.query(`SELECT "punchId" FROM "FaceFrame" WHERE "userId" = 'e2'`)).rows.map(r => r.punchId)
+        }
+        const [voided] = await failedWithFrame()
+        await Punches.voidPunch(voided, "Duplicate", "a1")
+        expect((await db.query(`SELECT count(*)::int AS n FROM "FaceFrame"`)).rows[0].n).toBe(0)
+        const [open] = await failedWithFrame()
+        expect(open).toBeTruthy()
+        await Face.withdrawConsent("e2")
+        expect((await db.query(`SELECT count(*)::int AS n FROM "FaceFrame"`)).rows[0].n).toBe(0)
+        expect(await reason(Reviews.flaggedPhoto(open, "frame", { id: "a1", isSuperAdmin: false }))).toBe("FACE_PHOTO_NONE")
+        // Back as before for what follows: consented, enrolled.
+        await Face.acceptConsent("c1", "e2", FACE_CONSENT_VERSION)
+        await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED' WHERE id = 'p-e2'`)
+        await db.query(`INSERT INTO "FaceReview"(id, "companyId", "userId", "phoneId", purpose, status, photo, "modelVersion", "decidedAt") VALUES ('r-e2b', 'c1', 'e2', 'p-e2', 'ENROLMENT', 'APPROVED', $1, 'm1', now())`, [encryptFacePhoto(jpeg())])
     })
 
     it("keeps the key while paused; destroys it the moment the phone leaves use or its owner is archived", async () => {

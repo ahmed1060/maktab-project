@@ -229,7 +229,7 @@ export class FaceReviewService {
     }
 
     /**
-     * Deletes every face photo of a person, resets their phones' face state and
+     * Deletes every face photo of a person, and every frame of a failed check, resets their phones' face state and
      * destroys their phones' wrapping keys: on consent withdrawal, or when it
      * is no longer asked of them (§10.4). Records stay, without photos.
      */
@@ -238,6 +238,8 @@ export class FaceReviewService {
         for (const w of waiting) await resolveNotices(tx, w.id)
         await tx.faceReview.updateMany({ where: { userId, status: "PENDING" }, data: { status: "WITHDRAWN", photo: null, decidedAt: new Date() } })
         await tx.faceReview.updateMany({ where: { userId, photo: { not: null } }, data: { photo: null } })
+        // The frames of failed checks still waiting for review are photos of them too (review on #27).
+        await tx.faceFrame.deleteMany({ where: { userId } })
         await tx.checkInPhone.updateMany({ where: { userId }, data: { faceStatus: "NONE", faceEnrolledAt: null, faceModelVersion: null } })
         // And the templates on their phones become unreadable at once (§10.4, lib/services/face-key.service.ts).
         await tx.faceWrappingKey.updateMany({ where: { userId, key: { not: null } }, data: { key: null, destroyedAt: new Date() } })
