@@ -5,19 +5,48 @@ import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
 import type { Camera, OpenCamera } from '@/lib/mobile/face-prototype/camera'
+import type { Cue, Progress } from '@/lib/mobile/face-prototype/liveness'
 
 /**
  * The front camera, full screen, for the face check prototype
  * (lib/mobile/face-prototype): the live picture, mirrored as a mirror is,
  * one line telling the person what to do, and a way out. `open()` resolves
  * once the camera is streaming.
+ *
+ * During the challenge it also shows which steps are done, the time left on
+ * this one, and how far the head is turned; and each step half or wholly done
+ * flashes the frame green, vibrates (Android; an iPhone web view can't) and
+ * beeps, so a turn or closed eyes don't leave the person guessing. Found on
+ * the first try on a phone: with only the words, nobody could tell whether
+ * looking back had counted.
  */
 
 type Said = Parameters<Camera['say']>[0]
 
 const PROMPTS: Record<Said, TranslationKey> = {
     LOADING: 'face_cam_loading', WORKING: 'face_cam_working', FACE_CAMERA: 'face_cam_face', TURN_HEAD: 'face_cam_turn',
-    LOOK_BACK: 'face_cam_back', BLINK: 'face_cam_blink', HOLD_STILL: 'face_cam_still', ONE_FACE: 'face_cam_one',
+    LOOK_BACK: 'face_cam_back', BLINK: 'face_cam_blink', OPEN_EYES: 'face_cam_open', HOLD_STILL: 'face_cam_still', ONE_FACE: 'face_cam_one',
+}
+
+const STEP_LABEL: Record<Progress['steps'][number]['challenge'], TranslationKey> = { TURN: 'face_cam_step_TURN', BLINK: 'face_cam_step_BLINK' }
+
+/** A short tone; quietly nothing where the web view has no audio. */
+function beep(ctx: AudioContext | null, frequency: number, ms: number) {
+    if (!ctx) return
+    try {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.frequency.value = frequency
+        gain.gain.value = 0.08
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + ms / 1000)
+    } catch { /* no sound is fine */ }
+}
+
+function vibrate(pattern: number | number[]) {
+    try { navigator.vibrate?.(pattern) } catch { /* no vibration is fine */ }
 }
 
 function codeError(code: string) {
@@ -32,6 +61,19 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     const video = useRef<HTMLVideoElement | null>(null)
     const stream = useRef<MediaStream | null>(null)
     const cancel = useRef<((e: Error) => void) | null>(null)
+    const [progress, setProgress] = useState<Progress | null>(null)
+    const [flash, setFlash] = useState<'ok' | 'retry' | null>(null)
+    const audio = useRef<AudioContext | null>(null)
+    const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const cue = useCallback((c: Cue) => {
+        if (c === 'RETRY') { vibrate([80, 60, 80]); beep(audio.current, 330, 250) }
+        else if (c === 'HALF') { vibrate(40); beep(audio.current, 660, 90) }
+        else { vibrate(120); beep(audio.current, 880, 160) }
+        setFlash(c === 'RETRY' ? 'retry' : 'ok')
+        if (flashTimer.current) clearTimeout(flashTimer.current)
+        flashTimer.current = setTimeout(() => setFlash(null), c === 'RETRY' ? 2500 : 450)
+    }, [])
 
     const stopStream = () => {
         stream.current?.getTracks().forEach(track => track.stop())
@@ -39,6 +81,13 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     }
 
     const open: OpenCamera = useCallback(() => new Promise<Camera>((ready, failed) => {
+        // Made here, on the tap that opened the camera: browsers only let sound start from one.
+        try {
+            const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+            audio.current ??= Ctx ? new Ctx() : null
+            void audio.current?.resume()
+        } catch { audio.current = null }
+        setProgress(null)
         setPrompt('LOADING')
         setRequest({ ready, failed })
     }), [])
@@ -60,7 +109,9 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                 request.ready({
                     video: v,
                     say: next => setPrompt(p => (p ? next : p)),
-                    close: () => { stopStream(); cancel.current = null; setPrompt(null) },
+                    show: setProgress,
+                    cue,
+                    close: () => { stopStream(); cancel.current = null; setPrompt(null); setProgress(null) },
                     cancelled,
                 })
             })
@@ -72,7 +123,7 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                 request.failed(codeError('CAMERA_DENIED'))
             })
         return () => { gone = true }
-    }, [request])
+    }, [request, cue])
 
     // Leaving the page mid-capture: the capture is cancelled and the camera turned off (review on #28).
     useEffect(() => () => {
@@ -88,7 +139,11 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
         request?.failed(codeError('FACE_CANCELLED'))
         setRequest(null)
         setPrompt(null)
+        setProgress(null)
     }
+
+    const current = progress?.steps.find(s => s.current)?.challenge
+    const frameColour = flash === 'ok' ? 'var(--ok-fill)' : flash === 'retry' ? 'var(--warn-fill)' : 'var(--chip-solid-bg)'
 
     const element = prompt && typeof document !== 'undefined' ? createPortal(
         <div role="dialog" aria-modal="true" aria-label={t('face_cam_title')} style={{
@@ -96,12 +151,48 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '1rem',
             direction: locale === 'ar' ? 'rtl' : 'ltr',
         }}>
-            <div style={{ width: 'min(100%, 420px)', aspectRatio: '3 / 4', borderRadius: '50% / 40%', overflow: 'hidden', border: '4px solid var(--chip-solid-bg)' }}>
+            {progress && (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {progress.steps.map(s => (
+                        <span key={s.challenge} style={{
+                            padding: '0.3rem 0.75rem', borderRadius: '999px', fontSize: '0.9rem', background: 'var(--surface)',
+                            color: s.done ? 'var(--ok-fg)' : 'var(--text-main)',
+                            border: s.current ? '2px solid var(--primary)' : '2px solid transparent',
+                        }}>{s.done ? '✓ ' : ''}{t(STEP_LABEL[s.challenge])}</span>
+                    ))}
+                </div>
+            )}
+            <div style={{ width: 'min(100%, 420px)', aspectRatio: '3 / 4', borderRadius: '50% / 40%', overflow: 'hidden', border: `6px solid ${frameColour}`, transition: 'border-color 0.15s' }}>
                 <video ref={video} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
             </div>
+            {progress && current && (
+                <div aria-hidden style={{ width: 'min(100%, 420px)', height: '6px', borderRadius: '3px', background: 'var(--surface)', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.round(progress.timeLeft * 100)}%`, height: '100%', background: progress.timeLeft < 0.25 ? 'var(--warn-fill)' : 'var(--primary)', transition: 'width 0.2s linear' }} />
+                </div>
+            )}
+            {progress && current === 'TURN' && (
+                // How far the head is turned, as the person sees it in the mirrored picture; the marks at each end are enough.
+                <div aria-hidden style={{ position: 'relative', width: 'min(80%, 320px)', height: '14px', borderRadius: '7px', background: 'var(--surface)' }}>
+                    <span style={{ position: 'absolute', left: '10%', top: 0, bottom: 0, width: '3px', background: 'var(--ok-fill)' }} />
+                    <span style={{ position: 'absolute', right: '10%', top: 0, bottom: 0, width: '3px', background: 'var(--ok-fill)' }} />
+                    {progress.turnAmount !== null && (
+                        <span style={{
+                            position: 'absolute', top: '-3px', width: '20px', height: '20px', borderRadius: '50%', marginLeft: '-10px',
+                            left: `${50 - progress.turnAmount * 40}%`,
+                            background: Math.abs(progress.turnAmount) >= 1 ? 'var(--ok-fill)' : 'var(--primary)',
+                        }} />
+                    )}
+                </div>
+            )}
             <p role="status" aria-live="polite" style={{ margin: 0, padding: '0.6rem 1rem', borderRadius: '0.75rem', background: 'var(--surface)', color: 'var(--text-main)', fontSize: '1.05rem', textAlign: 'center', maxWidth: '420px' }}>
-                {t(PROMPTS[prompt])}
+                {flash === 'retry' ? t('face_cam_slow') : t(PROMPTS[prompt])}
             </p>
+            {progress && (
+                // The live readings, for tuning the test version on real phones.
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-soft)', fontFamily: 'monospace' }}>
+                    {`eyes ${progress.eyes === null ? '–' : progress.eyes.toFixed(2)} · turn ${progress.turnAmount === null ? '–' : progress.turnAmount.toFixed(2)}`}
+                </p>
+            )}
             <p style={{ margin: 0, padding: '0.35rem 0.75rem', borderRadius: '0.5rem', background: 'var(--surface)', fontSize: '0.75rem', color: 'var(--text-soft)', textAlign: 'center', maxWidth: '420px' }}>{t('face_cam_prototype')}</p>
             <button className="btn btn-secondary" onClick={close}>{t('cancel')}</button>
         </div>,

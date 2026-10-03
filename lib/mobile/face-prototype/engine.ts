@@ -32,7 +32,9 @@ export type Look = { faces: number; landmarks: Landmarks | null; descriptor: Des
 
 /** One look at the camera: how many faces, and for exactly one, its landmarks and (when asked) its descriptor. */
 export async function look(api: FaceApi, video: HTMLVideoElement, withDescriptor: boolean): Promise<Look> {
-    const options = new api.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
+    // A smaller input during the challenge, where only the landmarks are needed:
+    // more looks a second, so a blink isn't missed between two of them.
+    const options = new api.TinyFaceDetectorOptions({ inputSize: withDescriptor ? 320 : 224, scoreThreshold: 0.5 })
     const found = withDescriptor
         ? await api.detectAllFaces(video, options).withFaceLandmarks().withFaceDescriptors()
         : await api.detectAllFaces(video, options).withFaceLandmarks()
