@@ -6,6 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
 import type { Camera, OpenCamera } from '@/lib/mobile/face-prototype/camera'
 import type { Cue, Progress } from '@/lib/mobile/face-prototype/liveness'
+import { chime, pageAudio } from '@/lib/mobile/face-prototype/chime'
 
 /**
  * The front camera, full screen, for the face check prototype
@@ -30,21 +31,6 @@ const PROMPTS: Record<Said, TranslationKey> = {
 
 const STEP_LABEL: Record<Progress['steps'][number]['challenge'], TranslationKey> = { TURN: 'face_cam_step_TURN', BLINK: 'face_cam_step_BLINK' }
 
-/** A short tone; quietly nothing where the web view has no audio. */
-function beep(ctx: AudioContext | null, frequency: number, ms: number) {
-    if (!ctx) return
-    try {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.frequency.value = frequency
-        gain.gain.value = 0.08
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.start()
-        osc.stop(ctx.currentTime + ms / 1000)
-    } catch { /* no sound is fine */ }
-}
-
 function vibrate(pattern: number | number[]) {
     try { navigator.vibrate?.(pattern) } catch { /* no vibration is fine */ }
 }
@@ -63,17 +49,26 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     const cancel = useRef<((e: Error) => void) | null>(null)
     const [progress, setProgress] = useState<Progress | null>(null)
     const [flash, setFlash] = useState<'ok' | 'retry' | null>(null)
-    const audio = useRef<AudioContext | null>(null)
+    // Started by any tap on the page: by the time the camera opens, the tap that asked for it is too long ago
+    // for the browser to let sound start (review on #30).
+    const [sound] = useState(() => chime(pageAudio))
     const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const cue = useCallback((c: Cue) => {
-        if (c === 'RETRY') { vibrate([80, 60, 80]); beep(audio.current, 330, 250) }
-        else if (c === 'HALF') { vibrate(40); beep(audio.current, 660, 90) }
-        else { vibrate(120); beep(audio.current, 880, 160) }
+        if (c === 'RETRY') { vibrate([80, 60, 80]); sound.play(330, 250) }
+        else if (c === 'HALF') { vibrate(40); sound.play(660, 90) }
+        else { vibrate(120); sound.play(880, 160) }
         setFlash(c === 'RETRY' ? 'retry' : 'ok')
         if (flashTimer.current) clearTimeout(flashTimer.current)
         flashTimer.current = setTimeout(() => setFlash(null), c === 'RETRY' ? 2500 : 450)
-    }, [])
+    }, [sound])
+
+    useEffect(() => {
+        const unlock = () => sound.unlock()
+        const events = ['pointerdown', 'touchend', 'keydown'] as const
+        events.forEach(e => document.addEventListener(e, unlock, { capture: true, passive: true }))
+        return () => events.forEach(e => document.removeEventListener(e, unlock, { capture: true }))
+    }, [sound])
 
     const stopStream = () => {
         stream.current?.getTracks().forEach(track => track.stop())
@@ -81,16 +76,11 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     }
 
     const open: OpenCamera = useCallback(() => new Promise<Camera>((ready, failed) => {
-        // Made here, on the tap that opened the camera: browsers only let sound start from one.
-        try {
-            const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-            audio.current ??= Ctx ? new Ctx() : null
-            void audio.current?.resume()
-        } catch { audio.current = null }
+        sound.unlock()
         setProgress(null)
         setPrompt('LOADING')
         setRequest({ ready, failed })
-    }), [])
+    }), [sound])
 
     // Once the overlay is up: the camera, then the session handed back.
     useEffect(() => {
