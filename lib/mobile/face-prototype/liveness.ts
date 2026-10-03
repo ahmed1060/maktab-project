@@ -89,6 +89,8 @@ export type LivenessState = {
     stage: Stage
     stageStarted: number
     started: number
+    /** When the last look came, so time with no face seen can be left off the step's clock. */
+    lastAt: number
     /** How many times the current step has been started. */
     tries: number
     /** How open this person's eyes are when open, measured before the challenge. */
@@ -98,7 +100,7 @@ export type LivenessState = {
 }
 
 export function startLiveness(order: Challenge[], at: number, baseline: number = LIMITS.open / LIMITS.openRatio): LivenessState {
-    return { queue: [...order], completed: [], stage: { kind: "FACING" }, stageStarted: at, started: at, tries: 1, baseline, done: false, failed: null }
+    return { queue: [...order], completed: [], stage: { kind: "FACING" }, stageStarted: at, started: at, lastAt: at, tries: 1, baseline, done: false, failed: null }
 }
 
 /** Eyes open enough to count as looking at the camera, for this person (or anyone, without a baseline). */
@@ -121,14 +123,16 @@ export function step(s: LivenessState, o: Observation): { state: LivenessState; 
     if (s.done || s.failed) return { state: s, prompt: "HOLD_STILL" }
     if (o.faces > 1) return { state: { ...s, failed: "FACES" }, prompt: "ONE_FACE" }
     if (o.at - s.started > LIMITS.totalMs) return { state: { ...s, failed: "TIMEOUT" }, prompt: promptOf(s) }
+    // No face this look (turned too far, or out of the light): nothing changes, and the time since the last
+    // look is left off the step's clock, so it can't use up the step's tries; the overall limit still runs.
+    if (!o.landmarks) return { state: { ...s, stageStarted: s.stageStarted + (o.at - s.lastAt), lastAt: o.at }, prompt: promptOf(s) }
+    s = { ...s, lastAt: o.at }
     if (o.at - s.stageStarted > LIMITS.stepMs) {
         if (s.tries >= LIMITS.triesPerStep) return { state: { ...s, failed: "TIMEOUT" }, prompt: promptOf(s) }
         // The same step again, from its start: a turn or a blink half done doesn't carry over.
         const state: LivenessState = { ...s, stage: restart(s.stage), stageStarted: o.at, tries: s.tries + 1 }
         return { state, prompt: promptOf(state), cue: "RETRY" }
     }
-    // No face this look (turned too far, or out of the light): nothing changes, and it doesn't count against the step.
-    if (!o.landmarks) return { state: s, prompt: promptOf(s) }
     const l = o.landmarks
     const offCentre = Math.abs(turn(l) - 0.5)
 

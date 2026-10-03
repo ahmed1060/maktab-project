@@ -69,6 +69,14 @@ describe("prototype liveness", () => {
         expect(s).toMatchObject({ done: true, failed: null })
     })
 
+    it("doesn't count time with the face out of view against the step (review on #30)", () => {
+        // Half a turn, then the detector loses the turned face for longer than a step's time.
+        const lost = Array.from({ length: 12 }, (_, i): [Landmarks | null, number] => [null, 200 + i * 1000])
+        const { s, cues } = run(startLiveness(["TURN"], 0), [[face(0), 0], [face(0.2), 100], ...lost, [face(0), 12_500]])
+        expect(cues).not.toContain("RETRY")
+        expect(s).toMatchObject({ done: true, failed: null, tries: 1 })
+    })
+
     it("tries a slow step again on its own, instead of failing the whole check", () => {
         const order = ["TURN", "BLINK"] as const
         let { s } = run(startLiveness([...order], 0), [[face(0), 0], [face(0.3), 100], [face(0), 200], [face(0), 300]])
