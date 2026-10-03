@@ -202,7 +202,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                             <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.875rem' }}>
                                 {t('last_working_day')}
                             </label>
-                            <input
+                            <input aria-label={t('last_working_day')}
                                 type="date"
                                 className="input"
                                 value={lastWorkingDay}
@@ -293,7 +293,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                             <label style={{ display: 'block', margin: '0.5rem 0 0.4rem', fontSize: '0.875rem' }}>
                                 {t('end_contract_reason')}
                             </label>
-                            <textarea
+                            <textarea aria-label={t('end_contract_reason')}
                                 className="input"
                                 rows={2}
                                 value={reason}
@@ -316,7 +316,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                     <button
                         type="button"
                         className="btn"
-                        style={{ background: isArchived ? 'var(--primary)' : 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                        style={{ background: isArchived ? 'var(--primary)' : 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                         disabled={submitting || (!isArchived && !preview)}
                         onClick={() => submit(isArchived ? 'REINSTATE' : 'END_CONTRACT')}
                     >

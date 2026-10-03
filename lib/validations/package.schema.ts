@@ -20,6 +20,10 @@ const priceSchema = z.number()
 const bundlesSchema = {
     hasCompanyManagement: z.boolean(),
     hasHR: z.boolean(),
+    // The attendance add-ons (ATTENDANCE_PLAN.md §16). Optional so a form or
+    // script written before them still creates a package; absent is off.
+    hasAttendanceTerminals: z.boolean().optional().default(false),
+    hasAttendanceMobile: z.boolean().optional().default(false),
 }
 
 // A package with neither bundle is Core only — a real thing to sell, since Core
@@ -36,6 +40,8 @@ export const createPackageSchema = z.object({
     // is a different statement from being sold for nothing.
     priceLifetime: priceSchema.nullable().optional(),
     ...bundlesSchema,
+}).refine(p => p.hasHR || !(p.hasAttendanceTerminals || p.hasAttendanceMobile), {
+    message: "The attendance add-ons need HR", path: ["hasHR"],
 })
 
 export const updatePackageSchema = z.object({
@@ -49,6 +55,10 @@ export const updatePackageSchema = z.object({
     priceLifetime: priceSchema.nullable().optional(),
     hasCompanyManagement: z.boolean().optional(),
     hasHR: z.boolean().optional(),
+    // Checked against the stored package in PackageService.update, since a
+    // partial update may change one switch and not the other.
+    hasAttendanceTerminals: z.boolean().optional(),
+    hasAttendanceMobile: z.boolean().optional(),
 })
 
 export type CreatePackageInput = z.infer<typeof createPackageSchema>

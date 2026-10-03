@@ -8,6 +8,7 @@ import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { CompanyService } from "@/lib/services/company.service"
 import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
 import { CompanyBrandingProvider } from "@/context/CompanyBrandingContext"
+import { visibleSettingsTabs } from "@/lib/company-settings-access"
 import { cookies } from "next/headers"
 
 import { Suspense } from "react"
@@ -54,12 +55,19 @@ export default async function DashboardLayout({
     const scopeId = scopedCompanyId(user.role, cookieStore.get(SCOPED_COMPANY_COOKIE)?.value)
     const scopedBranding = scopeId ? await CompanyService.getBranding(scopeId) : null
 
+    // A Settings entry for a company's own people, when the Super Admin shows
+    // them any tab and their role lets them see it (ATTENDANCE_PLAN.md §5.2).
+    // Read per request, like the mark above, so the switch takes effect on the
+    // next navigation. The page's API asks the same question.
+    const exposure = user.role !== 'SUPER_ADMIN' && user.companyId ? await CompanyService.settingsExposure(user.companyId) : null
+    const showCompanySettings = !!exposure && visibleSettingsTabs(user, exposure).length > 0
+
     return (
         <CompanyBrandingProvider value={scopedBranding}>
         {/* Who is looking, grants included, for every screen's useCan() on
             its first paint — before the session hook has loaded. */}
         <ViewerProvider viewer={user as any}>
-        <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName}>
+        <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName} showCompanySettings={showCompanySettings}>
             <UserHeartbeat />
             <DashboardErrorBoundary>
                 <Suspense fallback={<div className="p-8 text-center opacity-50">Loading section...</div>}>

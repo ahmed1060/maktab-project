@@ -10,6 +10,7 @@ import SafeDate from '@/components/SafeDate'
 import Link from 'next/link'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
+import { apiErrorText } from "@/lib/api-error-text"
 
 
 interface SalaryRecord {
@@ -241,7 +242,7 @@ export default function EmployeeHistoryPage() {
                 setIsReevaluateModalOpen(false)
             } else {
                 const err = await res.text()
-                setAlert({ type: 'error', message: err || t('update_failed' as any) })
+                setAlert({ type: 'error', message: apiErrorText(err, t('update_failed' as any)) })
             }
         } catch {
             setAlert({ type: 'error', message: t('update_failed' as any) })
@@ -281,7 +282,7 @@ export default function EmployeeHistoryPage() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginBottom: '0.75rem',
-                        color: 'var(--primary)',
+                        color: 'var(--brand-primary-text)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         border: '1px solid var(--veil-40)',
@@ -521,7 +522,7 @@ export default function EmployeeHistoryPage() {
                                                 ) : (
                                                     <a
                                                         href={`/dashboard/documents/payslip/${figure!.source === 'PAYSLIP' ? figure!.payslipId : ''}`}
-                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--primary)' }}
+                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--brand-primary-text)' }}
                                                     >
                                                         {t('salary_figure_payslip')}
                                                     </a>
@@ -716,7 +717,7 @@ export default function EmployeeHistoryPage() {
                                                 left: '-5px',
                                                 right: '-5px',
                                                 height: '2px',
-                                                background: 'var(--danger-solid)',
+                                                background: 'var(--danger-fill)',
                                                 transform: 'rotate(-2deg)',
                                                 zIndex: 5,
                                                 opacity: 0.8,
@@ -836,7 +837,7 @@ export default function EmployeeHistoryPage() {
                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem' }}>
                             {t('reverse_reason' as any)}
                         </label>
-                        <textarea
+                        <textarea aria-label={t('reverse_reason' as any)}
                             className="input"
                             rows={2}
                             value={reverseReason}
@@ -854,7 +855,7 @@ export default function EmployeeHistoryPage() {
                             <button
                                 type="button"
                                 className="btn"
-                                style={{ background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                                 disabled={!!rollbackLoading}
                                 onClick={async () => {
                                     const target = reversing
@@ -899,7 +900,7 @@ export default function EmployeeHistoryPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                                 {t('days_label')}
                             </label>
-                            <input
+                            <input aria-label={t('days_label')}
                                 type="number"
                                 step="0.5"
                                 value={reevaluateValue}

@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SuperAdminService } from "@/lib/services/super-admin.service"
 import { superAdminSchema } from "@/lib/validations/super-admin.schema"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     // 1. Auth Check: Super Admin only
@@ -10,9 +11,7 @@ export const GET = withStandardHandler(async (req, session) => {
     }
 
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
     const search = searchParams.get('search') || undefined
 
     try {

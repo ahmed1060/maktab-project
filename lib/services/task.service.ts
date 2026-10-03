@@ -275,6 +275,11 @@ export class TaskService {
             // Your own task, or one you may edit — a manager submitting on
             // someone's behalf.
             if (!isAssignee && !can(session.user, "tasks.edit")) throw new Error("ACCESS_DENIED")
+            // A decided task is not submitted again: it went back to awaiting
+            // confirmation with its points still held, so approving it again
+            // added them a second time, and new costs changed what a paid
+            // task owes. A rejected one is redone and submitted, as before.
+            if (['APPROVED', 'COMPLETED'].includes(currentTask.status)) throw new Error("TASK_ALREADY_DECIDED")
 
             // Handle Attachments
             let finalAttachments: any[] = []
@@ -388,10 +393,19 @@ export class TaskService {
      * Reviews a task submission.
      */
     static async review(id: string, session: any, data: any) {
-        const { status: statusProp, action, difficulty } = data
+        const { status: statusProp, action, difficulty } = data ?? {}
         const status = statusProp || action
         const userId = session.user.id
         const userRole = session.user.role
+        // A decision the reviewer made, not a default: anything else used to
+        // be read as a rejection, so an empty or mistyped request rejected the
+        // task and took its points away.
+        if (!['APPROVED', 'REJECTED', 'COMPLETED'].includes(status)) throw new Error("INVALID_REVIEW_STATUS")
+        // Added to every assignee's points, so bounded as a task's is when it
+        // is created (lib/validations/task.schema.ts).
+        if (difficulty !== undefined && difficulty !== null && (typeof difficulty !== 'number' || !Number.isFinite(difficulty) || difficulty < 0 || difficulty > 10)) {
+            throw new Error("INVALID_DIFFICULTY")
+        }
 
         return await prisma.$transaction(async (tx) => {
             const oldTask = await tx.task.findUnique({
@@ -414,7 +428,7 @@ export class TaskService {
                 throw new Error("SELF_REVIEW_FORBIDDEN")
             }
 
-            let newStatus = ['APPROVED', 'REJECTED', 'COMPLETED'].includes(status) ? status : 'REJECTED'
+            let newStatus = status
             if (newStatus === 'APPROVED' && oldTask.totalCost.isZero()) newStatus = 'COMPLETED'
 
             const newDifficulty = (typeof difficulty === 'number') ? difficulty : oldTask.difficulty
@@ -491,8 +505,20 @@ export class TaskService {
         const now = new Date()
 
         return await prisma.$transaction(async (tx) => {
-            const task = await tx.task.findUnique({ where: { id } })
+            const task = await tx.task.findUnique({ where: { id }, include: { assignees: { select: { id: true, teamLeaderId: true } } } })
             if (!task) throw new Error("TASK_NOT_FOUND")
+            // A task's penalty falls on one of its own people. The id came
+            // from the request and was never checked against the task: anyone
+            // allowed to penalise one task could take pay from any account,
+            // in any company, by naming it.
+            const target = task.assignees.find(a => a.id === targetUserId)
+            if (!target) throw new Error("NOT_AN_ASSIGNEE")
+            // And within the scope the caller penalises at: held for a team,
+            // a task shared with someone outside it is theirs to open, but
+            // that person's pay is not theirs to cut.
+            if (!can(session.user, "tasks.penalize", { companyId: task.companyId, userId: target.id, teamLeaderId: target.teamLeaderId })) {
+                throw new Error("OUTSIDE_TEAM")
+            }
 
             // Through SalaryService, not a second hand-rolled find-or-create.
             // This block used to compute its own days-in-month and read its own
@@ -811,14 +837,18 @@ export class TaskService {
      * Updates task payment status.
      */
     static async updatePayment(id: string, session: any, data: any) {
-        const { paymentStatus, targetUserId } = data
+        const { paymentStatus, targetUserId } = data ?? {}
         const userRole = session.user.role
         const userId = session.user.id
+        // Paid or not, nothing else. Anything else used to be taken as "not
+        // paid": the task went back to Approved and every assignee to unpaid,
+        // under an audit entry saying the payment had changed.
+        if (paymentStatus !== 'PAID' && paymentStatus !== 'PENDING_PAYMENT') throw new Error("INVALID_PAYMENT_STATUS")
 
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
                 where: { id },
-                include: { assignees: { select: { id: true, companyId: true } } }
+                include: { assignees: { select: { id: true, companyId: true, teamLeaderId: true } } }
             })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
@@ -828,6 +858,19 @@ export class TaskService {
                 if (task.companyId !== userCompanyId) {
                     throw new Error("ACCESS_DENIED")
                 }
+            }
+
+            // Only reviewed work is paid for, as the bulk route already holds:
+            // paying a task still in progress marked it Completed, skipping
+            // its review. And a per-person payment is for one of its people.
+            if (!['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) throw new Error("TASK_NOT_REVIEWED")
+            if (targetUserId) {
+                const member = task.assignees.find(a => a.id === targetUserId)
+                if (!member) throw new Error("NOT_AN_ASSIGNEE")
+                // Within the scope the caller pays at, as a penalty is: on a
+                // task shared with someone outside a team payer's team, that
+                // person's payment is not theirs to record.
+                if (!can(session.user, "tasks.pay", { companyId: task.companyId, userId: member.id, teamLeaderId: member.teamLeaderId })) throw new Error("OUTSIDE_TEAM")
             }
 
             const updateData: any = {}

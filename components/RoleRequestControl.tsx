@@ -74,7 +74,7 @@ export default function RoleRequestControl({ userId, companyId, current, locked,
             {choice && choice !== current?.id && (
                 <div style={{ marginTop: '0.75rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                    <input type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
+                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
                 </div>
             )}

@@ -11,9 +11,10 @@ describe("the permission matrix", () => {
     it("shows every permission, once, but those nothing checks yet", () => {
         const shown = PERMISSION_GROUPS.flatMap(g => g.permissions)
         // Reserved ones are left out, so no role promises access it does not
-        // give (catalogue.ts): company settings and the audit log.
+        // give (catalogue.ts): the audit log. Company settings came off the
+        // list when a company's own people could be shown them.
         expect(shown.sort()).toEqual(ALL.filter(p => !isReserved(p)).sort())
-        expect(ALL.filter(isReserved).sort()).toEqual(["audit.view", "settings.edit", "settings.view"])
+        expect(ALL.filter(isReserved).sort()).toEqual(["audit.view"])
         expect(PERMISSION_GROUPS.every(g => g.permissions.length > 0)).toBe(true)
     })
 

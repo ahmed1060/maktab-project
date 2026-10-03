@@ -202,7 +202,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}
                             style={{
-                                background: 'var(--ok-solid)',
+                                background: 'var(--ok-fill)',
                                 color: 'var(--text-on-accent)',
                                 border: 'none',
                                 borderRadius: '1.25rem',
@@ -234,7 +234,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
             ) : (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))',
                     gap: '1.5rem'
                 }}>
                     {sortedEntries.map((entry, index) => (

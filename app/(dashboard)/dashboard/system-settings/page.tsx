@@ -7,6 +7,7 @@ import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
+import FaceSystemSwitch from '@/components/FaceSystemSwitch'
 
 type SystemSettings = {
     id: string
@@ -191,7 +192,7 @@ export default function SystemSettingsPage() {
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>
                             {t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
                         </label>
-                        <input
+                        <input aria-label={t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
                             type="number"
                             min={1}
                             max={10000}
@@ -216,12 +217,13 @@ export default function SystemSettingsPage() {
                         className="glass"
                         style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
                     >
-                        <h3 style={{ margin: '0 0 0.35rem' }}>{t('default_timezone_label')}</h3>
+                        <h3 id="default-timezone-label" style={{ margin: '0 0 0.35rem' }}>{t('default_timezone_label')}</h3>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
                             {t('default_timezone_hint')}
                         </p>
                         <input
                             id="default-timezone"
+                            aria-labelledby="default-timezone-label"
                             className="input"
                             value={defaultTimezone}
                             onChange={e => setDefaultTimezone(e.target.value)}
@@ -240,12 +242,13 @@ export default function SystemSettingsPage() {
                         className="glass"
                         style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
                     >
-                        <h3 style={{ margin: '0 0 0.35rem' }}>{t('step_up_minutes_label')}</h3>
+                        <h3 id="step-up-minutes-label" style={{ margin: '0 0 0.35rem' }}>{t('step_up_minutes_label')}</h3>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
                             {t('step_up_minutes_hint')}
                         </p>
                         <input
                             id="step-up-minutes"
+                            aria-labelledby="step-up-minutes-label"
                             className="input"
                             type="number"
                             min={5}
@@ -261,6 +264,8 @@ export default function SystemSettingsPage() {
                             </button>
                         </div>
                     </form>
+
+                    <FaceSystemSwitch />
 
                     <form
                         onSubmit={handleSaveBranding}
@@ -286,7 +291,7 @@ export default function SystemSettingsPage() {
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500, opacity: showPoweredBy ? 1 : 0.5 }}>
                             {t('powered_by_name_label' as any)}
                         </label>
-                        <input
+                        <input aria-label={t('powered_by_name_label' as any)}
                             type="text"
                             maxLength={40}
                             value={poweredByName}

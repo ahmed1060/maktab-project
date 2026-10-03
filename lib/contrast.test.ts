@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
 
 /**
  * WCAG contrast for every foreground/background pair the palette declares, in
@@ -164,5 +165,68 @@ describe("the two themes are actually different", () => {
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))
         expect(missing, `tokens with no dark value:\n${missing.join("\n")}`).toEqual([])
+    })
+})
+
+describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
+    // Found by measuring every page's text in the dark theme. The brand indigo
+    // (--primary, #6366f1) was used as text there unchanged, 2.8:1 on the dark
+    // surfaces, and the audit log's action names (--accent-deepest) 2.85:1.
+    // --primary itself can't lighten in the dark theme, because white text sits
+    // on it in buttons, so text uses --brand-primary-text.
+    for (const fg of ["--brand-primary-text", "--accent-deepest"]) {
+        for (const bg of ["--surface", "--surface-sunk"]) {
+            it(`${fg} on ${bg}`, () => {
+                const r = ratio(DARK[fg], DARK[bg])
+                expect(r, `${fg} ${DARK[fg]} on ${bg} ${DARK[bg]} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+            })
+        }
+    }
+
+    it("and screens colour brand text with it, not with the button colour", () => {
+        const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const offenders = [...files("app"), ...files("components")].filter(f =>
+            /color: (?:[^,}]*\? )?'var\(--(?:brand-primary|primary)\)'/.test(readFileSync(f, "utf8")))
+        expect(offenders).toEqual([])
+    })
+})
+
+describe("fills: white text on a status colour meets AA 4.5:1", () => {
+    // Found by measuring every page's text in the dark theme: white on the
+    // Approve button's green, the points badge's blue and an amber avatar was
+    // 2.2 to 2.8:1, and much the same in the light theme. The -solid colours
+    // are also text and strokes on the page, so the grounds under white text
+    // are their own tokens, the same hues darkened.
+    const FILLS = ["--ok-fill", "--ok-fill-alt", "--ok-fill-hover", "--info-fill", "--info-fill-hover",
+        "--warn-fill", "--warn-fill-warm", "--danger-fill", "--danger-fill-hover", "--accent-fill"]
+
+    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
+        for (const fill of FILLS) {
+            it(`${themeName}: white on ${fill}`, () => {
+                expect(tokens[fill], `${fill} undefined in ${themeName}`).toBeDefined()
+                const r = ratio(tokens["--text-on-accent"] ?? LIGHT["--text-on-accent"], tokens[fill])
+                expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+            })
+        }
+    }
+
+    // A badge or a dot is a shape: in the dark theme it must still stand out
+    // from the card it's on (AA for graphics, 3:1). A hover shade shows only
+    // under the pointer, so it's held to less.
+    for (const fill of FILLS.filter(f => !f.endsWith("-hover"))) {
+        it(`dark: ${fill} stands out from --surface`, () => {
+            const r = ratio(DARK[fill], DARK["--surface"])
+            expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+        })
+    }
+
+    it("screens put a fill, not a -solid colour, behind text", () => {
+        const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const offenders = [...files("app"), ...files("components")].flatMap(f =>
+            [...readFileSync(f, "utf8").matchAll(/background(?:Color)?: [^,\n]*?'var\(--((?:ok|info|warn|danger|accent)-solid[a-z-]*)\)'/g)]
+                .map(m => `${f}: ${m[1]}`))
+        expect(offenders).toEqual([])
     })
 })

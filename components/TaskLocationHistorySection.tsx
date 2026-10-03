@@ -131,7 +131,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                         style={{
                                             padding: '0.25rem 0.75rem',
                                             borderRadius: '1rem',
-                                            background: 'var(--danger-solid)',
+                                            background: 'var(--danger-fill)',
                                             color: 'var(--text-on-accent)',
                                             fontSize: '0.75rem',
                                             fontWeight: 'bold',

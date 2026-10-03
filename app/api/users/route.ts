@@ -123,7 +123,9 @@ export const GET = withStandardHandler(async (req, session) => {
         return ApiResponse.success({ total: deletedCount })
     }
 
-    const { page, limit, skip } = parsePaging(searchParams, 10)
+    // Pickers ask for every Team Leader (and the usernames and audit-log
+    // screens for everybody) with limit=1000.
+    const { page, limit, skip } = parsePaging(searchParams, 10, 1000)
 
     const [users, total] = await Promise.all([
         prisma.user.findMany({

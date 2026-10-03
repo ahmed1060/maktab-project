@@ -81,7 +81,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                     <label style={{ fontSize: '0.85rem' }}>{t('role_changes_role')}</label>
                     <RoleSelect value={roleId} allowDefault emptyLabel={t('role_changes_new_role')} ariaLabel={t('role_changes_role')} onChange={id => setRoleId(id)} />
                     <label style={{ fontSize: '0.85rem' }}>{t('role_changes_description')}</label>
-                    <textarea className="input" rows={3} maxLength={2000} value={description} onChange={e => setDescription(e.target.value)} />
+                    <textarea aria-label={t('role_changes_description')} className="input" rows={3} maxLength={2000} value={description} onChange={e => setDescription(e.target.value)} />
                     <div>
                         <button type="button" className="btn btn-primary" onClick={ask} disabled={sending || description.trim().length < 5}>{t('role_changes_send')}</button>
                     </div>
@@ -111,7 +111,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                         )}
                         {side === 'superAdmin' && r.status === 'OPEN' && (
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                <button type="button" onClick={() => answer(r, 'DONE')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0 }}>{t('role_changes_done')}</button>
+                                <button type="button" onClick={() => answer(r, 'DONE')} style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }}>{t('role_changes_done')}</button>
                                 <button type="button" onClick={() => setDeclining(r)} style={{ background: 'none', border: 'none', color: 'var(--danger-solid)', cursor: 'pointer', padding: 0 }}>{t('role_changes_decline')}</button>
                             </div>
                         )}

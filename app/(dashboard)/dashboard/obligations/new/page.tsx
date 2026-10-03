@@ -7,7 +7,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
-import { permissionsOf } from '@/lib/useCan'
+import { permissionsOf, useCan } from '@/lib/useCan'
+import AccessDenied from '@/components/AccessDenied'
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
@@ -26,8 +27,13 @@ export default function NewObligationPage() {
 
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
+    // Creating obligations is a manager's (the list offers the button only to
+    // them); anyone else reaching this address by hand is told so, rather
+    // than asking for a colleague list they may not read.
+    const mayCreate = useCan().can('obligations.manage')
 
     useEffect(() => {
+        if (!mayCreate) return
         const queryParams = new URLSearchParams()
         queryParams.set('limit', '1000')
         if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
@@ -35,8 +41,7 @@ export default function NewObligationPage() {
         fetch(`/api/users?${queryParams.toString()}`)
             .then(res => res.json())
             .then(result => {
-                const data = result.data
-                const usersList = data.data || []
+                const usersList = result?.data?.data || []
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
                 const sortedData = usersList.sort((a: any, b: any) => {
                     const rolePriority: { [key: string]: number } = {
@@ -62,7 +67,7 @@ export default function NewObligationPage() {
                     : sortedData
                 setUsers(filteredData)
             })
-    }, [session, selectedCompanyId])
+    }, [session, selectedCompanyId, mayCreate])
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
@@ -141,6 +146,8 @@ export default function NewObligationPage() {
         return fullName.includes(searchTerm.toLowerCase())
     })
 
+    if (!mayCreate) return <AccessDenied />
+
     return (
         <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
             <h1 style={{ marginBottom: '1.5rem' }}>{t('add_obligation')}</h1>
@@ -152,7 +159,7 @@ export default function NewObligationPage() {
             <form onSubmit={handleSubmit}>
                 <div id="field-title" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
-                    <input
+                    <input aria-label={t('title_label' as any)}
                         className="input"
                         value={title}
                         onChange={e => {
@@ -174,7 +181,7 @@ export default function NewObligationPage() {
                 </div>
                 <div id="field-description" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
-                    <textarea
+                    <textarea aria-label={t('description_label' as any)}
                         className="input"
                         value={description}
                         onChange={e => {
@@ -197,7 +204,7 @@ export default function NewObligationPage() {
                 </div>
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <input
+                    <input aria-label={t('assignee_label')}
                         type="text"
                         className="input"
                         placeholder={t('search_placeholder')}
@@ -262,7 +269,7 @@ export default function NewObligationPage() {
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('recurrence_label')}</label>
-                    <select
+                    <select aria-label={t('recurrence_label')}
                         className="input"
                         value={recurrence}
                         onChange={e => setRecurrence(e.target.value)}
@@ -276,7 +283,7 @@ export default function NewObligationPage() {
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>
-                    <input
+                    <input aria-label={t('difficulty')}
                         type="number"
                         className="input"
                         value={difficulty}

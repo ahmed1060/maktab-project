@@ -1,0 +1,273 @@
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { state, prismaMock, withBody, url } from "./permissions/employee-access.harness"
+import { encodeGrants } from "./permissions/grants"
+import { stepUpConfirmed } from "./permissions/test-actors"
+import { BUILT_IN_GRANTS } from "./permissions/built-in"
+import { serializeAccess, resolveBundles } from "./features/bundles"
+
+vi.setConfig({ testTimeout: 60_000 })
+
+/**
+ * Who reaches a company's terminals and agents (ATTENDANCE_PLAN.md §16, §17).
+ *
+ * On the website they are part of the Attendance settings tab, and only for
+ * a company holding the Terminals add-on. On the agent's side there is no
+ * session: the token says which agent, and so which company. The services
+ * are replaced; what is checked here is who reaches them.
+ */
+
+vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
+vi.mock("@/lib/auth", () => ({ authOptions: {} }))
+vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
+vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: async () => {}, logSystemError: async () => "ref", friendlyErrorMessage: () => "error" } }))
+
+const reached: string[] = []
+const TOKENS: Record<string, any> = {
+    "mka_good": { id: "ag1", companyId: "c1", name: "Office", timeZone: "Africa/Cairo" },
+    "mka_revoked": { refused: "UNAUTHENTICATED" },
+    "mka_banned": { refused: "COMPANY_BANNED" },
+    "mka_unsold": { refused: "TERMINALS_NOT_INCLUDED" },
+}
+vi.mock("@/lib/services/attendance-agent.service", () => ({
+    AttendanceAgentService: {
+        list: async (companyId: string) => { reached.push(`agents:${companyId}`); return [] },
+        create: async (companyId: string, name: string) => { reached.push(`createAgent:${companyId}:${name}`); return { agent: { id: "new" }, code: "K7QD-2MXP" } },
+        agentOf: async (id: string) => ({ ag1: { id: "ag1", companyId: "c1", status: "ACTIVE" }, ag2: { id: "ag2", companyId: "c2", status: "ACTIVE" } } as any)[id] ?? null,
+        revoke: async (id: string) => { reached.push(`revoke:${id}`) },
+        reissueCode: async (id: string) => { reached.push(`reissue:${id}`); return { agent: { id }, code: "K7QD-2MXP" } },
+        enrol: async (code: string) => {
+            reached.push(`enrol:${code}`)
+            if (code !== "K7QD-2MXP") throw new Error("ENROLMENT_CODE_INVALID")
+            return { token: "mka_new", agentId: "ag1", name: "Office", company: "One", timeZone: "Africa/Cairo" }
+        },
+        authenticate: async (token: string) => TOKENS[token] ?? { refused: "UNAUTHENTICATED" },
+        rotate: async (agent: { id: string }) => { reached.push(`rotate:${agent.id}`); return { token: "mka_next" } },
+    },
+}))
+
+vi.mock("@/lib/services/attendance-device.service", () => ({
+    AttendanceDeviceService: {
+        list: async (companyId: string) => { reached.push(`devices:${companyId}`); return [] },
+        deviceOf: async (id: string) => ({ d1: { id: "d1", companyId: "c1" }, d2: { id: "d2", companyId: "c2" } } as any)[id] ?? null,
+        update: async (id: string, input: any) => { reached.push(`updateDevice:${id}:${input.mode ?? ""}`); return {} },
+        retire: async (id: string) => { reached.push(`retire:${id}`) },
+        restore: async (id: string) => { reached.push(`restore:${id}`) },
+        heartbeat: async (agent: { id: string; companyId: string }, beat: any) => { reached.push(`heartbeat:${agent.companyId}:${beat.devices.length}`); return { devices: [] } },
+    },
+}))
+
+vi.mock("@/lib/services/attendance-ingest.service", () => ({
+    AttendanceIngestService: {
+        punches: async (agent: { companyId: string }, batch: any) => { reached.push(`punches:${agent.companyId}:${batch.punches.length}`); return { accepted: batch.punches.length, duplicates: 0, refused: [] } },
+    },
+}))
+
+type Pkg = { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
+const TERMINALS: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: true }
+const MOBILE_ONLY: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
+const companies: Record<string, { adminSettingsEnabled: boolean; adminSettingsTabs: string[]; package: Pkg }> = {}
+
+beforeEach(() => {
+    reached.length = 0
+    companies.c1 = { adminSettingsEnabled: true, adminSettingsTabs: ["attendance"], package: TERMINALS }
+    companies.c2 = { adminSettingsEnabled: true, adminSettingsTabs: ["attendance"], package: TERMINALS }
+    prismaMock.company.findUnique = async ({ where }: any) => companies[where.id] ? { id: where.id, ...companies[where.id] } : null
+})
+
+function signIn(user: { id: string; role: string; companyId: string | null; grants?: Record<string, string> }, pkg: Pkg = TERMINALS) {
+    state.session = {
+        user: stepUpConfirmed({
+            ...user,
+            grants: user.grants ? encodeGrants(user.grants as any) : undefined,
+            featureAccess: serializeAccess(resolveBundles(pkg, { isSuperAdmin: user.role === "SUPER_ADMIN" })),
+        }),
+    }
+}
+const admin = (pkg: Pkg = TERMINALS) => signIn({ id: "admin", role: "ADMIN", companyId: "c1", grants: BUILT_IN_GRANTS.ADMIN }, pkg)
+const employee = () => signIn({ id: "emp", role: "EMPLOYEE", companyId: "c1", grants: BUILT_IN_GRANTS.EMPLOYEE })
+const viewer = () => signIn({ id: "hr", role: "EMPLOYEE", companyId: "c1", grants: { "settings.view": "COMPANY" } })
+const superAdmin = () => signIn({ id: "sa", role: "SUPER_ADMIN", companyId: null })
+
+const params = (id: string) => ({ params: Promise.resolve({ id }) }) as any
+const list = async (query = "") => (await import("@/app/api/attendance/agents/route")).GET(new Request(url(`/api/attendance/agents${query}`)))
+const add = async (body: unknown) => (await import("@/app/api/attendance/agents/route")).POST(withBody("POST", "/api/attendance/agents", body))
+const revoke = async (id: string) => (await import("@/app/api/attendance/agents/[id]/route")).DELETE(new Request(url(`/api/attendance/agents/${id}`), { method: "DELETE" }), params(id))
+const reissue = async (id: string) => (await import("@/app/api/attendance/agents/[id]/code/route")).POST(new Request(url(`/api/attendance/agents/${id}/code`), { method: "POST" }), params(id))
+
+describe("on the website: the Attendance settings tab, with the Terminals add-on", () => {
+    it("an Admin with the tab adds, lists, re-codes and revokes their own company's agents", async () => {
+        admin()
+        expect((await list()).status).toBe(200)
+        const created = await add({ name: "Head office" })
+        expect(created.status).toBe(201)
+        expect((await created.json()).data.code).toBe("K7QD-2MXP")
+        expect((await reissue("ag1")).status).toBe(200)
+        expect((await revoke("ag1")).status).toBe(200)
+        expect(reached).toEqual(["agents:c1", "createAgent:c1:Head office", "reissue:ag1", "revoke:ag1"])
+    })
+
+    it("is held to their own company: another's agent is as if absent", async () => {
+        admin()
+        expect((await add({ name: "Theirs", companyId: "c2" })).status).toBe(201)
+        expect((await revoke("ag2")).status).toBe(404)
+        expect((await reissue("ag2")).status).toBe(404)
+        expect((await revoke("nope")).status).toBe(404)
+        expect(reached).toEqual(["createAgent:c1:Theirs"])
+    })
+
+    it("lets whoever only sees settings look, not change", async () => {
+        viewer()
+        expect((await list()).status).toBe(200)
+        expect((await add({ name: "Mine" })).status).toBe(403)
+        expect((await revoke("ag1")).status).toBe(403)
+        expect((await reissue("ag1")).status).toBe(403)
+        expect(reached).toEqual(["agents:c1"])
+    })
+
+    it("shows nothing to an employee", async () => {
+        employee()
+        expect((await list()).status).toBe(404)
+        expect((await add({ name: "Mine" })).status).toBe(404)
+        expect(reached).toEqual([])
+    })
+
+    it("is closed to a company with attendance from the app only", async () => {
+        companies.c1.package = MOBILE_ONLY
+        admin(MOBILE_ONLY)
+        expect((await list()).status).toBe(403)
+        expect((await add({ name: "Head office" })).status).toBe(403)
+        expect(reached).toEqual([])
+    })
+
+    it("lets the Super Admin act for a company they name", async () => {
+        superAdmin()
+        expect((await list()).status).toBe(400)
+        expect((await list("?companyId=c2")).status).toBe(200)
+        expect((await revoke("ag2")).status).toBe(200)
+        expect(reached).toEqual(["agents:c2", "revoke:ag2"])
+    })
+})
+
+const devices = async () => (await import("@/app/api/attendance/devices/route")).GET(new Request(url("/api/attendance/devices")))
+const patchDevice = async (id: string, body: unknown) => (await import("@/app/api/attendance/devices/[id]/route")).PATCH(withBody("PATCH", `/api/attendance/devices/${id}`, body), params(id))
+const retire = async (id: string) => (await import("@/app/api/attendance/devices/[id]/route")).DELETE(new Request(url(`/api/attendance/devices/${id}`), { method: "DELETE" }), params(id))
+const restore = async (id: string) => (await import("@/app/api/attendance/devices/[id]/restore/route")).POST(new Request(url(`/api/attendance/devices/${id}/restore`), { method: "POST" }), params(id))
+
+describe("terminals on the website", () => {
+    it("are listed, renamed, given a mode, retired and restored by whoever may change the tab", async () => {
+        admin()
+        expect((await devices()).status).toBe(200)
+        expect((await patchDevice("d1", { name: "Front door", mode: "ENTRANCE" })).status).toBe(200)
+        expect((await patchDevice("d1", { mode: "SIDEWAYS" })).status).toBe(400)
+        expect((await retire("d1")).status).toBe(200)
+        expect((await restore("d1")).status).toBe(200)
+        expect(reached).toEqual(["devices:c1", "updateDevice:d1:ENTRANCE", "retire:d1", "restore:d1"])
+    })
+
+    it("are looked at, not changed, by whoever only sees settings; another company's are absent", async () => {
+        viewer()
+        expect((await devices()).status).toBe(200)
+        expect((await patchDevice("d1", { name: "Mine" })).status).toBe(403)
+        expect((await retire("d1")).status).toBe(403)
+        admin()
+        expect((await patchDevice("d2", { name: "Mine" })).status).toBe(404)
+        expect((await restore("d2")).status).toBe(404)
+        expect(reached).toEqual(["devices:c1"])
+    })
+
+    it("are closed to a company with attendance from the app only", async () => {
+        companies.c1.package = MOBILE_ONLY
+        admin(MOBILE_ONLY)
+        expect((await devices()).status).toBe(403)
+        expect((await retire("d1")).status).toBe(403)
+        expect(reached).toEqual([])
+    })
+})
+
+describe("the Super Admin's view of every company's terminals", () => {
+    it("is the Super Admin's alone", async () => {
+        const overview = async () => (await import("@/app/api/admin/terminals/route")).GET(new Request(url("/api/admin/terminals")))
+        prismaMock.company.findMany = async () => []
+        superAdmin()
+        expect((await overview()).status).toBe(200)
+        admin()
+        expect((await overview()).status).toBe(403)
+    })
+})
+
+const agentCall = async (token: string | null, body: unknown = {}, extra: Record<string, string> = {}) =>
+    (await import("@/app/api/agent/token/route")).POST(new Request(url("/api/agent/token"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra },
+        body: typeof body === "string" ? body : JSON.stringify(body),
+    }))
+const enrol = async (body: unknown) => (await import("@/app/api/agent/enrol/route")).POST(withBody("POST", "/api/agent/enrol", body))
+
+describe("on the agent's side: the token is the identity", () => {
+    it("enrols with a valid code, and says nothing more for a wrong one", async () => {
+        const ok = await enrol({ code: "K7QD-2MXP", hostname: "OFFICE-PC" })
+        expect(ok.status).toBe(201)
+        expect((await ok.json()).data.token).toBe("mka_new")
+        const bad = await enrol({ code: "AAAA-AAAA" })
+        expect(bad.status).toBe(400)
+        expect((await bad.json()).code).toBe("ENROLMENT_CODE_INVALID")
+        expect((await enrol({})).status).toBe(400)
+        expect(reached).toEqual(["enrol:K7QD-2MXP", "enrol:AAAA-AAAA"])
+    })
+
+    it("refuses a request with no token, a malformed one, or one that is not an agent's", async () => {
+        state.session = null
+        for (const token of [null, "abc", "mka_revoked"]) {
+            const res = await agentCall(token)
+            expect(res.status).toBe(401)
+            expect((await res.json()).code).toBe("UNAUTHENTICATED")
+        }
+        expect(reached).toEqual([])
+    })
+
+    it("refuses a banned company's agent, and one whose company no longer has terminals", async () => {
+        expect((await (await agentCall("mka_banned")).json()).code).toBe("COMPANY_BANNED")
+        expect((await agentCall("mka_unsold")).status).toBe(403)
+        expect(reached).toEqual([])
+    })
+
+    it("lets an enrolled agent through, with no session at all", async () => {
+        state.session = null
+        const res = await agentCall("mka_good")
+        expect(res.status).toBe(200)
+        expect((await res.json()).data.token).toBe("mka_next")
+        expect(reached).toEqual(["rotate:ag1"])
+    })
+
+    it("records a heartbeat for the agent's own company, and refuses one in the wrong shape", async () => {
+        const heartbeat = async (body: unknown) => (await import("@/app/api/agent/heartbeat/route")).POST(new Request(url("/api/agent/heartbeat"), {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer mka_good" }, body: JSON.stringify(body),
+        }))
+        const ok = { agentVersion: "1.0.0", queueDepth: 0, clock: "2026-10-01T08:00:00Z", devices: [{ serialNumber: "SN1", reachable: true }], companyId: "c2" }
+        expect((await heartbeat(ok)).status).toBe(200)
+        const bad = await heartbeat({ ...ok, queueDepth: -1 })
+        expect(bad.status).toBe(400)
+        expect((await bad.json()).code).toBe("INVALID_BODY")
+        // A company in the body is ignored: the agent's is c1.
+        expect(reached).toEqual(["heartbeat:c1:1"])
+    })
+
+    it("takes punches for the agent's own company, and refuses a batch in the wrong shape", async () => {
+        const deliver = async (token: string, body: unknown) => (await import("@/app/api/agent/punches/route")).POST(new Request(url("/api/agent/punches"), {
+            method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
+        }))
+        const punch = { serialNumber: "SN1", userNumber: "7", at: "2026-09-14T09:05:00" }
+        expect((await deliver("mka_good", { punches: [punch], companyId: "c2" })).status).toBe(200)
+        expect((await deliver("mka_good", { punches: [] })).status).toBe(400)
+        expect((await deliver("mka_good", { punches: [{ ...punch, at: "14/09/2026 09:05" }] })).status).toBe(400)
+        expect((await deliver("mka_revoked", { punches: [punch] })).status).toBe(401)
+        expect(reached).toEqual(["punches:c1:1"])
+    })
+
+    it("refuses a body that is not a JSON object, or too large", async () => {
+        expect((await (await agentCall("mka_good", "[1,2]")).json()).code).toBe("INVALID_BODY")
+        expect((await (await agentCall("mka_good", "{nope")).json()).code).toBe("INVALID_BODY")
+        expect((await agentCall("mka_good", {}, { "Content-Length": String(3 * 1024 * 1024) })).status).toBe(413)
+        expect(reached).toEqual([])
+    })
+})

@@ -132,7 +132,7 @@ export class DayOffService {
 
         const updateData: any = { status: 'APPROVED' }
 
-        return await prisma.$transaction(async (tx) => {
+        const approved = await prisma.$transaction(async (tx) => {
             if (daysToDeduct !== undefined) {
                 const deduction = parseFloat(daysToDeduct.toString())
                 if (isNaN(deduction)) throw new Error("INVALID_DEDUCTION")
@@ -198,6 +198,12 @@ export class DayOffService {
 
             return updatedRequest
         })
+        // Approved leave turns those days from absences into leave (ATTENDANCE_PLAN.md §6.5).
+        if (requestToUpdate.user.companyId) {
+            const { recomputeAfter } = await import("./attendance-recompute")
+            await recomputeAfter(requestToUpdate.user.companyId, new Date(requestToUpdate.date).toISOString().slice(0, 10), [requestToUpdate.userId])
+        }
+        return approved
     }
 
     static async reject(id: string, session: any, rejectionReason?: string) {

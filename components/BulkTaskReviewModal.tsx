@@ -559,6 +559,7 @@ export default function BulkTaskReviewModal({
 
                                                 {(locationModeOverride[idx] || (bt.vendorId ? 'vendor' : 'type')) === 'vendor' ? (
                                                     <select
+                                                        aria-label={t('vendor_label' as any)}
                                                         value={bt.vendorId || ''}
                                                         onChange={(e) => {
                                                             const vendor = vendors.find((v: any) => v.id === e.target.value)

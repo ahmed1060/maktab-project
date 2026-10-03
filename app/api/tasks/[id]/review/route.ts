@@ -26,6 +26,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'SELF_REVIEW_FORBIDDEN') return ApiResponse.forbidden("Admins cannot review their own tasks")
+        if (error.message === 'INVALID_REVIEW_STATUS') return ApiResponse.badRequest("A review is APPROVED, REJECTED or COMPLETED")
+        if (error.message === 'INVALID_DIFFICULTY') return ApiResponse.badRequest("Difficulty must be between 0 and 10")
         console.error("Task review error:", error)
         return ApiResponse.error("Failed to process task review")
     }

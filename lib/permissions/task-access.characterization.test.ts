@@ -61,7 +61,9 @@ const ON_TASK: [string, string, (t: string) => Promise<Response>][] = [
     ["submit",             "SUBMITTED",   async t => (await import("@/app/api/tasks/[id]/submit/route")).PUT(withBody("PUT", `/api/tasks/${t}/submit`, { note: "done" }), P(t))],
     ["transfer",           "SUBMITTED",   async t => (await import("@/app/api/tasks/[id]/transfer/route")).POST(withBody("POST", `/api/tasks/${t}/transfer`, { newAssigneeIds: ["loner"] }), P(t))],
     ["acknowledge",        "SUBMITTED",   async t => (await import("@/app/api/tasks/[id]/acknowledge/route")).PUT(withBody("PUT", `/api/tasks/${t}/acknowledge`, {}), P(t))],
-    ["record payment",     "SUBMITTED",   async t => (await import("@/app/api/tasks/[id]/payment/route")).PUT(withBody("PUT", `/api/tasks/${t}/payment`, { isPaid: true }), P(t))],
+    // On reviewed work, with a real status: the route refuses anything else
+    // (400) whoever asks, which would hide who may pay.
+    ["record payment",     "APPROVED",    async t => (await import("@/app/api/tasks/[id]/payment/route")).PUT(withBody("PUT", `/api/tasks/${t}/payment`, { paymentStatus: "PAID" }), P(t))],
     ["apply a penalty",    "SUBMITTED",   async t => (await import("@/app/api/tasks/[id]/penalty/route")).POST(withBody("POST", `/api/tasks/${t}/penalty`, { userId: ASSIGNEE[t], amount: 1 }), P(t))],
     ["revert",             "COMPLETED",   async t => (await import("@/app/api/tasks/[id]/revert/route")).POST(withBody("POST", `/api/tasks/${t}/revert`, {}), P(t))],
     ["delete the assignee's note", "IN_PROGRESS", async t => (await import("@/app/api/tasks/[id]/items/route")).DELETE(withBody("DELETE", `/api/tasks/${t}/items`, { type: "SUBMISSION_NOTE", itemId: "note-1" }), P(t))],

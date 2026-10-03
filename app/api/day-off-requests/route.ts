@@ -2,12 +2,11 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { createDayOffSchema } from "@/lib/validations/day-off.schema"
 import { DayOffService } from "@/lib/services/day-off.service"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     try {
         const { requests, total } = await DayOffService.getMany(session.user.id, skip, limit)

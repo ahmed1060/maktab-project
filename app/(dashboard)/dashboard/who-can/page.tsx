@@ -154,7 +154,7 @@ export default function WhoCanPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                                 <strong>{person.user.name}</strong>
                                 {person.role && <span style={{ color: 'var(--text-soft)' }}>{t('who_can_through').replace('{role}', roleLabel(person.role, t))}</span>}
-                                <button type="button" onClick={() => setUserId('')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>✕</button>
+                                <button type="button" onClick={() => setUserId('')} style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer' }}>✕</button>
                             </div>
                             {person.grants.length === 0 ? <p style={{ margin: 0 }}>{t('who_can_holds_nothing')}</p> : (
                                 PERMISSION_GROUPS.map(g => {
