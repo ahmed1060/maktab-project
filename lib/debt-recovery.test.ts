@@ -244,7 +244,9 @@ describe("the debt is closed when the money is taken", () => {
 
 describe("the cap is a setting, not a constant", () => {
     it("is stored per company and defaults to the whole net", () => {
-        expect(SCHEMA).toContain("debtRecoveryPercent  Int                   @default(100)")
+        // Spacing-blind: prisma format re-aligns the whole model whenever a
+        // longer field joins it (the attendance calendar's relations did).
+        expect(SCHEMA).toMatch(/debtRecoveryPercent\s+Int\s+@default\(100\)/)
     })
 
     it("is settable, and bounded at both ends", () => {

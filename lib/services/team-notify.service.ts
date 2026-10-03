@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
 import { planTeamNotifications, type TeamMove } from "@/lib/team-notifications"
 
 /**
@@ -39,7 +40,7 @@ export async function notifyTeamMoves(moves: TeamMove[]): Promise<void> {
             data: plan.map(p => ({
                 userId: p.userId,
                 type: "TEAM_CHANGED",
-                message: p.message,
+                ...noticeRow(p.text),
                 relatedId: p.relatedId,
             })),
         })

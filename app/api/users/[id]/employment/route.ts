@@ -3,9 +3,15 @@ import { ApiResponse } from "@/lib/api-response"
 import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { EmploymentService } from "@/lib/services/employment.service"
 import { SettlementService } from "@/lib/services/settlement.service"
-import { verifyResourceAccess } from "@/lib/security"
+import { verifyResourceAccess, personTarget } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
 import { toMajor } from "@/lib/payroll"
 import { calendarMonth } from "@/lib/time"
+import { prisma } from "@/lib/prisma"
+import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
+import { assertStepUp } from "@/lib/step-up"
+
+const ONLY_SUPER_ADMIN = "Only the Super Admin acts on an Admin"
 
 /**
  * Ending a contract, and seeing what it would settle at first.
@@ -15,16 +21,21 @@ import { calendarMonth } from "@/lib/time"
  * confirmation screen and have a different one recorded.
  */
 
-const MANAGERS = ['ADMIN', 'SUPER_ADMIN']
-
 /** Preview: what ending on `lastWorkingDay` would settle at, plus this month's timeline. */
 export const GET = withStandardHandler(async (req, session, _json, { params }) => {
     const userId = params.id
-    if (!MANAGERS.includes(session.user.role || '')) return ApiResponse.forbidden("Managers only")
-    if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
-
     const { searchParams } = new URL(req.url)
     const lastWorkingDay = searchParams.get('lastWorkingDay')
+
+    // The employment record is the HR record, seen by those who edit people —
+    // not employees.view, which a Team Leader holds for their team. Asking for
+    // a settlement preview is the first step of ending a contract.
+    const needed = lastWorkingDay ? "employees.end_contract" : "employees.edit"
+    if (!can(session.user, needed)) return ApiResponse.forbidden("Managers only")
+    // employees.edit may be held for a team: it reaches that team.
+    const person = await personTarget(userId)
+    if (!person || !can(session.user, needed, person)) return ApiResponse.forbidden("Access denied")
+    if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
 
     const now = new Date()
     const { year, month } = calendarMonth(now)
@@ -74,9 +85,19 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 /** Commit: end the contract, or reinstate somebody whose contract was ended. */
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     const userId = params.id
-    if (!MANAGERS.includes(session.user.role || '')) return ApiResponse.forbidden("Managers only")
+    if (!can(session.user, "employees.end_contract")) return ApiResponse.forbidden("Managers only")
     if (!(await verifyResourceAccess(session, userId, 'USER'))) return ApiResponse.forbidden("Access denied")
     if (userId === session.user.id) return ApiResponse.badRequest("You cannot end your own contract")
+    // Only the Super Admin ends, or restores, an Admin's contract.
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (!target) return ApiResponse.notFound("User not found")
+    try {
+        RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, target)
+    } catch {
+        return ApiResponse.forbidden(ONLY_SUPER_ADMIN)
+    }
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "employees.end_contract")
 
     const { action, lastWorkingDay, reason } = json ?? {}
     // Three states, as everywhere in team assignment: absent means nobody has
@@ -131,6 +152,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         // refusal, with the same names, as the edit form gets.
         const teamRefusal = teamRefusalResponse(error)
         if (teamRefusal) return teamRefusal
+        if (message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         if (/Not a date/.test(message)) {
             return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
         }

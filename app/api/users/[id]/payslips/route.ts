@@ -28,7 +28,7 @@ export const GET = withStandardHandler(async (_req, session, _json, { params }) 
     })
     if (!user || !user.companyId) return ApiResponse.notFound("Not found")
 
-    const isManager = managesCompany(session.user.role, session.user.companyId, user.companyId)
+    const isManager = managesCompany(session.user, "payroll.view", user.companyId)
     const isOwner = session.user.id === userId
 
     if (!isManager && !(isOwner && user.company?.payslipsVisible)) {

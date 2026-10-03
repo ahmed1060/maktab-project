@@ -13,6 +13,7 @@ import { useModules } from '@/lib/useModules'
 import LanguageToggleButton from './LanguageToggleButton'
 import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
+import { permissionsOf } from '@/lib/useCan'
 
 // Fetcher for SWR
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json())
@@ -446,8 +447,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     </div>
                 )}
 
-                {/* Profile Name Requests Counter (for admin/super_admin) */}
-                {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
+                {/* Profile Name Requests Counter (for whoever decides them) */}
+                {permissionsOf(currentUser as any).can('profile_requests.review') && (
                     <Suspense fallback={<div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'var(--veil-20)' }} />}>
                         <Link
                             href="/dashboard/profile-requests"
@@ -485,7 +486,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     position: 'absolute',
                                     top: '-5px',
                                     right: '-5px',
-                                    background: 'var(--danger-solid)',
+                                    background: 'var(--danger-fill)',
                                     color: 'var(--text-on-accent)',
                                     fontSize: '0.7rem',
                                     fontWeight: 'bold',

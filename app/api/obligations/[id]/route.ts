@@ -19,8 +19,14 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
     } catch (error: any) {
         if (error.message === 'OBLIGATION_NOT_FOUND') return ApiResponse.notFound("Obligation not found")
         if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden("You don't have access to this obligation")
+        if (error.message === 'INVALID_STATUS') return ApiResponse.badRequest("Unknown obligation status")
+        if (error.message === 'ONLY_MANAGERS_DECIDE') return ApiResponse.forbidden("Only managers decide an obligation or change a decided one")
         if (error.message === 'SELF_APPROVAL_FORBIDDEN') return ApiResponse.forbidden("Admins cannot approve/reject their own obligations")
         if (error.message === 'UNAUTHORIZED_ATTACHMENT_REMOVAL') return ApiResponse.forbidden("Unauthorized to remove these attachments")
+        // Reassigning to somebody who does not exist or is in another company.
+        // Unmapped, both refusals escaped as a 500.
+        if (error.message === 'ASSIGNEE_NOT_FOUND') return ApiResponse.notFound("One or more assignees not found")
+        if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("An obligation cannot be assigned outside its company")
         if (error.message === 'TL_CANNOT_REASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot reassign to Admins")
         if (error.message === 'TL_CANNOT_REASSIGN_OUTSIDE_TEAM') return ApiResponse.forbidden("Team Leaders can only reassign within their own team")
         throw error
@@ -28,6 +34,13 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
 })
 
 export const DELETE = withStandardHandler(async (req, session, _body, { params }) => {
+    // The same check every other obligation route makes first. Without it this
+    // path relied on ObligationService.delete, which checks the company but not
+    // the team — so a Team Leader could delete an obligation outside their
+    // team, the Admin's own included.
+    const hasAccess = await verifyResourceAccess(session, params.id, 'OBLIGATION')
+    if (!hasAccess) return ApiResponse.forbidden("Access denied")
+
     try {
         await ObligationService.delete(params.id, session)
         return ApiResponse.success({ success: true, id: params.id })

@@ -1,7 +1,9 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SalaryService } from "@/lib/services/salary.service"
-import { verifyResourceAccess } from "@/lib/security"
+import { verifyResourceAccess, personTarget } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
 
 /**
  * Undo an adjustment that was correct when it was made.
@@ -16,10 +18,17 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     const hasAccess = await verifyResourceAccess(session, userId, 'USER')
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    if (!can(session.user, "salary_adjustments.manage")) {
         return ApiResponse.forbidden()
     }
+
+    // Nobody adjusts their own pay (ROLES_PLAN.md §4.2, rule 5).
+    const person = await personTarget(userId)
+    if (!person || !can(session.user, "salary_adjustments.manage", person)) {
+        return ApiResponse.forbidden("You cannot adjust your own pay")
+    }
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "salary_adjustments.manage")
 
     const reason = typeof json?.reason === 'string' ? json.reason : undefined
 

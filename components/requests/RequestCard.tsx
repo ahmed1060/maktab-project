@@ -2,16 +2,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
+import { useCan } from '@/lib/useCan'
 
 interface RequestCardProps {
     request: any
-    userRole: string
     onView: (request: any) => void
     onStatusUpdate?: (id: string, status: string) => Promise<void>
     isHighlighted?: boolean
 }
 
-export default function RequestCard({ request, userRole, onView, onStatusUpdate, isHighlighted }: RequestCardProps) {
+export default function RequestCard({ request, onView, onStatusUpdate, isHighlighted }: RequestCardProps) {
     const { t } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
@@ -36,7 +36,9 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
         }
     }
 
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+    const { can } = useCan()
+    const canSeeWho = can('requests.view')
+    const canReview = can('requests.review')
 
     return (
         <div
@@ -64,7 +66,7 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                         {t(`status_${request.status.toLowerCase()}` as any)}
                     </span>
                 </div>
-                {isAdmin && request.user && (
+                {canSeeWho && request.user && (
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>
                         {t('by' as any) || 'By'}: {request.user.firstName} {request.user.lastName}
                     </div>
@@ -80,14 +82,14 @@ export default function RequestCard({ request, userRole, onView, onStatusUpdate,
                         fontSize: '0.85rem',
                         background: 'var(--veil-50)',
                         border: '1px solid var(--hairline-firm)',
-                        color: 'var(--brand-primary)',
+                        color: 'var(--brand-primary-text)',
                         fontWeight: '600'
                     }}
                 >
                     {t('view_request' as any) || 'View Request'}
                 </button>
 
-                {isAdmin && request.status !== 'COMPLETED' && (
+                {canReview && request.status !== 'COMPLETED' && (
                     <button
                         onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                         disabled={updating}

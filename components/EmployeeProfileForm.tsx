@@ -10,6 +10,11 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
+import { useCan } from '@/lib/useCan'
+import RoleSelect from '@/components/RoleSelect'
+import RoleRequestControl from '@/components/RoleRequestControl'
+import { roleLabel } from '@/lib/role-label'
+import { apiErrorText } from "@/lib/api-error-text"
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -24,6 +29,17 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('')
+    // Which of the company's roles they hold (ROLES_PLAN.md §6.4); `role` is
+    // its kind, which the rest of the form still reads.
+    const [roleId, setRoleId] = useState('')
+    const [currentRole, setCurrentRole] = useState<{ id: string; name: string; builtIn?: string | null; companyId: string } | null>(null)
+    // An acting role (§6.13): the return date for a new one, and the cover
+    // already running, if any.
+    const [actingDate, setActingDate] = useState('')
+    // The earliest return date the picker offers: tomorrow. Worked out once,
+    // not on every render.
+    const [tomorrow] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+    const [acting, setActing] = useState<{ until: string; returnTo: { name: string; builtIn?: string | null } | null } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
@@ -64,6 +80,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     const userRole = session?.user?.role || ''
+    // Each field is offered, and sent, with the permission PUT /api/users
+    // checks for it.
+    const { can } = useCan()
+    const canAssignTeam = can('employees.assign_team')
 
     // Password & Verification States
     const [showNewPassword, setShowNewPassword] = useState(false)
@@ -126,6 +146,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 const cleanEmail = employee.email?.split('_DELETED_')[0] || employee.email
                 setEmail(cleanEmail)
                 setRole(employee.role)
+                setRoleId(employee.roleId || '')
+                setCurrentRole(employee.roleId ? { id: employee.roleId, name: employee.assignedRole?.name ?? '', builtIn: employee.assignedRole?.builtIn ?? null, companyId: employee.companyId } : null)
+                setActing(employee.actingUntil ? { until: employee.actingUntil, returnTo: employee.returnRole ?? null } : null)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
@@ -190,10 +213,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         if (userRole === 'SUPER_ADMIN') {
             fetchCompanies()
         }
-        if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+        if (canAssignTeam) {
             fetchLeaders()
         }
-    }, [userId, userRole, sessionUserId, reloadKey])
+    }, [userId, userRole, sessionUserId, reloadKey, canAssignTeam])
 
     const handleResetPassword = async (adminPasswordInput: string) => {
         setIsVerifying(true)
@@ -293,7 +316,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 if (!reqRes.ok) {
                     const text = await reqRes.text()
-                    throw new Error(text || t('error_generic'))
+                    throw new Error(apiErrorText(text, t('error_generic')))
                 }
 
                 showToast(t('name_change_submitted'), 'success')
@@ -312,16 +335,20 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     email,
                     password: password || undefined,
                     role,
+                    // Only a different role is a change; the server refuses
+                    // what the dropdown would not have offered.
+                    roleId: roleId && roleId !== currentRole?.id ? roleId : undefined,
+                    actingUntil: roleId && roleId !== currentRole?.id && actingDate ? actingDate : undefined,
                     gender,
                     avatar: avatarUrl,
                     companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
-                    salary: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
-                    baseDayOffCredit: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
+                    salary: can('salary.edit') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
+                    baseDayOffCredit: can('dayoff.adjust_credit') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
                     username: userRole === 'SUPER_ADMIN' ? username : undefined,
-                    status: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id ? status : undefined,
+                    status: can('employees.change_status') && userId !== session?.user?.id ? status : undefined,
                     // undefined leaves it alone; null unassigns. The empty
                     // option means the second, so it cannot be sent as "".
-                    teamLeaderId: (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && userId !== session?.user?.id && role === 'EMPLOYEE'
+                    teamLeaderId: canAssignTeam && userId !== session?.user?.id && role === 'EMPLOYEE'
                         ? (teamLeaderId || null)
                         : undefined,
                     reassignReportsTo: reassignTo
@@ -345,7 +372,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 if (text.includes("Username already in use")) {
                     throw new Error(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
                 }
-                throw new Error(text || t('error_generic'))
+                throw new Error(apiErrorText(text, t('error_generic')))
             }
 
             setHandoff(null)
@@ -597,6 +624,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             >
                                 {avatarUrl ? t('change_button') : t('upload_button')}
                                 <input
+                                    aria-label={t('profile_picture_label' as any)}
                                     type="file"
                                     hidden
                                     accept="image/*"
@@ -656,7 +684,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             </button>
                         </div>
                         {uploadingAvatar && (
-                            <div style={{ marginTop: '1rem', color: 'var(--brand-primary)', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                            <div style={{ marginTop: '1rem', color: 'var(--brand-primary-text)', fontSize: '0.875rem', fontWeight: 'bold' }}>
                                 {t('uploading_in_progress')}
                             </div>
                         )}
@@ -705,7 +733,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 <div style={{ display: 'grid', gridTemplateColumns: locale === 'ar' ? '1fr 1fr' : '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                        <input
+                        <input aria-label={t('first_name_label')}
                             className="input"
                             value={firstName}
                             onChange={e => setFirstName(e.target.value)}
@@ -716,7 +744,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                        <input
+                        <input aria-label={t('last_name_label')}
                             className="input"
                             value={lastName}
                             onChange={e => setLastName(e.target.value)}
@@ -729,7 +757,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                    <select
+                    <select aria-label={t('gender_label')}
                         className="input"
                         value={gender}
                         onChange={e => setGender(e.target.value)}
@@ -746,7 +774,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
                         {role === 'SUPER_ADMIN' ? (
-                            <input
+                            <input aria-label={t('company_label')}
                                 className="input"
                                 value="SHSD"
                                 disabled
@@ -755,6 +783,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             />
                         ) : (
                             <select
+                                aria-label={t('company_label')}
                                 className="input"
                                 value={companyId}
                                 onChange={e => setCompanyId(e.target.value)}
@@ -772,7 +801,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                    <input
+                    <input aria-label={t('email')}
                         type="email"
                         className="input"
                         value={email}
@@ -785,7 +814,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
-                    <input
+                    <input aria-label={t('username_label' as any) || 'Username'}
                         className="input"
                         value={username}
                         onChange={e => setUsername(e.target.value)}
@@ -797,17 +826,17 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
                 {
-                    (['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                    (can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                            <input
+                            <input aria-label={t('monthly_base_salary_label')}
                                 type="number"
                                 className="input"
                                 value={salary}
                                 onChange={e => setSalary(e.target.value)}
-                                disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
+                                disabled={isViewMode || userId === session?.user?.id || !can('salary.edit')}
                                 max={1000000000}
-                                style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={(isViewMode || userId === session?.user?.id || !can('salary.edit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
                             />
                         </div>
@@ -816,18 +845,18 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
                 {
-                    (['ADMIN', 'SUPER_ADMIN'].includes(userRole) || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                    (can('dayoff.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                         <>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
-                                <input
+                                <input aria-label={t('day_off_credit_assigned')}
                                     type="number"
                                     className="input"
                                     value={baseDayOffCredit}
                                     onChange={e => setBaseDayOffCredit(e.target.value)}
-                                    disabled={isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)}
+                                    disabled={isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')}
                                     step="0.5"
-                                    style={(isViewMode || userId === session?.user?.id || !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    style={(isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 />
                             </div>
                         </>
@@ -839,7 +868,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
                             <div style={{ position: 'relative' }}>
-                                <input
+                                <input aria-label={t('new_password_optional_label')}
                                     type={showNewPassword ? "text" : "password"}
                                     className="input"
                                     value={password}
@@ -854,6 +883,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 />
                                 <button
                                     type="button"
+                                    aria-label={showNewPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                    aria-pressed={showNewPassword}
                                     onClick={() => setShowNewPassword(!showNewPassword)}
                                     style={{
                                         position: 'absolute',
@@ -890,12 +921,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     replaces the old password-reveal feature — admins can no longer
                     see a user's actual password, only issue a new temporary one) */}
                 {
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isViewMode && userId !== session?.user?.id && (
+                    can('employees.reset_password') && isViewMode && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
                             {issuedTempPassword ? (
                                 <div>
-                                    <input
+                                    <input aria-label={t('password')}
                                         type="text"
                                         className="input"
                                         value={issuedTempPassword}
@@ -922,22 +953,43 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     )
                 }
                 {
-                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
+                    (can('employees.assign_role') || can('employees.request_role')) && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                            <select
-                                className="input"
-                                value={role}
-                                onChange={e => setRole(e.target.value)}
-                                required
-                                disabled={isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN'}
-                                style={(isViewMode || userId === session?.user?.id || role === 'SUPER_ADMIN') ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            >
-                                <option value="EMPLOYEE">{t('role_employee')}</option>
-                                <option value="TEAM_LEADER">{t('role_team_leader')}</option>
-                                {(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
-                                {role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">{t('super_admins')}</option>}
-                            </select>
+                            {role === 'SUPER_ADMIN' ? (
+                                <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                            ) : !can('employees.assign_role') ? (
+                                // May only ask (§6.12): a request, not a change.
+                                userId && !isViewMode ? (
+                                    <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                ) : (
+                                    <input className="input" value={currentRole ? roleLabel(currentRole, t) : ''} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                )
+                            ) : (
+                                <RoleSelect
+                                    companyId={companyId}
+                                    value={roleId}
+                                    // Moved to another company, their role there is chosen afresh.
+                                    current={currentRole && currentRole.companyId === companyId ? currentRole : null}
+                                    onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
+                                    // Only the Super Admin acts on an Admin (§4.2, rule 7).
+                                    locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
+                                    disabled={isViewMode}
+                                    style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                />
+                            )}
+                            {acting && (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0' }}>
+                                    {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
+                                </p>
+                            )}
+                            {can('employees.assign_role') && !isViewMode && roleId && roleId !== currentRole?.id && (
+                                <div style={{ marginTop: '0.75rem' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
+                                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
+                                </div>
+                            )}
                         </div>
                     )
                 }
@@ -970,12 +1022,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                        disappears rather than greying out when the role above is
                        changed, because an empty disabled control invites the
                        question of what it would mean. */
-                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN')
+                    canAssignTeam
                         && userId !== session?.user?.id
                         && role === 'EMPLOYEE' && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
-                            <select
+                            <select aria-label={t('team_leader_label')}
                                 className="input"
                                 value={teamLeaderId}
                                 onChange={e => setTeamLeaderId(e.target.value)}
@@ -993,10 +1045,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 }
 
                 {
-                    (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && userId !== session?.user?.id && (
+                    can('employees.change_status') && userId !== session?.user?.id && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
-                            <select
+                            <select aria-label={t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}
                                 className="input"
                                 value={status}
                                 onChange={e => setStatus(e.target.value)}
@@ -1042,7 +1094,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     style={{
                                         marginTop: '0.75rem',
                                         background: 'transparent',
-                                        color: status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-solid)',
+                                        color: status === 'ARCHIVED' ? 'var(--brand-primary-text)' : 'var(--danger-solid)',
                                         border: `1px solid ${status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-border)'}`,
                                         fontSize: '0.85rem',
                                     }}
@@ -1126,7 +1178,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     margin: '0 auto 1.5rem',
-                                    color: 'var(--primary)'
+                                    color: 'var(--brand-primary-text)'
                                 }}>
                                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -1167,6 +1219,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     />
                                     <button
                                         type="button"
+                                        aria-label={showVerificationPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                        aria-pressed={showVerificationPassword}
                                         onClick={() => setShowVerificationPassword(!showVerificationPassword)}
                                         style={{
                                             position: 'absolute',

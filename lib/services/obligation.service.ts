@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
+import { can, canCompanyWide } from "@/lib/permissions/can"
+import { scopesToTeam } from "@/lib/team-scope"
+import { isTeamWork } from "@/lib/security"
 import { checkAssignees } from "./assignee-guard"
 import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
@@ -20,19 +24,24 @@ const REASSIGN_CODES = {
     OUTSIDE_TEAM: "TL_CANNOT_REASSIGN_OUTSIDE_TEAM",
 } as const
 
+/** Every status an obligation can be in (the column is free text). */
+const OBLIGATION_STATUSES = ['PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED', 'APPROVED', 'REJECTED', 'ARCHIVED']
+/** The ones an assignee moves their own obligation to, as the screens offer. */
+const ASSIGNEE_STATUSES = ['IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED']
+
 export class ObligationService {
     static async create(input: CreateObligationInput, session: any) {
         const userRole = session.user.role
         const creatorCompanyId = (session.user as any).companyId
         const { title, description, assigneeIds, deadline, recurrence, difficulty, attachments } = input
 
-        if (userRole === 'EMPLOYEE') throw new Error("EMPLOYEES_CANNOT_CREATE_OBLIGATIONS")
+        if (!can(session.user, "obligations.manage")) throw new Error("EMPLOYEES_CANNOT_CREATE_OBLIGATIONS")
 
         // 1. Assignee & Company Validation
         if (userRole !== 'SUPER_ADMIN') {
             if (!creatorCompanyId) throw new Error("USER_NO_COMPANY")
 
-            const verdict = await checkAssignees(assigneeIds, session)
+            const verdict = await checkAssignees(assigneeIds, session, "obligations.manage")
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
         }
 
@@ -80,6 +89,8 @@ export class ObligationService {
 
     static async update(id: string, input: any, session: any) {
         const { status, newAttachments, assigneeIds } = input
+        // The column is free text, so anything sent used to be stored.
+        if (status !== undefined && status !== null && !OBLIGATION_STATUSES.includes(status)) throw new Error("INVALID_STATUS")
         const userId = session.user.id
         const userRole = session.user.role
         const userName = session.user.name
@@ -99,16 +110,36 @@ export class ObligationService {
             }
 
             // 1. Authorization
-            const isManager = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+            // Managing held for a team manages the team's obligations only,
+            // however widely the role may see them.
+            const isManager = can(session.user, "obligations.manage")
+                && (!scopesToTeam(session.user, "obligations.manage") || isTeamWork(current.assignees, userId))
             const isAssignee = current.assignees.some((a: any) => a.id === userId)
             if (!isManager && !isAssignee) throw new Error("ACCESS_DENIED")
 
-            // 2. Self-approval restriction
-            if (status && ['APPROVED', 'REJECTED'].includes(status) && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isAssignee) {
+            // 2. Approving and rejecting are a manager's decision. An assignee
+            // may move their own obligation along — in progress, completed —
+            // but deciding whether it was done is not theirs: this used to let
+            // an Employee approve their own.
+            if (status && ['APPROVED', 'REJECTED'].includes(status) && !isManager) {
+                throw new Error("ONLY_MANAGERS_DECIDE")
+            }
+
+            // An assignee moves their own obligation along, and nothing more:
+            // not back to Pending, not to Archived, and not away from a
+            // manager's approval, which would take the points it earned.
+            if (status && !isManager && (!ASSIGNEE_STATUSES.includes(status) || current.status === 'APPROVED')) {
+                throw new Error("ONLY_MANAGERS_DECIDE")
+            }
+
+            // 3. Self-approval restriction
+            // A company-wide manager may not decide their own obligation; a
+            // team-scoped one (a Team Leader) decides their team's, their own among it.
+            if (status && ['APPROVED', 'REJECTED'].includes(status) && canCompanyWide(session.user, "obligations.manage") && isAssignee) {
                 throw new Error("SELF_APPROVAL_FORBIDDEN")
             }
 
-            // 3. Attachment logic
+            // 4. Attachment logic
             let finalAttachments: any[] = []
             if (current.attachments) {
                 try {
@@ -120,7 +151,9 @@ export class ObligationService {
             // Merge/Remove attachments
             if (input.attachments && Array.isArray(input.attachments)) {
                 const removedItems = finalAttachments.filter(old => !input.attachments.some((req: any) => (req.url || req) === (old.url || old)))
-                if (removedItems.length > 0 && !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+                // Removing other people's attachments is for those who manage
+                // obligations company-wide; anyone else only their own.
+                if (removedItems.length > 0 && !canCompanyWide(session.user, "obligations.manage")) {
                     if (removedItems.some(i => i.uploadedById !== userId)) throw new Error("UNAUTHORIZED_ATTACHMENT_REMOVAL")
                 }
                 finalAttachments = input.attachments
@@ -145,7 +178,7 @@ export class ObligationService {
                 // the same rule — handing work to another team, or another
                 // company, is not made safe by the obligation already
                 // existing. Validated inside the transaction it writes to.
-                const verdict = await checkAssignees(assigneeIds, session, tx as any)
+                const verdict = await checkAssignees(assigneeIds, session, "obligations.manage", tx as any)
                 if (!verdict.ok) throw new Error(REASSIGN_CODES[verdict.reason])
                 updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
             }
@@ -182,7 +215,7 @@ export class ObligationService {
                 await NotificationService.notifyMany(
                     updated.assignees.map((a: any) => a.id),
                     status === 'APPROVED' ? 'OBLIGATION_APPROVED' : 'OBLIGATION_REJECTED',
-                    `Your obligation "${updated.title}" has been ${status === 'APPROVED' ? 'approved' : 'rejected'}.`,
+                    { key: status === 'APPROVED' ? 'notice_obligation_approved' : 'notice_obligation_rejected', params: { title: updated.title } },
                     id,
                     tx
                 )
@@ -205,12 +238,12 @@ export class ObligationService {
         const userId = session.user.id
         const userRole = session.user.role
 
-        if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "obligations.manage")) throw new Error("ACCESS_DENIED")
 
         return await prisma.$transaction(async (tx) => {
             const obligation = await tx.obligation.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true, teamLeaderId: true } }, attachments: true, companyId: true, title: true }
             })
 
             if (!obligation) throw new Error("OBLIGATION_NOT_FOUND")
@@ -222,9 +255,12 @@ export class ObligationService {
                 }
             }
 
+            // Managing held for a team deletes the team's obligations only.
+            if (scopesToTeam(session.user, "obligations.manage") && !isTeamWork(obligation.assignees, userId)) throw new Error("ACCESS_DENIED")
+
             // Self-delete rule
             const isSelfAssigned = obligation.assignees.some((a: any) => a.id === userId)
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) throw new Error("ADMIN_CANNOT_DELETE_SELF_OBLIGATION")
+            if (canCompanyWide(session.user, "obligations.manage") && isSelfAssigned) throw new Error("ADMIN_CANNOT_DELETE_SELF_OBLIGATION")
 
             // Point deduction
             if (['APPROVED', 'COMPLETED'].includes(obligation.status)) {
@@ -320,7 +356,7 @@ export class ObligationService {
                 data: obligation.assignees.map((a: any) => ({
                     userId: a.id,
                     type: 'OBLIGATION_REVERTED',
-                    message: `Super Admin has reverted obligation "${obligation.title}" back to In Progress.`,
+                    ...noticeRow({ key: 'notice_obligation_reverted', params: { title: obligation.title } }),
                     relatedId: obligation.id
                 }))
             })
@@ -409,7 +445,7 @@ export class ObligationService {
                 await NotificationService.notifyMany(
                     obl.assignees.map(a => a.id),
                     'OBLIGATION_ASSIGNED',
-                    `New recurrent instance of "${obl.title}" has been created.`,
+                    { key: 'notice_obligation_recurred', params: { title: obl.title } },
                     newObl.id
                 )
 

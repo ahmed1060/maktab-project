@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { stepUpConfirmed, withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * A task's penalty falls only on the task's own people.
@@ -32,8 +33,9 @@ vi.mock("@/lib/prisma", () => {
     const client: any = {
         task: { findUnique: async ({ where }: any) => where.id === TASK.id ? TASK : null, update: async () => TASK },
         user: { findUnique: async () => null },
-        rateLimit: { upsert: async () => ({ count: 1 }) },
+        rateLimit: { upsert: async () => ({ count: 1 }), findUnique: async () => null, create: async () => ({ count: 1 }), update: async () => ({ count: 1 }) },
         auditLog: { create: async () => ({}) },
+        systemSettings: { findUnique: async () => null, findFirst: async () => null },
     }
     client.$transaction = async (fn: any) => fn(client)
     return { prisma: client }
@@ -49,7 +51,7 @@ const penalise = async (body: unknown) => {
 describe("a task's penalty", () => {
     beforeEach(() => {
         deducted.length = 0
-        session.value = { user: { id: "admin-1", role: "ADMIN", companyId: "co-1" } }
+        session.value = { user: stepUpConfirmed(withGrants({ id: "admin-1", role: "ADMIN", companyId: "co-1" })) }
     })
 
     it("is refused for someone not on the task, in this company or another", async () => {
@@ -69,7 +71,7 @@ describe("a task's penalty", () => {
     })
 
     it("from a Team Leader, falls only on their own team, even on a shared task", async () => {
-        session.value = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" } }
+        session.value = { user: stepUpConfirmed(withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" })) }
         expect((await penalise({ userId: "emp-2", amount: 3 })).status).toBe(403)
         expect(deducted).toEqual([])
         expect((await penalise({ userId: "emp-1", amount: 3 })).status).toBe(200)

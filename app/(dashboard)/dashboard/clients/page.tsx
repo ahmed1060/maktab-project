@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
+import { useCan } from '@/lib/useCan'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -42,6 +43,9 @@ interface Client {
 
 export default function ClientsPage() {
     const { data: session } = useSession()
+    // Renaming and deleting are narrower than adding: everyone may add a
+    // client, but only those who may rename or delete are offered it.
+    const { can } = useCan()
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
@@ -299,46 +303,50 @@ export default function ClientsPage() {
                                                 gap: '0.4rem',
                                                 width: isMobile ? '100%' : 'auto'
                                             }}>
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingClientId(client.id)
-                                                        setEditClientName(client.name)
-                                                        setIsEditClientModalOpen(true)
-                                                    }}
-                                                    className="btn"
-                                                    style={{
-                                                        background: 'var(--info-bg-subtle)',
-                                                        color: 'var(--info-solid-hover)',
-                                                        padding: '0.4rem 0.85rem',
-                                                        fontSize: '0.8125rem',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        whiteSpace: 'nowrap',
-                                                        flex: isMobile ? 1 : 'unset'
-                                                    }}
-                                                >
-                                                    {t('edit')}
-                                                </button>
+                                                {can('clients.edit') && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingClientId(client.id)
+                                                            setEditClientName(client.name)
+                                                            setIsEditClientModalOpen(true)
+                                                        }}
+                                                        className="btn"
+                                                        style={{
+                                                            background: 'var(--info-bg-subtle)',
+                                                            color: 'var(--info-solid-hover)',
+                                                            padding: '0.4rem 0.85rem',
+                                                            fontSize: '0.8125rem',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'nowrap',
+                                                            flex: isMobile ? 1 : 'unset'
+                                                        }}
+                                                    >
+                                                        {t('edit')}
+                                                    </button>
+                                                )}
 
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault()
-                                                        setDeleteConfirm({ isOpen: true, client })
-                                                    }}
-                                                    className="btn"
-                                                    style={{
-                                                        background: 'var(--danger-bg-subtle)',
-                                                        color: 'var(--danger-solid-hover)',
-                                                        padding: '0.4rem 0.85rem',
-                                                        fontSize: '0.8125rem',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        whiteSpace: 'nowrap',
-                                                        flex: isMobile ? 1 : 'unset'
-                                                    }}
-                                                >
-                                                    {t('delete')}
-                                                </button>
+                                                {can('clients.delete') && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault()
+                                                            setDeleteConfirm({ isOpen: true, client })
+                                                        }}
+                                                        className="btn"
+                                                        style={{
+                                                            background: 'var(--danger-bg-subtle)',
+                                                            color: 'var(--danger-solid-hover)',
+                                                            padding: '0.4rem 0.85rem',
+                                                            fontSize: '0.8125rem',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'nowrap',
+                                                            flex: isMobile ? 1 : 'unset'
+                                                        }}
+                                                    >
+                                                        {t('delete')}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -421,7 +429,7 @@ export default function ClientsPage() {
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('assign_to_company')}
                                     </label>
-                                    <select
+                                    <select aria-label={t('assign_to_company')}
                                         value={selectedCompanyId}
                                         onChange={(e) => setSelectedCompanyId(e.target.value)}
                                         className="input"
@@ -440,7 +448,7 @@ export default function ClientsPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('client_company_name')}
                                 </label>
-                                <input
+                                <input aria-label={t('client_company_name')}
                                     type="text"
                                     value={newClientName}
                                     onChange={(e) => setNewClientName(e.target.value)}
@@ -517,7 +525,7 @@ export default function ClientsPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('client_company_name' as any)}
                                 </label>
-                                <input
+                                <input aria-label={t('client_company_name' as any)}
                                     type="text"
                                     value={editClientName}
                                     onChange={(e) => setEditClientName(e.target.value)}

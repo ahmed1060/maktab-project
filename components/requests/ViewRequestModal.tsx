@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
+import { useCan } from '@/lib/useCan'
 
 interface ViewRequestModalProps {
     isOpen: boolean
@@ -17,6 +18,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
     const { t, locale } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const canReview = useCan().can('requests.review')
 
     if (!request) return null
 
@@ -29,8 +31,6 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
             setUpdating(false)
         }
     }
-
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
 
     return (
         <Modal
@@ -66,7 +66,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                 </button>
                             )}
 
-                            {isAdmin && request.status !== 'COMPLETED' && (
+                            {canReview && request.status !== 'COMPLETED' && (
                                 <button
                                     onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                                     disabled={updating}

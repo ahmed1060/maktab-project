@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useReportUnsaved } from '@/lib/useUnsavedChanges'
 import {
     MANAGEMENT_MODULES,
     MAX_MODULE_LABEL_LENGTH,
@@ -89,6 +90,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
     const preview = modulesFrom({ moduleLabels: labels, moduleIcons: icons }, t)
 
     const isDirty = !sameOverrides(savedLabels, labels) || !sameOverrides(savedIcons, icons)
+    useReportUnsaved('modules', isDirty)
 
     const setLabel = (key: ModuleKey, value: string) => {
         setLabels(prev => {

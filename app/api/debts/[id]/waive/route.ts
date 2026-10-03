@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
 import { managesCompany } from "@/lib/payroll-scope"
+import { assertStepUp } from "@/lib/step-up"
 
 /**
  * Writing a debt off.
@@ -33,9 +34,11 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
     })
     if (!debt) return ApiResponse.notFound("Debt not found")
 
-    if (!managesCompany(session.user.role, session.user.companyId, debt.companyId)) {
+    if (!managesCompany(session.user, "debts.waive", debt.companyId)) {
         return ApiResponse.forbidden("Access denied")
     }
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "debts.waive")
 
     if (debt.status !== "OUTSTANDING") {
         return ApiResponse.badRequest("This debt is already closed")

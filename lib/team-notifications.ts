@@ -14,9 +14,13 @@
  * loads names and writes the notifications.
  */
 
+import type { NoticeParam, NoticeText } from "@/lib/notice"
+import { englishNotice } from "@/lib/notice-row"
+
 export type TeamMove = { userId: string; from: string | null; to: string | null }
 
-export type PlannedNotification = { userId: string; message: string; relatedId: string }
+/** `text` is what is stored (lib/notice.ts); `message` is its English. */
+export type PlannedNotification = { userId: string; text: NoticeText; message: string; relatedId: string }
 
 type Names = Map<string, string>
 
@@ -28,16 +32,13 @@ export function planTeamNotifications(moves: TeamMove[], names: Names): PlannedN
     // 1. Each person who moved.
     for (const m of real) {
         const leader = m.to ? names.get(m.to) : null
-        out.push({
-            userId: m.userId,
-            message: m.to
-                ? `Your team leader is now ${leader ?? "someone new"}.`
-                // Said plainly, because it has a consequence they may not
-                // guess: no team leader can see their work until an Admin
-                // assigns them again.
-                : "You are no longer assigned to a team leader. An administrator will assign you again.",
-            relatedId: `/dashboard/employees/${m.userId}`,
-        })
+        const text: NoticeText = m.to
+            ? { key: "notice_team_leader_now", params: { leader: leader ?? { key: "notice_someone_new" } } }
+            // Said plainly, because it has a consequence they may not
+            // guess: no team leader can see their work until an Admin
+            // assigns them again.
+            : { key: "notice_team_unassigned" }
+        out.push({ userId: m.userId, text, message: englishNotice(text), relatedId: `/dashboard/employees/${m.userId}` })
     }
 
     // 2. Each leader, once, however many people moved in or out.
@@ -52,14 +53,12 @@ export function planTeamNotifications(moves: TeamMove[], names: Names): PlannedN
     for (const leaderId of leaders) {
         const inn = joined.get(leaderId) ?? []
         const out_ = left.get(leaderId) ?? []
-        const parts: string[] = []
-        if (inn.length) parts.push(describe(inn, names, "joined"))
-        if (out_.length) parts.push(describe(out_, names, "left"))
-        out.push({
-            userId: leaderId,
-            message: `${parts.join(" and ")} your team.`,
-            relatedId: "/dashboard/employees",
-        })
+        const text: NoticeText = inn.length && out_.length
+            ? { key: "notice_team_joined_left", params: { joined: describe(inn, names), left: describe(out_, names) } }
+            : inn.length
+                ? { key: "notice_team_joined", params: { who: describe(inn, names) } }
+                : { key: "notice_team_left", params: { who: describe(out_, names) } }
+        out.push({ userId: leaderId, text, message: englishNotice(text), relatedId: "/dashboard/employees" })
     }
 
     return out
@@ -67,7 +66,7 @@ export function planTeamNotifications(moves: TeamMove[], names: Names): PlannedN
 
 /** One name when it is one person; a count when it is more. A list of forty
  *  names is not a notification, it is a report. */
-function describe(ids: string[], names: Names, verb: "joined" | "left"): string {
-    if (ids.length === 1) return `${names.get(ids[0]) ?? "Someone"} ${verb}`
-    return `${ids.length} people ${verb}`
+function describe(ids: string[], names: Names): NoticeParam {
+    if (ids.length === 1) return names.get(ids[0]) ?? { key: "notice_someone" }
+    return { key: "notice_people", params: { count: ids.length } }
 }

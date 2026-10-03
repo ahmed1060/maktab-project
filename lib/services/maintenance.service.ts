@@ -26,7 +26,11 @@ export class MaintenanceService {
             prisma.auditLog.count({ where: { createdAt: { lt: ninetyDaysAgo } } }),
             prisma.notification.count(),
             prisma.notification.count({ where: { read: true, createdAt: { lt: thirtyDaysAgo } } }),
-            this.listAllAssets()
+            // File storage is a separate service. When it can't be reached,
+            // the rest of the page still reports, and says so, rather than
+            // the whole health check failing with a 500: an outage is when
+            // somebody opens this page.
+            this.listAllAssets().catch(() => null)
         ])
 
         return {
@@ -41,7 +45,8 @@ export class MaintenanceService {
                 retentionDays: 30
             },
             storage: {
-                totalFiles: storageFiles.length,
+                totalFiles: storageFiles ? storageFiles.length : null,
+                reachable: storageFiles !== null,
             }
         }
     }

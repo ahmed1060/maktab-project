@@ -25,7 +25,7 @@ export const GET = withStandardHandler(async (_req, session, _json, { params }) 
     })
     if (!user?.companyId) return ApiResponse.notFound("Not found")
 
-    if (!managesCompany(session.user.role, session.user.companyId, user.companyId)) {
+    if (!managesCompany(session.user, "debts.view", user.companyId)) {
         return ApiResponse.forbidden("Access denied")
     }
 

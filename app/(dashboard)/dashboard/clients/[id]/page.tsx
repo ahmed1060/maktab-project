@@ -14,6 +14,7 @@ import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
 import Pagination from '@/components/Pagination'
 import { useHydrated } from '@/lib/useHydrated'
+import { useCan } from '@/lib/useCan'
 
 interface Section {
     id: string
@@ -56,6 +57,8 @@ const NO_SECTIONS: Section[] = []
 
 export default function ClientDetailsPage() {
     const { t, locale } = useLanguage()
+    // Everyone may add a section; renaming and deleting one are narrower.
+    const { can } = useCan()
     const params = useParams()
     const clientId = params.id as string
 
@@ -244,7 +247,7 @@ export default function ClientDetailsPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -391,46 +394,50 @@ export default function ClientDetailsPage() {
                                             gap: '0.4rem',
                                             width: isMobile ? '100%' : 'auto'
                                         }}>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingSectionId(section.id)
-                                                    setEditSectionTitle(section.title)
-                                                    setIsEditSectionModalOpen(true)
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: 'var(--info-bg-subtle)',
-                                                    color: 'var(--info-solid-hover)',
-                                                    padding: '0.4rem 0.85rem',
-                                                    fontSize: '0.8125rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    whiteSpace: 'nowrap',
-                                                    flex: isMobile ? 1 : 'unset'
-                                                }}
-                                            >
-                                                {t('edit')}
-                                            </button>
+                                            {can('clients.edit') && (
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingSectionId(section.id)
+                                                        setEditSectionTitle(section.title)
+                                                        setIsEditSectionModalOpen(true)
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'var(--info-bg-subtle)',
+                                                        color: 'var(--info-solid-hover)',
+                                                        padding: '0.4rem 0.85rem',
+                                                        fontSize: '0.8125rem',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap',
+                                                        flex: isMobile ? 1 : 'unset'
+                                                    }}
+                                                >
+                                                    {t('edit')}
+                                                </button>
+                                            )}
 
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault()
-                                                    setDeleteConfirm({ isOpen: true, section })
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: 'var(--danger-bg-subtle)',
-                                                    color: 'var(--danger-solid-hover)',
-                                                    padding: '0.4rem 0.85rem',
-                                                    fontSize: '0.8125rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    whiteSpace: 'nowrap',
-                                                    flex: isMobile ? 1 : 'unset'
-                                                }}
-                                            >
-                                                {t('delete')}
-                                            </button>
+                                            {can('clients.delete') && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        setDeleteConfirm({ isOpen: true, section })
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'var(--danger-bg-subtle)',
+                                                        color: 'var(--danger-solid-hover)',
+                                                        padding: '0.4rem 0.85rem',
+                                                        fontSize: '0.8125rem',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap',
+                                                        flex: isMobile ? 1 : 'unset'
+                                                    }}
+                                                >
+                                                    {t('delete')}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -509,7 +516,7 @@ export default function ClientDetailsPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('section_title_label' as any)}
                                 </label>
-                                <input
+                                <input aria-label={t('section_title_label' as any)}
                                     type="text"
                                     required
                                     value={newSectionTitle}
@@ -616,7 +623,7 @@ export default function ClientDetailsPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('client_name_label')}
                             </label>
-                            <input
+                            <input aria-label={t('client_name_label')}
                                 type="text"
                                 required
                                 value={editClientName}
@@ -664,7 +671,7 @@ export default function ClientDetailsPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
-                            <input
+                            <input aria-label={t('section_title_label' as any)}
                                 type="text"
                                 required
                                 value={editSectionTitle}

@@ -11,6 +11,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch (error: any) {
         if (error.message === 'REQUEST_NOT_FOUND') return ApiResponse.notFound("Request not found")
         if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden("Access denied")
+        if (error.message === 'OWN_REQUEST') return ApiResponse.forbidden("You cannot decide your own name change")
         if (error.message === 'REQUEST_ALREADY_PROCESSED') return ApiResponse.badRequest("Request already processed")
         throw error
     }

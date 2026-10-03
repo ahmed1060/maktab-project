@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * Looking one person up by id.
@@ -49,8 +50,8 @@ async function lookup(id: string, session: any) {
     return GET(new Request(`https://nizmo.test/api/users?id=${id}`))
 }
 
-const admin = { user: { id: "a-1", role: "ADMIN", companyId: CO } }
-const leader = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: CO } }
+const admin = { user: withGrants({ id: "a-1", role: "ADMIN", companyId: CO }) }
+const leader = { user: withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: CO }) }
 
 beforeEach(seed)
 
@@ -86,7 +87,7 @@ describe("the team boundary holds on a direct lookup too", () => {
 
 describe("people can still see themselves", () => {
     it("an employee looking at their own record is not refused", async () => {
-        const employee = { user: { id: "mine", role: "EMPLOYEE", companyId: CO } }
+        const employee = { user: withGrants({ id: "mine", role: "EMPLOYEE", companyId: CO }) }
         expect((await lookup("mine", employee)).status).toBe(200)
     })
 })

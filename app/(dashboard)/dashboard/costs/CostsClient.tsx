@@ -8,16 +8,16 @@ import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import { useEffect } from 'react'
 import Pagination from '@/components/Pagination'
+import { useCan } from '@/lib/useCan'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
-    userRole: string
     total: number
     page: number
     totalPages: number
 }
 
-export default function CostsClient({ tasksWithCosts, userRole, total, page, totalPages }: CostsClientProps) {
+export default function CostsClient({ tasksWithCosts, total, page, totalPages }: CostsClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
@@ -31,7 +31,8 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
         search: searchParams.get('search') || ''
     }
 
-    const isEmployee = userRole === 'EMPLOYEE'
+    const { can, companyWide } = useCan()
+    const isEmployee = !can('tasks.pay')
     const [isUpdating, setIsUpdating] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
@@ -194,12 +195,14 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
                     { label: t('amount_label'), value: 'amount' },
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && total > 0 && (
+                    // Paying everything at once is for those who pay across the
+                    // company; a Team Leader pays their team's one at a time.
+                    companyWide('tasks.pay') && total > 0 && (
                         <button
                             onClick={handleMarkAllAsPaid}
                             disabled={isUpdating}
                             style={{
-                                background: 'var(--ok-solid)',
+                                background: 'var(--ok-fill)',
                                 color: 'var(--text-on-accent)',
                                 border: 'none',
                                 borderRadius: '1.25rem',
@@ -231,7 +234,7 @@ export default function CostsClient({ tasksWithCosts, userRole, total, page, tot
             ) : (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))',
                     gap: '1.5rem'
                 }}>
                     {sortedEntries.map((entry, index) => (

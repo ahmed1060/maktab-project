@@ -3,13 +3,16 @@ export const dynamic = 'force-dynamic'
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
+import { can } from "@/lib/permissions/can"
+import { scopesToTeam, teamMemberWhere } from "@/lib/team-scope"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
     const userRole = session.user.role
 
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    if (!can(session.user, "dayoff.view")) {
         return ApiResponse.forbidden("Unauthorized")
     }
 
@@ -18,13 +21,15 @@ export const GET = withStandardHandler(async (req, session) => {
         if (companyId) {
             where.user = { companyId }
         }
+    } else if (scopesToTeam(session.user, "dayoff.view")) {
+        // Held for a team, it shows the team's requests (and their own), not
+        // the company's: dates, reasons and balances are the team's business.
+        where.user = { companyId: session.user.companyId, ...teamMemberWhere(session.user.id) }
     } else {
         where.user = { companyId: session.user.companyId }
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     try {
         const [requests, total] = await Promise.all([
@@ -38,7 +43,10 @@ export const GET = withStandardHandler(async (req, session) => {
                             lastName: true,
                             email: true,
                             role: true,
-                            dayOffCredit: true
+                            dayOffCredit: true,
+                            // Who leads them: the screen offers Approve to a
+                            // team-scoped approver for their own team only.
+                            teamLeaderId: true
                         }
                     }
                 },

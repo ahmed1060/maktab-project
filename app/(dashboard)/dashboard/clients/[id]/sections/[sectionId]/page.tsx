@@ -10,7 +10,6 @@ import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import EmployeeFilter from '@/components/EmployeeFilter'
@@ -18,6 +17,7 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import Pagination from '@/components/Pagination'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useCan } from '@/lib/useCan'
 
 interface Note {
     id: string
@@ -65,15 +65,16 @@ export default function SectionNotesPage() {
     const [notice, setNotice] = useState<Notice | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, note: Note | null }>({ isOpen: false, note: null })
     const { setTitle } = useHeader()
-    const { data: session } = useSession()
     const { showToast } = useToast()
     const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false)
     const [editSectionTitle, setEditSectionTitle] = useState('')
     const [isEditingSection, setIsEditingSection] = useState(false)
 
 
-    const canEdit = !!session?.user
-    const canDelete = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+    // Everyone may add and edit notes; deleting one is narrower.
+    const { can } = useCan()
+    const canEdit = can('clients.contribute')
+    const canDelete = can('clients.delete')
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editingNote, setEditingNote] = useState<Note | null>(null)
@@ -388,7 +389,7 @@ export default function SectionNotesPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -537,7 +538,7 @@ export default function SectionNotesPage() {
                                                     rel="noopener noreferrer"
                                                     className="hover:scale-110 transition-transform"
                                                     style={{
-                                                        color: 'var(--primary)',
+                                                        color: 'var(--brand-primary-text)',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '0.25rem',
@@ -681,7 +682,7 @@ export default function SectionNotesPage() {
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
-                                        <textarea
+                                        <textarea aria-label={t('note_content_label' as any)}
                                             value={newNoteContent}
                                             onChange={(e) => setNewNoteContent(e.target.value)}
                                             className="input"
@@ -717,6 +718,7 @@ export default function SectionNotesPage() {
                                             style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
+                                                aria-label={t('attachments_label' as any)}
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -758,7 +760,7 @@ export default function SectionNotesPage() {
                                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
-                                            <input
+                                            <input aria-label={t('reminder_days_label' as any)}
                                                 type="number"
                                                 value={reminderDays}
                                                 onChange={(e) => setReminderDays(e.target.value)}
@@ -833,7 +835,7 @@ export default function SectionNotesPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
-                            <input
+                            <input aria-label={t('section_title_label' as any)}
                                 type="text"
                                 value={editSectionTitle}
                                 onChange={(e) => setEditSectionTitle(e.target.value)}
@@ -901,7 +903,7 @@ export default function SectionNotesPage() {
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
-                                        <textarea
+                                        <textarea aria-label={t('note_content_label' as any)}
                                             value={editNoteContent}
                                             onChange={(e) => setEditNoteContent(e.target.value)}
                                             className="input"
@@ -958,6 +960,7 @@ export default function SectionNotesPage() {
                                             style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
+                                                aria-label={t('attachments_label' as any)}
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -999,7 +1002,7 @@ export default function SectionNotesPage() {
                                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
-                                            <input
+                                            <input aria-label={t('reminder_days_label' as any)}
                                                 type="number"
                                                 value={editReminderDays}
                                                 onChange={(e) => setEditReminderDays(e.target.value)}

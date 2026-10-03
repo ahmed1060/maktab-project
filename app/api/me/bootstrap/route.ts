@@ -6,7 +6,7 @@ import { SystemService } from '@/lib/services/system.service'
 
 export const GET = withStandardHandler(async (req, session) => {
     try {
-        const result = await SystemService.getBootstrapData(session.user.id, session.user.role)
+        const result = await SystemService.getBootstrapData(session.user as any)
         return ApiResponse.success(result)
     } catch (error: any) {
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")

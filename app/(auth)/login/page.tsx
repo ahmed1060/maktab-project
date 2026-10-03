@@ -309,7 +309,7 @@ export default function LoginPage() {
                             {forgotStage === 'request' ? (
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                    <input
+                                    <input aria-label={t('email')}
                                         type="email"
                                         className="input"
                                         value={forgotEmail}
@@ -326,7 +326,7 @@ export default function LoginPage() {
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                             {isAr ? 'الرمز' : 'Code'}
                                         </label>
-                                        <input
+                                        <input aria-label={isAr ? 'الرمز' : 'Code'}
                                             type="text"
                                             inputMode="numeric"
                                             className="input"
@@ -343,7 +343,7 @@ export default function LoginPage() {
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                             {isAr ? 'كلمة المرور الجديدة' : 'New password'}
                                         </label>
-                                        <input
+                                        <input aria-label={isAr ? 'كلمة المرور الجديدة' : 'New password'}
                                             type="password"
                                             className="input"
                                             value={forgotNewPassword}
@@ -399,7 +399,7 @@ export default function LoginPage() {
                         <form onSubmit={handleCredentialsSubmit}>
                             <div style={{ marginBottom: '1.25rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                <input
+                                <input aria-label={t('email')}
                                     type="email"
                                     className="input"
                                     value={email}
@@ -417,7 +417,7 @@ export default function LoginPage() {
                             </div>
                             <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                                <input
+                                <input aria-label={t('password')}
                                     type={showPassword ? "text" : "password"}
                                     className="input"
                                     value={password}
@@ -435,6 +435,8 @@ export default function LoginPage() {
                                 />
                                 <button
                                     type="button"
+                                    aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                    aria-pressed={showPassword}
                                     onClick={() => setShowPassword(!showPassword)}
                                     style={{
                                         position: 'absolute',
@@ -545,7 +547,7 @@ export default function LoginPage() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                     {isAr ? 'الرمز' : 'Code'}
                                 </label>
-                                <input
+                                <input aria-label={isAr ? 'الرمز' : 'Code'}
                                     type="text"
                                     inputMode="numeric"
                                     className="input"

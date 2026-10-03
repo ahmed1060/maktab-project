@@ -3,15 +3,15 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createVendorSchema, updateVendorSchema } from "@/lib/validations/vendor.schema"
 import { VendorService } from "@/lib/services/vendor.service"
+import { can } from "@/lib/permissions/can"
 
-// Read access: ADMIN/TEAM_LEADER/SUPER_ADMIN — Team Leader is read-only
-// (needs the list to pick a vendor when creating a task) but can't manage
-// it; write access is checked per-method below.
+// Read with vendors.view — a Team Leader holds it (they pick a vendor when
+// creating a task) but not vendors.manage; writes are checked per-method below.
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
     const userCompanyId = (session.user as any).companyId
 
-    if (!['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole || '')) {
+    if (!can(session.user, "vendors.view")) {
         return ApiResponse.forbidden()
     }
 
@@ -21,7 +21,7 @@ export const GET = withStandardHandler(async (req, session) => {
     if (vendorId) {
         const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } })
         if (!vendor) return ApiResponse.notFound("Vendor not found")
-        if (userRole !== 'SUPER_ADMIN' && vendor.companyId !== userCompanyId) return ApiResponse.forbidden()
+        if (!can(session.user, "vendors.view", { companyId: vendor.companyId })) return ApiResponse.forbidden()
         return ApiResponse.success(vendor)
     }
 
@@ -55,7 +55,7 @@ export const GET = withStandardHandler(async (req, session) => {
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role || '')) {
+    if (!can(session.user, "vendors.manage")) {
         return ApiResponse.forbidden()
     }
 
@@ -78,7 +78,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role || '')) {
+    if (!can(session.user, "vendors.manage")) {
         return ApiResponse.forbidden()
     }
 
@@ -100,7 +100,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role || '')) {
+    if (!can(session.user, "vendors.manage")) {
         return ApiResponse.forbidden()
     }
 

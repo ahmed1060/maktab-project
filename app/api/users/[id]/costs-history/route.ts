@@ -2,15 +2,16 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { UserService } from "@/lib/services/user.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session, json, { params }) => {
     const userId = params.id
-    const userRole = session.user.role
 
+    // One's own cost history is always theirs to see; anyone else's needs
+    // costs.view, and verifyResourceAccess keeps that to the right company.
     const isSelf = session.user.id === userId
-    const isAuthorizedRole = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
 
-    if (!isSelf && !isAuthorizedRole) {
+    if (!isSelf && !can(session.user, "costs.view")) {
         return ApiResponse.forbidden("Access denied")
     }
 

@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { CreateSectionInput, UpdateSectionInput } from "../validations/section.schema"
+import { can } from "@/lib/permissions/can"
 
 export class SectionService {
     static async create(input: CreateSectionInput, session: any) {
         const userId = session.user.id
         const userRole = session.user.role
-        const userCompanyId = (session.user as any).companyId
         const { title, clientId } = input
 
         const client = await prisma.businessClient.findUnique({
@@ -15,11 +15,8 @@ export class SectionService {
 
         if (!client) throw new Error("CLIENT_NOT_FOUND")
 
-        // Authorization
-        if (userRole !== 'SUPER_ADMIN') {
-            if (!userCompanyId || userCompanyId !== client.companyId) {
-                throw new Error("ACCESS_DENIED")
-            }
+        if (!can(session.user, "clients.contribute", { companyId: client.companyId })) {
+            throw new Error("ACCESS_DENIED")
         }
 
         const section = await prisma.businessClientSection.create({
@@ -53,11 +50,8 @@ export class SectionService {
 
         if (!section) throw new Error("SECTION_NOT_FOUND")
 
-        if (userRole !== 'SUPER_ADMIN') {
-            const userCompanyId = (session.user as any).companyId
-            if (section.client.companyId !== userCompanyId) {
-                throw new Error("ACCESS_DENIED")
-            }
+        if (!can(session.user, "clients.edit", { companyId: section.client.companyId })) {
+            throw new Error("ACCESS_DENIED")
         }
 
         const updated = await prisma.businessClientSection.update({
@@ -90,11 +84,8 @@ export class SectionService {
 
         if (!section) throw new Error("SECTION_NOT_FOUND")
 
-        if (userRole !== 'SUPER_ADMIN') {
-            const userCompanyId = (session.user as any).companyId
-            if (section.client.companyId !== userCompanyId) {
-                throw new Error("ACCESS_DENIED")
-            }
+        if (!can(session.user, "clients.delete", { companyId: section.client.companyId })) {
+            throw new Error("ACCESS_DENIED")
         }
 
         const result = await prisma.businessClientSection.delete({ where: { id } })

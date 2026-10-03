@@ -381,9 +381,7 @@ export class SalaryService {
             await NotificationService.notify(
                 userId,
                 type === 'BONUS' ? 'BONUS_ADDED' : 'DEDUCTION_ADDED',
-                type === 'BONUS'
-                    ? `Congratulations! You have received a bonus of ${amount} days.`
-                    : `A deduction of ${amount} days has been applied to your record.`,
+                { key: type === 'BONUS' ? 'notice_bonus_added' : 'notice_deduction_added', params: { amount } },
                 userId,
                 tx
             )

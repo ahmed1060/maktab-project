@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { NotificationService } from "./notification.service"
+import { can, type Actor } from "@/lib/permissions/can"
 
 export class SystemService {
-    static async getBootstrapData(userId: string, role: string) {
+    static async getBootstrapData(viewer: Actor & { id: string }) {
+        const userId = viewer.id
+        const role = viewer.role as string
         const [user, unreadNotificationsCount] = await Promise.all([
             prisma.user.findUnique({
                 where: { id: userId },
@@ -72,10 +75,13 @@ export class SystemService {
             )
         }
 
-        if (['ADMIN', 'SUPER_ADMIN'].includes(role)) {
+        // The header's name-change badge: for whoever decides them, and only
+        // their own company's. It counted every company's pending requests,
+        // so an Admin's badge carried other companies' numbers.
+        if (can(viewer, "profile_requests.review")) {
             extraTasks.push(
                 prisma.profileUpdateRequest.count({
-                    where: { status: 'PENDING' }
+                    where: { status: 'PENDING', user: { companyId: user.companyId } }
                 }).then(res => pendingProfileRequestsCount = res)
             )
         }

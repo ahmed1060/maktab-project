@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * Creating an account was open to anyone signed in.
@@ -23,7 +24,7 @@ vi.mock("next-auth", () => ({ getServerSession: async () => session.value }))
 vi.mock("@/lib/auth", () => ({ authOptions: {} }))
 
 function as(role: string) {
-    session.value = { user: { id: `${role}-1`, role, companyId: "co-1" } }
+    session.value = { user: withGrants({ id: `${role}-1`, role, companyId: "co-1" }) }
 }
 
 /** A body that fails validation, so a request getting past the role gate stops
@@ -86,14 +87,14 @@ describe("the service refuses too, not only the route", () => {
     it("throws for an employee session before it writes anything", async () => {
         const { UserService } = await import("@/lib/services/user.service")
         await expect(
-            UserService.create({ email: "x@y.test" } as any, { user: { id: "e1", role: "EMPLOYEE", companyId: "co-1" } })
+            UserService.create({ email: "x@y.test" } as any, { user: withGrants({ id: "e1", role: "EMPLOYEE", companyId: "co-1" }) })
         ).rejects.toThrow("ONLY_ADMIN_CAN_CREATE_USERS")
     })
 
     it("throws for a Team Leader session", async () => {
         const { UserService } = await import("@/lib/services/user.service")
         await expect(
-            UserService.create({ email: "x@y.test" } as any, { user: { id: "t1", role: "TEAM_LEADER", companyId: "co-1" } })
+            UserService.create({ email: "x@y.test" } as any, { user: withGrants({ id: "t1", role: "TEAM_LEADER", companyId: "co-1" }) })
         ).rejects.toThrow("ONLY_ADMIN_CAN_CREATE_USERS")
     })
 
@@ -101,17 +102,20 @@ describe("the service refuses too, not only the route", () => {
         // The rule that already existed must survive the one added above it.
         const { UserService } = await import("@/lib/services/user.service")
         await expect(
-            UserService.create({ email: "x@y.test", role: "ADMIN" } as any, { user: { id: "a1", role: "ADMIN", companyId: "co-1" } })
+            UserService.create({ email: "x@y.test", role: "ADMIN" } as any, { user: withGrants({ id: "a1", role: "ADMIN", companyId: "co-1" }) })
         ).rejects.toThrow("ONLY_SUPER_ADMIN_CAN_CREATE_ADMIN")
     })
 })
 
 describe("the route declares the gate rather than relying on the service alone", () => {
-    it("names ADMIN and SUPER_ADMIN, and nobody else", () => {
+    it("names ADMIN and SUPER_ADMIN, and nobody else", async () => {
+        // The gate is a permission now (ROLES_PLAN.md, Part A). The route must
+        // declare it, and among the built-in roles only the Admin may hold it;
+        // the Super Admin holds every permission.
         const source = stripComments(readFileSync("app/api/users/route.ts", "utf8"))
-        const match = source.match(/allowedRoles:\s*\[([^\]]*)\]/)
-        expect(match, "POST /api/users must declare allowedRoles").toBeTruthy()
-        const roles = match![1].split(",").map(r => r.trim().replace(/['"]/g, "")).filter(Boolean)
-        expect(roles.sort()).toEqual(["ADMIN", "SUPER_ADMIN"])
+        expect(source, "POST /api/users must declare its permission").toMatch(/permission:\s*"employees\.create"/)
+        const { BUILT_IN_GRANTS } = await import("@/lib/permissions/built-in")
+        const holders = Object.entries(BUILT_IN_GRANTS).filter(([, grants]) => "employees.create" in grants).map(([role]) => role)
+        expect(holders).toEqual(["ADMIN"])
     })
 })

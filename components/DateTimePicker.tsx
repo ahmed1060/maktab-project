@@ -190,7 +190,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                     <span style={{ color: value ? 'var(--text-main)' : 'var(--text-faint)', fontWeight: value ? '600' : '400' }}>
                         {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : t('select_deadline')}
                     </span>
-                    <span style={{ color: 'var(--brand-primary)', fontSize: '1.2rem' }}>📅</span>
+                    <span style={{ color: 'var(--brand-primary-text)', fontSize: '1.2rem' }}>📅</span>
                 </div>
             )}
 
@@ -315,7 +315,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div>
                                         <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('hour_label')}</label>
-                                        <select
+                                        <select aria-label={t('hour_label')}
                                             className="input"
                                             value={currentH12}
                                             onChange={(e) => handleTimeChange('hour', parseInt(e.target.value))}
@@ -333,7 +333,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                                     <div>
                                         <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('minute_label')}</label>
-                                        <select
+                                        <select aria-label={t('minute_label')}
                                             className="input"
                                             value={selectedDate?.getMinutes() || 0}
                                             onChange={(e) => handleTimeChange('minute', parseInt(e.target.value))}
@@ -347,7 +347,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                                     <div>
                                         <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('am_pm_label')}</label>
-                                        <select
+                                        <select aria-label={t('am_pm_label')}
                                             className="input"
                                             value={currentPeriod}
                                             onChange={(e) => handleTimeChange('period', e.target.value)}

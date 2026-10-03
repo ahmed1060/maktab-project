@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useRef } from "react"
+
 type Option<T extends string> = {
     value: T
     label: string
@@ -44,12 +46,30 @@ export default function SegmentedToggle<T extends string>({
 }) {
     const pad = size === 'sm' ? '0.35rem 0.7rem' : '0.45rem 0.9rem'
     const font = size === 'sm' ? '0.8rem' : '0.85rem'
+    // When the track scrolls, keep the chosen option in sight: one opened by
+    // its address can otherwise start out of view.
+    const track = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        const box = track.current
+        const chosen = box?.querySelector<HTMLElement>('[aria-pressed="true"]')
+        if (!box || !chosen || box.scrollWidth <= box.clientWidth) return
+        const b = box.getBoundingClientRect(), c = chosen.getBoundingClientRect()
+        if (c.left < b.left) box.scrollBy({ left: c.left - b.left - 8 })
+        else if (c.right > b.right) box.scrollBy({ left: c.right - b.right + 8 })
+    }, [value])
     return (
         <div
+            ref={track}
             role="group"
             aria-label={ariaLabel}
             style={{
                 display: 'inline-flex',
+                // Never wider than the space it is in. With more options than
+                // fit — the settings tabs on a phone — the track scrolls
+                // sideways by itself, rather than widening the whole page.
+                maxWidth: '100%',
+                overflowX: 'auto',
+                scrollbarWidth: 'thin',
                 padding: '0.25rem',
                 gap: '0.2rem',
                 borderRadius: '999px',
@@ -93,6 +113,7 @@ export default function SegmentedToggle<T extends string>({
                             opacity: disabled ? 0.6 : 1,
                             transition: 'background 0.15s, color 0.15s, box-shadow 0.15s',
                             whiteSpace: 'nowrap',
+                            flexShrink: 0,
                         }}
                     >
                         {option.label}

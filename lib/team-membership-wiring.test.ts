@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { withGrants, builtInRoleLookup } from "@/lib/permissions/test-actors"
 
 /**
  * That the rules are wired in, and wired in at the right moment.
@@ -50,6 +51,8 @@ const userModel = (inTx: boolean) => ({
 vi.mock("@/lib/prisma", () => ({
     prisma: {
         user: userModel(false),
+        // Each company's built-in roles, as the roles migration creates them.
+        role: { findUnique: (args: any) => builtInRoleLookup(args) },
         superAdmin: { findUnique: async () => null },
         dayOffRequest: { aggregate: async () => ({ _sum: { daysDeducted: 0 } }) },
         // Runs the callback with a tx whose writes are marked as being inside
@@ -66,7 +69,7 @@ vi.mock("@/lib/prisma", () => ({
     },
 }))
 
-const admin = { user: { id: "admin-1", role: "ADMIN", companyId: "co-1" } }
+const admin = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: "co-1" }) }
 
 function person(over: any = {}) {
     return {
@@ -117,8 +120,12 @@ describe("a leader is not stripped out from under their team", () => {
     })
 
     it("refuses archiving them too, which does not look like demotion", async () => {
+        // Refused earlier since Part B: archiving is ending a contract, which
+        // has its own flow — and that flow asks where the team goes, with the
+        // same refusal (app/api/users/[id]/employment). An edit may not set
+        // ARCHIVED at all, reports or none.
         db.reports = [{ id: "e-1", firstName: "Laila", lastName: "Fouad" }]
-        await expect(update({ status: "ARCHIVED" })).rejects.toThrow("LEADER_HAS_REPORTS")
+        await expect(update({ status: "ARCHIVED" })).rejects.toThrow("STATUS_HAS_ITS_OWN_FLOW")
     })
 
     it("allows the demotion once nobody reports to them", async () => {

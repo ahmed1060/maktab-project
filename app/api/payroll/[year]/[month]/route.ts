@@ -13,7 +13,7 @@ import { resolvePayrollScope, payrollScopeRefusal } from "@/lib/payroll-scope"
 
 export const GET = withStandardHandler(async (req, session, _json, { params }) => {
     const scope = resolvePayrollScope(
-        session.user.role, session.user.companyId,
+        session.user, "payroll.view",
         new URL(req.url).searchParams.get('companyId'),
         params.year, params.month,
     )
@@ -25,7 +25,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 
 export const POST = withStandardHandler(async (_req, session, json, { params }) => {
     const scope = resolvePayrollScope(
-        session.user.role, session.user.companyId, json?.companyId,
+        session.user, "payroll.prepare", json?.companyId,
         params.year, params.month,
     )
     if (!scope.ok) return payrollScopeRefusal(scope)

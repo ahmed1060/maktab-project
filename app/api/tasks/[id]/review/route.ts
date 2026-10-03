@@ -1,21 +1,33 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { shapeTask } from "@/lib/permissions/shape"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     const taskId = params.id
 
+    // Reviewing decides a task's outcome and its difficulty, which become
+    // performance points and payment. Only managers may: the screen offered
+    // review to nobody else, but the route asked only for the company, so an
+    // Employee could approve a task — their own included.
+    if (!can(session.user, "tasks.review")) {
+        return ApiResponse.forbidden("Only managers can review tasks")
+    }
+
     // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK', "tasks.review")
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {
         const task = await TaskService.review(taskId, session, json)
-        return ApiResponse.success(task)
+        return ApiResponse.success(shapeTask(session.user, task))
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'SELF_REVIEW_FORBIDDEN') return ApiResponse.forbidden("Admins cannot review their own tasks")
+        if (error.message === 'INVALID_REVIEW_STATUS') return ApiResponse.badRequest("A review is APPROVED, REJECTED or COMPLETED")
+        if (error.message === 'INVALID_DIFFICULTY') return ApiResponse.badRequest("Difficulty must be between 0 and 10")
         console.error("Task review error:", error)
         return ApiResponse.error("Failed to process task review")
     }

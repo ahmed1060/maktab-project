@@ -11,10 +11,11 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {
-        await TaskService.acknowledge(taskId)
+        await TaskService.acknowledge(taskId, session)
         return ApiResponse.success({ success: true })
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
+        if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden("Only the task's assignees can acknowledge its edits")
         console.error("Acknowledge API error:", error)
         return ApiResponse.error("Failed to acknowledge task edit")
     }

@@ -60,7 +60,7 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
                     <span style={{
                         padding: '0.15rem 0.5rem',
                         borderRadius: '0.5rem',
-                        background: 'var(--info-solid)',
+                        background: 'var(--info-fill)',
                         color: 'var(--text-on-accent)',
                         fontWeight: 'bold',
                         fontSize: '0.7rem'

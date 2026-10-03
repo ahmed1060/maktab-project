@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { CreateVendorInput, UpdateVendorInput } from "../validations/vendor.schema"
+import { can } from "@/lib/permissions/can"
 
 export class VendorService {
     static async create(input: CreateVendorInput, session: any) {
@@ -45,14 +46,13 @@ export class VendorService {
     static async update(input: UpdateVendorInput, session: any) {
         const userRole = session.user.role
         const userId = session.user.id
-        const userCompanyId = (session.user as any).companyId
 
         const { id, ...rest } = input
 
         const vendor = await prisma.vendor.findUnique({ where: { id } })
         if (!vendor) throw new Error("VENDOR_NOT_FOUND")
 
-        if (userRole !== 'SUPER_ADMIN' && vendor.companyId !== userCompanyId) {
+        if (!can(session.user, "vendors.manage", { companyId: vendor.companyId })) {
             throw new Error("FORBIDDEN")
         }
 
@@ -77,12 +77,11 @@ export class VendorService {
     static async delete(id: string, session: any) {
         const userRole = session.user.role
         const userId = session.user.id
-        const userCompanyId = (session.user as any).companyId
 
         const vendor = await prisma.vendor.findUnique({ where: { id } })
         if (!vendor) throw new Error("VENDOR_NOT_FOUND")
 
-        if (userRole !== 'SUPER_ADMIN' && vendor.companyId !== userCompanyId) {
+        if (!can(session.user, "vendors.manage", { companyId: vendor.companyId })) {
             throw new Error("FORBIDDEN")
         }
 

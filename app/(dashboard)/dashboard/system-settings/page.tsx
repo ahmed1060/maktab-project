@@ -7,6 +7,7 @@ import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
+import FaceSystemSwitch from '@/components/FaceSystemSwitch'
 
 type SystemSettings = {
     id: string
@@ -14,6 +15,7 @@ type SystemSettings = {
     showPoweredBy: boolean
     poweredByName: string
     defaultTimezone: string
+    stepUpMinutes: number
     updatedAt: string
 }
 
@@ -28,10 +30,11 @@ export default function SystemSettingsPage() {
     const [showPoweredBy, setShowPoweredBy] = useState(true)
     const [poweredByName, setPoweredByName] = useState('')
     const [defaultTimezone, setDefaultTimezone] = useState('Africa/Cairo')
+    const [stepUpInput, setStepUpInput] = useState('60')
     const [loading, setLoading] = useState(true)
     // One per card. A single flag would disable both Save buttons whenever
     // either was in flight, which reads as the page having frozen.
-    const [savingSection, setSavingSection] = useState<null | 'location' | 'calendar' | 'branding'>(null)
+    const [savingSection, setSavingSection] = useState<null | 'location' | 'calendar' | 'branding' | 'stepUp'>(null)
 
     useEffect(() => {
         setTitle(t('system_settings') || 'System Settings')
@@ -50,6 +53,7 @@ export default function SystemSettingsPage() {
         setShowPoweredBy(data.showPoweredBy ?? true)
         setPoweredByName(data.poweredByName ?? '')
         setDefaultTimezone(data.defaultTimezone ?? 'Africa/Cairo')
+        setStepUpInput(String(data.stepUpMinutes ?? 60))
     }, [])
 
     useEffect(() => {
@@ -75,7 +79,7 @@ export default function SystemSettingsPage() {
      * from either would let a stale value in the card you did not touch
      * overwrite a change somebody else just made from the other.
      */
-    const persist = async (section: 'location' | 'calendar' | 'branding', patch: Record<string, unknown>) => {
+    const persist = async (section: 'location' | 'calendar' | 'branding' | 'stepUp', patch: Record<string, unknown>) => {
         setSavingSection(section)
         try {
             const res = await fetch('/api/system-settings', {
@@ -121,6 +125,18 @@ export default function SystemSettingsPage() {
         e.preventDefault()
         if (!settings) return
         await persist('calendar', { defaultTimezone })
+    }
+
+    // How long a step-up confirmation lasts (ROLES_PLAN.md §6.15).
+    const handleSaveStepUp = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!settings) return
+        const minutes = parseInt(stepUpInput, 10)
+        if (!Number.isFinite(minutes) || minutes < 5 || minutes > 480) {
+            showToast(t('step_up_minutes_invalid'), 'error')
+            return
+        }
+        await persist('stepUp', { stepUpMinutes: minutes })
     }
 
     const handleSaveBranding = async (e: React.FormEvent) => {
@@ -176,7 +192,7 @@ export default function SystemSettingsPage() {
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500 }}>
                             {t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
                         </label>
-                        <input
+                        <input aria-label={t('location_verify_radius_label') || 'Auto-verify distance (meters)'}
                             type="number"
                             min={1}
                             max={10000}
@@ -201,12 +217,13 @@ export default function SystemSettingsPage() {
                         className="glass"
                         style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
                     >
-                        <h3 style={{ margin: '0 0 0.35rem' }}>{t('default_timezone_label')}</h3>
+                        <h3 id="default-timezone-label" style={{ margin: '0 0 0.35rem' }}>{t('default_timezone_label')}</h3>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
                             {t('default_timezone_hint')}
                         </p>
                         <input
                             id="default-timezone"
+                            aria-labelledby="default-timezone-label"
                             className="input"
                             value={defaultTimezone}
                             onChange={e => setDefaultTimezone(e.target.value)}
@@ -219,6 +236,36 @@ export default function SystemSettingsPage() {
                             </button>
                         </div>
                     </form>
+
+                    <form
+                        onSubmit={handleSaveStepUp}
+                        className="glass"
+                        style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column' }}
+                    >
+                        <h3 id="step-up-minutes-label" style={{ margin: '0 0 0.35rem' }}>{t('step_up_minutes_label')}</h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0 0 1.25rem' }}>
+                            {t('step_up_minutes_hint')}
+                        </p>
+                        <input
+                            id="step-up-minutes"
+                            aria-labelledby="step-up-minutes-label"
+                            className="input"
+                            type="number"
+                            min={5}
+                            max={480}
+                            value={stepUpInput}
+                            onChange={e => setStepUpInput(e.target.value)}
+                            disabled={savingSection === 'stepUp'}
+                            style={{ maxWidth: '8rem', marginBottom: '1rem' }}
+                        />
+                        <div>
+                            <button type="submit" className="btn btn-primary" disabled={savingSection !== null}>
+                                {savingSection === 'stepUp' ? t('saving') : t('save_changes_button')}
+                            </button>
+                        </div>
+                    </form>
+
+                    <FaceSystemSwitch />
 
                     <form
                         onSubmit={handleSaveBranding}
@@ -244,7 +291,7 @@ export default function SystemSettingsPage() {
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 500, opacity: showPoweredBy ? 1 : 0.5 }}>
                             {t('powered_by_name_label' as any)}
                         </label>
-                        <input
+                        <input aria-label={t('powered_by_name_label' as any)}
                             type="text"
                             maxLength={40}
                             value={poweredByName}

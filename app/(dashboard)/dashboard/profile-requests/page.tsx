@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import Pagination from '@/components/Pagination'
 import { useHeader } from '@/context/HeaderContext'
+import { useCan } from '@/lib/useCan'
 
 type Request = {
     id: string
@@ -47,8 +48,8 @@ export default function ProfileRequestsPage() {
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
 
-    const role = session?.user?.role
-    const canReview = role === 'ADMIN' || role === 'SUPER_ADMIN'
+    const permissions = useCan()
+    const canReview = permissions.can('profile_requests.review')
     const { data: result, isLoading, mutate: fetchRequests } = useSWR(
         canReview ? `/api/profile-requests?${new URLSearchParams({ status: 'PENDING', page: String(page), limit: String(limit) })}` : null,
         fetcher,
@@ -112,7 +113,7 @@ export default function ProfileRequestsPage() {
         }
     }
 
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!session || !canReview) {
         return <AccessDenied />
     }
 
@@ -120,6 +121,7 @@ export default function ProfileRequestsPage() {
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button
+                    aria-label={t('go_back' as any)}
                     onClick={() => router.back()}
                     style={{
                         background: 'var(--veil-50)',
@@ -172,48 +174,51 @@ export default function ProfileRequestsPage() {
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontWeight: '600' }}>{req.user.firstName} {req.user.lastName}</div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>{req.user.email} • {t(getRoleKey(req.user.role) as any)}</div>
-                                        {req.user.company && <div style={{ fontSize: '0.75rem', color: 'var(--brand-primary)' }}>{req.user.company.name}</div>}
+                                        {req.user.company && <div style={{ fontSize: '0.75rem', color: 'var(--brand-primary-text)' }}>{req.user.company.name}</div>}
                                     </td>
                                     <td style={{ padding: '1rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.oldFirstName} {req.oldLastName}</td>
                                     <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--ok-fg)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.newFirstName} {req.newLastName}</td>
                                     <td style={{ padding: '1rem', fontSize: '0.8rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{new Date(req.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-EG')}</td>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
-                                            <button
-                                                disabled={processingId === req.id}
-                                                onClick={() => handleAction(req.id, 'approve')}
-                                                style={{
-                                                    background: 'var(--ok-bg)',
-                                                    color: 'var(--ok-fg)',
-                                                    border: 'none',
-                                                    padding: '0.5rem 1rem',
-                                                    borderRadius: '0.5rem',
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: '600',
-                                                    cursor: processingId === req.id ? 'not-allowed' : 'pointer',
-                                                    opacity: processingId === req.id ? 0.6 : 1
-                                                }}
-                                            >
-                                                {t('approve_button')}
-                                            </button>
-                                            <button
-                                                disabled={processingId === req.id}
-                                                onClick={() => handleAction(req.id, 'reject')}
-                                                style={{
-                                                    background: 'var(--danger-bg)',
-                                                    color: 'var(--danger-fg)',
-                                                    border: 'none',
-                                                    padding: '0.5rem 1rem',
-                                                    borderRadius: '0.5rem',
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: '600',
-                                                    cursor: processingId === req.id ? 'not-allowed' : 'pointer',
-                                                    opacity: processingId === req.id ? 0.6 : 1
-                                                }}
-                                            >
-                                                {t('reject_button')}
-                                            </button>
-                                        </div>
+                                        {/* Not one's own name change (ROLES_PLAN.md §4.2, rule 5). */}
+                                        {permissions.canFor('profile_requests.review', req.userId) && (
+                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
+                                                <button
+                                                    disabled={processingId === req.id}
+                                                    onClick={() => handleAction(req.id, 'approve')}
+                                                    style={{
+                                                        background: 'var(--ok-bg)',
+                                                        color: 'var(--ok-fg)',
+                                                        border: 'none',
+                                                        padding: '0.5rem 1rem',
+                                                        borderRadius: '0.5rem',
+                                                        fontSize: '0.875rem',
+                                                        fontWeight: '600',
+                                                        cursor: processingId === req.id ? 'not-allowed' : 'pointer',
+                                                        opacity: processingId === req.id ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    {t('approve_button')}
+                                                </button>
+                                                <button
+                                                    disabled={processingId === req.id}
+                                                    onClick={() => handleAction(req.id, 'reject')}
+                                                    style={{
+                                                        background: 'var(--danger-bg)',
+                                                        color: 'var(--danger-fg)',
+                                                        border: 'none',
+                                                        padding: '0.5rem 1rem',
+                                                        borderRadius: '0.5rem',
+                                                        fontSize: '0.875rem',
+                                                        fontWeight: '600',
+                                                        cursor: processingId === req.id ? 'not-allowed' : 'pointer',
+                                                        opacity: processingId === req.id ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    {t('reject_button')}
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

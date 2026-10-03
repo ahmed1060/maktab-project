@@ -118,7 +118,7 @@ describe("G5: a payslip can be reached", () => {
     it("holds the list to the payslip document's own rules", () => {
         // Not new rules — the same two readers, so a list cannot disclose what
         // the document would refuse.
-        expect(LIST_API).toContain("managesCompany(session.user.role, session.user.companyId, user.companyId)")
+        expect(LIST_API).toContain("managesCompany(session.user, \"payroll.view\", user.companyId)")
         expect(LIST_API).toContain("isOwner && user.company?.payslipsVisible")
         expect((LIST_API.match(/ApiResponse\.forbidden\(/g) ?? []).length).toBe(1)
     })

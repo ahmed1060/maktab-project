@@ -1,6 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { verifyResourceAccess } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
 import { SettlementService } from "@/lib/services/settlement.service"
 
 /**
@@ -13,7 +14,7 @@ import { SettlementService } from "@/lib/services/settlement.service"
 export const GET = withStandardHandler(async (req, session, _json, { params }) => {
     const userId = params.id
 
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role || '')) {
+    if (!can(session.user, "settlements.manage")) {
         return ApiResponse.forbidden("Managers only")
     }
     if (!(await verifyResourceAccess(session, userId, 'USER'))) {

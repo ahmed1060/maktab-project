@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
+import { roleKindParam } from "@/lib/notice"
+import { can, canCompanyWide } from "@/lib/permissions/can"
+import { scopesToTeam, assignedToTeamWhere, and } from "@/lib/team-scope"
 import { checkAssignees } from "./assignee-guard"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
@@ -6,7 +10,6 @@ import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
-import { scopesToTeam } from "@/lib/team-scope"
 
 /**
  * TaskService
@@ -37,7 +40,7 @@ export class TaskService {
         if (userRole !== 'SUPER_ADMIN') {
             if (!userCompanyId) throw new Error("USER_NO_COMPANY")
 
-            const verdict = await checkAssignees(assigneeIds, session)
+            const verdict = await checkAssignees(assigneeIds, session, "tasks.create")
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
         }
 
@@ -105,7 +108,7 @@ export class TaskService {
                 data: assigneeIds.map(id => ({
                     userId: id,
                     type: 'TASK_ASSIGNED',
-                    message: `You have been assigned a new task: ${input.title}`,
+                    ...noticeRow({ key: 'notice_task_assigned', params: { title: input.title } }),
                     relatedId: task.id
                 }))
             })
@@ -209,7 +212,7 @@ export class TaskService {
             // above and then whatever ids the request carried were written, so
             // a task could be handed to another company's user, who would see
             // it in their own list. Same rule as creation, same function.
-            const verdict = await checkAssignees(assigneeIds, session)
+            const verdict = await checkAssignees(assigneeIds, session, "tasks.create")
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
             updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
         }
@@ -234,7 +237,7 @@ export class TaskService {
                     data: assigneeIds.map((uid: string) => ({
                         userId: uid,
                         type: 'TASK_UPDATED',
-                        message: `Task "${title || existingTask.title}" updated by ${userRole} ${userName}.`,
+                        ...noticeRow({ key: 'notice_task_updated', params: { title: title || existingTask.title, role: roleKindParam(userRole), name: userName } }),
                         relatedId: id
                     }))
                 })
@@ -269,7 +272,14 @@ export class TaskService {
 
             // Also check if submitting for self unless Admin
             const isAssignee = currentTask.assignees.some((a: any) => a.id === userId)
-            if (userRole === 'EMPLOYEE' && !isAssignee) throw new Error("ACCESS_DENIED")
+            // Your own task, or one you may edit — a manager submitting on
+            // someone's behalf.
+            if (!isAssignee && !can(session.user, "tasks.edit")) throw new Error("ACCESS_DENIED")
+            // A decided task is not submitted again: it went back to awaiting
+            // confirmation with its points still held, so approving it again
+            // added them a second time, and new costs changed what a paid
+            // task owes. A rejected one is redone and submitted, as before.
+            if (['APPROVED', 'COMPLETED'].includes(currentTask.status)) throw new Error("TASK_ALREADY_DECIDED")
 
             // Handle Attachments
             let finalAttachments: any[] = []
@@ -371,7 +381,7 @@ export class TaskService {
 
             if (!isDraft && task.createdBy) {
                 await tx.notification.create({
-                    data: { userId: task.createdBy, type: 'TASK_SUBMITTED', message: `Task "${task.title}" has been submitted by ${session.user.name}`, relatedId: id }
+                    data: { userId: task.createdBy, type: 'TASK_SUBMITTED', ...noticeRow({ key: 'notice_task_submitted', params: { title: task.title, name: session.user.name ?? '' } }), relatedId: id }
                 })
             }
 
@@ -383,10 +393,19 @@ export class TaskService {
      * Reviews a task submission.
      */
     static async review(id: string, session: any, data: any) {
-        const { status: statusProp, action, difficulty } = data
+        const { status: statusProp, action, difficulty } = data ?? {}
         const status = statusProp || action
         const userId = session.user.id
         const userRole = session.user.role
+        // A decision the reviewer made, not a default: anything else used to
+        // be read as a rejection, so an empty or mistyped request rejected the
+        // task and took its points away.
+        if (!['APPROVED', 'REJECTED', 'COMPLETED'].includes(status)) throw new Error("INVALID_REVIEW_STATUS")
+        // Added to every assignee's points, so bounded as a task's is when it
+        // is created (lib/validations/task.schema.ts).
+        if (difficulty !== undefined && difficulty !== null && (typeof difficulty !== 'number' || !Number.isFinite(difficulty) || difficulty < 0 || difficulty > 10)) {
+            throw new Error("INVALID_DIFFICULTY")
+        }
 
         return await prisma.$transaction(async (tx) => {
             const oldTask = await tx.task.findUnique({
@@ -403,11 +422,13 @@ export class TaskService {
                 }
             }
 
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && oldTask.assignees.some(a => a.id === userId)) {
+            // Someone who reviews company-wide may not review their own work;
+            // a team-scoped reviewer (a Team Leader) reviews their team's, their own among it.
+            if (canCompanyWide(session.user, "tasks.review") && oldTask.assignees.some(a => a.id === userId)) {
                 throw new Error("SELF_REVIEW_FORBIDDEN")
             }
 
-            let newStatus = ['APPROVED', 'REJECTED', 'COMPLETED'].includes(status) ? status : 'REJECTED'
+            let newStatus = status
             if (newStatus === 'APPROVED' && oldTask.totalCost.isZero()) newStatus = 'COMPLETED'
 
             const newDifficulty = (typeof difficulty === 'number') ? difficulty : oldTask.difficulty
@@ -492,11 +513,10 @@ export class TaskService {
             // in any company, by naming it.
             const target = task.assignees.find(a => a.id === targetUserId)
             if (!target) throw new Error("NOT_AN_ASSIGNEE")
-            // And a Team Leader's reach is their team. A task shared with
-            // someone outside it is theirs to open, but that person's pay is
-            // not theirs to cut: the same rule as every per-person check
-            // (lib/security.ts, USER).
-            if (scopesToTeam(session.user.role) && target.id !== session.user.id && target.teamLeaderId !== session.user.id) {
+            // And within the scope the caller penalises at: held for a team,
+            // a task shared with someone outside it is theirs to open, but
+            // that person's pay is not theirs to cut.
+            if (!can(session.user, "tasks.penalize", { companyId: task.companyId, userId: target.id, teamLeaderId: target.teamLeaderId })) {
                 throw new Error("OUTSIDE_TEAM")
             }
 
@@ -563,7 +583,7 @@ export class TaskService {
             // Permission check
             const currentAssigneeIds = (originalTask as any).assignees.map((a: any) => a.id)
             const isAssignee = currentAssigneeIds.includes(userId)
-            if (!isAssignee && !['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+            if (!isAssignee && !can(session.user, "tasks.transfer")) {
                 throw new Error("UNAUTHORIZED_TRANSFER")
             }
 
@@ -582,7 +602,7 @@ export class TaskService {
                     throw new Error("CROSS_COMPANY_TRANSFER_FORBIDDEN")
                 }
                 // TEAM_LEADER Restriction check for ADDED users
-                if (userRole === 'TEAM_LEADER') {
+                if (scopesToTeam(session.user, "tasks.transfer")) {
                     if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {
                         throw new Error("TL_RESTRICTION")
                     }
@@ -642,7 +662,7 @@ export class TaskService {
                     data: addedIds.map((id: string) => ({
                         userId: id,
                         type: 'TASK_ASSIGNED',
-                        message: `You have been assigned a transferred task: ${newTask.title}`,
+                        ...noticeRow({ key: 'notice_task_transferred', params: { title: newTask.title } }),
                         relatedId: newTask.id
                     }))
                 })
@@ -669,7 +689,21 @@ export class TaskService {
     /**
      * Acknowledges a task edit.
      */
-    static async acknowledge(id: string) {
+    /**
+     * Clears the "this task was edited" notice. It is the assignee telling us
+     * they have seen the change, so only an assignee may clear it — anyone
+     * else doing so hides the change from the person it was for. The Super
+     * Admin may, as everywhere.
+     */
+    static async acknowledge(id: string, session: any) {
+        const task = await prisma.task.findUnique({
+            where: { id },
+            select: { assignees: { select: { id: true } } },
+        })
+        if (!task) throw new Error("TASK_NOT_FOUND")
+        const isAssignee = task.assignees.some(a => a.id === session.user.id)
+        if (!isAssignee && session.user.role !== 'SUPER_ADMIN') throw new Error("ACCESS_DENIED")
+
         return await prisma.task.update({
             where: { id },
             data: { isEdited: false }
@@ -699,7 +733,7 @@ export class TaskService {
             }
 
             const isSelfAssigned = task.assignees.some((a: any) => a.id === userId)
-            if (['ADMIN', 'SUPER_ADMIN'].includes(userRole) && isSelfAssigned) {
+            if (canCompanyWide(session.user, "tasks.delete") && isSelfAssigned) {
                 throw new Error("SELF_DELETION_FORBIDDEN")
             }
 
@@ -780,7 +814,7 @@ export class TaskService {
                 data: task.assignees.map((a: any) => ({
                     userId: a.id,
                     type: 'TASK_REVERTED',
-                    message: `Super Admin has reverted task "${task.title}" back to In Progress.`,
+                    ...noticeRow({ key: 'notice_task_reverted', params: { title: task.title } }),
                     relatedId: task.id
                 }))
             })
@@ -803,14 +837,18 @@ export class TaskService {
      * Updates task payment status.
      */
     static async updatePayment(id: string, session: any, data: any) {
-        const { paymentStatus, targetUserId } = data
+        const { paymentStatus, targetUserId } = data ?? {}
         const userRole = session.user.role
         const userId = session.user.id
+        // Paid or not, nothing else. Anything else used to be taken as "not
+        // paid": the task went back to Approved and every assignee to unpaid,
+        // under an audit entry saying the payment had changed.
+        if (paymentStatus !== 'PAID' && paymentStatus !== 'PENDING_PAYMENT') throw new Error("INVALID_PAYMENT_STATUS")
 
         return await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
                 where: { id },
-                include: { assignees: { select: { id: true, companyId: true } } }
+                include: { assignees: { select: { id: true, companyId: true, teamLeaderId: true } } }
             })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
@@ -820,6 +858,19 @@ export class TaskService {
                 if (task.companyId !== userCompanyId) {
                     throw new Error("ACCESS_DENIED")
                 }
+            }
+
+            // Only reviewed work is paid for, as the bulk route already holds:
+            // paying a task still in progress marked it Completed, skipping
+            // its review. And a per-person payment is for one of its people.
+            if (!['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) throw new Error("TASK_NOT_REVIEWED")
+            if (targetUserId) {
+                const member = task.assignees.find(a => a.id === targetUserId)
+                if (!member) throw new Error("NOT_AN_ASSIGNEE")
+                // Within the scope the caller pays at, as a penalty is: on a
+                // task shared with someone outside a team payer's team, that
+                // person's payment is not theirs to record.
+                if (!can(session.user, "tasks.pay", { companyId: task.companyId, userId: member.id, teamLeaderId: member.teamLeaderId })) throw new Error("OUTSIDE_TEAM")
             }
 
             const updateData: any = {}
@@ -897,7 +948,7 @@ export class TaskService {
                 if (!att) throw new Error("ITEM_NOT_FOUND")
 
                 const isAuthor = att.uploadedById === userId
-                const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+                const isAdmin = can(session.user, "tasks.edit")
                 if (!isAuthor && !isAdmin) throw new Error("UNAUTHORIZED_ITEM_DELETE")
 
                 // Physical Deletion
@@ -915,7 +966,7 @@ export class TaskService {
                 if (!item) throw new Error("ITEM_NOT_FOUND")
 
                 const isAuthor = item.authorId === userId
-                const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
+                const isAdmin = can(session.user, "tasks.edit")
                 if (!isAuthor && !isAdmin) throw new Error("UNAUTHORIZED_ITEM_DELETE")
 
                 updateData.comments = comments.filter((c: any) => !(c.type === type && (c.date === itemId || c.timestamp === itemId)))
@@ -1064,7 +1115,7 @@ export class TaskService {
                     notificationsData.push({
                         userId: aid,
                         type: "TASK_ASSIGNED",
-                        message: `New task assigned: ${task.title}`,
+                        ...noticeRow({ key: 'notice_task_imported', params: { title: task.title } }),
                         relatedId: createdTask.id
                     })
                 }
@@ -1107,6 +1158,8 @@ export class TaskService {
             if (userRole !== 'SUPER_ADMIN') {
                 whereClause.companyId = (session.user as any).companyId
             }
+            // And a team-scoped payer's team, whatever ids they were handed.
+            if (scopesToTeam(session.user, "tasks.pay")) and(whereClause, assignedToTeamWhere(userId))
 
             const tasks = await tx.task.findMany({
                 where: whereClause,

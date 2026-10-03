@@ -21,6 +21,7 @@ import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 import { cellToPrimitive } from '@/lib/xlsx-cell'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
+import { useCan } from '@/lib/useCan'
 
 const NO_VENDORS: any[] = []
 
@@ -53,11 +54,9 @@ export default function NewTaskPage() {
     const userRole = (session?.user as any)?.role
     const modules = useModules()
     const vendorsName = modules.label('vendors')
-    // Same role check as the vendors request below — a role that was
-    // never going to see vendors either way (e.g. Employee, if this page
-    // is ever reached with that role) gets the plain location field only,
-    // same as always.
-    const canUseVendors = ['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole)
+    // The permission GET /api/vendors checks — someone who may not read the
+    // vendor list gets the plain location field only, same as always.
+    const canUseVendors = useCan().can('vendors.view')
 
     // Who can be assigned. SWR, keyed by the company a Super Admin is looking
     // at, so switching company cannot leave the previous company's people in
@@ -521,7 +520,7 @@ export default function NewTaskPage() {
             <form onSubmit={handleSubmit}>
                 <div id="field-title" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
-                    <input
+                    <input aria-label={t('title_label' as any)}
                         className="input"
                         value={title}
                         onChange={e => {
@@ -543,7 +542,7 @@ export default function NewTaskPage() {
                 </div>
                 <div id="field-description" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
-                    <textarea
+                    <textarea aria-label={t('description_label' as any)}
                         className="input"
                         value={description}
                         onChange={e => {
@@ -617,7 +616,7 @@ export default function NewTaskPage() {
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
                                 {vendorsName}
                             </label>
-                            <select
+                            <select aria-label={vendorsName}
                                 value={vendorId}
                                 onChange={(e) => setVendorId(e.target.value)}
                                 className="input"
@@ -644,7 +643,7 @@ export default function NewTaskPage() {
                 </div>
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <input
+                    <input aria-label={t('assignee_label')}
                         type="text"
                         className="input"
                         placeholder={t('search_placeholder')}
@@ -714,7 +713,7 @@ export default function NewTaskPage() {
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>
-                    <input
+                    <input aria-label={t('difficulty')}
                         type="number"
                         className="input"
                         value={difficulty}

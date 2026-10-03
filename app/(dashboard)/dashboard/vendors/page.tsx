@@ -15,6 +15,7 @@ import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useHydrated } from '@/lib/useHydrated'
+import { useCan } from '@/lib/useCan'
 
 interface Vendor {
     id: string
@@ -106,7 +107,7 @@ export default function VendorsPage() {
         return Array.isArray(raw) ? raw : []
     })()
 
-    const canManage = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+    const canManage = useCan().can('vendors.manage')
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -339,7 +340,7 @@ export default function VendorsPage() {
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('select_company' as any) || 'Select Company'}
                                     </label>
-                                    <select
+                                    <select aria-label={t('select_company' as any) || 'Select Company'}
                                         value={addFormCompanyId}
                                         onChange={(e) => setAddFormCompanyId(e.target.value)}
                                         className="input"
@@ -444,15 +445,15 @@ function VendorFormFields({ form, setForm, locale, t }: {
         <>
             <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle}>{t('vendor_name' as any) || 'Vendor name'}</label>
-                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" style={inputStyle} autoFocus />
+                <input aria-label={t('vendor_name' as any) || 'Vendor name'} type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" style={inputStyle} autoFocus />
             </div>
             <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle}>{t('vendor_owner_name' as any) || 'Owner name'}</label>
-                <input type="text" value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} className="input" style={inputStyle} />
+                <input aria-label={t('vendor_owner_name' as any) || 'Owner name'} type="text" value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} className="input" style={inputStyle} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle}>{t('vendor_mobile_number' as any) || 'Mobile number'}</label>
-                <input type="tel" value={form.mobileNumber} onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })} className="input" style={inputStyle} />
+                <input aria-label={t('vendor_mobile_number' as any) || 'Mobile number'} type="tel" value={form.mobileNumber} onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })} className="input" style={inputStyle} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
                 <LocationSearchInput
