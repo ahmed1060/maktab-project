@@ -1682,7 +1682,7 @@ export const en = {
         face_ci_enrol: "Set up the face check",
         face_ci_rejected: "Your verification photo wasn't approved. Set the face check up again.",
         face_ci_waiting: "Your verification photo is waiting for approval. Until then you check in as before.",
-        face_ci_waiting_reverify: "Your new verification photo is waiting for approval. Until then, your check-ins wait for a review.",
+        face_ci_waiting_reverify: "Your new verification photo is waiting for approval. Until then, your check-ins use your current face check.",
         face_ci_idle: "Face verification isn't in use for you right now.",
         face_ci_reverify_hint: "You're asked to verify your face again. It starts with your next check-in, or now:",
         face_ci_reverify: "Verify again",

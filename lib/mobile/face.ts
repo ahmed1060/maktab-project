@@ -1,5 +1,6 @@
 import { attestedText, faceDeletedText, faceKeyText, faceText, type FaceResult } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
+import { pendingTemplatesAction, type FaceStatus } from "./screen"
 import type { Post } from "./check-in-flow"
 
 /**
@@ -17,30 +18,48 @@ import type { Post } from "./check-in-flow"
  * is null, nobody can enrol, and so nobody has face verification in use.
  */
 
-/** What the app needs from the face SDK. */
+/**
+ * What the app needs from the face SDK.
+ *
+ * Templates live in two places on the phone: the approved ones, which every
+ * check is made against, and new ones from an enrolment still waiting for a
+ * person to approve its photo. Until then nobody has said the new face is
+ * this person, so it is never matched against; on approval the new ones
+ * replace the old (promote), on rejection they go (discardPending). So
+ * check-ins keep working, against the approved face, while a
+ * re-verification waits (ATTENDANCE_PLAN.md §9.5).
+ */
 export interface FaceVerifier {
-    /** The SDK's model, as the server records it with each enrolment and check. */
-    info(): Promise<{ modelVersion: string; enrolled: boolean }>
+    /** The SDK's model; whether approved templates are stored; whether new ones wait. */
+    info(): Promise<{ modelVersion: string; enrolled: boolean; pending: boolean }>
     /**
      * Takes the person's face with a liveness check, keeps its templates on
-     * the phone locked with this wrapping key, and gives one verification
-     * photo: a JPEG in base64, at most 400 KB. The setup photos are deleted.
+     * the phone as the waiting ones, locked with this wrapping key, and gives
+     * one verification photo: a JPEG in base64, at most 400 KB. The setup
+     * photos are deleted.
      */
     enrol(wrappingKey: string): Promise<{ photo: string }>
     /**
-     * Compares the face in front of the camera with the templates, up to
-     * three tries. When it never matched, the last frame, a JPEG in base64.
+     * Compares the face in front of the camera with the approved templates,
+     * up to three tries. When it never matched, the last frame, a JPEG in
+     * base64.
      */
     verify(wrappingKey: string): Promise<{ verified: boolean; score: number; liveness: number; attempts: number; frame: string | null }>
-    /** Deletes the templates, which can no longer be read anyway. */
+    /** The waiting templates become the approved ones, replacing those before. */
+    promote(): Promise<void>
+    /** Deletes the waiting templates. */
+    discardPending(): Promise<void>
+    /** Deletes every template, which can no longer be read anyway. */
     deleteTemplates(): Promise<void>
 }
 
 /** The plugin's methods as the native code exposes them (mobile/README.md). */
 type NativeFacePlugin = {
-    getInfo(): Promise<{ modelVersion: string; enrolled?: boolean }>
+    getInfo(): Promise<{ modelVersion: string; enrolled?: boolean; pending?: boolean }>
     enrol(options: { wrappingKey: string }): Promise<{ photo: string }>
     verify(options: { wrappingKey: string }): Promise<{ verified: boolean; score: number; liveness: number; attempts: number; frame?: string | null }>
+    promote(): Promise<void>
+    discardPending(): Promise<void>
     deleteTemplates(): Promise<void>
 }
 
@@ -53,13 +72,15 @@ export function faceVerifier(): FaceVerifier | null {
     return {
         info: async () => {
             const i = await plugin.getInfo()
-            return { modelVersion: String(i.modelVersion).slice(0, 60), enrolled: !!i.enrolled }
+            return { modelVersion: String(i.modelVersion).slice(0, 60), enrolled: !!i.enrolled, pending: !!i.pending }
         },
         enrol: wrappingKey => plugin.enrol({ wrappingKey }),
         verify: async wrappingKey => {
             const r = await plugin.verify({ wrappingKey })
             return { verified: !!r.verified, score: r.score, liveness: r.liveness, attempts: r.attempts, frame: r.frame ?? null }
         },
+        promote: () => plugin.promote(),
+        discardPending: () => plugin.discardPending(),
         deleteTemplates: () => plugin.deleteTemplates(),
     }
 }
@@ -141,3 +162,15 @@ export async function faceCheck(device: CheckInDevice, face: FaceVerifier, post:
 }
 
 const clamp = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0)
+
+/**
+ * Brings the waiting templates in line with the decision on their photo:
+ * approved, they become the ones matched against; rejected or withdrawn,
+ * they go. Nothing while the photo still waits.
+ */
+export async function settleTemplates(face: FaceVerifier, status: FaceStatus): Promise<"PROMOTED" | "DISCARDED" | null> {
+    const action = pendingTemplatesAction(status, await face.info())
+    if (action === "PROMOTE") await face.promote()
+    if (action === "DISCARD") await face.discardPending()
+    return action === "PROMOTE" ? "PROMOTED" : action === "DISCARD" ? "DISCARDED" : null
+}

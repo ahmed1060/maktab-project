@@ -87,12 +87,10 @@ export class AttendanceCheckInService {
             : { verified: false, reason: "NOT_CHECKED" }
         // Face verification, when it is in use for the person (§9.5): the result
         // the phone signed, and the frame of a failed check if it matches its hash.
-        const faceStatus = worthAsking ? await FaceVerificationService.statusFor(userId) : null
-        const faceRequired = !!faceStatus?.active
-        // While a re-verification photo waits for approval, the phone already
-        // matches against the new face: nobody has said it is this person, so
-        // a match proves nothing until they do (review on #27).
-        const faceCounts = faceRequired && !faceStatus!.pendingReview
+        // While a re-verification photo waits, the app still matches against the
+        // approved templates and keeps the new ones aside until approval
+        // (lib/mobile/face.ts), so check-ins keep working (§9.5, review on #27).
+        const faceRequired = worthAsking && (await FaceVerificationService.statusFor(userId)).active
         const frame = faceRequired ? frameOf(input) : null
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
@@ -128,7 +126,7 @@ export class AttendanceCheckInService {
                 fix: { latitude: input.latitude, longitude: input.longitude, accuracyMeters: input.accuracyMeters },
                 mocked: input.mocked,
                 attestation: { verified: attestation.verified, required: attestationMode() === "required" },
-                face: { required: faceRequired, verified: faceCounts && !!input.face?.verified },
+                face: { required: faceRequired, verified: !!input.face?.verified },
                 places, ip,
             })
             if (verdict.outcome === "REFUSED") {

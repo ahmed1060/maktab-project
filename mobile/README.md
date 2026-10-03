@@ -243,10 +243,16 @@ The page side is `lib/mobile/face.ts`. The plugin must give exactly this:
 
 | Method | What it does |
 | --- | --- |
-| `getInfo()` | `{ modelVersion, enrolled }`: the SDK's model name and version (up to 60 characters), and whether templates are stored on this phone |
-| `enrol({ wrappingKey })` | Shows the camera with a liveness check, makes the templates, and stores them encrypted with a key derived from **both** a key in the secure hardware (Keystore or Secure Enclave) and `wrappingKey` (32 bytes in base64, from the server). Deletes the set-up photos. Gives `{ photo }`: one frontal JPEG in base64, at most 400 KB, which a person approves |
-| `verify({ wrappingKey })` | Up to three tries against the stored templates, decrypted with the same two halves. Gives `{ verified, score, liveness, attempts, frame }`: scores from 0 to 1; `frame` is the last camera frame as a JPEG in base64 (at most 400 KB) when it never matched, else `null` |
-| `deleteTemplates()` | Deletes the stored templates |
+| `getInfo()` | `{ modelVersion, enrolled, pending }`: the SDK's model name and version (up to 60 characters), whether approved templates are stored, and whether new ones are waiting |
+| `enrol({ wrappingKey })` | Shows the camera with a liveness check and makes templates. It stores them as the **waiting** ones, encrypted with a key derived from **both** a key in the secure hardware (Keystore or Secure Enclave) and `wrappingKey` (32 bytes in base64, from the server). It must not touch the approved ones. It deletes the set-up photos and gives `{ photo }`: one frontal JPEG in base64, at most 400 KB, which a person approves |
+| `verify({ wrappingKey })` | Up to three tries against the **approved** templates, decrypted with the same two halves, never against waiting ones. Gives `{ verified, score, liveness, attempts, frame }`: scores from 0 to 1; `frame` is the last camera frame as a JPEG in base64 (at most 400 KB) when it never matched, else `null` |
+| `promote()` | The waiting templates replace the approved ones. Called once their photo is approved |
+| `discardPending()` | Deletes the waiting templates. Called once their photo is rejected or withdrawn |
+| `deleteTemplates()` | Deletes every template, approved and waiting |
+
+Keeping new templates aside until a person approves their photo means a
+re-verification never lets an unapproved face check in. Check-ins keep
+working against the approved face meanwhile (ATTENDANCE_PLAN.md §9.5).
 
 Errors reject with `FACE_CANCELLED` (the person closed the camera; nothing
 is sent), `CAMERA_DENIED`, or anything else. Any other error means the check

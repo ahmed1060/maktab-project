@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone, faceStep, reverifyFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
+import { answerKey, thisPhone, faceStep, pendingTemplatesAction, reverifyFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -92,5 +92,21 @@ describe("face templates and re-verification on this phone", () => {
         expect(reverifyFirst(status({ reverifyDue: true }))).toBe(true)
         expect(reverifyFirst(status({ reverifyDue: true, pendingReview: true }))).toBe(false)
         expect(reverifyFirst(status({ reverifyDue: true, active: false }))).toBe(false)
+    })
+})
+
+describe("templates waiting on their photo (§9.5)", () => {
+    const status = (over: Partial<FaceStatus> = {}): FaceStatus => ({
+        active: true, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: { faceStatus: "APPROVED" }, pendingReview: false, reverifyDue: false, ...over,
+    })
+
+    it("keeps them aside while the photo waits, promotes them once approved, drops them otherwise", () => {
+        expect(pendingTemplatesAction(status({ pendingReview: true }), { pending: true })).toBeNull()
+        expect(pendingTemplatesAction(status(), { pending: false })).toBeNull()
+        expect(pendingTemplatesAction(status(), { pending: true })).toBe("PROMOTE")
+        // Approved while paused still promotes: the decision is the reviewer's.
+        expect(pendingTemplatesAction(status({ required: false, active: false }), { pending: true })).toBe("PROMOTE")
+        expect(pendingTemplatesAction(status({ phone: { faceStatus: "REJECTED" }, active: false }), { pending: true })).toBe("DISCARD")
+        expect(pendingTemplatesAction(status({ phone: { faceStatus: "NONE" }, consent: null, active: false }), { pending: true })).toBe("DISCARD")
     })
 })

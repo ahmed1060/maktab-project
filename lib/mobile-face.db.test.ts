@@ -3,7 +3,8 @@ import { readFileSync, readdirSync } from "node:fs"
 import { generateKeyPairSync, randomBytes, sign } from "node:crypto"
 import { Client } from "pg"
 import { checkIn, type Post } from "@/lib/mobile/check-in-flow"
-import { enrolFace, wrappingKey, type FaceVerifier } from "@/lib/mobile/face"
+import { enrolFace, settleTemplates, wrappingKey, type FaceVerifier } from "@/lib/mobile/face"
+import type { FaceStatus } from "@/lib/mobile/screen"
 import type { CheckInDevice } from "@/lib/mobile/native"
 import { parsePhoneKey } from "@/lib/attendance/phone-keys"
 import { checkInSchema, challengeSchema } from "@/lib/validations/attendance-phone.schema"
@@ -55,19 +56,24 @@ function standInPhone(): CheckInDevice {
     }
 }
 
-/** A face SDK: its templates readable only with the key they were made with. */
-function standInFace(): FaceVerifier & { lockedWith: string | null; matches: boolean; deleted: number; frame: string } {
+/**
+ * A face SDK: templates readable only with the key they were made with, the
+ * approved ones matched against, new ones kept aside until promoted.
+ */
+function standInFace(): FaceVerifier & { lockedWith: string | null; pendingWith: string | null; matches: boolean; deleted: number; frame: string } {
     const face = {
-        lockedWith: null as string | null, matches: true, deleted: 0, frame: jpeg(),
-        info: async () => ({ modelVersion: "sdk-1.2", enrolled: face.lockedWith !== null }),
-        enrol: async (key: string) => { face.lockedWith = key; return { photo: jpeg() } },
+        lockedWith: null as string | null, pendingWith: null as string | null, matches: true, deleted: 0, frame: jpeg(),
+        info: async () => ({ modelVersion: "sdk-1.2", enrolled: face.lockedWith !== null, pending: face.pendingWith !== null }),
+        enrol: async (key: string) => { face.pendingWith = key; return { photo: jpeg() } },
         verify: async (key: string) => {
             if (key !== face.lockedWith) throw new Error("TEMPLATES_UNREADABLE")
             return face.matches
                 ? { verified: true, score: 0.97, liveness: 0.99, attempts: 1, frame: null }
                 : { verified: false, score: 0.2, liveness: 0.95, attempts: 3, frame: face.frame }
         },
-        deleteTemplates: async () => { face.lockedWith = null; face.deleted++ },
+        promote: async () => { face.lockedWith = face.pendingWith; face.pendingWith = null },
+        discardPending: async () => { face.pendingWith = null },
+        deleteTemplates: async () => { face.lockedWith = null; face.pendingWith = null; face.deleted++ },
     }
     return face
 }
@@ -88,6 +94,8 @@ function serverFor(userId: string): Post & { sent: string[] } {
 }
 
 describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", () => {
+    /** What GET /api/attendance/face gives the app. */
+    const status = async () => JSON.parse(JSON.stringify(await Face.statusFor("e1"))) as FaceStatus
     const dbName = `mobile_face_test_${Date.now()}`
     let db: Client
     const phone = standInPhone()
@@ -133,12 +141,18 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         const review = await enrolFace(phone, face, server)
         expect(review).toMatchObject({ purpose: "ENROLMENT", status: "PENDING" })
         expect(server.sent).toEqual(["/api/attendance/phone/challenge", "/api/attendance/face/key", "/api/attendance/phone/challenge", "/api/attendance/face/photo"])
-        expect(face.lockedWith).not.toBeNull()
+        expect(face.pendingWith).not.toBeNull()
+        expect(face.lockedWith).toBeNull()
         const { rows: [row] } = await db.query(`SELECT "modelVersion" FROM "FaceReview" WHERE id = $1`, [review.id])
         expect(row.modelVersion).toBe("sdk-1.2")
         expect((await Face.statusFor("e1")).active).toBe(false)
+        // Waiting: nothing to settle yet.
+        expect(await settleTemplates(face, await status())).toBeNull()
         await Reviews.decide(review.id, true, null, { id: "a1", isSuperAdmin: false })
         expect((await Face.statusFor("e1")).active).toBe(true)
+        // Approved: the new templates become the ones matched against.
+        expect(await settleTemplates(face, await status())).toBe("PROMOTED")
+        expect(face.lockedWith).not.toBeNull()
     })
 
     it("checks in with the face check signed in: a match counts as a match; no face check at all is flagged", async () => {
@@ -157,6 +171,21 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         expect(answer).toMatchObject({ outcome: "FLAGGED", reasons: expect.arrayContaining(["FACE_UNVERIFIED"]) })
         const { rows } = await db.query(`SELECT f.id FROM "FaceFrame" f JOIN "AttendancePunch" p ON p.id = f."punchId" WHERE p."userId" = 'e1'`)
         expect(rows).toHaveLength(1)
+    })
+
+    it("re-verifies without stopping check-ins: the approved face is matched until the new one is decided (§9.5)", async () => {
+        const approved = face.lockedWith
+        const review = await enrolFace(phone, face, serverFor("e1"))
+        expect(review).toMatchObject({ purpose: "REVERIFY", status: "PENDING" })
+        // Matched against the approved templates: counts, as before.
+        expect(await checkIn(phone, serverFor("e1"), "IN", face)).toMatchObject({ reasons: ["ATTESTATION_UNVERIFIED"] })
+        await Reviews.decide(review.id, false, "Not them", { id: "a1", isSuperAdmin: false })
+        // Rejected: the new templates go; the approved ones are untouched.
+        expect(await settleTemplates(face, await status())).toBe("DISCARDED")
+        expect(face.pendingWith).toBeNull()
+        expect(face.lockedWith).toBe(approved)
+        // Rejection stops face verification for them until they set it up again; back as before for what follows.
+        await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED' WHERE id = 'p1'`)
     })
 
     it("checks in without the face check when the SDK fails, flagged; not at all when the person cancels (review on #27)", async () => {

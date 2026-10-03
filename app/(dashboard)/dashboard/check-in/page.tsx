@@ -13,7 +13,7 @@ import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
 import { answerKey, faceStep, reverifyFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
-import { enrolFace, faceVerifier, wrappingKey } from '@/lib/mobile/face'
+import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
 import { send, json } from '../attendance/send'
 import { AskPermissionModal } from '../attendance/RequestsTab'
@@ -81,8 +81,10 @@ export default function CheckInPage() {
             if (!r.ok) throw new Error(r.error)
             return r.body
         }
-        void face.info()
-            .then(i => (shouldReconcileTemplates(faceStatus, { phoneActive, enrolled: i.enrolled }) ? wrappingKey(device, face, quiet) : null))
+        // New templates waiting on their photo: kept aside until it is decided, then promoted or dropped (§9.5).
+        void settleTemplates(face, faceStatus)
+            .then(() => face.info())
+            .then(i => (shouldReconcileTemplates(faceStatus, { phoneActive, enrolled: i.enrolled || i.pending }) ? wrappingKey(device, face, quiet) : null))
             .catch(() => {})
     }, [device, face, faceStatus, phoneActive])
 
@@ -271,7 +273,7 @@ function FaceCard({ step, active, busy, working, onConsent, onWithdraw, onEnrol 
         </section>
     )
     const text: Record<Exclude<typeof step, 'CONSENT'>, TranslationKey> = {
-        // A re-verification waiting: check-ins wait for a review until it is approved.
+        // A re-verification waiting: check-ins go on against the approved face.
         WAITING: active ? 'face_ci_waiting_reverify' : 'face_ci_waiting', NEEDS_APP: 'face_ci_needs_app', ENROL: 'face_ci_enrol_hint',
         REJECTED: 'face_ci_rejected', REVERIFY: 'face_ci_reverify_hint', READY: 'face_ci_on', IDLE: 'face_ci_idle',
     }

@@ -86,3 +86,15 @@ export function shouldReconcileTemplates(status: FaceStatus | undefined, here: {
 export function reverifyFirst(status: FaceStatus | undefined): boolean {
     return !!status?.active && status.reverifyDue && !status.pendingReview
 }
+
+/**
+ * What becomes of templates waiting on this phone once their photo is
+ * decided (§9.5): approved (the phone's face status is APPROVED and nothing
+ * waits), they replace the approved ones; otherwise they go. Nothing while
+ * the photo waits, or with nothing waiting.
+ */
+export function pendingTemplatesAction(status: FaceStatus | undefined, info: { pending: boolean }): "PROMOTE" | "DISCARD" | null {
+    if (!status || !info.pending || status.pendingReview) return null
+    // Approval leaves the phone APPROVED; rejection leaves it REJECTED, and withdrawal NONE.
+    return status.phone?.faceStatus === "APPROVED" ? "PROMOTE" : "DISCARD"
+}
