@@ -91,6 +91,14 @@ export const policyBodySchema = z.object({
     permissionHours: permissionHoursSchema,
     /** Minutes after a shift starts with no check-in before the reminder (§13.4). Null: off. */
     noCheckInReminderMinutes: z.number().int().min(1).max(240).nullable(),
+    /**
+     * Face verification can be asked of this company's people (§9.5). Only
+     * while the system switch is on and the company has confirmed its legal
+     * readiness (§10.4). Defaults off, which also reads versions saved before it existed.
+     */
+    faceVerificationAvailable: z.boolean().default(false),
+    /** Re-verify each person's face every this many months; null: only on request (§9.5). */
+    faceReverifyMonths: z.number().int().min(1).max(36).nullable().default(null),
 })
 
 export type Band = z.infer<typeof bandSchema>
@@ -190,6 +198,8 @@ export const STANDARD_OFFICE: PolicyBody = {
         maxRequestsPerMonth: 4, afterTheFactHours: 24, carryOver: "LAPSE", types: [...PERMISSION_TYPES],
     },
     noCheckInReminderMinutes: 15,
+    faceVerificationAvailable: false,
+    faceReverifyMonths: null,
 }
 
 export const SIX_DAY_FACTORY: PolicyBody = {
@@ -215,6 +225,8 @@ export const MEASURE_ONLY: PolicyBody = {
         maxRequestsPerMonth: null, afterTheFactHours: 0, carryOver: "LAPSE", types: [...PERMISSION_TYPES],
     },
     noCheckInReminderMinutes: null,
+    faceVerificationAvailable: false,
+    faceReverifyMonths: null,
 }
 
 export type PolicyVersion = { id: string; effectiveFrom: string; body: PolicyBody }

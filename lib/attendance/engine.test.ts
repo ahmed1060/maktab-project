@@ -167,6 +167,17 @@ describe("pricing a month", () => {
         expect(short).toMatchObject({ overtimeStatus: "NOT_COUNTED", overtimeMinor: 0 })
     })
 
+    it("splits a day's deduction by its cause, each part rounded alone, the whole their sum (§12.2)", () => {
+        // A third of a day's pay three ways, at 100.00 a day (3,100.00 over 31 days).
+        const rule = { enabled: true, graceMinutes: 0, mode: "BANDS" as const, bands: [{ fromMinutes: 1, toMinutes: null, dayFraction: 1 / 3 }], freePerMonth: 0, escalation: null, monthlyCapDays: null }
+        const policy: PolicyBody = { ...STANDARD_OFFICE, lateness: rule, earlyLeave: rule }
+        const [d] = priceMonth([input(day("2026-10-04", { lateMinutes: 10, earlyLeaveMinutes: 10 }), { policy, monthlyMinor: 310_000 })])
+        expect(d.deductionParts).toEqual({ lateness: 3333, earlyLeave: 3333, absence: 0 })
+        expect(d.deductionMinor).toBe(6666)
+        const [a] = priceMonth([input(day("2026-10-05", { status: "ABSENT" }), { monthlyMinor: 310_000 })])
+        expect(a.deductionParts).toEqual({ lateness: 0, earlyLeave: 0, absence: 10000 })
+    })
+
     it("pays approved overtime only up to what was worked, and rejected overtime not at all (P0.6)", () => {
         const [part] = priceMonth([input(day("2026-10-04", { overtimeMinutes: 90 }), { overtimeDecision: { status: "APPROVED", minutes: 30 } })])
         expect(part).toMatchObject({ overtimeStatus: "APPROVED", overtimeMinor: Math.round(30000 * 30 / 420 * 1.35) })

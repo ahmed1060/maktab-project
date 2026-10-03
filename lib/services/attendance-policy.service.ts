@@ -76,6 +76,18 @@ export class AttendancePolicyService {
     ) {
         if (!isDateString(input.effectiveFrom)) fail("INVALID_DATE")
         const body = checkBody(input.body)
+        // Face verification may be offered only once the system is on (or paused,
+        // which keeps enrolments) and the company has confirmed its legal readiness (§10.4).
+        if (body.faceVerificationAvailable) {
+            const [settings, company] = await Promise.all([
+                prisma.systemSettings.findUnique({ where: { id: "default" }, select: { faceVerification: true } }),
+                prisma.company.findUnique({ where: { id: companyId }, select: { faceLegalConfirmedAt: true } }),
+            ])
+            if ((settings?.faceVerification ?? "OFF") === "OFF" || !company?.faceLegalConfirmedAt) fail("FACE_NOT_ALLOWED")
+            // Imported here: the face service reads policies through this one.
+            const { FaceVerificationService } = await import("./face-verification.service")
+            if (!(await FaceVerificationService.hasMobileApp(companyId))) fail("FACE_NOT_ALLOWED")
+        }
         const today = await AttendanceCalendarService.today(companyId)
 
         const out = await prisma.$transaction(async tx => {
@@ -120,6 +132,47 @@ export class AttendancePolicyService {
             })
         })
         await recomputeAfter(version.companyId, effectiveFrom)
+    }
+
+    // --- reaching payroll (§12, §20 Phase 1) -------------------------------------
+
+    /**
+     * The first month whose attendance reaches payroll, and the earliest it
+     * may be set to: the month after the latest approved or paid payroll, so
+     * no month already paid changes which side of the line it is on.
+     */
+    static async payrollFrom(companyId: string) {
+        const [company, latest] = await Promise.all([
+            prisma.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true } }),
+            prisma.payrollRun.findFirst({ where: { companyId, status: { in: ["APPROVED", "PAID"] } }, orderBy: [{ year: "desc" }, { month: "desc" }], select: { year: true, month: true } }),
+        ])
+        const earliest = latest ? (latest.month === 12 ? `${latest.year + 1}-01` : `${latest.year}-${String(latest.month + 1).padStart(2, "0")}`) : null
+        return { from: company?.attendancePayrollFrom ? toDateString(company.attendancePayrollFrom).slice(0, 7) : null, earliest }
+    }
+
+    /** Sets or clears it. Null: attendance is measured and shown, and deducts nothing — the dry run. */
+    static async setPayrollFrom(companyId: string, from: string | null, actorId: string) {
+        if (from !== null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(from)) fail("INVALID_MONTH")
+        await prisma.$transaction(async tx => {
+            // The company row, locked first: an approval in progress holds it
+            // (FOR SHARE) until it commits, so the check below sees that month
+            // approved, and an approval starting now reads the new value.
+            await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR UPDATE`
+            const company = await tx.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true } }) ?? fail("COMPANY_NOT_FOUND")
+            const latest = await tx.payrollRun.findFirst({
+                where: { companyId, status: { in: ["APPROVED", "PAID"] } }, orderBy: [{ year: "desc" }, { month: "desc" }], select: { year: true, month: true },
+            })
+            const paidThrough = latest ? `${latest.year}-${String(latest.month).padStart(2, "0")}` : null
+            if (from !== null && paidThrough && from <= paidThrough) fail("ATTENDANCE_PAYROLL_MONTH_PAID")
+            const before = company.attendancePayrollFrom ? toDateString(company.attendancePayrollFrom).slice(0, 7) : null
+            if (before === from) return
+            await tx.company.update({ where: { id: companyId }, data: { attendancePayrollFrom: from ? new Date(`${from}-01T00:00:00Z`) : null } })
+            await AuditLogService.log("SET_ATTENDANCE_PAYROLL_FROM", "COMPANY", companyId, {
+                tx, ...(await actorOf(tx, actorId)),
+                details: { companyId, from: before === null ? { from: "none", to: from ?? "none" } : { from: before, to: from ?? "none" } },
+            })
+        })
+        return this.payrollFrom(companyId)
     }
 
     // --- templates (§6.8) -----------------------------------------------------

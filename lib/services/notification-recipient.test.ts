@@ -64,6 +64,8 @@ describe("NotificationService recipient columns", () => {
     })
 
     it("reads and mark-as-read both use that filter rather than userId alone", async () => {
+        // getByUser now orders what it reads (pinned CRITICAL first), so it needs rows back.
+        prismaMock.notification.findMany.mockResolvedValue([])
         await NotificationService.getByUser("sa-1")
         expect(prismaMock.notification.findMany.mock.calls[0][0].where).toEqual(
             NotificationService.recipientFilter("sa-1")

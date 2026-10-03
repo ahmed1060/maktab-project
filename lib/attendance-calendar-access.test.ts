@@ -58,6 +58,8 @@ vi.mock("@/lib/services/attendance-policy.service", () => ({
         versionOf: async (id: string) => id === "p1" ? { id: "p1", companyId: "c1" } : id === "p2" ? { id: "p2", companyId: "c2" } : null,
         deleteVersion: async (id: string) => { reached.push(`deletePolicy:${id}`) },
         createTemplate: async () => { reached.push("createTemplate"); return {} },
+        payrollFrom: async (companyId: string) => { reached.push(`payrollFrom:${companyId}`); return { from: null, earliest: null } },
+        setPayrollFrom: async (companyId: string, from: string | null) => { reached.push(`setPayrollFrom:${companyId}:${from}`); return { from, earliest: null } },
     },
 }))
 vi.mock("@/lib/services/public-holiday.service", () => ({
@@ -232,6 +234,21 @@ describe("the policy", () => {
         employee()
         expect((await simulate({ body: POLICY.body })).status).toBe(404)
         expect(reached).toEqual(["simulate:c1:2026-09", "simulate:c1:2026-08"])
+    })
+
+    it("says from when attendance reaches payroll, set by whoever may change the policy (§12)", async () => {
+        const get = async () => (await import("@/app/api/attendance/payroll-from/route")).GET(new Request(url("/api/attendance/payroll-from")))
+        const put = async (body: unknown) => (await import("@/app/api/attendance/payroll-from/route")).PUT(withBody("PUT", "/api/attendance/payroll-from", body))
+        admin()
+        expect((await get()).status).toBe(200)
+        expect((await put({ from: "2026-11" })).status).toBe(200)
+        expect((await put({ from: null })).status).toBe(200)
+        viewer()
+        expect((await get()).status).toBe(200)
+        expect((await put({ from: "2026-11" })).status).toBe(403)
+        employee()
+        expect((await get()).status).toBe(404)
+        expect(reached).toEqual(["payrollFrom:c1", "setPayrollFrom:c1:2026-11", "setPayrollFrom:c1:null", "payrollFrom:c1"])
     })
 
     it("shows money in the preview only to whoever may see the company's salaries (review on #15)", async () => {

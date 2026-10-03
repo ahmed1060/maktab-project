@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
 import { send, json } from './send'
+import FaceTab from './FaceTab'
 import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
 import AddPunchModal from './AddPunchModal'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
@@ -33,7 +34,8 @@ import type { TranslationKey } from '@/lib/translations'
 
 type Punch = {
     id: string; userId: string | null; name: string | null; hardwareUserId: string | null
-    source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null
+    source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null; deviceName?: string | null
+    placeName?: string | null; status?: string; flagReasons?: string[]
     voidedAt: string | null; voidReason: string | null
 }
 type Person = { id: string; name: string; teamLeaderId: string | null }
@@ -47,7 +49,7 @@ type Report = {
 type ImportRow = { id: string; fileName: string; createdAt: string; rowCount: number; addedCount: number; duplicateCount: number; refusedCount: number; voidedAt: string | null; voidReason: string | null }
 type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
 
-type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'import' | 'numbers'
+type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'face' | 'import' | 'numbers'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const monthStart = (date: string) => `${date.slice(0, 8)}01`
@@ -78,17 +80,23 @@ export default function AttendancePage() {
     const tabs: Tab[] = [
         ...(seesOthers ? ['exceptions' as const] : []),
         'days', 'punches', 'requests',
+        // Face verification (§9.5): only whoever decides it, company-wide.
+        ...(p.companyWide('attendance.approve_face') ? ['face' as const] : []),
         ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
     ]
-    const [picked, setTab] = useState<Tab | null>(null)
-    const tab: Tab = picked ?? (seesOthers ? 'exceptions' : 'days')
+    // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
+    // A tab picked by hand holds only under the link it was picked under: a new link wins.
+    const linked = params.get('tab') as Tab | null
+    const [picked, setPicked] = useState<{ tab: Tab; under: Tab | null } | null>(null)
+    const setTab = (k: Tab) => setPicked({ tab: k, under: linked })
+    const tab: Tab = picked && picked.under === linked ? picked.tab : linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
 
     if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
 
-    const label: Record<Tab, TranslationKey> = { exceptions: 'exc_tab', days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    const label: Record<Tab, TranslationKey> = { exceptions: 'exc_tab', days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', face: 'face_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
             {tabs.length > 1 && (
@@ -104,6 +112,7 @@ export default function AttendancePage() {
             {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
             {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
             {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
+            {tab === 'face' && <FaceTab q={q} />}
             {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
             {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
         </div>
@@ -410,7 +419,16 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                                                 )}
                                                 <td>{x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : '—'}</td>
                                                 <td>
-                                                    {t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
+                                                        : x.source === 'MOBILE' ? t('punch_source_app').replace('{place}', x.placeName ?? '—')
+                                                        : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
+                                                    {/* A check-in that doesn't count yet, or won't: why (§9.6). */}
+                                                    {x.status && x.status !== 'ACCEPTED' && (
+                                                        <div style={{ color: x.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--warn-fg)', fontSize: '0.78rem' }}>
+                                                            {t(`punch_status_${x.status}` as TranslationKey)}
+                                                            {(x.flagReasons ?? []).length > 0 && ` · ${(x.flagReasons ?? []).map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}`}
+                                                        </div>
+                                                    )}
                                                     {x.note && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{x.note}</div>}
                                                     {x.voidedAt && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{t('punch_withdrawn_because').replace('{reason}', x.voidReason ?? '')}</div>}
                                                 </td>
