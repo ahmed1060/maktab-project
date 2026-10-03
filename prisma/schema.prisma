@@ -261,6 +261,7 @@ model Company {
   faceLegalConfirmedAt     DateTime?
   faceLegalConfirmedById   String?
   biometricConsents        BiometricConsent[]
+  faceReviews              FaceReview[]
   checkInRefusals          CheckInRefusal[]
   checkInReminders         CheckInReminder[]
   companyHolidays      CompanyHoliday[]
@@ -527,6 +528,10 @@ model User {
   /// Face verification is asked of this person at check-in (§9.5), when the
   /// company's policy makes it available. Set by attendance.approve_face.
   faceVerificationRequired   Boolean                    @default(false)
+  /// Someone asked this person to verify their face again (§9.5).
+  faceReverifyRequestedAt    DateTime?
+  faceReverifyRequestedById  String?
+  faceReviews                FaceReview[]
   biometricConsents          BiometricConsent[]
   attendanceChallenges       AttendanceChallenge[]
   checkInRefusals            CheckInRefusal[]
@@ -672,6 +677,52 @@ model BiometricConsent {
   company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([userId, acceptedAt])
+}
+
+enum PhoneFaceStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FaceReviewPurpose {
+  ENROLMENT
+  REVERIFY
+}
+
+enum FaceReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// A verification photo and its decision (§9.5). The photo is encrypted with
+/// its own key (FACE_PHOTO_KEY) and deleted (set null) when rejected,
+/// replaced, withdrawn or purged: the approved one with a photo is the
+/// person's reference photo, at most one per person.
+model FaceReview {
+  id                    String            @id @default(uuid())
+  companyId             String
+  userId                String
+  phoneId               String
+  purpose               FaceReviewPurpose
+  status                FaceReviewStatus  @default(PENDING)
+  photo                 Bytes?
+  modelVersion          String
+  /// Whether the phone proved it runs our app when it sent the photo (§9.4).
+  attested              Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+  decidedAt             DateTime?
+  decidedById           String?
+  decidedBySuperAdminId String?
+  reason                String?
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company               Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([userId, status])
 }
 
 enum NotificationPriority {
@@ -2325,6 +2376,12 @@ model CheckInPhone {
   /// phone that wasn't attested.
   appAttestKey     String?
   appAttestCounter Int                @default(0)
+  /// Face verification on this phone (§9.5): the templates stay on it; the
+  /// server knows only that it was enrolled, with which model, and whether a
+  /// person approved the verification photo.
+  faceStatus       PhoneFaceStatus    @default(NONE)
+  faceEnrolledAt   DateTime?
+  faceModelVersion String?
   status         CheckInPhoneStatus @default(PENDING)
   requestedAt    DateTime           @default(now())
   decidedAt      DateTime?

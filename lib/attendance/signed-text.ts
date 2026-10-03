@@ -4,7 +4,7 @@
  * differently. No imports: it runs in the browser as well as on the server.
  */
 
-export type SignedPurpose = "REGISTER" | "CHECK_IN"
+export type SignedPurpose = "REGISTER" | "CHECK_IN" | "FACE"
 
 /**
  * What a phone signs: the purpose, the one-time number the server gave it,

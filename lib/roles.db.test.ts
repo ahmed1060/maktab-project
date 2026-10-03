@@ -60,6 +60,7 @@ const PUSH_CLAIM = "20261024000000_push_claim"
 // services here read (§9.5).
 const APP_ATTEST = "20261025000000_app_attest"
 const FACE = "20261026000000_face_switches"
+const FACE_REVIEWS = "20261027000000_face_reviews"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BEFORE_ROLES = `
@@ -111,6 +112,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(PUSH_CLAIM))
         await db.query(sql(APP_ATTEST))
         await db.query(sql(FACE))
+        await db.query(sql(FACE_REVIEWS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

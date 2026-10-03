@@ -155,22 +155,50 @@ export class FaceVerificationService {
     static async withdrawConsent(userId: string) {
         await prisma.$transaction(async tx => {
             const { count } = await tx.biometricConsent.updateMany({ where: { userId, withdrawnAt: null }, data: { withdrawnAt: new Date() } })
-            if (count > 0) await AuditLogService.log("WITHDRAW_FACE_CONSENT", "USER", userId, { tx, userId, details: { userId } })
+            if (count === 0) return
+            // Every photo of them goes, and their phone's face state with it (§10.4).
+            const { FaceReviewService } = await import("./face-review.service")
+            await FaceReviewService.forget(tx, userId)
+            await AuditLogService.log("WITHDRAW_FACE_CONSENT", "USER", userId, { tx, userId, details: { userId } })
         })
     }
 
-    /** Everything the app needs to know about face verification for this person. */
+    /**
+     * Everything the app needs to know about face verification for this
+     * person. In use only on their phone in use, once its verification photo
+     * is approved (§9.5).
+     */
     static async statusFor(userId: string) {
-        const person = await prisma.user.findUnique({ where: { id: userId }, select: { companyId: true, faceVerificationRequired: true } })
-        if (!person?.companyId) return { active: false, required: false, company: { allowed: false, reason: "SYSTEM_OFF" as const }, consent: null, consentVersion: FACE_CONSENT_VERSION }
-        const [company, consent] = await Promise.all([this.companyStatus(person.companyId), this.currentConsent(userId)])
+        const person = await prisma.user.findUnique({ where: { id: userId }, select: { companyId: true, faceVerificationRequired: true, faceReverifyRequestedAt: true } })
+        if (!person?.companyId) {
+            return { active: false, required: false, company: { allowed: false, reason: "SYSTEM_OFF" as const }, consent: null, consentVersion: FACE_CONSENT_VERSION, phone: null, pendingReview: false, reverifyDue: false }
+        }
+        const [company, consent, phone, pending, reference] = await Promise.all([
+            this.companyStatus(person.companyId),
+            this.currentConsent(userId),
+            prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { faceStatus: true, faceEnrolledAt: true } }),
+            prisma.faceReview.count({ where: { userId, status: "PENDING" } }),
+            prisma.faceReview.findFirst({ where: { userId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true } }),
+        ])
+        const required = company.allowed && person.faceVerificationRequired
+        const enrolled = phone?.faceStatus === "APPROVED"
+        // Asked for, or due by the policy's interval since the last approval (§9.5).
+        const dueBySchedule = !!company.reverifyMonths && !!reference?.decidedAt && addMonths(reference.decidedAt, company.reverifyMonths) <= new Date()
         return {
-            // In use for them: every level says so, consent included.
-            active: company.allowed && person.faceVerificationRequired && !!consent,
-            required: company.allowed && person.faceVerificationRequired,
+            active: required && !!consent && enrolled,
+            required,
             company: { allowed: company.allowed, reason: company.reason },
             consent,
             consentVersion: FACE_CONSENT_VERSION,
+            phone: phone ? { faceStatus: phone.faceStatus, enrolledAt: phone.faceEnrolledAt } : null,
+            pendingReview: pending > 0,
+            reverifyDue: required && enrolled && (!!person.faceReverifyRequestedAt || dueBySchedule),
         }
     }
+}
+
+function addMonths(date: Date, months: number): Date {
+    const d = new Date(date)
+    d.setUTCMonth(d.getUTCMonth() + months)
+    return d
 }

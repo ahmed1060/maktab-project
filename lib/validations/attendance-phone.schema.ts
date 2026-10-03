@@ -11,7 +11,7 @@ export const registerPhoneSchema = z.object({
     attestation: z.string().max(20_000).nullish(),
 })
 
-export const challengeSchema = z.object({ purpose: z.enum(["REGISTER", "CHECK_IN"]) })
+export const challengeSchema = z.object({ purpose: z.enum(["REGISTER", "CHECK_IN", "FACE"]) })
 
 export const phoneDecisionSchema = z.object({ approve: z.boolean(), reason: z.string().max(500).nullish() })
 

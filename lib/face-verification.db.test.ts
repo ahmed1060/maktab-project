@@ -97,7 +97,8 @@ describe.skipIf(!ADMIN_URL)("face verification switches and consent, in Postgres
         const consent = await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
         // Accepting twice is the same acceptance.
         expect(await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)).toEqual(consent)
-        expect(await Face.statusFor("e1")).toMatchObject({ required: true, active: true })
+        // In use once the phone's verification photo is approved too (part 2, lib/face-review.db.test.ts).
+        expect(await Face.statusFor("e1")).toMatchObject({ required: true, active: false, consent: { textVersion: FACE_CONSENT_VERSION } })
     })
 
     it("stops at once when consent is withdrawn, the company withdraws its confirmation, or the system is paused", async () => {
@@ -111,7 +112,7 @@ describe.skipIf(!ADMIN_URL)("face verification switches and consent, in Postgres
         // Paused keeps enrolments: the policy may still be saved with it on.
         await Policy.saveVersion("c1", { effectiveFrom: "2026-03-01", body: { ...STANDARD_OFFICE, faceVerificationAvailable: true } }, "a1")
         await Face.setSystemState(protectedSA(), "ON")
-        expect(await Face.statusFor("e1")).toMatchObject({ active: true })
+        expect(await Face.statusFor("e1")).toMatchObject({ required: true, company: { allowed: true } })
 
         await Face.setLegalConfirmed("c1", false, "a1", false)
         expect(await Face.statusFor("e1")).toMatchObject({ active: false, company: { reason: "LEGAL_NOT_CONFIRMED" } })

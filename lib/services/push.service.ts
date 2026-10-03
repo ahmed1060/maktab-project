@@ -23,7 +23,7 @@ import { CompanyService } from "./company.service"
  */
 
 /** The notice types pushed: each is addressed to the person about their own attendance. */
-export const PUSHED_TYPES = ["ATTENDANCE_CHECK_IN", "ATTENDANCE_DAY", "ATTENDANCE_PHONE", "ATTENDANCE_REQUEST", "ATTENDANCE_REMINDER"] as const
+export const PUSHED_TYPES = ["ATTENDANCE_CHECK_IN", "ATTENDANCE_DAY", "ATTENDANCE_PHONE", "ATTENDANCE_REQUEST", "ATTENDANCE_REMINDER", "ATTENDANCE_FACE"] as const
 
 /**
  * Notices of those types that are about someone else: "a new phone is waiting
