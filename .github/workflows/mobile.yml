@@ -1,0 +1,143 @@
+name: Mobile app
+
+# Builds the check-in app (mobile/) for testing before there are store
+# accounts (mobile/README.md, "Building in GitHub"): an Android APK anyone can
+# install, and an unsigned iPhone .ipa to sideload with a free Apple ID. Run by
+# hand (Actions → this workflow → Run workflow); nothing here runs on pushes.
+#
+# Optional, under Settings → Secrets and variables → Actions:
+#   GOOGLE_SERVICES_JSON (secret)  the text of Firebase's google-services.json.
+#                                  Without it the APK gets no push notifications.
+#   ANDROID_DEBUG_KEYSTORE (secret) a debug keystore, as base64. Without it every
+#                                  run signs with a new key, and a phone has to
+#                                  uninstall the old build before the new one
+#                                  installs (which also forgets its registration).
+#   NIZMO_CLOUD_PROJECT_NUMBER (variable) for Play Integrity (README, Attestation).
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "The site the app opens: https://, no path"
+        required: true
+        default: https://nizmo.vercel.app
+      platform:
+        description: Which app to build
+        type: choice
+        options: [both, android, ios]
+        default: both
+
+permissions:
+  contents: read
+
+env:
+  # Each build talks only to this site (capacitor.config.ts refuses anything else).
+  NIZMO_URL: ${{ inputs.site || 'https://nizmo.vercel.app' }}
+
+jobs:
+  android:
+    if: ${{ inputs.platform != 'ios' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NIZMO_CLOUD_PROJECT_NUMBER: ${{ vars.NIZMO_CLOUD_PROJECT_NUMBER }}
+      # A secret cannot be read in a step's `if`; whether one is set can.
+      HAS_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE != '' }}
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Firebase (push notifications)
+        if: ${{ env.HAS_SERVICES == 'true' }}
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+
+      - name: Signing key
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        env:
+          ANDROID_DEBUG_KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        # Where the Android build looks for its debug key.
+        run: mkdir -p ~/.android && printf '%s' "$ANDROID_DEBUG_KEYSTORE" | base64 --decode > ~/.android/debug.keystore
+
+      - name: Copy the site's address into the app
+        run: npx cap sync android
+
+      - name: Build the APK
+        working-directory: mobile/android
+        # The run number is the version code, so each build installs over the last.
+        run: ./gradlew assembleDebug --no-daemon -PnizmoVersionCode=${{ github.run_number }} -PnizmoVersionName=1.0.${{ github.run_number }}
+
+      - name: Name it
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk "out/nizmo-${{ github.run_number }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nizmo-android-${{ github.run_number }}
+          path: mobile/out
+          retention-days: 30
+
+  ios:
+    if: ${{ inputs.platform != 'android' }}
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - run: npm ci
+
+      - name: Copy the site's address into the app
+        run: npx cap sync ios
+
+      - name: Build (unsigned)
+        # Signed later on your own machine with a free Apple ID (README, "Building
+        # in GitHub"). A free Apple ID can't sign push or App Attest, so the build
+        # leaves out the entitlements file, as the README's Xcode steps do.
+        run: |
+          xcodebuild -list -project ios/App/App.xcodeproj
+          xcodebuild build \
+            -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_ENTITLEMENTS="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+
+      - name: Package the .ipa
+        run: |
+          mkdir -p out/Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app out/Payload/
+          cd out
+          zip -qry "nizmo-${{ github.run_number }}-unsigned.ipa" Payload
+          rm -rf Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nizmo-ios-${{ github.run_number }}
+          path: mobile/out
+          retention-days: 30
