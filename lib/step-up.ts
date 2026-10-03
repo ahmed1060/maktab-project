@@ -55,3 +55,15 @@ export async function assertStepUp(session: { user: Viewer }, permission: Permis
     const refusal = stepUpRefusal(session.user, permission, minutes)
     if (refusal) throw new StepUpError(refusal, minutes)
 }
+
+/**
+ * The same confirmation for an action that isn't a permission: the Super
+ * Admin's own, such as turning face verification on or off (ATTENDANCE_PLAN.md
+ * §10.4). A code entered within the last `stepUpMinutes`, or a refusal.
+ */
+export async function assertRecentStepUp(session: { user: Viewer }, now: number = Date.now()): Promise<void> {
+    const { SystemSettingsService } = await import("@/lib/services/system-settings.service")
+    const minutes = (await SystemSettingsService.get()).stepUpMinutes ?? DEFAULT_STEP_UP_MINUTES
+    if (!session.user.mfaEnabled) throw new StepUpError("MFA_ENROL_REQUIRED", minutes)
+    if (!session.user.stepUpAt || now - session.user.stepUpAt > minutes * 60_000) throw new StepUpError("STEP_UP_REQUIRED", minutes)
+}
