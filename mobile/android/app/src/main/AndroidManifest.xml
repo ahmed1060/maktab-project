@@ -44,4 +44,7 @@
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <!-- Push notifications on Android 13 and later (ATTENDANCE_PLAN.md §13.4). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The face check (face verification), asked for only when it is set up or used. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 </manifest>

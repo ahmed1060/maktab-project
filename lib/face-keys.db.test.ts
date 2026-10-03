@@ -138,6 +138,17 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         await db.query(`DELETE FROM "FaceReview" WHERE id = 'r-e1-again'`)
     })
 
+    it("counts a match from the free prototype only where a test deployment allows it", async () => {
+        const passed = { verified: true, score: 0.9, liveness: 1, modelVersion: "prototype-dlib-resnet-v1", attempts: 1 }
+        expect(await checkIn("e1", passed)).toMatchObject({ reasons: ["ATTESTATION_UNVERIFIED", "FACE_UNVERIFIED"] })
+        process.env.FACE_ALLOW_PROTOTYPE = "1"
+        try {
+            expect(await checkIn("e1", passed)).toMatchObject({ reasons: ["ATTESTATION_UNVERIFIED"] })
+        } finally {
+            delete process.env.FACE_ALLOW_PROTOTYPE
+        }
+    })
+
     it("shows face photos only for a check-in flagged for its face, and only the company's own reference (review on #27)", async () => {
         const viewer = { id: "a1", isSuperAdmin: false }
         const flagged = async (face: boolean) => (await db.query(

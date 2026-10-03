@@ -14,6 +14,8 @@ import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
 import { answerKey, faceStep, reverifyFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
 import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
+import { FACE_PROTOTYPE, prototypeFaceVerifier } from '@/lib/mobile/face-prototype/verifier'
+import { useFaceCamera } from '@/components/FaceCamera'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
 import { send, json } from '../attendance/send'
 import { AskPermissionModal } from '../attendance/RequestsTab'
@@ -47,6 +49,7 @@ const DEVICE_ERRORS: Record<string, TranslationKey> = {
     FACE_CANCELLED: 'face_ci_cancelled',
     CAMERA_DENIED: 'face_ci_camera_denied',
     FACE_NOT_AVAILABLE: 'face_ci_not_available',
+    LIVENESS_FAILED: 'face_ci_liveness_failed',
 }
 
 export default function CheckInPage() {
@@ -59,7 +62,9 @@ export default function CheckInPage() {
     const device = useMemo(() => (native ? checkInDevice() : null), [native])
     const { data: phoneBody, error: phoneError, mutate: refreshPhone } = useSWR(device ? '/api/attendance/phone' : null, fetcher)
     const { data: fingerprint, error: keyError, mutate: refreshFingerprint } = useSWR(device ? 'this-phone-key' : null, () => deviceFingerprint(device!))
-    const face = useMemo(() => (native ? faceVerifier() : null), [native])
+    const camera = useFaceCamera()
+    // The face SDK's plugin when the app has one; otherwise, on a test build, the free prototype (mobile/README.md).
+    const face = useMemo(() => (native ? faceVerifier() ?? (FACE_PROTOTYPE ? prototypeFaceVerifier(camera.open) : null) : null), [native, camera.open])
     const { data: faceBody, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, fetcher)
     const faceStatus = faceBody?.data as FaceStatus | undefined
     const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT' | 'face'>(null)
@@ -198,6 +203,7 @@ export default function CheckInPage() {
             )}
 
             {answer && <Answer answer={answer} />}
+            {camera.element}
 
             {late && answer?.outcome !== 'REFUSED' && (
                 <section className="glass" style={{ ...box, borderInlineStart: '4px solid var(--warn-solid)' }}>

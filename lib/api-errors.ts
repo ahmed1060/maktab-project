@@ -124,6 +124,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     PHONE_NOT_ACTIVE: { status: 409, message: "That phone isn't in use, so there is nothing to revoke." },
     FACE_PROTECTED_ONLY: { status: 403, message: "Only the protected Super Admin can switch face verification on or off." },
     FACE_STATE_MOVE: { status: 409, message: "Face verification can't go straight to that state. Turning it off for good is \"pause and purge\"." },
+    FACE_PROTOTYPE_NOT_ALLOWED: { status: 409, message: "This is the test version of the face check, which this server doesn't accept. Use an app with the real face check." },
     FACE_NOT_ALLOWED: { status: 409, message: "Face verification can be offered only once it is on for the system, the company holds the Mobile App add-on, and the company has confirmed its legal readiness." },
     FACE_NOT_AVAILABLE: { status: 409, message: "Face verification isn't available in this company now." },
     FACE_NOT_REQUIRED: { status: 409, message: "Face verification isn't asked of you, so there is nothing to consent to." },

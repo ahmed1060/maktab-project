@@ -50,11 +50,12 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
     const keyFingerprint = parsePhoneKey(publicKey)!.fingerprint
 
     /** A photo as the app sends it: a fresh number, signed with the phone's key over the photo's hash. */
-    const send = async (photo: Buffer, over: Partial<{ signature: string; nonce: string }> = {}) => {
+    const send = async (photo: Buffer, over: Partial<{ signature: string; nonce: string; modelVersion: string }> = {}) => {
         const nonce = over.nonce ?? (await Challenges.issue("e1", "FACE")).nonce
+        const modelVersion = over.modelVersion ?? "m1"
         const photoSha256 = createHash("sha256").update(photo).digest("hex")
-        const signature = sign("sha256", Buffer.from(faceText({ nonce, keyFingerprint, photoSha256, modelVersion: "m1" })), { key: pair.privateKey, dsaEncoding: "der" }).toString("base64")
-        return Reviews.submit("c1", "e1", { nonce, keyFingerprint, signature, photo: photo.toString("base64"), modelVersion: "m1", ...over })
+        const signature = sign("sha256", Buffer.from(faceText({ nonce, keyFingerprint, photoSha256, modelVersion })), { key: pair.privateKey, dsaEncoding: "der" }).toString("base64")
+        return Reviews.submit("c1", "e1", { nonce, keyFingerprint, signature, photo: photo.toString("base64"), ...over, modelVersion })
     }
     const reviews = async () => (await db.query(`SELECT id, purpose, status, photo IS NOT NULL AS "hasPhoto" FROM "FaceReview" ORDER BY "createdAt"`)).rows
     const phoneFace = async () => (await db.query(`SELECT "faceStatus" FROM "CheckInPhone" WHERE id = 'p1'`)).rows[0].faceStatus
@@ -185,14 +186,27 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
         expect((await reviews()).filter(r => r.status === "PENDING")).toEqual([])
     })
 
+    it("takes a photo from the free prototype only where a test deployment allows it", async () => {
+        await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
+        expect(await reason(send(jpeg(), { modelVersion: "prototype-dlib-resnet-v1" }))).toBe("FACE_PROTOTYPE_NOT_ALLOWED")
+        process.env.FACE_ALLOW_PROTOTYPE = "1"
+        try {
+            expect(await reason(send(jpeg(), { modelVersion: "prototype-dlib-resnet-v1" }))).toBe("OK")
+            expect((await Reviews.open("c1", null)).at(-1)).toMatchObject({ prototype: true })
+        } finally {
+            delete process.env.FACE_ALLOW_PROTOTYPE
+        }
+    })
+
     it("refuses a photo whose App Attest counter lost a race, when attestation is required (review on #27)", async () => {
         await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
         attest.mode = "required"
         // Verified, but at a counter the phone has already passed.
         attest.verify = async () => ({ verified: true, appAttest: { counter: 0 } })
         try {
+            const before = await reviews()
             expect(await reason(send(jpeg()))).toBe("PHONE_ATTESTATION_FAILED")
-            expect((await reviews()).filter(r => r.status === "PENDING")).toEqual([])
+            expect(await reviews()).toEqual(before)
         } finally {
             attest.mode = null
             attest.verify = null
