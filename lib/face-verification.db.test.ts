@@ -133,4 +133,15 @@ describe.skipIf(!ADMIN_URL)("face verification switches and consent, in Postgres
         expect(await reason(Face.setRequired("c1", "e1", true, "a1", false))).toBe("FACE_NOT_AVAILABLE")
         await db.query(`UPDATE "Company" SET "packageId" = NULL WHERE id = 'c1'`)
     })
+
+    it("puts a re-verification asked for and not done in three working days on the exceptions screen", async () => {
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status, "faceStatus") VALUES ('p-ov', 'c1', 'e1', 'k', $1, 'ANDROID', 'ACTIVE', 'APPROVED')`, ["e".repeat(64)])
+        await db.query(`UPDATE "User" SET "faceReverifyRequestedAt" = now() - interval '1 hour' WHERE id = 'e1'`)
+        expect(await Face.overdueReverifications("c1")).toEqual([])
+        await db.query(`UPDATE "User" SET "faceReverifyRequestedAt" = now() - interval '20 days' WHERE id = 'e1'`)
+        expect(await Face.overdueReverifications("c1")).toMatchObject([{ userId: "e1", name: "Ehab One" }])
+        // Once a new photo waits, it is the reviewer's turn, not overdue.
+        await db.query(`INSERT INTO "FaceReview"(id, "companyId", "userId", "phoneId", purpose, status, photo, "modelVersion") VALUES ('r-ov', 'c1', 'e1', 'p-ov', 'REVERIFY', 'PENDING', '\\xffd8ff', 'm1')`)
+        expect(await Face.overdueReverifications("c1")).toEqual([])
+    })
 })

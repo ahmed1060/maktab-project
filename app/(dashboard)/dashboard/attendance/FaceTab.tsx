@@ -24,7 +24,7 @@ import { FacePhoto as Photo, useWatermark } from '@/components/FacePhoto'
  */
 type Review = { id: string; userId: string; name: string; purpose: 'ENROLMENT' | 'REVERIFY'; createdAt: string; attested: boolean; hasReference: boolean }
 type Person = { id: string; name: string; required: boolean; consentedAt: string | null }
-type People = { company: { allowed: boolean; reason: string | null }; people: Person[] }
+type People = { company: { allowed: boolean; reason: string | null }; people: Person[]; overdue: { userId: string; name: string; since: string }[] }
 
 const box = { padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '0.75rem' } as const
 const soft = { color: 'var(--text-soft)', fontSize: '0.78rem' } as const
@@ -41,7 +41,7 @@ export default function FaceTab({ q }: { q: string }) {
 
     if (!reviewsBody || !peopleBody) return <LoadingSpinner />
     const reviews: Review[] = reviewsBody.data
-    const { company, people }: People = peopleBody.data
+    const { company, people, overdue }: People = peopleBody.data
     const open = reviews.find(r => r.id === openId) ?? null
 
     const send = async (url: string, body: unknown, method = 'POST') => {
@@ -90,6 +90,16 @@ export default function FaceTab({ q }: { q: string }) {
                     </div>
                 )}
             </section>
+
+            {overdue.length > 0 && (
+                <section className="glass" style={{ ...box, borderInlineStart: '4px solid var(--warn-solid)' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('face_overdue')}</h2>
+                    <p style={{ ...soft, margin: 0 }}>{t('face_overdue_hint')}</p>
+                    <ul style={{ margin: 0, paddingInlineStart: '1.1rem', display: 'grid', gap: '0.25rem' }}>
+                        {overdue.map(o => <li key={o.userId}>{o.name} <span style={soft}>· {t('face_overdue_since').replace('{date}', o.since)}</span></li>)}
+                    </ul>
+                </section>
+            )}
 
             <section className="glass" style={box}>
                 <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('face_people')}</h2>

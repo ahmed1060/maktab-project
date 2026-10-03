@@ -7,6 +7,8 @@ import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { AuditLogService } from "./audit-log.service"
 import { CompanyService } from "./company.service"
 import { hasBundle, resolveBundles } from "@/lib/features/bundles"
+import { reverifyOverdue } from "@/lib/attendance/face-overdue"
+import { toDateString } from "@/lib/attendance/calendar"
 
 /**
  * Face verification's switches and consent (ATTENDANCE_PLAN.md §9.5, §10.4).
@@ -103,6 +105,42 @@ export class FaceVerificationService {
         const policy = policyOn(await AttendancePolicyService.versions(companyId), today)
         if (!policy?.body.faceVerificationAvailable) return { allowed: false, reason: "POLICY_OFF", reverifyMonths: null }
         return { allowed: true, reason: null, reverifyMonths: policy.body.faceReverifyMonths }
+    }
+
+    /**
+     * Re-verifications asked for, or due by the policy's interval, and still
+     * not done more than three working days on (§9.5): for the exceptions
+     * screen, so they can't quietly be ignored. Not once a new photo waits.
+     */
+    static async overdueReverifications(companyId: string): Promise<{ userId: string; name: string; since: string }[]> {
+        const status = await this.companyStatus(companyId)
+        if (!status.allowed) return []
+        const today = await AttendanceCalendarService.today(companyId)
+        const policy = policyOn(await AttendancePolicyService.versions(companyId), today)
+        const workWeek = policy?.body.workWeek ?? [0, 1, 2, 3, 4]
+        const people = await prisma.user.findMany({
+            where: {
+                companyId, faceVerificationRequired: true, status: { notIn: ["DELETED", "ARCHIVED"] },
+                checkInPhones: { some: { status: "ACTIVE", faceStatus: "APPROVED" } },
+                faceReviews: { none: { status: "PENDING" } },
+            },
+            select: {
+                id: true, firstName: true, lastName: true, faceReverifyRequestedAt: true,
+                faceReviews: { where: { companyId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true }, take: 1 },
+            },
+            orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+        })
+        const out: { userId: string; name: string; since: string }[] = []
+        for (const p of people) {
+            const decided = p.faceReviews[0]?.decidedAt
+            const due = status.reverifyMonths && decided ? addMonths(decided, status.reverifyMonths) : null
+            const since = [p.faceReverifyRequestedAt, due && due <= new Date() ? due : null]
+                .filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0]
+            if (since && reverifyOverdue(toDateString(since), today, workWeek)) {
+                out.push({ userId: p.id, name: `${p.firstName} ${p.lastName}`.trim(), since: toDateString(since) })
+            }
+        }
+        return out
     }
 
     /** Whether the company holds the Mobile App add-on, which face verification is part of (§16). */

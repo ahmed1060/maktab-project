@@ -15,8 +15,9 @@ export const GET = withStandardHandler(async (req, session) => {
     const access = await punchCompany(session, new URL(req.url).searchParams.get("companyId"))
     if ("denied" in access) return access.denied
     if (!canCompanyWide(session.user, "attendance.approve_face") || !can(session.user, "attendance.approve_face", { companyId: access.companyId })) return ApiResponse.forbidden()
-    const [status, people] = await Promise.all([
+    const [status, overdue, people] = await Promise.all([
         FaceVerificationService.companyStatus(access.companyId),
+        FaceVerificationService.overdueReverifications(access.companyId),
         prisma.user.findMany({
             where: { companyId: access.companyId, status: { notIn: ["DELETED", "ARCHIVED"] }, id: { not: session.user.id } },
             select: {
@@ -28,6 +29,8 @@ export const GET = withStandardHandler(async (req, session) => {
     ])
     return ApiResponse.success({
         company: status,
+        // Re-verifications left undone too long (§9.5); never one's own.
+        overdue: overdue.filter(o => o.userId !== session.user.id),
         people: people.map(p => ({
             id: p.id, name: `${p.firstName} ${p.lastName}`.trim(), required: p.faceVerificationRequired,
             consentedAt: p.biometricConsents[0]?.acceptedAt ?? null,
