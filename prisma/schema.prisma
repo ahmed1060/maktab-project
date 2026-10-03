@@ -227,6 +227,11 @@ model Company {
   /// nobody deciding it should, and most jurisdictions limit it for that
   /// reason. 0 switches recovery off without deleting anybody's debt.
   debtRecoveryPercent  Int                       @default(100)
+  /// The first month whose attendance reaches payroll (ATTENDANCE_PLAN.md
+  /// §20, Phase 1): the 1st of that month. Null: attendance is measured and
+  /// priced, and the register shows what it would cost, but nothing is
+  /// deducted — the dry run before it touches anybody's pay.
+  attendancePayrollFrom DateTime?                @db.Date
   /// The calendar this company's months are measured in.
   ///
   /// Everything in lib/time.ts already takes a zone as an argument; this is
@@ -237,6 +242,28 @@ model Company {
   workSchedules        WorkSchedule[]
   attendancePolicies   AttendancePolicy[]
   scheduleDefaults     ScheduleDefault[]
+  attendancePunches    AttendancePunch[]
+  attendanceImports    AttendanceImport[]
+  attendanceCodes      AttendanceCode[]
+  attendanceDays       AttendanceDay[]
+  permissionRequests   PermissionRequest[]
+  overtimeApprovals    OvertimeApproval[]
+  missingPunchRequests MissingPunchRequest[]
+  attendanceDecisions  AttendanceDayDecision[]
+  attendancePayrollEntries AttendancePayrollEntry[]
+  attendanceDiscrepancies  AttendanceDiscrepancy[]
+  attendanceAgents         AttendanceAgent[]
+  attendanceDevices        AttendanceDevice[]
+  workLocations            WorkLocation[]
+  checkInPhones            CheckInPhone[]
+  /// The company has confirmed it holds whatever licence biometric
+  /// processing needs (§10.4): face verification can't be switched on before.
+  faceLegalConfirmedAt     DateTime?
+  faceLegalConfirmedById   String?
+  biometricConsents        BiometricConsent[]
+  faceReviews              FaceReview[]
+  checkInRefusals          CheckInRefusal[]
+  checkInReminders         CheckInReminder[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -330,6 +357,11 @@ model SystemSettings {
   /// or less, counted from when it was entered. A setting, so it can be
   /// tuned without a release.
   stepUpMinutes              Int      @default(60)
+  /// Face verification for the whole system (ATTENDANCE_PLAN.md §9.5, §10.4).
+  /// Only the protected Super Admin changes it. OFF until they decide; PAUSED
+  /// stops it everywhere and keeps enrolments.
+  faceVerification           FaceSystemState @default(OFF)
+  faceVerificationChangedAt  DateTime?
   updatedAt                  DateTime @updatedAt
 }
 
@@ -482,6 +514,29 @@ model User {
   accessReviewLines          AccessReviewLine[]      @relation("AccessReviewLineFor")
   accessReviewAnswers        AccessReviewLine[]      @relation("AccessReviewLineAnsweredBy")
   scheduleAssignments        UserSchedule[]
+  attendancePunches          AttendancePunch[]
+  attendanceCodes            AttendanceCode[]
+  attendanceDays             AttendanceDay[]
+  permissionRequests         PermissionRequest[]
+  overtimeApprovals          OvertimeApproval[]
+  missingPunchRequests       MissingPunchRequest[]
+  attendanceDecisions        AttendanceDayDecision[]
+  attendancePayrollEntries   AttendancePayrollEntry[]
+  attendanceDiscrepancies    AttendanceDiscrepancy[]
+  workLocations              UserWorkLocation[]
+  checkInPhones              CheckInPhone[]
+  /// Face verification is asked of this person at check-in (§9.5), when the
+  /// company's policy makes it available. Set by attendance.approve_face.
+  faceVerificationRequired   Boolean                    @default(false)
+  /// Someone asked this person to verify their face again (§9.5).
+  faceReverifyRequestedAt    DateTime?
+  faceReverifyRequestedById  String?
+  faceReviews                FaceReview[]
+  faceWrappingKeys           FaceWrappingKey[]
+  biometricConsents          BiometricConsent[]
+  attendanceChallenges       AttendanceChallenge[]
+  checkInRefusals            CheckInRefusal[]
+  checkInReminders           CheckInReminder[]
 
   @@index([email])
   @@index([companyId])
@@ -580,8 +635,17 @@ model Notification {
   messageKey    String?
   messageParams Json?
   read          Boolean     @default(false)
+  /// CRITICAL is red and stays at the top, unread, until what it is about is
+  /// dealt with (ATTENDANCE_PLAN.md §13.4): marking all read leaves it.
+  priority      NotificationPriority @default(NORMAL)
   relatedId     String?
   createdAt     DateTime    @default(now())
+  /// When it was sent to the person's phone as a push (§13.4); null for one
+  /// not sent, or never meant to be.
+  pushedAt      DateTime?
+  /// When a push run took it to send; lapses after a couple of minutes, so a
+  /// run that died mid-send doesn't lose it.
+  pushClaimedAt DateTime?
   user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   superAdmin    SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 
@@ -592,6 +656,121 @@ model Notification {
   @@index([userId, read])
   @@index([superAdminId])
   @@index([superAdminId, read])
+}
+
+enum FaceSystemState {
+  OFF
+  ON
+  PAUSED
+}
+
+/// The legal record of a person's consent to face verification (§9.5,
+/// §10.4); not biometric data. Current consent: the latest row with
+/// withdrawnAt null and the current text version.
+model BiometricConsent {
+  id          String    @id @default(uuid())
+  userId      String
+  companyId   String
+  textVersion String
+  acceptedAt  DateTime  @default(now())
+  withdrawnAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, acceptedAt])
+}
+
+enum PhoneFaceStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FaceReviewPurpose {
+  ENROLMENT
+  REVERIFY
+}
+
+enum FaceReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// A verification photo and its decision (§9.5). The photo is encrypted with
+/// its own key (FACE_PHOTO_KEY) and deleted (set null) when rejected,
+/// replaced, withdrawn or purged: the approved one with a photo is the
+/// person's reference photo, at most one per person.
+model FaceReview {
+  id                    String            @id @default(uuid())
+  companyId             String
+  userId                String
+  phoneId               String
+  purpose               FaceReviewPurpose
+  status                FaceReviewStatus  @default(PENDING)
+  photo                 Bytes?
+  modelVersion          String
+  /// Whether the phone proved it runs our app when it sent the photo (§9.4).
+  attested              Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+  decidedAt             DateTime?
+  decidedById           String?
+  decidedBySuperAdminId String?
+  reason                String?
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company               Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([userId, status])
+}
+
+/// The server's half of the key that protects a phone's face templates
+/// (§10.4, crypto-shredding). The phone combines it with a key in its secure
+/// hardware; neither half is biometric. Destroying it (key null) makes the
+/// templates on that phone unreadable at once, whether or not the phone is
+/// ever seen again. A trigger destroys it when the phone leaves use or its
+/// owner is archived; withdrawal and purge destroy it too.
+model FaceWrappingKey {
+  id          String    @id @default(uuid())
+  phoneId     String    @unique
+  userId      String
+  key         Bytes?
+  createdAt   DateTime  @default(now())
+  destroyedAt DateTime?
+  /// The phone said it deleted its (by then unreadable) templates.
+  deleteAckAt DateTime?
+  phone       CheckInPhone @relation(fields: [phoneId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// The frame captured when a check-in failed the face check (§13.8),
+/// encrypted like the verification photos, kept only while the flag is open.
+model FaceFrame {
+  id        String   @id @default(uuid())
+  punchId   String          @unique
+  companyId String
+  userId    String
+  photo     Bytes
+  createdAt DateTime        @default(now())
+  punch     AttendancePunch @relation(fields: [punchId], references: [id], onDelete: Cascade)
+}
+
+/// A pause-and-purge of face verification (§10.4): what was destroyed at once,
+/// and how many phones have since acknowledged deleting their templates.
+model FacePurge {
+  id             String   @id @default(uuid())
+  at             DateTime @default(now())
+  bySuperAdminId String
+  keysDestroyed  Int
+  photosDeleted  Int
+}
+
+enum NotificationPriority {
+  NORMAL
+  HIGH
+  CRITICAL
 }
 
 model AuditLog {
@@ -1109,6 +1288,11 @@ model PayrollRun {
   company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   payslips     Payslip[]
   settlements  FinalSettlement[]
+  attendanceEntries AttendancePayrollEntry[]
+  /// Whether this month's attendance was on its payslips (ATTENDANCE_PLAN.md
+  /// §12): set at approval, so a later change of the company's chosen month
+  /// never restates which paid months carried attendance.
+  attendanceIncluded Boolean @default(false)
 
   /// One run per company per month. A second draft for a month that already has
   /// one is how two people approve different figures for the same payroll.
@@ -1693,4 +1877,626 @@ model AttendancePolicy {
   company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, effectiveFrom])
+}
+
+// --- Attendance: punches (ATTENDANCE_PLAN.md §8.6) ---------------------------
+
+enum PunchSource {
+  IMPORT
+  MOBILE
+  AGENT
+  DEVICE_PUSH
+  MANUAL
+}
+
+enum PunchDirection {
+  IN
+  OUT
+}
+
+enum PunchStatus {
+  ACCEPTED
+  PENDING_DEVICE
+  FLAGGED
+  REJECTED
+}
+
+/// One clock-in or clock-out, as it arrived: evidence, never edited. A wrong
+/// one is withdrawn (voidedAt), not changed or deleted, and the engine reads
+/// only ACCEPTED, unwithdrawn punches with a person.
+model AttendancePunch {
+  id                   String            @id @default(uuid())
+  companyId            String
+  /// Null until the employee number it came with is mapped to a person
+  /// (AttendanceCode), which fills it in.
+  userId               String?
+  source               PunchSource
+  /// Stable across retries, so a delivery seen twice is stored once.
+  /// IMPORT: "<file sha256>:<row number>"; MANUAL: the punch's own id.
+  sourceKey            String
+  importId             String?
+  /// The employee number the terminal or file used.
+  hardwareUserId       String?
+  /// The wall-clock time where it happened, as written there.
+  punchAtLocal         DateTime          @db.Timestamp(0)
+  /// The same moment as an instant, resolved with the company's time zone.
+  punchAt              DateTime
+  resolvedWithTimeZone String
+  /// Decided when it arrives and never re-derived (§8.6). Null: not stated.
+  direction            PunchDirection?
+  status               PunchStatus       @default(ACCEPTED)
+  /// Why it was added by hand.
+  note                 String?
+  createdById          String?
+  receivedAt           DateTime          @default(now())
+  voidedAt             DateTime?
+  voidedById           String?
+  voidReason           String?
+  company              Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// A permanent deletion takes their punches with it (migration 20261010100000).
+  user                 User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  import               AttendanceImport? @relation(fields: [importId], references: [id], onDelete: SetNull)
+  /// The terminal it came from (§17), for AGENT punches.
+  deviceId             String?
+  device               AttendanceDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  /// The phone it came from (§9.2), for MOBILE punches.
+  phoneId              String?
+  phone                CheckInPhone?     @relation(fields: [phoneId], references: [id], onDelete: SetNull)
+  /// Why a check-in is FLAGGED for a person to decide (§9.6), e.g.
+  /// OUTSIDE_AREA, IMPRECISE_LOCATION, OFFICE_IP_MISMATCH, ATTESTATION_UNVERIFIED.
+  /// Kept when it is held for a phone's approval, so approval flags it then.
+  flagReasons          String[]          @default([])
+  /// The place it was checked against: the nearest the person may check in at.
+  workLocationId       String?
+  workLocation         WorkLocation?     @relation(fields: [workLocationId], references: [id], onDelete: SetNull)
+  /// What the phone said and the server saw, for whoever reviews it: the
+  /// fix, its accuracy, the distance to the place, the address it came from,
+  /// whether the app was verified. Never a photo or anything biometric.
+  checkIn              Json?
+  faceFrame            FaceFrame?
+
+  @@unique([companyId, source, sourceKey])
+  @@index([companyId, userId, punchAtLocal])
+  @@index([companyId, hardwareUserId])
+  @@index([importId])
+  @@index([deviceId])
+  @@index([phoneId])
+  @@index([companyId, status])
+}
+
+/// A spreadsheet of punches brought in, and what became of its rows.
+model AttendanceImport {
+  id             String            @id @default(uuid())
+  companyId      String
+  fileName       String
+  fileHash       String
+  rowCount       Int
+  /// Rows stored now, rows already stored by an earlier import of the same
+  /// file, and rows refused (unreadable, or in a month whose payroll is approved).
+  addedCount     Int
+  duplicateCount Int
+  refusedCount   Int
+  createdById    String
+  createdAt      DateTime          @default(now())
+  voidedAt       DateTime?
+  voidedById     String?
+  voidReason     String?
+  company        Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  punches        AttendancePunch[]
+
+  @@index([companyId, createdAt])
+}
+
+// --- Attendance: terminals and the Local Sync Agent (ATTENDANCE_PLAN.md §17) ---
+
+enum AgentStatus {
+  /// Created; waiting for the agent to exchange its one-time code.
+  PENDING
+  ACTIVE
+  /// Its token no longer works. Kept, with its terminals' history.
+  REVOKED
+}
+
+/// How a terminal's scans are read (§17): by order (ANY), or always
+/// arriving or always leaving. Applied as each punch arrives, never again.
+enum DeviceMode {
+  ANY
+  ENTRANCE
+  EXIT
+}
+
+/// A Local Sync Agent: the program on a PC in the office that reads the
+/// terminals there and sends their punches. Enrolled with a one-time code
+/// shown to an admin, exchanged for a token; only hashes of either are kept.
+model AttendanceAgent {
+  id                String             @id @default(uuid())
+  companyId         String
+  name              String
+  status            AgentStatus        @default(PENDING)
+  /// sha256 of the one-time enrolment code, while one is outstanding.
+  codeHash          String?            @unique
+  codeExpiresAt     DateTime?
+  /// sha256 of the agent's token.
+  tokenHash         String?            @unique
+  /// A token issued by rotation, not yet used: the old one works until the
+  /// agent first uses this one, so a reply lost in transit locks nobody out.
+  nextTokenHash     String?            @unique
+  tokenIssuedAt     DateTime?
+  hostname          String?
+  agentVersion      String?
+  enrolledAt        DateTime?
+  lastSeenAt        DateTime?
+  /// When it last delivered punches.
+  lastSyncAt        DateTime?
+  /// Punches it holds that it has not yet delivered, as it last said.
+  queueDepth        Int?
+  /// Its clock minus ours, at its last heartbeat.
+  clockDriftSeconds Int?
+  /// When its silence in working hours was raised, until it is heard again.
+  alertedAt         DateTime?
+  createdById       String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  revokedAt         DateTime?
+  revokedById       String?
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  devices           AttendanceDevice[]
+
+  @@index([companyId])
+}
+
+/// A fingerprint terminal, known by its serial number. Brought in by the
+/// first agent to report it; in use by one company at a time (a partial
+/// unique index over the unretired, migration 20261018000000). Retired, never
+/// deleted: its punches keep pointing at it.
+model AttendanceDevice {
+  id                String            @id @default(uuid())
+  companyId         String
+  /// The agent that last reported it.
+  agentId           String?
+  serialNumber      String
+  name              String
+  model             String?
+  firmware          String?
+  mode              DeviceMode        @default(ANY)
+  firstSeenAt       DateTime          @default(now())
+  lastSeenAt        DateTime?
+  /// Whether the agent reached it at its last heartbeat.
+  reachable         Boolean           @default(true)
+  lastError         String?
+  /// The terminal's clock minus the company's wall clock, at the agent's last heartbeat.
+  clockDriftSeconds Int?
+  userCount         Int?
+  recordCount       Int?
+  recordCapacity    Int?
+  /// The latest punch it has delivered, as an instant.
+  lastPunchAt       DateTime?
+  /// When its silence in working hours was raised, until it answers again.
+  alertedAt         DateTime?
+  updatedAt         DateTime          @updatedAt
+  retiredAt         DateTime?
+  retiredById       String?
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  agent             AttendanceAgent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  punches           AttendancePunch[]
+
+  @@unique([companyId, serialNumber])
+  @@index([agentId])
+}
+
+/// Which person an employee number on a terminal or in a file is.
+model AttendanceCode {
+  id          String   @id @default(uuid())
+  companyId   String
+  code        String
+  userId      String
+  createdById String
+  createdAt   DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([userId])
+}
+
+// --- Attendance: derived days (ATTENDANCE_PLAN.md §8.6, §11) -----------------
+
+enum AttendanceDayStatus {
+  PRESENT
+  ABSENT
+  INCOMPLETE
+  LEAVE
+  SUSPENDED
+  REST
+  HOLIDAY
+  WORKED_REST_DAY
+  WORKED_HOLIDAY
+  NO_SCHEDULE
+}
+
+/// What one person's day was, and what it costs: derived from the calendar,
+/// the policy and the punches by lib/attendance/engine.ts, and rebuilt
+/// whenever any of them changes. Never edited by hand — a correction changes
+/// an input, and the day is derived again. A locked day is never rewritten.
+model AttendanceDay {
+  id                   String              @id @default(uuid())
+  companyId            String
+  userId               String
+  date                 DateTime            @db.Date
+  status               AttendanceDayStatus
+  /// The exact inputs it was measured against (§6.1).
+  scheduleId           String?
+  scheduleVersionId    String?
+  overrideId           String?
+  policyId             String?
+  expectedStartMinutes Int?
+  expectedEndMinutes   Int?
+  breakMinutes         Int?
+  punchCount           Int                 @default(0)
+  /// Wall-clock times, as the punches were.
+  firstInAt            DateTime?           @db.Timestamp(0)
+  lastOutAt            DateTime?           @db.Timestamp(0)
+  workedMinutes        Int                 @default(0)
+  lateMinutes          Int                 @default(0)
+  earlyLeaveMinutes    Int                 @default(0)
+  overtimeMinutes      Int                 @default(0)
+  excusedMinutes       Int                 @default(0)
+  /// Priced over the month in order (§6.3): days deducted, and the money at
+  /// that day's salary, in minor units.
+  deductionDays        Decimal             @default(0) @db.Decimal(8, 4)
+  deductionMinor       Int                 @default(0)
+  overtimeStatus       String              @default("NONE")
+  overtimeMinor        Int                 @default(0)
+  /// Why each rule charged what it did, for the person and their payslip.
+  breakdown            Json
+  inputsHash           String
+  derivedAt            DateTime            @default(now())
+  lockedByPayrollRunId String?
+  company              Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId, date])
+  @@index([companyId, date])
+}
+
+// --- Attendance: requests (ATTENDANCE_PLAN.md §6.4, §6.6, §8.4) --------------
+
+enum AttendanceRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PermissionType {
+  LATE_ARRIVAL
+  EARLY_LEAVE
+  MIDDAY
+}
+
+/// Permission hours (إذن): time off within the day, drawn from the month's
+/// allowance. Approved minutes are excused from lateness or early leave.
+model PermissionRequest {
+  id              String                  @id @default(uuid())
+  companyId       String
+  userId          String
+  date            DateTime                @db.Date
+  type            PermissionType
+  /// Minutes from the day's midnight, like the schedule's hours.
+  startMinutes    Int
+  endMinutes      Int
+  minutes         Int
+  reason          String
+  status          AttendanceRequestStatus @default(PENDING)
+  createdAt       DateTime                @default(now())
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([userId, date])
+}
+
+/// A decision on one person's overtime on one date: ahead of it, or after
+/// it. Approved minutes are paid, up to what was worked; rejected, none.
+model OvertimeApproval {
+  id              String                  @id @default(uuid())
+  companyId       String
+  userId          String
+  date            DateTime                @db.Date
+  status          AttendanceRequestStatus
+  approvedMinutes Int                     @default(0)
+  note            String?
+  decidedById     String
+  decidedAt       DateTime                @default(now())
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([companyId, date])
+}
+
+/// "I forgot to punch": the time claimed, and why. Approving it adds the
+/// punch, by hand, in the approver's name.
+model MissingPunchRequest {
+  id              String                  @id @default(uuid())
+  companyId       String
+  userId          String
+  date            DateTime                @db.Date
+  /// The wall-clock time claimed, as a punch would be.
+  claimedAt       DateTime                @db.Timestamp(0)
+  direction       PunchDirection?
+  reason          String
+  status          AttendanceRequestStatus @default(PENDING)
+  punchId         String?
+  createdAt       DateTime                @default(now())
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([userId, date])
+}
+
+// --- Attendance: decisions on a day (ATTENDANCE_PLAN.md §13.1) ---------------
+
+enum AttendanceSubject {
+  LATENESS
+  EARLY_LEAVE
+  ABSENCE
+}
+
+enum AttendanceDecisionOutcome {
+  /// Not charged, for the reason given.
+  EXCUSED
+  /// Looked at: the charge stands, and the day leaves the exceptions list.
+  ACCEPTED
+}
+
+/// Somebody's decision on one part of one person's day, from the exceptions
+/// screen. An excuse is applied when the day is priced; an acceptance only
+/// records that the charge was looked at.
+model AttendanceDayDecision {
+  id          String                    @id @default(uuid())
+  companyId   String
+  userId      String
+  date        DateTime                  @db.Date
+  subject     AttendanceSubject
+  outcome     AttendanceDecisionOutcome
+  reason      String?
+  decidedById String
+  decidedAt   DateTime                  @default(now())
+  company     Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, subject])
+  @@index([companyId, date])
+}
+
+// --- Attendance: payroll (ATTENDANCE_PLAN.md §12) -------------------------------
+
+enum AttendanceCategory {
+  LATENESS
+  EARLY_LEAVE
+  ABSENCE
+  OVERTIME
+}
+
+/// What one person's attendance put on one month's payslip, by category, as
+/// approved (§12.2). Written only inside payroll approval, from that
+/// approval's own final recompute, and reconciled rather than appended: one
+/// row per person, month and category, so approving can never count twice.
+model AttendancePayrollEntry {
+  id           String             @id @default(uuid())
+  companyId    String
+  userId       String
+  year         Int
+  month        Int
+  category     AttendanceCategory
+  /// Money in minor units, never negative; the category says which way it goes.
+  amountMinor  Int
+  payrollRunId String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  company      Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payrollRun   PayrollRun         @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId, year, month, category])
+  @@index([companyId, year, month])
+}
+
+/// A day of a month whose payroll is approved that would now come out
+/// differently (§12.3): a leave approved, a salary backdated, a holiday added
+/// after the month was paid. The paid day is never rewritten; this records
+/// what it was paid at and what it would be now, for somebody to settle with
+/// an adjustment in the current period. One per person and day, kept up to
+/// date while open, and gone if the change is undone before anyone acts.
+model AttendanceDiscrepancy {
+  id                 String    @id @default(uuid())
+  companyId          String
+  userId             String
+  date               DateTime  @db.Date
+  payrollRunId       String
+  paidDeductionMinor Int
+  paidOvertimeMinor  Int
+  nowDeductionMinor  Int
+  nowOvertimeMinor   Int
+  paidStatus         String
+  nowStatus          String?
+  detectedAt         DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  resolvedAt         DateTime?
+  resolvedById       String?
+  resolution         String?
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// At most one open per company, person and day: a partial unique index
+  /// in the migrations (20261016000000, 20261017000000), which Prisma cannot
+  /// express.
+  @@index([userId, date])
+  @@index([companyId, resolvedAt])
+}
+
+/// A place where people check in with the app (ATTENDANCE_PLAN.md §8.5,
+/// §9.4): a circle on the map, and optionally the office's public IPs, which
+/// a check-in must then also come from. Archived, never deleted: check-ins
+/// will point at it.
+model WorkLocation {
+  id             String             @id @default(uuid())
+  companyId      String
+  name           String
+  latitude       Float
+  longitude      Float
+  radiusMeters   Int
+  /// Addresses or CIDR ranges; empty means no IP check (§9.4).
+  officeIpRanges String[]           @default([])
+  /// Everyone in the company may check in here, not only those listed.
+  everyone       Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  archivedAt     DateTime?
+  company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  people         UserWorkLocation[]
+  punches        AttendancePunch[]
+
+  @@index([companyId])
+}
+
+/// Who may check in where (§8.5).
+model UserWorkLocation {
+  userId     String
+  locationId String
+  createdAt  DateTime     @default(now())
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   WorkLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, locationId])
+  @@index([locationId])
+}
+
+enum CheckInPhoneStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REVOKED
+  WITHDRAWN
+}
+
+enum PhonePlatform {
+  ANDROID
+  IOS
+}
+
+/// The one phone a person checks in from (ATTENDANCE_PLAN.md §9.2, §9.3).
+/// Its key pair was made inside the phone's secure hardware; we hold the
+/// public half, and each check-in is signed with the private one. At most one
+/// ACTIVE and one PENDING per person (partial unique indexes, migration
+/// 20261021000000). While one is PENDING, it is the only one that checks in:
+/// the moment of asking is the cutover.
+model CheckInPhone {
+  id             String             @id @default(uuid())
+  companyId      String
+  userId         String
+  /// SubjectPublicKeyInfo, DER, base64: an ECDSA P-256 key.
+  publicKey      String
+  /// sha256 of the DER key, hex: the same key is never registered twice.
+  keyFingerprint String             @unique
+  platform       PhonePlatform
+  model          String?
+  appVersion     String?
+  /// Whether the phone proved it runs our genuine app (Play Integrity, App
+  /// Attest) when it registered. False while attestation is in testing (§9.4).
+  attested       Boolean            @default(false)
+  /// iOS: the App Attest key Apple attested when the phone registered
+  /// (SubjectPublicKeyInfo DER, base64), and the last counter its
+  /// assertions used, which only goes up (§9.4). Null on Android, and on a
+  /// phone that wasn't attested.
+  appAttestKey     String?
+  appAttestCounter Int                @default(0)
+  /// Face verification on this phone (§9.5): the templates stay on it; the
+  /// server knows only that it was enrolled, with which model, and whether a
+  /// person approved the verification photo.
+  faceStatus       PhoneFaceStatus    @default(NONE)
+  faceEnrolledAt   DateTime?
+  faceModelVersion String?
+  faceWrappingKey  FaceWrappingKey?
+  status         CheckInPhoneStatus @default(PENDING)
+  requestedAt    DateTime           @default(now())
+  decidedAt      DateTime?
+  decidedById    String?
+  /// Why it was rejected or revoked, when someone said.
+  reason         String?
+  /// Where pushes for its owner go (§13.4): an FCM registration token on
+  /// Android, an APNs device token on iOS. Null until the app sends one, and
+  /// cleared when the push service says it is no longer valid.
+  pushToken      String?
+  pushTokenAt    DateTime?
+  company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  punches        AttendancePunch[]
+
+  @@index([companyId, status])
+  @@index([userId])
+}
+
+/// A one-time number the server gives a phone to sign (§9.2): a captured
+/// request cannot be sent again. Used once, within minutes; kept only as a hash.
+model AttendanceChallenge {
+  id        String    @id @default(uuid())
+  userId    String
+  nonceHash String    @unique
+  /// REGISTER or CHECK_IN: a number given for one cannot be used for the other.
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+
+/// A check-in refused outright (§9.6): clear evidence of cheating or a wrong
+/// setup, nothing for a person to judge. It counts for nothing, and is kept
+/// for the Super Admin's integrity view (§13.7): a sudden run of them at one
+/// company is an attack or a broken app release.
+/// A "you haven't checked in" reminder sent (§13.4): one per person and
+/// working day, however often the reminder job runs.
+model CheckInReminder {
+  userId    String
+  /// The working day it was about, the shift's own date.
+  date      DateTime @db.Date
+  companyId String
+  sentAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, date])
+  @@index([companyId])
+}
+
+model CheckInRefusal {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String
+  /// The phone it came from, when it was one we know.
+  phoneId   String?
+  /// MOCK_LOCATION, ATTESTATION_FAILED, NOT_REGISTERED_PHONE, PHONE_SUSPENDED,
+  /// NO_WORK_LOCATION, BAD_SIGNATURE, MONTH_LOCKED.
+  reason    String
+  at        DateTime @default(now())
+  ip        String?
+  details   Json?
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, at])
+  @@index([at])
 }

@@ -10,6 +10,7 @@ import BackupPickerModal, { BackupEntry } from '@/components/BackupPickerModal'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useHeader } from '@/context/HeaderContext'
 import JobsCard from '@/components/JobsCard'
+import TerminalsHealthCard from '@/components/TerminalsHealthCard'
 
 type HealthMetrics = {
     auditing: {
@@ -342,6 +343,9 @@ export default function SystemHealthPage() {
                     describe state you could go and look at; this one says
                     whether the machinery that maintains that state is alive. */}
                 <JobsCard />
+
+                {/* Every company's attendance agents and terminals (ATTENDANCE_PLAN.md §13.2). */}
+                <TerminalsHealthCard />
 
                 {/* Storage Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

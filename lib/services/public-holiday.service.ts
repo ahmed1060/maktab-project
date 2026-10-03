@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { isDateString, toDateString } from "@/lib/attendance/calendar"
 import { AuditLogService } from "./audit-log.service"
+import { recomputeEveryCompanyAfter } from "./attendance-recompute"
 
 /**
  * The central calendar of public holidays (ATTENDANCE_PLAN.md §7.2), kept by
@@ -42,7 +43,7 @@ export class PublicHolidayService {
         this.check(input)
         // Each change and its audit entry commit together, or neither does
         // (review on #10): a holiday saved without its record looked lost.
-        return prisma.$transaction(async tx => {
+        const out = await prisma.$transaction(async tx => {
             if (await tx.publicHoliday.findUnique({ where: { country_date: { country: "EG", date: DATE_ONLY(input.date) } } })) fail("HOLIDAY_DATE_TAKEN")
             const created = await tx.publicHoliday.create({
                 data: { country: "EG", date: DATE_ONLY(input.date), name: input.name.trim(), nameAr: input.nameAr?.trim() || null },
@@ -52,6 +53,8 @@ export class PublicHolidayService {
             })
             return serialize(created)
         })
+        await recomputeEveryCompanyAfter(input.date)
+        return out
     }
 
     /**
@@ -61,7 +64,8 @@ export class PublicHolidayService {
      */
     static async update(id: string, input: PublicHolidayInput, superAdminId: string) {
         this.check(input)
-        return prisma.$transaction(async tx => {
+        let movedFrom = input.date
+        const out = await prisma.$transaction(async tx => {
             const existing = await tx.publicHoliday.findUnique({ where: { id } }) ?? fail("HOLIDAY_NOT_FOUND")
             const clash = await tx.publicHoliday.findUnique({ where: { country_date: { country: existing.country, date: DATE_ONLY(input.date) } } })
             if (clash && clash.id !== id) fail("HOLIDAY_DATE_TAKEN")
@@ -71,6 +75,7 @@ export class PublicHolidayService {
                 include: { _count: { select: { exclusions: true } } },
             })
             const from = toDateString(existing.date)
+            movedFrom = [from, input.date].sort()[0]
             await AuditLogService.log("UPDATE_PUBLIC_HOLIDAY", "PUBLIC_HOLIDAY", id, {
                 tx, superAdminId,
                 details: {
@@ -80,15 +85,19 @@ export class PublicHolidayService {
             })
             return serialize(updated)
         })
+        await recomputeEveryCompanyAfter(movedFrom)
+        return out
     }
 
     static async remove(id: string, superAdminId: string) {
-        await prisma.$transaction(async tx => {
+        const removedDate = await prisma.$transaction(async tx => {
             const existing = await tx.publicHoliday.findUnique({ where: { id } }) ?? fail("HOLIDAY_NOT_FOUND")
             await tx.publicHoliday.delete({ where: { id } })
             await AuditLogService.log("DELETE_PUBLIC_HOLIDAY", "PUBLIC_HOLIDAY", id, {
                 tx, superAdminId, details: { name: existing.name, date: toDateString(existing.date) },
             })
+            return toDateString(existing.date)
         })
+        await recomputeEveryCompanyAfter(removedDate)
     }
 }

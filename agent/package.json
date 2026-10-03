@@ -1,0 +1,18 @@
+{
+  "name": "nizmo-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nizmo attendance Local Sync Agent: reads fingerprint terminals on an office network and sends their punches.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:exe": "node scripts/build.mjs --exe"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "postject": "1.0.0-alpha.6"
+  }
+}

@@ -116,6 +116,27 @@ describe("adjustments are days, valued at this month's rate", () => {
     })
 })
 
+describe("attendance is money already priced, one line per category (§12.2)", () => {
+    it("adds overtime as an earning and each deduction as its own line, skipping what cost nothing", () => {
+        const entry = buildEntry(person({ attendance: { lateness: toMinor(250), earlyLeave: 0, absence: toMinor(1000), overtime: toMinor(321.43) } }))
+        expect(entry.lines.slice(1).map(l => [l.kind, l.label, formatMinor(l.amountMinor), l.source, l.sourceId])).toEqual([
+            ["EARNING", "Overtime", "321.43", "ATTENDANCE", "OVERTIME"],
+            ["DEDUCTION", "Lateness", "250.00", "ATTENDANCE", "LATENESS"],
+            ["DEDUCTION", "Absence", "1000.00", "ATTENDANCE", "ABSENCE"],
+        ])
+        expect(formatMinor(entry.totals.netMinor)).toBe("29071.43")
+    })
+
+    it("is taken before a debt is recovered, so recovery sees the net after attendance", () => {
+        const entry = buildEntry(person({
+            attendance: { lateness: 0, earlyLeave: 0, absence: toMinor(29_000), overtime: 0 },
+            debts: [{ id: "d1", outstandingMinor: toMinor(5_000), dueDate: new Date(0) }],
+        }))
+        expect(entry.lines.find(l => l.source !== "SALARY" && l.source !== "ATTENDANCE")?.amountMinor).toBe(toMinor(1_000))
+        expect(entry.totals.netMinor).toBe(0)
+    })
+})
+
 describe("the net never goes below zero", () => {
     it("carries the excess out as debt instead", () => {
         // A payslip is a statement of what is being paid, and negative pay is

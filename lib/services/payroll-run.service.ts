@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma"
-import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
+import { Prisma } from "@prisma/client"
+import { lockMonths } from "./attendance-lock"
+import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey } from "./attendance-payroll"
+import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, ATTENDANCE_SOURCE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
 import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
 import { ratesForMonth } from "@/lib/salary-history"
@@ -23,11 +26,11 @@ import { checkApproval, type ApprovalRefusal } from "@/lib/approval"
  */
 export class PayrollRunService {
     /** The company's calendar and payroll day, resolved once per run. */
-    private static async policy(companyId: string) {
+    private static async policy(companyId: string, db: Prisma.TransactionClient = prisma) {
         const [company, settings] = await Promise.all([
-            prisma.company.findUnique({
+            db.company.findUnique({
                 where: { id: companyId },
-                select: { payrollDay: true, timezone: true, debtRecoveryPercent: true },
+                select: { payrollDay: true, timezone: true, debtRecoveryPercent: true, attendancePayrollFrom: true },
             }),
             prisma.systemSettings.findUnique({
                 where: { id: "default" },
@@ -39,6 +42,7 @@ export class PayrollRunService {
         return {
             payrollDay: company.payrollDay,
             debtRecoveryPercent: company.debtRecoveryPercent,
+            attendancePayrollFrom: company.attendancePayrollFrom,
             timeZone: resolveTimeZone(company.timezone, settings?.defaultTimezone),
         }
     }
@@ -70,9 +74,19 @@ export class PayrollRunService {
      * A read. It writes nothing, so opening the screen twice cannot produce two
      * runs, and a person looking at a draft is never the reason a row appears.
      */
-    static async compute(companyId: string, year: number, month: number) {
-        const { timeZone, payrollDay, debtRecoveryPercent } = await this.policy(companyId)
+    static async compute(
+        companyId: string, year: number, month: number, db: Prisma.TransactionClient = prisma,
+        // Whether attendance is on the payslips, when the caller already knows:
+        // approval's own reading of the switch, or what an approved run recorded.
+        reaches?: boolean,
+    ) {
+        const { timeZone, payrollDay, debtRecoveryPercent, attendancePayrollFrom } = await this.policy(companyId, db)
         const people = await this.peopleFor(companyId)
+        // Attendance as money (ATTENDANCE_PLAN.md §12.2), read through the
+        // caller's transaction: approval's, after its own final recompute.
+        // Before the company's chosen month it is shown, never deducted.
+        const attendanceReachesPayroll = reaches ?? attendanceReaches(attendancePayrollFrom, year, month)
+        const attendance = await attendanceMoney(db, companyId, year, month)
 
         // Everything still owed, and the moment after which a debt has not come
         // due yet — computed in the company's calendar, because a UTC month end
@@ -152,6 +166,7 @@ export class PayrollRunService {
                         source: a.source,
                         sourceId: a.sourceId,
                     })),
+                    ...(attendanceReachesPayroll && attendance.has(user.id) ? { attendance: attendance.get(user.id) } : {}),
                     debts: debtsByUser.get(user.id) ?? [],
                     recoveryCapPercent: debtRecoveryPercent,
                     debtsDueOnOrBefore: monthEnd,
@@ -164,7 +179,14 @@ export class PayrollRunService {
             }
         }
 
-        return { register: buildRegister(entries, year, month), refused, timeZone, payrollDay }
+        return {
+            register: buildRegister(entries, year, month), refused, timeZone, payrollDay,
+            attendance: {
+                reachesPayroll: attendanceReachesPayroll,
+                from: attendancePayrollFrom ? attendancePayrollFrom.toISOString().slice(0, 7) : null,
+                byPerson: Object.fromEntries(attendance),
+            },
+        }
     }
 
     /** Last month's nets, for the variance. Absent is not zero — it is "no run". */
@@ -195,12 +217,18 @@ export class PayrollRunService {
      * still undecided, and what is outstanding.
      */
     static async view(companyId: string, year: number, month: number) {
-        const [{ register, refused, payrollDay }, run, previous, debts] = await Promise.all([
-            this.compute(companyId, year, month),
-            prisma.payrollRun.findUnique({
-                where: { companyId_month_year: { companyId, month, year } },
-                include: { payslips: { select: { id: true, userId: true, netAmount: true, emailedAt: true, excluded: true } } },
-            }),
+        const run = await prisma.payrollRun.findUnique({
+            where: { companyId_month_year: { companyId, month, year } },
+            include: { payslips: { select: { id: true, userId: true, netAmount: true, emailedAt: true, excluded: true } } },
+        })
+        // An approved run shows attendance as it was approved, whatever the
+        // switch says now (review on #16).
+        const recorded = run && run.status !== "DRAFT" ? run.attendanceIncluded : undefined
+        const [{ register, refused, payrollDay, attendance }, discrepanciesOpen, previous, debts] = await Promise.all([
+            this.compute(companyId, year, month, prisma, recorded),
+            // Owed whether or not attendance reaches payroll now: a run approved
+            // with it keeps producing these after the switch is stopped.
+            prisma.attendanceDiscrepancy.count({ where: { companyId, resolvedAt: null } }),
             this.previousNets(companyId, year, month),
             prisma.debt.findMany({
                 where: { companyId, status: "OUTSTANDING" },
@@ -233,6 +261,10 @@ export class PayrollRunService {
                 : {},
             register,
             refused,
+            // What attendance costs this month: on the payslips once it reaches
+            // payroll; before that, shown beside the register and deducted from
+            // nobody — the dry run (ATTENDANCE_PLAN.md §20).
+            attendance: { ...attendance, discrepanciesOpen },
             // Null rather than an empty variance: "nothing changed" and "there
             // is nothing to compare against" are different answers, and the
             // first is reassuring while the second is not.
@@ -296,8 +328,15 @@ export class PayrollRunService {
         }
 
         const { register, payrollDay } = await this.compute(companyId, year, month)
+        return prisma.$transaction(tx => this.writeDraft(tx, companyId, year, month, register, payrollDay, session))
+    }
 
-        return prisma.$transaction(async (tx) => {
+    /** Writes a computed register into the month's DRAFT run, inside the caller's transaction. */
+    private static async writeDraft(
+        tx: Prisma.TransactionClient, companyId: string, year: number, month: number,
+        register: Awaited<ReturnType<typeof PayrollRunService.compute>>["register"], payrollDay: number, session?: any,
+    ) {
+        {
             const run = await tx.payrollRun.upsert({
                 where: { companyId_month_year: { companyId, month, year } },
                 update: { payrollDay },
@@ -351,7 +390,7 @@ export class PayrollRunService {
             }
 
             return run
-        })
+        }
     }
 
     /**
@@ -390,15 +429,56 @@ export class PayrollRunService {
         })
         if (!verdict.ok) return { refusal: verdict.refusal }
 
-        // Written first so the transaction below only ever writes.
-        await this.saveDraft(companyId, year, month)
         const { timeZone } = await this.policy(companyId)
+        const { calendarDateStr } = await import("@/lib/time")
+        const { AttendanceEngineService } = await import("./attendance-engine.service")
 
+        // One transaction, in this order (ATTENDANCE_PLAN.md §12.1): take the
+        // month's lock; settle the overtime nobody decided; rebuild the month's
+        // attendance a last time; compute the payslips from it and write them;
+        // write attendance's entries; stamp the days; approve. Either all of it
+        // happened or none of it did, and a punch, a request or a recompute for
+        // the month waits for the lock and is then refused — it can never land
+        // between the figures being computed and the month being frozen.
         return prisma.$transaction(async (tx) => {
+            const key = monthKey(year, month)
+            await lockMonths(tx, companyId, [key])
+            const current = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month, year } }, select: { status: true } })
+            if (current && current.status !== "DRAFT") throw new Error("RUN_NOT_DRAFT")
+
+            const approverId: string = session?.user?.id ?? "system"
+            // The switch, read once and held (review on #16): FOR SHARE makes a
+            // concurrent change to it wait for this approval, and that change
+            // then sees the month approved. Everything below uses this reading.
+            const [{ attendancePayrollFrom }] = await tx.$queryRaw<{ attendancePayrollFrom: Date | null }[]>`
+                SELECT "attendancePayrollFrom" FROM "Company" WHERE id = ${companyId} FOR SHARE`
+            const reaches = attendanceReaches(attendancePayrollFrom, year, month)
+            let overtimeRejected = 0
+            if (reaches) {
+                // Rebuilt first, so overtime on days whose stored row was stale
+                // or missing is found and refused too; then rebuilt again so the
+                // money reflects those refusals (review on #16).
+                const today = calendarDateStr(new Date(), timeZone)
+                await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
+                overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
+                if (overtimeRejected > 0) await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
+            }
+            const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)
+            const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
+            const entries = reaches
+                ? await reconcileEntries(tx, companyId, year, month, draft.id, final.entries.map(e => ({
+                    userId: e.userId,
+                    excluded: e.excluded,
+                    attendance: attendanceOf(e.lines),
+                })))
+                : null
+            const daysLocked = await stampDays(tx, companyId, year, month, draft.id)
+
             const run = await tx.payrollRun.update({
                 where: { companyId_month_year: { companyId, month, year } },
                 data: {
                     status: "APPROVED",
+                    attendanceIncluded: reaches,
                     approvedAt: new Date(),
                     approvedById: session?.user?.id ?? null,
                 },
@@ -482,14 +562,15 @@ export class PayrollRunService {
                 details: {
                     companyId, month, year,
                     payslips: run.payslips.length,
-                    payable: toMajor(register.payableMinor),
+                    payable: toMajor(final.payableMinor),
+                    attendance: reaches ? { entries: entries?.written ?? 0, overtimeRejected, daysLocked } : null,
                     settlementsCarried: carriedSettlements.count,
-                    pendingAcknowledged: register.pendingDecisions.map(p => p.name),
+                    pendingAcknowledged: final.pendingDecisions.map(p => p.name),
                 },
             })
 
             return { runId: run.id }
-        })
+        }, { timeout: 120_000 })
     }
 
     /** Which payslips the next issue action would send, and how many remain. */
@@ -501,6 +582,12 @@ export class PayrollRunService {
         })
         return nextIssueBatch(payslips, size)
     }
+}
+
+/** What attendance put on one payslip, read back from its lines: exactly what is paid. */
+function attendanceOf(lines: { source: string; sourceId?: string | null; amountMinor: number }[]) {
+    const of = (category: string) => lines.filter(l => l.source === ATTENDANCE_SOURCE && l.sourceId === category).reduce((s, l) => s + l.amountMinor, 0)
+    return { lateness: of("LATENESS"), earlyLeave: of("EARLY_LEAVE"), absence: of("ABSENCE"), overtime: of("OVERTIME") }
 }
 
 /** The last instant of a calendar month in a given zone. */

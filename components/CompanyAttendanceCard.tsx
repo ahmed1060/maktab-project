@@ -2,11 +2,17 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import useSWR from 'swr'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import AttendancePolicyPanel from '@/components/AttendancePolicyPanel'
+import FaceLegalPanel from '@/components/FaceLegalPanel'
+import AttendancePayrollPanel from '@/components/AttendancePayrollPanel'
+import AttendanceTerminalsPanel from '@/components/AttendanceTerminalsPanel'
+import AttendanceLocationsPanel from '@/components/AttendanceLocationsPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
 import {
@@ -129,6 +135,7 @@ function hoursFromForm(form: HoursForm): { ok: true; startMinutes: number; endMi
 export default function CompanyAttendanceCard({ companyId, readOnly = false }: { companyId: string; readOnly?: boolean }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
+    const { data: session } = useSession()
     const isRtl = locale === 'ar'
     const intl = isRtl ? 'ar-EG' : 'en-GB'
 
@@ -187,8 +194,21 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: isRtl ? 'right' : 'left' }}>
+            {/* The Super Admin has no sidebar entry into one company's punches; this is it. */}
+            {session?.user?.role === 'SUPER_ADMIN' && (
+                <Link href={`/dashboard/attendance?companyId=${encodeURIComponent(companyId)}`} className="btn btn-secondary" style={{ alignSelf: 'flex-start' }}>
+                    {t('punch_open')} →
+                </Link>
+            )}
+            {/* Whether any of this reaches anybody's pay yet (§12). */}
+            <AttendancePayrollPanel companyId={companyId} readOnly={!editable} />
+            {/* Only for a company holding the Terminals add-on; hides itself otherwise (§16). */}
+            <AttendanceTerminalsPanel companyId={companyId} readOnly={!editable} />
+            {/* Only for a company holding the Mobile App add-on; hides itself otherwise (§16). */}
+            <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />
             {/* The policy first: its work week is what the schedules inherit. */}
             <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
+            <FaceLegalPanel companyId={companyId} readOnly={!editable} />
             <SchedulesSection ctx={ctx} />
             {/* Keyed by the data, so a reload starts the panel's own fields afresh. */}
             <PeoplePanel ctx={ctx} />
