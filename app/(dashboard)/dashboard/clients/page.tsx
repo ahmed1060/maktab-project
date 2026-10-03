@@ -429,7 +429,7 @@ export default function ClientsPage() {
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('assign_to_company')}
                                     </label>
-                                    <select
+                                    <select aria-label={t('assign_to_company')}
                                         value={selectedCompanyId}
                                         onChange={(e) => setSelectedCompanyId(e.target.value)}
                                         className="input"
@@ -448,7 +448,7 @@ export default function ClientsPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('client_company_name')}
                                 </label>
-                                <input
+                                <input aria-label={t('client_company_name')}
                                     type="text"
                                     value={newClientName}
                                     onChange={(e) => setNewClientName(e.target.value)}
@@ -525,7 +525,7 @@ export default function ClientsPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('client_company_name' as any)}
                                 </label>
-                                <input
+                                <input aria-label={t('client_company_name' as any)}
                                     type="text"
                                     value={editClientName}
                                     onChange={(e) => setEditClientName(e.target.value)}

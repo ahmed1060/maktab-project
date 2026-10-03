@@ -5,6 +5,7 @@ import { isBlockedBySubscription } from "@/lib/billing/state"
 import { parseModuleIcons, parseModuleOverrides } from "@/lib/modules"
 import { parseTheme } from "@/lib/theme"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { RoleService, PREVIEW_LASTS_MS } from "@/lib/services/role.service"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { v4 as uuidv4 } from 'uuid'
@@ -339,6 +340,8 @@ export const authOptions: NextAuthOptions = {
 
                 session.user.id = token.sub as string
                 session.user.role = token.role as string
+                session.user.roleId = token.roleId ?? null
+                session.user.grants = token.grants ?? ""
                 session.user.firstName = token.firstName as string
                 session.user.lastName = token.lastName as string
                 session.user.gender = token.gender as string
@@ -363,6 +366,25 @@ export const authOptions: NextAuthOptions = {
                 session.user.logoUrl = token.logoUrl as string | null | undefined
                 session.user.featureAccess = token.featureAccess as any
                 session.user.subscription = token.subscription as any
+                // When this session last confirmed a high-risk action (§6.15).
+                session.user.stepUpAt = token.stepUpAt ?? null
+
+                // Previewing a role (ROLES_PLAN.md §6.6): the Super Admin is
+                // presented as a holder of it in its company — its kind, its
+                // grants, the company's package — so every screen and route
+                // answers as it would for them. The real identity stays in the
+                // token; withStandardHandler refuses every write meanwhile.
+                const preview = token.role === 'SUPER_ADMIN' ? token.preview : null
+                session.user.preview = preview ? { roleId: preview.roleId, roleName: preview.roleName, roleBuiltIn: preview.roleBuiltIn ?? null, companyId: preview.companyId, companyName: preview.companyName } : null
+                if (preview) {
+                    session.user.role = preview.baseRole
+                    session.user.roleId = preview.roleId
+                    session.user.grants = preview.grants
+                    session.user.companyId = preview.companyId
+                    session.user.companyName = preview.companyName
+                    session.user.featureAccess = preview.featureAccess as any
+                    session.user.subscription = null as any
+                }
             }
             return session
         },
@@ -414,6 +436,9 @@ export const authOptions: NextAuthOptions = {
                 token.subscription = (user as any).subscription || null
                 token.checkedAt = Date.now()
                 token.jti = uuidv4()
+                // What they may do: their role's grants (ROLES_PLAN.md §4.4).
+                // The Super Admin is outside the role system and holds none.
+                if (user.role !== 'SUPER_ADMIN') Object.assign(token, await RoleService.forToken(user.id as string))
 
                 // Store remember flag in token
                 if ('remember' in user) {
@@ -451,6 +476,19 @@ export const authOptions: NextAuthOptions = {
             // nothing extra.
             // Skip on initial sign-in (!user check) — token.checkedAt was
             // just seeded above in that branch.
+            // A token issued before roles were data carries no grants, and
+            // can() gives nothing to someone without them. Load them now, on
+            // its first request, rather than leave the person refused
+            // everything until the next minute's check.
+            if (token.sub && !user && token.role !== 'SUPER_ADMIN' && token.grants === undefined) {
+                try {
+                    Object.assign(token, await RoleService.forToken(token.sub as string))
+                } catch (e) {
+                    console.error("[AUTH] Loading role grants failed — revoking session", e)
+                    return {} as any
+                }
+            }
+
             if (token.sub && !user) {
                 const lastChecked = token.checkedAt || 0
                 const checkIntervalMs = 60_000
@@ -467,6 +505,14 @@ export const authOptions: NextAuthOptions = {
                                 select: { sessionVersion: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true }
                             })
                             dbVersion = sa?.sessionVersion || 0
+                            // A preview follows the role as it is edited, and
+                            // ends with it if it is deleted.
+                            if (token.preview) {
+                                const startedAt = token.preview.startedAt
+                                token.preview = await RoleService.previewOf(token.preview.roleId)
+                                    .then(p => ({ ...p, startedAt }))
+                                    .catch(() => null)
+                            }
                             token.isProtected = sa?.isProtected || false
                             token.emailVerified = !!sa?.emailVerifiedAt
                             token.mfaEnabled = sa?.mfaEnabled || false
@@ -478,6 +524,8 @@ export const authOptions: NextAuthOptions = {
                                     where: { id: userId },
                                     select: {
                                         sessionVersion: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
+                                        role: true, roleId: true, assignedRole: { select: { version: true } },
+                                        actingUntil: true,
                                         company: {
                                             select: {
                                                 isBanned: true,
@@ -490,7 +538,7 @@ export const authOptions: NextAuthOptions = {
                                                 // Same reasoning: assigning or changing a package
                                                 // has to take effect promptly, not only after the
                                                 // customer next signs in.
-                                                package: { select: { hasCompanyManagement: true, hasHR: true } },
+                                                package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
                                                 // The furthest-reaching confirmed period,
                                                 // for the subscription state. NULLs sort
                                                 // first on DESC in Postgres, so a lifetime
@@ -531,6 +579,20 @@ export const authOptions: NextAuthOptions = {
                             // took effect at the next sign-in would let somebody
                             // work all day past their grace period.
                             token.subscription = summarizeSubscription(u?.company)
+                            // Reassigned, or their role edited: reload what they
+                            // may do, without signing them out. Both are compared —
+                            // every role starts at version 1, so a move between
+                            // two unedited roles changes only the id (§4.4).
+                            //
+                            // And once an acting role is over (§6.13): the grants
+                            // of the role they return to, from then on, rather
+                            // than whenever the nightly job moves them back.
+                            const actingOver = !!u?.actingUntil && u.actingUntil <= new Date() && !token.actingEnded
+                            if (u && ((u.roleId ?? null) !== (token.roleId ?? null) || (u.assignedRole?.version ?? 0) !== (token.roleVersion ?? 0) || actingOver)) {
+                                const loaded = await RoleService.forToken(userId)
+                                Object.assign(token, loaded)
+                                token.role = loaded.role ?? u.role
+                            }
                         }
 
                         if (token.sessionVersion === undefined) {
@@ -558,9 +620,53 @@ export const authOptions: NextAuthOptions = {
                 }
             }
 
+            // A preview nobody ended ends by itself.
+            if (token.preview && Date.now() - token.preview.startedAt > PREVIEW_LASTS_MS) token.preview = null
+
+            // Start or end previewing a role (§6.6). The Super Admin's alone:
+            // the real role in the token decides, never what the client sends.
+            if (trigger === 'update' && session && 'previewRoleId' in session && token.role === 'SUPER_ADMIN' && token.sub) {
+                const { AuditLogService } = await import("./services/audit-log.service")
+                if (token.preview) {
+                    await AuditLogService.log('END_ROLE_PREVIEW', 'ROLE', token.preview.roleId, { superAdminId: token.sub, details: {} })
+                    token.preview = null
+                }
+                if (typeof session.previewRoleId === 'string') {
+                    try {
+                        token.preview = await RoleService.previewOf(session.previewRoleId)
+                        await AuditLogService.log('START_ROLE_PREVIEW', 'ROLE', token.preview.roleId, {
+                            superAdminId: token.sub,
+                            details: { companyId: token.preview.companyId, roleName: token.preview.roleName },
+                        })
+                    } catch {
+                        token.preview = null
+                    }
+                }
+            }
+
+            // Step-up confirmation (ROLES_PLAN.md §6.15): the code is checked
+            // here, against the account's own secret, and only then is the
+            // time written into the signed token — the browser can ask, never
+            // tell. Fixed from this moment; nothing else extends it. Attempts
+            // are limited in the database, not the token, since an older
+            // cookie could be replayed to reset a count kept in it.
+            if (trigger === 'update' && session && typeof session.stepUpCode === 'string' && token.sub) {
+                const { limited } = await RateLimiter.getLimitData(`step-up:${token.sub}`, 5, 15 * 60 * 1000)
+                if (!limited) {
+                    const select = { mfaEnabled: true, mfaSecret: true } as const
+                    const row = token.role === 'SUPER_ADMIN'
+                        ? await prisma.superAdmin.findUnique({ where: { id: token.sub as string }, select })
+                        : await prisma.user.findUnique({ where: { id: token.sub as string }, select })
+                    if (row?.mfaEnabled && row.mfaSecret && await MfaService.verifyStoredCode(row.mfaSecret, session.stepUpCode)) {
+                        token.stepUpAt = Date.now()
+                    }
+                }
+            }
+
             // On session update (client-side update() call)
             if (trigger === 'update' && session) {
-                console.log('JWT Update Triggered:', session)
+                // Which fields, not their values: a step-up code rides in here.
+                console.log('JWT Update Triggered:', Object.keys(session))
                 if (session.firstName !== undefined) token.firstName = session.firstName
                 if (session.lastName !== undefined) token.lastName = session.lastName
                 if (session.gender !== undefined) token.gender = session.gender
@@ -573,10 +679,30 @@ export const authOptions: NextAuthOptions = {
                     token.picture = newAvatar
                 }
                 if (session.language !== undefined) token.language = session.language
-                if (session.mustChangePassword !== undefined) token.mustChangePassword = session.mustChangePassword
-                if (session.emailVerified !== undefined) token.emailVerified = session.emailVerified
-                if (session.email !== undefined) token.email = session.email
-                if (session.mfaEnabled !== undefined) token.mfaEnabled = session.mfaEnabled
+
+                // The flags the dashboard is gated on — a forced password
+                // reset, a verified email, MFA — and the address itself are
+                // never taken from the client. `session` is whatever the
+                // browser passes to update(), so trusting it let anybody call
+                // update({ emailVerified: true, mustChangePassword: false })
+                // from the console and walk past both gates in proxy.ts. The
+                // callers ask only after the server has changed the row
+                // (email confirmed, MFA set up or removed, password changed),
+                // so re-reading it gives them the new value; a client claiming
+                // otherwise gets the database's answer.
+                const asksAboutSecurity = ['mustChangePassword', 'emailVerified', 'email', 'mfaEnabled'].some(key => session[key] !== undefined)
+                if (asksAboutSecurity && token.sub) {
+                    const select = { email: true, emailVerifiedAt: true, mfaEnabled: true, mustChangePassword: true } as const
+                    const row = token.role === 'SUPER_ADMIN'
+                        ? await prisma.superAdmin.findUnique({ where: { id: token.sub as string }, select })
+                        : await prisma.user.findUnique({ where: { id: token.sub as string }, select })
+                    if (row) {
+                        token.mustChangePassword = row.mustChangePassword
+                        token.emailVerified = !!row.emailVerifiedAt
+                        token.email = row.email
+                        token.mfaEnabled = row.mfaEnabled
+                    }
+                }
             }
             return token
         }

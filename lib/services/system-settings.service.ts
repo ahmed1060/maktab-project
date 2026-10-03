@@ -21,10 +21,10 @@ export class SystemSettingsService {
      */
     static async get() {
         const settings = await prisma.systemSettings.findUnique({ where: { id: SETTINGS_ID } })
-        return settings || { id: SETTINGS_ID, locationVerifyRadiusMeters: 70, maintenanceMode: false, maintenanceMessage: null, showPoweredBy: true, poweredByName: DEFAULT_POWERED_BY_NAME, defaultTimezone: DEFAULT_TIME_ZONE, updatedAt: new Date() }
+        return settings || { id: SETTINGS_ID, locationVerifyRadiusMeters: 70, maintenanceMode: false, maintenanceMessage: null, showPoweredBy: true, poweredByName: DEFAULT_POWERED_BY_NAME, defaultTimezone: DEFAULT_TIME_ZONE, stepUpMinutes: 60, updatedAt: new Date() }
     }
 
-    static async update(data: { locationVerifyRadiusMeters?: number, maintenanceMode?: boolean, maintenanceMessage?: string | null, showPoweredBy?: boolean, poweredByName?: string, defaultTimezone?: string }) {
+    static async update(data: { locationVerifyRadiusMeters?: number, maintenanceMode?: boolean, maintenanceMessage?: string | null, showPoweredBy?: boolean, poweredByName?: string, defaultTimezone?: string, stepUpMinutes?: number }) {
         return prisma.systemSettings.upsert({
             where: { id: SETTINGS_ID },
             update: data,

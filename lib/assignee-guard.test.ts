@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { checkAssignees } from "./services/assignee-guard"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * The rule that four places used to decide separately, and decided
@@ -31,8 +32,8 @@ const client = {
     },
 }
 
-const leader = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: CO } }
-const admin = { user: { id: "a-1", role: "ADMIN", companyId: CO } }
+const leader = { user: withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: CO }) }
+const admin = { user: withGrants({ id: "a-1", role: "ADMIN", companyId: CO }) }
 const superAdmin = { user: { id: "sa-1", role: "SUPER_ADMIN", companyId: null } }
 
 const reason = async (ids: string[], session: any) => {

@@ -81,6 +81,10 @@ const OTHER: [string, () => Promise<Response>, Row][] = [
     ["rejecting a name change in the company",       name("reject", "p-emp"),    [200, 200, 403, 403, 403]],
     ["approving a name change in another company",   name("approve", "p-other"), [200, 403, 200, 403, 403]],
     ["rejecting a name change in another company",   name("reject", "p-other"),  [200, 403, 200, 403, 403]],
+    // Added in Part B: nobody decides their own name change (ROLES_PLAN.md
+    // §4.2, rule 5).
+    ["approving the Admin's own name change",        name("approve", "p-admin"), [200, 403, 403, 403, 403]],
+    ["rejecting the Admin's own name change",        name("reject", "p-admin"),  [200, 403, 403, 403, 403]],
     ["resetting a team member's points",             resetPoints("emp"),         [200, 200, 403, 403, 403]],
     ["resetting a teamless employee's points",       resetPoints("loner"),       [200, 200, 403, 403, 403]],
     ["resetting points in another company",          resetPoints("other"),       [200, 403, 200, 403, 403]],

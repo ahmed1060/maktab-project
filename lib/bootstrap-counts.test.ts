@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * The header's name-change badge counts the viewer's own company.
@@ -29,7 +30,7 @@ describe("the name-change badge", () => {
     it("counts only the Admin's own company", async () => {
         seen.length = 0
         const { SystemService } = await import("@/lib/services/system.service")
-        const data = await SystemService.getBootstrapData("admin", "ADMIN")
+        const data = await SystemService.getBootstrapData(withGrants({ id: "admin", role: "ADMIN", companyId: "c1" }))
         expect(seen).toEqual([{ status: "PENDING", user: { companyId: "c1" } }])
         expect(data.counts.pendingProfileRequests).toBe(7)
     })
@@ -37,7 +38,7 @@ describe("the name-change badge", () => {
     it("is not counted for someone who does not decide them", async () => {
         seen.length = 0
         const { SystemService } = await import("@/lib/services/system.service")
-        const data = await SystemService.getBootstrapData("tl", "TEAM_LEADER")
+        const data = await SystemService.getBootstrapData(withGrants({ id: "tl", role: "TEAM_LEADER", companyId: "c1" }))
         expect(seen).toEqual([])
         expect(data.counts.pendingProfileRequests).toBe(0)
     })

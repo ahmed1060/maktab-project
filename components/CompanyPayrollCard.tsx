@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { MAX_PAYROLL_DAY } from '@/lib/payday'
 import { FULL_RECOVERY_PERCENT } from '@/lib/debt-recovery'
+import { useReportUnsaved } from '@/lib/useUnsavedChanges'
 
 /**
  * The three payroll settings a company actually has.
@@ -26,6 +27,13 @@ type Props = {
     timezone: string
     debtRecoveryPercent: number
     onSaved: (next: { payrollDay: number; payslipsVisible: boolean; timezone: string; debtRecoveryPercent: number }) => void
+    /** Shown, not changed: someone who holds settings.view without settings.edit. */
+    readOnly?: boolean
+    /**
+     * Whether this viewer sets the debt recovery cap. Only the Super Admin
+     * does (lib/company-settings-tabs.ts); a company's own people see it.
+     */
+    debtRecoveryEditable?: boolean
 }
 
 // A shortlist, not a limit. Any zone the runtime recognises is accepted — the
@@ -41,7 +49,7 @@ const ZONES = [
     'America/Sao_Paulo', 'America/New_York', 'America/Chicago', 'America/Los_Angeles',
 ]
 
-export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, onSaved }: Props) {
+export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, onSaved, readOnly = false, debtRecoveryEditable = true }: Props) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const isRtl = locale === 'ar'
@@ -53,14 +61,18 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
     const [saving, setSaving] = useState(false)
 
     const dirty = day !== payrollDay || visible !== payslipsVisible || zone !== timezone || cap !== debtRecoveryPercent
+    useReportUnsaved('payroll', dirty)
 
     const save = async () => {
         setSaving(true)
         try {
-            const res = await fetch('/api/companies', {
+            const res = await fetch('/api/company-settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: companyId, payrollDay: day, payslipsVisible: visible, timezone: zone, debtRecoveryPercent: cap }),
+                body: JSON.stringify({
+                    companyId, tab: 'payroll', payrollDay: day, payslipsVisible: visible, timezone: zone,
+                    ...(debtRecoveryEditable ? { debtRecoveryPercent: cap } : {}),
+                }),
             })
             const body = await res.json().catch(() => ({}))
             if (!res.ok) {
@@ -102,6 +114,7 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                         max={MAX_PAYROLL_DAY}
                         value={day}
                         onChange={e => setDay(Number(e.target.value))}
+                        disabled={readOnly}
                         style={{ width: '6rem' }}
                     />
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.3rem' }}>
@@ -118,6 +131,7 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                         className="input"
                         value={zone}
                         onChange={e => setZone(e.target.value)}
+                        disabled={readOnly}
                         style={{ width: 'auto', maxWidth: '100%' }}
                     >
                         {/* A zone already stored but not on the list stays
@@ -140,7 +154,8 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                         type="checkbox"
                         checked={visible}
                         onChange={e => setVisible(e.target.checked)}
-                        style={{ width: '1.1rem', height: '1.1rem', marginTop: '0.15rem', flexShrink: 0, cursor: 'pointer' }}
+                        disabled={readOnly}
+                        style={{ width: '1.1rem', height: '1.1rem', marginTop: '0.15rem', flexShrink: 0, cursor: readOnly ? 'default' : 'pointer' }}
                     />
                     <div>
                         <label htmlFor="company-payslips-visible" style={{ fontWeight: 500, cursor: 'pointer' }}>
@@ -165,6 +180,7 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                             max={100}
                             value={cap}
                             onChange={e => setCap(Number(e.target.value))}
+                            disabled={readOnly || !debtRecoveryEditable}
                             style={{ width: '6rem' }}
                         />
                         <span style={{ color: 'var(--text-muted)' }}>%</span>
@@ -173,17 +189,18 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                         {cap === FULL_RECOVERY_PERCENT ? t('debt_recovery_hint_full')
                             : cap === 0 ? t('debt_recovery_hint_off')
                                 : t('debt_recovery_hint_capped').replace('{n}', String(cap))}
+                        {!debtRecoveryEditable && ` ${t('settings_set_by_super_admin')}`}
                     </div>
                 </div>
 
-                <button
+                {!readOnly && <button
                     className="btn btn-primary"
                     onClick={save}
                     disabled={saving || !dirty}
                     style={{ alignSelf: isRtl ? 'flex-end' : 'flex-start' }}
                 >
                     {saving ? '…' : t('save')}
-                </button>
+                </button>}
             </div>
         </div>
     )

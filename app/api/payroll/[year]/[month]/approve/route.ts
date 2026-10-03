@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { PayrollRunService } from "@/lib/services/payroll-run.service"
 import { resolvePayrollScope, payrollScopeRefusal } from "@/lib/payroll-scope"
+import { assertStepUp } from "@/lib/step-up"
 
 /**
  * Freezing a month.
@@ -20,6 +21,8 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
         params.year, params.month,
     )
     if (!scope.ok) return payrollScopeRefusal(scope)
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "payroll.approve")
 
     const result = await PayrollRunService.approve(scope.companyId, scope.year, scope.month, session, {
         acknowledgePending: json?.acknowledgePending === true,

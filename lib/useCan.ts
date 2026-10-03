@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { createContext, createElement, useContext, useMemo, type ReactNode } from "react"
 import { useSession } from "next-auth/react"
 import { can, canCompanyWide, grantFor, type Actor, type Target } from "@/lib/permissions/can"
 import type { Permission, Scope } from "@/lib/permissions/catalogue"
@@ -25,13 +25,20 @@ export type Can = {
      * a screen that shows a team view where others see the company's.
      */
     scope: (permission: Permission) => Scope | "ALL" | null
+    /**
+     * Whether they may do this to the person with this id in their own
+     * company — for a decision about somebody, where who it is matters: nobody
+     * approves their own leave or sets their own pay. Pass who leads them for
+     * a permission that can be held for a team, or a team-scoped grant can
+     * only ever match the viewer themselves.
+     */
+    canFor: (permission: Permission, userId: string | null | undefined, teamLeaderId?: string | null) => boolean
 }
 
 /**
- * The same answers for an actor already in hand — for a Client Component whose
- * Server Component parent passed the viewer's role down. Those render with it
- * on the first paint, where the session hook has not loaded yet, so asking the
- * hook instead would hide their buttons for a moment on every visit.
+ * The same answers for an actor already in hand — the full signed-in user,
+ * grants included, never one rebuilt from a role name: grants are what a role
+ * holds, and a role's name says nothing about them.
  */
 export function permissionsOf(actor: Actor | null | undefined): Can {
     const who = actor?.role ? actor : null
@@ -39,18 +46,35 @@ export function permissionsOf(actor: Actor | null | undefined): Can {
         can: (permission, target) => !!who && can(who, permission, target),
         companyWide: permission => !!who && canCompanyWide(who, permission),
         scope: permission => who ? grantFor(who, permission) : null,
+        canFor: (permission, userId, teamLeaderId) => !!who && !!userId && can(who, permission, { companyId: who.companyId, userId, teamLeaderId: teamLeaderId ?? null }),
     }
+}
+
+/**
+ * The signed-in person as the dashboard layout read them on the server, grants
+ * included. The session hook has nothing on the first paint — it loads after —
+ * so without this every screen would render without its buttons and then grow
+ * them a moment later.
+ */
+const ViewerContext = createContext<Actor | null>(null)
+
+export function ViewerProvider({ viewer, children }: { viewer: Actor | null | undefined; children: ReactNode }) {
+    return createElement(ViewerContext.Provider, { value: viewer ?? null }, children)
 }
 
 export function useCan(): Can {
     const { data: session } = useSession()
-    const user = session?.user as Actor | undefined
+    const fromLayout = useContext(ViewerContext)
+    // The session once it has loaded, since it is the one that refreshes; the
+    // layout's copy until then.
+    const user = ((session?.user as Actor | undefined)?.role ? session!.user : fromLayout) as Actor | null
     const role = user?.role
     const id = user?.id
     const companyId = user?.companyId
+    const grants = user?.grants
 
     // Keyed on the fields can() reads rather than the session object, which
     // next-auth replaces on every refresh: callers put this in dependency
     // arrays, and a fresh object each time would refire their effects.
-    return useMemo(() => permissionsOf(role ? { role, id, companyId } : null), [role, id, companyId])
+    return useMemo(() => permissionsOf(role ? { role, id, companyId, grants } : null), [role, id, companyId, grants])
 }

@@ -1,7 +1,8 @@
-import { withStandardHandler } from "@/lib/api-utils"
+import { readForm, withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { CompanyService } from "@/lib/services/company.service"
 import { MAX_LOGO_BYTES, MAX_LOGO_DIMENSION, MIN_LOGO_DIMENSION } from "@/lib/company-logo"
+import { maySettings } from "@/lib/company-settings-access"
 
 /**
  * A company's logo, uploaded here rather than through /api/upload.
@@ -12,7 +13,17 @@ import { MAX_LOGO_BYTES, MAX_LOGO_DIMENSION, MIN_LOGO_DIMENSION } from "@/lib/co
  * the rules are narrower than the general uploader's: three image formats
  * checked by signature rather than by name, 1 MB rather than 4, and a pixel
  * bound, none of which belong on a route that also carries task attachments.
+ *
+ * The Super Admin sets any company's logo; a company's own people set theirs
+ * when the Super Admin shows them the Branding tab (ATTENDANCE_PLAN.md §5.2).
  */
+
+/** Whether this caller may change this company's logo. */
+async function mayChangeLogo(session: any, companyId: string): Promise<boolean> {
+    if (session.user.role === 'SUPER_ADMIN') return true
+    const exposure = await CompanyService.settingsExposure(companyId)
+    return !!exposure && maySettings(session.user, exposure, 'branding', 'edit')
+}
 
 function messageFor(reason: string, detail?: string): string {
     switch (reason) {
@@ -34,13 +45,13 @@ function messageFor(reason: string, detail?: string): string {
 }
 
 export const POST = withStandardHandler(async (req, session) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
-
-    const form = await req.formData()
+    const form = await readForm(req)
+    if (!form) return ApiResponse.badRequest("Send the file as a form upload.")
     const companyId = form.get('companyId')
     const file = form.get('file')
 
     if (typeof companyId !== 'string' || !companyId) return ApiResponse.badRequest("companyId is required")
+    if (!(await mayChangeLogo(session, companyId))) return ApiResponse.forbidden()
     if (!(file instanceof File)) return ApiResponse.badRequest("file is required")
 
     // Read once, up front, and bound it before anything else touches the bytes.
@@ -58,16 +69,15 @@ export const POST = withStandardHandler(async (req, session) => {
         throw e
     }
 }, {
-    // Tighter than the general uploader's 20: this is a Super Admin setting a
-    // logo once per company, not a user attaching files to their work.
+    // Tighter than the general uploader's 20: this is somebody setting a logo
+    // once per company, not a user attaching files to their work.
     rateLimit: { maxRequests: 10, windowMs: 60_000 }
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
-
     const companyId = new URL(req.url).searchParams.get('companyId')
     if (!companyId) return ApiResponse.badRequest("companyId is required")
+    if (!(await mayChangeLogo(session, companyId))) return ApiResponse.forbidden()
 
     try {
         const result = await CompanyService.clearLogo(companyId, session)

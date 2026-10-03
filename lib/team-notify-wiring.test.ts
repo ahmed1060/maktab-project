@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { withGrants, builtInRoleLookup } from "@/lib/permissions/test-actors"
 
 /**
  * That UserService.update reports team changes — and only real ones. Saving a
@@ -30,12 +31,15 @@ const userModel = {
 vi.mock("@/lib/prisma", () => ({
     prisma: {
         user: userModel,
+        role: { findUnique: (args: any) => builtInRoleLookup(args) },
         superAdmin: { findUnique: async () => null },
+        // A role change settles any request waiting for the person.
+        roleRequest: { updateMany: async () => ({ count: 0 }) },
         $transaction: async (fn: any) => fn({ user: userModel, auditLog: { create: async () => ({}) } }),
     },
 }))
 
-const admin = { user: { id: "a-1", role: "ADMIN", companyId: "co-1" } }
+const admin = { user: withGrants({ id: "a-1", role: "ADMIN", companyId: "co-1" }) }
 const person = (over: any = {}) => ({
     id: "e-1", role: "EMPLOYEE", companyId: "co-1", status: "ACTIVE",
     firstName: "Laila", lastName: "Fouad", email: "l@f.test", salary: 0, teamLeaderId: null, ...over,

@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 interface ViewRequestModalProps {
     isOpen: boolean
@@ -18,6 +18,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
     const { t, locale } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const canReview = useCan().can('requests.review')
 
     if (!request) return null
 
@@ -30,8 +31,6 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
             setUpdating(false)
         }
     }
-
-    const canReview = permissionsOf({ role: userRole }).can('requests.review')
 
     return (
         <Modal

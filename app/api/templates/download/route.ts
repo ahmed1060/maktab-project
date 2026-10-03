@@ -72,4 +72,8 @@ export const GET = withStandardHandler(async (req, session) => {
         if (error.message === 'TEMPLATE_BASE_EMPTY') return ApiResponse.error("Template file is invalid — please re-upload it")
         throw error
     }
+}, {
+    // For bulk-creating tasks, and it lists the company's people and vendors:
+    // whoever may create tasks, and nobody else.
+    permission: "tasks.create",
 })

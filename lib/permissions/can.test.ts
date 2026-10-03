@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { PERMISSIONS, ALL_PERMISSIONS, isPermission, type Permission, type Scope } from "./catalogue"
 import { BUILT_IN_GRANTS, type BuiltInRole } from "./built-in"
 import { can, grantFor, withinScope } from "./can"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 const ROLES = Object.keys(BUILT_IN_GRANTS) as BuiltInRole[]
 const WIDTH: Record<Scope, number> = { OWN: 0, TEAM: 1, COMPANY: 2 }
@@ -51,7 +52,7 @@ describe("the built-in grants are ones the catalogue allows", () => {
 })
 
 describe("can", () => {
-    const admin = { id: "a", role: "ADMIN", companyId: "c1" }
+    const admin = withGrants({ id: "a", role: "ADMIN", companyId: "c1" })
     const superAdmin = { id: "sa", role: "SUPER_ADMIN", companyId: null }
 
     it("gives a Super Admin everything, anywhere", () => {
@@ -67,8 +68,8 @@ describe("can", () => {
     })
 
     it("refuses what a role was not granted", () => {
-        expect(can({ id: "e", role: "EMPLOYEE", companyId: "c1" }, "payroll.view", { companyId: "c1" })).toBe(false)
-        expect(can({ id: "t", role: "TEAM_LEADER", companyId: "c1" }, "debts.waive")).toBe(false)
+        expect(can(withGrants({ id: "e", role: "EMPLOYEE", companyId: "c1" }), "payroll.view", { companyId: "c1" })).toBe(false)
+        expect(can(withGrants({ id: "t", role: "TEAM_LEADER", companyId: "c1" }), "debts.waive")).toBe(false)
     })
 
     it("refuses an unknown or missing role", () => {
@@ -78,17 +79,17 @@ describe("can", () => {
     })
 
     it("refuses a company-scoped actor with no company, rather than matching a target with none", () => {
-        expect(can({ id: "a", role: "ADMIN", companyId: null }, "payroll.view", { companyId: null })).toBe(false)
+        expect(can(withGrants({ id: "a", role: "ADMIN", companyId: null }), "payroll.view", { companyId: null })).toBe(false)
     })
 
     it("without a target, says whether the permission is held at all", () => {
         expect(can(admin, "payroll.view")).toBe(true)
-        expect(can({ id: "e", role: "EMPLOYEE", companyId: "c1" }, "payroll.view")).toBe(false)
+        expect(can(withGrants({ id: "e", role: "EMPLOYEE", companyId: "c1" }), "payroll.view")).toBe(false)
     })
 })
 
 describe("scope rules", () => {
-    const leader = { id: "tl", role: "TEAM_LEADER", companyId: "c1" }
+    const leader = withGrants({ id: "tl", role: "TEAM_LEADER", companyId: "c1" })
 
     it("COMPANY: anything in the company", () => {
         expect(withinScope("COMPANY", leader, { companyId: "c1" })).toBe(true)
@@ -117,12 +118,36 @@ describe("canCompanyWide", () => {
     it("is true for a Super Admin and for a COMPANY grant", async () => {
         const { canCompanyWide } = await import("./can")
         expect(canCompanyWide({ id: "sa", role: "SUPER_ADMIN" }, "obligations.manage")).toBe(true)
-        expect(canCompanyWide({ id: "a", role: "ADMIN", companyId: "c1" }, "obligations.manage")).toBe(true)
+        expect(canCompanyWide(withGrants({ id: "a", role: "ADMIN", companyId: "c1" }), "obligations.manage")).toBe(true)
     })
 
     it("is false for a TEAM grant, and for no grant at all", async () => {
         const { canCompanyWide } = await import("./can")
-        expect(canCompanyWide({ id: "t", role: "TEAM_LEADER", companyId: "c1" }, "obligations.manage")).toBe(false)
-        expect(canCompanyWide({ id: "e", role: "EMPLOYEE", companyId: "c1" }, "obligations.manage")).toBe(false)
+        expect(canCompanyWide(withGrants({ id: "t", role: "TEAM_LEADER", companyId: "c1" }), "obligations.manage")).toBe(false)
+        expect(canCompanyWide(withGrants({ id: "e", role: "EMPLOYEE", companyId: "c1" }), "obligations.manage")).toBe(false)
+    })
+})
+
+describe("nobody decides their own (ROLES_PLAN.md §4.2, rule 5)", () => {
+    const admin = withGrants({ id: "a", role: "ADMIN", companyId: "c1" })
+    const own = { companyId: "c1", userId: "a", teamLeaderId: null }
+    const someoneElse = { companyId: "c1", userId: "e", teamLeaderId: null }
+
+    for (const permission of ["dayoff.approve", "dayoff.adjust_credit", "salary.edit", "salary_adjustments.manage", "profile_requests.review", "employees.assign_role"] as const) {
+        it(`refuses ${permission} on oneself, and allows it on someone else`, () => {
+            expect(can(admin, permission, own)).toBe(false)
+            expect(can(admin, permission, someoneElse)).toBe(true)
+        })
+    }
+
+    it("leaves every other permission alone on oneself", () => {
+        expect(can(admin, "employees.edit", own)).toBe(true)
+        expect(can(admin, "tasks.review", own)).toBe(true)
+    })
+
+    it("is a rule of the permission, which no grant outranks", () => {
+        // Checked before the grant is read: holding it company-wide, or
+        // everywhere, does not make one's own request someone else's.
+        expect(can({ id: "sa", role: "SUPER_ADMIN", companyId: null }, "dayoff.approve", { companyId: "c1", userId: "sa" })).toBe(false)
     })
 })

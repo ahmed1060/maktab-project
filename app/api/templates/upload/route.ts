@@ -1,4 +1,4 @@
-import { withStandardHandler } from "@/lib/api-utils"
+import { readForm, withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { uploadTemplateToCloud } from "@/lib/storage"
 
@@ -11,7 +11,8 @@ export const POST = withStandardHandler(async (req, session) => {
     }
 
     try {
-        const formData = await req.formData()
+        const formData = await readForm(req)
+        if (!formData) return ApiResponse.badRequest("Send the file as a form upload.")
         const file = formData.get('file') as File
         const locale = formData.get('locale') as string // 'en' or 'ar'
 

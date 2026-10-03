@@ -1,5 +1,5 @@
-import type { Permission, Scope } from "./catalogue"
-import { BUILT_IN_GRANTS, isBuiltInRole } from "./built-in"
+import { definitionOf, type Permission, type Scope } from "./catalogue"
+import { decodeGrants } from "./grants"
 
 /**
  * May this person do this, to this?
@@ -9,15 +9,19 @@ import { BUILT_IN_GRANTS, isBuiltInRole } from "./built-in"
  * request or a database, so the rule can be read and tested on its own — the
  * same reason lib/approval.ts and lib/payroll-scope.ts are pure.
  *
- * Today the answer comes from the fixed built-in table (./built-in.ts), so it
- * says exactly what the role checks it replaces said. In Part B it will come
- * from the person's role instead, and nothing that calls it changes.
+ * The answer comes from the person's role: its grants travel in the session
+ * token (lib/auth.ts loads them, and reloads them within a minute of the role
+ * changing), so asking costs no query. Nobody holds anything their token does
+ * not carry — there is no fallback to a table by role name, because a fallback
+ * is how a custom role would quietly be answered as a built-in one.
  */
 
 export type Actor = {
     id?: string | null
     role: string | null | undefined
     companyId?: string | null
+    /** The role's grants as the token carries them — see ./grants.ts. */
+    grants?: string | null
 }
 
 /**
@@ -34,8 +38,7 @@ export type Target = {
 /** The scope at which this actor holds this permission, or null. */
 export function grantFor(actor: Actor, permission: Permission): Scope | "ALL" | null {
     if (actor.role === "SUPER_ADMIN") return "ALL"
-    if (!isBuiltInRole(actor.role)) return null
-    return BUILT_IN_GRANTS[actor.role][permission] ?? null
+    return decodeGrants(actor.grants)[permission] ?? null
 }
 
 /**
@@ -51,6 +54,9 @@ export function grantFor(actor: Actor, permission: Permission): Scope | "ALL" | 
  * guesses, because every one of those is the shape a tenancy leak takes.
  */
 export function can(actor: Actor, permission: Permission, target?: Target): boolean {
+    // Before the grant, and for everyone: rule 5 is not something a role can
+    // hold its way past.
+    if (target?.userId && actor.id && target.userId === actor.id && definitionOf(permission).notOnOwn) return false
     const scope = grantFor(actor, permission)
     if (scope === null) return false
     if (scope === "ALL") return true

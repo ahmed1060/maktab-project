@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nizmo</string>
+    <string name="title_activity_main">Nizmo</string>
+    <string name="package_name">com.shsd.nizmo</string>
+    <string name="custom_url_scheme">com.shsd.nizmo</string>
+</resources>

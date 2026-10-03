@@ -1,5 +1,7 @@
 import { prisma } from "./prisma";
 import { scopesToTeam } from "./team-scope";
+import type { Target } from "./permissions/can";
+import type { Permission } from "./permissions/catalogue";
 
 /**
  * Whether this session may touch this resource.
@@ -19,11 +21,16 @@ import { scopesToTeam } from "./team-scope";
  * belong to nobody in particular — narrowing those to a team would not protect
  * a person, it would just stop leaders doing the job they are given a Clients
  * screen for.
+ *
+ * `acting` is the permission the caller is about to use on it, when it is more
+ * than looking. Its own scope counts too: a role may see every task yet pay
+ * only its team's, and the team rule must then hold for paying.
  */
 export async function verifyResourceAccess(
     session: any,
     resourceId: string,
-    resourceType: 'USER' | 'TASK' | 'OBLIGATION' | 'CLIENT' | 'SECTION' | 'NOTE'
+    resourceType: 'USER' | 'TASK' | 'OBLIGATION' | 'CLIENT' | 'SECTION' | 'NOTE',
+    acting?: Permission,
 ) {
     if (!session || !session.user) return false;
 
@@ -36,6 +43,9 @@ export async function verifyResourceAccess(
     // All other roles MUST have a companyId to access any company resource
     if (!userCompanyId) return false;
 
+    // Held for a team: by the view permission, or by the one being used.
+    const teamOnly = (view: Permission) => scopesToTeam(session.user, view) || (!!acting && scopesToTeam(session.user, acting));
+
     switch (resourceType) {
         case 'USER': {
             const user = await prisma.user.findUnique({
@@ -43,7 +53,7 @@ export async function verifyResourceAccess(
                 select: { id: true, companyId: true, teamLeaderId: true }
             });
             if (!user || user.companyId !== userCompanyId) return false;
-            if (scopesToTeam(session.user, "employees.view")) {
+            if (teamOnly("employees.view")) {
                 // Themselves, or somebody who reports to them. An employee with
                 // no leader belongs to the Admins, so a leader cannot reach
                 // them here either.
@@ -64,7 +74,7 @@ export async function verifyResourceAccess(
                 }
             });
             if (!task || task.companyId !== userCompanyId) return false;
-            if (scopesToTeam(session.user, "tasks.view")) return isTeamWork(task.assignees, session.user.id);
+            if (teamOnly("tasks.view")) return isTeamWork(task.assignees, session.user.id);
             return true;
         }
         case 'OBLIGATION': {
@@ -76,7 +86,7 @@ export async function verifyResourceAccess(
                 }
             });
             if (!obligation || obligation.companyId !== userCompanyId) return false;
-            if (scopesToTeam(session.user, "obligations.view")) return isTeamWork(obligation.assignees, session.user.id);
+            if (teamOnly("obligations.view")) return isTeamWork(obligation.assignees, session.user.id);
             return true;
         }
         case 'CLIENT': {
@@ -118,4 +128,29 @@ export function isTeamWork(
     leaderId: string,
 ): boolean {
     return assignees.some(a => a.id === leaderId || a.teamLeaderId === leaderId);
+}
+
+/**
+ * A person as can() reads a target: their company, their id and their leader.
+ * For the decisions that are about somebody — their pay, their leave, their
+ * name — so a grant's scope, and the rule that nobody decides their own, are
+ * checked against the right person. Null for nobody.
+ */
+export async function personTarget(userId: string): Promise<Target | null> {
+    const person = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, companyId: true, teamLeaderId: true },
+    })
+    return person ? { companyId: person.companyId, userId: person.id, teamLeaderId: person.teamLeaderId } : null
+}
+
+/**
+ * Which table the signed-in id belongs to: SUPER_ADMIN for a SuperAdmin row,
+ * anything else for a User row. Not the same as session.user.role while the
+ * Super Admin previews a role (ROLES_PLAN.md §6.6) — that presents the
+ * previewed role, for access, while the id is still the Super Admin's.
+ * Anything that looks a person up, or attributes something to them, asks this.
+ */
+export function accountKind(user: { role?: string | null; preview?: unknown }): string | undefined {
+    return user.preview ? 'SUPER_ADMIN' : user.role ?? undefined
 }

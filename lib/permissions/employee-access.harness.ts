@@ -7,6 +7,8 @@
  * Kept in its own module so the record file reads as the record.
  */
 
+import { withGrants, builtInRoleLookup, stepUpConfirmed } from "./test-actors"
+
 export const state = { session: null as any, written: [] as Record<string, unknown>[], created: [] as any[] }
 
 export const PEOPLE: Record<string, any> = {
@@ -39,10 +41,22 @@ function model(overrides: Record<string, any> = {}) {
 }
 
 const models: Record<string, any> = {
+    // Each company's built-in roles, as the roles migration creates them.
+    role: model({ findUnique: (args: any) => builtInRoleLookup(args) }),
     rateLimit: model({ upsert: async () => ({ count: 1 }) }),
     company: model({ findUnique: async ({ where }: any) => ({ id: where.id, name: where.id, isBanned: false }) }),
     user: model({
-        findUnique: async ({ where }: any) => PEOPLE[where.id] ?? null,
+        // Each person on their company's built-in role, as the roles migration
+        // put them — what the last-Admin rule reads.
+        findUnique: async ({ where }: any) => {
+            const p = PEOPLE[where.id]
+            return p ? { ...p, roleId: `${p.companyId}:${p.role}`, assignedRole: { builtIn: p.role } } : null
+        },
+        count: async ({ where }: any) => Object.values(PEOPLE).filter(p =>
+            (!where?.roleId || `${p.companyId}:${p.role}` === where.roleId) &&
+            (!where?.status?.in || where.status.in.includes(p.status)) &&
+            (!where?.id?.not || p.id !== where.id.not)
+        ).length,
         findFirst: async () => null,
         findMany: async ({ where }: any) => {
             const ids: string[] | undefined = where?.id?.in
@@ -73,7 +87,7 @@ export type ActorName = keyof typeof ACTORS
 export const ACTOR_NAMES = Object.keys(ACTORS) as ActorName[]
 
 export function as(name: ActorName) {
-    state.session = { user: { ...ACTORS[name] } }
+    state.session = { user: stepUpConfirmed(withGrants({ ...ACTORS[name] })) }
     state.written = []
     state.created = []
 }

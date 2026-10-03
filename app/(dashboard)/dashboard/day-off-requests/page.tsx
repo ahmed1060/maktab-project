@@ -17,6 +17,7 @@ import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
+import { apiErrorText } from "@/lib/api-error-text"
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -47,6 +48,7 @@ interface DayOffRequest {
         firstName: string
         lastName: string
         dayOffCredit: number
+        teamLeaderId?: string | null
     }
 }
 
@@ -58,7 +60,7 @@ export default function DayOffRequestsPage() {
     const user = session?.user
     // The manager's view — the company's requests, not one's own — is for
     // those who may see them; deciding one is narrower still.
-    const { can } = useCan()
+    const { can, canFor } = useCan()
     const managesRequests = can('dayoff.view')
     const canDecide = can('dayoff.approve')
     const { selectedCompanyId: contextCompanyId } = useCompany()
@@ -191,7 +193,7 @@ export default function DayOffRequestsPage() {
                 setReqReason('')
             } else {
                 const err = await res.text()
-                showAlert('error', err || t('failed_submit_request' as any))
+                showAlert('error', apiErrorText(err, t('failed_submit_request' as any)))
             }
         } catch {
             showAlert('error', t('error_generic'))
@@ -417,7 +419,7 @@ export default function DayOffRequestsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '1rem' }}>
                             {filteredRequests.map((req, index) => (
                                 <div
                                     key={req.id}
@@ -564,14 +566,14 @@ export default function DayOffRequestsPage() {
                                     </div>
 
                                     {/* Card Actions (Admin only) */}
-                                    {canDecide && req.status === 'PENDING' && (
+                                    {canDecide && req.status === 'PENDING' && canFor('dayoff.approve', req.userId, req.user?.teamLeaderId) && (
                                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
                                             <button
                                                 onClick={() => handleAction(req.id, 'APPROVED')}
                                                 className="btn"
                                                 style={{
                                                     flex: 1,
-                                                    background: 'var(--ok-solid)',
+                                                    background: 'var(--ok-fill)',
                                                     color: 'var(--text-on-accent)',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
@@ -586,7 +588,7 @@ export default function DayOffRequestsPage() {
                                                 className="btn"
                                                 style={{
                                                     flex: 1,
-                                                    background: 'var(--danger-solid)',
+                                                    background: 'var(--danger-fill)',
                                                     color: 'var(--text-on-accent)',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
@@ -652,7 +654,7 @@ export default function DayOffRequestsPage() {
                         <form onSubmit={handleSubmitRequest}>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('day_off_type' as any)}</label>
-                                <select className="input" value={reqType} onChange={e => {
+                                <select aria-label={t('day_off_type' as any)} className="input" value={reqType} onChange={e => {
                                     setReqType(e.target.value as any);
                                     setReqDate('');
                                     setReqEndDate('');
@@ -688,7 +690,7 @@ export default function DayOffRequestsPage() {
                             )}
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('reason_label' as any)}</label>
-                                <textarea
+                                <textarea aria-label={t('reason_label' as any)}
                                     className="input"
                                     style={{ height: '80px', resize: 'none' }}
                                     placeholder={t('reason_placeholder' as any)}
@@ -728,7 +730,7 @@ export default function DayOffRequestsPage() {
                         </p>
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('days_to_deduct_label' as any)}</label>
-                            <input
+                            <input aria-label={t('days_to_deduct_label' as any)}
                                 type="number"
                                 className="input"
                                 value={daysToDeduct}
@@ -755,7 +757,7 @@ export default function DayOffRequestsPage() {
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
                                         border: '1px solid var(--border)',
-                                        background: deductionType === 'CREDIT' ? 'var(--info-solid)' : 'var(--surface)',
+                                        background: deductionType === 'CREDIT' ? 'var(--info-fill)' : 'var(--surface)',
                                         color: deductionType === 'CREDIT' ? 'var(--text-on-accent)' : 'var(--text-soft)',
                                         cursor: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 'not-allowed' : 'pointer',
                                         fontWeight: '700',
@@ -777,7 +779,7 @@ export default function DayOffRequestsPage() {
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
                                         border: '1px solid var(--border)',
-                                        background: deductionType === 'SALARY' ? 'var(--info-solid)' : 'var(--surface)',
+                                        background: deductionType === 'SALARY' ? 'var(--info-fill)' : 'var(--surface)',
                                         color: deductionType === 'SALARY' ? 'var(--text-on-accent)' : 'var(--text-soft)',
                                         cursor: 'pointer',
                                         fontWeight: '700',
@@ -840,7 +842,7 @@ export default function DayOffRequestsPage() {
                             <button
                                 onClick={() => processAction(selectedRequest.id, 'REJECTED')}
                                 className="btn"
-                                style={{ background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                             >
                                 {t('reject_button')}
                             </button>

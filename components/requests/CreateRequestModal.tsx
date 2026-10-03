@@ -42,7 +42,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit }: Create
                     <label className="label" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
                         {t('title')}
                     </label>
-                    <input
+                    <input aria-label={t('title')}
                         type="text"
                         className="input"
                         value={title}
@@ -57,7 +57,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit }: Create
                     <label className="label" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
                         {t('details')}
                     </label>
-                    <textarea
+                    <textarea aria-label={t('details')}
                         className="input"
                         rows={5}
                         value={details}

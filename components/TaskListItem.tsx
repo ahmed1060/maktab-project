@@ -75,7 +75,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                     <span style={{
                         padding: '0.15rem 0.5rem',
                         borderRadius: '0.5rem',
-                        background: 'var(--info-solid)',
+                        background: 'var(--info-fill)',
                         color: 'var(--text-on-accent)',
                         fontWeight: 'bold',
                         fontSize: '0.7rem',
@@ -134,7 +134,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                     {isMultiAssignee && userCost > 0 && (
-                        <div style={{ background: 'var(--info-solid)', color: 'var(--text-on-accent)', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        <div style={{ background: 'var(--info-fill)', color: 'var(--text-on-accent)', padding: '0.2rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>
                             {locale === 'ar' ? 'تكلفني' : 'My Cost'}: {userCost.toFixed(2)}
                         </div>
                     )}

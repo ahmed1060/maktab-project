@@ -10,6 +10,7 @@ import BackupPickerModal, { BackupEntry } from '@/components/BackupPickerModal'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useHeader } from '@/context/HeaderContext'
 import JobsCard from '@/components/JobsCard'
+import TerminalsHealthCard from '@/components/TerminalsHealthCard'
 
 type HealthMetrics = {
     auditing: {
@@ -23,7 +24,8 @@ type HealthMetrics = {
         retentionDays: number
     }
     storage: {
-        totalFiles: number
+        totalFiles: number | null
+        reachable: boolean
     }
 }
 
@@ -334,13 +336,16 @@ export default function SystemHealthPage() {
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
 
                 {/* Jobs Card — first, because it is the one card here that
                     reports something nobody would otherwise find out. The rest
                     describe state you could go and look at; this one says
                     whether the machinery that maintains that state is alive. */}
                 <JobsCard />
+
+                {/* Every company's attendance agents and terminals (ATTENDANCE_PLAN.md §13.2). */}
+                <TerminalsHealthCard />
 
                 {/* Storage Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -351,9 +356,14 @@ export default function SystemHealthPage() {
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('total_assets' as any)}</p>
                         </div>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary)', textAlign: 'center', margin: '1rem 0' }}>
-                        {metrics?.storage.totalFiles}
+                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary-text)', textAlign: 'center', margin: '1rem 0' }}>
+                        {metrics?.storage.reachable === false ? '—' : metrics?.storage.totalFiles}
                     </div>
+                    {metrics?.storage.reachable === false && (
+                        <p role="status" style={{ margin: 0, textAlign: 'center', fontSize: '0.85rem', color: 'var(--danger-fg)' }}>
+                            {t('storage_unreachable' as any)}
+                        </p>
+                    )}
                     <button
                         onClick={() => setPendingAction('CLEANUP_ASSETS')}
                         disabled={!!processing}
@@ -398,7 +408,7 @@ export default function SystemHealthPage() {
                                             onClick={() => setOrphanReport(null)} disabled={deletingOrphans}>
                                             {t('cancel')}
                                         </button>
-                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                                             onClick={() => setPendingAction('DELETE_ORPHANS')} disabled={deletingOrphans}>
                                             {deletingOrphans ? t('saving') : t('orphan_report_delete' as any)}
                                         </button>

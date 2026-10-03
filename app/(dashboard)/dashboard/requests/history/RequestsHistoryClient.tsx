@@ -13,12 +13,13 @@ import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 const NO_REQUESTS: any[] = []
 
 export default function RequestsHistoryClient({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
+    const seesOthersRequests = useCan().can('requests.view')
     const { showToast } = useToast()
     const { selectedCompanyId } = useCompany()
     const [selectedRequest, setSelectedRequest] = useState<any>(null)
@@ -129,7 +130,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'var(--brand-primary)',
+                        color: 'var(--brand-primary-text)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         border: '1px solid var(--veil-40)',
@@ -159,7 +160,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
-                isEmployee={!permissionsOf({ role: userRole }).can('requests.view')}
+                isEmployee={!seesOthersRequests}
                 sortBy={sortBy}
                 sortOrder={order as any}
                 onSortChange={(field, ord) => {
@@ -183,12 +184,11 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                     {t('no_requests_found')}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '1.25rem' }}>
                     {requests.map(req => (
                         <RequestCard
                             key={req.id}
                             request={req}
-                            userRole={userRole}
                             onView={handleViewRequest}
                             isHighlighted={req.id === highlightId}
                         />

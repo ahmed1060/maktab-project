@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
-import { bundleFor, type Module } from '@/lib/features'
+import { bundlesFor, BUNDLE_LABEL_KEYS, type Module } from '@/lib/features'
 
 /**
  * What a customer sees where a module they have not bought would be.
@@ -17,8 +17,10 @@ import { bundleFor, type Module } from '@/lib/features'
  */
 export default function LockedModule({ module }: { module: Module }) {
     const { t } = useLanguage()
-    const bundle = bundleFor(module)
-    const bundleName = bundle === 'HR' ? t('bundle_hr' as any) : t('bundle_company_management' as any)
+    const bundles = bundlesFor(module)
+    // Attendance opens with either of its two add-ons, so it names both.
+    const bundleName = bundles.map(b => t(BUNDLE_LABEL_KEYS[b] as any)).join(` ${t('or' as any)} `)
+    const isHR = bundles.includes('HR')
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem 1rem' }}>
@@ -36,8 +38,8 @@ export default function LockedModule({ module }: { module: Module }) {
                 <div style={{
                     display: 'inline-block', padding: '0.35rem 0.85rem', borderRadius: '999px',
                     fontSize: '0.8rem', fontWeight: 700, marginBottom: '1.5rem',
-                    background: bundle === 'HR' ? 'var(--ok-bg)' : 'var(--info-bg)',
-                    color: bundle === 'HR' ? 'var(--ok-fg)' : 'var(--info-fg)',
+                    background: isHR ? 'var(--ok-bg)' : 'var(--info-bg)',
+                    color: isHR ? 'var(--ok-fg)' : 'var(--info-fg)',
                 }}>
                     {bundleName}
                 </div>

@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma"
+import { roleKindParam } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
-import { builtInRolesHolding } from "@/lib/permissions/built-in"
-import { scopesToTeam } from "@/lib/team-scope"
-import { verifyResourceAccess } from "@/lib/security"
+import { holdersOf } from "@/lib/permissions/holders"
+import { personTarget } from "@/lib/security"
 import { CreateRequestInput } from "../validations/request.schema"
 
 export class RequestService {
@@ -73,12 +73,13 @@ export class RequestService {
                         companyId,
                         OR: [
                             // Whoever decides requests company-wide.
-                            ...builtInRolesHolding("requests.review", "COMPANY").map(role => ({ role })),
-                            // `?? ''` rather than omitting the branch: an
-                            // employee with no leader simply matches nothing
-                            // here, instead of the condition collapsing to
-                            // "any id" the way an undefined would.
-                            { id: requester?.teamLeaderId ?? '', role: 'TEAM_LEADER' },
+                            holdersOf("requests.review", "COMPANY"),
+                            // The requester's own leader, whose role decides
+                            // their team's. `?? ''` rather than omitting the
+                            // branch: an employee with no leader simply matches
+                            // nothing here, instead of the condition collapsing
+                            // to "any id" the way an undefined would.
+                            { id: requester?.teamLeaderId ?? '', ...holdersOf("requests.review", "TEAM") },
                         ],
                     },
                     select: { id: true }
@@ -89,7 +90,7 @@ export class RequestService {
                     await NotificationService.notifyMany(
                         admins.map(admin => admin.id),
                         'NEW_REQUEST',
-                        `New request from ${userFirstName}: ${input.title}`,
+                        { key: 'notice_request_new', params: { name: userFirstName, title: input.title } },
                         request.id,
                         tx
                     )
@@ -125,7 +126,7 @@ export class RequestService {
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
         else if (can(session.user, "requests.view")) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
-            await requireTeamReach(session, request.userId)
+            await requireTeamReach(session, request.userId, "requests.view")
         } else {
             if (request.userId !== userId) throw new Error("ACCESS_DENIED")
         }
@@ -146,7 +147,7 @@ export class RequestService {
             if (!request) throw new Error("REQUEST_NOT_FOUND")
 
             if (userRole !== 'SUPER_ADMIN' && request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
-            await requireTeamReach(session, request.userId)
+            await requireTeamReach(session, request.userId, "requests.review")
 
             // --- NEW: State Transition Guard ---
             if (request.status === 'COMPLETED' && ['PENDING', 'IN_PROGRESS'].includes(status)) {
@@ -169,13 +170,12 @@ export class RequestService {
             })
 
             // Notify user (Centralized)
-            const updaterRole = userRole.replace(/_/g, ' ')
-            const statusText = status.replace(/_/g, ' ')
+            const STATUS_LABEL = { PENDING: 'status_pending', IN_PROGRESS: 'status_in_progress', COMPLETED: 'status_completed' } as const
             const { NotificationService } = await import("./notification.service")
             await NotificationService.notify(
                 request.userId,
                 'REQUEST_STATUS_UPDATED',
-                `Your request "${request.title}" is ${statusText}. (Done by ${updaterRole} ${updaterName})`,
+                { key: 'notice_request_status', params: { title: request.title, status: { key: STATUS_LABEL[status as keyof typeof STATUS_LABEL] }, role: roleKindParam(userRole), name: updaterName } },
                 id,
                 tx
             )
@@ -199,7 +199,7 @@ export class RequestService {
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
         else if (can(session.user, "requests.review")) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
-            await requireTeamReach(session, request.userId)
+            await requireTeamReach(session, request.userId, "requests.review")
         } else {
             if (request.userId !== userId) throw new Error("ACCESS_DENIED")
         }
@@ -222,10 +222,15 @@ export class RequestService {
  * A Team Leader reaches only requests raised by their team, or by themselves —
  * the same rule the request list applies. Viewing, changing and deleting one
  * request checked only the company, so a Team Leader could act on requests
- * outside their team, the Admin's own included. verifyResourceAccess on the
- * person who raised it is the team rule every other per-person check uses.
+ * outside their team, the Admin's own included. can() on the person who
+ * raised it is the team rule every other per-person check uses.
  */
-async function requireTeamReach(session: any, requesterId: string) {
-    if (!scopesToTeam(session.user, "requests.view")) return
-    if (!(await verifyResourceAccess(session, requesterId, 'USER'))) throw new Error("ACCESS_DENIED")
+async function requireTeamReach(session: any, requesterId: string, acting: "requests.view" | "requests.review") {
+    // Asked of the requests permissions themselves, seeing and the one being
+    // used, each at its own scope: a role may see every request yet review
+    // only its team's. (This used to defer to the people rule, which narrows
+    // by employees.view, a different permission.)
+    if (session.user.role === "SUPER_ADMIN") return
+    const person = await personTarget(requesterId)
+    if (!person || !can(session.user, "requests.view", person) || !can(session.user, acting, person)) throw new Error("ACCESS_DENIED")
 }

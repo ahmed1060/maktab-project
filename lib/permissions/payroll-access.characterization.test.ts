@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { withGrants, stepUpConfirmed } from "./test-actors"
 
 /**
  * Who may reach payroll today — recorded, not reasoned about.
@@ -54,6 +55,8 @@ vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
 vi.mock("@/lib/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/prisma", () => ({
     prisma: {
+        // No settings row: step-up (§6.15) uses its default interval.
+        systemSettings: { findUnique: async () => null },
         rateLimit: {
             findUnique: async () => null,
             upsert: async () => ({ count: 1 }),
@@ -125,7 +128,7 @@ const ACTORS = {
 type ActorName = keyof typeof ACTORS
 
 function as(name: ActorName) {
-    state.session = { user: { ...ACTORS[name] } }
+    state.session = { user: stepUpConfirmed(withGrants({ ...ACTORS[name] })) }
 }
 
 const url = (path: string) => `https://nizmo.test${path}`

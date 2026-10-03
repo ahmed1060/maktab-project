@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { buildTaskWhereClause } from "./task-query"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 function params(query: Record<string, string> = {}) {
     return new URLSearchParams(query)
@@ -7,7 +8,7 @@ function params(query: Record<string, string> = {}) {
 
 describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
     it("scopes an employee to their own tasks, ignoring an employeeId filter", () => {
-        const session = { user: { id: "emp-1", role: "EMPLOYEE", companyId: "co-1" } }
+        const session = { user: withGrants({ id: "emp-1", role: "EMPLOYEE", companyId: "co-1" }) }
 
         const result = buildTaskWhereClause(session, params({ employeeId: "someone-else" }), null)
 
@@ -21,7 +22,7 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
     })
 
     it("never lets an employeeId filter replace the employee's own scope (regression for F-03)", () => {
-        const session = { user: { id: "emp-1", role: "EMPLOYEE", companyId: "co-1" } }
+        const session = { user: withGrants({ id: "emp-1", role: "EMPLOYEE", companyId: "co-1" }) }
         const result = buildTaskWhereClause(session, params({ employeeId: "victim-id" }), null)
 
         expect(result.empty).toBe(false)
@@ -33,7 +34,7 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
     })
 
     it("scopes an ADMIN to their own company and allows narrowing by employeeId", () => {
-        const session = { user: { id: "admin-1", role: "ADMIN", companyId: "co-1" } }
+        const session = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: "co-1" }) }
         const result = buildTaskWhereClause(session, params({ employeeId: "emp-42" }), null)
 
         expect(result.empty).toBe(false)
@@ -43,7 +44,7 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
     })
 
     it("returns empty for an ADMIN with no companyId rather than scanning all companies", () => {
-        const session = { user: { id: "admin-1", role: "ADMIN", companyId: null } }
+        const session = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: null }) }
         const result = buildTaskWhereClause(session, params(), null)
         expect(result.empty).toBe(true)
     })
@@ -61,7 +62,7 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
     })
 
     it("applies status, search, and date filters additively alongside the scope", () => {
-        const session = { user: { id: "admin-1", role: "ADMIN", companyId: "co-1" } }
+        const session = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: "co-1" }) }
         const result = buildTaskWhereClause(
             session,
             params({ status: "PENDING", search: "invoice", dateFrom: "2026-01-01", dateTo: "2026-01-31" }),
@@ -87,7 +88,7 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
         // members would make Postgres reject the whole query ("invalid input
         // value for enum") instead of the harmless zero-match a plain String
         // column gave a garbage filter value.
-        const session = { user: { id: "admin-1", role: "ADMIN", companyId: "co-1" } }
+        const session = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: "co-1" }) }
         const result = buildTaskWhereClause(session, params({ status: "NOT_A_REAL_STATUS" }), null)
 
         expect(result.empty).toBe(false)
@@ -104,7 +105,7 @@ describe("a Team Leader is scoped to their team", () => {
      * branch this whole feature turns on had no coverage at all — which is why
      * each of these was broken on purpose before being trusted.
      */
-    const leader = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" } }
+    const leader = { user: withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" }) }
 
     it("asks for their own team and themselves, inside their company", () => {
         const r = buildTaskWhereClause(leader, new URLSearchParams(), null)
@@ -130,14 +131,14 @@ describe("a Team Leader is scoped to their team", () => {
     })
 
     it("returns empty rather than every company when they have none", () => {
-        const orphan = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: null } }
+        const orphan = { user: withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: null }) }
         expect(buildTaskWhereClause(orphan, new URLSearchParams(), null).empty).toBe(true)
     })
 
     it("still gives an ADMIN the whole company", () => {
         // The other half: narrowing the wrong role would quietly break the
         // people who are supposed to see everything.
-        const admin = { user: { id: "a-1", role: "ADMIN", companyId: "co-1" } }
+        const admin = { user: withGrants({ id: "a-1", role: "ADMIN", companyId: "co-1" }) }
         const scope = (buildTaskWhereClause(admin, new URLSearchParams(), null) as any).whereClause.AND
         expect(scope).toContainEqual({ companyId: "co-1" })
         expect(JSON.stringify(scope)).not.toContain("teamLeaderId")
@@ -145,7 +146,7 @@ describe("a Team Leader is scoped to their team", () => {
 })
 
 describe("filtering work by team", () => {
-    const admin = { user: { id: "a-1", role: "ADMIN", companyId: "co-1" } }
+    const admin = { user: withGrants({ id: "a-1", role: "ADMIN", companyId: "co-1" }) }
 
     it("asks for tasks with at least one assignee on that team", () => {
         const clauses = (buildTaskWhereClause(admin, new URLSearchParams("teamLeaderId=tl-1"), null) as any).whereClause.AND
@@ -174,7 +175,7 @@ describe("filtering work by team", () => {
     it("cannot widen a Team Leader's scope", () => {
         // A leader asking for another team gets the intersection of "my team"
         // and "their team", which is empty — not the other team's work.
-        const leader = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" } }
+        const leader = { user: withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" }) }
         const clauses = (buildTaskWhereClause(leader, new URLSearchParams("teamLeaderId=tl-2"), null) as any).whereClause.AND
         expect(clauses).toContainEqual({ assignees: { some: { OR: [{ teamLeaderId: "tl-1" }, { id: "tl-1" }] } } })
         expect(clauses).toContainEqual({ assignees: { some: { teamLeaderId: "tl-2" } } })

@@ -1,4 +1,6 @@
 import { resolveSubscriptionState, type SubscriptionFacts } from "./state"
+import type { NoticeText } from "@/lib/notice"
+import { englishNotice } from "@/lib/notice-row"
 
 /**
  * Which lifecycle notices a company is due, given its state and what has
@@ -102,12 +104,18 @@ export function lifecycleEmailCopy(notice: LifecycleNotice, companyName: string)
     }
 }
 
-/** The in-app wording for the operator, who needs the company named. */
-export function lifecycleOperatorMessage(notice: LifecycleNotice, companyName: string): string {
+/** The in-app wording for the operator, who needs the company named (lib/notice.ts). */
+export function lifecycleOperatorNotice(notice: LifecycleNotice, companyName: string): NoticeText {
+    const params = { company: companyName }
     switch (notice) {
-        case 'TRIAL_ENDING_24H': return `${companyName}'s free trial ends within 24 hours and no payment has been recorded.`
-        case 'GRACE_ENDING_24H': return `${companyName}'s grace period ends within 24 hours and no payment has been recorded.`
-        case 'LOCKED': return `${companyName} has been locked — the subscription expired and grace has run out.`
-        case 'GRACE_STARTED': return `${companyName}'s subscription has expired and it is now in its grace period.`
+        case 'TRIAL_ENDING_24H': return { key: 'notice_trial_ending', params }
+        case 'GRACE_ENDING_24H': return { key: 'notice_grace_ending', params }
+        case 'LOCKED': return { key: 'notice_company_locked', params }
+        case 'GRACE_STARTED': return { key: 'notice_grace_started', params }
     }
+}
+
+/** Its English. */
+export function lifecycleOperatorMessage(notice: LifecycleNotice, companyName: string): string {
+    return englishNotice(lifecycleOperatorNotice(notice, companyName))
 }

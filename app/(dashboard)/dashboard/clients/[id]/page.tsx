@@ -247,7 +247,7 @@ export default function ClientDetailsPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -516,7 +516,7 @@ export default function ClientDetailsPage() {
                                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('section_title_label' as any)}
                                 </label>
-                                <input
+                                <input aria-label={t('section_title_label' as any)}
                                     type="text"
                                     required
                                     value={newSectionTitle}
@@ -623,7 +623,7 @@ export default function ClientDetailsPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('client_name_label')}
                             </label>
-                            <input
+                            <input aria-label={t('client_name_label')}
                                 type="text"
                                 required
                                 value={editClientName}
@@ -671,7 +671,7 @@ export default function ClientDetailsPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
-                            <input
+                            <input aria-label={t('section_title_label' as any)}
                                 type="text"
                                 required
                                 value={editSectionTitle}

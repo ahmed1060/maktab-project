@@ -150,6 +150,7 @@ export default function ConfirmModal({
                                     {t('type_to_confirm_prefix') || 'Type'} <code style={{ background: 'var(--surface-sunk)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontWeight: 700 }}>{requireTypedText}</code> {t('type_to_confirm_suffix') || 'to confirm'}
                                 </label>
                                 <input
+                                    aria-label={`${t('type_to_confirm_prefix') || 'Type'} ${requireTypedText} ${t('type_to_confirm_suffix') || 'to confirm'}`}
                                     type="text"
                                     value={typedValue}
                                     onChange={(e) => setTypedValue(e.target.value)}

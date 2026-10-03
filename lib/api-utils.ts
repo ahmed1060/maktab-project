@@ -3,13 +3,16 @@ import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
-import { moduleForApiPath, requireFeature } from "@/lib/features"
+import { knownRefusal } from "./api-errors"
+import { BUNDLE_NAMES, moduleForApiPath, requireFeature } from "@/lib/features"
 import { isBlockedBySubscription } from "@/lib/billing/state"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
 import * as Sentry from "@sentry/nextjs"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
+import { accountKind } from "@/lib/security"
+import { StepUpError } from "@/lib/step-up"
 
 type HandlerOptions = {
     allowedRoles?: string[]
@@ -125,6 +128,19 @@ export class RateLimiter {
     }
 }
 
+/**
+ * The request's form, for the routes that take a file upload; null when the
+ * body isn't one (sent as JSON, say, or already read), so the route can answer
+ * 400 rather than throw a 500.
+ */
+export async function readForm(req: Request): Promise<FormData | null> {
+    try {
+        return await req.formData()
+    } catch {
+        return null
+    }
+}
+
 export function withStandardHandler(
     handler: (req: Request, session: any, body?: any, context?: any) => Promise<NextResponse>,
     options: HandlerOptions = {}
@@ -135,6 +151,8 @@ export function withStandardHandler(
         // even if the failure happened after these were set.
         let userId: string | null = null
         let userRole: string | undefined
+        // For attributing a logged error to the right table (accountKind).
+        let kind: string | undefined
         try {
             const session = await getServerSession(authOptions)
             if (!session) {
@@ -142,6 +160,7 @@ export function withStandardHandler(
             }
 
             userRole = (session.user as any).role
+            kind = accountKind(session.user as any)
             userId = (session.user as any).id
 
             // Rate Limiting
@@ -187,6 +206,13 @@ export function withStandardHandler(
             // event, and never signed itself out. It just sat on whatever
             // page was already loaded, indefinitely.
             const isHeartbeat = new URL(req.url).pathname === '/api/user/activity'
+
+            // Previewing a role is read-only (ROLES_PLAN.md §6.6): it shows the
+            // Super Admin what a holder sees, and must not become a way to act
+            // as one. Every write is refused while it lasts.
+            if ((session.user as any).preview && req.method !== 'GET' && req.method !== 'HEAD' && !isHeartbeat) {
+                return ApiResponse.forbidden("Previewing a role is read-only. Exit the preview to make changes.")
+            }
             // Subscription lockout rides the same path as a company ban rather
             // than getting a second, untested blocking mechanism: it inherits
             // the heartbeat exemption and the emergency-save carve-out below,
@@ -251,7 +277,7 @@ export function withStandardHandler(
                 const decision = requireFeature(session, gatedModule, { onDeny: 'lock' })
                 if (!decision.allowed) {
                     return ApiResponse.forbidden(
-                        `This feature is not included in your current package (${decision.bundle === 'HR' ? 'HR' : 'Company Management'}).`
+                        `This feature is not included in your current package (${decision.bundles.map(b => BUNDLE_NAMES[b]).join(' or ')}).`
                     )
                 }
             }
@@ -269,13 +295,24 @@ export function withStandardHandler(
             // multipart/form-data request consumes the body stream, which then
             // makes a later req.formData() call in the handler throw. Handlers
             // that need multipart data read it themselves via req.formData().
+            //
+            // An empty body is null, as before. A body that isn't JSON, or is
+            // JSON but not an object or list (`null`, `"x"`, `5`), is refused
+            // here with a 400: it used to reach the handler as null, where
+            // reading a field from it was a 500 on every route that takes one.
             let body: any = null
             const contentType = req.headers.get('content-type') || ''
             if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method) && contentType.includes('application/json')) {
-                try {
-                    body = await req.json()
-                } catch {
-                    // Fallback for empty bodies or malformed JSON
+                const text = await req.text().catch(() => '')
+                if (text.trim()) {
+                    try {
+                        body = JSON.parse(text)
+                    } catch {
+                        return ApiResponse.badRequest("The request body isn't valid JSON.")
+                    }
+                    if (body === null || typeof body !== 'object') {
+                        return ApiResponse.badRequest("The request body must be a JSON object.")
+                    }
                 }
             }
 
@@ -319,8 +356,8 @@ export function withStandardHandler(
                         action: options.audit.action,
                         entityType: options.audit.entityType,
                         entityId: (entityId as unknown as string) || 'N/A',
-                        userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                        superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                        userId: kind !== 'SUPER_ADMIN' ? userId : null,
+                        superAdminId: kind === 'SUPER_ADMIN' ? userId : null,
                         details: sanitizedBody ?? undefined
                     }
                 })
@@ -329,6 +366,18 @@ export function withStandardHandler(
             return response
         } catch (error: any) {
             if (isNextInternalError(error)) throw error
+            // A high-risk action waiting for the person to confirm it is them
+            // (ROLES_PLAN.md §6.15): not a failure, an answer the screens know
+            // — StepUpInterceptor asks for the code and tries again.
+            if (error instanceof StepUpError) {
+                return NextResponse.json({ success: false, error: error.code === "MFA_ENROL_REQUIRED"
+                    ? "This action needs two-factor authentication. Set it up in Security settings first."
+                    : "Confirm it's you with your authenticator code.", code: error.code, minutes: error.minutes }, { status: 403 })
+            }
+            // An ordinary refusal no route answered: say what it is, with the
+            // status it deserves, rather than a 500 and an error reference.
+            const refusal = knownRefusal(error)
+            if (refusal) return NextResponse.json({ success: false, error: refusal.message }, { status: refusal.status })
             console.error("API Standard Handler Error:", error)
             // Never echo the raw exception to the client — it can be a
             // Prisma/Supabase/network error with internal detail in it.
@@ -339,8 +388,8 @@ export function withStandardHandler(
                 error,
                 route: new URL(req.url).pathname,
                 method: req.method,
-                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                userId: kind !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: kind === 'SUPER_ADMIN' ? userId : null,
             })
             // Caught here, so Sentry would never see it on its own. Tagged
             // with the same reference the person was shown, so the code an

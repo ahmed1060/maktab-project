@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { PayrollDeliveryService } from "@/lib/services/payroll-delivery.service"
 import { resolvePayrollScope, payrollScopeRefusal } from "@/lib/payroll-scope"
+import { assertStepUp } from "@/lib/step-up"
 
 /**
  * The money has moved.
@@ -18,6 +19,8 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
         params.year, params.month,
     )
     if (!scope.ok) return payrollScopeRefusal(scope)
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "payroll.mark_paid")
 
     let paidAt: Date | undefined
     if (json?.paidAt) {

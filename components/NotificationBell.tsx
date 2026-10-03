@@ -5,12 +5,18 @@ import useSWR from "swr"
 import { fetcher } from "@/lib/swr-fetcher"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
+import { renderNotice, type NoticeParam } from "@/lib/notice"
+import type { TranslationKey } from "@/lib/translations"
+import { attendanceNoticeTarget } from "@/lib/attendance-notice-target"
 
 interface Notification {
     id: string
     type: string
     message: string
+    messageKey?: string | null
+    messageParams?: Record<string, NoticeParam> | null
     read: boolean
+    priority?: 'NORMAL' | 'HIGH' | 'CRITICAL'
     // Null when the notification is addressed to a SuperAdmin instead of a
     // User. Only the employee-scoped routes below dereference it, and those
     // types are never sent to a SuperAdmin — but guard rather than assume.
@@ -22,11 +28,22 @@ interface Notification {
 
 const NO_NOTIFICATIONS: Notification[] = []
 
+// A CRITICAL notice stays unread, red and at the top until what it is about
+// is dealt with; opening the bell does not read it (ATTENDANCE_PLAN.md §13.4).
+const pinned = (n: Notification) => n.priority === 'CRITICAL' && !n.read
+const background = (n: Notification) => pinned(n) ? 'var(--danger-bg)' : n.read ? 'white' : 'var(--info-bg-sky)'
+
 export default function NotificationBell({ initialUnreadCount = 0 }: { initialUnreadCount?: number }) {
     const [isOpen, setIsOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const { t, locale } = useLanguage()
+    // In the reader's language (lib/notice.ts). A row written before keys, or
+    // with a key this version does not know, shows the English it was written with.
+    const text = (n: Notification) => {
+        if (!n.messageKey || !t(n.messageKey as TranslationKey)) return n.message
+        return renderNotice({ key: n.messageKey as TranslationKey, params: n.messageParams ?? {} }, t, iso => new Date(iso).toLocaleDateString(locale, { timeZone: 'UTC' }))
+    }
 
     // Polled every five minutes while the tab is visible (SWR skips hidden
     // tabs by default, which is what the visibility check here used to do).
@@ -41,7 +58,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
             // Mark the list we have as read without asking again; with no list
             // yet, ask — the answer now comes back all read.
             mutate(
-                (current: any) => current ? { ...current, data: (current.data || []).map((n: Notification) => ({ ...n, read: true })) } : current,
+                (current: any) => current ? { ...current, data: (current.data || []).map((n: Notification) => pinned(n) ? n : { ...n, read: true }) } : current,
                 { revalidate: !data },
             )
         } catch (error) {
@@ -67,7 +84,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
     }, [isOpen])
 
     const toggleOpen = () => {
-        if (!isOpen && unreadCount > 0) {
+        if (!isOpen && (data ? notifications.some(n => !n.read && !pinned(n)) : unreadCount > 0)) {
             markAsRead()
         }
         setIsOpen(!isOpen)
@@ -80,7 +97,15 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
             // Normalize type - handle subtypes like TASK_ASSIGNED, TASK_COMPLETED, etc.
             const type = notification.type.toUpperCase()
 
-            if (type.includes('SUBSCRIPTION')) {
+            // First: neither an attendance notification nor a role request's
+            // may fall through to the REQUEST branch below, which reads an
+            // internal request's id.
+            const attendance = attendanceNoticeTarget(type, notification.relatedId)
+            if (attendance) {
+                router.push(attendance)
+            } else if (type.startsWith('ROLE_')) {
+                if (notification.relatedId.startsWith('/')) router.push(notification.relatedId)
+            } else if (type.includes('SUBSCRIPTION')) {
                 // The first notification type a Super Admin can receive. Its
                 // relatedId is a dashboard path (see checkSubscriptions), not an
                 // entity id — the same convention NOTE uses below.
@@ -162,7 +187,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                         position: 'absolute',
                         top: -5,
                         right: -5,
-                        background: 'var(--danger-solid)',
+                        background: 'var(--danger-fill)',
                         color: 'var(--text-on-accent)',
                         borderRadius: '50%',
                         width: '20px',
@@ -207,7 +232,8 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                                 style={{
                                     padding: '0.75rem',
                                     borderBottom: '1px solid var(--grey-100)',
-                                    background: notification.read ? 'white' : 'var(--info-bg-sky)',
+                                    background: background(notification),
+                                    borderInlineStart: pinned(notification) ? '3px solid var(--danger-fill)' : undefined,
                                     cursor: notification.relatedId ? 'pointer' : 'default',
                                     transition: 'background 0.2s'
                                 }}
@@ -217,12 +243,12 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                                     }
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = notification.read ? 'white' : 'var(--info-bg-sky)'
+                                    e.currentTarget.style.background = background(notification)
                                 }}
                             >
-                                <div style={{ fontSize: '0.875rem' }}>{notification.message}</div>
+                                <div style={{ fontSize: '0.875rem' }}>{text(notification)}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', marginTop: '0.25rem' }}>
-                                    {new Date(notification.createdAt).toLocaleString()}
+                                    {new Date(notification.createdAt).toLocaleString(locale)}
                                 </div>
                             </div>
                         ))

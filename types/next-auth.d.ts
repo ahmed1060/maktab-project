@@ -5,6 +5,17 @@ declare module "next-auth" {
         user: {
             id: string
             role: string
+            // The role this person holds and its grants, encoded as
+            // lib/permissions/grants.ts does — what can() reads. Reloaded by
+            // the jwt() callback within a minute of the role changing.
+            roleId?: string | null
+            grants?: string
+            // The Super Admin previewing a role (ROLES_PLAN.md §6.6): the
+            // session presents that role, and every write is refused.
+            preview?: { roleId: string; roleName: string; roleBuiltIn?: string | null; companyId: string; companyName: string } | null
+            // When this session last entered a step-up code (ROLES_PLAN.md
+            // §6.15), in ms; set only by the jwt() callback after checking it.
+            stepUpAt?: number | null
             firstName: string
             lastName: string
             gender?: string
@@ -64,7 +75,7 @@ declare module "next-auth" {
             // the JSON round trip a session token makes. Absent on a token
             // minted before packages shipped, which deserializes to
             // unrestricted — see deserializeAccess.
-            featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+            featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
             // Subscription state, computed server-side and refreshed on the
             // same 60s recheck. The date is an ISO string because a Date does
             // not survive the token's JSON round trip, and the state travels
@@ -97,7 +108,7 @@ declare module "next-auth" {
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
         logoUrl?: string | null
-        featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+        featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
     }
 }
@@ -105,6 +116,13 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
     interface JWT {
         role: string
+        roleId?: string | null
+        roleVersion?: number
+        grants?: string
+        /** An acting role is over and `grants` are those of the role returned to (§6.13). */
+        actingEnded?: true
+        preview?: import("@/lib/services/role.service").RolePreview | null
+        stepUpAt?: number | null
         firstName: string
         lastName: string
         gender?: string
@@ -127,7 +145,7 @@ declare module "next-auth/jwt" {
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
         logoUrl?: string | null
-        featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+        featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of

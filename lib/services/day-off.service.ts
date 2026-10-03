@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
+import { noticeRow } from "@/lib/notice-row"
+import { optional } from "@/lib/notice"
 import { can, type Target } from "@/lib/permissions/can"
-import { builtInRolesHolding } from "@/lib/permissions/built-in"
+import { holdersOf } from "@/lib/permissions/holders"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
 
 export class DayOffService {
@@ -67,28 +69,33 @@ export class DayOffService {
             })
             // ... (rest of notification and audit logic unchanged)
             // Notify Admins
+            const requesterLeaderId = (await tx.user.findUnique({ where: { id: userId }, select: { teamLeaderId: true } }))?.teamLeaderId
             const admins = await tx.user.findMany({
                 where: {
-                    // Whoever can decide it: the roles holding dayoff.approve in
-                    // this company, and every Super Admin.
+                    // Whoever can decide it: everyone in this company whose role
+                    // holds dayoff.approve company-wide, the requester's own
+                    // leader if theirs holds it for their team, and every
+                    // Super Admin.
                     OR: [
-                        ...builtInRolesHolding("dayoff.approve").map(role => ({ role, companyId: userCompanyId })),
+                        { companyId: userCompanyId, ...holdersOf("dayoff.approve", "COMPANY") },
+                        ...(requesterLeaderId ? [{ id: requesterLeaderId, companyId: userCompanyId, ...holdersOf("dayoff.approve", "TEAM") }] : []),
                         { role: 'SUPER_ADMIN' }
                     ]
                 },
                 select: { id: true }
             })
 
-            const dateDisplay = finalEndDateStr === requestDateStr
-                ? new Date(requestDateStr).toLocaleDateString()
-                : `${new Date(requestDateStr).toLocaleDateString()} to ${new Date(finalEndDateStr).toLocaleDateString()}`
+            const from = { date: new Date(requestDateStr).toISOString() }
+            const when = finalEndDateStr === requestDateStr
+                ? from
+                : { key: 'notice_date_range' as const, params: { from, to: { date: new Date(finalEndDateStr).toISOString() } } }
 
             // Notify Admins (Centralized)
             const { NotificationService } = await import("./notification.service")
             await NotificationService.notifyMany(
                 admins.map(admin => admin.id),
                 'DAY_OFF_REQUEST',
-                `${userName} has requested a ${input.type.toLowerCase()} day off on ${dateDisplay}.`,
+                { key: 'notice_dayoff_requested', params: { name: userName, type: { key: `notice_dayoff_type_${input.type}` }, when } },
                 newRequest.id,
                 tx
             )
@@ -125,7 +132,7 @@ export class DayOffService {
 
         const updateData: any = { status: 'APPROVED' }
 
-        return await prisma.$transaction(async (tx) => {
+        const approved = await prisma.$transaction(async (tx) => {
             if (daysToDeduct !== undefined) {
                 const deduction = parseFloat(daysToDeduct.toString())
                 if (isNaN(deduction)) throw new Error("INVALID_DEDUCTION")
@@ -184,13 +191,19 @@ export class DayOffService {
             await NotificationService.notify(
                 requestToUpdate.userId,
                 'DAY_OFF_RESULT',
-                `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been approved${input.deductionType === 'SALARY' ? ' (deducted from salary)' : ''}.`,
+                { key: 'notice_dayoff_approved', params: { date: { date: new Date(requestToUpdate.date).toISOString() }, salary: optional('notice_dayoff_from_salary', {}, input.deductionType === 'SALARY') } },
                 id,
                 tx
             )
 
             return updatedRequest
         })
+        // Approved leave turns those days from absences into leave (ATTENDANCE_PLAN.md §6.5).
+        if (requestToUpdate.user.companyId) {
+            const { recomputeAfter } = await import("./attendance-recompute")
+            await recomputeAfter(requestToUpdate.user.companyId, new Date(requestToUpdate.date).toISOString().slice(0, 10), [requestToUpdate.userId])
+        }
+        return approved
     }
 
     static async reject(id: string, session: any, rejectionReason?: string) {
@@ -232,7 +245,7 @@ export class DayOffService {
             data: {
                 userId: requestToUpdate.userId,
                 type: 'DAY_OFF_RESULT',
-                message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been rejected.${trimmedReason ? ` Reason: ${trimmedReason}` : ''}`,
+                ...noticeRow({ key: 'notice_dayoff_rejected', params: { date: { date: new Date(requestToUpdate.date).toISOString() }, reason: optional('notice_reason_suffix', { reason: trimmedReason ?? '' }, trimmedReason) } }),
                 relatedId: id
             }
         })
@@ -336,7 +349,7 @@ export class DayOffService {
                 data: {
                     userId: requestToUpdate.userId,
                     type: 'DAY_OFF_REEVALUATE',
-                    message: `Your day off request for ${new Date(requestToUpdate.date).toLocaleDateString()} has been re-evaluated. Adjusted from ${oldDays} to ${newDays} days.`,
+                    ...noticeRow({ key: 'notice_dayoff_reevaluated', params: { date: { date: new Date(requestToUpdate.date).toISOString() }, from: oldDays, to: newDays } }),
                     relatedId: id
                 }
             })

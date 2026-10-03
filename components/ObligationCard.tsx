@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import SafeDate from "./SafeDate"
 import { useTemporaryHighlight } from '@/lib/useTemporaryHighlight'
-import { permissionsOf } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
 
 interface Obligation {
     id: string
@@ -20,10 +20,11 @@ interface Attachment {
     name: string
 }
 
-export default function ObligationCard({ obligation, userRole, isHighlighted }: { obligation: Obligation, userRole: string, isHighlighted?: boolean }) {
+export default function ObligationCard({ obligation, isHighlighted }: { obligation: Obligation, isHighlighted?: boolean }) {
     const [status, setStatus] = useState(obligation.status)
     const [uploading, setUploading] = useState(false)
     const showVisualHighlight = useTemporaryHighlight(isHighlighted)
+    const seesOthers = useCan().can('obligations.view')
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.[0]) return
@@ -95,10 +96,11 @@ export default function ObligationCard({ obligation, userRole, isHighlighted }: 
                 Assignee: {obligation.assignee.firstName} {obligation.assignee.lastName} | Deadline: <SafeDate date={obligation.deadline} locale="en" format="dateOnly" />
             </div>
 
-            {!permissionsOf({ role: userRole }).can('obligations.view') && status === 'PENDING' && (
+            {!seesOthers && status === 'PENDING' && (
                 <div style={{ marginTop: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Upload Evidence to Complete:</label>
                     <input
+                        aria-label="Upload Evidence to Complete"
                         type="file"
                         onChange={handleUpload}
                         disabled={uploading}

@@ -156,7 +156,7 @@ describe("page paths and their guards", () => {
         const gated = ALL_MODULES.filter(m => MODULE_BUNDLE[m] !== null)
         for (const mod of gated) {
             const reachable =
-                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/clients', '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests']
+                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/clients', '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
                     .some(p => moduleForPagePath(p) === mod) ||
                 ['/api/tasks', '/api/obligations', '/api/clients', '/api/vendors', '/api/day-off-requests',
                  '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk']
@@ -225,5 +225,20 @@ describe("the locked screen's copy", () => {
         // token leaves the customer told they are missing something unnamed.
         expect(en.module_locked_body).toContain('{bundle}')
         expect(ar.module_locked_body).toContain('{bundle}')
+    })
+})
+
+describe("every gated page is guarded on the server", () => {
+    it("has a layout that calls guardModule for its module", async () => {
+        // The page table only decorates the sidebar; what stops a company that
+        // has not bought a module from opening its pages is the layout beside
+        // them. A table entry without one reads as gated and is not.
+        const { readFileSync, existsSync } = await import("node:fs")
+        const { PAGE_MODULE_ROUTES } = await import("./routes")
+        for (const [prefix, module] of PAGE_MODULE_ROUTES) {
+            const layout = `app/(dashboard)${prefix}/layout.tsx`
+            expect(existsSync(layout), `${prefix} has no layout`).toBe(true)
+            expect(readFileSync(layout, "utf8"), layout).toContain(`guardModule('${module}')`)
+        }
     })
 })

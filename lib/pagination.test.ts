@@ -37,4 +37,18 @@ describe("parsePaging (F-08 pagination guard)", () => {
         const { limit } = parsePaging(new URLSearchParams({ limit: "50" }), 20, 30)
         expect(limit).toBeLessThanOrEqual(30)
     })
+
+    it("lowers a limit above the cap to the cap, rather than to the default", () => {
+        // A screen asking for every Team Leader (limit=1000) got the default
+        // of 10, so a company's eleventh leader never appeared in the picker.
+        expect(parsePaging(new URLSearchParams({ limit: "1000" }), 10, 100).limit).toBe(100)
+        expect(parsePaging(new URLSearchParams({ limit: "1000" }), 10, 1000).limit).toBe(1000)
+    })
+
+    it("reads page and limit each on its own", () => {
+        const { page, limit } = parsePaging(new URLSearchParams({ page: "abc", limit: "30" }), 10)
+        expect(page).toBe(1)
+        expect(limit).toBe(30)
+        expect(parsePaging(new URLSearchParams({ page: "4", limit: "-5" }), 10)).toEqual({ page: 4, limit: 10, skip: 30 })
+    })
 })

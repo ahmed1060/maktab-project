@@ -10,6 +10,8 @@ import { buildUserWhereClause } from "@/lib/services/user-query"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
+import { assignmentRefusal } from "@/lib/role-errors"
+import { assertStepUp } from "@/lib/step-up"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -51,6 +53,13 @@ export const GET = withStandardHandler(async (req, session) => {
                 role: true, gender: true, salary: true, companyId: true,
                 totalDifficultyPoints: true, avatar: true, dayOffCredit: true,
                 baseDayOffCredit: true, username: true, teamLeaderId: true,
+                // Which of the company's roles they hold, for the Role
+                // dropdown (ROLES_PLAN.md §6.4) — its name too, since the
+                // viewer may not be allowed to give it and so not have it
+                // in their list.
+                roleId: true, assignedRole: { select: { name: true, builtIn: true } },
+                // A cover in progress (§6.13): until when, and back to what.
+                actingUntil: true, returnRole: { select: { name: true, builtIn: true } },
                 // The name, so somebody can be told who manages them. Selected
                 // fields rather than the relation, for the same reason the
                 // list does it: a leader is a User, and `teamLeader: true`
@@ -114,7 +123,9 @@ export const GET = withStandardHandler(async (req, session) => {
         return ApiResponse.success({ total: deletedCount })
     }
 
-    const { page, limit, skip } = parsePaging(searchParams, 10)
+    // Pickers ask for every Team Leader (and the usernames and audit-log
+    // screens for everybody) with limit=1000.
+    const { page, limit, skip } = parsePaging(searchParams, 10, 1000)
 
     const [users, total] = await Promise.all([
         prisma.user.findMany({
@@ -166,6 +177,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
         // 3. Error Mapping
         if (error.message === 'ONLY_ADMIN_CAN_CREATE_USERS') return ApiResponse.forbidden("Only Admins can create accounts")
         if (error.message === 'ONLY_SUPER_ADMIN_CAN_CREATE_ADMIN') return ApiResponse.forbidden("Only Super Admin can create Admin users")
+        const refusedRole = assignmentRefusal(error)
+        if (refusedRole) return refusedRole
         if (error.message === 'TARGET_COMPANY_NOT_FOUND') return ApiResponse.forbidden("Target company not found or access restricted")
         if (error.message === 'USER_ALREADY_EXISTS') return ApiResponse.badRequest("User already exists")
         if (error.message === 'USERNAME_IN_USE') return ApiResponse.badRequest("Username in use")
@@ -212,12 +225,19 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     } catch (error: any) {
         // 4. Error Mapping
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
+        if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
+        if (error.message === 'STATUS_HAS_ITS_OWN_FLOW') return ApiResponse.badRequest("Archive by ending the contract, and delete from the employee list — not through an edit")
         // Somebody in another company. Refused inside UserService, and until
         // this was mapped the refusal escaped as a 500 — logged as a system
         // error, and shown to the Admin as the app failing rather than as no.
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
-        if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
+        if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
+        if (error.message === 'TARGET_EXCEEDS_YOURS') return ApiResponse.forbidden("This person's role holds access yours doesn't, so only someone who could give it may change their password or email")
+        const refusedRole = assignmentRefusal(error)
+        if (refusedRole) return refusedRole
         // Team refusals, including the hand-off question, in the one shape
         // every route that can take a leader away answers with.
         const teamRefusal = teamRefusalResponse(error)
@@ -232,6 +252,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
 export const DELETE = withStandardHandler(async (req, session) => {
     if (!can(session.user, "employees.delete")) return ApiResponse.forbidden()
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "employees.delete")
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
@@ -247,6 +269,8 @@ export const DELETE = withStandardHandler(async (req, session) => {
         if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'INVALID_ID') return ApiResponse.badRequest("Invalid ID or cannot delete self")
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
+        if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden("Insufficient permissions to delete this user")
         if (error.message === 'MUST_SOFT_DELETE_FIRST') return ApiResponse.badRequest("Must soft-delete the user first")

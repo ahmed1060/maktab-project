@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import type { NoticeText } from "@/lib/notice"
+import { noticeRow } from "@/lib/notice-row"
 
 /**
  * A notification is addressed to exactly one recipient, and a recipient is
@@ -21,16 +23,17 @@ export class NotificationService {
         return { OR: [{ userId: principalId }, { superAdminId: principalId }] }
     }
 
-    static async notify(userId: string, type: string, message: string, relatedId?: string, tx?: any) {
+    static async notify(userId: string, type: string, text: NoticeText, relatedId?: string, tx?: any) {
         const prismaClient = tx || prisma
         return await prismaClient.notification.create({
-            data: { userId, type, message, relatedId }
+            data: { userId, type, ...noticeRow(text), relatedId }
         })
     }
 
-    static async notifyMany(userIds: string[], type: string, message: string, relatedId?: string, tx?: any) {
+    static async notifyMany(userIds: string[], type: string, text: NoticeText, relatedId?: string, tx?: any) {
         const prismaClient = tx || prisma
         if (userIds.length === 0) return
+        const row = noticeRow(text)
 
         const BATCH_SIZE = 500
         const results = []
@@ -38,7 +41,7 @@ export class NotificationService {
         for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
             const batch = userIds.slice(i, i + BATCH_SIZE)
             results.push(await prismaClient.notification.createMany({
-                data: batch.map(userId => ({ userId, type, message, relatedId }))
+                data: batch.map(userId => ({ userId, type, ...row, relatedId }))
             }))
         }
         return results
@@ -50,9 +53,10 @@ export class NotificationService {
      * exact defect this whole model change exists to fix — the caller should have
      * to say which table its ids came from.
      */
-    static async notifySuperAdmins(superAdminIds: string[], type: string, message: string, relatedId?: string, tx?: any) {
+    static async notifySuperAdmins(superAdminIds: string[], type: string, text: NoticeText, relatedId?: string, tx?: any) {
         const prismaClient = tx || prisma
         if (superAdminIds.length === 0) return
+        const row = noticeRow(text)
 
         const BATCH_SIZE = 500
         const results = []
@@ -60,24 +64,32 @@ export class NotificationService {
         for (let i = 0; i < superAdminIds.length; i += BATCH_SIZE) {
             const batch = superAdminIds.slice(i, i + BATCH_SIZE)
             results.push(await prismaClient.notification.createMany({
-                data: batch.map(superAdminId => ({ superAdminId, type, message, relatedId }))
+                data: batch.map(superAdminId => ({ superAdminId, type, ...row, relatedId }))
             }))
         }
         return results
     }
 
+    /** Newest first, except that an unread CRITICAL notice stays at the top until it is dealt with. */
     static async getByUser(principalId: string) {
-        return await prisma.notification.findMany({
+        const rows = await prisma.notification.findMany({
             where: NotificationService.recipientFilter(principalId),
             orderBy: { createdAt: "desc" }
         })
+        const pinned = (n: { priority: string; read: boolean }) => n.priority === "CRITICAL" && !n.read
+        return [...rows.filter(pinned), ...rows.filter(n => !pinned(n))]
     }
 
+    /**
+     * Everything but CRITICAL: those are read when what they are about is
+     * dealt with (ATTENDANCE_PLAN.md §13.4), not when the bell is opened.
+     */
     static async markAllAsRead(principalId: string) {
         return await prisma.notification.updateMany({
             where: {
                 ...NotificationService.recipientFilter(principalId),
-                read: false
+                read: false,
+                priority: { not: "CRITICAL" },
             },
             data: {
                 read: true

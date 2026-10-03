@@ -36,18 +36,16 @@ const THE_PERSON = "about the person acted on"
  */
 const ADMIN_ROLE = "the locked Admin role"
 /**
- * A cross-company system job an Admin may trigger by hand. No company
- * permission fits it; Part B makes it the Super Admin's.
+ * About the role being managed, not the person managing it: which built-in a
+ * role is, and what a company's default role may be. The Super Admin edits
+ * roles; these are the rules of the roles themselves.
  */
-const SYSTEM_JOB = "system job (Part B: Super Admin only)"
+const THE_ROLE = "about the role being managed"
 
 const ALLOWED: [file: string, line: string, why: string][] = [
     // app/api/tasks/bulk/route.ts
     ["app/api/tasks/bulk/route.ts", "if (['ADMIN', 'SUPER_ADMIN'].includes(user.role)) { isTaskValid = false; break }", THE_PERSON],
 
-    // app/api/notes/check-expiry/route.ts
-    ["app/api/notes/check-expiry/route.ts", "const isAdmin = session && ['ADMIN', 'SUPER_ADMIN'].includes(role)", SYSTEM_JOB],
-    ["app/api/notes/check-expiry/route.ts", "else if (role === 'ADMIN') userId = (session!.user as any).id", SYSTEM_JOB],
 
     // app/(dashboard)/dashboard/employees/new/page.tsx
     ["app/(dashboard)/dashboard/employees/new/page.tsx", "if (role === 'EMPLOYEE' && teamLeaderId) {", THE_PERSON],
@@ -95,12 +93,33 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     // lib/services/employment.service.ts
     ["lib/services/employment.service.ts", "const released = next === \"ARCHIVED\" && user.role === \"TEAM_LEADER\"", THE_PERSON],
 
+    // lib/services/role-assignment.service.ts — rule 8: a company keeps someone at work on its built-in Admin role
+    ["lib/services/role-assignment.service.ts", "if (!user?.roleId || user.assignedRole?.builtIn !== \"ADMIN\") return", ADMIN_ROLE],
+    // …and only the Super Admin acts on an Admin (role, status, contract, deletion)
+    ["lib/services/role-assignment.service.ts", "if (target.role === \"ADMIN\" && actor.role !== \"SUPER_ADMIN\") throw new Error(\"ADMIN_IS_SUPER_ADMINS\")", ADMIN_ROLE],
+    // …and nobody but the Super Admin takes over an Admin's account (mayTakeOver)
+    ["lib/services/role-assignment.service.ts", "if (target.role === \"ADMIN\" || target.role === \"SUPER_ADMIN\") throw new Error(\"ADMIN_IS_SUPER_ADMINS\")", ADMIN_ROLE],
+    // returning from an acting role: only an employee has a team leader
+    ["lib/services/role-assignment.service.ts", "...(next.role !== \"EMPLOYEE\" ? { teamLeaderId: null } : {}),", THE_PERSON],
+    // rule 2: only the Super Admin hands out an ADMIN-based role
+    ["lib/services/role-assignment.service.ts", "if (role.baseRole === \"ADMIN\" || role.baseRole === \"SUPER_ADMIN\") return \"FORBIDDEN_ROLE_ASSIGNMENT\"", THE_ROLE],
+    // with no default set, a new account starts on the built-in Employee
+    ["lib/services/role-assignment.service.ts", "const defaultId = company?.defaultRoleId ?? roles.find(r => r.builtIn === \"EMPLOYEE\")?.id ?? null", THE_ROLE],
+
+    // lib/services/role.service.ts — the rules of roles themselves (§4.2 rule 7, §4.3, §6.4)
+    ["lib/services/role.service.ts", "if (before.builtIn === \"ADMIN\" && (renames || rebases || regrants)) throw new Error(\"ROLE_LOCKED\")", ADMIN_ROLE],
+    ["lib/services/role.service.ts", "if (rebases && input.baseRole === \"ADMIN\" && before.isDefault) throw new Error(\"DEFAULT_ROLE_ADMIN\")", THE_ROLE],
+    ["lib/services/role.service.ts", "if (role.baseRole === \"ADMIN\") throw new Error(\"DEFAULT_ROLE_ADMIN\")", THE_ROLE],
+    ["lib/services/role.service.ts", "isDefault: defaultRoleId ? role.id === defaultRoleId : role.builtIn === \"EMPLOYEE\",", THE_ROLE],
+    ["lib/services/role.service.ts", "locked: role.builtIn === \"ADMIN\",", ADMIN_ROLE],
+
     // lib/services/user.service.ts
     ["lib/services/user.service.ts", "if ((newUserRole === 'ADMIN' || newUserRole === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
+    // an ordinary new account (the kind the form defaults to) starts on the company's default role
+    ["lib/services/user.service.ts", "if (!roleId && newUserRole === 'EMPLOYEE') return RoleAssignmentService.defaultFor(prisma, targetCompanyId)", THE_ROLE],
     ["lib/services/user.service.ts", "if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {", THE_PERSON],
     ["lib/services/user.service.ts", "if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {", ADMIN_ROLE],
     ["lib/services/user.service.ts", "if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
-    ["lib/services/user.service.ts", "if (user.role === 'ADMIN' && requesterRole !== 'SUPER_ADMIN') throw new Error(\"FORBIDDEN\")", ADMIN_ROLE],
 
     // lib/team-assignment.ts
     ["lib/team-assignment.ts", "if (target.role !== \"EMPLOYEE\") {", THE_PERSON],
@@ -130,8 +149,13 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["components/EmployeeProfileForm.tsx", "teamLeaderId: canAssignTeam && userId !== session?.user?.id && role === 'EMPLOYEE'", THE_PERSON],
     ["components/EmployeeProfileForm.tsx", "(can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (", THE_PERSON],
     ["components/EmployeeProfileForm.tsx", "(can('dayoff.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (", THE_PERSON],
-    ["components/EmployeeProfileForm.tsx", "{(userRole === 'SUPER_ADMIN' || role === 'ADMIN') && <option value=\"ADMIN\">{t('role_admin')}</option>}", ADMIN_ROLE],
+    // The Super Admin's roles card: the built-in Employee is the default when none is set, and an Admin-based role is never one
+    ["components/CompanyRolesCard.tsx", "body: JSON.stringify({ companyId, roleId: role.builtIn === 'EMPLOYEE' ? null : role.id }),", THE_ROLE],
+    ["components/CompanyRolesCard.tsx", "{!role.isDefault && role.baseRole !== 'ADMIN' && (", THE_ROLE],
     ["components/EmployeeProfileForm.tsx", "userId === session?.user?.id && role === 'EMPLOYEE' && (", THE_PERSON],
+    // Only the Super Admin changes an Admin's role (§4.2, rule 7): the field shows it, locked
+    ["components/EmployeeProfileForm.tsx", "<RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />", ADMIN_ROLE],
+    ["components/EmployeeProfileForm.tsx", "locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}", ADMIN_ROLE],
     ["components/EmployeeProfileForm.tsx", "&& role === 'EMPLOYEE' && (", THE_PERSON],
 ]
 
@@ -183,6 +207,6 @@ describe("access is decided by permission, not by role name", () => {
     })
 
     it("gives every listed check a reason", () => {
-        for (const [, , why] of ALLOWED) expect([LABEL, THE_PERSON, ADMIN_ROLE, SYSTEM_JOB]).toContain(why)
+        for (const [, , why] of ALLOWED) expect([LABEL, THE_PERSON, ADMIN_ROLE, THE_ROLE]).toContain(why)
     })
 })

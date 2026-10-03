@@ -34,15 +34,20 @@ export default function MyPayslipsPage() {
     const isRtl = locale === 'ar'
 
     const userId = (session?.user as any)?.id
+    // The Super Admin is nobody's employee: there are no payslips of theirs to
+    // ask for, whether they came here by the address or while previewing a
+    // role (which sees this page as the role would).
+    const previewing = !!(session?.user as any)?.preview
+    const nobodysEmployee = previewing || (session?.user as any)?.role === 'SUPER_ADMIN'
 
-    const { data, error, isLoading } = useSWR(userId ? `/api/users/${userId}/payslips` : null, fetcher)
+    const { data, error, isLoading } = useSWR(userId && !nobodysEmployee ? `/api/users/${userId}/payslips` : null, fetcher)
     // Not an error: a company that has not switched payslips on is a policy,
     // and telling somebody "access denied" for a setting their employer chose
     // reads like a fault in the app.
     const unavailable = (error as SWRError | undefined)?.status === 403
-    const rows: Row[] | null = data ? (data.data ?? []) : error ? [] : null
+    const rows: Row[] | null = data ? (data.data ?? []) : error || nobodysEmployee ? [] : null
     // No user id yet means the session is still arriving, not an empty list.
-    const loading = !userId || isLoading
+    const loading = !userId || (!nobodysEmployee && isLoading)
 
     const monthName = (m: number) =>
         new Date(2000, m - 1).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' })

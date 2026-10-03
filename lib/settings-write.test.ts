@@ -19,7 +19,8 @@ const COMPANY_SERVICE = stripComments(readFileSync("lib/services/company.service
 const COMPANY_ROUTE = stripComments(readFileSync("app/api/companies/route.ts", "utf8"))
 const SYSTEM_ROUTE = stripComments(readFileSync("app/api/system-settings/route.ts", "utf8"))
 const CARD = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
-const SETTINGS_PAGE = readFileSync("app/(dashboard)/dashboard/companies/[id]/settings/page.tsx", "utf8")
+// The company settings page shows its cards through its tabs.
+const SETTINGS_TABS = readFileSync("components/CompanySettingsTabs.tsx", "utf8")
 const REGISTER = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
 
 describe("G2: the payroll settings can actually be set", () => {
@@ -104,8 +105,8 @@ describe("G2: the payroll settings can actually be set", () => {
         // Anchored on the whole tag: toContain("<CompanyPayrollCard") also
         // matches "<CompanyPayrollCardX", so it could not fail on a renamed
         // component.
-        expect(SETTINGS_PAGE).toMatch(/<CompanyPayrollCard[\s/>]/)
-        expect(SETTINGS_PAGE).toContain("import CompanyPayrollCard from '@/components/CompanyPayrollCard'")
+        expect(SETTINGS_TABS).toMatch(/<CompanyPayrollCard[\s/>]/)
+        expect(SETTINGS_TABS).toContain("import CompanyPayrollCard from '@/components/CompanyPayrollCard'")
     })
 
     it("shows the zone's own refusal instead of a generic one", () => {
@@ -143,8 +144,12 @@ describe("G3: a Super Admin can reach a register", () => {
         // company while the screen shows the right one.
         const calls = REGISTER.match(/companyId: companyId \|\| undefined/g) ?? []
         expect(calls.length).toBe(4)
+        // Read by URL: the register and the export; attendance changed after
+        // payroll (ATTENDANCE_PLAN.md §12.3) builds its paged URL with the
+        // company too, and its resolve acts on one record by id.
         const urls = REGISTER.match(/companyId=\$\{encodeURIComponent\(companyId\)\}/g) ?? []
         expect(urls.length).toBe(2)
+        expect(REGISTER).toContain("if (companyId) q.set('companyId', companyId)")
     })
 
     it("reloads when the company changes", () => {

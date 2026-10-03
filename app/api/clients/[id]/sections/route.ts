@@ -4,6 +4,8 @@ import { ApiResponse } from "@/lib/api-response"
 import { createSectionSchema, updateSectionSchema } from "@/lib/validations/section.schema"
 import { SectionService } from "@/lib/services/section.service"
 import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session, _body, context) => {
     const clientId = context.params.id
@@ -21,10 +23,8 @@ export const GET = withStandardHandler(async (req, session, _body, context) => {
     }
 
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const { page, limit, skip } = parsePaging(searchParams, 10, 1000)
     const search = searchParams.get('search') || ''
-    const skip = (page - 1) * limit
 
     const where: any = { clientId }
     if (search) where.title = { contains: search, mode: 'insensitive' }
@@ -98,6 +98,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
 export const DELETE = withStandardHandler(async (req, session) => {
     if (!can(session.user, "clients.delete")) return ApiResponse.forbidden()
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "clients.delete")
 
     const { searchParams } = new URL(req.url)
     const sectionId = searchParams.get('sectionId') || searchParams.get('id')
