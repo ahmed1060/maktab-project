@@ -29,6 +29,9 @@ export class MfaService {
     }
 
     static async verifyCode(secret: string, code: string): Promise<boolean> {
+        // otplib throws on anything but six digits; for the person typing,
+        // a recovery code in the wrong box is just a wrong code.
+        if (!/^\d{6}$/.test(code)) return false
         const result = await verify({ secret, token: code, epochTolerance: VERIFY_TOLERANCE_SECONDS })
         return result.valid
     }
