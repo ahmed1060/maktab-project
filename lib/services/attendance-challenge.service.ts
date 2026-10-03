@@ -9,7 +9,7 @@ import type { Prisma } from "@prisma/client"
  * for one purpose cannot be used for the other. Kept only as a hash.
  */
 
-export type ChallengePurpose = "REGISTER" | "CHECK_IN"
+export type ChallengePurpose = "REGISTER" | "CHECK_IN" | "FACE"
 
 /** How long a number may be used for. Long enough to get a fix and sign; short enough to be worthless if seen. */
 export const CHALLENGE_TTL_MS = 5 * 60_000
@@ -44,6 +44,20 @@ export class AttendanceChallengeService {
             data: { usedAt: now },
         })
         return count === 1
+    }
+
+    /**
+     * Whether the number could still be used, without using it: checked
+     * before asking Google or Apple anything, so a replayed or made-up
+     * request costs no call to them (review on #26). consume() still decides.
+     */
+    static async isLive(userId: string, purpose: ChallengePurpose, nonce: string, now = new Date()): Promise<boolean> {
+        if (typeof nonce !== "string" || nonce.length < 20 || nonce.length > 100) return false
+        const found = await prisma.attendanceChallenge.findFirst({
+            where: { nonceHash: hashOf(nonce), userId, purpose, usedAt: null, expiresAt: { gt: now } },
+            select: { id: true },
+        })
+        return !!found
     }
 
     /** Old numbers, used or not, for the nightly prune. */

@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
 import { send, json } from './send'
+import FaceTab from './FaceTab'
 import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
 import AddPunchModal from './AddPunchModal'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
@@ -48,7 +49,7 @@ type Report = {
 type ImportRow = { id: string; fileName: string; createdAt: string; rowCount: number; addedCount: number; duplicateCount: number; refusedCount: number; voidedAt: string | null; voidReason: string | null }
 type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
 
-type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'import' | 'numbers'
+type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'face' | 'import' | 'numbers'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const monthStart = (date: string) => `${date.slice(0, 8)}01`
@@ -79,6 +80,8 @@ export default function AttendancePage() {
     const tabs: Tab[] = [
         ...(seesOthers ? ['exceptions' as const] : []),
         'days', 'punches', 'requests',
+        // Face verification (§9.5): only whoever decides it, company-wide.
+        ...(p.companyWide('attendance.approve_face') ? ['face' as const] : []),
         ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
     ]
     // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
@@ -93,7 +96,7 @@ export default function AttendancePage() {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
 
-    const label: Record<Tab, TranslationKey> = { exceptions: 'exc_tab', days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    const label: Record<Tab, TranslationKey> = { exceptions: 'exc_tab', days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', face: 'face_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
             {tabs.length > 1 && (
@@ -109,6 +112,7 @@ export default function AttendancePage() {
             {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
             {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
             {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
+            {tab === 'face' && <FaceTab q={q} />}
             {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
             {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
         </div>

@@ -5,10 +5,18 @@ import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { AttendanceLocationService } from "./attendance-location.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
-import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
-import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
+import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
+import { checkInText, type FaceResult } from "@/lib/attendance/signed-text"
+import { encryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
+import { FaceVerificationService } from "./face-verification.service"
+import { MAX_PHOTO_BYTES } from "./face-review.service"
+import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
-import { addDays } from "@/lib/attendance/calendar"
+import { addDays, formatMinutes, toDateString } from "@/lib/attendance/calendar"
+import { localToInstant } from "@/lib/attendance/punch-import"
+import { employmentSpans, suspensionSpans } from "@/lib/employment"
+import { assignPunches } from "@/lib/attendance/engine"
+import { AttendanceEngineService } from "./attendance-engine.service"
 import { DEFAULT_TIME_ZONE, offsetMsIn } from "@/lib/time"
 
 /**
@@ -37,24 +45,26 @@ export type CheckInInput = {
     mocked: boolean
     direction?: "IN" | "OUT" | null
     attestation?: string | null
+    /** The phone's face check, when face verification is in use for the person (§9.5). */
+    face?: FaceResult | null
+    /** The last frame of a failed face check, JPEG base64, for the reviewer (§13.8). */
+    faceFrame?: string | null
 }
 
 export type CheckInResult =
     | { outcome: "REFUSED"; reason: string }
-    | { outcome: "ACCEPTED" | "FLAGGED" | "HELD"; reasons: FlagReason[]; place: { id: string; name: string }; distanceMeters: number; at: string }
+    | {
+        outcome: "ACCEPTED" | "FLAGGED" | "HELD"; reasons: FlagReason[]; place: { id: string; name: string }; distanceMeters: number; at: string
+        /** The day's first check-in, past its start and its grace: the app offers to ask for permission hours (§13.6). */
+        late: { minutes: number; startsAt: string } | null
+    }
 
 function fail(code: string): never {
     throw new Error(code)
 }
 
-/**
- * The exact text a phone signs for a check-in: the number, which key, the fix
- * and whether it was simulated, the direction if the person chose one.
- * Numbers as JavaScript writes them (String(n)); the app must write the same.
- */
-export function checkInText(input: Pick<CheckInInput, "nonce" | "keyFingerprint" | "latitude" | "longitude" | "accuracyMeters" | "mocked" | "direction">) {
-    return signedText("CHECK_IN", input.nonce, [input.keyFingerprint, input.latitude, input.longitude, input.accuracyMeters, input.mocked ? 1 : 0, input.direction ?? ""])
-}
+/** Signed by the phone; shared with the check-in screen so the two always agree. */
+export { checkInText }
 
 const STATUS = { ACCEPTED: "ACCEPTED", FLAGGED: "FLAGGED", HELD: "PENDING_DEVICE" } as const
 
@@ -63,12 +73,25 @@ export class AttendanceCheckInService {
         // The phone by its key; its status is read again under the lock below.
         const phone = await prisma.checkInPhone.findFirst({
             where: { userId, keyFingerprint: input.keyFingerprint },
-            select: { id: true, publicKey: true, platform: true },
+            select: { id: true, publicKey: true, platform: true, appAttestKey: true, appAttestCounter: true },
         })
         // A key we don't know can't be checked: there is nothing to check it with.
         const key = phone ? parsePhoneKey(phone.publicKey) : null
         const badSignature = !!phone && !(key && signatureValid(key.key, checkInText(input), input.signature))
-        const attestation = await verifyAttestation({ platform: phone?.platform ?? "ANDROID", token: input.attestation, challenge: input.nonce })
+        // Google and Apple only for a request that could count: our phone, its
+        // signature, a number not yet used. Anything else is refused below
+        // without a call that spends the app's quota (review on #26).
+        const worthAsking = !!phone && !badSignature && (await AttendanceChallengeService.isLive(userId, "CHECK_IN", input.nonce, now))
+        let attestation: AttestationResult = worthAsking
+            ? await verifyAttestation({ platform: phone.platform, token: input.attestation, challenge: input.nonce, purpose: "CHECK_IN", phone })
+            : { verified: false, reason: "NOT_CHECKED" }
+        // Face verification, when it is in use for the person (§9.5): the result
+        // the phone signed, and the frame of a failed check if it matches its hash.
+        // While a re-verification photo waits, the app still matches against the
+        // approved templates and keeps the new ones aside until approval
+        // (lib/mobile/face.ts), so check-ins keep working (§9.5, review on #27).
+        const faceRequired = worthAsking && (await FaceVerificationService.statusFor(userId)).active
+        const frame = faceRequired ? frameOf(input) : null
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
         const local = new Date(now.getTime() + offsetMsIn(now, timeZone)).toISOString().slice(0, 19)
@@ -86,6 +109,15 @@ export class AttendanceCheckInService {
             // the check-in (review on #22).
             await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
             const current = phone ? await tx.checkInPhone.findUnique({ where: { id: phone.id }, select: { status: true } }) : null
+            // App Attest's counter, moved on only if it is still below this one: the
+            // verifier read it before the lock, and a stale read must not count twice.
+            if (phone && attestation.appAttest) {
+                const { count } = await tx.checkInPhone.updateMany({
+                    where: { id: phone.id, appAttestCounter: { lt: attestation.appAttest.counter } },
+                    data: { appAttestCounter: attestation.appAttest.counter },
+                })
+                if (count === 0) attestation = { verified: false, reason: "BAD_COUNTER" }
+            }
             const waiting = await tx.checkInPhone.count({ where: { userId, status: "PENDING" } })
             const places = await AttendanceLocationService.forPerson(companyId, userId)
             const verdict = judgeCheckIn({
@@ -94,6 +126,7 @@ export class AttendanceCheckInService {
                 fix: { latitude: input.latitude, longitude: input.longitude, accuracyMeters: input.accuracyMeters },
                 mocked: input.mocked,
                 attestation: { verified: attestation.verified, required: attestationMode() === "required" },
+                face: { required: faceRequired, verified: !!input.face?.verified },
                 places, ip,
             })
             if (verdict.outcome === "REFUSED") {
@@ -109,7 +142,8 @@ export class AttendanceCheckInService {
                 return { result: { outcome: "REFUSED" as const, reason: "MONTH_LOCKED" }, counts: false }
             }
 
-            await tx.attendancePunch.create({
+            const punch = await tx.attendancePunch.create({
+                select: { id: true },
                 data: {
                     companyId, userId, source: "MOBILE",
                     // One punch per number signed: the number is used once, so its hash is the punch's identity.
@@ -120,22 +154,136 @@ export class AttendanceCheckInService {
                     status: STATUS[verdict.outcome], flagReasons: verdict.reasons,
                     checkIn: {
                         latitude: input.latitude, longitude: input.longitude, accuracyMeters: input.accuracyMeters,
-                        distanceMeters: verdict.distanceMeters, ip, attested: attestation.verified,
+                        distanceMeters: verdict.distanceMeters, ip, attested: attestation.verified, attestationReason: attestation.reason,
+                        // The result only, never the face (§9.5).
+                        ...(faceRequired ? { face: input.face ? { verified: input.face.verified, score: input.face.score, liveness: input.face.liveness, modelVersion: input.face.modelVersion, attempts: input.face.attempts } : null } : {}),
                     },
                 },
             })
+            // The failed check's frame, kept encrypted only while the flag is open (§13.8).
+            if (frame && verdict.reasons.includes("FACE_UNVERIFIED")) {
+                await tx.faceFrame.create({ data: { punchId: punch.id, companyId, userId, photo: new Uint8Array(frame) } })
+            }
             return {
-                result: { outcome: verdict.outcome, reasons: verdict.reasons, place: { id: verdict.place.id, name: verdict.place.name }, distanceMeters: verdict.distanceMeters, at: local },
+                result: { outcome: verdict.outcome, reasons: verdict.reasons, place: { id: verdict.place.id, name: verdict.place.name }, distanceMeters: verdict.distanceMeters, at: local, late: null },
                 counts: verdict.outcome === "ACCEPTED",
+                punchId: punch.id,
             }
         })
         if (!out.result) fail("PHONE_SIGNATURE_INVALID")
         // From the day before: a check-in after midnight can end the night shift that began then.
         if (out.counts) await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [userId])
-        return out.result
+        if (out.result.outcome === "REFUSED") return out.result
+        return { ...out.result, late: await AttendanceCheckInService.lateness(companyId, userId, out.punchId!, local) }
+    }
+
+    /**
+     * How late this check-in is, when it is the first of its working day:
+     * minutes past the start, if past the policy's grace. The day is the
+     * shift it belongs to, as the engine groups punches (assignPunches), so a
+     * night shift's arrival after midnight is measured against the night it
+     * starts, and the morning's check-out from last night's shift doesn't
+     * count as this evening's first (review on #24). Null otherwise — a
+     * later check-in, a rest day, no schedule, or lateness not charged at all,
+     * when asking for permission would be pointless.
+     */
+    static async lateness(companyId: string, userId: string, punchId: string, local: string): Promise<{ minutes: number; startsAt: string } | null> {
+        const date = local.slice(0, 10)
+        const days = [addDays(date, -1), date, addDays(date, 1)]
+        const [{ plans, latenessOn }, nearby] = await Promise.all([
+            AttendanceEngineService.expectedFor(companyId, userId, days),
+            prisma.attendancePunch.findMany({
+                where: {
+                    userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] },
+                    punchAtLocal: { gte: new Date(`${days[0]}T00:00:00Z`), lt: new Date(`${addDays(days[2], 1)}T00:00:00Z`) },
+                },
+                select: { id: true, punchAtLocal: true, direction: true },
+            }),
+        ])
+        const grouped = assignPunches(nearby.map(p => ({ id: p.id, at: p.punchAtLocal.toISOString().slice(0, 19), direction: p.direction })), plans)
+        const [day, punches] = [...grouped].find(([, list]) => list.some(p => p.id === punchId)) ?? []
+        if (!day || !punches || punches[0].id !== punchId) return null
+        const expected = plans.get(day)
+        const rule = latenessOn(day)
+        if (expected?.kind !== "WORK" || !rule?.enabled) return null
+        if (await AttendanceCheckInService.latenessWaived(companyId, userId, day)) return null
+        // Minutes from the start of the shift's own day, past midnight included.
+        const daysAfter = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000
+        const minutes = daysAfter * 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)) - expected.hours.startMinutes
+        if (minutes <= rule.graceMinutes) return null
+        return { minutes, startsAt: formatMinutes(expected.hours.startMinutes) }
+    }
+
+    /**
+     * Whether lateness that day costs nothing anyway, as the engine measures
+     * it (deriveMonth, measureDay): on approved leave, suspended for the whole
+     * day or not employed on it, already excused on the exceptions screen, or
+     * with a late-arrival permission already asked for or granted. Offering
+     * another would spend allowance on nothing, or be refused as overlapping
+     * (review on #24).
+     */
+    static async latenessWaived(companyId: string, userId: string, day: string): Promise<boolean> {
+        return (await this.latenessWaivedFor(companyId, [{ userId, date: day }])).has(`${userId}|${day}`)
+    }
+
+    /**
+     * latenessWaived for many people and days at once: five queries however
+     * many, for the reminder job (review on #25). The keys of the waived ones,
+     * as "userId|date".
+     */
+    static async latenessWaivedFor(companyId: string, pairs: readonly { userId: string; date: string }[]): Promise<Set<string>> {
+        const waived = new Set<string>()
+        if (pairs.length === 0) return waived
+        const userIds = [...new Set(pairs.map(p => p.userId))]
+        const days = [...new Set(pairs.map(p => p.date))].sort()
+        const asDates = days.map(d => new Date(`${d}T00:00:00Z`))
+        const [leave, permissions, excused, people, company] = await Promise.all([
+            prisma.dayOffRequest.findMany({
+                where: {
+                    userId: { in: userIds }, status: "APPROVED", date: { lte: new Date(`${days.at(-1)}T23:59:59Z`) },
+                    OR: [{ endDate: { gte: asDates[0] } }, { endDate: null, date: { gte: asDates[0] } }],
+                },
+                select: { userId: true, date: true, endDate: true },
+            }),
+            prisma.permissionRequest.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, type: "LATE_ARRIVAL", status: { in: ["PENDING", "APPROVED"] } }, select: { userId: true, date: true } }),
+            prisma.attendanceDayDecision.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, outcome: "EXCUSED", subject: "LATENESS" }, select: { userId: true, date: true } }),
+            prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } } } }),
+            prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }),
+        ])
+        const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
+        const asked = new Set([...permissions, ...excused].map(r => `${r.userId}|${toDateString(r.date)}`))
+        const spans = new Map(people.map(p => {
+            const events = p.EmploymentEvent as Parameters<typeof employmentSpans>[0]
+            return [p.id, events.length === 0 ? null : { employed: employmentSpans(events), suspended: suspensionSpans(events) }]
+        }))
+        for (const { userId, date: day } of pairs) {
+            const key = `${userId}|${day}`
+            if (asked.has(key)) { waived.add(key); continue }
+            if (leave.some(l => l.userId === userId && toDateString(l.date) <= day && day <= toDateString(l.endDate ?? l.date))) { waived.add(key); continue }
+            const mine = spans.get(userId)
+            if (!mine) continue
+            const dayStart = localToInstant(`${day}T00:00:00`, timeZone), nextStart = localToInstant(`${addDays(day, 1)}T00:00:00`, timeZone)
+            const touches = (s: { from: Date; to: Date | null }) => s.from < nextStart && (s.to === null || s.to > dayStart)
+            const covers = (s: { from: Date; to: Date | null }) => s.from <= dayStart && (s.to === null || s.to >= nextStart)
+            if (!mine.employed.some(touches) || mine.suspended.some(covers)) waived.add(key)
+        }
+        return waived
     }
 
     private static async refuse(db: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {
         await db.checkInRefusal.create({ data: { companyId, userId, phoneId, reason, ip, at, ...(details && { details }) } })
     }
+}
+
+/**
+ * The frame sent with a failed face check, encrypted, when it is a photo and
+ * is the one the phone signed for; null otherwise. A frame that doesn't match
+ * is dropped, not refused: the check-in is flagged either way.
+ */
+function frameOf(input: CheckInInput): Buffer | null {
+    if (!input.faceFrame || !input.face || input.face.verified || !input.face.frameSha256) return null
+    const photo = Buffer.from(input.faceFrame, "base64")
+    if (photo.length === 0 || photo.length > MAX_PHOTO_BYTES || !isJpeg(photo)) return null
+    if (createHash("sha256").update(photo).digest("hex") !== input.face.frameSha256) return null
+    return encryptFacePhoto(photo)
 }
