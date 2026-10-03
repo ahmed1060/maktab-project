@@ -131,6 +131,14 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         expect(rows.map(r => r.face)).toEqual([{ verified: true, score: 0.93, liveness: 0.97, modelVersion: "m1", attempts: 1 }, null])
     })
 
+    it("doesn't count a match while a re-verification photo waits for approval: the phone matches the new face (review on #27)", async () => {
+        const passed = { verified: true, score: 0.95, liveness: 0.97, modelVersion: "m2", attempts: 1 }
+        await db.query(`INSERT INTO "FaceReview"(id, "companyId", "userId", "phoneId", purpose, status, photo, "modelVersion") VALUES ('r-e1-again', 'c1', 'e1', 'p-e1', 'REVERIFY', 'PENDING', $1, 'm2')`, [encryptFacePhoto(jpeg())])
+        expect(await checkIn("e1", passed)).toMatchObject({ reasons: ["ATTESTATION_UNVERIFIED", "FACE_UNVERIFIED"] })
+        await db.query(`DELETE FROM "FaceReview" WHERE id = 'r-e1-again'`)
+        expect(await checkIn("e1", passed)).toMatchObject({ reasons: ["ATTESTATION_UNVERIFIED"] })
+    })
+
     it("shows face photos only for a check-in flagged for its face, and only the company's own reference (review on #27)", async () => {
         const viewer = { id: "a1", isSuperAdmin: false }
         const flagged = async (face: boolean) => (await db.query(
