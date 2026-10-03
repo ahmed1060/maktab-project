@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Nizmo uses the front camera for the face check at check-in, when your employer asks it of you and you agree.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Nizmo checks that you are at your place of work when you check in.</string>
   <key>CAPACITOR_DEBUG</key>

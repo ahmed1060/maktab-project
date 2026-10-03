@@ -22,7 +22,7 @@ import { FacePhoto as Photo, useWatermark } from '@/components/FacePhoto'
  * each fetch is audited. It is shown with the viewer's name and the time
  * over it, so a screenshot says who took it.
  */
-type Review = { id: string; userId: string; name: string; purpose: 'ENROLMENT' | 'REVERIFY'; createdAt: string; attested: boolean; hasReference: boolean }
+type Review = { id: string; userId: string; name: string; purpose: 'ENROLMENT' | 'REVERIFY'; createdAt: string; attested: boolean; hasReference: boolean; prototype?: boolean }
 type Person = { id: string; name: string; required: boolean; consentedAt: string | null }
 type People = { company: { allowed: boolean; reason: string | null }; people: Person[]; overdue: { userId: string; name: string; since: string }[] }
 
@@ -79,7 +79,8 @@ export default function FaceTab({ q }: { q: string }) {
                             <tbody>
                                 {reviews.map(r => (
                                     <tr key={r.id}>
-                                        <td>{r.name}{!r.attested && <div style={{ ...soft, color: 'var(--warn-fg)' }}>{t('att_flag_ATTESTATION_UNVERIFIED')}</div>}</td>
+                                        <td>{r.name}{!r.attested && <div style={{ ...soft, color: 'var(--warn-fg)' }}>{t('att_flag_ATTESTATION_UNVERIFIED')}</div>}
+                                            {r.prototype && <div style={{ ...soft, color: 'var(--warn-fg)' }}>{t('face_review_prototype')}</div>}</td>
                                         <td>{t(r.purpose === 'ENROLMENT' ? 'audit_value_ENROLMENT' : 'audit_value_REVERIFY')}</td>
                                         <td style={{ whiteSpace: 'nowrap' }}><bdi>{r.createdAt.slice(0, 10)} {r.createdAt.slice(11, 16)}</bdi></td>
                                         <td><button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem' }} onClick={() => setOpenId(r.id)}>{t('face_review_open')}</button></td>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
 import { faceText } from "@/lib/attendance/signed-text"
+import { isPrototypeModel, prototypeAllowed } from "@/lib/attendance/face-prototype-gate"
 import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { encryptFacePhoto, decryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
 import { holdersOf } from "@/lib/permissions/holders"
@@ -63,6 +64,8 @@ export class FaceReviewService {
      * waiting is replaced, its photo deleted.
      */
     static async submit(companyId: string, userId: string, input: SubmitInput) {
+        // The free prototype, only where a test deployment allows it (lib/attendance/face-prototype-gate.ts).
+        if (isPrototypeModel(input.modelVersion) && !prototypeAllowed()) fail("FACE_PROTOTYPE_NOT_ALLOWED")
         const status = await FaceVerificationService.statusFor(userId)
         if (!status.required) fail("FACE_NOT_REQUIRED")
         if (!status.consent) fail("FACE_CONSENT_REQUIRED")
@@ -133,7 +136,7 @@ export class FaceReviewService {
             where: { companyId, status: "PENDING", ...(exceptUserId ? { userId: { not: exceptUserId } } : {}) },
             orderBy: { createdAt: "asc" },
             select: {
-                id: true, userId: true, purpose: true, createdAt: true, attested: true,
+                id: true, userId: true, purpose: true, createdAt: true, attested: true, modelVersion: true,
                 user: { select: { firstName: true, lastName: true } },
             },
         })
@@ -144,7 +147,7 @@ export class FaceReviewService {
         const has = new Set(withReference.map(r => r.userId))
         return rows.map(r => ({
             id: r.id, userId: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim(), purpose: r.purpose,
-            createdAt: r.createdAt, attested: r.attested, hasReference: has.has(r.userId),
+            createdAt: r.createdAt, attested: r.attested, hasReference: has.has(r.userId), prototype: isPrototypeModel(r.modelVersion),
         }))
     }
 

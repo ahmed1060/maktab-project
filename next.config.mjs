@@ -46,6 +46,13 @@ const nextConfig = {
                 { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
                 { key: 'Content-Security-Policy-Report-Only', value: csp },
             ],
+        }, {
+            // The check-in page, alone, may use the front camera: the face check
+            // (lib/mobile/face-prototype). A later header with the same key wins.
+            source: '/dashboard/check-in',
+            headers: [
+                { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },
+            ],
         }]
     },
 };

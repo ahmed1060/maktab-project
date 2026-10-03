@@ -223,6 +223,52 @@ written around it. Until it exists the page says "this version of the app
 can't do the face check", nobody can set it up, and so it is in use for
 nobody.
 
+### Free prototype, for trying it out
+
+Until a commercial SDK is chosen, a free prototype lets you try the whole
+flow on your own phone: consent, set-up, approval, check-in with the face
+check, re-verification and withdrawal. It runs inside the app's web view,
+on the phone, with no native code (`lib/mobile/face-prototype/`):
+
+- **Matching:** dlib's face recognition network, through
+  `@vladmandic/face-api` (MIT). Its weights are public domain.
+- **Liveness:** an active challenge, turning your head and blinking in a
+  random order, read from the face landmarks. A still photo or a group
+  photo fails it.
+- **Templates:** kept in the app's storage, encrypted with a device key that
+  can't be exported plus the server's wrapping key, with the same approved
+  and waiting slots.
+
+**Never with real employees.** The liveness check isn't certified, and the
+device key isn't in the secure hardware. Two locks keep it out of
+production:
+
+1. The site offers it only when built with `NEXT_PUBLIC_FACE_PROTOTYPE=1`.
+2. The server accepts its photos and check results only with
+   `FACE_ALLOW_PROTOTYPE=1`. Elsewhere, a photo from it is refused, and a
+   check-in with it is flagged like one with no face check.
+
+Reviewers see "Taken with the test version" beside such photos.
+
+To try it:
+
+1. On a test deployment (for example Vercel's Preview environment), set
+   `NEXT_PUBLIC_FACE_PROTOTYPE=1`, `FACE_ALLOW_PROTOTYPE=1` and
+   `FACE_PHOTO_KEY` (`openssl rand -base64 32`), then redeploy.
+2. Build a test APK with `NIZMO_URL` set to that deployment (see Testing
+   before there are developer accounts).
+3. As the protected Super Admin, turn face verification on (System Settings).
+4. In the test company:
+   - confirm legal readiness, and offer face verification in the
+     attendance policy (Settings → Attendance);
+   - ask it of yourself as a test employee (Attendance → Face verification).
+5. In the app: agree, set up the face check, approve the photo from
+   another account, then check in.
+
+The model weights (about 7 MB) are copied into `public/face-models/` before
+`dev` and `build` (`scripts/copy-face-models.mjs`), and load the first time
+the camera opens.
+
 ### Choosing the SDK
 
 It must match **on the phone**: no face image or template may go to the

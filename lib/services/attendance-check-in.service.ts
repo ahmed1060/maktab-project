@@ -9,6 +9,7 @@ import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
 import { checkInText, type FaceResult } from "@/lib/attendance/signed-text"
 import { encryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
 import { FaceVerificationService } from "./face-verification.service"
+import { isPrototypeModel, prototypeAllowed } from "@/lib/attendance/face-prototype-gate"
 import { MAX_PHOTO_BYTES } from "./face-review.service"
 import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { judgeCheckIn, type FlagReason } from "@/lib/attendance/check-in-rules"
@@ -126,7 +127,8 @@ export class AttendanceCheckInService {
                 fix: { latitude: input.latitude, longitude: input.longitude, accuracyMeters: input.accuracyMeters },
                 mocked: input.mocked,
                 attestation: { verified: attestation.verified, required: attestationMode() === "required" },
-                face: { required: faceRequired, verified: !!input.face?.verified },
+                // A result from the free prototype counts only where a test deployment allows it.
+                face: { required: faceRequired, verified: !!input.face?.verified && (!isPrototypeModel(input.face.modelVersion) || prototypeAllowed()) },
                 places, ip,
             })
             if (verdict.outcome === "REFUSED") {
