@@ -216,6 +216,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         // 4. Error Mapping
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
+        if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
         if (error.message === 'FORBIDDEN_ROLE_ASSIGNMENT') return ApiResponse.forbidden("Forbidden role assignment")
         // Team refusals, including the hand-off question, in the one shape
         // every route that can take a leader away answers with.

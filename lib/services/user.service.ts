@@ -175,6 +175,12 @@ export class UserService {
         const updateData: any = {}
         const isSelf = id === session.user.id
 
+        // A Super Admin's own account is theirs and the other Super Admins'.
+        // The company check above covers only a company's people, so without
+        // this a company Admin could rewrite a Super Admin's name, email or
+        // password.
+        if (superAdminUser && !isSelf && userRole !== 'SUPER_ADMIN') throw new Error("FORBIDDEN")
+
         // 1. Name Change Restrictions
         if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {
             if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)) {
