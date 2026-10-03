@@ -162,6 +162,11 @@ export const PERMISSIONS = {
     // Approving the one phone someone checks in from (§9.3), and revoking a
     // lost one. Never one's own: approving your own phone is the whole fraud.
     "attendance.approve_devices":     { code: 53, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Face verification (§9.5): turning it on for a person, deciding their
+    // verification photo, asking for re-verification. Company-wide only: the
+    // photo is shown to the Admin, HR and the Super Admin, never to a team
+    // leader. Never one's own: approving your own face is the whole fraud.
+    "attendance.approve_face":        { code: 54, module: "ATTENDANCE", scopes: COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS

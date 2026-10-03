@@ -256,6 +256,11 @@ model Company {
   attendanceDevices        AttendanceDevice[]
   workLocations            WorkLocation[]
   checkInPhones            CheckInPhone[]
+  /// The company has confirmed it holds whatever licence biometric
+  /// processing needs (§10.4): face verification can't be switched on before.
+  faceLegalConfirmedAt     DateTime?
+  faceLegalConfirmedById   String?
+  biometricConsents        BiometricConsent[]
   checkInRefusals          CheckInRefusal[]
   checkInReminders         CheckInReminder[]
   companyHolidays      CompanyHoliday[]
@@ -351,6 +356,11 @@ model SystemSettings {
   /// or less, counted from when it was entered. A setting, so it can be
   /// tuned without a release.
   stepUpMinutes              Int      @default(60)
+  /// Face verification for the whole system (ATTENDANCE_PLAN.md §9.5, §10.4).
+  /// Only the protected Super Admin changes it. OFF until they decide; PAUSED
+  /// stops it everywhere and keeps enrolments.
+  faceVerification           FaceSystemState @default(OFF)
+  faceVerificationChangedAt  DateTime?
   updatedAt                  DateTime @updatedAt
 }
 
@@ -514,6 +524,10 @@ model User {
   attendanceDiscrepancies    AttendanceDiscrepancy[]
   workLocations              UserWorkLocation[]
   checkInPhones              CheckInPhone[]
+  /// Face verification is asked of this person at check-in (§9.5), when the
+  /// company's policy makes it available. Set by attendance.approve_face.
+  faceVerificationRequired   Boolean                    @default(false)
+  biometricConsents          BiometricConsent[]
   attendanceChallenges       AttendanceChallenge[]
   checkInRefusals            CheckInRefusal[]
   checkInReminders           CheckInReminder[]
@@ -636,6 +650,28 @@ model Notification {
   @@index([userId, read])
   @@index([superAdminId])
   @@index([superAdminId, read])
+}
+
+enum FaceSystemState {
+  OFF
+  ON
+  PAUSED
+}
+
+/// The legal record of a person's consent to face verification (§9.5,
+/// §10.4); not biometric data. Current consent: the latest row with
+/// withdrawnAt null and the current text version.
+model BiometricConsent {
+  id          String    @id @default(uuid())
+  userId      String
+  companyId   String
+  textVersion String
+  acceptedAt  DateTime  @default(now())
+  withdrawnAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, acceptedAt])
 }
 
 enum NotificationPriority {
