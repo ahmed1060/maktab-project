@@ -85,12 +85,26 @@ export class FaceReviewService {
 
         const review = await prisma.$transaction(async tx => {
             if (!(await AttendanceChallengeService.consume(tx, userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+            // Asked and consented, checked again under the locks withdrawal, "no
+            // longer asked" and purge take: none of them can finish deleting the
+            // person's photos and then have this one stored after (review on #27).
+            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+            await tx.$queryRaw`SELECT id FROM "SystemSettings" WHERE id = 'default' FOR SHARE`
+            const [current] = await tx.$queryRaw<{ status: string }[]>`SELECT status FROM "CheckInPhone" WHERE id = ${phone.id} FOR SHARE`
+            if (current?.status !== "ACTIVE") fail("FACE_PHONE_NOT_ACTIVE")
+            const now = await FaceVerificationService.statusFor(userId)
+            if (!now.required) fail("FACE_NOT_REQUIRED")
+            if (!now.consent) fail("FACE_CONSENT_REQUIRED")
             if (attestation.appAttest) {
                 const { count } = await tx.checkInPhone.updateMany({
                     where: { id: phone.id, appAttestCounter: { lt: attestation.appAttest.counter } },
                     data: { appAttestCounter: attestation.appAttest.counter },
                 })
-                if (count === 0) attestation = { verified: false, reason: "BAD_COUNTER" }
+                if (count === 0) {
+                    attestation = { verified: false, reason: "BAD_COUNTER" }
+                    // A replayed or raced assertion: refused when attestation is required, as at check-in (review on #27).
+                    if (attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
+                }
             }
             const waiting = await tx.faceReview.findFirst({ where: { userId, status: "PENDING" }, select: { id: true } })
             if (waiting) {

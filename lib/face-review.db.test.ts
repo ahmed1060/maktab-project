@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto"
 import { Client } from "pg"
@@ -9,6 +9,17 @@ import { FaceVerificationService as Face, FACE_CONSENT_VERSION } from "@/lib/ser
 import { FaceReviewService as Reviews } from "@/lib/services/face-review.service"
 import { faceText } from "@/lib/attendance/signed-text"
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
+
+/** The attestation check as configured, unless a test stands in for it. */
+const attest = vi.hoisted(() => ({ verify: null as null | (() => Promise<unknown>), mode: null as null | string }))
+vi.mock("@/lib/attendance/attestation", async importOriginal => {
+    const real = await importOriginal<typeof import("@/lib/attendance/attestation")>()
+    return {
+        ...real,
+        verifyAttestation: (...args: Parameters<typeof real.verifyAttestation>) => (attest.verify ? attest.verify() : real.verifyAttestation(...args)),
+        attestationMode: () => attest.mode ?? real.attestationMode(),
+    }
+})
 
 /**
  * The verification photo and its review (lib/services/face-review.service.ts,
@@ -39,8 +50,8 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
     const keyFingerprint = parsePhoneKey(publicKey)!.fingerprint
 
     /** A photo as the app sends it: a fresh number, signed with the phone's key over the photo's hash. */
-    const send = async (photo: Buffer, over: Partial<{ signature: string }> = {}) => {
-        const { nonce } = await Challenges.issue("e1", "FACE")
+    const send = async (photo: Buffer, over: Partial<{ signature: string; nonce: string }> = {}) => {
+        const nonce = over.nonce ?? (await Challenges.issue("e1", "FACE")).nonce
         const photoSha256 = createHash("sha256").update(photo).digest("hex")
         const signature = sign("sha256", Buffer.from(faceText({ nonce, keyFingerprint, photoSha256, modelVersion: "m1" })), { key: pair.privateKey, dsaEncoding: "der" }).toString("base64")
         return Reviews.submit("c1", "e1", { nonce, keyFingerprint, signature, photo: photo.toString("base64"), modelVersion: "m1", ...over })
@@ -154,5 +165,37 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
         await Face.withdrawConsent("e1")
         expect((await reviews()).filter(r => r.hasPhoto)).toEqual([])
         expect(await phoneFace()).toBe("NONE")
+    })
+
+    it("a photo sent while a withdrawal is under way waits for it, and is refused (review on #27)", async () => {
+        await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
+        const { nonce } = await Challenges.issue("e1", "FACE")
+        const url = new URL(ADMIN_URL!)
+        url.pathname = `/${dbName}`
+        const other = new Client({ connectionString: url.toString() })
+        await other.connect()
+        await other.query("BEGIN")
+        await other.query(`SELECT id FROM "User" WHERE id = 'e1' FOR UPDATE`)
+        await other.query(`UPDATE "BiometricConsent" SET "withdrawnAt" = now() WHERE "userId" = 'e1'`)
+        const sending = reason(send(jpeg(), { nonce }))
+        await new Promise(r => setTimeout(r, 500))
+        await other.query("COMMIT")
+        await other.end()
+        expect(await sending).toBe("FACE_CONSENT_REQUIRED")
+        expect((await reviews()).filter(r => r.status === "PENDING")).toEqual([])
+    })
+
+    it("refuses a photo whose App Attest counter lost a race, when attestation is required (review on #27)", async () => {
+        await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
+        attest.mode = "required"
+        // Verified, but at a counter the phone has already passed.
+        attest.verify = async () => ({ verified: true, appAttest: { counter: 0 } })
+        try {
+            expect(await reason(send(jpeg()))).toBe("PHONE_ATTESTATION_FAILED")
+            expect((await reviews()).filter(r => r.status === "PENDING")).toEqual([])
+        } finally {
+            attest.mode = null
+            attest.verify = null
+        }
     })
 })
