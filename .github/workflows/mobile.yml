@@ -4,6 +4,7 @@ name: Mobile app
 # accounts (mobile/README.md, "Building in GitHub"): an Android APK anyone can
 # install, and an unsigned iPhone .ipa to sideload with a free Apple ID. Run by
 # hand (Actions → this workflow → Run workflow); nothing here runs on pushes.
+# It always builds main, even if another branch is picked in that menu.
 #
 # Optional, under Settings → Secrets and variables → Actions:
 #   GOOGLE_SERVICES_JSON (secret)  the text of Firebase's google-services.json.
@@ -49,6 +50,9 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Always the code on main, whichever branch the run was started from.
+          ref: main
 
       - uses: actions/setup-node@v4
         with:
@@ -104,6 +108,9 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Always the code on main, whichever branch the run was started from.
+          ref: main
 
       - uses: actions/setup-node@v4
         with:

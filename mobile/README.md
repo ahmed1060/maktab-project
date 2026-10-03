@@ -124,7 +124,8 @@ A free-account install stops opening after 7 days; run it from Xcode again.
 
 Without Android Studio or a Mac: on GitHub, open **Actions → Mobile app → Run
 workflow**, keep the site (`https://nizmo.vercel.app`) or enter another, and
-pick Android, iPhone or both. It runs only when started by hand. When it
+pick Android, iPhone or both. It runs only when started by hand, and
+always builds the code on `main`. When it
 finishes, the run's page has the files under **Artifacts**, kept 30 days:
 
 - **`nizmo-android-<run>`**: `nizmo-<run>.apk`. Install it as in step 3 of
