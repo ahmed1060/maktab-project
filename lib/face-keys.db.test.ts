@@ -126,6 +126,20 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         expect(rows.map(r => r.face)).toEqual([{ verified: true, score: 0.93, liveness: 0.97, modelVersion: "m1", attempts: 1 }, null])
     })
 
+    it("shows face photos only for a check-in flagged for its face, and only the company's own reference (review on #27)", async () => {
+        const viewer = { id: "a1", isSuperAdmin: false }
+        const flagged = async (face: boolean) => (await db.query(
+            `SELECT id FROM "AttendancePunch" WHERE "userId" = 'e1' AND status = 'FLAGGED' AND ('FACE_UNVERIFIED' = ANY("flagReasons")) = $1 LIMIT 1`, [face])).rows[0].id
+        expect(await reason(Reviews.flaggedPhoto(await flagged(false), "reference", viewer))).toBe("FACE_PHOTO_NONE")
+        const faceFlag = await flagged(true)
+        expect(await reason(Reviews.flaggedPhoto(faceFlag, "reference", viewer))).toBe("OK")
+        // The approved photo kept by a company they were in before is not this company's to show.
+        await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c2', 'Two', now())`)
+        await db.query(`UPDATE "FaceReview" SET "companyId" = 'c2' WHERE id = 'r-e1'`)
+        expect(await reason(Reviews.flaggedPhoto(faceFlag, "reference", viewer))).toBe("FACE_PHOTO_NONE")
+        await db.query(`UPDATE "FaceReview" SET "companyId" = 'c1' WHERE id = 'r-e1'`)
+    })
+
     it("keeps a failed check's frame encrypted beside the flag, shows it only while open, and deletes it on the decision", async () => {
         const frame = jpeg()
         const sha = createHash("sha256").update(frame).digest("hex")

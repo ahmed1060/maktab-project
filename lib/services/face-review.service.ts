@@ -124,7 +124,7 @@ export class FaceReviewService {
             },
         })
         const withReference = await prisma.faceReview.findMany({
-            where: { userId: { in: rows.map(r => r.userId) }, status: "APPROVED", photo: { not: null } },
+            where: { companyId, userId: { in: rows.map(r => r.userId) }, status: "APPROVED", photo: { not: null } },
             select: { userId: true },
         })
         const has = new Set(withReference.map(r => r.userId))
@@ -148,7 +148,7 @@ export class FaceReviewService {
         if (!review || review.status !== "PENDING") fail("FACE_REVIEW_CLOSED")
         const stored = which === "new"
             ? review.photo
-            : (await prisma.faceReview.findFirst({ where: { userId: review.userId, status: "APPROVED", photo: { not: null } }, select: { photo: true } }))?.photo ?? null
+            : await referenceOf(review.companyId, review.userId)
         if (!stored) fail("FACE_PHOTO_NONE")
         await AuditLogService.log("VIEW_FACE_PHOTO", "FACE_REVIEW", review.id, {
             ...(viewer.isSuperAdmin ? { superAdminId: viewer.id } : { userId: viewer.id }),
@@ -162,11 +162,13 @@ export class FaceReviewService {
      * beside it (§13.8): only while the flag is open, every view audited.
      */
     static async flaggedPhoto(punchId: string, which: "frame" | "reference", viewer: Reviewer): Promise<Buffer> {
-        const punch = await prisma.attendancePunch.findUnique({ where: { id: punchId }, select: { id: true, companyId: true, userId: true, status: true, voidedAt: true, faceFrame: { select: { photo: true } } } })
+        const punch = await prisma.attendancePunch.findUnique({ where: { id: punchId }, select: { id: true, companyId: true, userId: true, status: true, voidedAt: true, flagReasons: true, faceFrame: { select: { photo: true } } } })
         if (!punch || !punch.userId || punch.status !== "FLAGGED" || punch.voidedAt) fail("FACE_REVIEW_CLOSED")
+        // Only a check-in flagged for its face check: one flagged for its place alone is no reason to see a face (review on #27).
+        if (!punch.flagReasons.includes("FACE_UNVERIFIED")) fail("FACE_PHOTO_NONE")
         const stored = which === "frame"
             ? punch.faceFrame?.photo ?? null
-            : (await prisma.faceReview.findFirst({ where: { userId: punch.userId, status: "APPROVED", photo: { not: null } }, select: { photo: true } }))?.photo ?? null
+            : await referenceOf(punch.companyId, punch.userId)
         if (!stored) fail("FACE_PHOTO_NONE")
         await AuditLogService.log("VIEW_FACE_PHOTO", "ATTENDANCE_PUNCH", punch.id, {
             ...(viewer.isSuperAdmin ? { superAdminId: viewer.id } : { userId: viewer.id }),
@@ -245,6 +247,16 @@ export class FaceReviewService {
         await tx.faceWrappingKey.updateMany({ where: { userId, key: { not: null } }, data: { key: null, destroyedAt: new Date() } })
         await tx.user.update({ where: { id: userId }, data: { faceReverifyRequestedAt: null, faceReverifyRequestedById: null } })
     }
+}
+
+/**
+ * The person's approved photo in this company. A person moved from another
+ * company leaves that company's photo behind: no reviewer here sees it
+ * (review on #27).
+ */
+async function referenceOf(companyId: string, userId: string) {
+    const row = await prisma.faceReview.findFirst({ where: { companyId, userId, status: "APPROVED", photo: { not: null } }, select: { photo: true } })
+    return row?.photo ?? null
 }
 
 /**

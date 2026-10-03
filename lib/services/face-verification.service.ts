@@ -183,7 +183,7 @@ export class FaceVerificationService {
             this.currentConsent(userId),
             prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { faceStatus: true, faceEnrolledAt: true } }),
             prisma.faceReview.count({ where: { userId, status: "PENDING" } }),
-            prisma.faceReview.findFirst({ where: { userId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true } }),
+            prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true } }),
         ])
         const required = company.allowed && person.faceVerificationRequired
         const enrolled = phone?.faceStatus === "APPROVED"
