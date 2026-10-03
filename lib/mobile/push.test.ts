@@ -12,7 +12,8 @@ import type { CheckInDevice } from "./native"
 const { publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" })
 const der = publicKey.export({ format: "der", type: "spki" })
 const fingerprint = createHash("sha256").update(der).digest("hex")
-const device = (key: string | null) => ({ publicKey: async () => key }) as unknown as CheckInDevice
+const device = (key: string | null, pushReady = true) =>
+    ({ publicKey: async () => key, info: async () => ({ model: null, appVersion: null, pushReady }) }) as unknown as CheckInDevice
 
 function fakePush(opts: { permission?: string; afterAsking?: string; token?: string; error?: string } = {}) {
     const handlers: Record<string, (x: any) => void> = {}
@@ -76,6 +77,13 @@ describe("turning pushes on", () => {
         expect(await enablePush(device(null), fakePush().plugin, post)).toBe("UNAVAILABLE")
         // An Android build without Firebase set up: registration fails, check-in goes on.
         expect(await enablePush(device(der.toString("base64")), fakePush({ error: "Default FirebaseApp is not initialized" }).plugin, post)).toBe("UNAVAILABLE")
+        expect(posted).toEqual([])
+    })
+
+    it("asks nothing and registers nothing on a build with no push service (Android without Firebase: register() would crash the app)", async () => {
+        const push = fakePush({ permission: "prompt" })
+        expect(await enablePush(device(der.toString("base64"), false), push.plugin, post)).toBe("UNAVAILABLE")
+        expect(push.calls).toEqual([])
         expect(posted).toEqual([])
     })
 })

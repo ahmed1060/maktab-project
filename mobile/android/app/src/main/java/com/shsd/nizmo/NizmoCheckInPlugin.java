@@ -81,6 +81,10 @@ public class NizmoCheckInPlugin extends Plugin {
         } catch (Exception e) {
             out.put("appVersion", null);
         }
+        // Whether this build has Firebase (google-services.json): without it the push
+        // plugin's register() throws and Capacitor turns that into a crash, so the page
+        // must not ask for pushes at all (a build sideloaded for testing, mobile/README.md).
+        out.put("pushReady", getContext().getResources().getIdentifier("google_app_id", "string", getContext().getPackageName()) != 0);
         call.resolve(out);
     }
 

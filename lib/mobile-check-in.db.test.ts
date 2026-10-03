@@ -40,7 +40,7 @@ function standInPhone(fix: Fix): CheckInDevice & { asked: string[]; keysMade: nu
     let publicKey: string | null = null
     const phone = {
         platform: "ANDROID" as const, asked: [] as string[], keysMade: 0,
-        info: async () => ({ model: "Pixel 8", appVersion: "1.0.0" }),
+        info: async () => ({ model: "Pixel 8", appVersion: "1.0.0", pushReady: true }),
         publicKey: async () => publicKey,
         createKey: async () => {
             const pair = generateKeyPairSync("ec", { namedCurve: "prime256v1" })

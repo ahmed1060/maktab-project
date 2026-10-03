@@ -16,7 +16,8 @@ export type Fix = { latitude: number; longitude: number; accuracyMeters: number;
 /** What the screen needs from the phone. */
 export interface CheckInDevice {
     platform: Platform
-    info(): Promise<{ model: string | null; appVersion: string | null }>
+    /** pushReady: false when this build can't take pushes at all (Android without Firebase), so none is asked for. */
+    info(): Promise<{ model: string | null; appVersion: string | null; pushReady: boolean }>
     /** The public half of this phone's key, SubjectPublicKeyInfo DER in base64, or null when it has none yet. */
     publicKey(): Promise<string | null>
     /** Makes a new key in the secure hardware, replacing any before it, and gives its public half. */
@@ -36,7 +37,7 @@ export interface CheckInDevice {
 
 /** The plugin's methods as the native code exposes them (mobile/README.md). */
 type NativePlugin = {
-    getInfo(): Promise<{ platform: string; model?: string | null; appVersion?: string | null }>
+    getInfo(): Promise<{ platform: string; model?: string | null; appVersion?: string | null; pushReady?: boolean }>
     getPublicKey(): Promise<{ publicKey?: string | null }>
     createKey(): Promise<{ publicKey: string }>
     sign(options: { text: string }): Promise<{ signature: string }>
@@ -71,7 +72,7 @@ export function checkInDevice(): CheckInDevice | null {
         platform,
         info: async () => {
             const i = await plugin.getInfo()
-            return { model: i.model?.slice(0, 80) || null, appVersion: i.appVersion?.slice(0, 40) || null }
+            return { model: i.model?.slice(0, 80) || null, appVersion: i.appVersion?.slice(0, 40) || null, pushReady: i.pushReady !== false }
         },
         publicKey: async () => (await plugin.getPublicKey()).publicKey ?? null,
         createKey: async () => (await plugin.createKey()).publicKey,

@@ -56,7 +56,8 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
             String(decoding: raw.prefix(while: { $0 != 0 }), as: UTF8.self)
         }
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-        call.resolve(["platform": "ios", "model": model, "appVersion": version ?? NSNull()])
+        // A failed push registration on iOS is reported, not a crash: always worth asking.
+        call.resolve(["platform": "ios", "model": model, "appVersion": version ?? NSNull(), "pushReady": true])
     }
 
     @objc func getPublicKey(_ call: CAPPluginCall) {
