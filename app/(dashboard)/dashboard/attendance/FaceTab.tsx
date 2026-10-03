@@ -164,6 +164,8 @@ function ReviewModal({ review, onClose, onDecided }: { review: Review; onClose: 
     return (
         <Modal isOpen onClose={onClose} title={t('face_review_title').replace('{name}', review.name)}>
             <div style={{ display: 'grid', gap: '1rem' }}>
+                {/* Where the decision is made, not only in the list behind it (review on #28). */}
+                {review.prototype && <p role="alert" style={{ margin: 0, color: 'var(--warn-fg)', fontWeight: 600 }}>{t('face_review_prototype')}</p>}
                 <p style={{ ...soft, margin: 0 }}>{t(review.hasReference ? 'face_review_compare' : 'face_review_first')}</p>
                 <div style={{ display: 'grid', gridTemplateColumns: review.hasReference ? 'repeat(auto-fit, minmax(12rem, 1fr))' : '1fr', gap: '0.75rem' }}>
                     <Photo src={`/api/attendance/face/reviews/${review.id}/photo?which=new`} label={t('face_photo_new')} mark={mark} />

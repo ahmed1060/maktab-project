@@ -65,12 +65,21 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                 })
             })
             .catch(() => {
+                // Granted but couldn't play: the camera mustn't stay on with nothing showing (review on #28).
+                stopStream()
                 setRequest(null)
                 setPrompt(null)
                 request.failed(codeError('CAMERA_DENIED'))
             })
         return () => { gone = true }
     }, [request])
+
+    // Leaving the page mid-capture: the capture is cancelled and the camera turned off (review on #28).
+    useEffect(() => () => {
+        cancel.current?.(codeError('FACE_CANCELLED'))
+        cancel.current = null
+        stopStream()
+    }, [])
 
     const close = () => {
         cancel.current?.(codeError('FACE_CANCELLED'))

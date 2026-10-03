@@ -103,13 +103,17 @@ export function indexedDbStore(name = "nizmo-face"): Store {
         req.onsuccess = () => resolve(req.result)
         req.onerror = () => reject(req.error)
     })
+    // Resolved once the transaction commits, not when the request succeeds: a
+    // write can still abort after that (review on #28).
     const run = async <T>(mode: IDBTransactionMode, op: (s: IDBObjectStore) => IDBRequest): Promise<T> => {
         const db = await open()
         try {
             return await new Promise<T>((resolve, reject) => {
-                const req = op(db.transaction("kv", mode).objectStore("kv"))
-                req.onsuccess = () => resolve(req.result as T)
-                req.onerror = () => reject(req.error)
+                const tx = db.transaction("kv", mode)
+                const req = op(tx.objectStore("kv"))
+                tx.oncomplete = () => resolve(req.result as T)
+                tx.onabort = () => reject(tx.error ?? new Error("IndexedDB transaction aborted"))
+                tx.onerror = () => reject(tx.error ?? req.error)
             })
         } finally {
             db.close()

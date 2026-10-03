@@ -25,12 +25,18 @@ function fail(code: string): never {
 
 export function prototypeFaceVerifier(openCamera: OpenCamera, store: Store = indexedDbStore()): FaceVerifier {
     const vault = new Vault(store)
+    // The whole of the work races the person closing the camera, and is checked
+    // once more after: Cancel means nothing is sent, even if it came while the
+    // templates were being stored (review on #28).
     const withCamera = async <T>(work: (api: Awaited<ReturnType<typeof loadFaceApi>>, camera: Awaited<ReturnType<OpenCamera>>) => Promise<T>): Promise<T> => {
         const camera = await openCamera()
+        let closed = false
+        camera.cancelled.catch(() => { closed = true })
         try {
             camera.say("LOADING")
-            const api = await loadFaceApi()
-            return await work(api, camera)
+            const result = await Promise.race([loadFaceApi().then(api => work(api, camera)), camera.cancelled])
+            if (closed) fail("FACE_CANCELLED")
+            return result
         } finally {
             camera.close()
         }
