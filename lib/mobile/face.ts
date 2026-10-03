@@ -1,4 +1,4 @@
-import { attestedText, faceKeyText, faceText, type FaceResult } from "@/lib/attendance/signed-text"
+import { attestedText, faceDeletedText, faceKeyText, faceText, type FaceResult } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
 import type { Post } from "./check-in-flow"
 
@@ -81,19 +81,24 @@ async function keyFingerprint(device: CheckInDevice): Promise<string> {
 /**
  * The wrapping key for this phone's templates, signed for by the phone. When
  * the server says the templates are to go (consent withdrawn, no longer
- * asked), deletes them and says so; then there is no key. Null too while
- * face verification is paused, with the templates kept.
+ * asked, purged), deletes them, says so, signed, and asks again: then there
+ * is a new key or none. Null too while face verification is paused, with
+ * the templates kept.
  */
 export async function wrappingKey(device: CheckInDevice, face: FaceVerifier, post: Post): Promise<string | null> {
     const fingerprint = await keyFingerprint(device)
-    const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "FACE" })
-    const signature = await device.sign(faceKeyText(nonce, fingerprint))
-    const answer: { key: string | null; deleteTemplates: boolean } = await post("/api/attendance/face/key", { nonce, keyFingerprint: fingerprint, signature })
-    if (answer.deleteTemplates) {
-        await face.deleteTemplates()
-        await post("/api/attendance/face/key/ack", { keyFingerprint: fingerprint })
+    const ask = async (): Promise<{ key: string | null; deleteTemplates: boolean }> => {
+        const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "FACE" })
+        const signature = await device.sign(faceKeyText(nonce, fingerprint))
+        return post("/api/attendance/face/key", { nonce, keyFingerprint: fingerprint, signature })
     }
-    return answer.key
+    const answer = await ask()
+    if (!answer.deleteTemplates) return answer.key
+    await face.deleteTemplates()
+    const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "FACE" })
+    const signature = await device.sign(faceDeletedText(nonce, fingerprint))
+    await post("/api/attendance/face/key/ack", { nonce, keyFingerprint: fingerprint, signature })
+    return (await ask()).key
 }
 
 /**

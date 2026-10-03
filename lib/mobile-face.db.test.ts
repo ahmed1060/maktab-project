@@ -80,7 +80,7 @@ function serverFor(userId: string): Post & { sent: string[] } {
         if (url === "/api/attendance/phone/challenge") return Challenges.issue(userId, challengeSchema.parse(body).purpose)
         if (url === "/api/attendance/check-in") return CheckIns.checkIn("c1", userId, checkInSchema.parse(body), null)
         if (url === "/api/attendance/face/key") return Keys.fetch("c1", userId, body)
-        if (url === "/api/attendance/face/key/ack") return Keys.acknowledgeDeletion("c1", userId, body.keyFingerprint)
+        if (url === "/api/attendance/face/key/ack") return Keys.acknowledgeDeletion("c1", userId, body)
         if (url === "/api/attendance/face/photo") return Reviews.submit("c1", userId, body)
         throw new Error(`unexpected ${url}`)
     }

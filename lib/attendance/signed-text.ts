@@ -45,6 +45,11 @@ export function faceKeyText(nonce: string, keyFingerprint: string): string {
     return signedText("FACE", nonce, [keyFingerprint, "WRAPPING_KEY"])
 }
 
+/** What a phone signs to say it deleted its face templates, as told (§10.4). */
+export function faceDeletedText(nonce: string, keyFingerprint: string): string {
+    return signedText("FACE", nonce, [keyFingerprint, "TEMPLATES_DELETED"])
+}
+
 /**
  * What the phone's face check found at a check-in (§9.5): the result only,
  * never the face. When it failed, the hash of the last frame, which is sent

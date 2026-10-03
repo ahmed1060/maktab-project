@@ -13,7 +13,7 @@ import { AttendancePunchService as Punches } from "@/lib/services/attendance-pun
 import { FaceVerificationService as Face, FACE_CONSENT_VERSION } from "@/lib/services/face-verification.service"
 import { FaceReviewService as Reviews } from "@/lib/services/face-review.service"
 import { FaceKeyService as Keys } from "@/lib/services/face-key.service"
-import { faceKeyText as keyText } from "@/lib/attendance/signed-text"
+import { faceKeyText as keyText, faceDeletedText } from "@/lib/attendance/signed-text"
 import { encryptFacePhoto } from "@/lib/face-photo-crypto"
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 
@@ -57,6 +57,11 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
     const fetchKey = async (u: string) => {
         const { nonce } = await Challenges.issue(u, "FACE")
         return Keys.fetch("c1", u, { nonce, keyFingerprint: phones[u].fingerprint, signature: signAs(u, keyText(nonce, phones[u].fingerprint)) })
+    }
+    /** The phone says it deleted its templates, signed. */
+    const ackAs = async (u: string, signer = u) => {
+        const { nonce } = await Challenges.issue(u, "FACE")
+        return Keys.acknowledgeDeletion("c1", u, { nonce, keyFingerprint: phones[u].fingerprint, signature: signAs(signer, faceDeletedText(nonce, phones[u].fingerprint)) })
     }
     /** A check-in as the app sends it, with the face check's result signed in when given. */
     const checkIn = async (u: string, face: FaceResult | null, extra: { faceFrame?: string; tamper?: boolean } = {}) => {
@@ -174,6 +179,7 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         expect(await reason(Reviews.flaggedPhoto(open, "frame", { id: "a1", isSuperAdmin: false }))).toBe("FACE_PHOTO_NONE")
         // Back as before for what follows: consented, enrolled.
         await Face.acceptConsent("c1", "e2", FACE_CONSENT_VERSION)
+        await ackAs("e2")
         await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED' WHERE id = 'p-e2'`)
         await db.query(`INSERT INTO "FaceReview"(id, "companyId", "userId", "phoneId", purpose, status, photo, "modelVersion", "decidedAt") VALUES ('r-e2b', 'c1', 'e2', 'p-e2', 'ENROLMENT', 'APPROVED', $1, 'm1', now())`, [encryptFacePhoto(jpeg())])
     })
@@ -218,6 +224,9 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         expect(await keyRow("e1")).toMatchObject({ held: false, destroyed: true })
         // Back as before for what follows.
         await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
+        // The phone deletes what the destroyed key locked, says so, and gets a new key.
+        expect(await fetchKey("e1")).toEqual({ key: null, deleteTemplates: true })
+        await ackAs("e1")
         expect((await fetchKey("e1")).key).toBeTruthy()
     })
 
@@ -225,8 +234,13 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         await Face.withdrawConsent("e1")
         expect(await keyRow("e1")).toMatchObject({ held: false, destroyed: true })
         expect(await fetchKey("e1")).toEqual({ key: null, deleteTemplates: true })
-        await Keys.acknowledgeDeletion("c1", "e1", phones.e1.fingerprint)
+        // Only the phone itself can say so (review on #27).
+        expect(await reason(ackAs("e1", "e2"))).toBe("PHONE_SIGNATURE_INVALID")
+        expect(await keyRow("e1")).toEqual({ held: false, destroyed: true, acked: false })
+        await ackAs("e1")
         expect(await keyRow("e1")).toEqual({ held: false, destroyed: true, acked: true })
+        // Told once: with nothing left to delete, no key and nothing to do.
+        expect(await fetchKey("e1")).toEqual({ key: null, deleteTemplates: false })
     })
 
     it("purges: only the protected Super Admin; every key and photo gone at once, the system off, and a record of both facts", async () => {
@@ -242,8 +256,13 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         expect((await db.query(`SELECT count(*)::int AS n FROM "FaceReview" WHERE photo IS NOT NULL`)).rows[0].n).toBe(0)
         expect((await db.query(`SELECT DISTINCT "faceStatus" FROM "CheckInPhone"`)).rows).toEqual([{ faceStatus: "NONE" }])
         expect(await Keys.lastPurge()).toMatchObject({ keysDestroyed: 1, photosDeleted: 1, acknowledged: 0 })
-        await Keys.acknowledgeDeletion("c1", "e1", phones.e1.fingerprint)
-        expect(await Keys.lastPurge()).toMatchObject({ acknowledged: 1 })
+        // The system is off, yet a phone that asks is told to delete (review on #27).
+        expect(await fetchKey("e1")).toEqual({ key: null, deleteTemplates: true })
+        await ackAs("e1")
+        // e2's key was destroyed before the purge (archived): its phone saying so now isn't this purge's.
+        await ackAs("e2")
+        expect(await Keys.lastPurge()).toMatchObject({ keysDestroyed: 1, acknowledged: 1 })
+        expect(await fetchKey("e1")).toEqual({ key: null, deleteTemplates: false })
         const { rows } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'PURGE_FACE_VERIFICATION'`)
         expect(rows).toEqual([{ details: { faceVerification: { old: "ON", new: "OFF" }, keysDestroyed: 1, photosDeleted: 1 } }])
     })
