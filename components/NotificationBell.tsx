@@ -16,6 +16,7 @@ interface Notification {
     messageKey?: string | null
     messageParams?: Record<string, NoticeParam> | null
     read: boolean
+    priority?: 'NORMAL' | 'HIGH' | 'CRITICAL'
     // Null when the notification is addressed to a SuperAdmin instead of a
     // User. Only the employee-scoped routes below dereference it, and those
     // types are never sent to a SuperAdmin — but guard rather than assume.
@@ -26,6 +27,11 @@ interface Notification {
 }
 
 const NO_NOTIFICATIONS: Notification[] = []
+
+// A CRITICAL notice stays unread, red and at the top until what it is about
+// is dealt with; opening the bell does not read it (ATTENDANCE_PLAN.md §13.4).
+const pinned = (n: Notification) => n.priority === 'CRITICAL' && !n.read
+const background = (n: Notification) => pinned(n) ? 'var(--danger-bg)' : n.read ? 'white' : 'var(--info-bg-sky)'
 
 export default function NotificationBell({ initialUnreadCount = 0 }: { initialUnreadCount?: number }) {
     const [isOpen, setIsOpen] = useState(false)
@@ -52,7 +58,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
             // Mark the list we have as read without asking again; with no list
             // yet, ask — the answer now comes back all read.
             mutate(
-                (current: any) => current ? { ...current, data: (current.data || []).map((n: Notification) => ({ ...n, read: true })) } : current,
+                (current: any) => current ? { ...current, data: (current.data || []).map((n: Notification) => pinned(n) ? n : { ...n, read: true }) } : current,
                 { revalidate: !data },
             )
         } catch (error) {
@@ -78,7 +84,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
     }, [isOpen])
 
     const toggleOpen = () => {
-        if (!isOpen && unreadCount > 0) {
+        if (!isOpen && (data ? notifications.some(n => !n.read && !pinned(n)) : unreadCount > 0)) {
             markAsRead()
         }
         setIsOpen(!isOpen)
@@ -226,7 +232,8 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                                 style={{
                                     padding: '0.75rem',
                                     borderBottom: '1px solid var(--grey-100)',
-                                    background: notification.read ? 'white' : 'var(--info-bg-sky)',
+                                    background: background(notification),
+                                    borderInlineStart: pinned(notification) ? '3px solid var(--danger-fill)' : undefined,
                                     cursor: notification.relatedId ? 'pointer' : 'default',
                                     transition: 'background 0.2s'
                                 }}
@@ -236,7 +243,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                                     }
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = notification.read ? 'white' : 'var(--info-bg-sky)'
+                                    e.currentTarget.style.background = background(notification)
                                 }}
                             >
                                 <div style={{ fontSize: '0.875rem' }}>{text(notification)}</div>
