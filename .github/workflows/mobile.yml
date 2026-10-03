@@ -15,9 +15,6 @@ name: Mobile app
 #   NIZMO_CLOUD_PROJECT_NUMBER (variable) for Play Integrity (README, Attestation).
 
 on:
-  # TEMPORARY: to test this workflow before it is on main. Removed in the next commit.
-  push:
-    branches: [claude/practical-curie-lec92x]
   workflow_dispatch:
     inputs:
       site:
