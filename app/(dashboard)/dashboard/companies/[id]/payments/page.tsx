@@ -147,7 +147,7 @@ export default function CompanyPaymentsPage() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginBottom: '0.75rem',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -304,7 +304,7 @@ export default function CompanyPaymentsPage() {
                 <form onSubmit={handleAddPayment} style={{ padding: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>{t('subscription_type')}</label>
-                        <select
+                        <select aria-label={t('subscription_type')}
                             className="input"
                             value={formData.subscriptionType}
                             onChange={e => setFormData({ ...formData, subscriptionType: e.target.value as any })}
@@ -320,7 +320,7 @@ export default function CompanyPaymentsPage() {
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>{t('total_cost')}</label>
                         <div style={{ position: 'relative' }}>
                             <span style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-soft)' }}>$</span>
-                            <input
+                            <input aria-label={t('total_cost')}
                                 type="number"
                                 step="0.01"
                                 className="input"

@@ -35,7 +35,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
                         fontWeight: 700,
                         letterSpacing: '0.12em',
                         textTransform: 'uppercase',
-                        color: 'var(--primary)',
+                        color: 'var(--brand-primary-text)',
                         textDecoration: 'none',
                         marginBottom: '2rem',
                     }}

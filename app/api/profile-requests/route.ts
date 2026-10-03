@@ -3,6 +3,7 @@ import { can } from "@/lib/permissions/can"
 import { ApiResponse } from "@/lib/api-response"
 import { createProfileRequestSchema } from "@/lib/validations/profile.schema"
 import { ProfileService } from "@/lib/services/profile.service"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -24,9 +25,7 @@ export const GET = withStandardHandler(async (req, session) => {
         if (targetUserId) where.userId = targetUserId
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     try {
         const { requests, total } = await ProfileService.getMany(where, skip, limit)

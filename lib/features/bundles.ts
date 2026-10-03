@@ -7,7 +7,14 @@
  * asking the same question of the same table.
  */
 
-export type Bundle = 'COMPANY_MANAGEMENT' | 'HR'
+export type Bundle = 'COMPANY_MANAGEMENT' | 'HR' | 'ATTENDANCE_TERMINALS' | 'ATTENDANCE_MOBILE'
+
+/**
+ * The two attendance add-ons (ATTENDANCE_PLAN.md §16): how punches arrive —
+ * fingerprint terminals, or the phone app. Sold one or both, and only on top
+ * of HR, because attendance feeds payroll.
+ */
+export const ATTENDANCE_BUNDLES = ['ATTENDANCE_TERMINALS', 'ATTENDANCE_MOBILE'] as const satisfies readonly Bundle[]
 
 /**
  * A module is a nameable area of the product. Core modules belong to no bundle
@@ -19,16 +26,17 @@ export type Module =
     | 'DASHBOARD' | 'EMPLOYEES' | 'USERNAMES' | 'PROFILE_REQUESTS' | 'REQUESTS'
     | 'TASKS' | 'OBLIGATIONS' | 'CLIENTS' | 'VENDORS' | 'COSTS'
     | 'DAY_OFF' | 'PAYROLL' | 'SALARY_ADJUSTMENTS'
+    | 'ATTENDANCE'
 
 /**
- * The single table. A module maps to the bundle that owns it, or to null when it
- * is Core.
+ * The single table. A module maps to the bundle that owns it, to a list of
+ * bundles any one of which opens it, or to null when it is Core.
  *
  * Everything that is not listed here is Core by omission — which is the wrong
  * default for a gate, so `MODULE_BUNDLE` lists every module explicitly and
  * `isModule()` below is what decides whether a name is known at all.
  */
-export const MODULE_BUNDLE: Record<Module, Bundle | null> = {
+export const MODULE_BUNDLE: Record<Module, Bundle | readonly Bundle[] | null> = {
     // Core — always on, never sold.
     DASHBOARD: null,
     EMPLOYEES: null,          // the directory itself; their leave and pay are HR
@@ -47,6 +55,27 @@ export const MODULE_BUNDLE: Record<Module, Bundle | null> = {
     DAY_OFF: 'HR',
     PAYROLL: 'HR',
     SALARY_ADJUSTMENTS: 'HR',
+
+    // Attendance — schedules, policy, the engine, import and the screens on
+    // them. Needed however punches arrive, so either add-on opens it (§16);
+    // there is no attendance without one of them.
+    ATTENDANCE: ATTENDANCE_BUNDLES,
+}
+
+/** Each bundle's name, as a translation key, for every screen that names one. */
+export const BUNDLE_LABEL_KEYS: Record<Bundle, string> = {
+    COMPANY_MANAGEMENT: 'bundle_company_management',
+    HR: 'bundle_hr',
+    ATTENDANCE_TERMINALS: 'bundle_attendance_terminals',
+    ATTENDANCE_MOBILE: 'bundle_attendance_mobile',
+}
+
+/** The same names in English, for API messages, which are not translated. */
+export const BUNDLE_NAMES: Record<Bundle, string> = {
+    COMPANY_MANAGEMENT: 'Company Management',
+    HR: 'HR',
+    ATTENDANCE_TERMINALS: 'Attendance — Terminals',
+    ATTENDANCE_MOBILE: 'Attendance — Mobile App',
 }
 
 export const ALL_MODULES = Object.keys(MODULE_BUNDLE) as Module[]
@@ -70,7 +99,7 @@ export type FeatureAccess = {
 
 export const UNRESTRICTED: FeatureAccess = {
     unrestricted: true,
-    bundles: new Set<Bundle>(['COMPANY_MANAGEMENT', 'HR']),
+    bundles: new Set<Bundle>(['COMPANY_MANAGEMENT', 'HR', ...ATTENDANCE_BUNDLES]),
 }
 
 /**
@@ -80,7 +109,14 @@ export const UNRESTRICTED: FeatureAccess = {
  * existed before packages shipped resolves this way, and stays that way until
  * somebody deliberately assigns one.
  */
-export type PackageFacts = { hasCompanyManagement: boolean; hasHR: boolean } | null | undefined
+export type PackageFacts = {
+    hasCompanyManagement: boolean
+    hasHR: boolean
+    // Optional so a caller that selects only the first two still type-checks;
+    // absent reads as not bought.
+    hasAttendanceTerminals?: boolean
+    hasAttendanceMobile?: boolean
+} | null | undefined
 
 export function resolveBundles(pkg: PackageFacts, { isSuperAdmin = false } = {}): FeatureAccess {
     // Super Admin is never gated. They administer the packages; gating them out
@@ -91,23 +127,32 @@ export function resolveBundles(pkg: PackageFacts, { isSuperAdmin = false } = {})
     const bundles = new Set<Bundle>()
     if (pkg.hasCompanyManagement) bundles.add('COMPANY_MANAGEMENT')
     if (pkg.hasHR) bundles.add('HR')
+    // Only on top of HR. The package form refuses either without it and
+    // removing HR removes both, so this is the last line, not the only one: a
+    // row edited by hand must not open attendance with no payroll under it.
+    if (pkg.hasHR && pkg.hasAttendanceTerminals) bundles.add('ATTENDANCE_TERMINALS')
+    if (pkg.hasHR && pkg.hasAttendanceMobile) bundles.add('ATTENDANCE_MOBILE')
     return { unrestricted: false, bundles }
 }
 
 /** Whether a company may use a module at all. Core modules are always allowed. */
 export function hasModule(access: FeatureAccess, module: Module): boolean {
     if (access.unrestricted) return true
-    const required = MODULE_BUNDLE[module]
-    return required === null || access.bundles.has(required)
+    return bundlesFor(module).length === 0 || bundlesFor(module).some(b => access.bundles.has(b))
 }
 
 export function hasBundle(access: FeatureAccess, bundle: Bundle): boolean {
     return access.unrestricted || access.bundles.has(bundle)
 }
 
-/** The bundle a module belongs to, for an upgrade prompt naming what to buy. */
-export function bundleFor(module: Module): Bundle | null {
-    return MODULE_BUNDLE[module]
+/**
+ * The bundles that open a module, for an upgrade prompt naming what to buy:
+ * empty for Core, one for most, and any of several for attendance.
+ */
+export function bundlesFor(module: Module): readonly Bundle[] {
+    const required = MODULE_BUNDLE[module]
+    if (required === null) return []
+    return typeof required === 'string' ? [required] : required
 }
 
 /**

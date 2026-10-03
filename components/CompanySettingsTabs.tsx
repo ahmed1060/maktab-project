@@ -7,6 +7,7 @@ import SegmentedToggle from '@/components/SegmentedToggle'
 import CompanyGeneralCard from '@/components/CompanyGeneralCard'
 import CompanyLogoCard from '@/components/CompanyLogoCard'
 import CompanyPayrollCard from '@/components/CompanyPayrollCard'
+import CompanyAttendanceCard from '@/components/CompanyAttendanceCard'
 import CompanyRolesCard from '@/components/CompanyRolesCard'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
@@ -112,6 +113,10 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                         debtRecoveryEditable={superAdmin}
                     />
                 )}
+
+                {/* Schedules, seasonal hours, who works which, and holidays
+                    (ATTENDANCE_PLAN.md §7). Saves each change as it is made. */}
+                {tab === 'attendance' && <CompanyAttendanceCard companyId={companyId} readOnly={readOnly} />}
 
                 {/* Who may do what here (ROLES_PLAN.md §6.2). */}
                 {tab === 'roles' && <CompanyRolesCard companyId={companyId} />}

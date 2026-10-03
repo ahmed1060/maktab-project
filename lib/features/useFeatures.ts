@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react"
 import { useMemo } from "react"
 import { accessFromSession } from "./require"
-import { hasModule, bundleFor, type Module } from "./bundles"
+import { hasModule, bundlesFor, type Module } from "./bundles"
 
 /**
  * The client-side half: one hook, read from the session the app already holds.
@@ -22,8 +22,8 @@ export function useFeatures() {
             access,
             /** Whether this module may be used at all. */
             has: (module: Module) => hasModule(access, module),
-            /** The bundle to name in an upgrade prompt. */
-            bundleFor,
+            /** The bundles to name in an upgrade prompt. */
+            bundlesFor,
             /**
              * True only when a package is actually assigned — a grandfathered
              * company holds everything but has bought nothing, and a screen that

@@ -152,7 +152,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                                 padding: '0.5rem',
                                 border: 'none',
                                 borderRadius: '50%',
-                                background: selected ? 'var(--info-solid)' : 'transparent',
+                                background: selected ? 'var(--info-fill)' : 'transparent',
                                 color: selected ? 'white' : isToday ? 'var(--warn-solid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
                                 fontSize: '0.875rem',
                                 cursor: isDisabled ? 'not-allowed' : 'pointer',

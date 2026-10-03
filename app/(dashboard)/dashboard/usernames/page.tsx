@@ -119,7 +119,7 @@ export default function UsernamesPage() {
                     className="btn"
                     title={t('download_excel')}
                     style={{
-                        background: 'var(--ok-solid)',
+                        background: 'var(--ok-fill)',
                         color: 'var(--text-on-accent)',
                         fontWeight: '600',
                         display: 'flex',
@@ -144,7 +144,7 @@ export default function UsernamesPage() {
             {loading ? <LoadingSpinner message={t('loading_users')} /> : (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))',
                     gap: '1rem'
                 }}>
                     {users.map(user => (

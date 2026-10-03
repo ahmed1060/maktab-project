@@ -31,6 +31,8 @@ const C1 = {
     payrollDay: 25, payslipsVisible: false, timezone: "Africa/Cairo", debtRecoveryPercent: 100,
     moduleLabels: null, moduleIcons: null,
     adminSettingsEnabled: true, adminSettingsTabs: ["general", "payroll"],
+    // Grandfathered: every module, Attendance included.
+    package: null as null | { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean },
 }
 let company: typeof C1
 
@@ -41,7 +43,7 @@ beforeEach(() => {
     prismaMock.company.update = async ({ data }: any) => { state.written.push({ ...data }); company = { ...company, ...data }; return company }
 })
 
-const exposure = () => ({ id: company.id, adminSettingsEnabled: company.adminSettingsEnabled, adminSettingsTabs: company.adminSettingsTabs })
+const exposure = () => ({ id: company.id, adminSettingsEnabled: company.adminSettingsEnabled, adminSettingsTabs: company.adminSettingsTabs, package: company.package })
 const settings = () => import("@/app/api/company-settings/route")
 const get = async (query = "") => (await settings()).GET(new Request(url(`/api/company-settings${query}`)))
 const put = async (body: unknown) => (await settings()).PUT(withBody("PUT", "/api/company-settings", body))
@@ -68,7 +70,8 @@ describe("who sees which tabs", () => {
         company.adminSettingsTabs = ["general", "roles", "modules", "access"]
         const admin = { id: "admin", role: "ADMIN", companyId: "c1", grants: encodeGrants(BUILT_IN_GRANTS.ADMIN) }
         expect(visibleSettingsTabs(admin, exposure())).toEqual(["general"])
-        expect(ELIGIBLE_SETTINGS_TABS).toEqual(["general", "branding", "payroll"])
+        // Attendance joined the shown-able tabs with the attendance calendar.
+        expect(ELIGIBLE_SETTINGS_TABS).toEqual(["general", "branding", "payroll", "attendance"])
     })
 
     it("nobody without settings.view, nor anyone from another company", () => {
@@ -91,6 +94,28 @@ describe("who sees which tabs", () => {
         expect(BUILT_IN_GRANTS.ADMIN["settings.edit"]).toBe("COMPANY")
         expect(isReserved("settings.view")).toBe(false)
         expect(isReserved("settings.edit")).toBe(false)
+    })
+})
+
+describe("a tab that belongs to a module", () => {
+    const admin = { id: "admin", role: "ADMIN", companyId: "c1", grants: encodeGrants(BUILT_IN_GRANTS.ADMIN) }
+    const sa = { id: "sa", role: "SUPER_ADMIN" }
+
+    it("exists for a company holding the module, grandfathered ones included", () => {
+        company.adminSettingsTabs = ["general", "attendance"]
+        expect(visibleSettingsTabs(sa, exposure())).toContain("attendance")
+        expect(visibleSettingsTabs(admin, exposure())).toEqual(["general", "attendance"])
+        company.package = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
+        expect(visibleSettingsTabs(admin, exposure())).toEqual(["general", "attendance"])
+    })
+
+    it("does not exist for a company without it, for anybody, even when ticked", () => {
+        company.adminSettingsTabs = ["general", "attendance"]
+        company.package = { hasCompanyManagement: true, hasHR: true }
+        expect(visibleSettingsTabs(sa, exposure())).not.toContain("attendance")
+        expect(visibleSettingsTabs(admin, exposure())).toEqual(["general"])
+        expect(maySettings(admin, exposure(), "attendance", "view")).toBe(false)
+        expect(maySettings(sa, exposure(), "attendance", "edit")).toBe(false)
     })
 })
 

@@ -75,7 +75,7 @@ declare module "next-auth" {
             // the JSON round trip a session token makes. Absent on a token
             // minted before packages shipped, which deserializes to
             // unrestricted — see deserializeAccess.
-            featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+            featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
             // Subscription state, computed server-side and refreshed on the
             // same 60s recheck. The date is an ISO string because a Date does
             // not survive the token's JSON round trip, and the state travels
@@ -108,7 +108,7 @@ declare module "next-auth" {
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
         logoUrl?: string | null
-        featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+        featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
     }
 }
@@ -145,7 +145,7 @@ declare module "next-auth/jwt" {
         moduleLabels?: Record<string, string> | null
         moduleIcons?: Record<string, string> | null
         logoUrl?: string | null
-        featureAccess?: { unrestricted: boolean; bundles: ('COMPANY_MANAGEMENT' | 'HR')[] } | null
+        featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
         subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of

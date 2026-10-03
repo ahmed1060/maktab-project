@@ -887,7 +887,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             <button onClick={() => { setDiffField('title'); setViewedTitleChange(true); }} style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
                         )}
                     </div>
-                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: 'var(--info-solid)', color: 'var(--text-on-accent)', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} {t('points_label_plural')}</span>
+                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: 'var(--info-fill)', color: 'var(--text-on-accent)', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} {t('points_label_plural')}</span>
                     <span style={{
                         padding: '0.5rem',
                         borderRadius: '0.5rem',
@@ -997,7 +997,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>{t('attachments_optional_label').split(' ')[0]}</h3>
                 {existingAttachments.length > 0 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '1rem' }}>
                         {existingAttachments.map((att: any, idx: number) => (
                             <div key={idx} style={{ position: 'relative' }}>
                                 <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', textDecoration: 'none', color: 'var(--text-body)', transition: 'all 0.2s', flexDirection: 'row' }}>
@@ -1124,7 +1124,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         {mayManage('tasks.review') && task.status === 'PENDING_CONFIRMATION' && (
                             <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
                                 <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                                <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
+                                <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
                             </div>
                         )}
                     </>

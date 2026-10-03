@@ -1,12 +1,13 @@
 import { ApiResponse } from "@/lib/api-response"
 import { uploadToCloud } from "@/lib/storage"
-import { withStandardHandler } from "@/lib/api-utils"
+import { readForm, withStandardHandler } from "@/lib/api-utils"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
 
 export const POST = withStandardHandler(async (req, session) => {
     try {
-        const data = await req.formData()
+        const data = await readForm(req)
+        if (!data) return ApiResponse.badRequest("Send the file as a form upload.")
         const folder = (data.get('folder') as string) || 'misc'
 
         // Handle both 'files' (plural) and 'file' (singular) keys

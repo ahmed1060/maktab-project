@@ -103,7 +103,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
         <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
             {label && <label className="label" style={{ display: 'block', marginBottom: '0.5rem' }}>{label}</label>}
             <div style={{ position: 'relative' }}>
-                <input
+                <input aria-label={label}
                     type="text"
                     className="input"
                     value={query}

@@ -215,7 +215,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
                 }
             />
 
-            <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
                 {sortedTasks.length > 0 ? (
                     sortedTasks.map(task => (
                         <TaskListItem

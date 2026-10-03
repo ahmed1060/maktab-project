@@ -27,7 +27,7 @@ type Company = {
     id: string
     name: string
     isBanned?: boolean
-    package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean } | null
+    package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
     hasUnpaidPayment?: boolean
     subscription?: { state: SubscriptionState; date: string | null; daysRemaining: number | null }
     needsAttention?: boolean
@@ -335,7 +335,7 @@ export default function CompaniesPage() {
                                                 className="btn"
                                                 style={{
                                                     background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                                                    color: 'var(--brand-primary)',
+                                                    color: 'var(--brand-primary-text)',
                                                     padding: '0.4rem 0.8rem',
                                                     fontSize: '0.8rem',
                                                     border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)'
@@ -440,7 +440,7 @@ export default function CompaniesPage() {
                         <form onSubmit={handleSubmit}>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('company_name_label')}</label>
-                                <input
+                                <input aria-label={t('company_name_label')}
                                     className="input"
                                     required
                                     value={formData.name}
@@ -455,7 +455,7 @@ export default function CompaniesPage() {
                             {!editingCompany && (
                                 <div style={{ marginBottom: '1.5rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('trial_length' as any)}</label>
-                                    <select
+                                    <select aria-label={t('trial_length' as any)}
                                         className="input"
                                         value={formData.trialPreset}
                                         onChange={e => setFormData({ ...formData, trialPreset: e.target.value as TrialPreset })}
@@ -485,7 +485,7 @@ export default function CompaniesPage() {
 
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('package_label' as any)}</label>
-                                <select
+                                <select aria-label={t('package_label' as any)}
                                     className="input"
                                     value={formData.packageId}
                                     onChange={e => setFormData({ ...formData, packageId: e.target.value })}
@@ -532,7 +532,7 @@ export default function CompaniesPage() {
                         <form onSubmit={handleDelete}>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('enter_passcode_label')}</label>
-                                <input
+                                <input aria-label={t('enter_passcode_label')}
                                     type="password"
                                     className="input"
                                     required
@@ -547,7 +547,7 @@ export default function CompaniesPage() {
                                 <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
                                     {t('cancel')}
                                 </button>
-                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: 'var(--danger-solid-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
+                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
                                     {isDeleting ? t('deleting') : t('delete_permanently')}
                                 </button>
                             </div>

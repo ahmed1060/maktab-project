@@ -183,13 +183,13 @@ export default function MfaSection() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                     {isAr ? 'أدخل كلمة المرور للتأكيد' : 'Enter your password to confirm'}
                                 </label>
-                                <input type="password" className="input" value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
+                                <input aria-label={isAr ? 'أدخل كلمة المرور للتأكيد' : 'Enter your password to confirm'} type="password" className="input" value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
                             </div>
                             <div style={{ display: 'flex', gap: '0.75rem' }}>
                                 <button type="button" className="btn" onClick={() => { setDisabling(false); setPassword(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
                                     {isAr ? 'رجوع' : 'Back'}
                                 </button>
-                                <button type="submit" className="btn" disabled={submittingDisable} style={{ flex: 1, background: 'var(--danger-solid)' }}>
+                                <button type="submit" className="btn" disabled={submittingDisable} style={{ flex: 1, background: 'var(--danger-fill)' }}>
                                     {submittingDisable ? (isAr ? 'جارٍ الإيقاف...' : 'Disabling...') : (isAr ? 'إيقاف' : 'Disable')}
                                 </button>
                             </div>
@@ -225,7 +225,7 @@ export default function MfaSection() {
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                 {isAr ? 'رمز التحقق' : 'Verification code'}
                             </label>
-                            <input type="text" inputMode="numeric" className="input" value={code} onChange={e => setCode(e.target.value)} maxLength={6} minLength={6} required autoFocus />
+                            <input aria-label={isAr ? 'رمز التحقق' : 'Verification code'} type="text" inputMode="numeric" className="input" value={code} onChange={e => setCode(e.target.value)} maxLength={6} minLength={6} required autoFocus />
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
                             <button type="button" className="btn" onClick={() => { setEnrolling(false); setCode(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>

@@ -19,7 +19,8 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
     } catch (error: any) {
         if (error.message === 'OBLIGATION_NOT_FOUND') return ApiResponse.notFound("Obligation not found")
         if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden("You don't have access to this obligation")
-        if (error.message === 'ONLY_MANAGERS_DECIDE') return ApiResponse.forbidden("Only managers can approve or reject obligations")
+        if (error.message === 'INVALID_STATUS') return ApiResponse.badRequest("Unknown obligation status")
+        if (error.message === 'ONLY_MANAGERS_DECIDE') return ApiResponse.forbidden("Only managers decide an obligation or change a decided one")
         if (error.message === 'SELF_APPROVAL_FORBIDDEN') return ApiResponse.forbidden("Admins cannot approve/reject their own obligations")
         if (error.message === 'UNAUTHORIZED_ATTACHMENT_REMOVAL') return ApiResponse.forbidden("Unauthorized to remove these attachments")
         // Reassigning to somebody who does not exist or is in another company.

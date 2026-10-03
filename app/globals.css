@@ -149,6 +149,22 @@
   --accent-deep: #4338ca;
   --accent-deepest: #3730a3;
 
+  /* Fills: a status colour as the ground under white text (a badge, a filled
+     button). The -solid colours are also used as text and strokes on the
+     page, so they can't darken without dimming those; white on them was
+     2.1 to 3.8:1. Each fill is the same hue darkened until white on it is at
+     least 4.5:1 (lib/contrast.test.ts). */
+  --ok-fill: #0b7b56;
+  --ok-fill-alt: #157c3b;
+  --ok-fill-hover: #0e672f;
+  --info-fill: #0b61ef;
+  --info-fill-hover: #134dce;
+  --warn-fill: #966006;
+  --warn-fill-warm: #ae5104;
+  --danger-fill: #d71212;
+  --danger-fill-hover: #ae1c1c;
+  --accent-fill: #942ff5;
+
   /* Plain greys written as shorthand or as the odd one-off. */
   --grey-100: #eee;
   --grey-200: #ddd;
@@ -160,6 +176,10 @@
   --brand-primary: var(--primary);
   --brand-primary-hover: var(--primary-hover);
   --brand-accent: var(--accent);
+  /* The brand colour as text. The same indigo in the light theme; in the dark
+     one it is too dark to read on the dark surfaces (2.8:1), and --primary
+     itself can't lighten there, because white text sits on it in buttons. */
+  --brand-primary-text: var(--primary);
 
   /* The login hero gradient. Its own pair rather than reusing the brand tokens,
      because it is a decorative statement on the sign-in page and D2 may well
@@ -486,7 +506,7 @@ body::before {
    is unchanged. */
 .dashboard-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 2rem;
   margin-bottom: 3rem;
 }
@@ -501,6 +521,15 @@ body::before {
 @media (max-width: 700px) {
   .dashboard-stats-block {
     grid-column: auto;
+  }
+}
+
+/* On a phone two tiles side by side need more than the ~326px there is, so
+   the block came out wider than its column and the right-hand tiles were cut
+   off. One tile to a row there. */
+@media (max-width: 480px) {
+  .dashboard-stats-block {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -815,7 +844,7 @@ html[dir="rtl"] select.input {
 }
 
 .modal-close:hover {
-  color: var(--primary);
+  color: var(--brand-primary-text);
 }
 
 @keyframes fadeIn {
@@ -978,7 +1007,24 @@ input::-webkit-credentials-auto-fill-button {
     --accent-solid: #a86ef0;
     --accent-solid-deep: #9457e0;
     --accent-deep: #7c6ae0;
-    --accent-deepest: #6a5ad0;
+    /* Text on the dark surfaces (the audit log's action names): #6a5ad0 read
+       at 2.85:1 there. */
+    --accent-deepest: #b3a6f2;
+    --brand-primary-text: #a5b4fc;
+
+    /* The fills again: white on them at least 4.5:1, and the shape itself
+       at least 3:1 against the dark surfaces, so a badge doesn't sink into
+       the card it sits on. */
+    --ok-fill: #1f8051;
+    --ok-fill-alt: #228051;
+    --ok-fill-hover: #1d7348;
+    --info-fill: #1f76b2;
+    --info-fill-hover: #2d6994;
+    --warn-fill: #936916;
+    --warn-fill-warm: #ae5a1f;
+    --danger-fill: #e11117;
+    --danger-fill-hover: #c0282c;
+    --accent-fill: #9047ec;
 
     --grey-100: #21262d;
     --grey-200: #30363d;
@@ -1103,7 +1149,7 @@ input::-webkit-credentials-auto-fill-button {
 
 .legal strong { color: var(--text-strong); font-weight: 600; }
 
-.legal a { color: var(--primary); }
+.legal a { color: var(--brand-primary-text); }
 
 /* Definition rows — "what we collect" and "who we share it with" are both
    term/description pairs, and a table would scroll sideways on a phone. */

@@ -100,6 +100,7 @@ export default function ObligationCard({ obligation, isHighlighted }: { obligati
                 <div style={{ marginTop: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Upload Evidence to Complete:</label>
                     <input
+                        aria-label="Upload Evidence to Complete"
                         type="file"
                         onChange={handleUpload}
                         disabled={uploading}

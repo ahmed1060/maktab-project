@@ -7,6 +7,8 @@
  * (§5.2).
  */
 
+import type { Module } from "@/lib/features/bundles"
+
 export type CompanySettingsTab = {
     key: string
     labelKey: string
@@ -20,6 +22,8 @@ export type CompanySettingsTab = {
     fields: readonly string[]
     /** Of those, the ones only the Super Admin sets, even when the tab is shown. */
     superAdminOnly?: readonly string[]
+    /** A module the company must hold for the tab to exist for it at all. */
+    module?: Module
 }
 
 export const COMPANY_SETTINGS_TABS = [
@@ -34,6 +38,9 @@ export const COMPANY_SETTINGS_TABS = [
         // contract with the company, not a setting the company tunes.
         superAdminOnly: ["debtRecoveryPercent"],
     },
+    // Schedules, overrides, who works which, and holidays (ATTENDANCE_PLAN.md
+    // §7). Its own API under /api/attendance, which asks the same questions.
+    { key: "attendance", labelKey: "settings_tab_attendance", adminEligible: true, fields: [], module: "ATTENDANCE" },
     { key: "roles", labelKey: "settings_tab_roles", adminEligible: false, fields: [] },
     { key: "modules", labelKey: "settings_tab_modules", adminEligible: false, fields: [] },
     // Which of these the company's own people see: the Super Admin's switch.

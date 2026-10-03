@@ -305,20 +305,20 @@ export default function SuperAdminsPage() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                                    <input className="input" required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('first_name_label')} className="input" required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                                    <input className="input" required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('last_name_label')} className="input" required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                <input className="input" type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                <input aria-label={t('email')} className="input" type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                             </div>
                             <div style={{ marginBottom: '1rem', position: 'relative' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                                <input
+                                <input aria-label={t('password')}
                                     className="input"
                                     type={showPassword ? "text" : "password"}
                                     required
@@ -328,6 +328,8 @@ export default function SuperAdminsPage() {
                                 />
                                 <button
                                     type="button"
+                                    aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                    aria-pressed={showPassword}
                                     onClick={() => setShowPassword(!showPassword)}
                                     style={{
                                         position: 'absolute',
@@ -357,7 +359,7 @@ export default function SuperAdminsPage() {
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                                <select className="input" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <select aria-label={t('gender_label')} className="input" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <option value="MALE">{t('male')}</option>
                                     <option value="FEMALE">{t('female')}</option>
                                 </select>
@@ -421,11 +423,11 @@ export default function SuperAdminsPage() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                                    <input className="input" required value={editData.firstName} onChange={e => setEditData({ ...editData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('first_name_label')} className="input" required value={editData.firstName} onChange={e => setEditData({ ...editData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                                    <input className="input" required value={editData.lastName} onChange={e => setEditData({ ...editData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('last_name_label')} className="input" required value={editData.lastName} onChange={e => setEditData({ ...editData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
@@ -434,14 +436,14 @@ export default function SuperAdminsPage() {
                                     settings) instead of this form — the backend rejects an
                                     email change here regardless, this just avoids a confusing
                                     round-trip error. */}
-                                <input className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: 'var(--surface-sunk)', cursor: 'not-allowed' }} />
+                                <input aria-label={t('email')} className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: 'var(--surface-sunk)', cursor: 'not-allowed' }} />
                                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <Link href="/dashboard/security-settings" style={{ color: 'inherit', textDecoration: 'underline' }}>{t('security_settings_nav')}</Link>
                                 </p>
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                                <select className="input" value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <select aria-label={t('gender_label')} className="input" value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <option value="MALE">{t('male')}</option>
                                     <option value="FEMALE">{t('female')}</option>
                                 </select>

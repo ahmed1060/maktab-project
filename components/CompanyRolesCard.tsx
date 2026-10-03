@@ -108,7 +108,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const badge = (text: string) => (
         <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.5rem', borderRadius: '999px', background: 'var(--veil-50)', border: '1px solid var(--veil-40)' }}>{text}</span>
     )
-    const linkButton = { background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
+    const linkButton = { background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
 
     return (
         <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: isRtl ? 'right' : 'left' }}>

@@ -12,6 +12,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { apiErrorText } from "@/lib/api-error-text"
 
 type User = {
     id: string
@@ -209,7 +210,7 @@ export default function AllUsersPage() {
                 setErrorModal({
                     isOpen: true,
                     title: locale === 'ar' ? 'خطأ' : 'Error',
-                    message: errorText || t('error_generic')
+                    message: apiErrorText(errorText, t('error_generic'))
                 })
             }
         } catch (error) {
@@ -253,7 +254,7 @@ export default function AllUsersPage() {
                         {showSuperAdmins && superAdmins.length > 0 && (
                             <div>
                                 <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    <span style={{ background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
+                                    <span style={{ background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
                                     {t('super_administrators_label')}
                                 </h2>
                                 <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>

@@ -3,7 +3,8 @@ import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
-import { moduleForApiPath, requireFeature } from "@/lib/features"
+import { knownRefusal } from "./api-errors"
+import { BUNDLE_NAMES, moduleForApiPath, requireFeature } from "@/lib/features"
 import { isBlockedBySubscription } from "@/lib/billing/state"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
@@ -124,6 +125,19 @@ export class RateLimiter {
                 where: { key: { startsWith: prefix } }
             })
         } catch { }
+    }
+}
+
+/**
+ * The request's form, for the routes that take a file upload; null when the
+ * body isn't one (sent as JSON, say, or already read), so the route can answer
+ * 400 rather than throw a 500.
+ */
+export async function readForm(req: Request): Promise<FormData | null> {
+    try {
+        return await req.formData()
+    } catch {
+        return null
     }
 }
 
@@ -263,7 +277,7 @@ export function withStandardHandler(
                 const decision = requireFeature(session, gatedModule, { onDeny: 'lock' })
                 if (!decision.allowed) {
                     return ApiResponse.forbidden(
-                        `This feature is not included in your current package (${decision.bundle === 'HR' ? 'HR' : 'Company Management'}).`
+                        `This feature is not included in your current package (${decision.bundles.map(b => BUNDLE_NAMES[b]).join(' or ')}).`
                     )
                 }
             }
@@ -281,13 +295,24 @@ export function withStandardHandler(
             // multipart/form-data request consumes the body stream, which then
             // makes a later req.formData() call in the handler throw. Handlers
             // that need multipart data read it themselves via req.formData().
+            //
+            // An empty body is null, as before. A body that isn't JSON, or is
+            // JSON but not an object or list (`null`, `"x"`, `5`), is refused
+            // here with a 400: it used to reach the handler as null, where
+            // reading a field from it was a 500 on every route that takes one.
             let body: any = null
             const contentType = req.headers.get('content-type') || ''
             if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method) && contentType.includes('application/json')) {
-                try {
-                    body = await req.json()
-                } catch {
-                    // Fallback for empty bodies or malformed JSON
+                const text = await req.text().catch(() => '')
+                if (text.trim()) {
+                    try {
+                        body = JSON.parse(text)
+                    } catch {
+                        return ApiResponse.badRequest("The request body isn't valid JSON.")
+                    }
+                    if (body === null || typeof body !== 'object') {
+                        return ApiResponse.badRequest("The request body must be a JSON object.")
+                    }
                 }
             }
 
@@ -349,6 +374,10 @@ export function withStandardHandler(
                     ? "This action needs two-factor authentication. Set it up in Security settings first."
                     : "Confirm it's you with your authenticator code.", code: error.code, minutes: error.minutes }, { status: 403 })
             }
+            // An ordinary refusal no route answered: say what it is, with the
+            // status it deserves, rather than a 500 and an error reference.
+            const refusal = knownRefusal(error)
+            if (refusal) return NextResponse.json({ success: false, error: refusal.message }, { status: refusal.status })
             console.error("API Standard Handler Error:", error)
             // Never echo the raw exception to the client — it can be a
             // Prisma/Supabase/network error with internal detail in it.

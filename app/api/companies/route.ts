@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createCompanySchema, updateCompanySchema } from "@/lib/validations/company.schema"
 import { CompanyService } from "@/lib/services/company.service"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
@@ -19,15 +20,14 @@ export const GET = withStandardHandler(async (req, session) => {
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
                 packageId: true, trialPreset: true, trialExtensionDays: true, createdAt: true,
-                package: { select: { id: true, name: true, hasCompanyManagement: true, hasHR: true } }
+                package: { select: { id: true, name: true, hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } }
             }
         })
         if (!company) return ApiResponse.notFound("Company not found")
         return ApiResponse.success(company)
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const { page, limit } = parsePaging(searchParams, 10, 1000)
 
     // Both narrowed to their known values rather than passed through: these
     // reach a sort comparator and a filter predicate, and an unexpected string

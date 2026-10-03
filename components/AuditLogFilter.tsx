@@ -172,7 +172,7 @@ export default function AuditLogFilter({
                                 position: 'absolute',
                                 top: '-4px',
                                 [locale === 'ar' ? 'left' : 'right']: '-4px',
-                                background: 'var(--info-solid)',
+                                background: 'var(--info-fill)',
                                 color: 'var(--text-on-accent)',
                                 width: '20px',
                                 height: '20px',
@@ -239,7 +239,7 @@ export default function AuditLogFilter({
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('entity')}</label>
                                     <div style={{ position: 'relative' }}>
-                                        <select
+                                        <select aria-label={t('entity')}
                                             value={localFilters.entityType}
                                             onChange={(e) => setLocalFilters(f => ({ ...f, entityType: e.target.value }))}
                                             className="input"
@@ -265,7 +265,7 @@ export default function AuditLogFilter({
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('action')}</label>
                                     <div style={{ position: 'relative' }}>
-                                        <select
+                                        <select aria-label={t('action')}
                                             value={localFilters.action}
                                             onChange={(e) => setLocalFilters(f => ({ ...f, action: e.target.value }))}
                                             className="input"
@@ -315,7 +315,7 @@ export default function AuditLogFilter({
                                         onClick={handleApplyFilters}
                                         style={{
                                             flex: 1, height: '48px', borderRadius: '1.25rem', border: 'none',
-                                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
+                                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-fill) 100%)',
                                             color: 'var(--text-on-accent)', fontWeight: '700', cursor: 'pointer', fontSize: '0.875rem'
                                         }}
                                     >
@@ -331,12 +331,16 @@ export default function AuditLogFilter({
                 <div style={{
                     height: '48px',
                     padding: '0 1.25rem',
-                    background: 'var(--text-strong)',
+                    // The same chip as every other list's total. It was
+                    // --text-strong behind --text-on-accent: dark on light in
+                    // the light theme, but near-white behind white in the
+                    // dark one, so the count couldn't be read.
+                    background: 'var(--chip-solid-bg)',
                     borderRadius: '1.25rem',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: 'var(--text-on-accent)'
+                    color: 'var(--chip-solid-fg)'
                 }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.5, textTransform: 'uppercase' }}>{t('total_label')}</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{totalCount}</span>

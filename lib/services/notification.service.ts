@@ -70,18 +70,26 @@ export class NotificationService {
         return results
     }
 
+    /** Newest first, except that an unread CRITICAL notice stays at the top until it is dealt with. */
     static async getByUser(principalId: string) {
-        return await prisma.notification.findMany({
+        const rows = await prisma.notification.findMany({
             where: NotificationService.recipientFilter(principalId),
             orderBy: { createdAt: "desc" }
         })
+        const pinned = (n: { priority: string; read: boolean }) => n.priority === "CRITICAL" && !n.read
+        return [...rows.filter(pinned), ...rows.filter(n => !pinned(n))]
     }
 
+    /**
+     * Everything but CRITICAL: those are read when what they are about is
+     * dealt with (ATTENDANCE_PLAN.md §13.4), not when the bell is opened.
+     */
     static async markAllAsRead(principalId: string) {
         return await prisma.notification.updateMany({
             where: {
                 ...NotificationService.recipientFilter(principalId),
-                read: false
+                read: false,
+                priority: { not: "CRITICAL" },
             },
             data: {
                 read: true

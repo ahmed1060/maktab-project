@@ -70,7 +70,7 @@ export default function RoleTemplatesPage() {
         mutate()
     }
 
-    const linkButton = { background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
+    const linkButton = { background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
 
     return (
         <div style={{ direction: isRtl ? 'rtl' : 'ltr' }}>

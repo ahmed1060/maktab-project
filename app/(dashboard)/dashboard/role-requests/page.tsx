@@ -90,7 +90,7 @@ export default function RoleRequestsPage() {
     }
 
     const cell = { padding: '0.75rem', borderTop: '1px solid var(--veil-40)', textAlign: (isRtl ? 'right' : 'left') as 'right' | 'left', verticalAlign: 'top' as const }
-    const linkButton = { background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
+    const linkButton = { background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
 
     const tabs = mayDecide && (
         <SegmentedToggle

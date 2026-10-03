@@ -82,7 +82,7 @@ export default function RequestCard({ request, onView, onStatusUpdate, isHighlig
                         fontSize: '0.85rem',
                         background: 'var(--veil-50)',
                         border: '1px solid var(--hairline-firm)',
-                        color: 'var(--brand-primary)',
+                        color: 'var(--brand-primary-text)',
                         fontWeight: '600'
                     }}
                 >

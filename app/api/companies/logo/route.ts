@@ -1,4 +1,4 @@
-import { withStandardHandler } from "@/lib/api-utils"
+import { readForm, withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { CompanyService } from "@/lib/services/company.service"
 import { MAX_LOGO_BYTES, MAX_LOGO_DIMENSION, MIN_LOGO_DIMENSION } from "@/lib/company-logo"
@@ -45,7 +45,8 @@ function messageFor(reason: string, detail?: string): string {
 }
 
 export const POST = withStandardHandler(async (req, session) => {
-    const form = await req.formData()
+    const form = await readForm(req)
+    if (!form) return ApiResponse.badRequest("Send the file as a form upload.")
     const companyId = form.get('companyId')
     const file = form.get('file')
 

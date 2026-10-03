@@ -5,6 +5,7 @@ import { createRequestSchema } from "@/lib/validations/request.schema"
 import { RequestService } from "@/lib/services/request.service"
 import { teamMemberWhere, and } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -57,9 +58,7 @@ export const GET = withStandardHandler(async (req, session) => {
         and(where, { userId: filterUserId })
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     try {
         const { requests, total } = await RequestService.getMany(where, skip, limit, sortBy, order)

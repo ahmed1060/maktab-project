@@ -72,7 +72,7 @@ export default function GlobalError({
                                 fontWeight: 'bold',
                                 borderRadius: '0.5rem',
                                 border: 'none',
-                                background: 'var(--info-solid)',
+                                background: 'var(--info-fill)',
                                 color: 'var(--text-on-accent)',
                                 cursor: 'pointer',
                             }}

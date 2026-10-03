@@ -1,0 +1,28 @@
+<!--
+  The Windows service around nizmo-agent.exe, run by WinSW (github.com/winsw/winsw),
+  which the Agent workflow bundles as nizmo-agent-service.exe beside this file.
+
+    nizmo-agent-service.exe install    (as administrator)
+    nizmo-agent-service.exe start
+    nizmo-agent-service.exe status
+    nizmo-agent-service.exe stop
+    nizmo-agent-service.exe uninstall
+-->
+<service>
+  <id>NizmoAttendanceAgent</id>
+  <name>Nizmo Attendance Agent</name>
+  <description>Reads the fingerprint terminals on this network and sends their scans to Nizmo.</description>
+  <executable>%BASE%\nizmo-agent.exe</executable>
+  <arguments>run</arguments>
+  <env name="NIZMO_AGENT_HOME" value="%BASE%"/>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="2 min"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>20 sec</stoptimeout>
+  <log mode="roll-by-size">
+    <sizeThreshold>5120</sizeThreshold>
+    <keepFiles>3</keepFiles>
+  </log>
+</service>

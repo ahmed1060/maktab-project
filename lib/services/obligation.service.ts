@@ -24,6 +24,11 @@ const REASSIGN_CODES = {
     OUTSIDE_TEAM: "TL_CANNOT_REASSIGN_OUTSIDE_TEAM",
 } as const
 
+/** Every status an obligation can be in (the column is free text). */
+const OBLIGATION_STATUSES = ['PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED', 'APPROVED', 'REJECTED', 'ARCHIVED']
+/** The ones an assignee moves their own obligation to, as the screens offer. */
+const ASSIGNEE_STATUSES = ['IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED']
+
 export class ObligationService {
     static async create(input: CreateObligationInput, session: any) {
         const userRole = session.user.role
@@ -84,6 +89,8 @@ export class ObligationService {
 
     static async update(id: string, input: any, session: any) {
         const { status, newAttachments, assigneeIds } = input
+        // The column is free text, so anything sent used to be stored.
+        if (status !== undefined && status !== null && !OBLIGATION_STATUSES.includes(status)) throw new Error("INVALID_STATUS")
         const userId = session.user.id
         const userRole = session.user.role
         const userName = session.user.name
@@ -115,6 +122,13 @@ export class ObligationService {
             // but deciding whether it was done is not theirs: this used to let
             // an Employee approve their own.
             if (status && ['APPROVED', 'REJECTED'].includes(status) && !isManager) {
+                throw new Error("ONLY_MANAGERS_DECIDE")
+            }
+
+            // An assignee moves their own obligation along, and nothing more:
+            // not back to Pending, not to Archived, and not away from a
+            // manager's approval, which would take the points it earned.
+            if (status && !isManager && (!ASSIGNEE_STATUSES.includes(status) || current.status === 'APPROVED')) {
                 throw new Error("ONLY_MANAGERS_DECIDE")
             }
 
