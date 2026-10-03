@@ -76,6 +76,18 @@ export class AttendancePolicyService {
     ) {
         if (!isDateString(input.effectiveFrom)) fail("INVALID_DATE")
         const body = checkBody(input.body)
+        // Face verification may be offered only once the system is on (or paused,
+        // which keeps enrolments) and the company has confirmed its legal readiness (§10.4).
+        if (body.faceVerificationAvailable) {
+            const [settings, company] = await Promise.all([
+                prisma.systemSettings.findUnique({ where: { id: "default" }, select: { faceVerification: true } }),
+                prisma.company.findUnique({ where: { id: companyId }, select: { faceLegalConfirmedAt: true } }),
+            ])
+            if ((settings?.faceVerification ?? "OFF") === "OFF" || !company?.faceLegalConfirmedAt) fail("FACE_NOT_ALLOWED")
+            // Imported here: the face service reads policies through this one.
+            const { FaceVerificationService } = await import("./face-verification.service")
+            if (!(await FaceVerificationService.hasMobileApp(companyId))) fail("FACE_NOT_ALLOWED")
+        }
         const today = await AttendanceCalendarService.today(companyId)
 
         const out = await prisma.$transaction(async tx => {

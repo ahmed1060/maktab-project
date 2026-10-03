@@ -178,3 +178,38 @@ describe("deciding others' phones", () => {
         expect(reached).toEqual(["list:c2:COMPANY", "decide:ph-other:true"])
     })
 })
+
+describe("telling the server where to push", () => {
+    const pushToken = async (body: unknown) => (await import("@/app/api/attendance/phone/push-token/route")).POST(withBody("POST", "/api/attendance/phone/push-token", body))
+    const saved: any[] = []
+    beforeEach(() => {
+        saved.length = 0
+        // Only Ehab's own phone in use or waiting matches.
+        prismaMock.checkInPhone.updateMany = async ({ where, data }: any) => {
+            saved.push({ where, data })
+            const ok = where.userId === "e1" && where.keyFingerprint === "a".repeat(64) && where.status.in.includes("ACTIVE") && where.status.in.includes("PENDING")
+            return { count: ok ? 1 : 0 }
+        }
+    })
+
+    it("saves the token on the person's own phone, and only theirs", async () => {
+        employee()
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "fcm-token" })).status).toBe(200)
+        expect(saved[0].data).toMatchObject({ pushToken: "fcm-token" })
+        expect((await pushToken({ keyFingerprint: "b".repeat(64), token: "fcm-token" })).status).toBe(404)
+        employee("e2")
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "fcm-token" })).status).toBe(404)
+    })
+
+    it("refuses a bad body, a company without the app, and the Super Admin", async () => {
+        employee()
+        expect((await pushToken({ keyFingerprint: "nope", token: "t" })).status).toBe(400)
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "" })).status).toBe(400)
+        companies.c1.package = TERMINALS_ONLY
+        employee("e1", TERMINALS_ONLY)
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "t" })).status).toBe(403)
+        superAdmin()
+        expect((await pushToken({ keyFingerprint: "a".repeat(64), token: "t" })).status).toBe(404)
+        expect(saved).toHaveLength(0)
+    })
+})

@@ -7,6 +7,7 @@ import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
+import FaceSystemSwitch from '@/components/FaceSystemSwitch'
 
 type SystemSettings = {
     id: string
@@ -263,6 +264,8 @@ export default function SystemSettingsPage() {
                             </button>
                         </div>
                     </form>
+
+                    <FaceSystemSwitch />
 
                     <form
                         onSubmit={handleSaveBranding}

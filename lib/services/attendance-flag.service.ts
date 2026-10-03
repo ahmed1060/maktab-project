@@ -112,6 +112,8 @@ export class AttendanceFlagService {
             // or it was withdrawn while it waited (review on #23).
             const { count } = await tx.attendancePunch.updateMany({ where: { id, status: "FLAGGED", voidedAt: null }, data: { status: decision.accept ? "ACCEPTED" : "REJECTED" } })
             if (count === 0) fail("CHECK_IN_NOT_FLAGGED")
+            // A failed face check's frame lives only while the flag is open (§13.8).
+            await tx.faceFrame.deleteMany({ where: { punchId: id } })
             await AuditLogService.log(decision.accept ? "ACCEPT_FLAGGED_CHECK_IN" : "REJECT_FLAGGED_CHECK_IN", "ATTENDANCE_PUNCH", id, {
                 tx, ...(await actorOf(tx, deciderId)),
                 details: { companyId: punch.companyId, userId: punch.userId, at: local, flagReasons: punch.flagReasons, reason },

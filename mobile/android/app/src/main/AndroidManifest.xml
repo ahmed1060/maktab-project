@@ -42,4 +42,6 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <!-- Push notifications on Android 13 and later (ATTENDANCE_PLAN.md §13.4). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

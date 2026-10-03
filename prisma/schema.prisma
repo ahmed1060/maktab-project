@@ -256,7 +256,14 @@ model Company {
   attendanceDevices        AttendanceDevice[]
   workLocations            WorkLocation[]
   checkInPhones            CheckInPhone[]
+  /// The company has confirmed it holds whatever licence biometric
+  /// processing needs (§10.4): face verification can't be switched on before.
+  faceLegalConfirmedAt     DateTime?
+  faceLegalConfirmedById   String?
+  biometricConsents        BiometricConsent[]
+  faceReviews              FaceReview[]
   checkInRefusals          CheckInRefusal[]
+  checkInReminders         CheckInReminder[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
   finalSettlements     FinalSettlement[]
@@ -350,6 +357,11 @@ model SystemSettings {
   /// or less, counted from when it was entered. A setting, so it can be
   /// tuned without a release.
   stepUpMinutes              Int      @default(60)
+  /// Face verification for the whole system (ATTENDANCE_PLAN.md §9.5, §10.4).
+  /// Only the protected Super Admin changes it. OFF until they decide; PAUSED
+  /// stops it everywhere and keeps enrolments.
+  faceVerification           FaceSystemState @default(OFF)
+  faceVerificationChangedAt  DateTime?
   updatedAt                  DateTime @updatedAt
 }
 
@@ -513,8 +525,18 @@ model User {
   attendanceDiscrepancies    AttendanceDiscrepancy[]
   workLocations              UserWorkLocation[]
   checkInPhones              CheckInPhone[]
+  /// Face verification is asked of this person at check-in (§9.5), when the
+  /// company's policy makes it available. Set by attendance.approve_face.
+  faceVerificationRequired   Boolean                    @default(false)
+  /// Someone asked this person to verify their face again (§9.5).
+  faceReverifyRequestedAt    DateTime?
+  faceReverifyRequestedById  String?
+  faceReviews                FaceReview[]
+  faceWrappingKeys           FaceWrappingKey[]
+  biometricConsents          BiometricConsent[]
   attendanceChallenges       AttendanceChallenge[]
   checkInRefusals            CheckInRefusal[]
+  checkInReminders           CheckInReminder[]
 
   @@index([email])
   @@index([companyId])
@@ -618,6 +640,12 @@ model Notification {
   priority      NotificationPriority @default(NORMAL)
   relatedId     String?
   createdAt     DateTime    @default(now())
+  /// When it was sent to the person's phone as a push (§13.4); null for one
+  /// not sent, or never meant to be.
+  pushedAt      DateTime?
+  /// When a push run took it to send; lapses after a couple of minutes, so a
+  /// run that died mid-send doesn't lose it.
+  pushClaimedAt DateTime?
   user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   superAdmin    SuperAdmin? @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 
@@ -628,6 +656,115 @@ model Notification {
   @@index([userId, read])
   @@index([superAdminId])
   @@index([superAdminId, read])
+}
+
+enum FaceSystemState {
+  OFF
+  ON
+  PAUSED
+}
+
+/// The legal record of a person's consent to face verification (§9.5,
+/// §10.4); not biometric data. Current consent: the latest row with
+/// withdrawnAt null and the current text version.
+model BiometricConsent {
+  id          String    @id @default(uuid())
+  userId      String
+  companyId   String
+  textVersion String
+  acceptedAt  DateTime  @default(now())
+  withdrawnAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, acceptedAt])
+}
+
+enum PhoneFaceStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FaceReviewPurpose {
+  ENROLMENT
+  REVERIFY
+}
+
+enum FaceReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// A verification photo and its decision (§9.5). The photo is encrypted with
+/// its own key (FACE_PHOTO_KEY) and deleted (set null) when rejected,
+/// replaced, withdrawn or purged: the approved one with a photo is the
+/// person's reference photo, at most one per person.
+model FaceReview {
+  id                    String            @id @default(uuid())
+  companyId             String
+  userId                String
+  phoneId               String
+  purpose               FaceReviewPurpose
+  status                FaceReviewStatus  @default(PENDING)
+  photo                 Bytes?
+  modelVersion          String
+  /// Whether the phone proved it runs our app when it sent the photo (§9.4).
+  attested              Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+  decidedAt             DateTime?
+  decidedById           String?
+  decidedBySuperAdminId String?
+  reason                String?
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company               Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([userId, status])
+}
+
+/// The server's half of the key that protects a phone's face templates
+/// (§10.4, crypto-shredding). The phone combines it with a key in its secure
+/// hardware; neither half is biometric. Destroying it (key null) makes the
+/// templates on that phone unreadable at once, whether or not the phone is
+/// ever seen again. A trigger destroys it when the phone leaves use or its
+/// owner is archived; withdrawal and purge destroy it too.
+model FaceWrappingKey {
+  id          String    @id @default(uuid())
+  phoneId     String    @unique
+  userId      String
+  key         Bytes?
+  createdAt   DateTime  @default(now())
+  destroyedAt DateTime?
+  /// The phone said it deleted its (by then unreadable) templates.
+  deleteAckAt DateTime?
+  phone       CheckInPhone @relation(fields: [phoneId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// The frame captured when a check-in failed the face check (§13.8),
+/// encrypted like the verification photos, kept only while the flag is open.
+model FaceFrame {
+  id        String   @id @default(uuid())
+  punchId   String          @unique
+  companyId String
+  userId    String
+  photo     Bytes
+  createdAt DateTime        @default(now())
+  punch     AttendancePunch @relation(fields: [punchId], references: [id], onDelete: Cascade)
+}
+
+/// A pause-and-purge of face verification (§10.4): what was destroyed at once,
+/// and how many phones have since acknowledged deleting their templates.
+model FacePurge {
+  id             String   @id @default(uuid())
+  at             DateTime @default(now())
+  bySuperAdminId String
+  keysDestroyed  Int
+  photosDeleted  Int
 }
 
 enum NotificationPriority {
@@ -1816,6 +1953,7 @@ model AttendancePunch {
   /// fix, its accuracy, the distance to the place, the address it came from,
   /// whether the app was verified. Never a photo or anything biometric.
   checkIn              Json?
+  faceFrame            FaceFrame?
 
   @@unique([companyId, source, sourceKey])
   @@index([companyId, userId, punchAtLocal])
@@ -2275,12 +2413,30 @@ model CheckInPhone {
   /// Whether the phone proved it runs our genuine app (Play Integrity, App
   /// Attest) when it registered. False while attestation is in testing (§9.4).
   attested       Boolean            @default(false)
+  /// iOS: the App Attest key Apple attested when the phone registered
+  /// (SubjectPublicKeyInfo DER, base64), and the last counter its
+  /// assertions used, which only goes up (§9.4). Null on Android, and on a
+  /// phone that wasn't attested.
+  appAttestKey     String?
+  appAttestCounter Int                @default(0)
+  /// Face verification on this phone (§9.5): the templates stay on it; the
+  /// server knows only that it was enrolled, with which model, and whether a
+  /// person approved the verification photo.
+  faceStatus       PhoneFaceStatus    @default(NONE)
+  faceEnrolledAt   DateTime?
+  faceModelVersion String?
+  faceWrappingKey  FaceWrappingKey?
   status         CheckInPhoneStatus @default(PENDING)
   requestedAt    DateTime           @default(now())
   decidedAt      DateTime?
   decidedById    String?
   /// Why it was rejected or revoked, when someone said.
   reason         String?
+  /// Where pushes for its owner go (§13.4): an FCM registration token on
+  /// Android, an APNs device token on iOS. Null until the app sends one, and
+  /// cleared when the push service says it is no longer valid.
+  pushToken      String?
+  pushTokenAt    DateTime?
   company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   punches        AttendancePunch[]
@@ -2311,6 +2467,21 @@ model AttendanceChallenge {
 /// setup, nothing for a person to judge. It counts for nothing, and is kept
 /// for the Super Admin's integrity view (§13.7): a sudden run of them at one
 /// company is an attack or a broken app release.
+/// A "you haven't checked in" reminder sent (§13.4): one per person and
+/// working day, however often the reminder job runs.
+model CheckInReminder {
+  userId    String
+  /// The working day it was about, the shift's own date.
+  date      DateTime @db.Date
+  companyId String
+  sentAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, date])
+  @@index([companyId])
+}
+
 model CheckInRefusal {
   id        String   @id @default(uuid())
   companyId String
