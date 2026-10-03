@@ -79,7 +79,9 @@ export class AttendancePhoneService {
         const key = parsePhoneKey(input.publicKey) ?? fail("PHONE_KEY_INVALID")
         const text = signedText("REGISTER", input.nonce, [key.fingerprint, input.platform])
         if (!signatureValid(key.key, text, input.signature)) fail("PHONE_SIGNATURE_INVALID")
-        const attestation = await verifyAttestation({ platform: input.platform, token: input.attestation, challenge: input.nonce })
+        // A used or made-up number is refused before Google or Apple is asked (review on #26).
+        if (!(await AttendanceChallengeService.isLive(userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+        const attestation = await verifyAttestation({ platform: input.platform, token: input.attestation, challenge: input.nonce, purpose: "REGISTER" })
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
 
         const out = await prisma.$transaction(async tx => {
@@ -98,13 +100,15 @@ export class AttendancePhoneService {
                     companyId, userId, publicKey: key.der.toString("base64"), keyFingerprint: key.fingerprint, platform: input.platform,
                     model: input.model?.trim().slice(0, 80) || null, appVersion: input.appVersion?.trim().slice(0, 40) || null,
                     attested: attestation.verified,
+                    // iOS: the attested key, which each check-in's assertion is checked with.
+                    appAttestKey: attestation.appAttest?.publicKey ?? null,
                 },
                 select: SHOWN,
             })
             // What the replaced request was holding waits for this one instead.
             if (replaced) await tx.attendancePunch.updateMany({ where: { phoneId: replaced.id, status: "PENDING_DEVICE" }, data: { phoneId: phone.id } })
             await AuditLogService.log("REGISTER_CHECK_IN_PHONE", "CHECK_IN_PHONE", phone.id, {
-                tx, userId, details: { companyId, userId, platform: phone.platform, model: phone.model, attested: phone.attested, replaced: replaced?.id ?? null },
+                tx, userId, details: { companyId, userId, platform: phone.platform, model: phone.model, attested: phone.attested, attestationReason: attestation.reason, replaced: replaced?.id ?? null },
             })
             // In the same transaction: a request nobody hears about would wait forever.
             await AttendancePhoneService.tellDeciders(tx, companyId, userId, phone.model)
@@ -135,7 +139,8 @@ export class AttendancePhoneService {
 
     /** This person's phone in use, and the one they asked for, if any. */
     static async mine(userId: string) {
-        const phones = await prisma.checkInPhone.findMany({ where: { userId, status: { in: ["ACTIVE", "PENDING"] } }, select: SHOWN })
+        // With the key's fingerprint, so the app can tell whether it is the phone in question.
+        const phones = await prisma.checkInPhone.findMany({ where: { userId, status: { in: ["ACTIVE", "PENDING"] } }, select: { ...SHOWN, keyFingerprint: true } })
         return { active: phones.find(p => p.status === "ACTIVE") ?? null, pending: phones.find(p => p.status === "PENDING") ?? null }
     }
 

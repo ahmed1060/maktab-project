@@ -337,6 +337,8 @@ export class AttendancePunchService {
             await lockMonths(tx, punch.companyId, months)
             if ((await lockedMonths(tx, punch.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             await tx.attendancePunch.update({ where: { id }, data: { voidedAt: new Date(), voidedById: actorId, voidReason: reason.trim() } })
+            // A failed face check's frame lives only while its flag is open (§13.8); voiding closes it too.
+            await tx.faceFrame.deleteMany({ where: { punchId: id } })
             await AuditLogService.log("VOID_ATTENDANCE_PUNCH", "ATTENDANCE_PUNCH", id, {
                 tx, ...(await actorOf(tx, actorId)),
                 details: { companyId: punch.companyId, userId: punch.userId, at: wallClockText(punch.punchAtLocal), reason: reason.trim() },

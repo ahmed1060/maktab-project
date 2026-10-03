@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import PageTitle from './PageTitle'
 import SubscriptionBanner from './SubscriptionBanner'
 import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
+import { hasBundle } from '@/lib/features/bundles'
+import { inNativeApp } from '@/lib/mobile/native'
+import AppPush from './AppPush'
 import { MANAGEMENT_MODULES, MENU_MODULES, type ModuleKey } from '@/lib/modules'
 import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
@@ -45,12 +48,16 @@ const MANAGEMENT_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
     vendors: 'vendors.view',
 }
 
+const subscribeNever = () => () => {}
+
 export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
     const { t, locale } = useLanguage()
     const features = useFeatures()
+    // Read once in the browser: the server can't know the page is inside the app.
+    const inApp = useSyncExternalStore(subscribeNever, inNativeApp, () => false)
     const modules = useModules()
     // From the user the layout passed down, not the session hook, so the
     // sidebar is complete on the first paint.
@@ -137,6 +144,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
+            {/* Inside the Nizmo app: pushes on, and a tapped notice opens its page. */}
+            {inApp && <AppPush />}
             {/* Renders nothing; sets the browser tab title for the current route.
                 Mounted once here rather than per page, because 27 of the 35
                 dashboard pages are Client Components and cannot export metadata. */}
@@ -400,6 +409,26 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             )}
                         </Link>
                     ))}
+
+                    {/* Checking in (ATTENDANCE_PLAN.md §9): only inside the Nizmo
+                        app, where the phone can prove where it is, and only for a
+                        company with the Mobile App add-on. */}
+                    {inApp && user?.role !== 'SUPER_ADMIN' && hasBundle(features.access, 'ATTENDANCE_MOBILE') && (
+                        <Link
+                            href="/dashboard/check-in"
+                            onClick={() => isMobile && setIsSidebarOpen(false)}
+                            title={isCollapsed ? t('ci_title') : ''}
+                            className="nav-link"
+                            style={{
+                                color: 'var(--sidebar-fg)', textDecoration: 'none', padding: '0.85rem 1rem', borderRadius: '1rem',
+                                display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                gap: isCollapsed ? '0' : '1rem', transition: 'all 0.2s', fontSize: '0.95rem', fontWeight: '500',
+                            }}
+                        >
+                            <span style={{ fontSize: '1.4rem' }}>📲</span>
+                            {!isCollapsed && <span>{t('ci_title')}</span>}
+                        </Link>
+                    )}
 
                     {/* Attendance (ATTENDANCE_PLAN.md Phase 0): everyone in a
                         company that bought it sees their own punches here. A

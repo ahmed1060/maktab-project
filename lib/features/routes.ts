@@ -116,6 +116,7 @@ export const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/payroll', 'PAYROLL'],
     ['/dashboard/documents', 'PAYROLL'],
     ['/dashboard/attendance', 'ATTENDANCE'],
+    ['/dashboard/check-in', 'ATTENDANCE'],
 ] as const
 
 const PAGES_BY_SPECIFICITY = [...PAGE_MODULE_ROUTES].sort((a, b) => b[0].length - a[0].length)
