@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
+import { FlaggedFaceModal } from '@/components/FacePhoto'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -356,6 +357,8 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
     const { t } = useLanguage()
     const { showToast } = useToast()
     const p = useCan()
+    // A flagged check-in whose face check failed, open beside the reference photo (§13.8).
+    const [faceOf, setFaceOf] = useState<{ id: string; name: string } | null>(null)
     const { data: session } = useSession()
     const me = session?.user?.id
     const decidesPermissions = p.can('attendance.approve_permissions')
@@ -499,6 +502,9 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                                             </td>
                                             <td>
                                                 {f.flagReasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}
+                                                {f.flagReasons.includes('FACE_UNVERIFIED') && !mine(f.userId) && p.companyWide('attendance.approve_face') && (
+                                                    <> · <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand-primary-text)', cursor: 'pointer' }} onClick={() => setFaceOf({ id: f.id, name: f.name })}>{t('face_flag_see')}</button></>
+                                                )}
                                                 <div style={soft}>{[
                                                     f.checkIn?.distanceMeters !== undefined && t('req_flagged_distance').replace('{n}', String(f.checkIn.distanceMeters)),
                                                     f.checkIn?.accuracyMeters !== undefined && t('req_flagged_accuracy').replace('{n}', String(Math.round(f.checkIn.accuracyMeters))),
@@ -518,6 +524,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                             </table>
                         </div>
                     )}
+                    {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.name} onClose={() => setFaceOf(null)} />}
                 </>
             )}
 

@@ -1,6 +1,8 @@
 import Foundation
 import Capacitor
 import CoreLocation
+import CryptoKit
+import DeviceCheck
 import Security
 
 /**
@@ -11,7 +13,9 @@ import Security
    it; the page gets the public half as SubjectPublicKeyInfo DER and asks for
    signatures over the server's one-time number;
  - a fresh location fix, with whether iOS says it was simulated by software;
- - the model and app version, shown to whoever approves the phone.
+ - the model and app version, shown to whoever approves the phone;
+ - App Attest: proof the request came from our genuine app on a genuine
+   iPhone.
 
  Errors reject with a code the page turns into words: LOCATION_DENIED,
  LOCATION_UNAVAILABLE, KEY_UNAVAILABLE.
@@ -135,12 +139,56 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
     }
 
     /**
-     Not yet: App Attest needs the app's Apple team, and the server has no
-     verifier for it yet (lib/attendance/attestation.ts). Until then every
-     check-in is flagged for the Super Admin, as decided for testing.
+     Apple App Attest (§9.4), over the text the page gives (attestedText: the
+     server's one-time number and its purpose), hashed with SHA-256 as the
+     server does.
+
+     - REGISTER: a new App Attest key, attested by Apple. The token is
+       {"keyId", "attestation"}; the server keeps the key it attests.
+     - CHECK_IN: an assertion with that key, {"assertion"}, which the server
+       checks with the key it kept.
+
+     Any failure gives no token rather than an error (a simulator, an old
+     phone, Apple unreachable): the server flags or refuses, and says why.
      */
     @objc func requestAttestation(_ call: CAPPluginCall) {
-        call.resolve(["token": NSNull()])
+        let none = { Self.resolve(call, token: nil) }
+        let service = DCAppAttestService.shared
+        guard service.isSupported, let text = call.getString("text"), let purpose = call.getString("purpose") else { return none() }
+        let clientDataHash = Data(SHA256.hash(data: Data(text.utf8)))
+
+        if purpose == "REGISTER" {
+            service.generateKey { keyId, error in
+                guard let keyId = keyId, error == nil else { return none() }
+                service.attestKey(keyId, clientDataHash: clientDataHash) { attestation, error in
+                    guard let attestation = attestation, error == nil else { return none() }
+                    // The key this phone's check-ins are asserted with from now on, as the server will have it.
+                    UserDefaults.standard.set(keyId, forKey: Self.appAttestKeyIdDefault)
+                    Self.resolve(call, token: Self.json(["keyId": keyId, "attestation": attestation.base64EncodedString()]))
+                }
+            }
+        } else {
+            guard let keyId = UserDefaults.standard.string(forKey: Self.appAttestKeyIdDefault) else { return none() }
+            service.generateAssertion(keyId, clientDataHash: clientDataHash) { assertion, error in
+                guard let assertion = assertion, error == nil else { return none() }
+                Self.resolve(call, token: Self.json(["assertion": assertion.base64EncodedString()]))
+            }
+        }
+    }
+
+    private static let appAttestKeyIdDefault = "com.shsd.nizmo.app-attest-key-id"
+
+    private static func resolve(_ call: CAPPluginCall, token: String?) {
+        if let token = token {
+            call.resolve(["token": token])
+        } else {
+            call.resolve(["token": NSNull()])
+        }
+    }
+
+    private static func json(_ object: [String: String]) -> String? {
+        guard let data = try? JSONSerialization.data(withJSONObject: object) else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
     // MARK: - Location

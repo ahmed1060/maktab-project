@@ -24,10 +24,14 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import com.google.android.play.core.integrity.IntegrityManager;
+import com.google.android.play.core.integrity.IntegrityManagerFactory;
+import com.google.android.play.core.integrity.IntegrityTokenRequest;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
+import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -44,7 +48,9 @@ import java.security.spec.ECGenParameterSpec;
  *   server's one-time number;
  * - a fresh location fix, with whether Android says it came from a mock
  *   provider;
- * - the model and app version, shown to whoever approves the phone.
+ * - the model and app version, shown to whoever approves the phone;
+ * - a Play Integrity token, proof the request came from our app as Play
+ *   installed it, on a genuine device.
  *
  * Errors reject with a code the page turns into words: LOCATION_DENIED,
  * LOCATION_UNAVAILABLE, KEY_UNAVAILABLE.
@@ -161,15 +167,41 @@ public class NizmoCheckInPlugin extends Plugin {
     }
 
     /**
-     * Not yet: Play Integrity needs the app's Google Cloud project, and the
-     * server has no verifier for it yet (lib/attendance/attestation.ts).
-     * Until then every check-in is flagged for the Super Admin, as decided
-     * for testing.
+     * Google Play Integrity, classic request (§9.4): a token from Google over
+     * a nonce made from the text the page gives (attestedText: the server's
+     * one-time number and its purpose), which the server has Google decode.
+     * The nonce is the text's SHA-256, base64url, as the server computes it.
+     *
+     * The app's Google Cloud project number comes from capacitor.config.ts
+     * (plugins.NizmoCheckIn.cloudProjectNumber); a build installed from Play
+     * can do without it. Any failure gives no token rather than an error:
+     * the server flags or refuses, and says why.
      */
     @PluginMethod
     public void requestAttestation(PluginCall call) {
+        String text = call.getString("text");
+        if (text == null) {
+            resolveToken(call, null);
+            return;
+        }
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
+            String nonce = Base64.encodeToString(digest, Base64.URL_SAFE | Base64.NO_WRAP);
+            IntegrityTokenRequest.Builder request = IntegrityTokenRequest.builder().setNonce(nonce);
+            String project = getConfig().getString("cloudProjectNumber");
+            if (project != null && !project.isEmpty()) request.setCloudProjectNumber(Long.parseLong(project));
+            IntegrityManager manager = IntegrityManagerFactory.create(getContext().getApplicationContext());
+            manager.requestIntegrityToken(request.build())
+                .addOnSuccessListener(response -> resolveToken(call, response.token()))
+                .addOnFailureListener(error -> resolveToken(call, null));
+        } catch (Exception e) {
+            resolveToken(call, null);
+        }
+    }
+
+    private static void resolveToken(PluginCall call, String token) {
         JSObject out = new JSObject();
-        out.put("token", null);
+        out.put("token", token);
         call.resolve(out);
     }
 
