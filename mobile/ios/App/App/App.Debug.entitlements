@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Debug builds run from Xcode, signed with a development profile. Release uses App.entitlements. -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- App Attest's development environment, which a development profile grants: the server accepts
+	     it only with APP_ATTEST_ALLOW_DEVELOPMENT=1 (ATTENDANCE_PLAN.md §9.4). -->
+	<key>com.apple.developer.devicecheck.appattest-environment</key>
+	<string>development</string>
+</dict>
+</plist>

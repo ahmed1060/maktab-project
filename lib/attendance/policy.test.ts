@@ -22,7 +22,9 @@ describe("the templates", () => {
         // is what the code means by it. They must not drift apart.
         const sql = readFileSync("prisma/migrations/20261009000000_attendance_policy/migration.sql", "utf8")
         const bodies = [...sql.matchAll(/'(\{.*?\})'::jsonb/g)].map(m => JSON.parse(m[1].replace(/''/g, "'")))
-        expect(bodies).toEqual([STANDARD_OFFICE, SIX_DAY_FACTORY])
+        // Read as the code reads a stored body: fields added since (face
+        // verification, §9.5) take their defaults, which are the templates' values.
+        expect(bodies.map(b => policyBodySchema.parse(b))).toEqual([STANDARD_OFFICE, SIX_DAY_FACTORY])
     })
 
     it("measure without pricing until a company sets a policy", () => {

@@ -34,7 +34,7 @@ type Decided = { id: string; userId: string; name: string; teamLeaderId: string 
 type Subject = 'LATENESS' | 'EARLY_LEAVE' | 'ABSENCE'
 type Data = {
     late: Row[]; early: Row[]; absent: Row[]; incomplete: Row[]; overtime: Row[]; decided: Decided[]
-    counts: { late: number; early: number; absent: number; incomplete: number; overtime: number; permissions: number | null; missing: number | null; unmatched: number | null }
+    counts: { late: number; early: number; absent: number; incomplete: number; overtime: number; permissions: number | null; missing: number | null; unmatched: number | null; faceOverdue?: number | null }
     /** Kinds with more than the list shows. */
     capped?: Record<string, boolean>
 }
@@ -46,7 +46,7 @@ const small = { fontSize: '0.78rem', padding: '0.25rem 0.6rem' } as const
 const soft = { color: 'var(--text-soft)', fontSize: '0.78rem' } as const
 const NOTE_KEY: Record<string, TranslationKey> = { FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' }
 
-export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: string; companyId: string | null; today: string; onOpen: (tab: 'requests' | 'numbers') => void }) {
+export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: string; companyId: string | null; today: string; onOpen: (tab: 'requests' | 'numbers' | 'face') => void }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const p = useCan()
@@ -125,6 +125,7 @@ export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: stri
                 <div style={{ flex: 1 }} />
                 {waitingRequests > 0 && <button className="btn btn-secondary" onClick={() => onOpen('requests')}>{t('exc_requests_waiting').replace('{n}', String(waitingRequests))}</button>}
                 {(c?.unmatched ?? 0) > 0 && <button className="btn btn-secondary" onClick={() => onOpen('numbers')}>{t('exc_unmatched_waiting').replace('{n}', String(c!.unmatched))}</button>}
+                {(c?.faceOverdue ?? 0) > 0 && <button className="btn btn-secondary" onClick={() => onOpen('face')}>{t('exc_face_overdue_waiting').replace('{n}', String(c!.faceOverdue))}</button>}
             </div>
             <p style={{ margin: 0, ...soft, fontSize: '0.82rem' }}>{t('exc_hint')}</p>
 
