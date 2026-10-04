@@ -19,6 +19,7 @@ import SafeDate from '@/components/SafeDate'
 import { fetcher } from '@/lib/swr-fetcher'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useHydrated } from '@/lib/useHydrated'
+import { useDialog } from '@/lib/useDialog'
 
 
 interface Client {
@@ -62,6 +63,8 @@ export default function ClientsPage() {
     const [editClientName, setEditClientName] = useState('')
     const [editingClientId, setEditingClientId] = useState<string | null>(null)
     const [isEditingClient, setIsEditingClient] = useState(false)
+    const addDialog = useDialog(isModalOpen, () => !isSubmitting && setIsModalOpen(false))
+    const editDialog = useDialog(isEditClientModalOpen, () => !isEditingClient && setIsEditClientModalOpen(false))
     const { showToast } = useToast()
     const { selectedCompanyId: contextCompanyId } = useCompany()
     const [isMobile, setIsMobile] = useState(false)
@@ -418,8 +421,8 @@ export default function ClientsPage() {
                         className="modal-backdrop"
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10 }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                    <div {...addDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10 }}>
+                        <h2 id={addDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {t('add_new_client_title')}
                         </h2>
 
@@ -516,9 +519,9 @@ export default function ClientsPage() {
                         className="modal-backdrop"
                         onClick={() => !isEditingClient && setIsEditClientModalOpen(false)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                    <div {...editDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_client_title' as any) || 'Edit Client Name'}</h2>
+                            <h2 id={editDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_client_title' as any) || 'Edit Client Name'}</h2>
                         </div>
                         <form onSubmit={handleEditClient}>
                             <div style={{ marginBottom: '1.5rem' }}>

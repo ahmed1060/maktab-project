@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useDialog } from '@/lib/useDialog'
 
 interface AuditLogFilterProps {
     onFilterChange: (filters: {
@@ -42,6 +43,7 @@ export default function AuditLogFilter({
     const entityOptions = sorted('audit_entity_', AUDIT_ENTITY_TYPES)
     const actionOptions = sorted('audit_action_', AUDIT_ACTIONS)
     const [isPopupOpen, setIsPopupOpen] = useState(false)
+    const filterDialog = useDialog(isPopupOpen, () => setIsPopupOpen(false), { label: t('filters') })
     const [isMobile, setIsMobile] = useState(false)
 
     // Local states for the popup to implement "Show Results" behavior
@@ -201,7 +203,7 @@ export default function AuditLogFilter({
                                     backdropFilter: isMobile ? 'blur(4px)' : 'none'
                                 }}
                             />
-                            <div style={{
+                            <div {...filterDialog.panelProps} style={{
                                 position: isMobile ? 'fixed' : 'absolute',
                                 top: isMobile ? '50%' : 'calc(100% + 0.75rem)',
                                 [locale === 'ar' ? 'left' : 'right']: isMobile ? '50%' : '0',

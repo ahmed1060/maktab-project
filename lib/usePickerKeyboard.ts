@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { isoOf, monthOf, moveDay } from '@/lib/calendar-keys'
+import { trapTab } from '@/lib/focus-trap'
 
 /**
  * What a calendar pop-up needs to work from the keyboard (WCAG 2.1.1, audit
@@ -57,13 +58,7 @@ export function usePickerKeyboard(opts: {
             close()
             return
         }
-        if (e.key !== 'Tab' || !popupRef.current) return
-        const items = [...popupRef.current.querySelectorAll<HTMLElement>('button, select, input, [tabindex="0"]')]
-            .filter(el => !(el as HTMLButtonElement).disabled && el.tabIndex >= 0)
-        if (items.length === 0) return
-        const first = items[0], last = items[items.length - 1]
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+        trapTab(e, popupRef.current, document.activeElement)
     }
 
     const onGridKeyDown = (e: KeyboardEvent) => {

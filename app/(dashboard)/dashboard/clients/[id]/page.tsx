@@ -15,6 +15,7 @@ import { useToast } from '@/context/ToastContext'
 import Pagination from '@/components/Pagination'
 import { useHydrated } from '@/lib/useHydrated'
 import { useCan } from '@/lib/useCan'
+import { useDialog } from '@/lib/useDialog'
 
 interface Section {
     id: string
@@ -65,6 +66,7 @@ export default function ClientDetailsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newSectionTitle, setNewSectionTitle] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const sectionDialog = useDialog(isModalOpen, () => !isSubmitting && setIsModalOpen(false))
     const [page, setPage] = useState(1)
     const limit = 10
     const { setTitle } = useHeader()
@@ -508,8 +510,8 @@ export default function ClientDetailsPage() {
                         className="modal-backdrop"
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_section_title' as any)}</h2>
+                    <div {...sectionDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={sectionDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_section_title' as any)}</h2>
 
                         <form onSubmit={handleCreateSection}>
                             <div style={{ marginBottom: '1.5rem' }}>

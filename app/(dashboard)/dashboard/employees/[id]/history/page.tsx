@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from "@/lib/api-error-text"
+import { useDialog } from '@/lib/useDialog'
 
 
 interface SalaryRecord {
@@ -167,6 +168,10 @@ export default function EmployeeHistoryPage() {
     // Arriving with ?highlight= opens the adjustments, which may be what it
     // points at; the list itself is only asked for while they are open.
     const [isAdjustmentsModalOpen, setIsAdjustmentsModalOpen] = useState(Boolean(highlightId))
+    const adjustmentsDialog = useDialog(isAdjustmentsModalOpen, () => setIsAdjustmentsModalOpen(false))
+    const reverseDialog = useDialog(!!reversing, () => setReversing(null))
+    const reevaluateDialog = useDialog(isReevaluateModalOpen && !!selectedRequest, () => setIsReevaluateModalOpen(false))
+    const deductionsDialog = useDialog(isManageDeductionsOpen, () => setIsManageDeductionsOpen(false))
     useAdjustOnChange([highlightId], () => { if (highlightId) setIsAdjustmentsModalOpen(true) })
     const { data: adjustmentsResult, mutate: fetchAdjustments } = useSWR(
         isAdjustmentsModalOpen && id ? `/api/users/${id}/adjustments` : null, fetcher,
@@ -661,7 +666,7 @@ export default function EmployeeHistoryPage() {
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
-                    <div className="glass" style={{
+                    <div {...adjustmentsDialog.panelProps} className="glass" style={{
                         width: '100%',
                         maxWidth: '600px',
                         maxHeight: '80vh',
@@ -685,7 +690,7 @@ export default function EmployeeHistoryPage() {
                         >
                             ×
                         </button>
-                        <h2 style={{ marginBottom: '1.5rem' }}>{t('adjustment_history' as any)}</h2>
+                        <h2 id={adjustmentsDialog.titleId} style={{ marginBottom: '1.5rem' }}>{t('adjustment_history' as any)}</h2>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {adjustments.length === 0 ? (
@@ -816,7 +821,7 @@ export default function EmployeeHistoryPage() {
                     background: 'var(--scrim)',
                     padding: '1rem',
                 }}>
-                    <div style={{
+                    <div {...reverseDialog.panelProps} style={{
                         background: 'var(--surface)',
                         borderRadius: '1rem',
                         border: '1px solid var(--border)',
@@ -825,7 +830,7 @@ export default function EmployeeHistoryPage() {
                         width: '100%',
                         textAlign: locale === 'ar' ? 'right' : 'left',
                     }}>
-                        <h3 style={{ margin: '0 0 0.75rem' }}>{t('reverse_adjustment_title' as any)}</h3>
+                        <h3 id={reverseDialog.titleId} style={{ margin: '0 0 0.75rem' }}>{t('reverse_adjustment_title' as any)}</h3>
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: 0 }}>
                             {t('reverse_adjustment_msg' as any)}
                         </p>
@@ -883,7 +888,7 @@ export default function EmployeeHistoryPage() {
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
-                    <div className="glass" style={{
+                    <div {...reevaluateDialog.panelProps} className="glass" style={{
                         width: '100%',
                         maxWidth: '400px',
                         padding: '2rem',
@@ -892,7 +897,7 @@ export default function EmployeeHistoryPage() {
                         boxShadow: '0 20px 25px -5px var(--shadow-weak)',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
-                        <h2 style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
+                        <h2 id={reevaluateDialog.titleId} style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
                         <p style={{ color: 'var(--text-soft)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
                             <SafeDate date={selectedRequest.date} locale={locale} format="dateOnly" /> - {t(selectedRequest.type as any) || selectedRequest.type}
                         </p>
@@ -937,7 +942,7 @@ export default function EmployeeHistoryPage() {
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
-                    <div className="glass" style={{
+                    <div {...deductionsDialog.panelProps} className="glass" style={{
                         width: '100%',
                         maxWidth: '700px',
                         maxHeight: '85vh',
@@ -948,7 +953,7 @@ export default function EmployeeHistoryPage() {
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: 0 }}>{t('manage_deductions')}</h2>
+                            <h2 id={deductionsDialog.titleId} style={{ margin: 0 }}>{t('manage_deductions')}</h2>
                             <button onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>×</button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

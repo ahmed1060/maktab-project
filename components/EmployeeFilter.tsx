@@ -8,6 +8,7 @@ import { useCompany } from '@/context/CompanyContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useDialog } from '@/lib/useDialog'
 
 interface SortOption {
     label: string
@@ -104,6 +105,7 @@ export default function EmployeeFilter({
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const { t, locale } = useLanguage()
+    const filterDialog = useDialog(isPopupOpen, () => setIsPopupOpen(false), { label: t('filters') })
     const { data: session } = useSession()
     const { selectedCompanyId: globalCompanyId } = useCompany()
 
@@ -405,7 +407,7 @@ export default function EmployeeFilter({
                                         backdropFilter: isMobile ? 'blur(4px)' : 'none'
                                     }}
                                 />
-                                <div style={{
+                                <div {...filterDialog.panelProps} style={{
                                     position: isMobile ? 'fixed' : 'absolute',
                                     top: isMobile ? '50%' : 'calc(100% + 0.75rem)',
                                     left: isMobile ? '50%' : (locale === 'ar' ? '0' : 'auto'),

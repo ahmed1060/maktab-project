@@ -16,6 +16,7 @@ import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useHydrated } from '@/lib/useHydrated'
 import { useCan } from '@/lib/useCan'
+import { useDialog } from '@/lib/useDialog'
 
 interface Vendor {
     id: string
@@ -58,6 +59,8 @@ export default function VendorsPage() {
     const [editForm, setEditForm] = useState<VendorFormState>(emptyForm)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [isEditing, setIsEditing] = useState(false)
+    const addDialog = useDialog(isAddOpen, () => !isSubmitting && setIsAddOpen(false))
+    const editDialog = useDialog(isEditOpen, () => !isEditing && setIsEditOpen(false))
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, vendor: Vendor | null }>({ isOpen: false, vendor: null })
     const [addFormCompanyId, setAddFormCompanyId] = useState('')
@@ -327,8 +330,8 @@ export default function VendorsPage() {
                     alignItems: 'center', zIndex: 9999
                 }}>
                     <div className="modal-backdrop" onClick={() => !isSubmitting && setIsAddOpen(false)} />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
+                    <div {...addDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={addDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `إضافة ${vendorsName}` : `Add ${vendorsName}`}
                         </h2>
                         <form onSubmit={handleCreate}>
@@ -380,8 +383,8 @@ export default function VendorsPage() {
                     alignItems: 'center', zIndex: 9999
                 }}>
                     <div className="modal-backdrop" onClick={() => !isEditing && setIsEditOpen(false)} />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
+                    <div {...editDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={editDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `تعديل ${vendorsName}` : `Edit ${vendorsName}`}
                         </h2>
                         <form onSubmit={handleEdit}>
