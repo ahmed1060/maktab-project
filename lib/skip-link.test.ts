@@ -10,11 +10,15 @@ const SHELL = readFileSync("components/DashboardShell.tsx", "utf8")
 const CSS = readFileSync("app/globals.css", "utf8")
 
 describe("getting past the sidebar", () => {
-    it("a Skip to content link comes before the sidebar and goes to the page's main region", () => {
+    it("a Skip to content link comes before the sidebar and goes to the page, past the header", () => {
         const skip = SHELL.indexOf('<a href="#main-content" className="skip-link">')
         expect(skip).toBeGreaterThan(-1)
         expect(skip).toBeLessThan(SHELL.indexOf("<aside"))
-        expect(SHELL).toMatch(/<main id="main-content" tabIndex=\{-1\}/)
+        // After the header: its bell and account menu repeat on every page too
+        // (Codex review on #37).
+        const target = SHELL.indexOf('<div id="main-content" tabIndex={-1}')
+        expect(target).toBeGreaterThan(SHELL.indexOf("<DashboardHeader"))
+        expect(SHELL.indexOf("{children}", target)).toBeGreaterThan(target)
     })
 
     it("is hidden until Tab reaches it, then shown", () => {

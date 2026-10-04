@@ -786,7 +786,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
             </aside>
 
             {/* Main Content Wrapper */}
-            <main id="main-content" tabIndex={-1} style={{
+            <main style={{
                 flex: 1,
                 // A flex item is never narrower than its content by default,
                 // and a header subtitle that cuts off with an ellipsis still
@@ -825,7 +825,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     />
                 </div>
 
-                <div style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                {/* The skip link's target: the page itself, after the header's
+                    controls (bell, account menu), which repeat on every page too. */}
+                <div id="main-content" tabIndex={-1} style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     {/* Above the page rather than inside it, so it appears on
                         every screen without thirty pages having to remember. It
                         renders nothing at all when the subscription is simply
