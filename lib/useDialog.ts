@@ -5,7 +5,7 @@ import { focusables, trapTab } from '@/lib/focus-trap'
 /**
  * What a dialog's panel needs to behave as a dialog (WCAG 2.4.3, 4.1.2;
  * accessibility audit of 4 October 2026, C2). Spread `panelProps` on the
- * panel and put `titleId` on its heading:
+ * panel and put `titleId` on its heading (or pass `label` if it has none):
  *
  * - it says it is a modal dialog and is named by its title;
  * - focus moves into it on opening (to a field that asked for focus, else
@@ -17,7 +17,7 @@ import { focusables, trapTab } from '@/lib/focus-trap'
  * Before, focus stayed on the page behind, so Tab and screen readers moved
  * through content hidden by the overlay, and closing left focus nowhere.
  */
-export function useDialog(isOpen: boolean, onClose?: () => void) {
+export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?: string } = {}) {
     const ref = useRef<HTMLDivElement>(null)
     const titleId = useId()
     const close = useRef(onClose)
@@ -58,7 +58,8 @@ export function useDialog(isOpen: boolean, onClose?: () => void) {
             ref,
             role: 'dialog' as const,
             'aria-modal': true,
-            'aria-labelledby': titleId,
+            // Named by its heading, or by `label` when it has none on screen.
+            ...(opts.label ? { 'aria-label': opts.label } : { 'aria-labelledby': titleId }),
             tabIndex: -1,
             onKeyDown,
         },

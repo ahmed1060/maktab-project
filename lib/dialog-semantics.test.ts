@@ -25,9 +25,8 @@ const OWN = new Map([
 ])
 
 describe("overlays", () => {
-    // The shared ones first; the hand-built ones in the pages follow.
-    const overlays = ["components/Modal.tsx", "components/ConfirmModal.tsx", "components/NoticeModal.tsx", "components/BackupPickerModal.tsx"]
-    void files; void OWN
+    const overlays = [...files("app"), ...files("components")]
+        .filter(f => readFileSync(f, "utf8").includes("var(--scrim)") && !OWN.has(f))
 
     it.each(overlays)("%s uses useDialog for each overlay it draws", f => {
         const s = readFileSync(f, "utf8")
@@ -35,6 +34,8 @@ describe("overlays", () => {
         const panels = s.split("panelProps}").length - 1
         expect(s).toContain("useDialog(")
         expect(panels).toBeGreaterThanOrEqual(scrims)
-        expect(s.split("titleId}").length - 1).toBeGreaterThanOrEqual(scrims)
+        // Each is named: by its heading (titleId) or, with no heading on screen, a label.
+        const named = (s.split("titleId}").length - 1) + (s.match(/useDialog\(.*\{ label:/g) ?? []).length
+        expect(named).toBeGreaterThanOrEqual(scrims)
     })
 })

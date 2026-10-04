@@ -11,6 +11,7 @@ import { useHeader } from '@/context/HeaderContext'
 import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
+import { useDialog } from '@/lib/useDialog'
 
 type Admin = {
     id: string
@@ -29,6 +30,9 @@ export default function SuperAdminsPage() {
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [viewingAdmin, setViewingAdmin] = useState<Admin | null>(null)
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null)
+    const createDialog = useDialog(showCreateModal, () => setShowCreateModal(false))
+    const viewDialog = useDialog(!!viewingAdmin, () => setViewingAdmin(null))
+    const editDialog = useDialog(!!editingAdmin, () => setEditingAdmin(null))
     const [deleteConfirm, setDeleteConfirm] = useState<Admin | null>(null)
     // Replaces alert(): a native dialog ignores the palette entirely, and it
     // blocks the main thread for as long as it is up.
@@ -298,8 +302,8 @@ export default function SuperAdminsPage() {
                         style={{ position: 'absolute', inset: 0 }}
                         onClick={() => setShowCreateModal(false)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_super_admin_title')}</h2>
+                    <div {...createDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={createDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_super_admin_title')}</h2>
                         {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleCreate}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -384,8 +388,8 @@ export default function SuperAdminsPage() {
                         style={{ position: 'absolute', inset: 0 }}
                         onClick={() => setViewingAdmin(null)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('profile_title')}</h2>
+                    <div {...viewDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={viewDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('profile_title')}</h2>
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ color: 'var(--text-soft)', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('full_name_label')}</label>
                             <div style={{ fontWeight: '500', fontSize: '1.1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{viewingAdmin.firstName} {viewingAdmin.lastName}</div>
@@ -416,8 +420,8 @@ export default function SuperAdminsPage() {
                         style={{ position: 'absolute', inset: 0 }}
                         onClick={() => setEditingAdmin(null)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('edit_admin_title')}</h2>
+                    <div {...editDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={editDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('edit_admin_title')}</h2>
                         {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleUpdate}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>

@@ -18,6 +18,7 @@ import Pagination from '@/components/Pagination'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
+import { useDialog } from '@/lib/useDialog'
 
 interface Note {
     id: string
@@ -77,6 +78,8 @@ export default function SectionNotesPage() {
     const canDelete = can('clients.delete')
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const noteDialog = useDialog(isModalOpen, () => !isSubmitting && setIsModalOpen(false))
+    const editNoteDialog = useDialog(isEditModalOpen, () => !isSubmitting && setIsEditModalOpen(false))
     const [editingNote, setEditingNote] = useState<Note | null>(null)
     const [editNoteContent, setEditNoteContent] = useState('')
     const [editExpiryDate, setEditExpiryDate] = useState('')
@@ -657,7 +660,7 @@ export default function SectionNotesPage() {
                                 className="modal-backdrop"
                                 onClick={() => !isSubmitting && setIsModalOpen(false)}
                             />
-                            <div style={{
+                            <div {...noteDialog.panelProps} style={{
                                 background: 'var(--surface)',
                                 padding: '2rem',
                                 borderRadius: '1.5rem',
@@ -672,7 +675,7 @@ export default function SectionNotesPage() {
                                 border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('add_note_button' as any)}</h2>
+                                    <h2 id={noteDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('add_note_button' as any)}</h2>
                                     <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
                                         {newNoteContent.length}/{MAX_CHARS}
                                     </span>
@@ -878,7 +881,7 @@ export default function SectionNotesPage() {
                                 className="modal-backdrop"
                                 onClick={() => !isSubmitting && setIsEditModalOpen(false)}
                             />
-                            <div style={{
+                            <div {...editNoteDialog.panelProps} style={{
                                 background: 'var(--surface)',
                                 padding: '2rem',
                                 borderRadius: '1.5rem',
@@ -893,7 +896,7 @@ export default function SectionNotesPage() {
                                 border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
+                                    <h2 id={editNoteDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
                                     <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
                                         {editNoteContent.length}/{MAX_CHARS}
                                     </span>

@@ -18,6 +18,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from "@/lib/api-error-text"
+import { useDialog } from '@/lib/useDialog'
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -69,6 +70,9 @@ export default function DayOffRequestsPage() {
     const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+    const requestDialog = useDialog(isRequestModalOpen, () => setIsRequestModalOpen(false))
+    const approvalDialog = useDialog(isApprovalModalOpen && !!selectedRequest, () => setIsApprovalModalOpen(false))
+    const rejectDialog = useDialog(isRejectModalOpen && !!selectedRequest, () => setIsRejectModalOpen(false))
     const [daysToDeduct, setDaysToDeduct] = useState('')
     const [chosenDeduction, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
     const [rejectionReason, setRejectionReason] = useState('')
@@ -649,8 +653,8 @@ export default function DayOffRequestsPage() {
             {/* Request Modal */}
             {isRequestModalOpen && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
+                    <div {...requestDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
+                        <h2 id={requestDialog.titleId} className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
                         <form onSubmit={handleSubmitRequest}>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('day_off_type' as any)}</label>
@@ -723,8 +727,8 @@ export default function DayOffRequestsPage() {
             {/* Approval Modal (Deduction Popup) */}
             {isApprovalModalOpen && selectedRequest && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
+                    <div {...approvalDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
+                        <h2 id={approvalDialog.titleId} className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
                         <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-soft)' }}>
                             {selectedRequest.user?.firstName} {selectedRequest.user?.lastName} - {t('day_off_credit')}: {selectedRequest.user?.dayOffCredit}
                         </p>
@@ -812,8 +816,8 @@ export default function DayOffRequestsPage() {
             {/* Rejection Confirmation Modal */}
             {isRejectModalOpen && selectedRequest && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
+                    <div {...rejectDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
+                        <h2 id={rejectDialog.titleId} className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
                         <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>
                             {t('are_you_sure_msg' as any)} {t('reject_button')} {selectedRequest.user?.firstName} {selectedRequest.user?.lastName}?
                         </p>

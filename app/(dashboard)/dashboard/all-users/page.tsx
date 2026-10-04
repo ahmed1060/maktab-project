@@ -13,6 +13,7 @@ import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { apiErrorText } from "@/lib/api-error-text"
+import { useDialog } from '@/lib/useDialog'
 
 type User = {
     id: string
@@ -40,6 +41,7 @@ export default function AllUsersPage() {
     const { setTitle, setSubtitle } = useHeader()
     const [filters, setFilters] = useState({ search: '', status: '', companyId: '' })
     const [showExUsersModal, setShowExUsersModal] = useState(false)
+    const exUsersDialog = useDialog(showExUsersModal, () => setShowExUsersModal(false), { label: t('ex_users_archive_title') })
     const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
     const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
     const [errorModal, setErrorModal] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: '', message: '' })
@@ -426,7 +428,7 @@ export default function AllUsersPage() {
                             onClick={() => setShowExUsersModal(false)}
                         />
                         {viewingProfileId ? (
-                            <div style={{ background: 'var(--surface)', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 101 }}>
+                            <div {...exUsersDialog.panelProps} style={{ background: 'var(--surface)', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 101 }}>
                                 <EmployeeProfileForm
                                     userId={viewingProfileId}
                                     isViewMode={true}
@@ -434,7 +436,7 @@ export default function AllUsersPage() {
                                 />
                             </div>
                         ) : (
-                            <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                            <div {...exUsersDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row' }}>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                                         <span style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}

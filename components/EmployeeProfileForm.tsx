@@ -15,6 +15,7 @@ import RoleSelect from '@/components/RoleSelect'
 import RoleRequestControl from '@/components/RoleRequestControl'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
+import { useDialog } from '@/lib/useDialog'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -68,6 +69,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
     const [showAvatarModal, setShowAvatarModal] = useState(false)
+    const avatarDialog = useDialog(showAvatarModal, () => setShowAvatarModal(false))
     const [showEndContract, setShowEndContract] = useState(false)
     // Bumped after ending or reinstating a contract, so the profile reloads and
     // shows the new status (and the button its opposite action). The view has
@@ -568,7 +570,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         style={{ position: 'absolute', inset: 0 }}
                         onClick={() => setShowAvatarModal(false)}
                     />
-                    <div style={{
+                    <div {...avatarDialog.panelProps} style={{
                         background: 'var(--surface)',
                         padding: '2rem',
                         borderRadius: '12px',
@@ -580,7 +582,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         animation: 'slideUp 0.3s ease-out',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '1.5rem', textAlign: 'center' }}>
+                        <h2 id={avatarDialog.titleId} style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '1.5rem', textAlign: 'center' }}>
                             {avatarUrl ? t('manage_photo_title') : t('add_photo')}
                         </h2>
 
