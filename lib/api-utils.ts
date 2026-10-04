@@ -33,6 +33,8 @@ type HandlerOptions = {
     rateLimit?: {
         maxRequests: number
         windowMs: number
+        /** The counter's name, for a route with no audit action: otherwise it shares the 'generic' one. */
+        key?: string
     }
 }
 
@@ -181,7 +183,7 @@ export function withStandardHandler(
             // Rate Limiting
             if (options.rateLimit) {
                 const ip = getClientIp(req.headers)
-                const key = `${userId || ip}:${options.audit?.action || 'generic'}`
+                const key = `${userId || ip}:${options.rateLimit.key || options.audit?.action || 'generic'}`
                 const { limited, resetAt } = await RateLimiter.getLimitData(key, options.rateLimit.maxRequests, options.rateLimit.windowMs)
                 if (limited) {
                     const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
