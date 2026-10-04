@@ -300,6 +300,7 @@ export default function LoginPage() {
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
                                     <input aria-label={t('email')}
                                         type="email"
+                                        autoComplete="username"
                                         className="input"
                                         value={forgotEmail}
                                         onChange={(e) => setForgotEmail(e.target.value.slice(0, 254))}
@@ -318,6 +319,7 @@ export default function LoginPage() {
                                         <input aria-label={isAr ? 'الرمز' : 'Code'}
                                             type="text"
                                             inputMode="numeric"
+                                            autoComplete="one-time-code"
                                             className="input"
                                             value={forgotCode}
                                             onChange={(e) => setForgotCode(e.target.value)}
@@ -334,6 +336,7 @@ export default function LoginPage() {
                                         </label>
                                         <input aria-label={isAr ? 'كلمة المرور الجديدة' : 'New password'}
                                             type="password"
+                                            autoComplete="new-password"
                                             className="input"
                                             value={forgotNewPassword}
                                             onChange={(e) => setForgotNewPassword(e.target.value.slice(0, 72))}
@@ -390,6 +393,7 @@ export default function LoginPage() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
                                 <input aria-label={t('email')}
                                     type="email"
+                                    autoComplete="username"
                                     className="input"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value.slice(0, 254))}
@@ -408,6 +412,7 @@ export default function LoginPage() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
                                 <input aria-label={t('password')}
                                     type={showPassword ? "text" : "password"}
+                                    autoComplete="current-password"
                                     className="input"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value.slice(0, 72))}
@@ -539,6 +544,7 @@ export default function LoginPage() {
                                 <input aria-label={isAr ? 'الرمز' : 'Code'}
                                     type="text"
                                     inputMode="numeric"
+                                    autoComplete="one-time-code"
                                     className="input"
                                     value={mfaCode}
                                     onChange={(e) => setMfaCode(e.target.value)}
