@@ -14,14 +14,19 @@ import { apiErrorText } from '@/lib/api-error-text'
  * the protected one switches it, after their own legal consultation, and the
  * server asks them for a fresh authenticator code. Off again is pause and
  * purge, typed to confirm, and its record says what was destroyed.
+ *
+ * While FACE_PHOTO_KEY is being rotated (mobile/README.md), any Super Admin
+ * sees how many stored photos are still on the old key and moves them.
  */
 type State = 'OFF' | 'ON' | 'PAUSED'
+type Rekey = { rotating: false } | { rotating: true; total: number; previous: number; unreadable: number }
 
 export default function FaceSystemSwitch() {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const { data, mutate } = useSWR<{ data: { state: State; canChange: boolean } }>('/api/system-settings/face', fetcher)
     const { data: purgeBody, mutate: reloadPurge } = useSWR<{ data: { at: string; keysDestroyed: number; photosDeleted: number; acknowledged: number } | null }>('/api/system-settings/face/purge', fetcher)
+    const { data: rekeyBody, mutate: reloadRekey } = useSWR<{ data: Rekey }>('/api/system-settings/face/rekey', fetcher)
     const [asking, setAsking] = useState<'ON' | 'PAUSED' | null>(null)
     const [purging, setPurging] = useState(false)
     const [busy, setBusy] = useState(false)
@@ -56,6 +61,20 @@ export default function FaceSystemSwitch() {
     }
     const last = purgeBody?.data ?? null
 
+    const rekey = async () => {
+        setBusy(true)
+        try {
+            const res = await fetch('/api/system-settings/face/rekey', { method: 'POST' })
+            const text = await res.text()
+            if (!res.ok) return showToast(apiErrorText(text, t('error_generic')), 'error')
+            showToast(t('face_rekey_toast').replace('{moved}', String(JSON.parse(text).data.moved)), 'success')
+            reloadRekey()
+        } catch {
+            showToast(t('error_generic'), 'error')
+        } finally { setBusy(false) }
+    }
+    const rotation = rekeyBody?.data.rotating ? rekeyBody.data : null
+
     const tone = state === 'ON' ? 'var(--ok-fg)' : state === 'PAUSED' ? 'var(--warn-fg)' : 'var(--text-soft)'
     return (
         <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -75,6 +94,22 @@ export default function FaceSystemSwitch() {
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: 0 }}>
                     {t('face_purge_record').replace('{date}', last.at.slice(0, 10)).replaceAll('{keys}', String(last.keysDestroyed)).replace('{photos}', String(last.photosDeleted)).replace('{acks}', String(last.acknowledged))}
                 </p>
+            )}
+            {rotation && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{t('face_rekey_title')}</p>
+                    {rotation.previous > 0 ? (
+                        <>
+                            <p style={{ fontSize: '0.8rem', margin: 0 }}>{t('face_rekey_status').replace('{previous}', String(rotation.previous)).replace('{total}', String(rotation.total))}</p>
+                            <div><button className="btn btn-primary" disabled={busy} onClick={rekey}>{t('face_rekey_run')}</button></div>
+                        </>
+                    ) : (
+                        <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--ok-fg)' }}>{t('face_rekey_done')}</p>
+                    )}
+                    {rotation.unreadable > 0 && (
+                        <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_unreadable').replace('{n}', String(rotation.unreadable))}</p>
+                    )}
+                </div>
             )}
             <ConfirmModal
                 isOpen={purging}

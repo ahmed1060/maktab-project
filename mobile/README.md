@@ -370,6 +370,27 @@ Android, and in `NizmoViewController.swift` on iOS. Add the camera
 permission (`android.permission.CAMERA`, and `NSCameraUsageDescription` in
 `Info.plist`).
 
+### Rotating FACE_PHOTO_KEY
+
+`FACE_PHOTO_KEY` encrypts the face photos stored on the server: verification
+and reference photos, and frames from failed checks. (The templates on the
+phones use the wrapping keys above, not this key.) To change it without
+losing those photos:
+
+1. Make a new key: `openssl rand -base64 32`, or in PowerShell
+   `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`.
+2. In Vercel (Production): add `FACE_PHOTO_KEY_PREVIOUS` with the **current**
+   value of `FACE_PHOTO_KEY`, then set `FACE_PHOTO_KEY` to the new key.
+   Redeploy.
+3. As a Super Admin, open System Settings. The face verification card shows
+   how many photos are still on the old key. Press "Re-encrypt with the new
+   key" until it says every photo is on the new one.
+4. Delete `FACE_PHOTO_KEY_PREVIOUS` from Vercel and redeploy.
+
+Until step 4, photos open with either key, and new ones are written with
+the new key. A photo neither key opens is shown as unreadable and left as
+it is.
+
 ## How it was checked
 
 The site's side runs against the real server in the test suite

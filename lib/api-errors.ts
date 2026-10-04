@@ -135,6 +135,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     FACE_REVIEW_NOT_FOUND: { status: 404, message: "Face verification photo not found." },
     FACE_REVIEW_CLOSED: { status: 409, message: "That face verification photo has already been decided." },
     FACE_PHOTO_NONE: { status: 404, message: "There's no photo to show." },
+    FACE_KEY_NOT_ROTATING: { status: 409, message: "Set the old key as FACE_PHOTO_KEY_PREVIOUS and redeploy first: there is nothing to re-encrypt from." },
     FACE_PHOTO_UNREADABLE: { status: 409, message: "This photo was stored with an encryption key the server no longer has, so it can't be shown." },
     FACE_NOT_ENROLLED: { status: 409, message: "This person hasn't set up face verification yet, so there is nothing to re-verify." },
     CHECK_IN_NOT_FOUND: { status: 404, message: "Check-in not found." },
