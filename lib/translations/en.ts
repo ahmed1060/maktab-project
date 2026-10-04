@@ -1082,6 +1082,8 @@ export const en = {
         used_credit: "Used Credit",
         credit_overview: "Credit Overview",
         select_date: "Select Date",
+        calendar_prev_month: "Previous month",
+        calendar_next_month: "Next month",
         day_off_type: "Request Type",
         request_submitted_success: "Request submitted successfully!",
         failed_submit_request: "Failed to submit request",
