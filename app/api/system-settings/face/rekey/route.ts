@@ -16,5 +16,6 @@ export const POST = withStandardHandler(async (_req, session) => {
     if (session.user.role !== "SUPER_ADMIN") return ApiResponse.forbidden()
     return ApiResponse.success(await FacePhotoKeyService.rekey(session))
 }, {
-    rateLimit: { maxRequests: 10, windowMs: 60 * 60 * 1000 },
+    // Its own counter: the service audits, so there is no audit action to name it by (review on #33).
+    rateLimit: { maxRequests: 30, windowMs: 60 * 60 * 1000, key: "REKEY_FACE_PHOTOS" },
 })
