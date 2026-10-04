@@ -23,9 +23,26 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
     const close = useRef(onClose)
     useEffect(() => { close.current = onClose })
 
+    // What had focus while the dialog was closed: what opened it. Read on
+    // opening would be too late when a field in the dialog has autoFocus,
+    // which takes focus before effects run.
+    const lastOutside = useRef<HTMLElement | null>(null)
+    useEffect(() => {
+        if (isOpen) return
+        lastOutside.current = document.activeElement as HTMLElement | null
+        const onFocus = (e: FocusEvent) => {
+            const target = e.target as HTMLElement
+            // Not a field of this dialog taking focus as it opens.
+            if (target.closest?.(`[data-dialog="${CSS.escape(titleId)}"]`)) return
+            lastOutside.current = target
+        }
+        document.addEventListener('focusin', onFocus)
+        return () => document.removeEventListener('focusin', onFocus)
+    }, [isOpen, titleId])
+
     useEffect(() => {
         if (!isOpen) return
-        const opener = document.activeElement as HTMLElement | null
+        const opener = lastOutside.current
         // After the panel is drawn (it may be in a portal), and after any
         // autoFocus field inside it has taken focus.
         let panel: HTMLElement | null = null
@@ -52,6 +69,7 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
         panelProps: {
             ref,
             role: 'dialog' as const,
+            'data-dialog': titleId,
             'aria-modal': true,
             // Named by its heading, or by `label` when it has none on screen.
             ...(opts.label ? { 'aria-label': opts.label } : { 'aria-labelledby': titleId }),
