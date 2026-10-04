@@ -9,7 +9,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import CompanySettingsTabs, { type CompanySettings } from '@/components/CompanySettingsTabs'
-import { COMPANY_SETTINGS_TABS } from '@/lib/company-settings-tabs'
+import { existingSettingsTabs, type SettingsExposure } from '@/lib/company-settings-access'
 
 export default function CompanySettingsPage() {
     const params = useParams()
@@ -23,10 +23,11 @@ export default function CompanySettingsPage() {
         fetcher,
         { onError: () => showToast(t('failed_fetch_data'), 'error') },
     )
-    const company: CompanySettings | null = companyResult ? (companyResult.data || companyResult) : null
+    // With its package, which decides which tabs exist for it.
+    const company: (CompanySettings & Pick<SettingsExposure, 'package'>) | null = companyResult ? (companyResult.data || companyResult) : null
     // The cards report what they saved; that becomes the cached copy without
     // asking the server again for what it just said.
-    const setCompany = (next: CompanySettings) => { mutate({ data: next }, { revalidate: false }) }
+    const setCompany = (next: CompanySettings & Pick<SettingsExposure, 'package'>) => { mutate({ data: next }, { revalidate: false }) }
 
     if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
         return <AccessDenied />
@@ -87,7 +88,11 @@ export default function CompanySettingsPage() {
                 <CompanySettingsTabs
                     company={company}
                     onSaved={next => setCompany({ ...company, ...next })}
-                    tabs={COMPANY_SETTINGS_TABS.map(x => x.key)}
+                    // Only the tabs that exist for this company: a module's tab
+                    // (Attendance) only when its package holds the module, as the
+                    // server's own check and the company's admins already have it.
+                    // Before, it showed every tab, and a module tab could only fail.
+                    tabs={existingSettingsTabs(company)}
                     superAdmin
                 />
             )}
