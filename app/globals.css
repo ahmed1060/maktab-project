@@ -721,6 +721,15 @@ html[dir="rtl"] select.input {
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
 
+/* The click-outside area behind a dialog's panel: it fills the overlay, and
+   the panel (position: relative, a higher z-index) sits on top. It was written
+   as Tailwind's "absolute inset-0", which this project doesn't have, so it had
+   no size and clicking outside a dialog did nothing. */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
 /* Modern Buttons */
 .btn {
   display: inline-flex;

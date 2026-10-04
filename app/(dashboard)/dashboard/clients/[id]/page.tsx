@@ -505,7 +505,7 @@ export default function ClientDetailsPage() {
                     alignItems: 'center', zIndex: 9999
                 }}>
                     <div
-                        className="absolute inset-0"
+                        className="modal-backdrop"
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
                     <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>

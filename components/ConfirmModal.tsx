@@ -105,7 +105,7 @@ export default function ConfirmModal({
             animation: 'fadeIn 0.2s ease-out'
         }}>
             <div
-                className="absolute inset-0"
+                className="modal-backdrop"
                 onClick={onCancel}
             />
             <div style={{
