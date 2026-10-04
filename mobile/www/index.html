@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nizmo</title>
+<!-- The site this build opens, written by capacitor.config.ts: "Try again" goes there, not back to this page. -->
+<script src="site.js"></script>
 <style>
   :root { color-scheme: light dark; }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; background: #f4f5fb; color: #1f2333; padding: 16px; box-sizing: border-box; text-align: center; }
@@ -16,7 +18,7 @@
     <h1>Nizmo</h1>
     <p>Nizmo can't be reached. Check your connection and try again.</p>
     <p dir="rtl" lang="ar">تعذّر الوصول إلى Nizmo. تحقّق من اتصالك ثم حاول مرة أخرى.</p>
-    <button onclick="location.reload()">Try again · حاول مرة أخرى</button>
+    <button onclick="location.replace(window.NIZMO_SITE || '/')">Try again · حاول مرة أخرى</button>
   </main>
 </body>
 </html>

@@ -1,4 +1,6 @@
 import type { CapacitorConfig } from "@capacitor/cli"
+import { writeFileSync } from "node:fs"
+import { join } from "node:path"
 
 /**
  * The app opens the website's check-in page (ATTENDANCE_PLAN.md §9.1): the
@@ -13,14 +15,21 @@ if (!site || !/^https:\/\/[^/]+$/.test(site)) {
     throw new Error("Set NIZMO_URL to the site's address, https:// and no path, e.g. NIZMO_URL=https://nizmo.example.com")
 }
 
+// The offline page's "Try again" goes back to the site, which only this build knows: written beside it
+// (www/site.js, not committed) each time the config is read, so it can't drift from server.url.
+const checkIn = `${site}/dashboard/check-in`
+// Capacitor reads this config from the mobile/ folder, where it must be run.
+writeFileSync(join(process.cwd(), "www", "site.js"), `window.NIZMO_SITE = ${JSON.stringify(checkIn)}\n`)
+
 const config: CapacitorConfig = {
     appId: "com.shsd.nizmo",
     appName: "Nizmo",
-    // Shown only if the site can't be reached when the app starts.
+    // The offline page (www/index.html), shown when the site can't be reached, instead of the web view's own error.
     webDir: "www",
     server: {
-        url: `${site}/dashboard/check-in`,
+        url: checkIn,
         cleartext: false,
+        errorPath: "index.html",
     },
     android: { allowMixedContent: false },
     plugins: {
