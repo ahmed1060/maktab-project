@@ -25,6 +25,7 @@ export const en = {
         failed_fetch_data: "Failed to fetch data",
         requests: "Requests",
         close: "Close",
+        skip_to_content: "Skip to content",
         open_menu: "Open menu",
         remove: "Remove",
         change_person: "Choose someone else",

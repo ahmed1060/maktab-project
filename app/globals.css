@@ -746,6 +746,36 @@ html[dir="rtl"] select.input {
   outline-offset: 2px;
 }
 
+/* "Skip to content" (WCAG 2.4.1): out of sight until Tab reaches it, as the
+   first thing on every dashboard page. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: -100px;
+  z-index: 10002;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text-strong);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 6px -1px var(--shadow-weak);
+}
+.skip-link:focus {
+  top: 1rem;
+}
+/* Reached by the skip link: no ring around the whole page. */
+#main-content:focus {
+  outline: none;
+}
+
+/* The sidebar link for the page you're on (aria-current, DashboardShell). */
+.nav-link[aria-current="page"] {
+  background: var(--veil-10) !important;
+  color: var(--sidebar-fg-strong) !important;
+  border-color: var(--veil-20) !important;
+}
+
 /* Modern Buttons */
 .btn {
   display: inline-flex;

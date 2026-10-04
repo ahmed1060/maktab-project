@@ -21,6 +21,7 @@ export const ar = {
         failed_fetch_data: "فشل في جلب البيانات",
         requests: "الطلبات",
         close: "إغلاق",
+        skip_to_content: "تخطَّ إلى المحتوى",
         open_menu: "فتح القائمة",
         remove: "إزالة",
         change_person: "اختر شخصًا آخر",
