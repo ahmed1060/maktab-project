@@ -53,6 +53,23 @@ The app ID is `com.shsd.nizmo`; change it in `capacitor.config.ts`,
 `android/app/build.gradle` and the Xcode project before the first store
 upload, since the stores never let it change afterwards.
 
+### Icon, splash and native touches
+
+- **Icon and splash** are the site's own mark (`app/icon.svg`): the white "N"
+  on the indigo-to-pink gradient, on the site's light and dark backgrounds.
+  `npm run assets` draws the sources into `assets/`
+  (`scripts/draw-assets.mjs`) and writes every Android and iOS size from
+  them. Run it again after changing the mark; the generated files are
+  committed. It also reformats `android/app/src/main/AndroidManifest.xml`;
+  that change is only spacing and needn't be kept.
+- **Back button (Android):** goes back a page; from the first page it puts the
+  app in the background instead of closing it (`MainActivity.java`).
+- **No connection:** the app shows its own page (`www/index.html`) instead of
+  the web view's error, and "Try again" goes back to the site. The site's
+  address is written beside it (`www/site.js`) each time the config is read.
+- **Links to other sites** open in the phone's browser, not inside the app
+  (Capacitor's default for any address other than the site's).
+
 ### Trying it
 
 1. Give the company a package with the **Attendance – Mobile App** add-on,
