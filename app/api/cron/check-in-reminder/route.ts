@@ -8,8 +8,9 @@ import { isNextInternalError } from "@/lib/next-internal-error"
 import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 // "You haven't checked in" reminders, and the push outbox (ATTENDANCE_PLAN.md
-// §13.4). Every five minutes, from .github/workflows/check-in-reminder.yml:
-// Vercel's Hobby plan runs crons at most daily, and a reminder needs minutes.
+// §13.4). Every five minutes, from an outside scheduler (cron-job.org; see
+// mobile/README.md, "Reminders"): Vercel's Hobby plan runs crons at most
+// daily, and a reminder needs minutes.
 // Each run sends what is due; a reminder goes once per person and day
 // however often this runs.
 //
