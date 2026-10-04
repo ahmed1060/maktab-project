@@ -1096,7 +1096,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     style={{
                                         marginTop: '0.75rem',
                                         background: 'transparent',
-                                        color: status === 'ARCHIVED' ? 'var(--brand-primary-text)' : 'var(--danger-solid)',
+                                        color: status === 'ARCHIVED' ? 'var(--brand-primary-text)' : 'var(--danger-fg-strong)',
                                         border: `1px solid ${status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-border)'}`,
                                         fontSize: '0.85rem',
                                     }}

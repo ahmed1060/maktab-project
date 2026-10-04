@@ -648,7 +648,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             padding: '0.6rem 1rem',
                                             background: 'none',
                                             border: 'none',
-                                            color: 'var(--danger-solid)',
+                                            color: 'var(--danger-fg-strong)',
                                             fontSize: '0.9rem',
                                             fontWeight: 'bold',
                                             cursor: 'pointer',

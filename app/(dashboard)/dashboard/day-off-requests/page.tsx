@@ -642,7 +642,7 @@ export default function DayOffRequestsPage() {
                                 </ResponsiveContainer>
                             </div>
                             <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--ok-solid)' }}>{formatDays(userCredit)}</p>
+                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--ok-fg-strong)' }}>{formatDays(userCredit)}</p>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('remaining_credit' as any)}</p>
                             </div>
                         </div>
@@ -704,7 +704,7 @@ export default function DayOffRequestsPage() {
                                 />
                                 <div style={{
                                     fontSize: '0.75rem',
-                                    color: reqReason.length >= 100 ? 'var(--danger-solid)' : 'var(--text-faint)',
+                                    color: reqReason.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)',
                                     textAlign: locale === 'ar' ? 'left' : 'right',
                                     marginTop: '0.25rem'
                                 }}>
@@ -747,7 +747,7 @@ export default function DayOffRequestsPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                 <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-soft)' }}>{t('deduct_from_label' as any)}</label>
                                 {(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) && (
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--danger-solid)', fontWeight: 'bold', background: 'var(--danger-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--danger-fg-strong)', fontWeight: 'bold', background: 'var(--danger-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
                                         ⚠️ {t('insufficient_credit' as any) || 'Insufficient Credit'}
                                     </span>
                                 )}

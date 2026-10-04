@@ -796,7 +796,7 @@ export default function EmployeeHistoryPage() {
                                             </div>
                                         )}
                                         {isTerminal(adj.status) && (
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-solid)', fontWeight: 'bold', flexShrink: 0 }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-fg-strong)', fontWeight: 'bold', flexShrink: 0 }}>
                                                 {adj.status === 'REVERSED'
                                                     ? t('reversed_label' as any)
                                                     : t('rolled_back_label' as any)}

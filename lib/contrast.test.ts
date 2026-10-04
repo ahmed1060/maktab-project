@@ -154,6 +154,47 @@ describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
     })
 })
 
+describe("text and controls the audit measured below AA (4 October 2026, H2)", () => {
+    const screens = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+        e.isDirectory() ? screens(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+    const SCREENS = [...screens("app"), ...screens("components")]
+
+    it("white on a filled button is 4.5:1 across its whole gradient (was 4.47 and 4.23:1)", () => {
+        expect(CSS).toMatch(/\.btn-primary \{\s*background: linear-gradient\(135deg, var\(--button-from\) 0%, var\(--button-to\) 100%\)/)
+        for (const t of ["--button-from", "--button-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
+    })
+
+    it("white on the sign-in button is 4.5:1 (was 3.7:1)", () => {
+        for (const t of ["--hero-from", "--hero-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
+    })
+
+    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
+        it(`${themeName}: a brand-coloured link is 4.5:1 on the surface`, () => {
+            expect(ratio(tokens["--link"], tokens["--surface"])).toBeGreaterThanOrEqual(4.5)
+        })
+        it(`${themeName}: a field's outline is 3:1 on the surface and the page (was 1.4:1)`, () => {
+            for (const bg of ["--surface", "--page-bg"]) expect(ratio(tokens["--field-border"], tokens[bg])).toBeGreaterThanOrEqual(3)
+        })
+    }
+
+    it("fields draw their outline in --field-border", () => {
+        expect(CSS).toMatch(/\.input \{[^}]*border: 1px solid var\(--field-border\);/)
+    })
+
+    it("no text is coloured with a status colour's fill (-solid), only its text colour (-fg)", () => {
+        // Red for errors, late dates and delete links, and green, amber and
+        // blue status text, used the fill colours, 2.2 to 3.8:1 on white.
+        const found = SCREENS.flatMap(f => [...readFileSync(f, "utf8").matchAll(/(?<![A-Za-z])color:[^,}\n]*var\(--(danger|ok|warn|info)-solid\)/g)].map(() => f))
+        expect(found).toEqual([])
+    })
+
+    it("the sidebar's section headings use the sidebar's own text colour (were 1.2 to 3.7:1)", () => {
+        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
+        expect(shell).not.toContain("textTransform: 'uppercase', color: 'var(--text-faint)'")
+        expect(shell.split("textTransform: 'uppercase', color: 'var(--sidebar-fg)'").length - 1).toBe(3)
+    })
+})
+
 describe("the two themes are actually different", () => {
     it("inverts the surface scale rather than reusing it", () => {
         expect(luminance(DARK["--surface"])).toBeLessThan(luminance(LIGHT["--surface"]))
@@ -193,6 +234,7 @@ describe("the two themes are actually different", () => {
             "--text-on-accent", "--hero-from", "--hero-to",
             "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong",
             "--paper", "--ink-on-paper",
+            "--button-from", "--button-to",
         ])
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))

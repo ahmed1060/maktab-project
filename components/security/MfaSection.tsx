@@ -164,7 +164,7 @@ export default function MfaSection() {
                     {mfaEnabled ? (isAr ? 'مفعّلة' : 'Enabled') : (isAr ? 'غير مفعّلة' : 'Not enabled')}
                 </div>
 
-                {error && <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-solid)' }}>{error}</div>}
+                {error && <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-fg-strong)' }}>{error}</div>}
 
                 {mfaEnabled ? (
                     isProtectedActor ? (
@@ -174,7 +174,7 @@ export default function MfaSection() {
                                 : 'MFA is enabled and required for this account. It cannot be disabled.'}
                         </p>
                     ) : !disabling ? (
-                        <button className="btn" onClick={() => setDisabling(true)} style={{ background: 'transparent', border: '1px solid var(--danger-solid)', color: 'var(--danger-solid)' }}>
+                        <button className="btn" onClick={() => setDisabling(true)} style={{ background: 'transparent', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg-strong)' }}>
                             {isAr ? 'إيقاف المصادقة الثنائية' : 'Disable two-factor authentication'}
                         </button>
                     ) : (
@@ -249,7 +249,7 @@ export default function MfaSection() {
                             <button
                                 onClick={revokeAllDevices}
                                 disabled={revokingAll}
-                                style={{ background: 'none', border: 'none', color: 'var(--danger-solid)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingAll ? 'not-allowed' : 'pointer' }}
+                                style={{ background: 'none', border: 'none', color: 'var(--danger-fg-strong)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingAll ? 'not-allowed' : 'pointer' }}
                             >
                                 {revokingAll ? (isAr ? 'جارٍ الإلغاء...' : 'Revoking...') : (isAr ? 'إلغاء الكل' : 'Revoke all')}
                             </button>
@@ -278,7 +278,7 @@ export default function MfaSection() {
                                     <button
                                         onClick={() => revokeDevice(device.id)}
                                         disabled={revokingId === device.id}
-                                        style={{ background: 'none', border: 'none', color: 'var(--danger-solid)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingId === device.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--danger-fg-strong)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingId === device.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
                                     >
                                         {revokingId === device.id ? (isAr ? 'جارٍ...' : '...') : (isAr ? 'إلغاء' : 'Revoke')}
                                     </button>

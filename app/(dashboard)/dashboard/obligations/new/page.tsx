@@ -171,11 +171,11 @@ export default function NewObligationPage() {
                         maxLength={100}
                     />
                     {fieldErrors.title && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.title}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {title.length}/100
                     </div>
                 </div>
@@ -194,11 +194,11 @@ export default function NewObligationPage() {
                         maxLength={500}
                     />
                     {fieldErrors.description && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.description}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {description.length}/500
                     </div>
                 </div>
@@ -254,7 +254,7 @@ export default function NewObligationPage() {
                         )}
                     </div>
                     {fieldErrors.assigneeIds && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.assigneeIds}
                         </div>
                     )}

@@ -185,11 +185,26 @@
      it sits on (WCAG 1.4.11), in each theme. */
   --focus-ring: #4338ca;
 
+  /* Filled buttons: white text at least 4.5:1 across the whole gradient (was
+     --primary to --accent, 4.47 and 4.23:1). Theme-invariant, like --primary:
+     the text on them is white in both themes. */
+  --button-from: #4f46e5;
+  --button-to: #7c3aed;
+
+  /* A text link in the brand colour, at least 4.5:1 on the surface. */
+  --link: #4f46e5;
+
+  /* A field's outline, at least 3:1 against the surface it sits on (WCAG
+     1.4.11): the border is what shows where a field is. Was indigo at 25%,
+     1.4:1. */
+  --field-border: #7c8595;
+
   /* The login hero gradient. Its own pair rather than reusing the brand tokens,
      because it is a decorative statement on the sign-in page and D2 may well
      decide it stays exactly as it is on a dark ground — a decision worth making
      once here rather than eleven times in that file. */
-  --hero-from: #667eea;
+  /* Was #667eea: white on it, the sign-in button, was 3.7:1. */
+  --hero-from: #4f46e5;
   --hero-to: #764ba2;
 
   /* Glass, as tokens rather than literals in the utilities below. The current
@@ -691,7 +706,7 @@ body::before {
      colour, so the only rows that looked broken were the ones somebody had
      actually typed in. */
   background: var(--panel-85);
-  border: 1px solid rgba(99, 102, 241, 0.25); /* Subtle Indigo border for better visibility */
+  border: 1px solid var(--field-border);
   border-radius: 1rem;
   font-family: inherit;
   font-size: 1rem;
@@ -793,7 +808,7 @@ html[dir="rtl"] select.input {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, var(--button-from) 0%, var(--button-to) 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
 }
@@ -1067,6 +1082,8 @@ input::-webkit-credentials-auto-fill-button {
     --accent-deepest: #b3a6f2;
     --brand-primary-text: #a5b4fc;
     --focus-ring: #a5b4fc;
+    --link: #a5b4fc;
+    --field-border: #6e7681;
 
     /* The fills again: white on them at least 4.5:1, and the shape itself
        at least 3:1 against the dark surfaces, so a badge doesn't sink into

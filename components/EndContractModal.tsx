@@ -221,7 +221,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                                 </div>
 
                                 {previewError && (
-                                    <p style={{ margin: 0, color: 'var(--danger-solid)', fontSize: '0.85rem' }}>{previewError}</p>
+                                    <p style={{ margin: 0, color: 'var(--danger-fg-strong)', fontSize: '0.85rem' }}>{previewError}</p>
                                 )}
 
                                 {!previewError && preview && (

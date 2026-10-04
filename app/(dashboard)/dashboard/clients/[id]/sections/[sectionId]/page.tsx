@@ -676,7 +676,7 @@ export default function SectionNotesPage() {
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 id={noteDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('add_note_button' as any)}</h2>
-                                    <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? 'var(--danger-fg-strong)' : 'var(--text-soft)' }}>
                                         {newNoteContent.length}/{MAX_CHARS}
                                     </span>
                                 </div>
@@ -703,7 +703,7 @@ export default function SectionNotesPage() {
                                             autoFocus
                                         />
                                         {newNoteContent.length > MAX_CHARS && (
-                                            <p style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            <p style={{ color: 'var(--danger-fg-strong)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
                                                 {t('note_limit_exceeded' as any)}
                                             </p>
                                         )}
@@ -742,7 +742,7 @@ export default function SectionNotesPage() {
                                                             <span style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
-                                                        <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -896,7 +896,7 @@ export default function SectionNotesPage() {
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                     <h2 id={editNoteDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
-                                    <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? 'var(--danger-fg-strong)' : 'var(--text-soft)' }}>
                                         {editNoteContent.length}/{MAX_CHARS}
                                     </span>
                                 </div>
@@ -923,7 +923,7 @@ export default function SectionNotesPage() {
                                             autoFocus
                                         />
                                         {editNoteContent.length > MAX_CHARS && (
-                                            <p style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            <p style={{ color: 'var(--danger-fg-strong)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
                                                 {t('note_limit_exceeded' as any)}
                                             </p>
                                         )}
@@ -947,7 +947,7 @@ export default function SectionNotesPage() {
                                                                     {typeof url === 'string' ? url.split('/').pop() : url.name}
                                                                 </div>
                                                             </div>
-                                                            <button aria-label={t('remove' as any)} type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                            <button aria-label={t('remove' as any)} type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                         </div>
                                                     )
                                                 })}
@@ -983,7 +983,7 @@ export default function SectionNotesPage() {
                                                             <span style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
-                                                        <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
                                                 ))}
                                             </div>

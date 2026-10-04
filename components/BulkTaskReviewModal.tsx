@@ -116,7 +116,7 @@ export default function BulkTaskReviewModal({
                                                 </button>
                                             </div>
                                             {bt.validationErrors?.title && (
-                                                <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                     {bt.validationErrors.title.map((err: string, i: number) => (
                                                         <div key={i}>• {err}</div>
                                                     ))}
@@ -185,7 +185,7 @@ export default function BulkTaskReviewModal({
                                                 </button>
                                             </div>
                                             {bt.validationErrors?.description && (
-                                                <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                     {bt.validationErrors.description.map((err: string, i: number) => (
                                                         <div key={i}>• {err}</div>
                                                     ))}
@@ -235,7 +235,7 @@ export default function BulkTaskReviewModal({
                                                 <div style={{
                                                     flex: 1,
                                                     opacity: bt.isInvalid ? 0.6 : 1,
-                                                    color: bt.unresolvedUsernames.length > 0 ? 'var(--danger-solid)' : 'inherit',
+                                                    color: bt.unresolvedUsernames.length > 0 ? 'var(--danger-fg-strong)' : 'inherit',
                                                     fontSize: '0.85rem',
                                                     background: 'var(--veil-20)',
                                                     padding: '0.5rem',
@@ -248,7 +248,7 @@ export default function BulkTaskReviewModal({
                                                     {bt.resolvedNames && bt.resolvedNames.length > 0 ? bt.resolvedNames.join(', ') : bt.usernamesRaw || t('no_assignees')}
                                                 </div>
                                                 {bt.validationErrors?.assignees && (
-                                                    <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                    <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                         {bt.validationErrors.assignees.map((err: string, i: number) => (
                                                             <div key={i}>• {err}</div>
                                                         ))}
@@ -277,7 +277,7 @@ export default function BulkTaskReviewModal({
                                                             cursor: 'pointer',
                                                             fontSize: '1.2rem',
                                                             fontWeight: 'bold',
-                                                            color: 'var(--info-solid)',
+                                                            color: 'var(--info-fg)',
                                                             transition: 'all 0.2s'
                                                         }}
                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--veil-60)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
@@ -306,7 +306,7 @@ export default function BulkTaskReviewModal({
                                                             cursor: 'pointer',
                                                             fontSize: '1.2rem',
                                                             fontWeight: 'bold',
-                                                            color: 'var(--danger-solid)',
+                                                            color: 'var(--danger-fg-strong)',
                                                             transition: 'all 0.2s'
                                                         }}
                                                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--veil-60)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
@@ -459,7 +459,7 @@ export default function BulkTaskReviewModal({
                                                                                 style={{
                                                                                     border: 'none',
                                                                                     background: 'var(--danger-bg)',
-                                                                                    color: 'var(--danger-solid)',
+                                                                                    color: 'var(--danger-fg-strong)',
                                                                                     borderRadius: '50%',
                                                                                     width: '20px',
                                                                                     height: '20px',
@@ -522,7 +522,7 @@ export default function BulkTaskReviewModal({
                                                 />
                                             </div>
                                             {bt.validationErrors?.deadline && (
-                                                <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                     {bt.validationErrors.deadline.map((err: string, i: number) => (
                                                         <div key={i}>• {err}</div>
                                                     ))}
@@ -595,7 +595,7 @@ export default function BulkTaskReviewModal({
                                                     />
                                                 )}
                                                 {bt.validationErrors?.vendor && (
-                                                    <div style={{ color: 'var(--danger-solid)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
+                                                    <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                         {bt.validationErrors.vendor.map((err: string, i: number) => (
                                                             <div key={i}>• {err}</div>
                                                         ))}

@@ -112,7 +112,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                         {side === 'superAdmin' && r.status === 'OPEN' && (
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                                 <button type="button" onClick={() => answer(r, 'DONE')} style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }}>{t('role_changes_done')}</button>
-                                <button type="button" onClick={() => setDeclining(r)} style={{ background: 'none', border: 'none', color: 'var(--danger-solid)', cursor: 'pointer', padding: 0 }}>{t('role_changes_decline')}</button>
+                                <button type="button" onClick={() => setDeclining(r)} style={{ background: 'none', border: 'none', color: 'var(--danger-fg-strong)', cursor: 'pointer', padding: 0 }}>{t('role_changes_decline')}</button>
                             </div>
                         )}
                     </div>

@@ -620,7 +620,7 @@ export default function PayrollRegisterPage() {
                             <div key={r.userId} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.88rem', flexWrap: 'wrap' }}>
                                 <span>{r.name}</span>
                                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                    {r.deductions > 0 && <span style={{ color: 'var(--danger-solid)' }}>−{money(r.deductions)}</span>}
+                                    {r.deductions > 0 && <span style={{ color: 'var(--danger-fg-strong)' }}>−{money(r.deductions)}</span>}
                                     {r.overtime > 0 && <span style={{ marginInlineStart: '0.6rem' }}>+{money(r.overtime)}</span>}
                                 </span>
                             </div>
@@ -696,7 +696,7 @@ export default function PayrollRegisterPage() {
                                         )}
                                         {money(entry.totals.netMinor)}
                                         {entry.totals.carriedMinor > 0 && (
-                                            <span style={{ color: 'var(--danger-solid)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
+                                            <span style={{ color: 'var(--danger-fg-strong)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
                                                 +{money(entry.totals.carriedMinor)} {t('payroll_carried')}
                                             </span>
                                         )}
@@ -708,7 +708,7 @@ export default function PayrollRegisterPage() {
                                         {entry.lines.map((line, i) => (
                                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                                                 <span>{line.source === 'ATTENDANCE' && line.sourceId ? t(`attpay_line_${line.sourceId}` as any) : line.label}</span>
-                                                <span style={{ fontVariantNumeric: 'tabular-nums', color: line.kind === 'DEDUCTION' ? 'var(--danger-solid)' : 'inherit' }}>
+                                                <span style={{ fontVariantNumeric: 'tabular-nums', color: line.kind === 'DEDUCTION' ? 'var(--danger-fg-strong)' : 'inherit' }}>
                                                     {line.kind === 'DEDUCTION' ? '−' : ''}{money(line.amountMinor)}
                                                 </span>
                                             </div>

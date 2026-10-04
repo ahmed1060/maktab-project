@@ -461,7 +461,7 @@ export default function LoginPage() {
                                     <button
                                         type="button"
                                         onClick={() => { setMode('forgot'); setForgotEmail(email); setError('') }}
-                                        style={{ background: 'none', border: 'none', color: 'var(--hero-from)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--link)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
                                     >
                                         {isAr ? 'هل نسيت كلمة المرور؟' : 'Forgot your password?'}
                                     </button>
@@ -624,7 +624,7 @@ export default function LoginPage() {
                                         width: '100%',
                                         padding: '0.6rem',
                                         background: 'transparent',
-                                        color: 'var(--hero-from)',
+                                        color: 'var(--link)',
                                         border: 'none',
                                         fontSize: '0.85rem',
                                         fontWeight: '600',

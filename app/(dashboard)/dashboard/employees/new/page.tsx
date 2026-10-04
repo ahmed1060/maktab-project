@@ -174,7 +174,7 @@ export default function NewEmployeePage() {
                             placeholder={locale === 'ar' ? 'جون' : "John"}
                         />
                         {fieldErrors.firstName && (
-                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.firstName}
                             </div>
                         )}
@@ -197,7 +197,7 @@ export default function NewEmployeePage() {
                             placeholder={locale === 'ar' ? 'دو' : "Doe"}
                         />
                         {fieldErrors.lastName && (
-                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.lastName}
                             </div>
                         )}
@@ -221,7 +221,7 @@ export default function NewEmployeePage() {
                         placeholder="john@example.com"
                     />
                     {fieldErrors.email && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.email}
                         </div>
                     )}
@@ -279,7 +279,7 @@ export default function NewEmployeePage() {
                         )}
                     </button>
                     {fieldErrors.password && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.password}
                         </div>
                     )}
