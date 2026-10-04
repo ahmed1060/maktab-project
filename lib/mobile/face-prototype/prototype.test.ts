@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { challenges, eyeAspectRatio, frontal, startLiveness, step, turn, LIMITS, type Landmarks, type Observation } from "./liveness"
+import { baselineOf, challenges, eyeAspectRatio, frontal, progressOf, startLiveness, step, turn, LIMITS, type Landmarks, type LivenessState, type Observation } from "./liveness"
 import { closest, distance, matches, oneFace, scoreOf, MATCH_DISTANCE } from "./match"
 import { Vault, type Store } from "./vault"
 
@@ -22,6 +22,18 @@ function face(turned = 0, open = 0.3): Landmarks {
 const seen = (l: Landmarks | null, at: number, faces = l ? 1 : 0): Observation => ({ faces, landmarks: l, at })
 
 describe("prototype liveness", () => {
+    /** Runs frames through the challenge; returns the state and what was said and cued at each. */
+    const run = (s: LivenessState, frames: [Landmarks | null, number][]) => {
+        const said: string[] = [], cues: (string | undefined)[] = []
+        for (const [l, at] of frames) {
+            const r = step(s, seen(l, at))
+            s = r.state
+            said.push(r.prompt)
+            cues.push(r.cue)
+        }
+        return { s, said, cues }
+    }
+
     it("reads how open the eyes are and where the nose points", () => {
         expect(eyeAspectRatio(face(0, 0.3).slice(36, 42))).toBeCloseTo(0.3, 2)
         expect(eyeAspectRatio(face(0, 0.1).slice(36, 42))).toBeCloseTo(0.1, 2)
@@ -32,30 +44,76 @@ describe("prototype liveness", () => {
         expect(frontal(face(0, 0.1))).toBe(false)
     })
 
-    it("passes a person who turns, comes back and blinks, in the order asked", () => {
-        let s = startLiveness(["TURN", "BLINK"], 0)
-        const frames: [Landmarks, string][] = [
-            [face(0), "TURN_HEAD"], [face(0.3), "LOOK_BACK"], [face(0.02), "FACE_CAMERA"],
-            [face(0), "BLINK"], [face(0, 0.1), "BLINK"], [face(0, 0.3), "HOLD_STILL"],
-        ]
-        frames.forEach(([l, prompt], i) => {
-            const r = step(s, seen(l, i * 100))
-            expect(r.prompt).toBe(prompt)
-            s = r.state
-        })
+    it("passes a person who turns, comes back, and closes and opens their eyes, in the order asked", () => {
+        const { s, said } = run(startLiveness(["TURN", "BLINK"], 0), [
+            [face(0), 0], [face(0.3), 100], [face(0.02), 200],
+            [face(0), 300], [face(0, 0.1), 400], [face(0, 0.3), 500],
+        ])
+        expect(said).toEqual(["TURN_HEAD", "LOOK_BACK", "FACE_CAMERA", "BLINK", "OPEN_EYES", "HOLD_STILL"])
+        expect(s).toMatchObject({ done: true, failed: null, completed: ["TURN", "BLINK"] })
+    })
+
+    it("judges eyes against the person's own: narrow eyes can face the camera and close", () => {
+        // Found on a phone: a fixed 0.25 for open eyes was out of reach for some people.
+        const baseline = baselineOf([0.17, 0.18, 0.19, 0.18, 0.4])
+        expect(baseline).toBeCloseTo(0.18)
+        const { s } = run(startLiveness(["BLINK"], 0, baseline), [[face(0, 0.18), 0], [face(0, 0.11), 100], [face(0, 0.17), 200]])
         expect(s).toMatchObject({ done: true, failed: null })
     })
 
-    it("fails a still photo: nothing changes until time runs out", () => {
+    it("counts a gentle turn, and keeps waiting while the turned face is out of view", () => {
+        const { s, cues } = run(startLiveness(["TURN"], 0), [
+            [face(0), 0], [face(0.16), 100], [null, 600], [null, 3000], [face(0.01), 3500],
+        ])
+        expect(cues).toEqual([undefined, "HALF", undefined, undefined, "STEP"])
+        expect(s).toMatchObject({ done: true, failed: null })
+    })
+
+    it("doesn't count time with the face out of view against the step (review on #30)", () => {
+        // Half a turn, then the detector loses the turned face for longer than a step's time.
+        const lost = Array.from({ length: 12 }, (_, i): [Landmarks | null, number] => [null, 200 + i * 1000])
+        const { s, cues } = run(startLiveness(["TURN"], 0), [[face(0), 0], [face(0.2), 100], ...lost, [face(0), 12_500]])
+        expect(cues).not.toContain("RETRY")
+        expect(s).toMatchObject({ done: true, failed: null, tries: 1 })
+    })
+
+    it("tries a slow step again on its own, instead of failing the whole check", () => {
+        const order = ["TURN", "BLINK"] as const
+        let { s } = run(startLiveness([...order], 0), [[face(0), 0], [face(0.3), 100], [face(0), 200], [face(0), 300]])
+        expect(s.completed).toEqual(["TURN"])
+        const late = run(s, [[face(0), 300 + LIMITS.stepMs + 1]])
+        expect(late.cues).toEqual(["RETRY"])
+        expect(late.s).toMatchObject({ failed: null, tries: 2, completed: ["TURN"] })
+        s = run(late.s, [[face(0, 0.1), 9000], [face(0, 0.3), 9100]]).s
+        expect(s).toMatchObject({ done: true, failed: null })
+        expect(progressOf(s, seen(face(0), 9100), order).steps.map(x => x.done)).toEqual([true, true])
+    })
+
+    it("fails a still photo: nothing changes through every try of the step", () => {
         let s = startLiveness(["BLINK", "TURN"], 0)
-        for (let at = 0; at <= LIMITS.stepMs + 1000; at += 500) s = step(s, seen(face(0), at)).state
+        for (let at = 0; at <= (LIMITS.triesPerStep + 1) * LIMITS.stepMs; at += 500) s = step(s, seen(face(0), at)).state
         expect(s.failed).toBe("TIMEOUT")
         expect(s.done).toBe(false)
+    })
+
+    it("fails when the whole challenge runs past its limit, however the steps go", () => {
+        const s = run(startLiveness(["TURN", "BLINK"], 0), [[face(0), 0], [face(0), LIMITS.totalMs + 1]]).s
+        expect(s.failed).toBe("TIMEOUT")
     })
 
     it("fails when a second face appears at any point", () => {
         const s = step(startLiveness(["TURN", "BLINK"], 0), seen(face(0), 10, 2)).state
         expect(s.failed).toBe("FACES")
+    })
+
+    it("shows the steps, the time left and how far the head is turned", () => {
+        const order = ["TURN", "BLINK"] as const
+        const s = run(startLiveness([...order], 0), [[face(0), 0]]).s
+        const p = progressOf(s, seen(face(LIMITS.turned), LIMITS.stepMs / 2), order)
+        expect(p.steps).toEqual([{ challenge: "TURN", done: false, current: true }, { challenge: "BLINK", done: false, current: false }])
+        expect(p.timeLeft).toBeCloseTo(0.5)
+        expect(p.turnAmount).toBeCloseTo(1)
+        expect(progressOf(s, seen(null, 10), order).turnAmount).toBeNull()
     })
 
     it("chooses the order at random", () => {

@@ -1,4 +1,4 @@
-import type { Prompt } from "./liveness"
+import type { Cue, Progress, Prompt } from "./liveness"
 
 /**
  * The camera, as the prototype sees it: a live video of the front camera,
@@ -8,6 +8,10 @@ import type { Prompt } from "./liveness"
 export interface Camera {
     video: HTMLVideoElement
     say(prompt: Prompt | "LOADING" | "WORKING"): void
+    /** The steps, the time left on this one and the live readings, during the challenge; null clears them. */
+    show?(progress: Progress | null): void
+    /** A step half or wholly done, or started again: felt and heard, not only read. */
+    cue?(cue: Cue): void
     close(): void
     /** Rejects with FACE_CANCELLED when the person closes the camera. */
     cancelled: Promise<never>

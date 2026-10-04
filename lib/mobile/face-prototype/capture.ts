@@ -1,4 +1,4 @@
-import { challenges, frontal, startLiveness, step } from "./liveness"
+import { baselineOf, challenges, frontal, openness, progressOf, startLiveness, step, turn, LIMITS } from "./liveness"
 import { oneFace, type Descriptor } from "./match"
 import { look } from "./engine"
 import { snapshot, type Camera } from "./camera"
@@ -16,11 +16,21 @@ export type Captured = {
     frame: string | null
 }
 
-const TICK_MS = 120
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+/** Looks straight at the camera that set the person's own open-eye level. */
+const BASELINE_LOOKS = 5
+/** Eyes this shut aren't a baseline: someone squinting or mid-blink at the start. */
+const BASELINE_MIN = 0.12
 
 /**
- * One capture: a frontal look, the liveness challenge, and another frontal
+ * Lets the screen draw between looks without a fixed pause: a blink is over in
+ * a few hundred milliseconds, and a pause of its own made most of them fall
+ * between two looks.
+ */
+const nextFrame = () => new Promise<void>(r => (typeof requestAnimationFrame === "function" ? requestAnimationFrame(() => r()) : setTimeout(r, 0)))
+
+/**
+ * One capture: a frontal look (the photo, the first descriptor, and the
+ * person's own open-eye level), the liveness challenge, and another frontal
  * look. Both looks must be of the same face, so the challenge can't be done
  * by one person and the match by another. Stops when the person closes the
  * camera.
@@ -32,23 +42,37 @@ export async function capture(api: FaceApi, camera: Camera, random: () => number
         const descriptors: Descriptor[] = []
         let photo: string | null = null
         let frame: string | null = null
-        // A frontal look first: the photo and the first descriptor.
-        while (!stop && descriptors.length === 0) {
-            const l = await look(api, camera.video, true)
+        const readings: number[] = []
+        // A new attempt starts with nothing ticked: the last attempt's steps and timer would mislead (review on #30).
+        camera.show?.(null)
+        // Looking straight at the camera first: the photo and descriptor from the first good look, the eye level from a few.
+        while (!stop && readings.length < BASELINE_LOOKS) {
+            const l = await look(api, camera.video, descriptors.length === 0)
             if (l.faces > 1) camera.say("ONE_FACE")
-            else if (l.landmarks && l.descriptor && frontal(l.landmarks)) {
-                descriptors.push(l.descriptor)
-                photo = snapshot(camera.video)
+            // Facing the camera with eyes not shut; how open is this person's own measure, not a fixed one.
+            else if (l.landmarks && Math.abs(turn(l.landmarks) - 0.5) <= LIMITS.facing && openness(l.landmarks) >= BASELINE_MIN
+                && (descriptors.length > 0 || l.descriptor)) {
+                if (descriptors.length === 0) {
+                    descriptors.push(l.descriptor!)
+                    photo = snapshot(camera.video)
+                }
+                readings.push(openness(l.landmarks))
+                camera.say("HOLD_STILL")
             } else camera.say("FACE_CAMERA")
-            await sleep(TICK_MS)
+            await nextFrame()
         }
-        let state = startLiveness(challenges(random), Date.now())
+        const baseline = baselineOf(readings)
+        const order = challenges(random)
+        let state = startLiveness(order, Date.now(), baseline)
         while (!stop && !state.done && !state.failed) {
             const l = await look(api, camera.video, false)
-            const r = step(state, { faces: l.faces, landmarks: l.landmarks, at: Date.now() })
+            const o = { faces: l.faces, landmarks: l.landmarks, at: Date.now() }
+            const r = step(state, o)
             state = r.state
             camera.say(r.prompt)
-            await sleep(TICK_MS)
+            camera.show?.(progressOf(state, o, order))
+            if (r.cue) camera.cue?.(r.cue)
+            await nextFrame()
         }
         frame = snapshot(camera.video)
         if (!state.done) return { live: false, descriptors: [], photo, frame }
@@ -57,16 +81,17 @@ export async function capture(api: FaceApi, camera: Camera, random: () => number
         const deadline = Date.now() + 5000
         while (!stop && Date.now() < deadline) {
             const l = await look(api, camera.video, true)
-            if (l.landmarks && l.descriptor && frontal(l.landmarks)) {
+            if (l.landmarks && l.descriptor && frontal(l.landmarks, baseline)) {
                 descriptors.push(l.descriptor)
                 frame = snapshot(camera.video)
                 break
             }
             camera.say("FACE_CAMERA")
-            await sleep(TICK_MS)
+            await nextFrame()
         }
         if (descriptors.length < 2 || !oneFace(descriptors)) return { live: false, descriptors: [], photo, frame }
         return { live: true, descriptors, photo, frame }
     }
     return Promise.race([run(), cancelled])
 }
+
