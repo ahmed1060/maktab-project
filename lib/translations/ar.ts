@@ -1045,6 +1045,8 @@ export const ar = {
         used_credit: "الرصيد المستخدم",
         credit_overview: "نظرة عامة على الرصيد",
         select_date: "اختر التاريخ",
+        calendar_prev_month: "الشهر السابق",
+        calendar_next_month: "الشهر التالي",
         day_off_type: "نوع الطلب",
         request_submitted_success: "تم تقديم الطلب بنجاح!",
         failed_submit_request: "فشل تقديم الطلب",

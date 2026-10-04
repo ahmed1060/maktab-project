@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
+import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
 
 interface DateRangePickerProps {
     dateFrom: string
@@ -21,6 +22,14 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
     const [selectingFrom, setSelectingFrom] = useState(true)
     const containerRef = useRef<HTMLDivElement>(null)
     const portalRef = useRef<HTMLDivElement>(null)
+    const openerId = useId()
+    const isDayDisabled = (iso: string) => !!((minDate && iso < minDate) || (maxDate && iso > maxDate))
+    const keys = usePickerKeyboard({ isOpen, close: () => setIsOpen(false), currentMonth, setCurrentMonth, isDisabled: isDayDisabled, rtl: locale === 'ar', popupRef: portalRef })
+    const toggleOpen = () => {
+        if (isOpen) return setIsOpen(false)
+        keys.opened(startDay(dateFrom || null, minDate ?? null, maxDate ?? null))
+        setIsOpen(true)
+    }
 
     useEffect(() => {
         const checkMobile = () => {
@@ -80,6 +89,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
 
     const handleDateClick = (date: Date) => {
         const dateStr = formatToLocalISO(date)
+        if (isDayDisabled(dateStr)) return
 
         if (selectingFrom) {
             onChange(dateStr, dateStr)
@@ -124,7 +134,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
 
     const pickerContent = (
         <div
-            ref={portalRef}
+            {...keys.popupProps}
+            aria-label={label || t('filter_by_date_range' as any)}
             onClick={(e) => e.stopPropagation()}
             style={{
                 position: 'relative',
@@ -147,6 +158,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
             {/* Month Navigation */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexDirection: 'row' }}>
                 <button
+                    type="button"
+                    aria-label={t(locale === 'ar' ? 'calendar_next_month' : 'calendar_prev_month' as any)}
                     onClick={(e) => { e.stopPropagation(); setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (locale === 'ar' ? -1 : 1))); }}
                     style={{
                         background: 'none',
@@ -163,6 +176,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                     {monthYear}
                 </div>
                 <button
+                    type="button"
+                    aria-label={t(locale === 'ar' ? 'calendar_prev_month' : 'calendar_next_month' as any)}
                     onClick={(e) => { e.stopPropagation(); setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1))); }}
                     style={{
                         background: 'none',
@@ -187,7 +202,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
             </div>
 
             {/* Calendar Days */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
+            <div {...keys.gridProps} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
                 {days.map((date, index) => {
                     if (!date) {
                         return <div key={`empty-${index}`} />
@@ -198,12 +213,13 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                     const isEnd = isEndDate(date)
                     const isToday = date.toDateString() === new Date().toDateString()
                     const dateStr = formatToLocalISO(date)
-                    const isDisabled = (minDate && dateStr < minDate) || (maxDate && dateStr > maxDate)
+                    const isDisabled = isDayDisabled(dateStr)
 
                     return (
                         <button
                             key={index}
-                            disabled={!!isDisabled}
+                            type="button"
+                            {...keys.dayProps(dateStr, isStart || isEnd)}
                             onClick={(e) => { e.stopPropagation(); handleDateClick(date); }}
                             style={{
                                 padding: '0.5rem',
@@ -215,7 +231,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                                 fontWeight: isStart || isEnd || isToday ? '600' : '400',
                                 transition: 'all 0.2s',
-                                outline: isToday && !isStart && !isEnd ? '2px solid var(--warn-solid)' : 'none',
+                                // Today's ring is drawn inside, so the outline stays free for keyboard focus.
+                                boxShadow: isToday && !isStart && !isEnd ? 'inset 0 0 0 2px var(--warn-solid)' : 'none',
                                 opacity: isDisabled ? 0.5 : 1
                             }}
                         >
@@ -241,6 +258,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {(dateFrom || dateTo) && (
                         <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handleReset(); }}
                             style={{
                                 background: 'var(--danger-bg-subtle)',
@@ -258,6 +276,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                         </button>
                     )}
                     <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                         style={{
                             background: 'var(--info-fill)',
@@ -280,12 +299,20 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
 
     return (
         <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
+            <label htmlFor={openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
                 {label || t('filter_by_date_range' as any)}
             </label>
-            <div
-                onClick={() => setIsOpen(!isOpen)}
+            <button
+                type="button"
+                id={openerId}
+                aria-haspopup="dialog"
+                aria-expanded={isOpen}
+                onClick={toggleOpen}
                 style={{
+                    width: '100%',
+                    font: 'inherit',
+                    color: 'inherit',
+                    textAlign: 'inherit',
                     padding: '0 1rem',
                     borderRadius: '1.25rem',
                     border: '1px solid var(--border)',
@@ -301,8 +328,8 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                     flexDirection: 'row'
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                    <span style={{ color: 'var(--text-faint)' }}>📅</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
+                    <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>📅</span>
                     <span style={{ color: dateFrom || dateTo ? 'var(--text-main)' : 'var(--text-faint)' }}>
                         {dateFrom && dateTo
                             ? (dateFrom === dateTo
@@ -312,9 +339,9 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                                 ? `${formatDate(dateFrom)} → ...`
                                 : t('select_date_range' as any)}
                     </span>
-                </div>
-                <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
-            </div>
+                </span>
+                <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
+            </button>
 
             {isOpen && mounted && createPortal(
                 <div
