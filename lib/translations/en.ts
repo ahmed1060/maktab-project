@@ -1622,6 +1622,7 @@ export const en = {
         face_rekey_unreadable: "{n} photos open with neither key (written with a key that is gone). They are left as they are.",
         face_rekey_run: "Re-encrypt with the new key",
         face_rekey_done: "Every photo is on the new key. Remove FACE_PHOTO_KEY_PREVIOUS from Vercel and redeploy to finish.",
+        face_rekey_same_key: "FACE_PHOTO_KEY_PREVIOUS is the same as FACE_PHOTO_KEY, so the key hasn't been changed. Set FACE_PHOTO_KEY to the new key in Vercel and redeploy.",
         face_rekey_toast: "{moved} photos re-encrypted with the new key",
         face_tab: "Face verification",
         face_queue: "Photos waiting for a decision",

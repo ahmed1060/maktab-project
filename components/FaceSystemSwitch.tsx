@@ -19,7 +19,7 @@ import { apiErrorText } from '@/lib/api-error-text'
  * sees how many stored photos are still on the old key and moves them.
  */
 type State = 'OFF' | 'ON' | 'PAUSED'
-type Rekey = { rotating: false } | { rotating: true; total: number; previous: number; unreadable: number }
+type Rekey = { rotating: false } | { rotating: true; sameKey: true } | { rotating: true; sameKey?: undefined; total: number; previous: number; unreadable: number }
 
 export default function FaceSystemSwitch() {
     const { t } = useLanguage()
@@ -98,7 +98,9 @@ export default function FaceSystemSwitch() {
             {rotation && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                     <p style={{ margin: 0, fontWeight: 600 }}>{t('face_rekey_title')}</p>
-                    {rotation.previous > 0 ? (
+                    {rotation.sameKey ? (
+                        <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_same_key')}</p>
+                    ) : rotation.previous > 0 ? (
                         <>
                             <p style={{ fontSize: '0.8rem', margin: 0 }}>{t('face_rekey_status').replace('{previous}', String(rotation.previous)).replace('{total}', String(rotation.total))}</p>
                             <div><button className="btn btn-primary" disabled={busy} onClick={rekey}>{t('face_rekey_run')}</button></div>
@@ -106,7 +108,7 @@ export default function FaceSystemSwitch() {
                     ) : (
                         <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--ok-fg)' }}>{t('face_rekey_done')}</p>
                     )}
-                    {rotation.unreadable > 0 && (
+                    {!rotation.sameKey && rotation.unreadable > 0 && (
                         <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_unreadable').replace('{n}', String(rotation.unreadable))}</p>
                     )}
                 </div>

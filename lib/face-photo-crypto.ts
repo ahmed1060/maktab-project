@@ -33,6 +33,16 @@ function previousKey(env: Env = process.env): Buffer | null {
     return env.FACE_PHOTO_KEY_PREVIOUS ? keyFrom(env, 'FACE_PHOTO_KEY_PREVIOUS') : null
 }
 
+/**
+ * The previous key is the current one: the key was never changed, though a
+ * rotation looks under way (review on #33). Every photo would open with the
+ * "new" key, and the rotation would look done with the old key still in use.
+ */
+export function rotationKeysSame(env: Env = process.env): boolean {
+    const previous = previousKey(env)
+    return !!previous && previous.equals(getKey(env))
+}
+
 function decryptWith(key: Buffer, stored: Buffer): Buffer {
     const decipher = createDecipheriv(ALGORITHM, key, stored.subarray(0, 12))
     decipher.setAuthTag(stored.subarray(12, 28))

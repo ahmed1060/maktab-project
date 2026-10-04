@@ -1621,6 +1621,7 @@ export const ar = {
         face_rekey_unreadable: "{n} صورة لا يفتحها أي من المفتاحين (كُتبت بمفتاح لم يعد موجودًا). ستبقى كما هي.",
         face_rekey_run: "أعد التشفير بالمفتاح الجديد",
         face_rekey_done: "كل الصور الآن بالمفتاح الجديد. احذف FACE_PHOTO_KEY_PREVIOUS من Vercel وأعد النشر لإنهاء التغيير.",
+        face_rekey_same_key: "قيمة FACE_PHOTO_KEY_PREVIOUS هي نفسها FACE_PHOTO_KEY، أي أن المفتاح لم يتغير. ضع المفتاح الجديد في FACE_PHOTO_KEY على Vercel وأعد النشر.",
         face_rekey_toast: "أُعيد تشفير {moved} صورة بالمفتاح الجديد",
         face_tab: "التحقق بالوجه",
         face_queue: "صور بانتظار القرار",

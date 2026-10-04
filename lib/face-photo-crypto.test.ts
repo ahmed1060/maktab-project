@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { randomBytes } from "crypto"
-import { decryptFacePhoto, encryptFacePhoto, reencryptFacePhoto } from "./face-photo-crypto"
+import { decryptFacePhoto, encryptFacePhoto, reencryptFacePhoto, rotationKeysSame } from "./face-photo-crypto"
 
 /**
  * Rotating FACE_PHOTO_KEY (mobile/README.md): with the new key set and the
@@ -38,5 +38,11 @@ describe("face photo key rotation", () => {
     it("still reads and writes with the current key alone", () => {
         expect(decryptFacePhoto(encryptFacePhoto(photo, { FACE_PHOTO_KEY: newKey }), { FACE_PHOTO_KEY: newKey })).toEqual(photo)
         expect(() => encryptFacePhoto(photo, {})).toThrow("FACE_PHOTO_KEY is not set")
+    })
+
+    it("notices a previous key that is the current one: nothing was rotated (review on #33)", () => {
+        expect(rotationKeysSame({ FACE_PHOTO_KEY: oldKey, FACE_PHOTO_KEY_PREVIOUS: oldKey })).toBe(true)
+        expect(rotationKeysSame(rotating)).toBe(false)
+        expect(rotationKeysSame({ FACE_PHOTO_KEY: newKey })).toBe(false)
     })
 })

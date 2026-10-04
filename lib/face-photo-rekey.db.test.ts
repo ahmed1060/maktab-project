@@ -100,4 +100,11 @@ describe.skipIf(!ADMIN_URL)("rotating the face photo key, in Postgres", () => {
         expect(await Rotation.rekey(sa)).toMatchObject({ moved: 0, unreadable: 1, previous: 0 })
         expect(await photoOf("FaceReview", "ref")).toEqual(before)
     })
+
+    it("refuses when the previous key is the current one, rather than calling it done (review on #33)", async () => {
+        process.env.FACE_PHOTO_KEY = oldKey
+        process.env.FACE_PHOTO_KEY_PREVIOUS = oldKey
+        expect(await Rotation.status()).toEqual({ rotating: true, sameKey: true })
+        await expect(Rotation.rekey(sa)).rejects.toThrow("FACE_KEY_SAME")
+    })
 })

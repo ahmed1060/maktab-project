@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { reencryptFacePhoto } from "@/lib/face-photo-crypto"
+import { reencryptFacePhoto, rotationKeysSame } from "@/lib/face-photo-crypto"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 
 type Actor = { id: string; role: string }
@@ -22,11 +22,13 @@ async function storedPhotos(): Promise<{ reviews: Stored[]; frames: Stored[] }> 
 export class FacePhotoKeyService {
     /**
      * Where a rotation stands: nothing while no previous key is set (no
-     * photo is opened then); otherwise how many photos are still on the old
-     * key, and how many no key opens.
+     * photo is opened then); that the two keys are the same, if they are;
+     * otherwise how many photos are still on the old key, and how many no
+     * key opens.
      */
     static async status() {
         if (!process.env.FACE_PHOTO_KEY_PREVIOUS) return { rotating: false as const }
+        if (rotationKeysSame()) return { rotating: true as const, sameKey: true as const }
         const { reviews, frames } = await storedPhotos()
         let previous = 0, unreadable = 0
         for (const row of [...reviews, ...frames]) {
@@ -46,6 +48,7 @@ export class FacePhotoKeyService {
      */
     static async rekey(session: { user: Actor }) {
         if (!process.env.FACE_PHOTO_KEY_PREVIOUS) throw new Error("FACE_KEY_NOT_ROTATING")
+        if (rotationKeysSame()) throw new Error("FACE_KEY_SAME")
         const { reviews, frames } = await storedPhotos()
         let moved = 0, unreadable = 0
         for (const [table, rows] of [["review", reviews], ["frame", frames]] as const) {
