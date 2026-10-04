@@ -48,3 +48,12 @@ export function formatPoint(latitude: number, longitude: number): string {
 export function locateErrorKey(code: number): 'att_loc_here_denied' | 'att_loc_here_unavailable' | 'att_loc_here_timeout' {
     return code === 1 ? 'att_loc_here_denied' : code === 3 ? 'att_loc_here_timeout' : 'att_loc_here_unavailable'
 }
+
+/**
+ * Whether a position that has just arrived should still fill the field: only
+ * if it answers the latest request, and the field hasn't changed since it was
+ * asked for. A slow fix must not overwrite a point typed or picked meanwhile.
+ */
+export function fixStillWanted(asked: { request: number; value: string }, now: { request: number; value: string }): boolean {
+    return asked.request === now.request && asked.value === now.value
+}

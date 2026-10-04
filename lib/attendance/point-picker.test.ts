@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { formatPoint, locateErrorKey, parsePoint } from "@/lib/attendance/geo"
+import { fixStillWanted, formatPoint, locateErrorKey, parsePoint } from "@/lib/attendance/geo"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 
@@ -67,5 +67,22 @@ describe("the picker in the browser", () => {
     it("still takes the position after React remounts it (strict mode mounts twice)", () => {
         const picker = readFileSync("components/PointPicker.tsx", "utf8")
         expect(picker).toMatch(/useEffect\(\(\) => \{ alive\.current = true; return \(\) => \{ alive\.current = false \} \}, \[\]\)/)
+    })
+})
+
+describe("a slow position", () => {
+    // Codex review on #38: a fix arriving after the person typed or picked a
+    // point overwrote their choice.
+    it("fills the field only if nothing changed while waiting", () => {
+        expect(fixStillWanted({ request: 1, value: "" }, { request: 1, value: "" })).toBe(true)
+        expect(fixStillWanted({ request: 1, value: "" }, { request: 1, value: "30.1, 31.2" })).toBe(false)
+        expect(fixStillWanted({ request: 1, value: "" }, { request: 2, value: "" })).toBe(false)
+    })
+
+    it("is checked before the picker writes the position", () => {
+        const picker = readFileSync("components/PointPicker.tsx", "utf8")
+        const success = picker.slice(picker.indexOf("pos => {"), picker.indexOf("err => {"))
+        expect(success.indexOf("if (!wanted()) return")).toBeGreaterThan(-1)
+        expect(success.indexOf("if (!wanted()) return")).toBeLessThan(success.indexOf("onChange(text)"))
     })
 })

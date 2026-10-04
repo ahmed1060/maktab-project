@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import { useLanguage } from '@/context/LanguageContext'
-import { formatPoint, locateErrorKey, MAX_ACCURACY_METERS, parsePoint } from '@/lib/attendance/geo'
+import { fixStillWanted, formatPoint, locateErrorKey, MAX_ACCURACY_METERS, parsePoint } from '@/lib/attendance/geo'
 
 /**
  * Two more ways to fill a check-in place's "lat, lng" field, beside typing or
@@ -41,21 +41,29 @@ export default function PointPicker({ value, radius, onChange }: { value: string
 
     const put = (lat: number, lng: number) => latest.current.onChange(formatPoint(lat, lng))
 
+    // The latest request for this device's position: a newer one, or a point
+    // typed or picked while waiting, makes an earlier answer stale.
+    const request = useRef(0)
+
     const locate = () => {
         if (!navigator.geolocation) return setStatus({ kind: 'error', key: 'att_loc_here_unsupported' })
+        const asked = { request: ++request.current, value: latest.current.value }
+        const wanted = () => alive.current && fixStillWanted(asked, { request: request.current, value: latest.current.value })
         setLocating(true)
         setStatus(null)
         navigator.geolocation.getCurrentPosition(
             pos => {
-                if (!alive.current) return
-                const text = formatPoint(pos.coords.latitude, pos.coords.longitude)
+                if (!alive.current || asked.request !== request.current) return
                 setLocating(false)
+                if (!wanted()) return
+                const text = formatPoint(pos.coords.latitude, pos.coords.longitude)
                 setStatus({ kind: 'accuracy', meters: Math.round(pos.coords.accuracy), text })
                 latest.current.onChange(text)
             },
             err => {
-                if (!alive.current) return
+                if (!alive.current || asked.request !== request.current) return
                 setLocating(false)
+                if (!wanted()) return
                 setStatus({ kind: 'error', key: locateErrorKey(err.code) })
             },
             // A fresh, satellite-grade fix: an old or network-only one could be far off.
