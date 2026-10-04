@@ -91,6 +91,7 @@ export default function RequestCard({ request, onView, onStatusUpdate, isHighlig
 
                 {canReview && request.status !== 'COMPLETED' && (
                     <button
+                        aria-label={request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
                         onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                         disabled={updating}
                         style={{

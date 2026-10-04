@@ -258,7 +258,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             {/* Left: Page Name */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                 {onMenuClick && (
-                    <button
+                    <button aria-label={t('open_menu' as any)}
                         onClick={onMenuClick}
                         style={{
                             background: 'transparent',
@@ -325,7 +325,6 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 padding: locale === 'ar' ? '0.5rem 1.5rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1.5rem',
                                 borderRadius: '1rem',
                                 fontSize: '0.9rem',
-                                outline: 'none',
                                 cursor: 'pointer',
                                 background: 'var(--veil-40)',
                                 border: '1px solid var(--veil-60)',
@@ -649,7 +648,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                             padding: '0.6rem 1rem',
                                             background: 'none',
                                             border: 'none',
-                                            color: 'var(--danger-solid)',
+                                            color: 'var(--danger-fg-strong)',
                                             fontSize: '0.9rem',
                                             fontWeight: 'bold',
                                             cursor: 'pointer',

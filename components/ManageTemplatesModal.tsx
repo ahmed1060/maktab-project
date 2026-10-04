@@ -80,7 +80,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
             <div className="modal-content glass" style={{ width: '90%', maxWidth: '460px' }}>
                 <div className="modal-header" style={{ padding: '1.1rem 1.5rem' }}>
                     <h2 className="modal-title" style={{ fontSize: '1.1rem' }}>{t('manage_templates')}</h2>
-                    <button className="modal-close" onClick={handleClose}>×</button>
+                    <button aria-label={t('close')} className="modal-close" onClick={handleClose}>×</button>
                 </div>
 
                 <div className="modal-body" style={{ padding: '1.25rem 1.5rem' }}>

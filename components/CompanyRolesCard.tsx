@@ -144,7 +144,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                             <button type="button" style={linkButton} onClick={() => makeDefault(role)}>{t('roles_make_default')}</button>
                         )}
                         {!role.builtIn && !role.isDefault && role.holders === 0 && (
-                            <button type="button" style={{ ...linkButton, color: 'var(--danger-solid)' }} onClick={() => setDeleting(role)}>{t('roles_delete')}</button>
+                            <button type="button" style={{ ...linkButton, color: 'var(--danger-fg-strong)' }} onClick={() => setDeleting(role)}>{t('roles_delete')}</button>
                         )}
                     </div>
                 ))}

@@ -172,6 +172,8 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
     return (
         <div ref={dropdownRef} style={{ position: 'relative' }}>
             <button
+                aria-label={unreadCount > 0 ? `${t('notifications')} (${unreadCount})` : t('notifications')}
+                aria-expanded={isOpen}
                 onClick={toggleOpen}
                 style={{
                     background: 'none',

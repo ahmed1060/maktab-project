@@ -305,7 +305,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                                     borderRadius: '0.5rem',
                                                     border: 'none',
                                                     background: selected ? 'var(--brand-primary)' : today ? 'color-mix(in srgb, var(--warn-solid) 13%, transparent)' : 'transparent',
-                                                    color: selected ? 'white' : today ? 'var(--warn-solid)' : disabled ? 'var(--border-firm)' : 'var(--text-muted)',
+                                                    color: selected ? 'white' : today ? 'var(--warn-fg-mid)' : disabled ? 'var(--border-firm)' : 'var(--text-muted)',
                                                     fontSize: '0.8rem',
                                                     fontWeight: selected || today ? '700' : '500',
                                                     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -385,7 +385,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                         {/* Validation Feedback */}
                         {min && selectedDate && selectedDate < new Date(min) && (
-                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', fontWeight: '600', textAlign: 'center' }}>
+                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.75rem', fontWeight: '600', textAlign: 'center' }}>
                                 {t('min_selection_error')}
                             </div>
                         )}

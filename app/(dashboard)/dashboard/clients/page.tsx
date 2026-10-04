@@ -538,7 +538,6 @@ export default function ClientsPage() {
                                         padding: '0.75rem',
                                         border: '1px solid var(--border)',
                                         borderRadius: '0.5rem',
-                                        outline: 'none',
                                         textAlign: locale === 'ar' ? 'right' : 'left'
                                     }}
                                     placeholder={t('client_placeholder')}

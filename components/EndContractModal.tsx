@@ -187,7 +187,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                     <h3 className="modal-title">
                         {isArchived ? t('reinstate_title') : t('end_contract_title')}
                     </h3>
-                    <button className="modal-close" onClick={onClose}>&times;</button>
+                    <button aria-label={t('close')} className="modal-close" onClick={onClose}>&times;</button>
                 </div>
 
                 <div className="modal-body" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
@@ -221,7 +221,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                                 </div>
 
                                 {previewError && (
-                                    <p style={{ margin: 0, color: 'var(--danger-solid)', fontSize: '0.85rem' }}>{previewError}</p>
+                                    <p style={{ margin: 0, color: 'var(--danger-fg-strong)', fontSize: '0.85rem' }}>{previewError}</p>
                                 )}
 
                                 {!previewError && preview && (

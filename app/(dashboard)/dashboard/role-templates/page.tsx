@@ -92,7 +92,7 @@ export default function RoleTemplatesPage() {
                             <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto' }}>
                                 <button type="button" style={linkButton} onClick={() => setEditing(template)}>{t('roles_edit')}</button>
                                 <button type="button" style={linkButton} onClick={() => setOffering(template.id)}>{t('template_offer')}</button>
-                                <button type="button" style={{ ...linkButton, color: 'var(--danger-solid)' }} onClick={() => setDeleting(template)}>{t('roles_delete')}</button>
+                                <button type="button" style={{ ...linkButton, color: 'var(--danger-fg-strong)' }} onClick={() => setDeleting(template)}>{t('roles_delete')}</button>
                             </div>
                         </div>
                     ))}

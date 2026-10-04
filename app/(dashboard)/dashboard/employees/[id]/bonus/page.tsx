@@ -96,7 +96,7 @@ export default function AddBonusPage() {
                         autoFocus
                     />
                     {fieldError && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldError}
                         </div>
                     )}

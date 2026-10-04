@@ -92,9 +92,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             const { totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies } = await getSuperAdminOverviewStats()
 
             const chartData = [
-                { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: 'var(--ok-solid)' },
-                { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: 'var(--info-solid)' },
-                { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: 'var(--warn-solid)' },
+                { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: 'var(--ok-fg-strong)' },
+                { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: 'var(--info-fg)' },
+                { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: 'var(--warn-fg-mid)' },
                 { label: t('status_others' as any), value: taskStats.filter((s: any) => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc: any, s: any) => acc + s._count, 0), color: 'var(--text-faint)' }
             ]
 
@@ -227,10 +227,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
         const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-solid)' },
-            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-solid)' },
-            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-solid)' },
-            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-solid)' }
+            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-fg-strong)' },
+            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-fg)' },
+            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-fg-mid)' },
+            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-fg-strong)' }
         ]
 
         return (
@@ -302,7 +302,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                                 <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                                     <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid var(--danger-solid)' }}>
                                         <span style={{ fontWeight: '600' }}>{task.title}</span>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--danger-solid)' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--danger-fg-strong)' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
                                     </div>
                                 </Link>
                             ))}
@@ -396,10 +396,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         const usedCredits = approvedRequests.reduce((acc, req) => acc + (req.daysDeducted || 0), 0)
 
         const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-solid)' },
-            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-solid)' },
-            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-solid)' },
-            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-solid)' }
+            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-fg-strong)' },
+            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-fg)' },
+            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-fg-mid)' },
+            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-fg-strong)' }
         ]
 
 
@@ -416,8 +416,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         <DonutChart
                             title={t('credit_overview' as any)}
                             data={[
-                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: 'var(--ok-solid)' },
-                                { label: t('used_credit' as any), value: usedCredits, color: 'var(--danger-solid)' }
+                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: 'var(--ok-fg-strong)' },
+                                { label: t('used_credit' as any), value: usedCredits, color: 'var(--danger-fg-strong)' }
                             ]}
                         />
                     </div>

@@ -89,7 +89,7 @@ export default function TaskSubmissionForm({
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
                                     </div>
                                 </div>
-                                <button onClick={() => onRemoveFile(i)} style={{ color: 'var(--danger-solid)', background: 'var(--danger-bg-subtle)', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
+                                <button onClick={() => onRemoveFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'var(--danger-bg-subtle)', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
                             </div>
                         ))}
                     </div>
@@ -112,7 +112,7 @@ export default function TaskSubmissionForm({
                                     <span style={{ color: 'var(--text-faint)' }}>•</span>
                                     <span style={{ color: 'var(--warn-fg-mid)' }}>{e.amount.toFixed(2)} {t('egp')}</span>
                                 </div>
-                                <button onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-solid)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
+                                <button aria-label={t('remove' as any)} onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-fg-strong)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
                             </div>
                         ))}
                     </div>
@@ -122,7 +122,7 @@ export default function TaskSubmissionForm({
             <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
                 <textarea aria-label={t('note_optional_label')} className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
-                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? 'var(--danger-solid)' : 'var(--text-faint)', marginTop: '0.25rem' }}>{note.length}/500</div>
+                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', marginTop: '0.25rem' }}>{note.length}/500</div>
             </div>
 
             <div style={{ marginBottom: '2rem' }}>

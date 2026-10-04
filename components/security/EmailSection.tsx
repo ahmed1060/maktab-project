@@ -133,7 +133,7 @@ export default function EmailSection() {
                 )}
 
                 {error && (
-                    <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-solid)' }}>{error}</div>
+                    <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-fg-strong)' }}>{error}</div>
                 )}
 
                 {isProtectedActor ? (

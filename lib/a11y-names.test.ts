@@ -58,6 +58,53 @@ describe("icon-only buttons", () => {
     })
 })
 
+describe("buttons that show only a symbol", () => {
+    // About 40 buttons showed only ×, ☰, ⚙️, ✍️, +, an arrow or an icon, and
+    // a screen reader announced each as just "button" (or read the emoji's
+    // name); a dozen had a title, which keyboard and touch users never see
+    // and screen readers don't read reliably (accessibility audit, 4 October
+    // 2026, H1). Each now has an aria-label from the translations.
+    const LETTERS = /[A-Za-z\u0600-\u06FF]{2,}/
+    const tagEnd = (s: string, i: number) => {
+        let depth = 0, quote = ""
+        for (let j = i; j < s.length; j++) {
+            const c = s[j]
+            if (quote) { if (c === quote) quote = ""; continue }
+            if (depth === 0 && (c === '"' || c === "'" || c === "`")) quote = c
+            else if (c === "{") depth++
+            else if (c === "}") depth--
+            else if (c === ">" && depth === 0) return j
+        }
+        return s.length
+    }
+    /** Whether what a button shows could be read as its name. */
+    const showsWords = (inner: string) => {
+        const text = inner.replace(/&times;/g, "×").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/<[^>]*>/g, "")
+        if (LETTERS.test(text.replace(/\{[^}]*\}/g, ""))) return true
+        const exprs = [...text.matchAll(/\{([^}]*)\}/g)].map(m => m[1])
+        if (exprs.length === 0) return false
+        const literals = exprs.flatMap(e => [...e.matchAll(/'([^']*)'|"([^"]*)"/g)].map(m => m[1] ?? m[2]))
+        // Text from a variable or a translation: words. Only symbols in quotes: an icon.
+        if (exprs.some(e => /\bt\(|\w+\.\w+|^\s*\w+\s*$/.test(e.replace(/'[^']*'|"[^"]*"/g, "")) && !/^\s*\w+ === /.test(e))) return true
+        return literals.some(l => LETTERS.test(l))
+    }
+
+    it("each has a name a screen reader can say", () => {
+        const unnamed: string[] = []
+        for (const f of SCREENS) {
+            const s = readFileSync(f, "utf8")
+            for (const m of s.matchAll(/<button\b/g)) {
+                const end = tagEnd(s, m.index! + m[0].length)
+                const attrs = s.slice(m.index!, end)
+                if (attrs.trimEnd().endsWith("/") || /aria-label(ledby)?=/.test(attrs)) continue
+                const inner = s.slice(end + 1, s.indexOf("</button>", end))
+                if (!showsWords(inner)) unnamed.push(`${f}:${s.slice(0, m.index!).split("\n").length}`)
+            }
+        }
+        expect(unnamed).toEqual([])
+    })
+})
+
 describe("dropdowns and file pickers", () => {
     it("every one has a name, or sits inside a label", () => {
         // A second axe run found the ones with no label beside them at all:

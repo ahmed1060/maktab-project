@@ -441,7 +441,7 @@ export default function AllUsersPage() {
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                                         <span style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
                                     </h2>
-                                    <button onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>&times;</button>
+                                    <button aria-label={t('close')} onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>&times;</button>
                                 </div>
 
                                 <div style={{ overflowY: 'auto', overflowX: 'auto', flex: 1 }}>
@@ -495,7 +495,7 @@ export default function AllUsersPage() {
                                                             >
                                                                 {t('view_profile_button')}
                                                             </button>
-                                                            <button
+                                                            <button aria-label={t('delete')}
                                                                 onClick={() => setPermanentDeleteConfirm({ isOpen: true, user })}
                                                                 title={t('delete')}
                                                                 style={{

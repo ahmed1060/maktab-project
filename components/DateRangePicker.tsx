@@ -226,7 +226,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                                 border: 'none',
                                 borderRadius: '50%',
                                 background: isStart || isEnd ? 'var(--info-fill)' : inRange ? 'var(--info-bg-indigo)' : 'transparent',
-                                color: isStart || isEnd ? 'white' : inRange ? 'var(--info-fg-indigo)' : isToday ? 'var(--warn-solid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
+                                color: isStart || isEnd ? 'white' : inRange ? 'var(--info-fg-indigo)' : isToday ? 'var(--warn-fg-mid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
                                 fontSize: '0.875rem',
                                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                                 fontWeight: isStart || isEnd || isToday ? '600' : '400',
@@ -262,7 +262,7 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                             onClick={(e) => { e.stopPropagation(); handleReset(); }}
                             style={{
                                 background: 'var(--danger-bg-subtle)',
-                                color: 'var(--danger-solid)',
+                                color: 'var(--danger-fg-strong)',
                                 border: 'none',
                                 padding: '0.25rem 0.75rem',
                                 borderRadius: '0.375rem',

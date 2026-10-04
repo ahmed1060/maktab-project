@@ -277,7 +277,7 @@ export default function EmployeeHistoryPage() {
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <button
+                <button aria-label={t('go_back')}
                     onClick={() => router.back()}
                     className="glass"
                     style={{
@@ -675,7 +675,7 @@ export default function EmployeeHistoryPage() {
                         position: 'relative',
                         background: 'var(--panel-95)'
                     }}>
-                        <button
+                        <button aria-label={t('close')}
                             onClick={() => setIsAdjustmentsModalOpen(false)}
                             style={{
                                 position: 'absolute',
@@ -796,7 +796,7 @@ export default function EmployeeHistoryPage() {
                                             </div>
                                         )}
                                         {isTerminal(adj.status) && (
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-solid)', fontWeight: 'bold', flexShrink: 0 }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-fg-strong)', fontWeight: 'bold', flexShrink: 0 }}>
                                                 {adj.status === 'REVERSED'
                                                     ? t('reversed_label' as any)
                                                     : t('rolled_back_label' as any)}
@@ -954,7 +954,7 @@ export default function EmployeeHistoryPage() {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h2 id={deductionsDialog.titleId} style={{ margin: 0 }}>{t('manage_deductions')}</h2>
-                            <button onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>×</button>
+                            <button aria-label={t('close')} onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>×</button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {dayOffHistory?.history.flatMap(y => y.requests).filter(r => r.deductionType === 'CREDIT').length === 0 ? (

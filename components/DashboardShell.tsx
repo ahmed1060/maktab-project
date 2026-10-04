@@ -135,6 +135,14 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     // the page it lands on is what records the attempt. Hiding it instead would
     // mean nobody ever discovers what else the product does — and would make the
     // signal in LockedModuleAttempt impossible to gather.
+    // The sidebar link for the page you're on says so (aria-current), and is
+    // drawn as chosen (.nav-link[aria-current] in globals.css). The dashboard
+    // itself only on its own page, not on every page under /dashboard.
+    const currentFor = (href: string) => {
+        const here = pathname === href || (href !== '/dashboard' && pathname?.startsWith(href + '/'))
+        return here ? { 'aria-current': 'page' as const } : {}
+    }
+
     const isLockedHref = (href: string) => {
         // Not named `module`: Next forbids assigning that identifier, since it
         // collides with the CommonJS global in some bundling paths.
@@ -163,6 +171,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     }}
                 />
             )}
+
+            {/* The first thing Tab reaches: past the 10 to 20 sidebar links, to the page itself. */}
+            <a href="#main-content" className="skip-link">{t('skip_to_content' as any)}</a>
 
             {/* Glass Sidebar */}
             <aside className="glass-dark" style={{
@@ -338,7 +349,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
                     {/* Mobile Close */}
                     {isMobile && (
-                        <button
+                        <button aria-label={t('close')}
                             onClick={() => setIsSidebarOpen(false)}
                             style={{ background: 'none', border: 'none', color: 'var(--text-on-accent)', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }}
                         >
@@ -356,7 +367,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
-                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
+                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--sidebar-fg)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
 
                     {/* Names, icons and hrefs all come from lib/modules.ts, which
                         is also what the Company Settings screen writes overrides
@@ -365,7 +376,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     {MENU_MODULES.map(key => modules.entry(key)).map(link => (
                         <Link
                             key={link.href}
-                            href={link.href}
+                            href={link.href} {...currentFor(link.href)}
                             // Prefetch re-enabled: this is a small fixed set of
                             // links (not one per row of a list that scales with
                             // data — that's what caused the original fan-out),
@@ -415,7 +426,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         company with the Mobile App add-on. */}
                     {inApp && user?.role !== 'SUPER_ADMIN' && hasBundle(features.access, 'ATTENDANCE_MOBILE') && (
                         <Link
-                            href="/dashboard/check-in"
+                            href="/dashboard/check-in" {...currentFor("/dashboard/check-in")}
                             onClick={() => isMobile && setIsSidebarOpen(false)}
                             title={isCollapsed ? t('ci_title') : ''}
                             className="nav-link"
@@ -436,7 +447,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         who would run it, not to every employee. */}
                     {user?.role !== 'SUPER_ADMIN' && (features.has('ATTENDANCE') || permissions.companyWide('attendance.correct')) && (
                         <Link
-                            href="/dashboard/attendance"
+                            href="/dashboard/attendance" {...currentFor("/dashboard/attendance")}
                             onClick={() => isMobile && setIsSidebarOpen(false)}
                             title={isCollapsed ? t('attendance_title') : ''}
                             className="nav-link"
@@ -467,7 +478,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         as the role would see it, and the page asks for none. */}
                     {user?.role !== 'SUPER_ADMIN' && (
                     <Link
-                        href="/dashboard/documents"
+                        href="/dashboard/documents" {...currentFor("/dashboard/documents")}
                         onClick={() => isMobile && setIsSidebarOpen(false)}
                         title={isCollapsed ? t('my_payslips') : ''}
                         className="nav-link"
@@ -511,7 +522,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--sidebar-fg)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
                             )}
 
                             {/* Vendors is in here: its custom name used to be the
@@ -523,7 +534,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             {managementLinks.map(link => (
                                 <Link
                                     key={link.href}
-                                    href={link.href}
+                                    href={link.href} {...currentFor(link.href)}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
                                     title={isCollapsed ? link.label : ''}
                                     className="nav-link"
@@ -570,7 +581,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 Leader manages people, not pay. */}
                             {canSeePayroll && (
                                 <Link
-                                    href="/dashboard/payroll"
+                                    href="/dashboard/payroll" {...currentFor("/dashboard/payroll")}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
                                     title={isCollapsed ? t('payroll') : ''}
                                     className="nav-link"
@@ -607,7 +618,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             )}
                             {canSeeRoleRequests && (
                                 <Link
-                                    href="/dashboard/role-requests"
+                                    href="/dashboard/role-requests" {...currentFor("/dashboard/role-requests")}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
                                     title={isCollapsed ? t('role_requests_title') : ''}
                                     className="nav-link"
@@ -641,7 +652,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             )}
                             {showCompanySettings && (
                                 <Link
-                                    href="/dashboard/settings"
+                                    href="/dashboard/settings" {...currentFor("/dashboard/settings")}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
                                     title={isCollapsed ? t('company_settings_title') : ''}
                                     className="nav-link"
@@ -682,7 +693,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--sidebar-fg)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
                             )}
 
                             {[
@@ -701,7 +712,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 { href: '/dashboard/health', label: t('system_health') || 'System Health', icon: '❤️' },
                                 { href: '/dashboard/system-settings', label: t('system_settings') || 'System Settings', icon: '⚙️' }
                             ].map(link => (
-                                <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
+                                <Link key={link.href} href={link.href} {...currentFor(link.href)} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
                                     color: 'var(--sidebar-fg)',
                                     textDecoration: 'none',
                                     padding: '0.85rem 1rem',
@@ -814,7 +825,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     />
                 </div>
 
-                <div style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                {/* The skip link's target: the page itself, after the header's
+                    controls (bell, account menu), which repeat on every page too. */}
+                <div id="main-content" tabIndex={-1} style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     {/* Above the page rather than inside it, so it appears on
                         every screen without thirty pages having to remember. It
                         renders nothing at all when the subscription is simply

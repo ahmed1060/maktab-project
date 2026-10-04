@@ -98,7 +98,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
                                             ) : side === 'superAdmin' || line.userId !== session?.user?.id ? (
                                                 <span style={{ display: 'flex', gap: '0.75rem' }}>
                                                     <button type="button" style={linkButton} onClick={() => answer(line, 'CONFIRMED')}>{t('access_review_confirm')}</button>
-                                                    <button type="button" style={{ ...linkButton, color: 'var(--danger-solid)' }} onClick={() => setChanging(line)}>{t('access_review_change')}</button>
+                                                    <button type="button" style={{ ...linkButton, color: 'var(--danger-fg-strong)' }} onClick={() => setChanging(line)}>{t('access_review_change')}</button>
                                                 </span>
                                             ) : (
                                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-soft)', whiteSpace: 'normal' }}>{t('access_review_own_line')}</span>

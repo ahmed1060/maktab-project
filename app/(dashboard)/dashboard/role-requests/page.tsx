@@ -178,7 +178,7 @@ export default function RoleRequestsPage() {
                                                     {mayDecide && !mine && (
                                                         <>
                                                             <button type="button" style={linkButton} disabled={busy === r.id} onClick={() => act(r, 'APPROVE')}>{t('role_requests_approve')}</button>
-                                                            <button type="button" style={{ ...linkButton, color: 'var(--danger-solid)' }} disabled={busy === r.id} onClick={() => setDeclining(r)}>{t('role_requests_reject')}</button>
+                                                            <button type="button" style={{ ...linkButton, color: 'var(--danger-fg-strong)' }} disabled={busy === r.id} onClick={() => setDeclining(r)}>{t('role_requests_reject')}</button>
                                                         </>
                                                     )}
                                                     {mine && (

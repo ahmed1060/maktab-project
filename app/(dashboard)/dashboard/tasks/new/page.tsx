@@ -450,7 +450,7 @@ export default function NewTaskPage() {
                         {t('download_template')}
                     </button>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
+                        <button aria-label={t('view_usernames')}
                             type="button"
                             onClick={() => window.open('/dashboard/usernames', '_blank')}
                             title={t('view_usernames')}
@@ -532,11 +532,11 @@ export default function NewTaskPage() {
                         maxLength={100}
                     />
                     {fieldErrors.title && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.title}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {title.length}/100
                     </div>
                 </div>
@@ -555,11 +555,11 @@ export default function NewTaskPage() {
                         maxLength={1000}
                     />
                     {fieldErrors.description && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.description}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 1000 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: description.length >= 1000 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {description.length}/1000
                     </div>
                 </div>
@@ -603,7 +603,7 @@ export default function NewTaskPage() {
                                     href="/dashboard/vendors"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    style={{ fontSize: '0.75rem', color: 'var(--info-solid)', textDecoration: 'none' }}
+                                    style={{ fontSize: '0.75rem', color: 'var(--info-fg)', textDecoration: 'none' }}
                                 >
                                     {locale === 'ar' ? `+ إضافة ${vendorsName}` : `+ Add a ${vendorsName}`}
                                 </a>
@@ -693,7 +693,7 @@ export default function NewTaskPage() {
                         )}
                     </div>
                     {fieldErrors.assigneeIds && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.assigneeIds}
                         </div>
                     )}
@@ -706,7 +706,7 @@ export default function NewTaskPage() {
                         min={earliestDeadline(now).toISOString()}
                     />
                     {fieldErrors.deadline && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.deadline}
                         </div>
                     )}

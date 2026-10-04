@@ -169,7 +169,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                                 border: 'none',
                                 borderRadius: '50%',
                                 background: selected ? 'var(--info-fill)' : 'transparent',
-                                color: selected ? 'white' : isToday ? 'var(--warn-solid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
+                                color: selected ? 'white' : isToday ? 'var(--warn-fg-mid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
                                 fontSize: '0.875rem',
                                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                                 fontWeight: selected || isToday ? '600' : '400',
@@ -187,7 +187,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                     <button
                         type="button"
                         onClick={handleReset}
-                        style={{ background: 'var(--danger-bg-subtle)', color: 'var(--danger-solid)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+                        style={{ background: 'var(--danger-bg-subtle)', color: 'var(--danger-fg-strong)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
                     >
                         {t('reset' as any)}
                     </button>

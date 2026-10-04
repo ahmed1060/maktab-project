@@ -206,7 +206,7 @@ export default function UserHeartbeat() {
                 textAlign: 'center',
                 padding: '2rem'
             }}>
-                <h1 style={{ color: 'var(--danger-solid)', fontSize: '2rem', margin: 0 }}>
+                <h1 style={{ color: 'var(--danger-fg-strong)', fontSize: '2rem', margin: 0 }}>
                     {isArchived ? t('account_archived') : isSuspended ? t('account_suspended') : t('company_banned')}
                 </h1>
                 <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
@@ -246,7 +246,7 @@ export default function UserHeartbeat() {
                 padding: '2rem'
             }}>
                 <span style={{ fontSize: '3rem' }}>🔧</span>
-                <h1 style={{ color: 'var(--warn-solid)', fontSize: '2rem', margin: 0 }}>
+                <h1 style={{ color: 'var(--warn-fg-mid)', fontSize: '2rem', margin: 0 }}>
                     {t('maintenance_detected_title')}
                 </h1>
                 <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>

@@ -434,7 +434,7 @@ export default function SystemHealthPage() {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--danger-solid)' }}>{metrics?.auditing.prunable}</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--danger-fg-strong)' }}>{metrics?.auditing.prunable}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_logs' as any)}</div>
                         </div>
                     </div>
@@ -463,7 +463,7 @@ export default function SystemHealthPage() {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warn-solid)' }}>{metrics?.notifications.prunable}</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warn-fg-mid)' }}>{metrics?.notifications.prunable}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_notifications' as any)}</div>
                         </div>
                     </div>

@@ -256,7 +256,7 @@ export default function VendorsPage() {
                                             <span>👤 {vendor.ownerName}</span>
                                             <span>📞 {vendor.mobileNumber}</span>
                                             {vendor.locationLink ? (
-                                                <a href={vendor.locationLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-solid)' }}>
+                                                <a href={vendor.locationLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-fg)' }}>
                                                     📍 {vendor.locationName}
                                                 </a>
                                             ) : (
