@@ -1,8 +1,9 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
+import { useDialog } from '@/lib/useDialog'
 
 interface ModalProps {
     isOpen: boolean
@@ -15,23 +16,14 @@ interface ModalProps {
 
 export default function Modal({ isOpen, onClose, title, children, hideFooter = true, hideCloseButton = false }: ModalProps) {
     const { t } = useLanguage()
-    const modalRef = useRef<HTMLDivElement>(null)
-
     const mounted = useHydrated()
+    // Escape closes it, unless it has no close button (a step that must be finished).
+    const dialog = useDialog(isOpen, hideCloseButton ? undefined : onClose)
 
     useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && !hideCloseButton) onClose()
-        }
-        if (isOpen) {
-            document.addEventListener('keydown', handleEscape)
-            document.body.style.overflow = 'hidden'
-        }
-        return () => {
-            document.removeEventListener('keydown', handleEscape)
-            document.body.style.overflow = 'unset'
-        }
-    }, [isOpen, onClose, hideCloseButton])
+        if (isOpen) document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = 'unset' }
+    }, [isOpen])
 
     if (!isOpen || !mounted) return null
 
@@ -51,7 +43,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
             animation: 'fadeIn 0.2s ease-out'
         }} onClick={() => !hideCloseButton && onClose()}>
             <div
-                ref={modalRef}
+                {...dialog.panelProps}
                 className="glass" // Use glass class
                 style={{
                     padding: '2rem',
@@ -69,9 +61,11 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
                 onClick={e => e.stopPropagation()}
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--surface-sunk)', paddingBottom: '1rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-strong)' }}>{title}</h2>
+                    <h2 id={dialog.titleId} style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-strong)' }}>{title}</h2>
                     {!hideCloseButton && (
                         <button
+                            type="button"
+                            aria-label={t('close')}
                             onClick={onClose}
                             style={{
                                 background: 'var(--surface-sunk)',
@@ -90,7 +84,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
                             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)'; e.currentTarget.style.color = 'var(--text-body)' }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface-sunk)'; e.currentTarget.style.color = 'var(--text-soft)' }}
                         >
-                            &times;
+                            <span aria-hidden="true">&times;</span>
                         </button>
                     )}
                 </div>

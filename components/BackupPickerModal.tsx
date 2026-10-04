@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHydrated } from '@/lib/useHydrated'
+import { useDialog } from '@/lib/useDialog'
 
 export type BackupEntry = {
     folder: 'daily' | 'weekly' | 'monthly'
@@ -32,6 +33,8 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
     const { t, locale } = useLanguage()
     const mounted = useHydrated()
 
+    const dialog = useDialog(isOpen, onClose)
+
     if (!isOpen || !mounted) return null
 
     return createPortal(
@@ -41,7 +44,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
             alignItems: 'center', zIndex: 10000
         }}>
             <div className="modal-backdrop" onClick={onClose} />
-            <div style={{
+            <div {...dialog.panelProps} style={{
                 background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px',
                 width: 'min(calc(100vw - 3rem), 560px)', maxHeight: '80vh',
                 display: 'flex', flexDirection: 'column',
@@ -50,7 +53,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
                 direction: locale === 'ar' ? 'rtl' : 'ltr',
                 textAlign: locale === 'ar' ? 'right' : 'left'
             }}>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 1rem' }}>
+                <h2 id={dialog.titleId} style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 1rem' }}>
                     {t('backup_picker_title' as any)}
                 </h2>
 
