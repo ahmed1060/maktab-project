@@ -5,13 +5,30 @@ import { AuditLogService } from "@/lib/services/audit-log.service"
 type Actor = { id: string; role: string }
 type Stored = { id: string; photo: Uint8Array | null }
 
-/** Every stored face photo: verification and reference photos, flagged frames. */
-async function storedPhotos(): Promise<{ reviews: Stored[]; frames: Stored[] }> {
-    const [reviews, frames] = await Promise.all([
-        prisma.faceReview.findMany({ where: { photo: { not: null } }, select: { id: true, photo: true } }),
-        prisma.faceFrame.findMany({ select: { id: true, photo: true } }),
-    ])
-    return { reviews, frames }
+/**
+ * Photos read at a time: each can be up to 400 KB, so a whole table at once
+ * could exhaust a serverless function's memory (review on #33).
+ */
+const PAGE = 25
+/** Photos one press re-encrypts, so a press ends well inside a function's time limit; press again for the rest. */
+const PER_RUN = 200
+
+const TABLES = {
+    review: (after: string) => prisma.faceReview.findMany({ where: { id: { gt: after }, photo: { not: null } }, select: { id: true, photo: true }, orderBy: { id: "asc" }, take: PAGE }),
+    frame: (after: string) => prisma.faceFrame.findMany({ where: { id: { gt: after } }, select: { id: true, photo: true }, orderBy: { id: "asc" }, take: PAGE }),
+}
+
+/** Every stored face photo (verification and reference photos, flagged frames), a page at a time. */
+async function* storedPhotos(): AsyncGenerator<[keyof typeof TABLES, Stored]> {
+    for (const table of Object.keys(TABLES) as (keyof typeof TABLES)[]) {
+        let after = ""
+        for (;;) {
+            const rows = await TABLES[table](after)
+            for (const row of rows) yield [table, row]
+            if (rows.length < PAGE) break
+            after = rows[rows.length - 1].id
+        }
+    }
 }
 
 /**
@@ -29,42 +46,42 @@ export class FacePhotoKeyService {
     static async status() {
         if (!process.env.FACE_PHOTO_KEY_PREVIOUS) return { rotating: false as const }
         if (rotationKeysSame()) return { rotating: true as const, sameKey: true as const }
-        const { reviews, frames } = await storedPhotos()
-        let previous = 0, unreadable = 0
-        for (const row of [...reviews, ...frames]) {
+        let total = 0, previous = 0, unreadable = 0
+        for await (const [, row] of storedPhotos()) {
+            total++
             const r = reencryptFacePhoto(Buffer.from(row.photo!))
             if (r === "unreadable") unreadable++
             else if (r !== "current") previous++
         }
-        return { rotating: true as const, total: reviews.length + frames.length, previous, unreadable }
+        return { rotating: true as const, total, previous, unreadable }
     }
 
     /**
-     * Re-encrypts every photo still on the previous key with the current one.
-     * Each row is written only if it still holds what was read, so a photo
-     * replaced or deleted meanwhile is left as it now is. A photo no key
-     * opens is counted, not touched. For any Super Admin (the route checks):
-     * nothing is shown or deleted, and running it again does nothing more.
+     * Re-encrypts up to PER_RUN photos still on the previous key with the
+     * current one; run again for the rest. Each row is written only if it
+     * still holds what was read, so a photo replaced or deleted meanwhile is
+     * left as it now is. A photo no key opens is counted, not touched. For
+     * any Super Admin (the route checks): nothing is shown or deleted, and
+     * once all are moved a run does nothing more.
      */
     static async rekey(session: { user: Actor }) {
         if (!process.env.FACE_PHOTO_KEY_PREVIOUS) throw new Error("FACE_KEY_NOT_ROTATING")
         if (rotationKeysSame()) throw new Error("FACE_KEY_SAME")
-        const { reviews, frames } = await storedPhotos()
-        let moved = 0, unreadable = 0
-        for (const [table, rows] of [["review", reviews], ["frame", frames]] as const) {
-            for (const row of rows) {
-                const stored = Buffer.from(row.photo!)
-                const r = reencryptFacePhoto(stored)
-                if (r === "current") continue
-                if (r === "unreadable") { unreadable++; continue }
-                const where = { id: row.id, photo: { equals: new Uint8Array(stored) } }
-                const { count } = table === "review"
-                    ? await prisma.faceReview.updateMany({ where, data: { photo: new Uint8Array(r) } })
-                    : await prisma.faceFrame.updateMany({ where, data: { photo: new Uint8Array(r) } })
-                moved += count
-            }
+        let moved = 0
+        for await (const [table, row] of storedPhotos()) {
+            if (moved >= PER_RUN) break
+            const stored = Buffer.from(row.photo!)
+            const r = reencryptFacePhoto(stored)
+            if (r === "current" || r === "unreadable") continue
+            const where = { id: row.id, photo: { equals: new Uint8Array(stored) } }
+            const { count } = table === "review"
+                ? await prisma.faceReview.updateMany({ where, data: { photo: new Uint8Array(r) } })
+                : await prisma.faceFrame.updateMany({ where, data: { photo: new Uint8Array(r) } })
+            moved += count
         }
+        const after = await FacePhotoKeyService.status()
+        const unreadable = "unreadable" in after ? after.unreadable : 0
         await AuditLogService.log("REKEY_FACE_PHOTOS", "SYSTEM", "default", { superAdminId: session.user.id, details: { moved, unreadable } })
-        return { moved, unreadable, ...(await FacePhotoKeyService.status()) }
+        return { moved, ...after }
     }
 }

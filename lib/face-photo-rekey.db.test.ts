@@ -107,4 +107,18 @@ describe.skipIf(!ADMIN_URL)("rotating the face photo key, in Postgres", () => {
         expect(await Rotation.status()).toEqual({ rotating: true, sameKey: true })
         await expect(Rotation.rekey(sa)).rejects.toThrow("FACE_KEY_SAME")
     })
+
+    it("works through many photos a bounded number per run, and says how many are left (review on #33)", async () => {
+        process.env.FACE_PHOTO_KEY = newKey
+        process.env.FACE_PHOTO_KEY_PREVIOUS = oldKey
+        const many = 230
+        for (let i = 0; i < many; i++) {
+            const id = `m-${String(i).padStart(3, "0")}`
+            await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status) VALUES ($1, 'c1', 'e1', 'MOBILE', $1, '2026-10-02 09:00', now(), 'Africa/Cairo', 'FLAGGED')`, [id])
+            await db.query(`INSERT INTO "FaceFrame"(id, "punchId", "companyId", "userId", photo) VALUES ($1, $1, 'c1', 'e1', $2)`, [id, encryptFacePhoto(jpeg(), { FACE_PHOTO_KEY: oldKey })])
+        }
+        expect(await Rotation.status()).toMatchObject({ previous: many, unreadable: 1 })
+        expect(await Rotation.rekey(sa)).toMatchObject({ moved: 200, previous: many - 200 })
+        expect(await Rotation.rekey(sa)).toMatchObject({ moved: many - 200, previous: 0, unreadable: 1 })
+    }, 120_000)
 })
