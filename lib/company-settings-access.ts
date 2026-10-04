@@ -43,8 +43,13 @@ export function exposedTabs(company: Pick<SettingsExposure, "adminSettingsEnable
 }
 
 /** The tabs this person may see in this company's settings. */
+/** Every tab that exists for this company: what the Super Admin sees, on the server and on their settings page. */
+export function existingSettingsTabs(company: Pick<SettingsExposure, "package">): CompanySettingsTabKey[] {
+    return COMPANY_SETTINGS_TABS.map(t => t.key).filter(key => existsFor(company, key))
+}
+
 export function visibleSettingsTabs(actor: Actor, company: SettingsExposure): CompanySettingsTabKey[] {
-    if (actor.role === "SUPER_ADMIN") return COMPANY_SETTINGS_TABS.map(t => t.key).filter(key => existsFor(company, key))
+    if (actor.role === "SUPER_ADMIN") return existingSettingsTabs(company)
     if (!can(actor, "settings.view", { companyId: company.id })) return []
     return exposedTabs(company)
 }
