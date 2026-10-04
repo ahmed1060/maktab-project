@@ -57,16 +57,20 @@ upload, since the stores never let it change afterwards.
 
 - **Icon and splash** are the site's own mark (`app/icon.svg`): the white "N"
   on the indigo-to-pink gradient, on the site's light and dark backgrounds.
-  `npm run assets` draws the sources into `assets/`
-  (`scripts/draw-assets.mjs`) and writes every Android and iOS size from
-  them. Run it again after changing the mark; the generated files are
-  committed. It also reformats `android/app/src/main/AndroidManifest.xml`;
-  that change is only spacing and needn't be kept.
+  `npm run assets` (`scripts/assets.mjs`) draws the sources into `assets/`
+  from that file and writes every Android and iOS size from them, keeping
+  Android's adaptive background full bleed. Run it again after changing the
+  mark; the generated files are committed. It also reformats
+  `android/app/src/main/AndroidManifest.xml`; that change is only spacing and
+  needn't be kept.
 - **Back button (Android):** goes back a page; from the first page it puts the
   app in the background instead of closing it (`MainActivity.java`).
 - **No connection:** the app shows its own page (`www/index.html`) instead of
-  the web view's error, and "Try again" goes back to the site. The site's
-  address is written beside it (`www/site.js`) each time the config is read.
+  the web view's error, and "Try again" goes back to the site, in place of the
+  offline page so Back doesn't return to it. The site's address is written
+  beside it (`www/site.js`) each time the config is read. Only a failed
+  connection shows it: an error page the site itself sends (a 404, a 500)
+  shows as it is (`MainActivity.java`; on iOS that is already the case).
 - **Links to other sites** open in the phone's browser, not inside the app
   (Capacitor's default for any address other than the site's).
 
