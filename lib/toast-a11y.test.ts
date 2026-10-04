@@ -21,6 +21,9 @@ describe("toasts", () => {
     it("are announced: errors in an alert region, the rest in a status region, both always present", () => {
         expect(SRC).toMatch(/<div role="alert"[^>]*>\s*\{toasts\.filter\(t => t\.type === 'error'\)/)
         expect(SRC).toMatch(/<div role="status"[^>]*>\s*\{toasts\.filter\(t => t\.type !== 'error'\)/)
+        // Only the new toast is read, not every one still showing (Codex review on #37).
+        expect(SRC).toContain('<div role="alert" aria-atomic="false"')
+        expect(SRC).toContain('<div role="status" aria-atomic="false"')
     })
 
     it("stop their clock while the pointer or focus is on them, and restart only when both have left", () => {

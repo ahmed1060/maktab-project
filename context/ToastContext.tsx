@@ -129,11 +129,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 }}>
                     {/* Announced as they arrive (WCAG 4.1.3): the regions are always in the
                         page, so a screen reader is already listening when a toast is added.
-                        Errors interrupt; the rest wait their turn. */}
-                    <div role="alert" style={{ display: 'contents' }}>
+                        Errors interrupt; the rest wait their turn. Not atomic (alert and
+                        status are by default): only the toast just added is read, not every
+                        one still showing (Codex review on #37). */}
+                    <div role="alert" aria-atomic="false" style={{ display: 'contents' }}>
                         {toasts.filter(t => t.type === 'error').map(toast => <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />)}
                     </div>
-                    <div role="status" style={{ display: 'contents' }}>
+                    <div role="status" aria-atomic="false" style={{ display: 'contents' }}>
                         {toasts.filter(t => t.type !== 'error').map(toast => <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />)}
                     </div>
                     <style jsx global>{`
