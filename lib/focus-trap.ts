@@ -34,3 +34,25 @@ export function trapTab(
     if (!e.shiftKey && (active === last || !inside)) { e.preventDefault(); first.focus(); return true }
     return false
 }
+
+/**
+ * A dialog's keydown: Escape closes it, Tab stays inside. Only for keys
+ * pressed inside it: a key in a pop-up opened from it (a date picker, or a
+ * confirmation drawn elsewhere on the page) also reaches it through React,
+ * and handling that one too would pull focus back out of the pop-up.
+ * Returns what it did.
+ */
+export function dialogKeyDown(
+    e: { key: string; shiftKey: boolean; target: unknown; preventDefault: () => void; stopPropagation: () => void },
+    panel: (Container & { contains: (node: never) => boolean }) | null,
+    active: unknown,
+    close: (() => void) | undefined,
+): 'closed' | 'trapped' | 'ignored' {
+    if (!panel || !panel.contains(e.target as never)) return 'ignored'
+    if (e.key === 'Escape' && close) {
+        e.stopPropagation()
+        close()
+        return 'closed'
+    }
+    return trapTab(e, panel, active) ? 'trapped' : 'ignored'
+}

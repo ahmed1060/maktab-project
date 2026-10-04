@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
-import { focusables, trapTab } from '@/lib/focus-trap'
+import { dialogKeyDown, focusables } from '@/lib/focus-trap'
 
 /**
  * What a dialog's panel needs to behave as a dialog (WCAG 2.4.3, 4.1.2;
@@ -44,12 +44,7 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
     }, [isOpen])
 
     const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape' && close.current) {
-            e.stopPropagation()
-            close.current()
-            return
-        }
-        trapTab(e, ref.current, document.activeElement)
+        dialogKeyDown(e, ref.current, document.activeElement, close.current)
     }
 
     return {
