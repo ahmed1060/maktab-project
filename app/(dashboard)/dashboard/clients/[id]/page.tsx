@@ -529,7 +529,6 @@ export default function ClientDetailsPage() {
                                         padding: '0.75rem 1rem',
                                         borderRadius: '0.5rem',
                                         border: '1px solid var(--border)',
-                                        outline: 'none',
                                         fontSize: '0.875rem',
                                         textAlign: locale === 'ar' ? 'right' : 'left'
                                     }}
@@ -635,7 +634,6 @@ export default function ClientDetailsPage() {
                                     padding: '0.75rem 1rem',
                                     borderRadius: '0.5rem',
                                     border: '1px solid var(--border)',
-                                    outline: 'none',
                                     fontSize: '0.875rem',
                                     textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}
@@ -683,7 +681,6 @@ export default function ClientDetailsPage() {
                                     padding: '0.75rem 1rem',
                                     borderRadius: '0.5rem',
                                     border: '1px solid var(--border)',
-                                    outline: 'none',
                                     fontSize: '0.875rem',
                                     textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}

@@ -365,7 +365,6 @@ export default function BulkTaskReviewModal({
                                                                             fontSize: '0.8rem',
                                                                             borderRadius: '0.5rem',
                                                                             border: '1px solid var(--border)',
-                                                                            outline: 'none',
                                                                             background: 'var(--surface-subtle)',
                                                                             textAlign: locale === 'ar' ? 'right' : 'left'
                                                                         }}

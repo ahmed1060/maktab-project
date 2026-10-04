@@ -157,7 +157,6 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
                         textAlign: 'center',
                         fontSize: '0.85rem',
                         color: 'var(--text-main)',
-                        outline: 'none',
                         transition: 'border-color 0.2s'
                     }}
                     onFocus={(e) => e.target.style.borderColor = 'var(--brand-primary)'}

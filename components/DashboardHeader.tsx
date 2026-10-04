@@ -325,7 +325,6 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 padding: locale === 'ar' ? '0.5rem 1.5rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1.5rem',
                                 borderRadius: '1rem',
                                 fontSize: '0.9rem',
-                                outline: 'none',
                                 cursor: 'pointer',
                                 background: 'var(--veil-40)',
                                 border: '1px solid var(--veil-60)',

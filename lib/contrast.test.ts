@@ -122,6 +122,38 @@ for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
     })
 }
 
+describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
+    // It was the browser's own ring, hidden on every .input and on about ten
+    // controls (accessibility audit, 4 October 2026, H3); now one ring in a
+    // colour held to 3:1 against what it sits on, in each theme.
+    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
+        for (const bg of ["--surface", "--surface-sunk", "--page-bg"]) {
+            it(`${themeName}: --focus-ring on ${bg}`, () => {
+                const r = ratio(tokens["--focus-ring"], tokens[bg])
+                expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+            })
+        }
+    }
+
+    it("on the sidebar, dark in both themes, it is the light ring", () => {
+        const ring = CSS.match(/\.glass-dark \{[^}]*--focus-ring: (#[0-9a-fA-F]{6})/)?.[1]
+        expect(ring).toBeDefined()
+        // Against the sidebar's darkest ground (slate 900) and its lightest:
+        // slate 900 at 65% over the light page (#eef2ff), which is #5d6475.
+        expect(ratio(ring!, "#0f172a")).toBeGreaterThanOrEqual(3)
+        expect(ratio(ring!, "#5d6475")).toBeGreaterThanOrEqual(3)
+    })
+
+    it("is shown for keyboard focus, and nothing turns it off", () => {
+        expect(CSS).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--focus-ring\);/)
+        expect(CSS).not.toMatch(/\.input:focus \{[^}]*outline: none/)
+        const screens = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? screens(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const off = [...screens("app"), ...screens("components")].filter(f => /outline: *'none'/.test(readFileSync(f, "utf8")))
+        expect(off).toEqual([])
+    })
+})
+
 describe("the two themes are actually different", () => {
     it("inverts the surface scale rather than reusing it", () => {
         expect(luminance(DARK["--surface"])).toBeLessThan(luminance(LIGHT["--surface"]))

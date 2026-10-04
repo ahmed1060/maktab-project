@@ -110,7 +110,6 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                                 style={{
                                     width: '100%',
                                     border: 'none',
-                                    outline: 'none',
                                     padding: 0,
                                     fontSize: '0.95rem',
                                     fontWeight: 500,

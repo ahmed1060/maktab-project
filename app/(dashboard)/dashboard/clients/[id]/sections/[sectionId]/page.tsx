@@ -696,7 +696,6 @@ export default function SectionNotesPage() {
                                                 borderRadius: '0.5rem',
                                                 minHeight: '120px',
                                                 lineHeight: '1.5',
-                                                outline: 'none',
                                                 marginBottom: '0.5rem',
                                                 textAlign: locale === 'ar' ? 'right' : 'left'
                                             }}
@@ -917,7 +916,6 @@ export default function SectionNotesPage() {
                                                 borderRadius: '0.5rem',
                                                 minHeight: '120px',
                                                 lineHeight: '1.5',
-                                                outline: 'none',
                                                 marginBottom: '0.5rem',
                                                 textAlign: locale === 'ar' ? 'right' : 'left'
                                             }}
