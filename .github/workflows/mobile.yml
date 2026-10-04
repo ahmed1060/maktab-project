@@ -16,6 +16,9 @@ name: Mobile app
 #   NIZMO_CLOUD_PROJECT_NUMBER (variable) for Play Integrity (README, Attestation).
 
 on:
+  # TEMPORARY: to test this branch's app changes before they are on main. Removed in the next commit.
+  push:
+    branches: [claude/practical-curie-lec92x]
   workflow_dispatch:
     inputs:
       site:
@@ -52,7 +55,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Always the code on main, whichever branch the run was started from.
-          ref: main
+          ref: ${{ github.event_name == 'push' && github.sha || 'main' }}
 
       - uses: actions/setup-node@v4
         with:
@@ -110,7 +113,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Always the code on main, whichever branch the run was started from.
-          ref: main
+          ref: ${{ github.event_name == 'push' && github.sha || 'main' }}
 
       - uses: actions/setup-node@v4
         with:
