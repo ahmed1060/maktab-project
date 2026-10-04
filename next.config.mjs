@@ -8,13 +8,13 @@ import { withSentryConfig } from '@sentry/nextjs/config';
 // directives below as a starting point — watch the console on the pages
 // that hit the HERE API and Supabase storage (task locations, avatars,
 // attachments) before ever switching this to Content-Security-Policy.
-// tile.openstreetmap.org: the map for placing a check-in place's pin
+// maps.hereapi.com: HERE's map images for placing a check-in place's pin
 // (components/PointPicker.tsx).
 const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.supabase.co https://tile.openstreetmap.org",
+    "img-src 'self' data: blob: https://*.supabase.co https://maps.hereapi.com",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co https://revgeocode.search.hereapi.com https://autosuggest.search.hereapi.com",
     "frame-ancestors 'none'",

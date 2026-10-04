@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import { useLanguage } from '@/context/LanguageContext'
+import { hereAttribution, hereTileUrl } from '@/lib/here-tiles'
 import { fixStillWanted, formatPoint, locateErrorKey, MAX_ACCURACY_METERS, parsePoint } from '@/lib/attendance/geo'
 
 /**
@@ -11,19 +12,20 @@ import { fixStillWanted, formatPoint, locateErrorKey, MAX_ACCURACY_METERS, parse
  * pasting it: where this device is now, or a pin on a map. Both write the
  * same text into the field, so the field stays the one thing that is saved.
  *
- * The map is OpenStreetMap's, drawn with Leaflet. Clicking puts the pin
+ * The map is HERE's (the same key as the place search), drawn with Leaflet,
+ * as a street map or satellite imagery. Clicking puts the pin
  * there; the pin can be dragged; the circle shows the radius. Without a
  * mouse, the arrow keys move the map and "Pin the centre" drops the pin
  * under the cross in the middle.
  */
 
 const CAIRO: [number, number] = [30.0444, 31.2357]
-const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
 type Status = { kind: 'accuracy'; meters: number; text: string } | { kind: 'error'; key: ReturnType<typeof locateErrorKey> | 'att_loc_here_unsupported' }
 
 export default function PointPicker({ value, radius, onChange }: { value: string; radius: number; onChange: (text: string) => void }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
+    const hereKey = process.env.NEXT_PUBLIC_HERE_API_KEY
     const [mapOpen, setMapOpen] = useState(false)
     const [locating, setLocating] = useState(false)
     const [status, setStatus] = useState<Status | null>(null)
@@ -81,7 +83,9 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             if (cancelled || !box.current) return
             const start = parsePoint(latest.current.value)
             map = L.map(box.current, { center: start ? [start.latitude, start.longitude] : CAIRO, zoom: start ? 17 : 11 })
-            L.tileLayer(TILES, { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>' }).addTo(map)
+            const layer = (style: 'map' | 'satellite') => L.tileLayer(hereTileUrl(style, locale, hereKey!), { maxZoom: 20, attribution: hereAttribution(new Date().getFullYear()) })
+            const street = layer('map').addTo(map)
+            L.control.layers({ [t('att_loc_layer_map')]: street, [t('att_loc_layer_satellite')]: layer('satellite') }, undefined, { position: 'topright' }).addTo(map)
             map.on('click', e => put(e.latlng.lat, e.latlng.lng))
             leaflet.current = { L, map }
             setDrawn(n => n + 1)
@@ -93,6 +97,7 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             pin.current = null
             ring.current = null
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- drawn once per opening, in the language it opened in
     }, [mapOpen])
 
     // Keep the pin and circle on the field's point, however it was set.
@@ -137,9 +142,12 @@ export default function PointPicker({ value, radius, onChange }: { value: string
                 <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }} disabled={locating} onClick={locate}>
                     {locating ? t('att_loc_here_busy') : t('att_loc_here')}
                 </button>
-                <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }} aria-expanded={mapOpen} onClick={() => setMapOpen(o => !o)}>
-                    {mapOpen ? t('att_loc_pick_close') : t('att_loc_pick')}
-                </button>
+                {/* No key, no map: the HERE key is what draws it. */}
+                {hereKey && (
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }} aria-expanded={mapOpen} onClick={() => setMapOpen(o => !o)}>
+                        {mapOpen ? t('att_loc_pick_close') : t('att_loc_pick')}
+                    </button>
+                )}
             </div>
             <span role="status" style={{ fontSize: '0.75rem', color: shown?.kind === 'error' || (shown?.kind === 'accuracy' && shown.meters > Math.max(MAX_ACCURACY_METERS, radius)) ? 'var(--danger-fg)' : 'var(--text-soft)' }}>
                 {shown?.kind === 'error' && t(shown.key)}
@@ -147,7 +155,7 @@ export default function PointPicker({ value, radius, onChange }: { value: string
                     ? t('att_loc_here_rough').replace('{n}', String(shown.meters))
                     : t('att_loc_here_found').replace('{n}', String(shown.meters)))}
             </span>
-            {mapOpen && (
+            {mapOpen && hereKey && (
                 <div style={{ display: 'grid', gap: '0.4rem' }}>
                     <div style={{ position: 'relative', isolation: 'isolate' }} dir="ltr">
                         <div ref={box} aria-label={t('att_loc_map_label')} style={{ height: '18rem', borderRadius: '0.75rem', border: '1px solid var(--field-border)' }} />

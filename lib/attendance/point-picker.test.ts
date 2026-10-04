@@ -43,14 +43,21 @@ describe("filling the point", () => {
         expect(panel).toMatch(/<PointPicker value=\{draft\.point\}/)
     })
 
-    it("may load the map's tiles (CSP)", () => {
+    it("draws HERE's map, with the key the place search already uses", () => {
+        expect(picker).toContain("hereTileUrl(")
+        expect(picker).toContain("process.env.NEXT_PUBLIC_HERE_API_KEY")
+        expect(picker).not.toContain("openstreetmap")
+    })
+
+    it("may load HERE's map images (CSP)", () => {
         const config = readFileSync("next.config.mjs", "utf8")
-        expect(config).toMatch(/img-src[^"]*https:\/\/tile\.openstreetmap\.org/)
+        expect(config).toMatch(/img-src[^"]*https:\/\/maps\.hereapi\.com/)
+        expect(config).not.toContain("tile.openstreetmap.org")
     })
 
     it.each(["att_loc_here", "att_loc_here_busy", "att_loc_here_found", "att_loc_here_rough", "att_loc_here_denied",
         "att_loc_here_unavailable", "att_loc_here_timeout", "att_loc_here_unsupported", "att_loc_pick", "att_loc_pick_close",
-        "att_loc_pick_hint", "att_loc_map_label", "att_loc_pin", "att_loc_pin_centre"])("%s is in English and Arabic", key => {
+        "att_loc_pick_hint", "att_loc_map_label", "att_loc_pin", "att_loc_pin_centre", "att_loc_layer_map", "att_loc_layer_satellite"])("%s is in English and Arabic", key => {
         expect((en as Record<string, string>)[key]).toBeTruthy()
         expect((ar as Record<string, string>)[key]).toBeTruthy()
     })

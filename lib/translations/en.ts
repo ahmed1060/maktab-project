@@ -1400,6 +1400,8 @@ export const en = {
         att_loc_map_label: "Map for placing the pin. Arrow keys move the map; plus and minus zoom.",
         att_loc_pin: "The place's pin",
         att_loc_pin_centre: "Pin the centre",
+        att_loc_layer_map: "Map",
+        att_loc_layer_satellite: "Satellite",
         att_loc_point_invalid: "Enter latitude and longitude, such as 30.0444, 31.2357.",
         att_loc_radius: "Radius (metres)",
         att_loc_radius_hint: "How far from the point still counts as here: 20 to 5000 m. 100 to 200 m suits most offices.",
