@@ -34,7 +34,12 @@ export function toastLifetime(type: ToastType): number | null {
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
     const { t } = useLanguage()
     const lifetime = toastLifetime(toast.type)
-    const [paused, setPaused] = useState(false)
+    // Pointer and focus each hold the clock; it runs again only when neither
+    // is on the toast (leaving with one shouldn't restart it while the other
+    // stays: Codex review on #37).
+    const [hovered, setHovered] = useState(false)
+    const [focused, setFocused] = useState(false)
+    const paused = hovered || focused
     const remaining = useRef(lifetime ?? 0)
     useEffect(() => {
         if (lifetime === null || paused) return
@@ -48,10 +53,11 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
 
     return (
         <div
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
-            onFocus={() => setPaused(true)}
-            onBlur={() => setPaused(false)}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onFocus={() => setFocused(true)}
+            // Only when focus leaves the toast, not when it moves within it.
+            onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false) }}
             style={{
                 background: 'white',
                 borderRadius: '8px',
