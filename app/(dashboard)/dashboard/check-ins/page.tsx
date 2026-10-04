@@ -13,6 +13,7 @@ import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { apiErrorText } from '@/lib/api-error-text'
 import type { TranslationKey } from '@/lib/translations'
+import { googleMapsLink } from '@/lib/attendance/geo'
 
 /**
  * The Super Admin's check-in review (ATTENDANCE_PLAN.md §9.6, §13.7).
@@ -36,7 +37,7 @@ type Integrity = { companyId: string; name: string; checkIns: number; accepted: 
 const soft = { color: 'var(--text-soft)', fontSize: '0.78rem' } as const
 const small = { fontSize: '0.78rem', padding: '0.25rem 0.6rem' } as const
 const box = { padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '0.75rem' } as const
-const mapLink = (lat: number, lng: number) => `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`
+const mapLink = googleMapsLink
 
 export default function CheckInReviewPage() {
     const { t } = useLanguage()

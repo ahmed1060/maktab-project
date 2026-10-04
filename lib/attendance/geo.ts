@@ -20,3 +20,11 @@ export function distanceMeters(a: { latitude: number; longitude: number }, b: { 
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2
     return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)))
 }
+
+/**
+ * The point in Google Maps, in a new tab (or the Maps app on a phone). Uses
+ * Google's documented Maps URL, which takes "lat,lng" as the search query.
+ */
+export function googleMapsLink(latitude: number, longitude: number): string {
+    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+}

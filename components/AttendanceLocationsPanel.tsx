@@ -8,7 +8,7 @@ import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
-import { parsePoint } from '@/lib/attendance/geo'
+import { googleMapsLink, parsePoint } from '@/lib/attendance/geo'
 
 /**
  * Where people check in with the app (ATTENDANCE_PLAN.md §8.5, §9.4), on the
@@ -23,7 +23,7 @@ type Location = {
 type Person = { id: string; name: string }
 type Draft = { id: string | null; name: string; point: string; radius: string; ips: string; everyone: boolean }
 
-const mapLink = (l: Pick<Location, 'latitude' | 'longitude'>) => `https://www.openstreetmap.org/?mlat=${l.latitude}&mlon=${l.longitude}#map=17/${l.latitude}/${l.longitude}`
+const mapLink = (l: Pick<Location, 'latitude' | 'longitude'>) => googleMapsLink(l.latitude, l.longitude)
 
 export default function AttendanceLocationsPanel({ companyId, readOnly }: { companyId: string; readOnly: boolean }) {
     const { t } = useLanguage()
