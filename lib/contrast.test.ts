@@ -229,12 +229,16 @@ describe("the two themes are actually different", () => {
         // the reader has their display set to. A dark value would produce a
         // payslip printed white on black: unreadable, and expensive in a way
         // whoever pressed Print finds out about afterwards.
+        //
+        // --map-* are invariant because they are drawn on map tiles, which
+        // are light in both themes: a dark-mode ink would vanish into them.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
             "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong",
             "--paper", "--ink-on-paper",
             "--button-from", "--button-to",
+            "--map-pin", "--map-ink", "--map-halo", "--map-shadow",
         ])
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))

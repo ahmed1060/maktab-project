@@ -1,4 +1,4 @@
-import { distanceMeters } from "./geo"
+import { distanceMeters, MAX_ACCURACY_METERS } from "./geo"
 import { ipInRanges } from "./ip-ranges"
 
 /**
@@ -22,8 +22,8 @@ import { ipInRanges } from "./ip-ranges"
 export type FlagReason = "OUTSIDE_AREA" | "IMPRECISE_LOCATION" | "OFFICE_IP_MISMATCH" | "ATTESTATION_UNVERIFIED" | "FACE_UNVERIFIED"
 export type RefusalReason = "NOT_REGISTERED_PHONE" | "PHONE_SUSPENDED" | "MOCK_LOCATION" | "ATTESTATION_FAILED" | "NO_WORK_LOCATION"
 
-/** A fix vaguer than this, or than the place's own circle if that is wider, says nothing about being in it. */
-export const MAX_ACCURACY_METERS = 50
+// In geo.ts, which the browser can load (this file's IP check can't be).
+export { MAX_ACCURACY_METERS }
 
 export type PlaceToCheck = { id: string; name: string; latitude: number; longitude: number; radiusMeters: number; officeIpRanges: string[] }
 

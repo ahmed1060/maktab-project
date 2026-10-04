@@ -190,6 +190,11 @@
      the text on them is white in both themes. */
   --button-from: #4f46e5;
   --button-to: #7c3aed;
+  /* The map (components/PointPicker.tsx): its tiles are light in both themes, so these don't change in dark mode. */
+  --map-pin: #4f46e5;
+  --map-ink: #111827;
+  --map-halo: #ffffff;
+  --map-shadow: rgba(0, 0, 0, 0.5);
 
   /* A text link in the brand colour, at least 4.5:1 on the surface. */
   --link: #4f46e5;
@@ -789,6 +794,34 @@ html[dir="rtl"] select.input {
   background: var(--veil-10) !important;
   color: var(--sidebar-fg-strong) !important;
   border-color: var(--veil-20) !important;
+}
+
+/* The pin and the centre cross on the map for placing a check-in place
+   (components/PointPicker.tsx). */
+.map-pin {
+  background: var(--map-pin);
+  border: 3px solid var(--map-halo);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px var(--map-shadow);
+}
+/* The radius circle: SVG, coloured here rather than in Leaflet's options. */
+.map-ring {
+  stroke: var(--map-pin);
+  fill: var(--map-pin);
+}
+.map-cross {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  pointer-events: none;
+  z-index: 1000;
+  background:
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 2px 100% no-repeat,
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 100% 2px no-repeat;
+  filter: drop-shadow(0 0 1px var(--map-halo));
 }
 
 /* Modern Buttons */

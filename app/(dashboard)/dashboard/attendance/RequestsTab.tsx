@@ -13,6 +13,7 @@ import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import type { TranslationKey } from '@/lib/translations'
 import { send, json } from './send'
+import { googleMapsLink } from '@/lib/attendance/geo'
 
 /**
  * Requests (P0.6): permission hours (إذن) and reports of a missing punch,
@@ -511,7 +512,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                                                     f.checkIn?.ip,
                                                 ].filter(Boolean).join(' · ')}
                                                     {f.checkIn?.latitude !== undefined && f.checkIn?.longitude !== undefined && (
-                                                        <> · <a href={`https://www.openstreetmap.org/?mlat=${f.checkIn.latitude}&mlon=${f.checkIn.longitude}#map=17/${f.checkIn.latitude}/${f.checkIn.longitude}`} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a></>
+                                                        <> · <a href={googleMapsLink(f.checkIn.latitude, f.checkIn.longitude)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a></>
                                                     )}
                                                 </div>
                                             </td>

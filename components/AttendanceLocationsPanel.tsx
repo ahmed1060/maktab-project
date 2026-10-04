@@ -7,8 +7,9 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
+import PointPicker from '@/components/PointPicker'
 import { apiErrorText } from '@/lib/api-error-text'
-import { parsePoint } from '@/lib/attendance/geo'
+import { googleMapsLink, parsePoint } from '@/lib/attendance/geo'
 
 /**
  * Where people check in with the app (ATTENDANCE_PLAN.md §8.5, §9.4), on the
@@ -23,7 +24,7 @@ type Location = {
 type Person = { id: string; name: string }
 type Draft = { id: string | null; name: string; point: string; radius: string; ips: string; everyone: boolean }
 
-const mapLink = (l: Pick<Location, 'latitude' | 'longitude'>) => `https://www.openstreetmap.org/?mlat=${l.latitude}&mlon=${l.longitude}#map=17/${l.latitude}/${l.longitude}`
+const mapLink = (l: Pick<Location, 'latitude' | 'longitude'>) => googleMapsLink(l.latitude, l.longitude)
 
 export default function AttendanceLocationsPanel({ companyId, readOnly }: { companyId: string; readOnly: boolean }) {
     const { t } = useLanguage()
@@ -132,6 +133,7 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
                             <span style={{ fontSize: '0.75rem', color: draft.point.trim() && !point ? 'var(--danger-fg)' : 'var(--text-soft)' }}>{draft.point.trim() && !point ? t('att_loc_point_invalid') : t('att_loc_point_hint')}</span>
                             {point && <a href={mapLink(point)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem' }}>{t('att_loc_map')} ↗</a>}
                         </label>
+                        <PointPicker value={draft.point} radius={Number(draft.radius) || 0} onChange={text => setDraft(d => d && { ...d, point: text })} />
                         <label style={{ display: 'grid', gap: '0.25rem' }}>
                             <span className="label">{t('att_loc_radius')}</span>
                             <input className="input" type="number" min={20} max={5000} step={10} value={draft.radius} onChange={e => setDraft({ ...draft, radius: e.target.value })} style={{ maxWidth: '10rem' }} />
