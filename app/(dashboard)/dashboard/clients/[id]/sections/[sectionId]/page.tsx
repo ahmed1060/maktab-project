@@ -654,7 +654,7 @@ export default function SectionNotesPage() {
                             alignItems: 'center', zIndex: 9999
                         }}>
                             <div
-                                className="absolute inset-0"
+                                className="modal-backdrop"
                                 onClick={() => !isSubmitting && setIsModalOpen(false)}
                             />
                             <div style={{
@@ -875,7 +875,7 @@ export default function SectionNotesPage() {
                             alignItems: 'center', zIndex: 9999
                         }}>
                             <div
-                                className="absolute inset-0"
+                                className="modal-backdrop"
                                 onClick={() => !isSubmitting && setIsEditModalOpen(false)}
                             />
                             <div style={{

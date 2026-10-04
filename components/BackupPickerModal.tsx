@@ -40,7 +40,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
             background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
             alignItems: 'center', zIndex: 10000
         }}>
-            <div className="absolute inset-0" onClick={onClose} />
+            <div className="modal-backdrop" onClick={onClose} />
             <div style={{
                 background: 'var(--surface)', padding: '1.5rem', borderRadius: '12px',
                 width: 'min(calc(100vw - 3rem), 560px)', maxHeight: '80vh',
