@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { toastLifetime } from "@/context/ToastContext"
+import { toastLifetime, withToast, MAX_TOASTS, type Toast } from "@/context/ToastContext"
 
 /**
  * "Saved", "Deleted" and error toasts had no live region, so screen readers
@@ -38,5 +38,20 @@ describe("toasts", () => {
 
     it("have a dismiss button that says what it does", () => {
         expect(SRC).toContain("aria-label={t('close')}")
+    })
+
+    it("never pile up: a repeated message replaces itself, and only the newest few show (Codex review on #37)", () => {
+        const err = (id: string, message = "Couldn't save"): Toast => ({ id, message, type: "error" })
+        // The same failure again: one toast, the newest.
+        expect(withToast([err("a")], err("b")).map(t => t.id)).toEqual(["b"])
+        // A different message, or the same words as a different kind, both stay.
+        expect(withToast([err("a")], err("b", "Other")).map(t => t.id)).toEqual(["a", "b"])
+        expect(withToast([err("a")], { id: "b", message: "Couldn't save", type: "info" }).length).toBe(2)
+        // Past the limit, the oldest goes.
+        let list: Toast[] = []
+        for (let i = 0; i < MAX_TOASTS + 3; i++) list = withToast(list, err(`e${i}`, `m${i}`))
+        expect(list.length).toBe(MAX_TOASTS)
+        expect(list[0].id).toBe("e3")
+        expect(SRC).toContain("maxHeight: 'calc(100vh - 40px)'")
     })
 })

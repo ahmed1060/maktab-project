@@ -7,7 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 
 type ToastType = 'success' | 'error' | 'info' | 'warning'
 
-interface Toast {
+export interface Toast {
     id: string
     message: string
     type: ToastType
@@ -28,6 +28,21 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
  */
 export function toastLifetime(type: ToastType): number | null {
     return type === 'error' ? null : 5000
+}
+
+/** At most this many toasts show at once; the oldest goes first. */
+export const MAX_TOASTS = 5
+
+/**
+ * The list with a new toast added. The same message of the same kind
+ * replaces the one already showing (a retried action that fails again
+ * doesn't stack copies), and the list keeps only the newest MAX_TOASTS:
+ * errors stay until dismissed, so without a limit they piled up past the
+ * bottom of the screen (Codex review on #37).
+ */
+export function withToast(list: Toast[], toast: Toast): Toast[] {
+    const rest = list.filter(t => !(t.type === toast.type && t.message === toast.message))
+    return [...rest, toast].slice(-MAX_TOASTS)
 }
 
 /** One toast: its own clock, paused while hovered or focused. */
@@ -106,7 +121,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     const showToast = useCallback((message: string, type: ToastType = 'info') => {
         const id = Math.random().toString(36).substring(2, 9)
-        setToasts(prev => [...prev, { id, message, type }])
+        setToasts(prev => withToast(prev, { id, message, type }))
     }, [])
 
     const removeToast = useCallback((id: string) => {
@@ -125,6 +140,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '10px',
+                    // Never taller than the screen: a long stack scrolls rather than running off it.
+                    maxHeight: 'calc(100vh - 40px)',
+                    overflowY: 'auto',
                     pointerEvents: 'none' // Allow clicking through the container
                 }}>
                     {/* Announced as they arrive (WCAG 4.1.3): the regions are always in the
