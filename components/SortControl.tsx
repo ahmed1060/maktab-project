@@ -39,7 +39,7 @@ export default function SortControl({ options, sortBy, sortOrder, onSortChange }
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
             </select>
-            <button
+            <button aria-label={sortOrder === 'asc' ? t('ascending') : t('descending')}
                 onClick={() => onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
                 title={sortOrder === 'asc' ? t('ascending') : t('descending')}
                 style={{

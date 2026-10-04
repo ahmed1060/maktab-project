@@ -450,7 +450,7 @@ export default function NewTaskPage() {
                         {t('download_template')}
                     </button>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
+                        <button aria-label={t('view_usernames')}
                             type="button"
                             onClick={() => window.open('/dashboard/usernames', '_blank')}
                             title={t('view_usernames')}

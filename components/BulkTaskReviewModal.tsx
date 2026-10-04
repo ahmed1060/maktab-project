@@ -63,7 +63,7 @@ export default function BulkTaskReviewModal({
             }}>
                 <div className="modal-header">
                     <h2 className="modal-title">{t('bulk_review_title')}</h2>
-                    <button className="modal-close" onClick={onClose}>×</button>
+                    <button aria-label={t('close')} className="modal-close" onClick={onClose}>×</button>
                 </div>
 
                 <div className="modal-body" style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
@@ -97,7 +97,7 @@ export default function BulkTaskReviewModal({
                                                 }}>
                                                     {bt.title || t('missing_title')}
                                                 </div>
-                                                <button
+                                                <button aria-label={t('edit')}
                                                     onClick={(e) => {
                                                         const rect = e.currentTarget.getBoundingClientRect()
                                                         setEditAnchorRect(rect)
@@ -166,7 +166,7 @@ export default function BulkTaskReviewModal({
                                                 <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem', flex: 1 }}>
                                                     {bt.description?.substring(0, 50)}...
                                                 </div>
-                                                <button
+                                                <button aria-label={t('edit')}
                                                     onClick={(e) => {
                                                         const rect = e.currentTarget.getBoundingClientRect()
                                                         setEditAnchorRect(rect)
@@ -257,7 +257,7 @@ export default function BulkTaskReviewModal({
 
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                     {/* Plus Button */}
-                                                    <button
+                                                    <button aria-label={t('add_assignee')}
                                                         onClick={(e) => {
                                                             const rect = e.currentTarget.getBoundingClientRect()
                                                             setEditAnchorRect(rect)
@@ -287,7 +287,7 @@ export default function BulkTaskReviewModal({
                                                     </button>
 
                                                     {/* Minus Button */}
-                                                    <button
+                                                    <button aria-label={t('remove_assignee')}
                                                         onClick={(e) => {
                                                             const rect = e.currentTarget.getBoundingClientRect()
                                                             setEditAnchorRect(rect)
@@ -436,7 +436,7 @@ export default function BulkTaskReviewModal({
                                                                             }}
                                                                         >
                                                                             <span style={{ fontWeight: '500' }}>{bt.resolvedNames[ridx]}</span>
-                                                                            <button
+                                                                            <button aria-label={t('remove_assignee')}
                                                                                 onClick={() => {
                                                                                     const newTasks = [...bulkTasks]
                                                                                     const nid = bt.resolvedIds.filter((_: any, i: number) => i !== ridx)
@@ -507,7 +507,7 @@ export default function BulkTaskReviewModal({
                                                     }}
                                                     min={earliestDeadline(now).toISOString()}
                                                     customTrigger={
-                                                        <button
+                                                        <button aria-label={t('edit_deadline')}
                                                             style={{
                                                                 background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
                                                                 borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',

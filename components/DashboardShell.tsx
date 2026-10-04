@@ -338,7 +338,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
                     {/* Mobile Close */}
                     {isMobile && (
-                        <button
+                        <button aria-label={t('close')}
                             onClick={() => setIsSidebarOpen(false)}
                             style={{ background: 'none', border: 'none', color: 'var(--text-on-accent)', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }}
                         >

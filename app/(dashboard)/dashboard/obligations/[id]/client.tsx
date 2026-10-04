@@ -573,7 +573,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                         )}
                                     </div>
                                     {canManage && (att.uploadedById === userId || companyWide('obligations.manage')) && (
-                                        <button
+                                        <button aria-label={t('remove' as any)}
                                             onClick={() => handleRemoveExistingAttachment(att)}
                                             style={{
                                                 marginLeft: locale === 'ar' ? '0' : '0.5rem',
@@ -764,7 +764,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     direction: locale === 'ar' ? 'rtl' : 'ltr'
                 }}>
                     <span>{feedbackMessage}</span>
-                    <button onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                    <button aria-label={t('close')} onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
                 </div>
             )}
 

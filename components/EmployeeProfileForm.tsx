@@ -1159,7 +1159,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }}>
                             <div className="modal-header">
                                 <h3 className="modal-title">{t('verify_identity')}</h3>
-                                <button
+                                <button aria-label={t('close')}
                                     className="modal-close"
                                     onClick={() => {
                                         setVerificationModalOpen(false)

@@ -114,7 +114,7 @@ export default function UsernamesPage() {
     return (
         <div style={{ padding: '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
-                <button
+                <button aria-label={t('download_excel')}
                     onClick={downloadExcel}
                     className="btn"
                     title={t('download_excel')}

@@ -350,7 +350,7 @@ export default function CompaniesPage() {
                                                     Payments History — it's a different concern (company policy,
                                                     not billing), so it reads as "manage this company" alongside
                                                     Edit/Ban/Delete instead of looking bundled with Payments. */}
-                                                <button
+                                                <button aria-label={t('company_settings_title') || 'Settings'}
                                                     // Navigates, and nothing else. It used to set the global
                                                     // company scope on the way, so that Vendors and Tasks —
                                                     // which read only the switcher — would follow you into the

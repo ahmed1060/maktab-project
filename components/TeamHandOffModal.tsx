@@ -45,7 +45,7 @@ export default function TeamHandOffModal({
             <div className="modal-content" style={{ maxWidth: '460px', width: '90%' }}>
                 <div className="modal-header">
                     <h3 className="modal-title">{t('handoff_title')}</h3>
-                    <button className="modal-close" onClick={onCancel}>&times;</button>
+                    <button aria-label={t('close')} className="modal-close" onClick={onCancel}>&times;</button>
                 </div>
                 <div className="modal-body" style={{ textAlign: rtl ? 'right' : 'left' }}>
                     <p style={{ marginTop: 0 }}>

@@ -112,7 +112,7 @@ export default function TaskSubmissionForm({
                                     <span style={{ color: 'var(--text-faint)' }}>•</span>
                                     <span style={{ color: 'var(--warn-fg-mid)' }}>{e.amount.toFixed(2)} {t('egp')}</span>
                                 </div>
-                                <button onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-solid)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
+                                <button aria-label={t('remove' as any)} onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-solid)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
                             </div>
                         ))}
                     </div>

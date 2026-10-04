@@ -1016,7 +1016,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                     </div>
                                 </a>
                                 {task.status === 'IN_PROGRESS' && (att.uploadedById === userId || can('tasks.edit')) && (
-                                    <button
+                                    <button aria-label={t('delete_attachment_title')}
                                         onClick={(e) => { e.preventDefault(); handleDeleteItem('ATTACHMENT', att.url); }}
                                         style={{ position: 'absolute', top: '5px', right: locale === 'ar' ? 'auto' : '5px', left: locale === 'ar' ? '5px' : 'auto', background: 'var(--surface)', border: '1px solid var(--danger-bg)', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
                                         title={t('delete_attachment_title')}
@@ -1231,7 +1231,7 @@ function TaskCommentsLog({ task, userId, onDeleteNote }: {
                                         )}
                                         {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{log.author}</span>}
                                         {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || canEditTask) && (
-                                            <button onClick={() => onDeleteNote(log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
+                                            <button aria-label={t('delete_note_title')} onClick={() => onDeleteNote(log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
                                                 <TrashIcon size={14} />
                                             </button>
                                         )}

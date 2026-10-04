@@ -137,7 +137,7 @@ export default function CompanyPaymentsPage() {
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <button
+                    <button aria-label={t('back_to_companies')}
                         onClick={() => router.push('/dashboard/companies')}
                         className="glass"
                         style={{
@@ -263,7 +263,7 @@ export default function CompanyPaymentsPage() {
                                             </button>
 
                                             {payment.status === 'UNPAID' && (
-                                                <button
+                                                <button aria-label={t('delete')}
                                                     onClick={() => handleDelete(payment.id)}
                                                     className="btn"
                                                     style={{

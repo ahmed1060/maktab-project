@@ -258,7 +258,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             {/* Left: Page Name */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                 {onMenuClick && (
-                    <button
+                    <button aria-label={t('open_menu' as any)}
                         onClick={onMenuClick}
                         style={{
                             background: 'transparent',

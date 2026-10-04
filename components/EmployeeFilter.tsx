@@ -476,7 +476,7 @@ export default function EmployeeFilter({
                                                         </svg>
                                                     </div>
                                                 </div>
-                                                <button
+                                                <button aria-label={localSortOrder === 'asc' ? t('ascending') : t('descending')}
                                                     onClick={() => setLocalSortOrder(localSortOrder === 'asc' ? 'desc' : 'asc')}
                                                     style={{
                                                         height: '48px',
