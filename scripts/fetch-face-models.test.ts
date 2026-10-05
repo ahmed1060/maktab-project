@@ -12,8 +12,9 @@ import { join, resolve } from "node:path"
 
 const SCRIPT = resolve("scripts/fetch-face-models.mjs")
 
-function run(env: Record<string, string>) {
+function run(env: Record<string, string>, dotEnv?: string) {
     const dir = mkdtempSync(join(tmpdir(), "face-models-"))
+    if (dotEnv) writeFileSync(join(dir, ".env"), dotEnv)
     // Left from an earlier build with the test version on.
     mkdirSync(join(dir, "public/face-models/v2"), { recursive: true })
     writeFileSync(join(dir, "public/face-models/v2/w600k_r50.onnx.part0"), "weights")
@@ -32,6 +33,12 @@ describe("fetching the face check's models", () => {
     it("removes them when the test version is off, even when asked to skip (review on #47)", () => {
         const { dir } = run({ FACE_MODELS: "skip" })
         expect(existsSync(join(dir, "public/face-models"))).toBe(false)
+    })
+
+    it("reads the flag from the .env files next reads (review on #47)", () => {
+        const { dir, out } = run({ FACE_MODELS: "skip" }, "NEXT_PUBLIC_FACE_PROTOTYPE=1\n")
+        expect(out).toMatch(/skipped/)
+        expect(existsSync(join(dir, "public/face-models/v2/w600k_r50.onnx.part0"))).toBe(true)
     })
 
     it("leaves things as they are when asked to skip", () => {

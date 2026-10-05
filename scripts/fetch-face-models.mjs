@@ -24,6 +24,10 @@ import { createHash } from "node:crypto"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import JSZip from "jszip"
+import nextEnv from "@next/env"
+
+// The same .env files next dev and next build read, so the flag set there counts here too (review on #47).
+nextEnv.loadEnvConfig(process.cwd(), process.env.npm_lifecycle_event === "predev")
 
 const OUT = "public/face-models/v2"
 
