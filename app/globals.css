@@ -964,6 +964,39 @@ button[aria-busy="true"]::after {
   border: 1px solid var(--veil-20);
 }
 
+/* The bar along the top while a page changes (components/NavigationProgress.tsx).
+   It runs most of the way and waits there, then fills and fades when the next
+   page is in. */
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 10001;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--button-from), var(--button-to));
+  transform-origin: left center;
+  transform: scaleX(0);
+  opacity: 0;
+}
+
+[dir="rtl"] .nav-progress {
+  transform-origin: right center;
+}
+
+.nav-progress[data-state="loading"] {
+  opacity: 1;
+  transform: scaleX(0.85);
+  transition: transform 8s cubic-bezier(0.08, 0.7, 0.1, 1), opacity 0.1s;
+}
+
+.nav-progress[data-state="done"] {
+  opacity: 0;
+  transform: scaleX(1);
+  transition: transform 0.2s ease-out, opacity 0.3s 0.15s;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;

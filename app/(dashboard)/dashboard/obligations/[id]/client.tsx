@@ -8,6 +8,7 @@ import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/sessi
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
 import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
+import Link from 'next/link'
 
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
@@ -439,7 +440,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                         <button onClick={() => action.run('complete', handleForceComplete)} disabled={action.running} aria-busy={action.is('complete')} className="btn" style={{ background: 'var(--ok-fg)', color: 'var(--text-on-accent)' }}>{t('mark_as_completed')}</button>
                         <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: 'var(--info-fill-hover)', color: 'var(--text-on-accent)' }}>{t('reassign_button')}</button>
                         <button onClick={() => setShowDeleteConfirm(true)} className="btn" style={{ background: 'var(--danger-fg-strong)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
-                        <button onClick={() => router.push('/dashboard/obligations')} className="btn" style={{ background: 'var(--surface)', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</button>
+                        <Link href={'/dashboard/obligations'} className="btn" style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</Link>
                     </div>
                 </div>
             )}
@@ -497,12 +498,11 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    <button
-                        onClick={() => router.push('/dashboard/obligations')}
-                        style={{ background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}
+                    <Link href={'/dashboard/obligations'}
+                        style={{ textDecoration: 'none', background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}
                     >
                         {t('close_button')}
-                    </button>
+                    </Link>
                     {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status) && (
                         <button
                             onClick={() => setShowRevertConfirm(true)}

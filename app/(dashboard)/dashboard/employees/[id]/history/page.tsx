@@ -12,6 +12,7 @@ import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from "@/lib/api-error-text"
 import { useDialog } from '@/lib/useDialog'
+import { startNavigationProgress } from '@/components/NavigationProgress'
 
 
 interface SalaryRecord {
@@ -278,7 +279,7 @@ export default function EmployeeHistoryPage() {
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem' }}>
                 <button aria-label={t('go_back')}
-                    onClick={() => router.back()}
+                    onClick={() => { startNavigationProgress(); router.back() }}
                     className="glass"
                     style={{
                         width: '40px',

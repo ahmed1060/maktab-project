@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
 import { useCompany } from '@/context/CompanyContext'
 import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
@@ -22,6 +21,7 @@ import type { SubscriptionState, TrialPreset } from '@/lib/billing/state'
 import { DEFAULT_TRIAL_PRESET, computeTrialEnd, TRIAL_PRESETS } from '@/lib/billing/state'
 import { TRIAL_PRESET_LABEL_KEY } from '@/lib/subscription-display'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
+import Link from 'next/link'
 
 type Company = {
     id: string
@@ -36,7 +36,6 @@ type Company = {
 export default function CompaniesPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const router = useRouter()
     const [showModal, setShowModal] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [formData, setFormData] = useState<{ name: string; trialPreset: TrialPreset; packageId: string }>({
@@ -332,10 +331,9 @@ export default function CompaniesPage() {
                                             )}
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <button
-                                                onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
+                                            <Link href={`/dashboard/companies/${company.id}/payments`}
                                                 className="btn"
-                                                style={{
+                                                style={{ textDecoration: 'none',
                                                     background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                                                     color: 'var(--brand-primary-text)',
                                                     padding: '0.4rem 0.8rem',
@@ -344,7 +342,7 @@ export default function CompaniesPage() {
                                                 }}
                                             >
                                                 <span aria-hidden="true">💳</span> {t('payments_history')}
-                                            </button>
+                                            </Link>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
@@ -352,7 +350,7 @@ export default function CompaniesPage() {
                                                     Payments History — it's a different concern (company policy,
                                                     not billing), so it reads as "manage this company" alongside
                                                     Edit/Ban/Delete instead of looking bundled with Payments. */}
-                                                <button aria-label={t('company_settings_title') || 'Settings'}
+                                                <Link href={`/dashboard/companies/${company.id}/settings`} aria-label={t('company_settings_title') || 'Settings'}
                                                     // Navigates, and nothing else. It used to set the global
                                                     // company scope on the way, so that Vendors and Tasks —
                                                     // which read only the switcher — would follow you into the
@@ -365,10 +363,9 @@ export default function CompaniesPage() {
                                                     // is reached by id in exactly the same way and never did
                                                     // this. Which company you are editing is answered on the
                                                     // settings page itself instead.
-                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/settings`)}
                                                     className="btn"
                                                     title={t('company_settings_title') || 'Settings'}
-                                                    style={{
+                                                    style={{ textDecoration: 'none',
                                                         background: 'color-mix(in srgb, var(--ok-fg-deep) 10%, transparent)',
                                                         color: 'var(--ok-fg)',
                                                         padding: '0.4rem 0.6rem',
@@ -377,7 +374,7 @@ export default function CompaniesPage() {
                                                     }}
                                                 >
                                                     <span aria-hidden="true">⚙️</span>
-                                                </button>
+                                                </Link>
                                                 <button
                                                     onClick={() => handleOpenModal(company)}
                                                     className="btn"
