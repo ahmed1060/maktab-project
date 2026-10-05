@@ -106,6 +106,7 @@ export const ar = {
         super_admins: "المسؤولون العامون",
         system: "النظام",
         all_companies: "جميع الشركات",
+        company_switcher_label: "الشركة المعروضة: {name}",
         profile_requests: "طلبات تغيير الملف الشخصي",
         created_by: "أنشئ بواسطة",
         updated_by: "حدث بواسطة",
