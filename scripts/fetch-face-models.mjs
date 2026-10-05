@@ -19,22 +19,22 @@
 // Only where the face check for testing is offered (NEXT_PUBLIC_FACE_PROTOTYPE=1):
 // anywhere else, production above all, nothing is downloaded and no model is
 // published, and any left from before are removed (review on #47).
-// FACE_MODELS=skip leaves everything as it is (for a quick dev start).
+// Where it is on, FACE_MODELS=skip leaves everything as it is (for a quick dev start).
 import { createHash } from "node:crypto"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import JSZip from "jszip"
 
-if (process.env.FACE_MODELS === "skip") {
-    console.log("fetch-face-models: skipped (FACE_MODELS=skip)")
-    process.exit(0)
-}
-
 const OUT = "public/face-models/v2"
 
+// Off: whatever else is set, nothing is published (review on #47), so this comes before FACE_MODELS=skip.
 if (process.env.NEXT_PUBLIC_FACE_PROTOTYPE !== "1") {
     rmSync("public/face-models", { recursive: true, force: true })
     console.log("fetch-face-models: the face check for testing is off (NEXT_PUBLIC_FACE_PROTOTYPE isn't 1); no models")
+    process.exit(0)
+}
+if (process.env.FACE_MODELS === "skip") {
+    console.log("fetch-face-models: skipped (FACE_MODELS=skip)")
     process.exit(0)
 }
 const CACHE = existsSync(".next") ? ".next/cache/face-models" : "node_modules/.cache/face-models"

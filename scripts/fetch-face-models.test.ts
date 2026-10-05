@@ -29,6 +29,11 @@ describe("fetching the face check's models", () => {
         expect(existsSync(join(dir, "public/face-models"))).toBe(false)
     })
 
+    it("removes them when the test version is off, even when asked to skip (review on #47)", () => {
+        const { dir } = run({ FACE_MODELS: "skip" })
+        expect(existsSync(join(dir, "public/face-models"))).toBe(false)
+    })
+
     it("leaves things as they are when asked to skip", () => {
         const { dir } = run({ FACE_MODELS: "skip", NEXT_PUBLIC_FACE_PROTOTYPE: "1" })
         expect(existsSync(join(dir, "public/face-models/v2/w600k_r50.onnx.part0"))).toBe(true)
