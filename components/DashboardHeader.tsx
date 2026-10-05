@@ -48,6 +48,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const [isMobile, setIsMobile] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const switcherRef = useRef<HTMLButtonElement>(null)
+    const accountRef = useRef<HTMLButtonElement>(null)
     const optionRefs = useRef<(HTMLLIElement | null)[]>([])
     const switcherListId = useId()
     const { t, locale } = useLanguage()
@@ -575,9 +576,16 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
                     {/* Avatar Container with Dropdown */}
                     <div style={{ position: 'relative' }}>
-                        <div
+                        {/* A button, so the keyboard can open the account menu too. */}
+                        <button
+                            type="button"
+                            ref={accountRef}
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            aria-haspopup="menu"
+                            aria-expanded={isMenuOpen}
+                            aria-label={t('account_menu' as TranslationKey)}
                             style={{
+                                padding: 0,
                                 width: '45px',
                                 height: '45px',
                                 borderRadius: '50%',
@@ -596,7 +604,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             {headerAvatar ? (
                                 <Image
                                     src={headerAvatar}
-                                    alt="Profile"
+                                    alt=""
                                     width={45}
                                     height={45}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -604,7 +612,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                             ) : (
                                 <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
                             )}
-                        </div>
+                        </button>
 
                         {/* Dropdown Menu */}
                         {isMenuOpen && (
@@ -614,7 +622,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
                                     onClick={() => setIsMenuOpen(false)}
                                 />
-                                <div className="glass" style={{
+                                <div className="glass" onKeyDown={e => {
+                                    if (e.key === 'Escape') { setIsMenuOpen(false); accountRef.current?.focus() }
+                                }} style={{
                                     position: 'absolute',
                                     top: '120%',
                                     [locale === 'ar' ? 'left' : 'right']: 0,

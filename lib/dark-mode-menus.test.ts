@@ -38,3 +38,18 @@ describe("the profile menu", () => {
     })
 })
 
+describe("the account menu's opener", () => {
+    const header = readFileSync("components/DashboardHeader.tsx", "utf8")
+    const opener = header.slice(header.indexOf("ref={accountRef}") - 120, header.indexOf("aria-label={t('account_menu'") + 60)
+
+    it("is a button the keyboard can reach, saying it opens a menu", () => {
+        expect(opener).toContain('<button\n                            type="button"')
+        expect(opener).toContain('aria-haspopup="menu"')
+        expect(opener).toContain("aria-expanded={isMenuOpen}")
+        expect(header).not.toMatch(/<div\s+onClick=\{\(\) => setIsMenuOpen\(!isMenuOpen\)\}/)
+    })
+
+    it("closes on Escape and goes back to the button", () => {
+        expect(header).toMatch(/if \(e\.key === 'Escape'\) \{ setIsMenuOpen\(false\); accountRef\.current\?\.focus\(\) \}/)
+    })
+})

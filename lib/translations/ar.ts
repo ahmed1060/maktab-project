@@ -37,6 +37,7 @@ export const ar = {
         no_requests_found: "لم يتم العثور على طلبات",
         confirm: "تأكيد",
         my_profile: "ملفي الشخصي",
+        account_menu: "قائمة الحساب",
         salary_history: "سجل الرواتب",
         salary_label: "الراتب",
         day_off_credit_tab: "رصيد الإجازات",
