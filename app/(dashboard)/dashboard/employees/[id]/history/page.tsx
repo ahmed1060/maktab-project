@@ -862,10 +862,11 @@ export default function EmployeeHistoryPage() {
                                 className="btn"
                                 style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                                 disabled={!!rollbackLoading}
+                                aria-busy={!!rollbackLoading || undefined}
                                 onClick={async () => {
+                                    // Closed after, not before: the dialog shows it working.
                                     const target = reversing
-                                    setReversing(null)
-                                    await handleUndo(target.id, 'reverse', reverseReason)
+                                    try { await handleUndo(target.id, 'reverse', reverseReason) } finally { setReversing(null) }
                                 }}
                             >
                                 {t('reverse_adjustment' as any)}
@@ -920,7 +921,8 @@ export default function EmployeeHistoryPage() {
                             <button
                                 onClick={handleReevaluate}
                                 className="btn btn-primary"
-                                disabled={loading}
+                                disabled={loading || reevaluating}
+                                aria-busy={reevaluating || undefined}
                             >
                                 {t('confirm')}
                             </button>

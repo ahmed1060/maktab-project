@@ -497,6 +497,7 @@ function PeoplePanel({ ctx }: { ctx: Ctx }) {
                                                 {t('attendance_next_move').replace('{name}', nameOf(r.next.scheduleId)).replace('{date}', dateText(r.next.effectiveFrom))}
                                                 {editable && (
                                                     <button style={{ marginInlineStart: '0.4rem', fontSize: '0.78rem', background: 'none', border: 'none', color: 'var(--danger-fg)', cursor: 'pointer' }}
+                                                        disabled={busy}
                                                         onClick={() => send(`/api/attendance/assignments/${r.next!.id}`, 'DELETE', undefined, t('attendance_withdrawn'))}>
                                                         {t('attendance_withdraw')}
                                                     </button>
@@ -561,6 +562,7 @@ function HolidaysPanel({ ctx }: { ctx: Ctx }) {
                             {!o.isPaid && <span style={{ color: 'var(--text-soft)' }}>· {t('attendance_unpaid')}</span>}
                             {editable && (
                                 <button style={{ fontSize: '0.8rem', background: 'none', border: 'none', color: 'var(--danger-fg)', cursor: 'pointer' }}
+                                    disabled={busy}
                                     onClick={() => send(`/api/attendance/holidays/${o.id}`, 'DELETE', undefined, t('attendance_holiday_removed'))}>{t('delete')}</button>
                             )}
                         </div>

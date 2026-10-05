@@ -10,6 +10,7 @@ import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 type Payment = {
     id: string
@@ -46,6 +47,7 @@ export default function CompanyPaymentsPage() {
     const { t, locale } = useLanguage()
 
     const [showModal, setShowModal] = useState(false)
+    const action = useBusyAction()
     const [formData, setFormData] = useState({
         cost: '',
         subscriptionType: 'MONTHLY'
@@ -249,9 +251,10 @@ export default function CompanyPaymentsPage() {
                                     <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', alignItems: 'center', flexDirection: 'row' }}>
                                             <button
-                                                onClick={() => payment.status === 'UNPAID' && markAsPaid(payment.id)}
+                                                onClick={() => payment.status === 'UNPAID' && action.run(`paid-${payment.id}`, () => markAsPaid(payment.id))}
                                                 className="btn"
-                                                disabled={payment.status === 'PAID'}
+                                                disabled={payment.status === 'PAID' || action.running}
+                                                aria-busy={action.is(`paid-${payment.id}`)}
                                                 style={{
                                                     background: payment.status === 'PAID' ? 'var(--surface-sunk)' : 'var(--brand-primary)',
                                                     color: payment.status === 'PAID' ? 'var(--text-faint)' : 'var(--text-on-accent)',

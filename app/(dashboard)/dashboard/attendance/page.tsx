@@ -18,6 +18,7 @@ import ExceptionsTab from './ExceptionsTab'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
 import type { TranslationKey } from '@/lib/translations'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 /**
  * Punches (ATTENDANCE_PLAN.md Phase 0): what came in, from a terminal's
@@ -658,6 +659,7 @@ function NumbersTab({ q, companyId }: { q: string; companyId: string | null }) {
     const [choice, setChoice] = useState<Record<string, string>>({})
     const [newCode, setNewCode] = useState('')
     const [newPerson, setNewPerson] = useState('')
+    const action = useBusyAction()
     const [removing, setRemoving] = useState<Codes['mapped'][number] | null>(null)
 
     const map = async (code: string, userId: string) => {
@@ -690,7 +692,7 @@ function NumbersTab({ q, companyId }: { q: string; companyId: string | null }) {
                             <option value="">{t('punch_choose_person')}</option>
                             {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
                         </select>
-                        <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.7rem' }} disabled={!choice[u.code]} onClick={() => map(u.code, choice[u.code])}>{t('punch_map')}</button>
+                        <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.7rem' }} disabled={!choice[u.code] || action.running} aria-busy={action.is(`map-${u.code}`)} onClick={() => action.run(`map-${u.code}`, () => map(u.code, choice[u.code]))}>{t('punch_map')}</button>
                     </div>
                 ))}
             </section>
@@ -709,7 +711,7 @@ function NumbersTab({ q, companyId }: { q: string; companyId: string | null }) {
                             {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
                         </select>
                     </label>
-                    <button className="btn btn-secondary" disabled={!newCode.trim() || !newPerson} onClick={() => map(newCode.trim(), newPerson)}>{t('punch_map')}</button>
+                    <button className="btn btn-secondary" disabled={!newCode.trim() || !newPerson || action.running} aria-busy={action.is('map-new')} onClick={() => action.run('map-new', () => map(newCode.trim(), newPerson))}>{t('punch_map')}</button>
                 </div>
                 {codes.mapped.length === 0 ? <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-soft)' }}>{t('punch_numbers_none_mapped')}</p> : (
                     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.4rem' }}>

@@ -5,6 +5,7 @@ import LocationSearchInput from '@/components/LocationSearchInput'
 import { useLanguage } from '@/context/LanguageContext'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. editForm/
 // editFieldErrors stay owned by the parent (handleSaveDetails and
@@ -33,10 +34,11 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
     // The deadline floor offered to the picker, kept current while the form
     // stays open. See lib/useNow.ts.
     const now = useNow()
+    const action = useBusyAction()
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={t('edit_task_details_title')} hideFooter>
-            <form onSubmit={onSubmit} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+            <form onSubmit={e => { e.preventDefault(); void action.run('save', () => onSubmit(e)) }} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label className="label">{t('name_label')}</label>
                     <input aria-label={t('name_label')} className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? 'var(--danger-solid)' : undefined }} maxLength={100} required />
@@ -120,7 +122,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                     <button type="button" onClick={onClose} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                    <button type="submit" className="btn btn-primary">{t('save_changes_button')}</button>
+                    <button type="submit" className="btn btn-primary" disabled={action.running} aria-busy={action.is('save')}>{t('save_changes_button')}</button>
                 </div>
             </form>
         </Modal>

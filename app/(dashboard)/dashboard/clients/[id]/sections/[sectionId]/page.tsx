@@ -19,6 +19,7 @@ import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { useDialog } from '@/lib/useDialog'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 interface Note {
     id: string
@@ -94,6 +95,7 @@ export default function SectionNotesPage() {
     const [uploading, setUploading] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [page, setPage] = useState(1)
+    const action = useBusyAction()
     const limit = 10
     const highlightId = searchParams.get('highlight')
     // Shown for six seconds after arriving via ?highlight=. See
@@ -947,7 +949,7 @@ export default function SectionNotesPage() {
                                                                     {typeof url === 'string' ? url.split('/').pop() : url.name}
                                                                 </div>
                                                             </div>
-                                                            <button aria-label={t('remove' as any)} type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                            <button aria-label={t('remove' as any)} type="button" onClick={() => action.run(`remove-${url}`, () => handleRemoveExistingAttachment(url))} disabled={action.running} aria-busy={action.is(`remove-${url}`)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                         </div>
                                                     )
                                                 })}

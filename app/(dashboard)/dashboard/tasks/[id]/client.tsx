@@ -17,6 +17,7 @@ import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/sessi
 import SectionBoundary from '@/components/SectionBoundary'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useCan } from '@/lib/useCan'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -104,6 +105,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
     const [isReverting, setIsReverting] = useState(false)
     const [showDeadlineModal, setShowDeadlineModal] = useState(false)
+    const action = useBusyAction()
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -866,7 +868,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             </p>
                         </div>
                     </div>
-                    <button onClick={handleDismiss} className="btn" style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)' }}>{t('i_understand_button')}</button>
+                    <button onClick={() => action.run('dismiss', handleDismiss)} disabled={action.running} aria-busy={action.is('dismiss')} className="btn" style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)' }}>{t('i_understand_button')}</button>
                 </div>
             )}
 
