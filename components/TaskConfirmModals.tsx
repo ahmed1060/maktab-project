@@ -1,6 +1,7 @@
 'use client'
 import Modal from '@/components/Modal'
 import { useLanguage } from '@/context/LanguageContext'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. These seven are
 // all short confirm/cancel dialogs, each driven entirely by state that
@@ -58,6 +59,7 @@ export default function TaskConfirmModals({
     showDeadlineModal, setShowDeadlineModal
 }: TaskConfirmModalsProps) {
     const { t, locale } = useLanguage()
+    const action = useBusyAction()
 
     return (
         <>
@@ -118,7 +120,7 @@ export default function TaskConfirmModals({
                     <p>{t('confirm_item_delete')}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setItemToDelete(null)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={onConfirmDeleteItem} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
+                        <button onClick={() => action.run('item', onConfirmDeleteItem)} disabled={action.running} aria-busy={action.is('item')} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
@@ -129,7 +131,7 @@ export default function TaskConfirmModals({
                     <p>{t('delete_location_warning')}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setLocationToDelete(null)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={onConfirmDeleteLocation} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
+                        <button onClick={() => action.run('location', onConfirmDeleteLocation)} disabled={action.running} aria-busy={action.is('location')} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>

@@ -16,6 +16,7 @@ import RoleRequestControl from '@/components/RoleRequestControl'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
 import { useDialog } from '@/lib/useDialog'
+import { startNavigationProgress } from '@/components/NavigationProgress'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -1118,7 +1119,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         type="button"
                         className="btn"
                         style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
-                        onClick={onClose || (() => router.back())}
+                        onClick={onClose || (() => { startNavigationProgress(); router.back() })}
                     >
                         {t('close_button')}
                     </button>

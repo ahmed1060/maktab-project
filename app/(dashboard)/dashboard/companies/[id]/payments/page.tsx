@@ -3,13 +3,15 @@
 import { useState } from 'react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
-import { useParams, useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useParams } from 'next/navigation'
+import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { useBusyAction } from '@/lib/useBusyAction'
+import Link from 'next/link'
 
 type Payment = {
     id: string
@@ -37,13 +39,15 @@ const SUBSCRIPTION_LABEL_KEY = {
 
 export default function CompanyPaymentsPage() {
     const params = useParams()
-    const router = useRouter()
     const { id: companyId } = params as { id: string }
-    const { data: session } = useSession()
+    // Who is looking comes from the layout on the first paint (useViewer), so a
+    // Super Admin never sees "Access Restricted" while the session loads.
+    const viewer = useViewer()
     const { showToast } = useToast()
     const { t, locale } = useLanguage()
 
     const [showModal, setShowModal] = useState(false)
+    const action = useBusyAction()
     const [formData, setFormData] = useState({
         cost: '',
         subscriptionType: 'MONTHLY'
@@ -129,7 +133,7 @@ export default function CompanyPaymentsPage() {
         }
     }
 
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (viewer?.role !== 'SUPER_ADMIN') {
         return <AccessDenied />
     }
 
@@ -137,8 +141,7 @@ export default function CompanyPaymentsPage() {
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <button aria-label={t('back_to_companies')}
-                        onClick={() => router.push('/dashboard/companies')}
+                    <Link href={'/dashboard/companies'} aria-label={t('back_to_companies')}
                         className="glass"
                         style={{
                             width: '40px',
@@ -169,7 +172,7 @@ export default function CompanyPaymentsPage() {
                             <line x1="19" y1="12" x2="5" y2="12"></line>
                             <polyline points="12 19 5 12 12 5"></polyline>
                         </svg>
-                    </button>
+                    </Link>
                     <div style={{ clear: 'both' }}></div>
                     <h1 style={{ margin: 0 }}>{t('payment_history')}</h1>
                     <p style={{ color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('management_for')} <strong>{company?.name || t('loading_data')}</strong></p>
@@ -247,9 +250,10 @@ export default function CompanyPaymentsPage() {
                                     <td style={{ padding: '1.25rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', alignItems: 'center', flexDirection: 'row' }}>
                                             <button
-                                                onClick={() => payment.status === 'UNPAID' && markAsPaid(payment.id)}
+                                                onClick={() => payment.status === 'UNPAID' && action.run(`paid-${payment.id}`, () => markAsPaid(payment.id))}
                                                 className="btn"
-                                                disabled={payment.status === 'PAID'}
+                                                disabled={payment.status === 'PAID' || action.running}
+                                                aria-busy={action.is(`paid-${payment.id}`)}
                                                 style={{
                                                     background: payment.status === 'PAID' ? 'var(--surface-sunk)' : 'var(--brand-primary)',
                                                     color: payment.status === 'PAID' ? 'var(--text-faint)' : 'var(--text-on-accent)',

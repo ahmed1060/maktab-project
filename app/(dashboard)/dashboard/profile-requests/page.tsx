@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
-import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -12,6 +11,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import Pagination from '@/components/Pagination'
 import { useHeader } from '@/context/HeaderContext'
 import { useCan } from '@/lib/useCan'
+import { startNavigationProgress } from '@/components/NavigationProgress'
 
 type Request = {
     id: string
@@ -38,7 +38,6 @@ const NO_REQUESTS: Request[] = []
 export default function ProfileRequestsPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const { data: session } = useSession()
     const { showToast } = useToast()
     const router = useRouter()
     const [processingId, setProcessingId] = useState<string | null>(null)
@@ -57,9 +56,9 @@ export default function ProfileRequestsPage() {
     )
     const requests: Request[] = result?.data?.data || NO_REQUESTS
     const totalPages: number = result?.data?.totalPages || 0
-    // Before the session arrives nothing has been asked yet; that is still
-    // loading, not an empty queue.
-    const loading = !session || isLoading
+    // canReview is known on the first paint (useCan reads the layout's copy of
+    // who is looking), so the list is asked for at once.
+    const loading = isLoading
 
     useEffect(() => {
         setTitle(t('profile_name_requests'))
@@ -113,7 +112,7 @@ export default function ProfileRequestsPage() {
         }
     }
 
-    if (!session || !canReview) {
+    if (!canReview) {
         return <AccessDenied />
     }
 
@@ -122,7 +121,7 @@ export default function ProfileRequestsPage() {
             <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button
                     aria-label={t('go_back' as any)}
-                    onClick={() => router.back()}
+                    onClick={() => { startNavigationProgress(); router.back() }}
                     style={{
                         background: 'var(--veil-50)',
                         border: '1px solid var(--panel-80)',

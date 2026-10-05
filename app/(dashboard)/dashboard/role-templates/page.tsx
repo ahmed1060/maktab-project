@@ -63,11 +63,12 @@ export default function RoleTemplatesPage() {
     }
 
     const remove = async (template: Template) => {
-        setDeleting(null)
-        const res = await fetch(`/api/role-templates?id=${template.id}`, { method: 'DELETE' })
-        if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
-        showToast(t('role_templates_deleted'), 'success')
-        mutate()
+        try {
+            const res = await fetch(`/api/role-templates?id=${template.id}`, { method: 'DELETE' })
+            if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
+            showToast(t('role_templates_deleted'), 'success')
+            mutate()
+        } finally { setDeleting(null) }
     }
 
     const linkButton = { background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }

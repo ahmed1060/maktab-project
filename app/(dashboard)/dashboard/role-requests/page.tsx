@@ -201,7 +201,7 @@ export default function RoleRequestsPage() {
                 message={declining ? `${nameOf(declining.user)} → ${roleLabel(declining.role, t)}` : ''}
                 variant="danger"
                 reason={{ label: t('role_requests_reason') }}
-                onConfirm={(reason) => { const r = declining; setDeclining(null); if (r) act(r, 'REJECT', reason) }}
+                onConfirm={async (reason) => { const r = declining; if (r) await act(r, 'REJECT', reason); setDeclining(null) }}
                 onCancel={() => setDeclining(null)}
             />
         </div>

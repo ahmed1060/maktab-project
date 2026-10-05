@@ -3,9 +3,8 @@
 
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
 import { useCompany } from '@/context/CompanyContext'
-import { useSession } from 'next-auth/react'
+import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
@@ -22,6 +21,7 @@ import type { SubscriptionState, TrialPreset } from '@/lib/billing/state'
 import { DEFAULT_TRIAL_PRESET, computeTrialEnd, TRIAL_PRESETS } from '@/lib/billing/state'
 import { TRIAL_PRESET_LABEL_KEY } from '@/lib/subscription-display'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
+import Link from 'next/link'
 
 type Company = {
     id: string
@@ -36,7 +36,6 @@ type Company = {
 export default function CompaniesPage() {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
-    const router = useRouter()
     const [showModal, setShowModal] = useState(false)
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [formData, setFormData] = useState<{ name: string; trialPreset: TrialPreset; packageId: string }>({
@@ -51,8 +50,10 @@ export default function CompaniesPage() {
     const [error, setError] = useState('')
     const { triggerRefresh } = useCompany()
 
-    const { data: session } = useSession()
-    const userRole = session?.user?.role || ''
+    // Who is looking comes from the layout on the first paint (useViewer), so a
+    // Super Admin never sees "Access Restricted" while the session loads.
+    const viewer = useViewer()
+    const userRole = viewer?.role || ''
 
     const { data: packagesResult } = useSWR(userRole === 'SUPER_ADMIN' ? '/api/packages' : null, fetcher)
     const assignablePackages: { id: string; name: string }[] = packagesResult?.data || []
@@ -60,7 +61,6 @@ export default function CompaniesPage() {
     // Delete State
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null)
-    const [deletePasscode, setDeletePasscode] = useState('')
     const [deleteError, setDeleteError] = useState('')
     const { showToast } = useToast()
     const [isDeleting, setIsDeleting] = useState(false)
@@ -165,18 +165,14 @@ export default function CompaniesPage() {
 
     const openDeleteModal = (company: Company) => {
         setCompanyToDelete(company)
-        setDeletePasscode('')
         setDeleteError('')
         setShowDeleteModal(true)
     }
 
     const handleDelete = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (deletePasscode !== '2025') {
-            setDeleteError(t('invalid_passcode'))
-            return
-        }
-
+        // No passcode here: the server asks for a recent authenticator code
+        // (lib/step-up.ts), and StepUpInterceptor prompts for it and re-sends.
         if (!companyToDelete) return
 
         setIsDeleting(true)
@@ -330,10 +326,9 @@ export default function CompaniesPage() {
                                             )}
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <button
-                                                onClick={() => router.push(`/dashboard/companies/${company.id}/payments`)}
+                                            <Link href={`/dashboard/companies/${company.id}/payments`}
                                                 className="btn"
-                                                style={{
+                                                style={{ textDecoration: 'none',
                                                     background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                                                     color: 'var(--brand-primary-text)',
                                                     padding: '0.4rem 0.8rem',
@@ -342,7 +337,7 @@ export default function CompaniesPage() {
                                                 }}
                                             >
                                                 <span aria-hidden="true">💳</span> {t('payments_history')}
-                                            </button>
+                                            </Link>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
@@ -350,7 +345,7 @@ export default function CompaniesPage() {
                                                     Payments History — it's a different concern (company policy,
                                                     not billing), so it reads as "manage this company" alongside
                                                     Edit/Ban/Delete instead of looking bundled with Payments. */}
-                                                <button aria-label={t('company_settings_title') || 'Settings'}
+                                                <Link href={`/dashboard/companies/${company.id}/settings`} aria-label={t('company_settings_title') || 'Settings'}
                                                     // Navigates, and nothing else. It used to set the global
                                                     // company scope on the way, so that Vendors and Tasks —
                                                     // which read only the switcher — would follow you into the
@@ -363,10 +358,9 @@ export default function CompaniesPage() {
                                                     // is reached by id in exactly the same way and never did
                                                     // this. Which company you are editing is answered on the
                                                     // settings page itself instead.
-                                                    onClick={() => router.push(`/dashboard/companies/${company.id}/settings`)}
                                                     className="btn"
                                                     title={t('company_settings_title') || 'Settings'}
-                                                    style={{
+                                                    style={{ textDecoration: 'none',
                                                         background: 'color-mix(in srgb, var(--ok-fg-deep) 10%, transparent)',
                                                         color: 'var(--ok-fg)',
                                                         padding: '0.4rem 0.6rem',
@@ -375,7 +369,7 @@ export default function CompaniesPage() {
                                                     }}
                                                 >
                                                     <span aria-hidden="true">⚙️</span>
-                                                </button>
+                                                </Link>
                                                 <button
                                                     onClick={() => handleOpenModal(company)}
                                                     className="btn"
@@ -530,24 +524,11 @@ export default function CompaniesPage() {
                         {deleteError && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
 
                         <form onSubmit={handleDelete}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('enter_passcode_label')}</label>
-                                <input aria-label={t('enter_passcode_label')}
-                                    type="password"
-                                    className="input"
-                                    required
-                                    placeholder={t('enter_passcode_placeholder')}
-                                    value={deletePasscode}
-                                    onChange={e => setDeletePasscode(e.target.value)}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                />
-                            </div>
-
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                                 <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
                                     {t('cancel')}
                                 </button>
-                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
+                                <button type="submit" className="btn" disabled={isDeleting} aria-busy={isDeleting || undefined} style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
                                     {isDeleting ? t('deleting') : t('delete_permanently')}
                                 </button>
                             </div>

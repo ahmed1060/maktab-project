@@ -96,14 +96,12 @@ export const DELETE = withStandardHandler(async (req, session) => {
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
-    const passcode = searchParams.get('passcode') || ''
     if (!id) return ApiResponse.badRequest("Company ID required")
 
     try {
-        await CompanyService.delete(id, passcode, session)
+        await CompanyService.delete(id, session)
         return ApiResponse.success({ success: true, id })
     } catch (error: any) {
-        if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'COMPANY_NOT_FOUND') return ApiResponse.notFound("Company not found")
         if (error.message === 'CANNOT_DELETE_SHSD') return ApiResponse.forbidden("Cannot delete the system company (SHSD)")
         throw error

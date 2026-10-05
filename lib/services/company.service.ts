@@ -7,7 +7,7 @@ import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
 import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorNotice } from "@/lib/billing/lifecycle"
 import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
-import { VerificationService } from "./verification.service"
+import { assertRecentStepUp } from "@/lib/step-up"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
@@ -430,10 +430,13 @@ export class CompanyService {
         }
     }
 
-    static async delete(id: string, passcode: string, session: any) {
-        if (!VerificationService.isValid(passcode)) {
-            throw new Error("INVALID_PASSCODE")
-        }
+    static async delete(id: string, session: any) {
+        // Cannot be undone: an authenticator code from this session within the
+        // hour (lib/step-up.ts), asked for and re-sent by the screen's
+        // StepUpInterceptor. It replaced a passcode that was written into the
+        // code itself, and that the page checked but never sent, so deleting
+        // a company always failed.
+        await assertRecentStepUp(session)
         const company = await prisma.company.findUnique({
             where: { id },
             include: {

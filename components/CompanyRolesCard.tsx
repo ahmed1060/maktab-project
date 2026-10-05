@@ -13,6 +13,7 @@ import AccessReviewSetting, { type ReviewSetting } from '@/components/AccessRevi
 import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import type { SerializedAccess } from '@/lib/features/bundles'
 import { BUILT_IN_LABEL, roleLabel } from '@/lib/role-label'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 /**
  * A company's roles, in its settings (ROLES_PLAN.md §6.2): how many people hold
@@ -44,6 +45,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const [editing, setEditing] = useState<Role | 'new' | null>(null)
     const [deleting, setDeleting] = useState<Role | null>(null)
     const [copying, setCopying] = useState(false)
+    const action = useBusyAction()
     const { update } = useSession()
     const router = useRouter()
 
@@ -87,11 +89,12 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     }
 
     const remove = async (role: Role) => {
-        setDeleting(null)
-        const res = await fetch(`/api/roles?id=${role.id}`, { method: 'DELETE' })
-        if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
-        showToast(t('roles_deleted'), 'success')
-        mutate()
+        try {
+            const res = await fetch(`/api/roles?id=${role.id}`, { method: 'DELETE' })
+            if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
+            showToast(t('roles_deleted'), 'success')
+            mutate()
+        } finally { setDeleting(null) }
     }
 
     const makeDefault = async (role: Role) => {
@@ -141,7 +144,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                         <button type="button" style={linkButton} onClick={() => setEditing(role)}>{t('roles_edit')}</button>
                         <button type="button" style={linkButton} onClick={() => preview(role)}>{t('roles_preview')}</button>
                         {!role.isDefault && role.baseRole !== 'ADMIN' && (
-                            <button type="button" style={linkButton} onClick={() => makeDefault(role)}>{t('roles_make_default')}</button>
+                            <button type="button" style={linkButton} onClick={() => action.run(`default-${role.id}`, () => makeDefault(role))} disabled={action.running} aria-busy={action.is(`default-${role.id}`)}>{t('roles_make_default')}</button>
                         )}
                         {!role.builtIn && !role.isDefault && role.holders === 0 && (
                             <button type="button" style={{ ...linkButton, color: 'var(--danger-fg-strong)' }} onClick={() => setDeleting(role)}>{t('roles_delete')}</button>

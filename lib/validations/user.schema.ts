@@ -36,7 +36,6 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     id: z.string().min(1, "User ID is required"),
     status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE', 'ARCHIVED']).optional(),
     avatar: z.string().nullable().optional(),
-    passcode: z.string().optional(),
     // P4: a salary change is effective-dated, so the answer to "this month or
     // next?" travels with it. Optional and defaulting to THIS_MONTH, which is
     // the behaviour that already existed — the new salary applies to the month

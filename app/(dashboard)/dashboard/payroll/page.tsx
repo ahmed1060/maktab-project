@@ -168,12 +168,13 @@ export default function PayrollRegisterPage() {
     const [resolving, setResolving] = useState<Discrepancy | null>(null)
     const resolve = async (reason?: string) => {
         const target = resolving
-        setResolving(null)
         if (!target) return
-        const res = await fetch(`/api/attendance/discrepancies/${target.id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) })
-        const body = await res.json().catch(() => null)
-        showToast(res.ok ? t('attpay_resolved') : (body?.error || t('error_generic')), res.ok ? 'success' : 'error')
-        if (res.ok) reloadDiscrepancies()
+        try {
+            const res = await fetch(`/api/attendance/discrepancies/${target.id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) })
+            const body = await res.json().catch(() => null)
+            showToast(res.ok ? t('attpay_resolved') : (body?.error || t('error_generic')), res.ok ? 'success' : 'error')
+            if (res.ok) reloadDiscrepancies()
+        } finally { setResolving(null) }
     }
 
     const save = async () => {
@@ -760,12 +761,12 @@ export default function PayrollRegisterPage() {
                     ? { label: t('payroll_debt_waive_reason_label'), placeholder: t('payroll_debt_waive_reason_hint') }
                     : undefined}
                 onCancel={() => setConfirming(null)}
-                onConfirm={(reason) => {
+                onConfirm={async (reason) => {
                     const pending = confirming
+                    if (pending?.kind === 'approve') await approve()
+                    else if (pending?.kind === 'paid') await markPaid()
+                    else if (pending?.kind === 'waive') await waive(pending.debt, reason ?? '')
                     setConfirming(null)
-                    if (pending?.kind === 'approve') approve()
-                    else if (pending?.kind === 'paid') markPaid()
-                    else if (pending?.kind === 'waive') waive(pending.debt, reason ?? '')
                 }}
             />
 

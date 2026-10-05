@@ -154,7 +154,7 @@ export default function CheckInReviewPage() {
                 confirmText={t('chk_reject')}
                 variant="danger"
                 reason={{ label: t('punch_reason'), minLength: 0 }}
-                onConfirm={(reason?: string) => { const w = rejecting; setRejecting(null); if (w) decide(w, false, reason) }}
+                onConfirm={async (reason?: string) => { const w = rejecting; if (w) await decide(w, false, reason); setRejecting(null) }}
                 onCancel={() => setRejecting(null)}
             />
         </div>

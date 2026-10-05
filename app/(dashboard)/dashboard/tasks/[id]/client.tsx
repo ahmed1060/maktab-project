@@ -17,6 +17,8 @@ import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/sessi
 import SectionBoundary from '@/components/SectionBoundary'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useCan } from '@/lib/useCan'
+import { useBusyAction } from '@/lib/useBusyAction'
+import { startNavigationProgress } from '@/components/NavigationProgress'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -104,6 +106,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
     const [isReverting, setIsReverting] = useState(false)
     const [showDeadlineModal, setShowDeadlineModal] = useState(false)
+    const action = useBusyAction()
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -866,7 +869,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             </p>
                         </div>
                     </div>
-                    <button onClick={handleDismiss} className="btn" style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)' }}>{t('i_understand_button')}</button>
+                    <button onClick={() => action.run('dismiss', handleDismiss)} disabled={action.running} aria-busy={action.is('dismiss')} className="btn" style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)' }}>{t('i_understand_button')}</button>
                 </div>
             )}
 
@@ -933,7 +936,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                             {isReverting ? t('reverting') : t('return_to_in_progress')}
                         </button>
                     )}
-                    <button onClick={() => router.back()} style={{ background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}>{t('close_button')}</button>
+                    <button onClick={() => { startNavigationProgress(); router.back() }} style={{ background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}>{t('close_button')}</button>
                     {!isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && mayManage('tasks.edit') && (<button onClick={handleEditClick} style={{ background: 'var(--info-bg)', color: 'var(--info-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
                     {!isRestricted && mayManage('tasks.delete') && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
                 </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { useSession } from 'next-auth/react'
+import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
@@ -39,9 +39,11 @@ export default function SuperAdminsPage() {
     const [notice, setNotice] = useState<Notice | null>(null)
     const [deleting, setDeleting] = useState(false)
 
-    const { data: session } = useSession()
-    const userRole = session?.user?.role || ''
-    const isProtectedActor = !!session?.user?.isProtected
+    // Who is looking comes from the layout on the first paint (useViewer), so a
+    // Super Admin never sees "Access Restricted" while the session loads.
+    const viewer = useViewer()
+    const userRole = viewer?.role || ''
+    const isProtectedActor = !!viewer?.isProtected
 
     const [formData, setFormData] = useState({
         firstName: '',
@@ -258,7 +260,7 @@ export default function SuperAdminsPage() {
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
-                                            {(admin.id === session?.user?.id || isProtectedActor) && (
+                                            {(admin.id === viewer?.id || isProtectedActor) && (
                                                 <button
                                                     onClick={() => openEdit(admin)}
                                                     className="btn"

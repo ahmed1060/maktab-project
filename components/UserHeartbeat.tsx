@@ -4,7 +4,6 @@ import { useSession, signOut } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 import { useEffect, useRef, useState, useCallback } from "react"
 import { useLanguage } from "@/context/LanguageContext"
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser"
 
 // How long to give tasks/[id]/client.tsx or obligations/[id]/client.tsx to
 // finish an in-flight emergency save (upload + PUT) before giving up and
@@ -56,6 +55,9 @@ export default function UserHeartbeat() {
     // stale-closure problem a state read inside a callback recreated only
     // when `session` changes would have.
     const wasMaintenanceActive = useRef(false)
+    // The polling effect's check, for the Realtime path to run once it has
+    // connected (see there).
+    const checkStatusRef = useRef<(() => void) | null>(null)
 
     // Shared by both detection paths below (the fast Realtime broadcast and
     // the slow polling fallback) so activating maintenance behaves
@@ -105,23 +107,38 @@ export default function UserHeartbeat() {
     // connected, instead of everyone polling constantly to find out.
     // Super Admins are exempt from maintenance mode entirely, so they never
     // subscribe.
+    //
+    // The Supabase client is loaded here, when it is needed, rather than
+    // imported at the top: it is most of a 270 KB script that every dashboard
+    // page used to parse and run before it could respond — on a phone, a
+    // good part of the half second the page was unresponsive (Lighthouse:
+    // total blocking time) — for a channel a Super Admin never opens.
     useEffect(() => {
         if (!session?.user || session.user.role === 'SUPER_ADMIN') return
-        const supabase = getSupabaseBrowserClient()
-        if (!supabase) return // env vars not configured yet — polling below still covers it
+        let cleanup: (() => void) | undefined
+        let cancelled = false
+        import("@/lib/supabase-browser").then(({ getSupabaseBrowserClient }) => {
+            if (cancelled) return
+            const supabase = getSupabaseBrowserClient()
+            if (!supabase) return // env vars not configured yet — polling below still covers it
 
-        const channel = supabase.channel('maintenance-status')
-        channel
-            .on('broadcast', { event: 'update' }, ({ payload }) => {
-                if (payload?.active) {
-                    handleMaintenanceDetected(payload.message ?? null)
-                } else {
-                    handleMaintenanceEnded()
-                }
-            })
-            .subscribe()
+            const channel = supabase.channel('maintenance-status')
+            channel
+                .on('broadcast', { event: 'update' }, ({ payload }) => {
+                    if (payload?.active) {
+                        handleMaintenanceDetected(payload.message ?? null)
+                    } else {
+                        handleMaintenanceEnded()
+                    }
+                })
+                // A broadcast sent before the channel connected isn't replayed,
+                // and loading the client lazily widens that gap: ask once more
+                // as soon as it is listening.
+                .subscribe(state => { if (state === 'SUBSCRIBED') checkStatusRef.current?.() })
+            cleanup = () => { supabase.removeChannel(channel) }
+        }).catch(() => { /* the polling below still covers maintenance mode */ })
 
-        return () => { supabase.removeChannel(channel) }
+        return () => { cancelled = true; cleanup?.() }
     }, [session, handleMaintenanceDetected, handleMaintenanceEnded])
 
     // Polling path: suspension/ban detection, plus a slow safety net for
@@ -171,6 +188,7 @@ export default function UserHeartbeat() {
             }
         }
 
+        checkStatusRef.current = checkStatus
         checkStatus()
 
         const interval = setInterval(() => {
@@ -178,7 +196,7 @@ export default function UserHeartbeat() {
             checkStatus()
         }, 90000)
 
-        return () => clearInterval(interval)
+        return () => { clearInterval(interval); checkStatusRef.current = null }
         // Deliberately keyed only on session — this interval must survive
         // route changes rather than being torn down and restarted on every
         // click. handleMaintenanceDetected/Ended are stable enough in
