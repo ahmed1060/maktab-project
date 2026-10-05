@@ -338,7 +338,7 @@ export default function ClientsPage() {
                                                         className="btn"
                                                         style={{
                                                             background: 'var(--danger-bg-subtle)',
-                                                            color: 'var(--danger-solid-hover)',
+                                                            color: 'var(--danger-fg-strong)',
                                                             padding: '0.4rem 0.85rem',
                                                             fontSize: '0.8125rem',
                                                             border: 'none',

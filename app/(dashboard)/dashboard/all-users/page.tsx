@@ -500,7 +500,7 @@ export default function AllUsersPage() {
                                                                 title={t('delete')}
                                                                 style={{
                                                                     background: 'var(--danger-bg)',
-                                                                    color: 'var(--danger-solid-hover)',
+                                                                    color: 'var(--danger-fg-strong)',
                                                                     padding: '0.4rem 0.6rem',
                                                                     borderRadius: '0.5rem',
                                                                     fontWeight: '600',

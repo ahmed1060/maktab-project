@@ -656,7 +656,7 @@ export default function EmployeesPage() {
                                             className="btn"
                                             style={{
                                                 background: 'var(--danger-bg)',
-                                                color: 'var(--danger-solid-hover)',
+                                                color: 'var(--danger-fg-strong)',
                                                 padding: '0.5rem 0.75rem',
                                                 fontSize: '0.8rem',
                                                 fontWeight: '700',

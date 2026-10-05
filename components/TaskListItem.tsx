@@ -120,7 +120,7 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
                             </span>
                         )}
                     </div>
-                    <div style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
                         {mounted && (
                             <>
                                 {t('created_label')}: <SafeDate date={task.createdAt} locale={locale} format="short" /> | {t('deadline_label')}: <SafeDate date={task.deadline} locale={locale} format="short" />

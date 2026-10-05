@@ -271,7 +271,7 @@ export default function SuperAdminsPage() {
                                                 <button
                                                     onClick={() => setDeleteConfirm(admin)}
                                                     className="btn"
-                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)' }}
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--danger-bg)', color: 'var(--danger-fg-strong)' }}
                                                 >
                                                     {t('delete')}
                                                 </button>

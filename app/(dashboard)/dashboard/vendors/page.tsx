@@ -307,7 +307,7 @@ export default function VendorsPage() {
                                                 onClick={() => setDeleteConfirm({ isOpen: true, vendor })}
                                                 className="btn"
                                                 style={{
-                                                    background: 'var(--danger-bg-subtle)', color: 'var(--danger-solid-hover)', padding: '0.4rem 0.85rem',
+                                                    background: 'var(--danger-bg-subtle)', color: 'var(--danger-fg-strong)', padding: '0.4rem 0.85rem',
                                                     fontSize: '0.8125rem', border: 'none', cursor: 'pointer',
                                                     whiteSpace: 'nowrap', flex: isMobile ? 1 : 'unset'
                                                 }}
