@@ -41,6 +41,7 @@ export const en = {
         no_requests_found: "No requests found",
         confirm: "Confirm",
         my_profile: "My Profile",
+        account_menu: "Account menu",
         salary_history: "Salary History",
         salary_label: "Salary",
         day_off_credit_tab: "Day Off Credit",
