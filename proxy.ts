@@ -24,6 +24,15 @@ export default withAuth(
             return NextResponse.redirect(new URL('/dashboard', req.url))
         }
 
+        // 1b. Not signed in, at the root: show the login page right here,
+        // rather than redirect to /login. The redirect was a whole extra round
+        // trip on every first visit (Lighthouse: up to 0.75 s on a phone),
+        // through app/page.tsx checking the session only to send the browser
+        // on. The address stays /, and signing in works the same.
+        if (!token && pathname === '/') {
+            return NextResponse.rewrite(new URL('/login', req.url))
+        }
+
         // 2. Unauthenticated users trying to access /dashboard are handled by withAuth automatically
         // but the matcher below ensures it only runs for protected routes.
 

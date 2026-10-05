@@ -64,7 +64,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
                         </div>
                     )}
                     {!loading && error && (
-                        <p style={{ color: 'var(--danger-solid-hover)', fontSize: '0.9rem', padding: '1rem 0' }}>{error}</p>
+                        <p style={{ color: 'var(--danger-fg-strong)', fontSize: '0.9rem', padding: '1rem 0' }}>{error}</p>
                     )}
                     {!loading && !error && backups.length === 0 && (
                         <p style={{ color: 'var(--text-soft)', fontSize: '0.9rem', padding: '1rem 0' }}>{t('backup_picker_empty' as any)}</p>

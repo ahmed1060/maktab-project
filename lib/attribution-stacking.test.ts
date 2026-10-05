@@ -14,10 +14,16 @@ import { readFileSync } from "node:fs"
  * page rather than floating, because a phone has no spare corner to float
  * anything in. Everywhere else it still floats, but below every other layer in
  * the shell, so a sidebar, a scrim, a sticky header or a dialog always wins.
+ *
+ * Which of the two applies is CSS (.floating-attribution in globals.css), so
+ * the first paint on a phone is already right rather than the desktop one.
  */
 
 const SHELL = "components/DashboardShell.tsx"
 const lines = readFileSync(SHELL, "utf8").split("\n")
+const CSS = readFileSync("app/globals.css", "utf8")
+const floating = CSS.match(/\n\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
+const phone = CSS.match(/@media \(max-width: 1023px\) \{[\s\S]*?\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
 
 const start = lines.findIndex(l => l.includes("{showPoweredBy && ("))
 const end = lines.findIndex(l => l.includes('className="floating-attribution"'))
@@ -38,12 +44,14 @@ describe("the attribution never covers the navigation", () => {
     const blockText = block.join("\n")
 
     it("puts the attribution in the page on a phone", () => {
-        expect(blockText).toMatch(/isMobile/)
-        expect(blockText, "the mobile branch must not float").toMatch(/position:\s*'static'/)
+        expect(blockText).toMatch(/className="floating-attribution"/)
+        expect(phone, "the phone rule must not float").toMatch(/position:\s*static/)
+        expect(floating).toMatch(/position:\s*fixed/)
     })
 
     it("floats it below every other layer in the shell", () => {
-        const mine = zIndexesIn(block)
+        const mine = [...floating.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1]))
+        expect(zIndexesIn(block), "the layer is set in CSS, not inline").toEqual([])
         const others = zIndexesIn([...lines.slice(0, start), ...lines.slice(end + 1)])
 
         expect(mine, "the floating branch declares exactly one z-index").toHaveLength(1)

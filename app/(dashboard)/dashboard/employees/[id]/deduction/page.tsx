@@ -65,7 +65,7 @@ export default function AddDeductionPage() {
             </p>
 
             {error && (
-                <div style={{ color: 'var(--danger-solid-hover)', background: 'var(--danger-bg)', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ color: 'var(--danger-fg-strong)', background: 'var(--danger-bg)', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
                     {error}
                 </div>
             )}

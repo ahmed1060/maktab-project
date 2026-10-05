@@ -34,6 +34,14 @@ const DEFINED = new Set(
     [...CSS.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)].map(m => m[1])
 )
 
+// Also defined, outside globals.css: by next/font (`variable: '--font-x'`, in
+// app/layout.tsx) and inline on the element that sets it (`['--x' as string]`).
+for (const file of SOURCES) {
+    for (const m of readFileSync(file, "utf8").matchAll(/variable:\s*'(--[a-z0-9-]+)'|\['(--[a-z0-9-]+)' as string\]:/gi)) {
+        DEFINED.add(m[1] ?? m[2])
+    }
+}
+
 const REFERENCED = new Map<string, string[]>()
 for (const file of SOURCES) {
     for (const m of readFileSync(file, "utf8").matchAll(/var\(\s*(--[a-z0-9-]+)\s*[,)]/gi)) {

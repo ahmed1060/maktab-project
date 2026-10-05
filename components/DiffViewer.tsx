@@ -11,7 +11,7 @@ export default function DiffViewer({ oldText, newText }: DiffViewerProps) {
     const { locale } = useLanguage()
     if (!oldText && !newText) return null
     if (!oldText) return <span style={{ backgroundColor: 'var(--ok-bg)', color: 'var(--ok-fg)' }}>{newText}</span>
-    if (!newText) return <span style={{ textDecoration: 'line-through', color: 'var(--danger-solid-hover)' }}>{oldText}</span>
+    if (!newText) return <span style={{ textDecoration: 'line-through', color: 'var(--danger-fg-strong)' }}>{oldText}</span>
 
     const diffWords = (oldString: string, newString: string) => {
         const oldWords = oldString.split(/\s+/)

@@ -344,7 +344,7 @@ export default function AuditLogFilter({
                     gap: '0.75rem',
                     color: 'var(--chip-solid-fg)'
                 }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.5, textTransform: 'uppercase' }}>{t('total_label')}</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase' }}>{t('total_label')}</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{totalCount}</span>
                 </div>
             </div>

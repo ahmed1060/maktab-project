@@ -268,7 +268,7 @@ export default function CompanyPaymentsPage() {
                                                     className="btn"
                                                     style={{
                                                         background: 'var(--danger-bg)',
-                                                        color: 'var(--danger-solid-hover)',
+                                                        color: 'var(--danger-fg-strong)',
                                                         padding: '0.4rem',
                                                         display: 'flex',
                                                         alignItems: 'center',

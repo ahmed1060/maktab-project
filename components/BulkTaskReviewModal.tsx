@@ -609,7 +609,7 @@ export default function BulkTaskReviewModal({
                                                 style={{
                                                     padding: '0.4rem 0.8rem',
                                                     background: 'color-mix(in srgb, var(--danger-solid) 10%, transparent)',
-                                                    color: 'var(--danger-solid-hover)',
+                                                    color: 'var(--danger-fg-strong)',
                                                     borderRadius: '0.75rem'
                                                 }}
                                                 onClick={() => {

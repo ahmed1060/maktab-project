@@ -24,13 +24,24 @@ type Rekey = { rotating: false } | { rotating: true; sameKey: true } | { rotatin
 export default function FaceSystemSwitch() {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const { data, mutate } = useSWR<{ data: { state: State; canChange: boolean } }>('/api/system-settings/face', fetcher)
+    const { data, error, mutate } = useSWR<{ data: { state: State; canChange: boolean } }>('/api/system-settings/face', fetcher)
     const { data: purgeBody, mutate: reloadPurge } = useSWR<{ data: { at: string; keysDestroyed: number; photosDeleted: number; acknowledged: number } | null }>('/api/system-settings/face/purge', fetcher)
     const { data: rekeyBody, mutate: reloadRekey } = useSWR<{ data: Rekey }>('/api/system-settings/face/rekey', fetcher)
     const [asking, setAsking] = useState<'ON' | 'PAUSED' | null>(null)
     const [purging, setPurging] = useState(false)
     const [busy, setBusy] = useState(false)
-    if (!data) return null
+    // While it loads, the card already holds its place: rendering nothing and
+    // then the card pushed the Branding card below it down on System settings
+    // (Lighthouse: a layout shift of 0.2).
+    if (!data) {
+        if (error) return null
+        return (
+            <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <h3 style={{ margin: 0 }}>{t('face_sys_title')}</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)', margin: 0 }}>{t('loading')}</p>
+            </section>
+        )
+    }
     const { state, canChange } = data.data
 
     const move = async (to: 'ON' | 'PAUSED') => {

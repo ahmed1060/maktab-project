@@ -650,7 +650,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                         cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
                                         fontSize: '0.875rem',
                                         fontWeight: '500',
-                                        color: 'var(--danger-solid-hover)',
+                                        color: 'var(--danger-fg-strong)',
                                         transition: 'all 0.2s',
                                         flex: 1,
                                         opacity: uploadingAvatar ? 0.5 : 1
@@ -691,7 +691,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             </div>
                         )}
                         {isResetting && (
-                            <div style={{ marginTop: '1rem', color: 'var(--danger-solid-hover)', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                            <div style={{ marginTop: '1rem', color: 'var(--danger-fg-strong)', fontSize: '0.875rem', fontWeight: 'bold' }}>
                                 {t('resetting_in_progress')}
                             </div>
                         )}

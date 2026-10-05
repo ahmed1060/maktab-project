@@ -176,7 +176,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
             <a href="#main-content" className="skip-link">{t('skip_to_content' as any)}</a>
 
             {/* Glass Sidebar */}
-            <aside className="glass-dark" style={{
+            {/* Where the sidebar sits on a phone (off screen unless opened) is
+                decided by CSS (.shell-aside, globals.css), not by isMobile: that
+                is only known after the page runs, so the first paint used to be
+                the desktop layout, with the content pushed 270px aside, which
+                then slid into place (Lighthouse: layout shift up to 0.85). */}
+            <aside className="glass-dark shell-aside" data-open={isMobile && isSidebarOpen ? 'true' : 'false'} data-rtl={isRtl ? 'true' : 'false'} style={{
                 width: sidebarWidth,
                 display: 'flex',
                 flexDirection: 'column',
@@ -185,7 +190,6 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 zIndex: 50,
                 transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 [isRtl ? 'right' : 'left']: 0,
-                transform: (isMobile && !isSidebarOpen) ? (isRtl ? 'translateX(100%)' : 'translateX(-100%)') : 'translateX(0)',
                 boxShadow: (isMobile && isSidebarOpen) ? (isRtl ? '-20px 0 50px var(--shadow-mid)' : '20px 0 50px var(--shadow-mid)') : 'none',
                 overflow: 'hidden',
                 direction: isRtl ? 'rtl' : 'ltr'
@@ -786,7 +790,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
             </aside>
 
             {/* Main Content Wrapper */}
-            <main style={{
+            <main className="shell-main" style={{
                 flex: 1,
                 // A flex item is never narrower than its content by default,
                 // and a header subtitle that cuts off with an ellipsis still
@@ -794,10 +798,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 minWidth: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                [isRtl ? 'marginRight' : 'marginLeft']: (!isMobile) ? sidebarWidth : '0', // Dynamic margin based on collapse state
+                // Beside the sidebar on a desktop, full width on a phone: CSS
+                // (.shell-main), so it is right from the first paint.
+                ['--shell-sidebar' as string]: sidebarWidth,
                 minHeight: '100vh',
                 background: 'transparent',
-                transition: 'margin 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 direction: isRtl ? 'rtl' : 'ltr',
             }}>
                 {/* Floating Glass Header */}
@@ -853,27 +858,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     // corner to float something in, and this is decoration: it
                     // belongs at the end of the page there, not over whatever
                     // happens to be underneath.
-                    ...(isMobile
-                        ? {
-                            position: 'static' as const,
-                            width: '100%',
-                            padding: '2rem 1rem 2.5rem',
-                            marginTop: 'auto',
-                        }
-                        : {
-                            position: 'fixed' as const,
-                            bottom: '1rem',
-                            [isRtl ? 'left' : 'right']: '1.5rem',
-                            // Below the scrim and the sidebar, so it can never
-                            // paint over navigation or a dialog again. It was
-                            // 100, which is above both.
-                            zIndex: 30,
-                        }),
+                    // Its placement (in the page on a phone, in the corner on a
+                    // desktop) is CSS: .floating-attribution in globals.css.
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center', // Centered relative to each other
                     pointerEvents: 'none',
-                    opacity: 0.7,
                     transition: 'all 0.3s ease',
                     textAlign: 'center'
                 }} className="floating-attribution">
@@ -883,18 +873,21 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         fontWeight: '600',
                         textTransform: 'uppercase',
                         letterSpacing: '0.1em',
-                        fontFamily: "'Inter', sans-serif"
+                        fontFamily: 'var(--font-inter), sans-serif'
                     }}>
                         {t('powered_by') || 'Powered by'}
                     </span>
+                    {/* Faded, the large name only: it is large text (3:1 is
+                        enough). "Powered by" is tiny and was 3.0:1 faded. */}
                     <span style={{
+                        opacity: 0.7,
                         fontSize: '1.35rem',
                         color: 'var(--text-main)',
                         fontWeight: '900',
                         letterSpacing: '0.15em',
                         marginTop: '0.05rem',
                         textTransform: 'uppercase',
-                        fontFamily: "'Inter', sans-serif",
+                        fontFamily: 'var(--font-inter), sans-serif',
                         background: 'linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',

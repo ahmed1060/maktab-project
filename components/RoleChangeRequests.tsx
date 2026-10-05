@@ -91,7 +91,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {(['OPEN', 'DONE', 'DECLINED', ''] as const).map(s => (
                     <button key={s || 'all'} type="button" onClick={() => setStatus(s)} className="badge"
-                        style={{ cursor: 'pointer', background: status === s ? 'var(--primary)' : undefined, color: status === s ? 'var(--text-on-accent)' : undefined }}>
+                        style={{ cursor: 'pointer', background: status === s ? 'var(--button-from)' : undefined, color: status === s ? 'var(--text-on-accent)' : undefined }}>
                         {s ? t(`role_change_${s}` as any) : t('role_requests_filter_all')}
                     </button>
                 ))}

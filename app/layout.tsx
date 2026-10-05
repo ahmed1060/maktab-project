@@ -1,12 +1,22 @@
 import './globals.css'
 import { Providers } from './providers'
 import { cookies, headers } from 'next/headers'
+import { Outfit, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { resolveLocale } from '@/lib/locale'
 import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
 import { parseTheme, themeAttribute, THEME_COOKIE } from '@/lib/theme'
+
+// The two typefaces, downloaded at build time and served from this site.
+// Before, globals.css @imported them from Google Fonts: a stylesheet
+// that blocked the first paint of every page (about 0.8 s on a phone) before
+// the fonts themselves could even be asked for, and that the CSP's style-src
+// didn't allow. next/font also sizes the fallback to match, so text doesn't
+// jump when the font arrives.
+const outfit = Outfit({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'], display: 'swap', variable: '--font-outfit' })
+const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'], display: 'swap', variable: '--font-inter' })
 
 export const metadata = {
   title: 'Nizmo',
@@ -42,7 +52,7 @@ export default async function RootLayout({
   const initialDict = initialLocale === 'ar' ? ar : en
 
   return (
-    <html lang={initialLocale} dir={dir} data-theme={themeAttr}>
+    <html lang={initialLocale} dir={dir} data-theme={themeAttr} className={`${outfit.variable} ${inter.variable}`}>
       <body>
         <Providers initialLocale={initialLocale} initialDict={initialDict} initialTheme={theme} themeChosen={cookieStore.has(THEME_COOKIE)}>{children}</Providers>
         <Analytics />

@@ -324,7 +324,7 @@ export default function CompaniesPage() {
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {(company as any).isBanned ? (
-                                                <span style={{ background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_banned')}</span>
+                                                <span style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg-strong)', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_banned')}</span>
                                             ) : (
                                                 <span style={{ background: 'var(--ok-bg)', color: 'var(--ok-fg)', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_active')}</span>
                                             )}
@@ -524,7 +524,7 @@ export default function CompaniesPage() {
                         <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>
                             {t('delete_company_warning')} <strong>{companyToDelete?.name}</strong>?
                             <br /><br />
-                            <span style={{ fontWeight: 'bold', color: 'var(--danger-solid-hover)' }}>{t('delete_company_critical_warning')}</span>
+                            <span style={{ fontWeight: 'bold', color: 'var(--danger-fg-strong)' }}>{t('delete_company_critical_warning')}</span>
                         </p>
 
                         {deleteError && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
