@@ -113,7 +113,7 @@ export function StatMetric({ label, value, icon, color, percentage, subLabel }: 
                     }}>{label}</div>
                     <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-main)', marginTop: '0.25rem' }}>{value}</div>
                 </div>
-                <div style={{
+                <div aria-hidden="true" style={{
                     width: '40px',
                     height: '40px',
                     flexShrink: 0,

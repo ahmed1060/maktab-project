@@ -336,7 +336,7 @@ export default function DayOffRequestsPage() {
                     maxWidth: '350px',
                     animation: 'slideInRight 0.3s ease-out'
                 }}>
-                    <span style={{ fontSize: '1rem' }}>
+                    <span aria-hidden="true" style={{ fontSize: '1rem' }}>
                         {alert.type === 'success' ? '✓' : '✕'}
                     </span>
                     {alert.message}
@@ -748,7 +748,7 @@ export default function DayOffRequestsPage() {
                                 <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-soft)' }}>{t('deduct_from_label' as any)}</label>
                                 {(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) && (
                                     <span style={{ fontSize: '0.7rem', color: 'var(--danger-fg-strong)', fontWeight: 'bold', background: 'var(--danger-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
-                                        ⚠️ {t('insufficient_credit' as any) || 'Insufficient Credit'}
+                                        <span aria-hidden="true">⚠️</span> {t('insufficient_credit' as any) || 'Insufficient Credit'}
                                     </span>
                                 )}
                             </div>
@@ -774,7 +774,7 @@ export default function DayOffRequestsPage() {
                                         opacity: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 0.5 : 1
                                     }}
                                 >
-                                    <span>📅</span> {t('deduct_from_credit' as any)}
+                                    <span aria-hidden="true">📅</span> {t('deduct_from_credit' as any)}
                                 </button>
                                 <button
                                     onClick={() => setDeductionType('SALARY')}
@@ -795,7 +795,7 @@ export default function DayOffRequestsPage() {
                                         gap: '0.5rem'
                                     }}
                                 >
-                                    <span>💵</span> {t('deduct_from_salary' as any)}
+                                    <span aria-hidden="true">💵</span> {t('deduct_from_salary' as any)}
                                 </button>
                             </div>
                         </div>

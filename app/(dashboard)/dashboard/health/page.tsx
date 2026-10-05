@@ -331,7 +331,7 @@ export default function SystemHealthPage() {
                     borderRadius: '0.75rem', padding: '0.85rem 1.25rem', marginBottom: '1.5rem',
                     fontWeight: 700, fontSize: '0.9rem'
                 }}>
-                    <span style={{ fontSize: '1.3rem' }}>🔧</span>
+                    <span aria-hidden="true" style={{ fontSize: '1.3rem' }}>🔧</span>
                     {t('maintenance_active_banner' as any)}
                 </div>
             )}
@@ -350,7 +350,7 @@ export default function SystemHealthPage() {
                 {/* Storage Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>📁</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>📁</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('storage_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('total_assets' as any)}</p>
@@ -422,7 +422,7 @@ export default function SystemHealthPage() {
                 {/* Auditing Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>📜</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>📜</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('auditing_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('audit_logs')}</p>
@@ -451,7 +451,7 @@ export default function SystemHealthPage() {
                 {/* Notifications Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>🔔</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🔔</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('notifications')}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('system_activity' as any)}</p>
@@ -480,7 +480,7 @@ export default function SystemHealthPage() {
                 {/* Backups Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>💾</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>💾</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('backups_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('backups_subtitle' as any)}</p>
@@ -502,7 +502,7 @@ export default function SystemHealthPage() {
                 {/* Disaster Recovery Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>🧯</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🧯</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('disaster_recovery_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('disaster_recovery_subtitle' as any)}</p>
@@ -532,7 +532,7 @@ export default function SystemHealthPage() {
                 {/* Maintenance Mode Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>🔧</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🔧</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('maintenance_mode_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>

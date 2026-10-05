@@ -274,7 +274,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         }}
                         className="lg-hidden"
                     >
-                        ☰
+                        <span aria-hidden="true">☰</span>
                     </button>
                 )}
                 {/* minWidth: 0 again here — the floor applies at every level of
@@ -372,7 +372,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     display: 'flex',
                                     alignItems: 'center'
                                 }}>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                         <polyline points="6 9 12 15 18 9"></polyline>
                                     </svg>
                                 </span>
@@ -452,6 +452,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         <Link
                             href="/dashboard/profile-requests"
                             title={t('profile_name_requests')}
+                            aria-label={t('profile_name_requests')}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -475,7 +476,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 e.currentTarget.style.background = 'var(--veil-50)'
                             }}
                         >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="8.5" cy="7" r="4"></circle>
                                 <polyline points="17 11 19 13 23 9"></polyline>
@@ -550,7 +551,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 />
                             ) : (
-                                <span style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
+                                <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
                             )}
                         </div>
 

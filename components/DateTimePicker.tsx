@@ -331,7 +331,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 paddingTop: isMobile ? '1rem' : '0'
                             }}>
                                 <div style={{ fontSize: '0.85rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <span>🕒</span> {t('time_label' as any) || 'Time'}
+                                    <span aria-hidden="true">🕒</span> {t('time_label' as any) || 'Time'}
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

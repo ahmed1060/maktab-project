@@ -61,7 +61,7 @@ export default function MaintenancePage() {
             padding: '2rem',
             direction: locale === 'ar' ? 'rtl' : 'ltr'
         }}>
-            <span style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔧</span>
+            <span aria-hidden="true" style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔧</span>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.75rem' }}>
                 {t('maintenance_page_title')}
             </h1>

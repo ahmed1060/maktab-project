@@ -163,7 +163,7 @@ export default function CheckInPage() {
     if (session?.user?.role === 'SUPER_ADMIN') return <section className="glass" style={box}><p style={{ margin: 0 }}>{t('ci_not_for_super_admin')}</p></section>
     if (!device) return (
         <section className="glass" style={box}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>📲 {t('ci_title')}</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}><span aria-hidden="true">📲</span> {t('ci_title')}</h2>
             <p style={{ margin: 0 }}>{t('ci_use_app')}</p>
         </section>
     )
@@ -259,7 +259,7 @@ function Answer({ answer }: { answer: CheckInAnswer }) {
     const key: TranslationKey = answerKey(answer)
     return (
         <section className="glass" role="status" style={{ ...box, color: answer.outcome === 'ACCEPTED' ? 'var(--ok-fg)' : undefined }}>
-            <p style={{ margin: 0 }}>{answer.outcome === 'ACCEPTED' ? '✅ ' : '🕒 '}{fill(key)}</p>
+            <p style={{ margin: 0 }}><span aria-hidden="true">{answer.outcome === 'ACCEPTED' ? '✅ ' : '🕒 '}</span>{fill(key)}</p>
             <p style={{ margin: 0, ...soft }}>{t('ci_distance').replace('{n}', String(answer.distanceMeters))}</p>
         </section>
     )

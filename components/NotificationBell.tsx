@@ -183,7 +183,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                     fontSize: '1.5rem'
                 }}
             >
-                🔔
+                <span aria-hidden="true">🔔</span>
                 {unreadCount > 0 && (
                     <span style={{
                         position: 'absolute',

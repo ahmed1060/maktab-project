@@ -136,8 +136,8 @@ export default function UsernamesPage() {
                     onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px -2px var(--shadow-weak)'; }}
                     onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px var(--shadow-weak)'; }}
                 >
-                    <span style={{ fontSize: '1.2rem' }}>📊</span>
-                    <span style={{ fontSize: '1.2rem' }}>📥</span>
+                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📊</span>
+                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📥</span>
                 </button>
             </div>
 

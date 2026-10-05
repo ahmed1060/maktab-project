@@ -239,7 +239,7 @@ export default function SuperAdminsPage() {
                                                         whiteSpace: 'nowrap'
                                                     }}
                                                 >
-                                                    🔒 {locale === 'ar' ? 'محمي' : 'Protected'}
+                                                    <span aria-hidden="true">🔒</span> {locale === 'ar' ? 'محمي' : 'Protected'}
                                                 </span>
                                             )}
                                         </div>

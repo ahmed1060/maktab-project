@@ -257,7 +257,7 @@ export default function CompaniesPage() {
                        as a loading failure, and "nothing needs attention" is the
                        most valuable answer this screen can ever give. */
                     <div style={{ background: 'var(--surface)', borderRadius: '12px', boxShadow: '0 1px 3px var(--shadow-weak)', padding: '3rem 1.5rem', textAlign: 'center' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
+                        <div aria-hidden="true" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
                         <div style={{ fontWeight: 600, color: 'var(--ok-fg)', marginBottom: '0.75rem' }}>{t('nothing_needs_attention' as any)}</div>
                         <button className="btn btn-secondary" onClick={() => changeFilter('all')} style={{ fontSize: '0.85rem' }}>
                             {t('show_all_companies' as any)}
@@ -341,7 +341,7 @@ export default function CompaniesPage() {
                                                     border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)'
                                                 }}
                                             >
-                                                💳 {t('payments_history')}
+                                                <span aria-hidden="true">💳</span> {t('payments_history')}
                                             </button>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
@@ -374,7 +374,7 @@ export default function CompaniesPage() {
                                                         border: '1px solid color-mix(in srgb, var(--ok-fg-deep) 20%, transparent)'
                                                     }}
                                                 >
-                                                    ⚙️
+                                                    <span aria-hidden="true">⚙️</span>
                                                 </button>
                                                 <button
                                                     onClick={() => handleOpenModal(company)}

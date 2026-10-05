@@ -309,7 +309,7 @@ export default function EmployeesPage() {
                     maxWidth: '350px',
                     animation: 'slideInRight 0.3s ease-out'
                 }}>
-                    <span style={{ fontSize: '1rem' }}>
+                    <span aria-hidden="true" style={{ fontSize: '1rem' }}>
                         {alert.type === 'success' ? '✓' : '✕'}
                     </span>
                     {alert.message}

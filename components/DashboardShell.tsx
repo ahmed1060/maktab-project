@@ -261,7 +261,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         boxSizing: 'border-box',
                                     }}
                                 />
-                            ) : '🚀'}
+                            ) : <span aria-hidden="true">🚀</span>}
                         </span>
                         {!isCollapsed && (
                             <div style={{
@@ -411,11 +411,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 e.currentTarget.style.transform = 'none'
                             }}
                         >
-                            <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                            <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
                             {!isCollapsed && (
                                 <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     {link.label}
-                                    {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                    {isLockedHref(link.href) && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                 </span>
                             )}
                         </Link>
@@ -436,7 +436,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 gap: isCollapsed ? '0' : '1rem', transition: 'all 0.2s', fontSize: '0.95rem', fontWeight: '500',
                             }}
                         >
-                            <span style={{ fontSize: '1.4rem' }}>📲</span>
+                            <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>📲</span>
                             {!isCollapsed && <span>{t('ci_title')}</span>}
                         </Link>
                     )}
@@ -457,11 +457,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 gap: isCollapsed ? '0' : '1rem', transition: 'all 0.2s', fontSize: '0.95rem', fontWeight: '500',
                             }}
                         >
-                            <span style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/attendance') ? 0.45 : 1 }}>🕘</span>
+                            <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/attendance') ? 0.45 : 1 }}>🕘</span>
                             {!isCollapsed && (
                                 <span style={{ opacity: isLockedHref('/dashboard/attendance') ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     {t('attendance_title')}
-                                    {isLockedHref('/dashboard/attendance') && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                    {isLockedHref('/dashboard/attendance') && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                 </span>
                             )}
                         </Link>
@@ -507,11 +507,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             e.currentTarget.style.transform = 'none'
                         }}
                     >
-                        <span style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/documents') ? 0.45 : 1 }}>📄</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/documents') ? 0.45 : 1 }}>📄</span>
                         {!isCollapsed && (
                             <span style={{ opacity: isLockedHref('/dashboard/documents') ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 {t('my_payslips')}
-                                {isLockedHref('/dashboard/documents') && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                {isLockedHref('/dashboard/documents') && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                             </span>
                         )}
                     </Link>
@@ -562,11 +562,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
                                     {!isCollapsed && (
                                         <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             {link.label}
-                                            {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                            {isLockedHref(link.href) && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                         </span>
                                     )}
                                 </Link>
@@ -609,10 +609,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem' }}>🧾</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>🧾</span>
                                     {!isCollapsed && <span style={{ flex: 1 }}>{t('payroll')}</span>}
                                     {!isCollapsed && isLockedHref('/dashboard/payroll') && (
-                                        <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>
+                                        <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>
                                     )}
                                 </Link>
                             )}
@@ -646,7 +646,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem' }}>🪪</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>🪪</span>
                                     {!isCollapsed && <span style={{ flex: 1 }}>{t('role_requests_title')}</span>}
                                 </Link>
                             )}
@@ -680,7 +680,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem' }}>⚙️</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>⚙️</span>
                                     {!isCollapsed && <span style={{ flex: 1 }}>{t('company_settings_title')}</span>}
                                 </Link>
                             )}
@@ -736,11 +736,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
                                     {!isCollapsed && (
                                         <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             {link.label}
-                                            {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                            {isLockedHref(link.href) && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                         </span>
                                     )}
                                 </Link>

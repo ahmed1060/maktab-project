@@ -424,7 +424,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             {obligation.assignees?.some((a: any) => a.status === 'DELETED') && canManage && (
                 <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg)', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🚫</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🚫</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('assignee_deleted_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
@@ -552,7 +552,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     borderRadius: '0.5rem',
                                     boxShadow: '0 1px 2px var(--shadow-faint)'
                                 }}>
-                                    <span style={{ fontSize: '1.2rem' }}>📎</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📎</span>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <a href={url} target="_blank" rel="noopener noreferrer" style={{
                                             color: 'var(--info-solid-hover)',
@@ -653,7 +653,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                             }}
                         />
                         <div style={{ pointerEvents: 'none' }}>
-                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
+                            <div aria-hidden="true" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
                             <p style={{ margin: 0, fontWeight: '600', color: 'var(--text-muted)' }}>
                                 {t('upload_drag_files_msg')}
                             </p>
@@ -679,7 +679,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     flexDirection: 'row'
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                        <span style={{ fontSize: '1.2rem' }}>📄</span>
+                                        <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📄</span>
                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             <div style={{ fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-body)' }}>{file.name}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>

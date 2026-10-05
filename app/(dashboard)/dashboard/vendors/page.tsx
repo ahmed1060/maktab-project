@@ -250,17 +250,17 @@ export default function VendorsPage() {
                                                 card to tell them apart. */}
                                             {isAllCompaniesView && vendor.company?.name && (
                                                 <span style={{ background: 'var(--surface-sunk)', color: 'var(--text-muted)', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontWeight: 500 }}>
-                                                    🏢 {vendor.company.name}
+                                                    <span aria-hidden="true">🏢</span> {vendor.company.name}
                                                 </span>
                                             )}
-                                            <span>👤 {vendor.ownerName}</span>
-                                            <span>📞 {vendor.mobileNumber}</span>
+                                            <span><span aria-hidden="true">👤</span> {vendor.ownerName}</span>
+                                            <span><span aria-hidden="true">📞</span> {vendor.mobileNumber}</span>
                                             {vendor.locationLink ? (
                                                 <a href={vendor.locationLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-fg)' }}>
-                                                    📍 {vendor.locationName}
+                                                    <span aria-hidden="true">📍</span> {vendor.locationName}
                                                 </a>
                                             ) : (
-                                                <span>📍 {vendor.locationName}</span>
+                                                <span><span aria-hidden="true">📍</span> {vendor.locationName}</span>
                                             )}
                                         </div>
                                         {/* createdBy is null for a Super-Admin-created

@@ -31,7 +31,7 @@ export default function PreviewBanner({ preview }: { preview: { roleName: string
             padding: '0.75rem 1rem', marginBottom: '1rem', borderRadius: '0.75rem',
             background: 'var(--warn-bg)', border: '1px solid var(--warn-border)',
         }}>
-            <span>👁️ {t('preview_banner').replace('{role}', roleLabel({ name: preview.roleName, builtIn: preview.roleBuiltIn }, t)).replace('{company}', preview.companyName)}</span>
+            <span><span aria-hidden="true">👁️</span> {t('preview_banner').replace('{role}', roleLabel({ name: preview.roleName, builtIn: preview.roleBuiltIn }, t)).replace('{company}', preview.companyName)}</span>
             <button type="button" className="btn btn-primary" onClick={exit} disabled={leaving}>{t('preview_exit')}</button>
         </div>
     )

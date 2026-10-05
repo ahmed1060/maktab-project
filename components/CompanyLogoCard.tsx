@@ -105,7 +105,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
                                 padding: '0.15rem', boxSizing: 'border-box',
                             }}
                         />
-                    ) : '🚀'}
+                    ) : <span aria-hidden="true">🚀</span>}
                 </span>
                 <span style={{
                     color: 'var(--sidebar-fg)', fontWeight: 600, fontSize: '0.95rem',

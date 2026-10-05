@@ -512,7 +512,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                     ) : (
-                        <span style={{ fontSize: '2.5rem' }}>
+                        <span aria-hidden="true" style={{ fontSize: '2.5rem' }}>
                             {gender === 'MALE' ? '👨🏻' : '👩🏻'}
                         </span>
                     )}
@@ -608,7 +608,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 />
                             ) : (
-                                <span style={{ fontSize: '4.5rem' }}>
+                                <span aria-hidden="true" style={{ fontSize: '4.5rem' }}>
                                     {gender === 'MALE' ? '👨🏻' : '👩🏻'}
                                 </span>
                             )}
@@ -723,7 +723,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     color: 'var(--warn-fg)',
                     textAlign: locale === 'ar' ? 'right' : 'left'
                 }}>
-                    <span style={{ fontSize: '1.25rem' }}>⏳</span>
+                    <span aria-hidden="true" style={{ fontSize: '1.25rem' }}>⏳</span>
                     <div>
                         <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{t('name_change_request_pending')}</div>
                         <div style={{ fontSize: '0.8rem' }}>{t('requested_label')}: {pendingRequest.newFirstName} {pendingRequest.newLastName}</div>
