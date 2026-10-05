@@ -317,7 +317,8 @@ To try it:
    another account, then check in.
 
 The models (about 200 MB) are fetched into `public/face-models/v2/` before
-`dev` and `build` (`scripts/fetch-face-models.mjs`). The phone downloads them
+`dev` and `build` (`scripts/fetch-face-models.mjs`), only when
+`NEXT_PUBLIC_FACE_PROTOTYPE=1`: a production build has none of them. The phone downloads them
 the first time the camera opens, with a percentage on screen, and keeps them.
 
 ### Choosing the SDK

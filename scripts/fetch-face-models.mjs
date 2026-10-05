@@ -16,6 +16,9 @@
 // file on the Hobby plan, so it is served in parts of at most 40 MB, which the
 // phone joins and checks against the manifest's SHA-256.
 //
+// Only where the face check for testing is offered (NEXT_PUBLIC_FACE_PROTOTYPE=1):
+// anywhere else, production above all, nothing is downloaded and no model is
+// published, and any left from before are removed (review on #47).
 // FACE_MODELS=skip leaves everything as it is (for a quick dev start).
 import { createHash } from "node:crypto"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
@@ -28,6 +31,12 @@ if (process.env.FACE_MODELS === "skip") {
 }
 
 const OUT = "public/face-models/v2"
+
+if (process.env.NEXT_PUBLIC_FACE_PROTOTYPE !== "1") {
+    rmSync("public/face-models", { recursive: true, force: true })
+    console.log("fetch-face-models: the face check for testing is off (NEXT_PUBLIC_FACE_PROTOTYPE isn't 1); no models")
+    process.exit(0)
+}
 const CACHE = existsSync(".next") ? ".next/cache/face-models" : "node_modules/.cache/face-models"
 const PART = 40 * 1024 * 1024
 

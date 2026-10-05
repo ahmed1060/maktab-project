@@ -85,7 +85,11 @@ Then follow "To try it" in mobile/README.md.
 
 ## The models at build time
 
-`scripts/fetch-face-models.mjs` runs before `dev` and `build`. It downloads
+`scripts/fetch-face-models.mjs` runs before `dev` and `build`, and does
+anything only where the face check for testing is offered
+(`NEXT_PUBLIC_FACE_PROTOTYPE=1`). Anywhere else, production above all, it
+downloads nothing, publishes no model, and removes any left from before. Where
+it is on, it downloads
 `buffalo_l.zip` from InsightFace's GitHub release and the Face Landmarker from
 Google, checks both against fixed SHA-256 sums, keeps them in the build cache
 (`.next/cache/face-models`, which Vercel keeps between builds), and writes
