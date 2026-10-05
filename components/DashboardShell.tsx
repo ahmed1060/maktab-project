@@ -883,7 +883,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         fontWeight: '600',
                         textTransform: 'uppercase',
                         letterSpacing: '0.1em',
-                        fontFamily: "'Inter', sans-serif"
+                        fontFamily: 'var(--font-inter), sans-serif'
                     }}>
                         {t('powered_by') || 'Powered by'}
                     </span>
@@ -894,7 +894,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         letterSpacing: '0.15em',
                         marginTop: '0.05rem',
                         textTransform: 'uppercase',
-                        fontFamily: "'Inter', sans-serif",
+                        fontFamily: 'var(--font-inter), sans-serif',
                         background: 'linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
