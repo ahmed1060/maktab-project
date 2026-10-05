@@ -1353,3 +1353,30 @@ input::-webkit-credentials-auto-fill-button {
         margin: 18mm;
     }
 }
+
+/* "Reduce motion" (WCAG 2.2.2, 2.3.3; audit M5). For people who ask their
+   device for less motion: the background stops drifting, cards stop lifting,
+   and fades and slides end at once instead of playing. Animations are cut to
+   a single near-instant run rather than removed, so whatever they reveal still
+   ends visible. Loading spinners keep turning, more slowly: they are how the
+   page says it is still working. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  [class*="spin"],
+  [style*="spin"] {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .glass-card:hover,
+  .card:hover,
+  .btn-primary:hover {
+    transform: none !important;
+  }
+}
