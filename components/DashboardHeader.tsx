@@ -51,6 +51,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const accountRef = useRef<HTMLButtonElement>(null)
     const optionRefs = useRef<(HTMLLIElement | null)[]>([])
     const switcherListId = useId()
+    const accountMenuId = useId()
     const { t, locale } = useLanguage()
 
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
@@ -574,15 +575,19 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         </div>
                     </div>
 
-                    {/* Avatar Container with Dropdown */}
-                    <div style={{ position: 'relative' }}>
+                    {/* Avatar Container with Dropdown. Escape closes the menu
+                        from anywhere in it, the button included: right after
+                        Enter opens it, focus is still on the button. */}
+                    <div style={{ position: 'relative' }} onKeyDown={e => {
+                        if (e.key === 'Escape' && isMenuOpen) { setIsMenuOpen(false); accountRef.current?.focus() }
+                    }}>
                         {/* A button, so the keyboard can open the account menu too. */}
                         <button
                             type="button"
                             ref={accountRef}
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            aria-haspopup="menu"
                             aria-expanded={isMenuOpen}
+                            aria-controls={isMenuOpen ? accountMenuId : undefined}
                             aria-label={t('account_menu' as TranslationKey)}
                             style={{
                                 padding: 0,
@@ -622,9 +627,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
                                     onClick={() => setIsMenuOpen(false)}
                                 />
-                                <div className="glass" onKeyDown={e => {
-                                    if (e.key === 'Escape') { setIsMenuOpen(false); accountRef.current?.focus() }
-                                }} style={{
+                                <div id={accountMenuId} className="glass" style={{
                                     position: 'absolute',
                                     top: '120%',
                                     [locale === 'ar' ? 'left' : 'right']: 0,

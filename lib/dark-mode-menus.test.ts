@@ -42,14 +42,24 @@ describe("the account menu's opener", () => {
     const header = readFileSync("components/DashboardHeader.tsx", "utf8")
     const opener = header.slice(header.indexOf("ref={accountRef}") - 120, header.indexOf("aria-label={t('account_menu'") + 60)
 
-    it("is a button the keyboard can reach, saying it opens a menu", () => {
+    it("is a button the keyboard can reach, saying whether its panel is open", () => {
         expect(opener).toContain('<button\n                            type="button"')
-        expect(opener).toContain('aria-haspopup="menu"')
         expect(opener).toContain("aria-expanded={isMenuOpen}")
+        expect(opener).toContain("aria-controls={isMenuOpen ? accountMenuId : undefined}")
+        expect(header).toContain("<div id={accountMenuId}")
         expect(header).not.toMatch(/<div\s+onClick=\{\(\) => setIsMenuOpen\(!isMenuOpen\)\}/)
     })
 
-    it("closes on Escape and goes back to the button", () => {
-        expect(header).toMatch(/if \(e\.key === 'Escape'\) \{ setIsMenuOpen\(false\); accountRef\.current\?\.focus\(\) \}/)
+    // Codex review on #41: the panel holds links, buttons and switches, not
+    // menu items, so it is a disclosure; "menu" promised a menu it isn't.
+    it("doesn't claim to open an ARIA menu", () => {
+        expect(opener).not.toContain('aria-haspopup="menu"')
+    })
+
+    // Codex review on #41: Escape was heard only inside the panel, but right
+    // after Enter opens it, focus is still on the button.
+    it("closes on Escape from the button or the panel, and goes back to the button", () => {
+        const wrapper = header.slice(header.indexOf("Avatar Container with Dropdown"), header.indexOf("ref={accountRef}"))
+        expect(wrapper).toMatch(/onKeyDown=\{e => \{\s*if \(e\.key === 'Escape' && isMenuOpen\) \{ setIsMenuOpen\(false\); accountRef\.current\?\.focus\(\) \}/)
     })
 })
