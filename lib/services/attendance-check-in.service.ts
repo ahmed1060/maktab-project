@@ -171,7 +171,9 @@ export class AttendanceCheckInService {
                 counts: verdict.outcome === "ACCEPTED",
                 punchId: punch.id,
             }
-        })
+        // A dozen round trips to the database and maybe a failed face check's frame: not to be lost to Prisma's
+        // default 5 s from Vercel's region to the database's, as the face check's photo was (production, 5 October).
+        }, { maxWait: 10_000, timeout: 30_000 })
         if (!out.result) fail("PHONE_SIGNATURE_INVALID")
         // From the day before: a check-in after midnight can end the night shift that began then.
         if (out.counts) await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [userId])
