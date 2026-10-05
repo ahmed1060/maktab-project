@@ -61,7 +61,6 @@ export default function CompaniesPage() {
     // Delete State
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null)
-    const [deletePasscode, setDeletePasscode] = useState('')
     const [deleteError, setDeleteError] = useState('')
     const { showToast } = useToast()
     const [isDeleting, setIsDeleting] = useState(false)
@@ -166,18 +165,14 @@ export default function CompaniesPage() {
 
     const openDeleteModal = (company: Company) => {
         setCompanyToDelete(company)
-        setDeletePasscode('')
         setDeleteError('')
         setShowDeleteModal(true)
     }
 
     const handleDelete = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (deletePasscode !== '2025') {
-            setDeleteError(t('invalid_passcode'))
-            return
-        }
-
+        // No passcode here: the server asks for a recent authenticator code
+        // (lib/step-up.ts), and StepUpInterceptor prompts for it and re-sends.
         if (!companyToDelete) return
 
         setIsDeleting(true)
@@ -529,24 +524,11 @@ export default function CompaniesPage() {
                         {deleteError && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
 
                         <form onSubmit={handleDelete}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('enter_passcode_label')}</label>
-                                <input aria-label={t('enter_passcode_label')}
-                                    type="password"
-                                    className="input"
-                                    required
-                                    placeholder={t('enter_passcode_placeholder')}
-                                    value={deletePasscode}
-                                    onChange={e => setDeletePasscode(e.target.value)}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                />
-                            </div>
-
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                                 <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
                                     {t('cancel')}
                                 </button>
-                                <button type="submit" className="btn" disabled={isDeleting} style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
+                                <button type="submit" className="btn" disabled={isDeleting} aria-busy={isDeleting || undefined} style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
                                     {isDeleting ? t('deleting') : t('delete_permanently')}
                                 </button>
                             </div>
