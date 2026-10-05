@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useCompany } from '@/context/CompanyContext'
-import { useSession } from 'next-auth/react'
+import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
@@ -51,8 +51,10 @@ export default function CompaniesPage() {
     const [error, setError] = useState('')
     const { triggerRefresh } = useCompany()
 
-    const { data: session } = useSession()
-    const userRole = session?.user?.role || ''
+    // Who is looking comes from the layout on the first paint (useViewer), so a
+    // Super Admin never sees "Access Restricted" while the session loads.
+    const viewer = useViewer()
+    const userRole = viewer?.role || ''
 
     const { data: packagesResult } = useSWR(userRole === 'SUPER_ADMIN' ? '/api/packages' : null, fetcher)
     const assignablePackages: { id: string; name: string }[] = packagesResult?.data || []

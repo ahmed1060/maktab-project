@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useViewer } from '@/lib/useCan'
 import useSWR from 'swr'
 import Pagination from '@/components/Pagination'
 import { useLanguage } from '@/context/LanguageContext'
@@ -37,7 +37,9 @@ type AuditLog = {
 }
 
 export default function AuditLogsPage() {
-    const { data: session } = useSession()
+    // Who is looking comes from the layout on the first paint (useViewer), so a
+    // Super Admin never sees "Access Restricted" while the session loads.
+    const viewer = useViewer()
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const { selectedCompanyId } = useCompany()
@@ -129,7 +131,7 @@ export default function AuditLogsPage() {
     // UI-layer guard matching system-settings — the API route already
     // enforces SUPER_ADMIN-only server-side, this just stops the page's own
     // content/network calls from rendering for anyone else.
-    if (!session?.user || (session.user as any).role !== 'SUPER_ADMIN') {
+    if (viewer?.role !== 'SUPER_ADMIN') {
         return <AccessDenied />
     }
 
