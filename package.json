@@ -20,6 +20,7 @@
     "payroll:demo": "tsx scripts/seed-payroll-demo.ts"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@sentry/nextjs": "^10.75.3",
@@ -33,6 +34,7 @@
     "next": "^16.3.6",
     "next-auth": "^4.24.13",
     "nodemailer": "^10.0.10",
+    "onnxruntime-web": "^1.30.0",
     "otplib": "^13.5.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
