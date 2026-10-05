@@ -508,7 +508,7 @@ export default function EmployeeHistoryPage() {
                                                 <span style={{ fontWeight: 'bold' }}>{fractionDisplay}</span>
                                                 <span style={{ color: 'var(--text-faint)' }}> / {record.totalDays}</span>
                                             </td>
-                                            <td style={{ padding: '1rem', color: 'var(--danger-solid-hover)', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            <td style={{ padding: '1rem', color: 'var(--danger-fg-strong)', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {record.deductions > 0 ? `-${formatDays(record.deductions)}` : '-'}
                                             </td>
                                             <td style={{ padding: '1rem', color: 'var(--accent-solid-deep)', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
@@ -970,7 +970,7 @@ export default function EmployeeHistoryPage() {
                                                 {req.reason && <div style={{ fontSize: '0.85rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>{req.reason}</div>}
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <div style={{ fontWeight: '800', fontSize: '1.2rem', color: 'var(--danger-solid-hover)' }}>-{req.daysDeducted}</div>
+                                                <div style={{ fontWeight: '800', fontSize: '1.2rem', color: 'var(--danger-fg-strong)' }}>-{req.daysDeducted}</div>
                                                 <button
                                                     onClick={() => { setSelectedRequest(req); setReevaluateValue(req.daysDeducted.toString()); setIsReevaluateModalOpen(true); }}
                                                     className="btn glass"

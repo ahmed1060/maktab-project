@@ -864,7 +864,6 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     flexDirection: 'column',
                     alignItems: 'center', // Centered relative to each other
                     pointerEvents: 'none',
-                    opacity: 0.7,
                     transition: 'all 0.3s ease',
                     textAlign: 'center'
                 }} className="floating-attribution">
@@ -878,7 +877,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     }}>
                         {t('powered_by') || 'Powered by'}
                     </span>
+                    {/* Faded, the large name only: it is large text (3:1 is
+                        enough). "Powered by" is tiny and was 3.0:1 faded. */}
                     <span style={{
+                        opacity: 0.7,
                         fontSize: '1.35rem',
                         color: 'var(--text-main)',
                         fontWeight: '900',

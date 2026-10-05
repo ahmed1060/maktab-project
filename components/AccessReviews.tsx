@@ -60,7 +60,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
             <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {(['OPEN', ''] as const).map(s => (
                     <button key={s || 'all'} type="button" onClick={() => setStatus(s)} className="badge"
-                        style={{ cursor: 'pointer', background: status === s ? 'var(--primary)' : undefined, color: status === s ? 'var(--text-on-accent)' : undefined }}>
+                        style={{ cursor: 'pointer', background: status === s ? 'var(--button-from)' : undefined, color: status === s ? 'var(--text-on-accent)' : undefined }}>
                         {s ? t('access_review_open') : t('role_requests_filter_all')}
                     </button>
                 ))}

@@ -307,7 +307,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                             </div>
                                         )}
                                         {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || can('tasks.edit')) && (
-                                            <button aria-label={t('delete_location_title')} onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
+                                            <button aria-label={t('delete_location_title')} onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg-strong)', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
                                                 <TrashIcon size={16} />
                                             </button>
                                         )}

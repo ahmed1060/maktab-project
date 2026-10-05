@@ -175,10 +175,12 @@
   --brand-primary: var(--primary);
   --brand-primary-hover: var(--primary-hover);
   --brand-accent: var(--accent);
-  /* The brand colour as text. The same indigo in the light theme; in the dark
-     one it is too dark to read on the dark surfaces (2.8:1), and --primary
-     itself can't lighten there, because white text sits on it in buttons. */
-  --brand-primary-text: var(--primary);
+  /* The brand colour as text. A shade darker than --primary in the light
+     theme: --primary itself is 4.47:1 on white and 3.95:1 on its own 10% tint,
+     just short of 4.5. In the dark one it is too dark to read on the dark
+     surfaces (2.8:1), and --primary itself can't lighten there, because white
+     text sits on it in buttons. */
+  --brand-primary-text: #4f46e5;
 
   /* The keyboard focus ring: at least 3:1 against the surfaces and the page
      it sits on (WCAG 1.4.11), in each theme. */
