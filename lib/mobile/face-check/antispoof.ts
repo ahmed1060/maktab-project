@@ -9,7 +9,7 @@ import type { Face, Run } from "./models"
  * A signal, not a verdict: its authors say it is only reliable on direct
  * camera captures, and on 30 ordinary photos of real people it scored some
  * well below 0.5. So a low score sends the check-in for review
- * (FACE_CHECK.md) rather than refusing the person; the blink, the turn and
+ * (mobile/FACE_CHECK.md) rather than refusing the person; the blink, the turn and
  * the match are what must pass.
  */
 

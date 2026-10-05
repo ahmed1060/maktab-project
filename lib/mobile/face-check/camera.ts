@@ -1,13 +1,15 @@
 import type { Cue, Progress, Prompt } from "./liveness"
 
 /**
- * The camera, as the prototype sees it: a live video of the front camera,
+ * The camera, as the face check sees it: a live video of the front camera,
  * a line of instruction for the person, and a way out. The check-in screen
  * provides it (components/FaceCamera.tsx).
  */
 export interface Camera {
     video: HTMLVideoElement
     say(prompt: Prompt | "LOADING" | "WORKING"): void
+    /** How far the first download of the models has got, 0 to 1; null once they're loaded. */
+    loading?(share: number | null): void
     /** The steps, the time left on this one and the live readings, during the challenge; null clears them. */
     show?(progress: Progress | null): void
     /** A step half or wholly done, or started again: felt and heard, not only read. */

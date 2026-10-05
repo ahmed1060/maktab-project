@@ -1720,6 +1720,8 @@ export const ar = {
         face_cam_step_BLINK: "إغماض العينين",
         face_cam_still: "اثبت قليلًا…",
         face_cam_one: "وجه واحد فقط من فضلك.",
+        face_cam_download: "جارٍ تنزيل التحقق من الوجه، في المرة الأولى فقط: {pct}%",
+        face_ci_models_failed: "تعذّر تنزيل التحقق من الوجه. تحقق من اتصالك ثم حاول مرة أخرى.",
         face_cam_prototype: "نسخة تجريبية من التحقق من الوجه، للتجربة فقط.",
         face_ci_liveness_failed: "لم يتمكن التحقق من الوجه من التأكد أنك أنت مباشرة. حاول مرة أخرى في إضاءة جيدة.",
         face_ci_consent_accept: "أوافق",

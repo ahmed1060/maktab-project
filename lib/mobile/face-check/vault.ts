@@ -1,7 +1,5 @@
-import type { Descriptor } from "./match"
-
 /**
- * The prototype's face templates on the phone (ATTENDANCE_PLAN.md §10.4):
+ * The face check's templates on the phone (ATTENDANCE_PLAN.md §10.4):
  * encrypted with a key made from two halves, a device key that never leaves
  * this app's storage (a non-extractable WebCrypto key) and the wrapping key
  * the server hands out for each use. Without the server's half they can't
@@ -12,7 +10,14 @@ import type { Descriptor } from "./match"
  *
  * Weaker than the real thing: the device half lives in the web view's
  * storage, not the secure hardware.
+ *
+ * Its own database and key derivation, apart from the first prototype's
+ * ("nizmo-face"): those templates were dlib's and can't be matched against
+ * ArcFace's, so they are left unread and the person sets the face up again.
  */
+
+/** One face as the recognition model sees it: 512 numbers. */
+export type Template = readonly number[]
 
 export type Slot = "approved" | "pending"
 
@@ -26,7 +31,7 @@ export interface Store {
 type Sealed = { iv: Uint8Array<ArrayBuffer>; data: Uint8Array<ArrayBuffer> }
 
 const DEVICE = "device-key"
-const INFO = new TextEncoder().encode("nizmo-face-prototype/v1")
+const INFO = new TextEncoder().encode("nizmo-face-check/v2")
 
 function fail(code: string): never {
     throw Object.assign(new Error(code), { code })
@@ -53,20 +58,20 @@ export class Vault {
         return this.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt, info: INFO }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"])
     }
 
-    async save(slot: Slot, wrappingKey: string, descriptors: readonly Descriptor[]): Promise<void> {
+    async save(slot: Slot, wrappingKey: string, templates: readonly Template[]): Promise<void> {
         const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
-        const plain = new TextEncoder().encode(JSON.stringify({ v: 1, descriptors }))
+        const plain = new TextEncoder().encode(JSON.stringify({ v: 2, templates }))
         const data = new Uint8Array(await this.subtle.encrypt({ name: "AES-GCM", iv }, await this.key(wrappingKey), plain))
         await this.store.set(slot, { iv, data } satisfies Sealed)
     }
 
-    /** The slot's descriptors, or null when empty. A key that doesn't open them: TEMPLATES_UNREADABLE. */
-    async load(slot: Slot, wrappingKey: string): Promise<Descriptor[] | null> {
+    /** The slot's templates, or null when empty. A key that doesn't open them: TEMPLATES_UNREADABLE. */
+    async load(slot: Slot, wrappingKey: string): Promise<Template[] | null> {
         const sealed = (await this.store.get(slot)) as Sealed | undefined
         if (!sealed) return null
         try {
             const plain = await this.subtle.decrypt({ name: "AES-GCM", iv: sealed.iv }, await this.key(wrappingKey), sealed.data)
-            return (JSON.parse(new TextDecoder().decode(plain)) as { descriptors: Descriptor[] }).descriptors
+            return (JSON.parse(new TextDecoder().decode(plain)) as { templates: Template[] }).templates
         } catch {
             return fail("TEMPLATES_UNREADABLE")
         }
@@ -96,7 +101,7 @@ export class Vault {
 }
 
 /** A Store in IndexedDB, which keeps a CryptoKey as it is: still non-extractable. */
-export function indexedDbStore(name = "nizmo-face"): Store {
+export function indexedDbStore(name = "nizmo-face-v2"): Store {
     const open = () => new Promise<IDBDatabase>((resolve, reject) => {
         const req = indexedDB.open(name, 1)
         req.onupgradeneeded = () => req.result.createObjectStore("kv")

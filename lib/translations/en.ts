@@ -1721,6 +1721,8 @@ export const en = {
         face_cam_step_BLINK: "Close eyes",
         face_cam_still: "Hold still…",
         face_cam_one: "Only one face, please.",
+        face_cam_download: "Downloading the face check, the first time only: {pct}%",
+        face_ci_models_failed: "The face check couldn't be downloaded. Check your connection and try again.",
         face_cam_prototype: "Test version of the face check, for trying it out only.",
         face_ci_liveness_failed: "The face check couldn't confirm it's you, live. Try again in good light.",
         face_ci_consent_accept: "I agree",

@@ -8,7 +8,7 @@ import { blob, resize, warp, type Affine, type Rgba } from "./image"
  * (LFW 99.83%, CFP-FP 99.33%, AgeDB-30 98.23%, IJB-C 97.25%).
  *
  * FOR TESTING ONLY: the weights are licensed for non-commercial research. The
- * feature is replaced by a paid SDK before release (FACE_CHECK.md).
+ * feature is replaced by a paid SDK before release (mobile/FACE_CHECK.md).
  *
  * Every step copies the reference pipeline (insightface 0.7.3, Python): the
  * same resize, padding, normalisation, anchor decoding and alignment, so the

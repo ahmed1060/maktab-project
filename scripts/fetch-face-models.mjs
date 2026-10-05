@@ -5,8 +5,9 @@
 // - InsightFace buffalo_l (SCRFD-10GF detector, ArcFace ResNet50): downloaded
 //   once from InsightFace's GitHub release and checked against its SHA-256,
 //   then kept in a cache that survives builds (Vercel restores .next/cache).
-//   NON-COMMERCIAL weights, for testing only (FACE_CHECK.md).
+//   NON-COMMERCIAL weights, for testing only (mobile/FACE_CHECK.md).
 // - MediaPipe Face Landmarker: downloaded once, checked the same way.
+//   (Apache-2.0.)
 // - MiniFASNet (anti-spoofing, Apache-2.0): converted to ONNX once and
 //   committed, in lib/mobile/face-check/weights.
 // - The ONNX Runtime and MediaPipe WebAssembly files: from node_modules.
@@ -17,7 +18,7 @@
 //
 // FACE_MODELS=skip leaves everything as it is (for a quick dev start).
 import { createHash } from "node:crypto"
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import JSZip from "jszip"
 
@@ -84,9 +85,14 @@ for (const [name, want] of Object.entries(FROM_BUFFALO)) {
     }
     manifest.files[name] = { parts, size: buf.length, sha256: want }
 }
-writeFileSync(join(OUT, "face_landmarker.task"), await cached(DOWNLOADS.landmarker))
-for (const f of readdirSync("lib/mobile/face-check/weights").filter(f => f.endsWith(".onnx")))
+const landmarker = await cached(DOWNLOADS.landmarker)
+writeFileSync(join(OUT, "face_landmarker.task"), landmarker)
+// Everything the phone downloads, for its progress bar.
+manifest.total = Object.values(manifest.files).reduce((s, f) => s + f.size, 0) + landmarker.length
+for (const f of readdirSync("lib/mobile/face-check/weights").filter(f => f.endsWith(".onnx"))) {
     copyFileSync(join("lib/mobile/face-check/weights", f), join(OUT, f))
+    manifest.total += statSync(join(OUT, f)).size
+}
 copyFileSync("node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm", join(OUT, "ort/ort-wasm-simd-threaded.wasm"))
 copyFileSync("node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs", join(OUT, "ort/ort-wasm-simd-threaded.mjs"))
 for (const f of readdirSync("node_modules/@mediapipe/tasks-vision/wasm"))

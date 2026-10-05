@@ -15,7 +15,7 @@
  * in view left off the step's clock.
  *
  * Not certified to anything: a commercial SDK's liveness replaces it before
- * release (FACE_CHECK.md).
+ * release (mobile/FACE_CHECK.md).
  */
 
 /**
