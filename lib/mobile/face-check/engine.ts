@@ -21,7 +21,9 @@ const CACHE = "nizmo-face-models-v2"
 /** How far the first download has got, 0 to 1, for the screen. */
 export type OnProgress = (share: number) => void
 
-type Manifest = { files: Record<string, { parts: string[]; size: number; sha256: string }>; total: number }
+export type Manifest = { files: Record<string, { parts: string[]; size: number; sha256: string }>; total: number }
+
+const unavailable = () => Object.assign(new Error("FACE_MODELS_UNAVAILABLE"), { code: "FACE_MODELS_UNAVAILABLE" })
 
 /** Bytes from the site, or from the phone's cache after the first time. */
 async function cached(url: string, onBytes?: (n: number) => void): Promise<ArrayBuffer> {
@@ -32,12 +34,13 @@ async function cached(url: string, onBytes?: (n: number) => void): Promise<Array
         onBytes?.(buf.byteLength)
         return buf
     }
-    const res = await fetch(url)
-    if (!res.ok || !res.body) throw Object.assign(new Error("FACE_MODELS_UNAVAILABLE"), { code: "FACE_MODELS_UNAVAILABLE" })
+    // Offline, or the connection dropped: the person is told the download failed, not a browser error.
+    const res = await fetch(url).catch(() => { throw unavailable() })
+    if (!res.ok || !res.body) throw unavailable()
     const chunks: Uint8Array[] = []
     const reader = res.body.getReader()
     for (;;) {
-        const { done, value } = await reader.read()
+        const { done, value } = await reader.read().catch(() => { throw unavailable() })
         if (done) break
         chunks.push(value)
         onBytes?.(value.byteLength)
@@ -50,7 +53,7 @@ async function cached(url: string, onBytes?: (n: number) => void): Promise<Array
 const hex = (buf: ArrayBuffer) => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("")
 
 /** A model served in parts, joined and checked against the manifest: a corrupted download is never run. */
-async function joined(manifest: Manifest, name: string, onBytes: (n: number) => void): Promise<Uint8Array> {
+export async function joined(manifest: Manifest, name: string, onBytes: (n: number) => void): Promise<Uint8Array> {
     const entry = manifest.files[name]
     const parts = await Promise.all(entry.parts.map(p => cached(`${MODELS_URL}/${p}`, onBytes)))
     const out = new Uint8Array(entry.size)
@@ -58,11 +61,24 @@ async function joined(manifest: Manifest, name: string, onBytes: (n: number) => 
     for (const p of parts) { out.set(new Uint8Array(p), at); at += p.byteLength }
     if (at !== entry.size || hex(await crypto.subtle.digest("SHA-256", out)) !== entry.sha256) {
         // Drop the cached parts so the next try downloads them afresh.
-        const cache = await caches.open(CACHE).catch(() => null)
+        const cache = typeof caches !== "undefined" ? await caches.open(CACHE).catch(() => null) : null
         await Promise.all(entry.parts.map(p => cache?.delete(`${MODELS_URL}/${p}`)))
         throw Object.assign(new Error("FACE_MODELS_CORRUPT"), { code: "FACE_MODELS_CORRUPT" })
     }
     return out
+}
+
+/** What the site serves, never cached: offline, missing or not JSON is FACE_MODELS_UNAVAILABLE (review on #47). */
+export async function manifestOf(): Promise<Manifest> {
+    try {
+        const res = await fetch(`${MODELS_URL}/manifest.json`, { cache: "no-store" })
+        if (!res.ok) throw unavailable()
+        const m = (await res.json()) as Manifest
+        if (!m?.files || typeof m.total !== "number") throw unavailable()
+        return m
+    } catch {
+        throw unavailable()
+    }
 }
 
 export type Engine = {
@@ -86,7 +102,7 @@ async function build(onProgress?: OnProgress): Promise<Engine> {
     // One thread: a web view isn't cross-origin isolated, so it couldn't share memory between threads anyway.
     ort.env.wasm.numThreads = 1
 
-    const manifest: Manifest = await (await fetch(`${MODELS_URL}/manifest.json`, { cache: "no-store" })).json()
+    const manifest = await manifestOf()
     const total = manifest.total
     let got = 0
     const onBytes = (n: number) => { got += n; onProgress?.(Math.min(1, got / total)) }
