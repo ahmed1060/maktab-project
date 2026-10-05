@@ -87,11 +87,12 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     }
 
     const remove = async (role: Role) => {
-        setDeleting(null)
-        const res = await fetch(`/api/roles?id=${role.id}`, { method: 'DELETE' })
-        if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
-        showToast(t('roles_deleted'), 'success')
-        mutate()
+        try {
+            const res = await fetch(`/api/roles?id=${role.id}`, { method: 'DELETE' })
+            if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
+            showToast(t('roles_deleted'), 'success')
+            mutate()
+        } finally { setDeleting(null) }
     }
 
     const makeDefault = async (role: Role) => {

@@ -290,27 +290,29 @@ export default function SystemHealthPage() {
         MAINTENANCE_OFF: { title: t('confirm_maintenance_off_title' as any), message: t('confirm_maintenance_off_msg' as any) },
     }
 
-    const handleConfirm = () => {
+    // Awaited, and closed after: the dialog shows the work under way.
+    const handleConfirm = async () => {
         const action = pendingAction
-        setPendingAction(null)
         if (!action) return
-        if (action === 'BACKUP') {
-            triggerBackup()
-        } else if (action === 'RESTORE_LATEST') {
-            runRestore('latest')
-        } else if (action === 'RESTORE_SPECIFIC') {
-            runRestore('specific')
-        } else if (action === 'MAINTENANCE_ON') {
-            toggleMaintenance(true)
-        } else if (action === 'MAINTENANCE_OFF') {
-            toggleMaintenance(false)
-        } else if (action === 'CLEANUP_ASSETS') {
-            previewOrphans()
-        } else if (action === 'DELETE_ORPHANS') {
-            deleteOrphans()
-        } else {
-            runMaintenance(action)
-        }
+        try {
+            if (action === 'BACKUP') {
+                await triggerBackup()
+            } else if (action === 'RESTORE_LATEST') {
+                await runRestore('latest')
+            } else if (action === 'RESTORE_SPECIFIC') {
+                await runRestore('specific')
+            } else if (action === 'MAINTENANCE_ON') {
+                await toggleMaintenance(true)
+            } else if (action === 'MAINTENANCE_OFF') {
+                await toggleMaintenance(false)
+            } else if (action === 'CLEANUP_ASSETS') {
+                await previewOrphans()
+            } else if (action === 'DELETE_ORPHANS') {
+                await deleteOrphans()
+            } else {
+                await runMaintenance(action)
+            }
+        } finally { setPendingAction(null) }
     }
 
     if (loading) {

@@ -111,7 +111,6 @@ export default function CheckInPage() {
     }
 
     const register = async () => {
-        setSwitching(false)
         setBusy('register')
         try {
             await registerPhone(device!, post)
@@ -119,7 +118,7 @@ export default function CheckInPage() {
             // A new phone has a new key: tell the server where to push to it.
             void enablePush(device!, pushPlugin(), post)
             await Promise.all([refreshFingerprint(), refreshPhone()])
-        } catch (e) { problem(e) } finally { setBusy(null) }
+        } catch (e) { problem(e) } finally { setBusy(null); setSwitching(false) }
     }
     const punch = async (direction: 'IN' | 'OUT') => {
         setBusy(direction)
@@ -238,7 +237,7 @@ export default function CheckInPage() {
                 title={t('face_ci_withdraw')}
                 message={t('face_ci_withdraw_confirm')}
                 confirmText={t('face_ci_withdraw')}
-                onConfirm={() => { setWithdrawing(false); void consent(false) }}
+                onConfirm={async () => { await consent(false); setWithdrawing(false) }}
                 onCancel={() => setWithdrawing(false)}
             />
         </div>

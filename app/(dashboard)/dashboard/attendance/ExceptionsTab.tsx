@@ -252,7 +252,7 @@ export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: stri
                 message={t('exc_excuse_hint')}
                 confirmText={t('exc_excuse')}
                 reason={{ label: t('punch_reason') }}
-                onConfirm={reason => { const x = excusing; setExcusing(null); if (x) decide(x.row, x.subject, 'EXCUSED', reason) }}
+                onConfirm={async reason => { const x = excusing; if (x) await decide(x.row, x.subject, 'EXCUSED', reason); setExcusing(null) }}
                 onCancel={() => setExcusing(null)}
             />
             <ConfirmModal
@@ -262,7 +262,7 @@ export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: stri
                 confirmText={t('req_reject')}
                 variant="danger"
                 reason={{ label: t('punch_reason'), minLength: 0 }}
-                onConfirm={reason => { const r = rejecting; setRejecting(null); if (r) overtime(r, 'REJECTED', reason) }}
+                onConfirm={async reason => { const r = rejecting; if (r) await overtime(r, 'REJECTED', reason); setRejecting(null) }}
                 onCancel={() => setRejecting(null)}
             />
         </section>

@@ -125,7 +125,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                 message={declining?.description ?? ''}
                 variant="danger"
                 reason={{ label: t('role_changes_response') }}
-                onConfirm={(reason) => { const r = declining; setDeclining(null); if (r) answer(r, 'DECLINED', reason) }}
+                onConfirm={async (reason) => { const r = declining; if (r) await answer(r, 'DECLINED', reason); setDeclining(null) }}
                 onCancel={() => setDeclining(null)}
             />
         </div>

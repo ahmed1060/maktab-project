@@ -132,11 +132,12 @@ export default function PublicHolidaysPage() {
                 variant="danger"
                 onConfirm={async () => {
                     const target = removing
-                    setRemoving(null)
                     if (!target) return
-                    const res = await fetch(`/api/public-holidays/${target.id}`, { method: 'DELETE' })
-                    if (!res.ok) showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
-                    await load()
+                    try {
+                        const res = await fetch(`/api/public-holidays/${target.id}`, { method: 'DELETE' })
+                        if (!res.ok) showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
+                        await load()
+                    } finally { setRemoving(null) }
                 }}
                 onCancel={() => setRemoving(null)}
             />

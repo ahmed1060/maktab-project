@@ -74,11 +74,12 @@ function MyPhone() {
     const { active, pending } = data.data as { active: { model: string | null; platform: string } | null; pending: { model: string | null; platform: string } | null }
     const label = (ph: { model: string | null; platform: string }) => ph.model || t(`audit_value_${ph.platform}` as TranslationKey)
     const withdraw = async () => {
-        setCancelling(false)
-        const r = await send('/api/attendance/phone', { method: 'DELETE' }, t('punch_failed'))
-        if (!r.ok) return showToast(r.error, 'error')
-        showToast(t('req_my_phone_withdrawn'), 'success')
-        mutate()
+        try {
+            const r = await send('/api/attendance/phone', { method: 'DELETE' }, t('punch_failed'))
+            if (!r.ok) return showToast(r.error, 'error')
+            showToast(t('req_my_phone_withdrawn'), 'success')
+            mutate()
+        } finally { setCancelling(false) }
     }
     return (
         <section className="glass" style={{ ...box, gap: '0.5rem' }}>
@@ -413,12 +414,13 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
 
     const reject = async (reason?: string) => {
         const r = rejecting
-        setRejecting(null)
         if (!r) return
-        if (r.kind === 'overtime') return decideOvertime(r.userId, r.date, 'REJECTED', reason)
-        if (r.kind === 'phone') return decidePhone(r.id, false, reason)
-        if (r.kind === 'checkin') return decideCheckIn(r.id, false, reason)
-        return decide(r.kind, r.id, false, reason)
+        try {
+            if (r.kind === 'overtime') return await decideOvertime(r.userId, r.date, 'REJECTED', reason)
+            if (r.kind === 'phone') return await decidePhone(r.id, false, reason)
+            if (r.kind === 'checkin') return await decideCheckIn(r.id, false, reason)
+            return await decide(r.kind, r.id, false, reason)
+        } finally { setRejecting(null) }
     }
     const approveReject = (onApprove: () => void, onReject: () => void) => (
         <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -643,7 +645,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                 confirmText={t('req_phone_revoke')}
                 variant="danger"
                 reason={{ label: t('punch_reason'), minLength: 0 }}
-                onConfirm={(reason?: string) => { const ph = revoking; setRevoking(null); if (ph) act(`/api/attendance/phones/${ph.id}/revoke`, json('POST', { reason: reason ?? null }), 'req_phone_revoked', refreshPhones) }}
+                onConfirm={async (reason?: string) => { const ph = revoking; if (ph) await act(`/api/attendance/phones/${ph.id}/revoke`, json('POST', { reason: reason ?? null }), 'req_phone_revoked', refreshPhones); setRevoking(null) }}
                 onCancel={() => setRevoking(null)}
             />
             <ConfirmModal

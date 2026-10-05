@@ -118,7 +118,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
                 message={changing ? `${changing.userName} · ${label(changing.permission)} · ${role(changing)}` : ''}
                 variant="warning"
                 reason={{ label: t('access_review_change_reason') }}
-                onConfirm={(reason) => { const line = changing; setChanging(null); if (line) answer(line, 'CHANGE_REQUESTED', reason) }}
+                onConfirm={async (reason) => { const line = changing; if (line) await answer(line, 'CHANGE_REQUESTED', reason); setChanging(null) }}
                 onCancel={() => setChanging(null)}
             />
         </div>

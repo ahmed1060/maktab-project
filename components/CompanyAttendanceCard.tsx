@@ -256,9 +256,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
                 confirmText={t('confirm')}
                 variant="warning"
                 onConfirm={async () => {
-                    const next = confirming
-                    setConfirming(null)
-                    await next?.run()
+                    try { await confirming?.run() } finally { setConfirming(null) }
                 }}
                 onCancel={() => setConfirming(null)}
             />

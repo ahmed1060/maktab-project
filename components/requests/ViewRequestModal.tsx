@@ -187,9 +187,9 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                 message={t('confirm_item_delete')}
                 confirmText={t('delete')}
                 onCancel={() => setConfirmingDelete(false)}
-                onConfirm={() => {
+                onConfirm={async () => {
+                    await onDelete(request.id)
                     setConfirmingDelete(false)
-                    onDelete(request.id)
                 }}
             />
         </Modal>
