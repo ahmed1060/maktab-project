@@ -3,8 +3,8 @@ import { createHash } from "node:crypto"
 import { joined, manifestOf, type Manifest } from "./engine"
 
 /**
- * Getting the models to the phone (review on #47): every way the download
- * can fail named the same, so the person is told the download failed.
+ * Getting the models to the phone (review on #47): the recognition model's
+ * parts one at a time, and every way the download can fail named the same.
  */
 
 afterEach(() => { vi.unstubAllGlobals() })
@@ -31,6 +31,14 @@ function site() {
 }
 
 describe("joining the model's parts", () => {
+    it("downloads them one at a time, into place, and checks the whole", async () => {
+        const s = site()
+        let bytes = 0
+        expect(await joined(manifest(), "m.onnx", n => { bytes += n })).toEqual(whole)
+        expect(s.most).toBe(1)
+        expect(bytes).toBe(whole.length)
+    })
+
     it("refuses a model that isn't the one published", async () => {
         site()
         await expect(joined(manifest("0".repeat(64)), "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })

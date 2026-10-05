@@ -52,13 +52,21 @@ async function cached(url: string, onBytes?: (n: number) => void): Promise<Array
 
 const hex = (buf: ArrayBuffer) => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("")
 
-/** A model served in parts, joined and checked against the manifest: a corrupted download is never run. */
+/**
+ * A model served in parts, joined and checked against the manifest: a corrupted download is never run.
+ * One part at a time, each copied straight into place, so a phone holds the model and one part, not
+ * every part and the model too (review on #47).
+ */
 export async function joined(manifest: Manifest, name: string, onBytes: (n: number) => void): Promise<Uint8Array> {
     const entry = manifest.files[name]
-    const parts = await Promise.all(entry.parts.map(p => cached(`${MODELS_URL}/${p}`, onBytes)))
     const out = new Uint8Array(entry.size)
     let at = 0
-    for (const p of parts) { out.set(new Uint8Array(p), at); at += p.byteLength }
+    for (const p of entry.parts) {
+        const part = new Uint8Array(await cached(`${MODELS_URL}/${p}`, onBytes))
+        if (at + part.byteLength > entry.size) { at = -1; break }
+        out.set(part, at)
+        at += part.byteLength
+    }
     if (at !== entry.size || hex(await crypto.subtle.digest("SHA-256", out)) !== entry.sha256) {
         // Drop the cached parts so the next try downloads them afresh.
         const cache = typeof caches !== "undefined" ? await caches.open(CACHE).catch(() => null) : null
@@ -114,11 +122,11 @@ async function build(onProgress?: OnProgress): Promise<Engine> {
             return s.outputNames.map(n => out[n].data as Float32Array)
         }
     }
-    const [det, rec, ...fas] = await Promise.all([
-        joined(manifest, "det_10g.onnx", onBytes).then(session),
-        joined(manifest, "w600k_r50.onnx", onBytes).then(session),
-        ...ANTISPOOF_MODELS.map(m => cached(`${MODELS_URL}/${m.file}`, onBytes).then(session)),
-    ])
+    // One model at a time: each one's bytes can go once its session holds them, keeping the peak low on a phone.
+    const det = await session(await joined(manifest, "det_10g.onnx", onBytes))
+    const rec = await session(await joined(manifest, "w600k_r50.onnx", onBytes))
+    const fas: Run[] = []
+    for (const m of ANTISPOOF_MODELS) fas.push(await session(await cached(`${MODELS_URL}/${m.file}`, onBytes)))
     const landmarker = await faceLandmarker(onBytes)
 
     return {
