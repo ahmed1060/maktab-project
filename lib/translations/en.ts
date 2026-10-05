@@ -110,6 +110,7 @@ export const en = {
         super_admins: "Super Admins",
         system: "System",
         all_companies: "All Companies",
+        company_switcher_label: "Company in view: {name}",
         profile_requests: "Profile Requests",
         created_by: "Created by",
         updated_by: "Updated by",

@@ -220,7 +220,7 @@ export default function ClientDetailsPage() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                <div className="text-red-500 text-5xl">⚠️</div>
+                <div aria-hidden="true" className="text-red-500 text-5xl">⚠️</div>
                 <h2 className="text-2xl font-bold text-slate-800">{t('failed_save_generic')}</h2>
                 <p className="text-slate-500 max-w-md">{error}</p>
                 <div className="flex gap-4">
@@ -297,7 +297,7 @@ export default function ClientDetailsPage() {
                     </div>
                 ) : filteredSections.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                        <span className="text-4xl mb-2">📂</span>
+                        <span aria-hidden="true" className="text-4xl mb-2">📂</span>
                         <h3 className="text-lg font-bold text-slate-800">{t('no_sections_found' as any)}</h3>
                         <p className="max-w-xs mx-auto mt-1 mb-4">
                             {searchQuery ? `${t('no_matches_found' as any)} "${searchQuery}"` : t('add_first_section_msg' as any)}

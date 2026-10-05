@@ -112,7 +112,7 @@ export default function BulkTaskReviewModal({
                                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                                     title={t('edit')}
                                                 >
-                                                    ✍️
+                                                    <span aria-hidden="true">✍️</span>
                                                 </button>
                                             </div>
                                             {bt.validationErrors?.title && (
@@ -181,7 +181,7 @@ export default function BulkTaskReviewModal({
                                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                                     title={t('edit')}
                                                 >
-                                                    ✍️
+                                                    <span aria-hidden="true">✍️</span>
                                                 </button>
                                             </div>
                                             {bt.validationErrors?.description && (
@@ -516,7 +516,7 @@ export default function BulkTaskReviewModal({
                                                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                                             title={t('edit_deadline')}
                                                         >
-                                                            📅
+                                                            <span aria-hidden="true">📅</span>
                                                         </button>
                                                     }
                                                 />
@@ -632,7 +632,7 @@ export default function BulkTaskReviewModal({
                     <div style={{ flex: 1 }}>
                         {bulkTasks.some(bt => bt.isInvalid) && (
                             <div style={{ color: 'var(--danger-fg)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>⚠️</span>
                                 {t('skipped_status')}: {bulkTasks.filter(bt => bt.isInvalid).length} {t('rows_with_errors' as any)}
                             </div>
                         )}
@@ -681,7 +681,7 @@ export default function BulkTaskReviewModal({
                     >
                         {isSubmitting ? t('processing') : (
                             <>
-                                <span>✨</span>
+                                <span aria-hidden="true">✨</span>
                                 {t('create_tasks')} ({bulkTasks.filter(bt => !bt.isInvalid).length})
                             </>
                         )}

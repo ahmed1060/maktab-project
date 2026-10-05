@@ -446,7 +446,7 @@ export default function NewTaskPage() {
                             justifyContent: 'flex-start'
                         }}
                     >
-                        <span style={{ fontSize: '1rem' }}>📥</span>
+                        <span aria-hidden="true" style={{ fontSize: '1rem' }}>📥</span>
                         {t('download_template')}
                     </button>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -496,7 +496,7 @@ export default function NewTaskPage() {
                                 justifyContent: 'flex-start'
                             }}
                         >
-                            <span style={{ fontSize: '1rem' }}>📤</span>
+                            <span aria-hidden="true" style={{ fontSize: '1rem' }}>📤</span>
                             {t('upload_tasks_excel')}
                             <input
                                 type="file"

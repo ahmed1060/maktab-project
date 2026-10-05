@@ -211,7 +211,9 @@ describe("who is notified of a new request — recorded", () => {
     it("the requester's company's Admins, and every Super Admin", async () => {
         as("employee")
         const { POST } = await import("@/app/api/day-off-requests/route")
-        const res = await POST(send("POST", "/api/day-off-requests", { date: "2026-10-04", type: "REGULAR" }))
+        // Today, as the service reckons it: a fixed date turns into the past and is refused.
+        const today = new Date().toISOString().split("T")[0]
+        const res = await POST(send("POST", "/api/day-off-requests", { date: today, type: "REGULAR" }))
         expect(res.status).toBe(201)
         const recipients = seen.notified.map(w => whoMatches(EVERYONE, JSON.parse(w)))
         expect(recipients).toContainEqual(["admin", "admin1b", "sa-row"])

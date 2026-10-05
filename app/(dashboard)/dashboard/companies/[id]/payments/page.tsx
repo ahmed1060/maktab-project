@@ -188,7 +188,7 @@ export default function CompanyPaymentsPage() {
                 </div>
             ) : payments.length === 0 ? (
                 <div className="glass" style={{ padding: '4rem', textAlign: 'center', borderRadius: '1rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
+                    <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
                     <h3 style={{ margin: '0 0 0.5rem' }}>{t('no_payments_found')}</h3>
                     <p style={{ color: 'var(--text-soft)', margin: 0 }}>{t('no_payments_hint')}</p>
                 </div>
@@ -259,7 +259,7 @@ export default function CompanyPaymentsPage() {
                                                     border: payment.status === 'PAID' ? '1px solid var(--border)' : 'none'
                                                 }}
                                             >
-                                                {payment.status === 'PAID' ? `✅ ${t('status_paid')}` : t('mark_as_paid')}
+                                                {payment.status === 'PAID' ? <><span aria-hidden="true">✅</span> {t('status_paid')}</> : t('mark_as_paid')}
                                             </button>
 
                                             {payment.status === 'UNPAID' && (

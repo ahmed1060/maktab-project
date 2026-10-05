@@ -160,7 +160,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                     gap: '0.4rem'
                                 }}
                             >
-                                <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
+                                <span aria-hidden="true">⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
                             </button>
                         </div>
                     )}
@@ -227,7 +227,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                             <div key={i} style={{ border: '1px solid var(--info-bg-sky-firm)', background: 'var(--info-bg-sky)', borderRadius: '0.5rem', padding: '1rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
-                                        <span style={{ fontSize: '1.25rem' }}>📍</span>
+                                        <span aria-hidden="true" style={{ fontSize: '1.25rem' }}>📍</span>
                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: 'var(--info-fg)', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: 'var(--info-fg-deepest)' }}>{displayLoc}</span>}
                                             <div style={{ fontSize: '0.75rem', color: 'var(--info-fg)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -280,6 +280,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                                         justifyContent: 'center'
                                                     }}
                                                     title={t('mark_correct_title')}
+                                                    aria-label={t('mark_correct_title')}
                                                 >
                                                     {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid var(--ok-fg)', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
                                                 </button>
@@ -299,6 +300,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                                         justifyContent: 'center'
                                                     }}
                                                     title={t('mark_wrong_title')}
+                                                    aria-label={t('mark_wrong_title')}
                                                 >
                                                     {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid var(--danger-fg)', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
                                                 </button>

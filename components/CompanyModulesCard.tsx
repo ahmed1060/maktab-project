@@ -280,7 +280,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                         padding: '0.4rem 0.6rem', borderRadius: '0.6rem',
                         color: 'var(--sidebar-fg)', fontSize: '0.9rem', fontWeight: 500,
                     }}>
-                        <span style={{ fontSize: '1.2rem' }}>{entry.icon}</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>{entry.icon}</span>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.label}</span>
                     </div>
                 )

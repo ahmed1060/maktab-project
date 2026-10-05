@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, useId, Suspense, type KeyboardEvent } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
@@ -14,6 +14,7 @@ import LanguageToggleButton from './LanguageToggleButton'
 import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
 import { permissionsOf } from '@/lib/useCan'
+import { moveOption } from '@/lib/listbox-keys'
 
 // Fetcher for SWR
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json())
@@ -46,6 +47,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const switcherRef = useRef<HTMLButtonElement>(null)
+    const optionRefs = useRef<(HTMLLIElement | null)[]>([])
+    const switcherListId = useId()
     const { t, locale } = useLanguage()
 
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
@@ -182,6 +186,46 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         router.refresh()
     }
 
+    // The company switcher, by keyboard as well as by mouse (WAI-ARIA listbox):
+    // the arrows, Home and End move between companies, Enter or Space picks
+    // one, Escape closes and goes back to the switcher, Tab closes and moves on.
+    const switcherOptions: { id: string | null; name: string }[] = [
+        { id: null, name: t('all_companies') },
+        ...companies.map(c => ({ id: c.id as string, name: c.name as string })),
+    ]
+    const selectedOption = Math.max(0, switcherOptions.findIndex(o => o.id === (selectedCompanyId || null)))
+    const openSwitcher = () => {
+        setIsCompanyDropdownOpen(true)
+        // After the list is drawn: start on the company in view.
+        setTimeout(() => optionRefs.current[selectedOption]?.focus(), 0)
+    }
+    const onSwitcherKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault()
+            openSwitcher()
+        }
+    }
+    const pickOption = (i: number) => {
+        handleSelectCompany(switcherOptions[i].id)
+        switcherRef.current?.focus()
+    }
+    const onOptionKeyDown = (e: KeyboardEvent<HTMLLIElement>, i: number) => {
+        const next = moveOption(i, e.key, switcherOptions.length)
+        if (next !== null) {
+            e.preventDefault()
+            optionRefs.current[next]?.focus()
+        } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            pickOption(i)
+        } else if (e.key === 'Escape') {
+            e.preventDefault()
+            setIsCompanyDropdownOpen(false)
+            switcherRef.current?.focus()
+        } else if (e.key === 'Tab') {
+            setIsCompanyDropdownOpen(false)
+        }
+    }
+
     // Map path to title. A module's own landing page takes this company's name
     // for it; the detail pages underneath keep their own translated headings
     // ("Task Details" stays "Task Details" whatever Tasks was renamed to,
@@ -274,7 +318,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         }}
                         className="lg-hidden"
                     >
-                        ☰
+                        <span aria-hidden="true">☰</span>
                     </button>
                 )}
                 {/* minWidth: 0 again here — the floor applies at every level of
@@ -318,10 +362,18 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             >
                 {currentUser.role === 'SUPER_ADMIN' && (
                     <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <div
-                            onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+                        <button
+                            type="button"
+                            ref={switcherRef}
+                            onClick={() => isCompanyDropdownOpen ? setIsCompanyDropdownOpen(false) : openSwitcher()}
+                            onKeyDown={onSwitcherKeyDown}
+                            aria-haspopup="listbox"
+                            aria-expanded={isCompanyDropdownOpen}
+                            aria-controls={isCompanyDropdownOpen ? switcherListId : undefined}
+                            aria-label={t('company_switcher_label' as TranslationKey).replace('{name}', switcherOptions[selectedOption].name)}
                             className="glass sm-select"
                             style={{
+                                fontFamily: 'inherit',
                                 padding: locale === 'ar' ? '0.5rem 1.5rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1.5rem',
                                 borderRadius: '1rem',
                                 fontSize: '0.9rem',
@@ -372,76 +424,75 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     display: 'flex',
                                     alignItems: 'center'
                                 }}>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                         <polyline points="6 9 12 15 18 9"></polyline>
                                     </svg>
                                 </span>
                             )}
-                        </div>
+                        </button>
 
                         {isCompanyDropdownOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: 'calc(100% + 8px)',
-                                [locale === 'ar' ? 'left' : 'right']: 0,
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '0.75rem',
-                                boxShadow: '0 10px 15px -3px var(--shadow-weak), 0 4px 6px -2px var(--shadow-faint)',
-                                zIndex: 1000,
-                                maxHeight: '300px',
-                                overflowY: 'auto',
-                                minWidth: '200px',
-                                padding: '0.5rem'
-                            }}>
-                                <div
-                                    onClick={() => handleSelectCompany(null)}
-                                    style={{
-                                        padding: '0.625rem 1rem',
-                                        cursor: 'pointer',
-                                        fontSize: '0.875rem',
-                                        borderRadius: '0.5rem',
-                                        color: !selectedCompanyId ? 'var(--info-solid-hover)' : 'var(--text-muted)',
-                                        background: !selectedCompanyId ? 'var(--info-bg-subtle)' : 'transparent',
-                                        fontWeight: !selectedCompanyId ? 600 : 500,
-                                        marginBottom: '2px'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = !selectedCompanyId ? 'var(--info-bg-subtle)' : 'transparent'}
-                                >
-                                    {t('all_companies')}
-                                </div>
-                                {companies.map((company) => (
-                                    <div
-                                        key={company.id}
-                                        onClick={() => handleSelectCompany(company.id)}
-                                        style={{
-                                            padding: '0.625rem 1rem',
-                                            cursor: 'pointer',
-                                            fontSize: '0.875rem',
-                                            borderRadius: '0.5rem',
-                                            color: selectedCompanyId === company.id ? 'var(--info-solid-hover)' : 'var(--text-muted)',
-                                            background: selectedCompanyId === company.id ? 'var(--info-bg-subtle)' : 'transparent',
-                                            fontWeight: selectedCompanyId === company.id ? 600 : 500,
-                                            marginBottom: '2px',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = selectedCompanyId === company.id ? 'var(--info-bg-subtle)' : 'transparent'}
-                                    >
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {company.name}
-                                        </span>
-                                        {selectedCompanyId === company.id && (
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info-solid-hover)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                            </svg>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                            <ul
+                                id={switcherListId}
+                                role="listbox"
+                                aria-label={t('select_company')}
+                                tabIndex={-1}
+                                style={{
+                                    listStyle: 'none',
+                                    margin: 0,
+                                    position: 'absolute',
+                                    top: 'calc(100% + 8px)',
+                                    [locale === 'ar' ? 'left' : 'right']: 0,
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '0.75rem',
+                                    boxShadow: '0 10px 15px -3px var(--shadow-weak), 0 4px 6px -2px var(--shadow-faint)',
+                                    zIndex: 1000,
+                                    maxHeight: '300px',
+                                    overflowY: 'auto',
+                                    minWidth: '200px',
+                                    padding: '0.5rem'
+                                }}
+                            >
+                                {switcherOptions.map((option, i) => {
+                                    const selected = i === selectedOption
+                                    return (
+                                        <li
+                                            key={option.id ?? 'all'}
+                                            ref={el => { optionRefs.current[i] = el }}
+                                            role="option"
+                                            aria-selected={selected}
+                                            tabIndex={-1}
+                                            onClick={() => pickOption(i)}
+                                            onKeyDown={e => onOptionKeyDown(e, i)}
+                                            style={{
+                                                padding: '0.625rem 1rem',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                                borderRadius: '0.5rem',
+                                                color: selected ? 'var(--info-solid-hover)' : 'var(--text-muted)',
+                                                background: selected ? 'var(--info-bg-subtle)' : 'transparent',
+                                                fontWeight: selected ? 600 : 500,
+                                                marginBottom: '2px',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = selected ? 'var(--info-bg-subtle)' : 'transparent'}
+                                        >
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {option.name}
+                                            </span>
+                                            {selected && option.id && (
+                                                <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info-solid-hover)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                                </svg>
+                                            )}
+                                        </li>
+                                    )
+                                })}
+                            </ul>
                         )}
                     </div>
                 )}
@@ -452,6 +503,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                         <Link
                             href="/dashboard/profile-requests"
                             title={t('profile_name_requests')}
+                            aria-label={t('profile_name_requests')}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -475,7 +527,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                 e.currentTarget.style.background = 'var(--veil-50)'
                             }}
                         >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="8.5" cy="7" r="4"></circle>
                                 <polyline points="17 11 19 13 23 9"></polyline>
@@ -550,7 +602,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 />
                             ) : (
-                                <span style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
+                                <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
                             )}
                         </div>
 

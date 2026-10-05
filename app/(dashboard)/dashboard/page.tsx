@@ -129,7 +129,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
                     {/* Needs Attention */}
                     <section>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>⚠️ {t('needs_attention')}</h2>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">⚠️</span> {t('needs_attention')}</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '1.5rem' }}>
                             <Link href={`/dashboard/audit-logs?action=SYSTEM_API_ERROR&startDate=${encodeURIComponent(oneDayAgo.toISOString())}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                                 <StatMetric label={t('system_errors_24h')} value={systemErrors24h} icon="🚨" color="var(--danger-solid)" />
@@ -271,7 +271,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
                 {/* Needs Your Review */}
                 <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>📋 {t('needs_your_review')}</h2>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">📋</span> {t('needs_your_review')}</h2>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1.5rem' }}>
                         <Link href="/dashboard/tasks" style={{ textDecoration: 'none', color: 'inherit' }}>
                             <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="var(--warn-solid)" />
@@ -291,7 +291,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
                 {/* Overdue Tasks */}
                 <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>⏰ {t('overdue_tasks')}</h2>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">⏰</span> {t('overdue_tasks')}</h2>
                     {overdueTasks.length === 0 ? (
                         <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
                             <p style={{ margin: 0, color: 'var(--text-faint)' }}>{t('no_overdue_tasks')}</p>
@@ -433,13 +433,13 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 {/* This Week's Focus */}
                 <section style={{ marginBottom: '3rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>🔥 {t('due_this_week')}</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}><span aria-hidden="true">🔥</span> {t('due_this_week')}</h2>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }}>
                         {upcomingTasks.length === 0 ? (
                             <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
-                                <div style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px var(--shadow-faint)' }}>🎉</div>
+                                <div aria-hidden="true" style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px var(--shadow-faint)' }}>🎉</div>
                                 <div>
                                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: 'var(--ok-fg)' }}>{t('all_caught_up')}</h3>
                                     <p style={{ margin: 0, color: 'var(--ok-fg-strong)' }}>{t('no_pending_tasks_week')}</p>

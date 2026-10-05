@@ -439,7 +439,7 @@ export default function AllUsersPage() {
                             <div {...exUsersDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row' }}>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                                        <span style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
+                                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
                                     </h2>
                                     <button aria-label={t('close')} onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>&times;</button>
                                 </div>
@@ -567,7 +567,7 @@ export default function AllUsersPage() {
                 title={errorModal.title}
             >
                 <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                    <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1rem' }}>
                         {errorModal.title === 'Success' || errorModal.title === 'نجاح' ? '✅' : '⛔'}
                     </div>
                     <p style={{ fontSize: '1.1rem', color: 'var(--text-body)' }}>{errorModal.message}</p>

@@ -45,7 +45,7 @@ export default function TaskSubmissionForm({
     return (
         <div style={{ marginTop: '3rem', borderTop: '2px solid var(--border)', paddingTop: '2rem' }}>
             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                <span>📤</span> {t('submit_task_title')}
+                <span aria-hidden="true">📤</span> {t('submit_task_title')}
             </h3>
 
             <div style={{ marginBottom: '1.5rem' }}>
@@ -72,7 +72,7 @@ export default function TaskSubmissionForm({
                         disabled={uploading}
                     />
                     <div style={{ pointerEvents: 'none' }}>
-                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
+                        <div aria-hidden="true" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
                         <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
                     </div>
@@ -83,7 +83,7 @@ export default function TaskSubmissionForm({
                         {pendingFiles.map((f, i) => (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', flexDirection: 'row' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                    <span style={{ fontSize: '1.25rem' }}>📄</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.25rem' }}>📄</span>
                                     <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>

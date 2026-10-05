@@ -439,7 +439,7 @@ export default function SectionNotesPage() {
                     <LoadingSpinner />
                 ) : filteredNotes.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                        <span className="text-4xl mb-2">📝</span>
+                        <span aria-hidden="true" className="text-4xl mb-2">📝</span>
                         <h3 className="text-lg font-bold text-slate-800">
                             {searchQuery ? t('no_search_results' as any) || 'No matching notes found' : t('no_notes_found' as any)}
                         </h3>
@@ -729,7 +729,7 @@ export default function SectionNotesPage() {
                                                 disabled={uploading}
                                             />
                                             <div style={{ pointerEvents: 'none' }}>
-                                                <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                                <div aria-hidden="true" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                                             </div>
                                         </div>
@@ -739,7 +739,7 @@ export default function SectionNotesPage() {
                                                 {pendingFiles.map((f, i) => (
                                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                            <span style={{ fontSize: '1rem' }}>📄</span>
+                                                            <span aria-hidden="true" style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
                                                         <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
@@ -942,7 +942,7 @@ export default function SectionNotesPage() {
                                                     return (
                                                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                                <span style={{ fontSize: '1rem' }}>🔗</span>
+                                                                <span aria-hidden="true" style={{ fontSize: '1rem' }}>🔗</span>
                                                                 <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--info-fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                     {typeof url === 'string' ? url.split('/').pop() : url.name}
                                                                 </div>
@@ -970,7 +970,7 @@ export default function SectionNotesPage() {
                                                 disabled={uploading}
                                             />
                                             <div style={{ pointerEvents: 'none' }}>
-                                                <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                                <div aria-hidden="true" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                                             </div>
                                         </div>
@@ -980,7 +980,7 @@ export default function SectionNotesPage() {
                                                 {pendingFiles.map((f, i) => (
                                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                            <span style={{ fontSize: '1rem' }}>📄</span>
+                                                            <span aria-hidden="true" style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
                                                         <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>

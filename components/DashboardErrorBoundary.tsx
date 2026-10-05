@@ -51,7 +51,7 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
                     margin: '2rem',
                     boxShadow: '0 20px 25px -5px var(--shadow-weak)'
                 }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
+                    <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
                     <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontWeight: '800' }}>Something went wrong</h2>
                     <p style={{ color: 'var(--text-soft)', marginBottom: '2rem', lineHeight: '1.6' }}>
                         A client-side exception has occurred in this section.<br />

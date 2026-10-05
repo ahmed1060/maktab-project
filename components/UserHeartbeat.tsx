@@ -245,7 +245,7 @@ export default function UserHeartbeat() {
                 textAlign: 'center',
                 padding: '2rem'
             }}>
-                <span style={{ fontSize: '3rem' }}>🔧</span>
+                <span aria-hidden="true" style={{ fontSize: '3rem' }}>🔧</span>
                 <h1 style={{ color: 'var(--warn-fg-mid)', fontSize: '2rem', margin: 0 }}>
                     {t('maintenance_detected_title')}
                 </h1>

@@ -167,7 +167,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                         boxShadow: '0 4px 12px color-mix(in srgb, var(--warn-border) 10%, transparent)'
                     }}
                 >
-                    📜 {t('history')}
+                    <span aria-hidden="true">📜</span> {t('history')}
                 </Link>
             </div>
 

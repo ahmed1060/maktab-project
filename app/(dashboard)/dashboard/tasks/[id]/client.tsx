@@ -834,7 +834,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             {task.assignees?.some((a: any) => a.status === 'DELETED') && canTransfer && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
                 <div style={{ ...alertStyle, background: 'var(--danger-bg)', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🚫</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🚫</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('assignee_deleted_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
@@ -849,7 +849,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             {task.isEdited && (!seesOthersTasks || isOnTask) && (
                 <div style={{ ...alertStyle, background: 'var(--warn-bg-warm-subtle)', border: '1px solid var(--warn-border-warm-firm)', color: 'var(--warn-fg-warm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                        <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>⚠️</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('task_updated_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
@@ -951,7 +951,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 const { name, link } = parseLocation(task.location)
                 return (
                     <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--info-fg)', fontSize: '0.95rem', fontWeight: '500' }}>
-                        <span>📍</span>
+                        <span aria-hidden="true">📍</span>
                         {link ? (
                             <a href={link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-fg)', textDecoration: 'underline' }}>
                                 {name || link}
@@ -1001,7 +1001,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         {existingAttachments.map((att: any, idx: number) => (
                             <div key={idx} style={{ position: 'relative' }}>
                                 <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', textDecoration: 'none', color: 'var(--text-body)', transition: 'all 0.2s', flexDirection: 'row' }}>
-                                    <span style={{ fontSize: '1.5rem' }}>📄</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>📄</span>
                                     <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-soft)' }}>
@@ -1115,7 +1115,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    <span>🔄</span> {t('transfer_to_another_employee')}
+                                    <span aria-hidden="true">🔄</span> {t('transfer_to_another_employee')}
                                 </button>
                             </div>
                         )}

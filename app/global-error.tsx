@@ -55,7 +55,7 @@ export default function GlobalError({
                         padding: '2.5rem 2rem',
                         boxShadow: '0 20px 25px -5px var(--shadow-weak)',
                     }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
+                        <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
                         <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontWeight: 800 }}>Something went wrong</h2>
                         <p style={{ color: 'var(--text-soft)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
                             The app hit an unexpected error and couldn&apos;t recover on its own.
