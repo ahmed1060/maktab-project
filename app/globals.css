@@ -903,6 +903,55 @@ html[dir="rtl"] select.input {
   filter: brightness(1.1);
 }
 
+/* What a button is doing, for every button: the .btn ones and the half that
+   are styled inline. Before, nothing styled a disabled button at all, so one
+   that had switched itself off while it saved looked exactly as it had a
+   moment before, and a click seemed to do nothing.
+   The !important is for the inline styles, which would otherwise win. */
+button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* Pressed: an answer the moment it is clicked, before anything has loaded. */
+button:not(:disabled):active {
+  transform: translateY(1px) scale(0.98);
+  filter: brightness(0.94);
+}
+
+/* Working: set aria-busy="true" while the request is out (useBusyAction does).
+   A turning ring after the label, the wait cursor, and less fading than a
+   button that simply can't be used. */
+button[aria-busy="true"] {
+  cursor: progress !important;
+}
+
+button[aria-busy="true"]:disabled {
+  opacity: 0.85 !important;
+}
+
+button[aria-busy="true"]::after {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 0.9em;
+  height: 0.9em;
+  margin-inline-start: 0.5em;
+  vertical-align: -0.125em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* .btn is a flex row with its own gap. */
+.btn[aria-busy="true"]::after {
+  margin-inline-start: 0;
+}
+
 .badge {
   padding: 0.35rem 0.85rem;
   border-radius: 2rem;
