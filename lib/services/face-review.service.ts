@@ -126,7 +126,9 @@ export class FaceReviewService {
             })
             await tellReviewers(tx, companyId, userId, created.id)
             return created
-        })
+        // Some twenty round trips to the database, a photo among them: past Prisma's default 5 s from Vercel's
+        // region to the database's, which rolled the photo back after the person had done the whole face check.
+        }, { maxWait: 10_000, timeout: 30_000 })
         return review
     }
 

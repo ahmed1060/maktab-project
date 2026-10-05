@@ -8,6 +8,7 @@ import { AttendancePolicyService as Policy } from "@/lib/services/attendance-pol
 import { FaceVerificationService as Face, FACE_CONSENT_VERSION } from "@/lib/services/face-verification.service"
 import { FaceReviewService as Reviews } from "@/lib/services/face-review.service"
 import { faceText } from "@/lib/attendance/signed-text"
+import { AuditLogService } from "@/lib/services/audit-log.service"
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 
 /** The attestation check as configured, unless a test stands in for it. */
@@ -104,6 +105,13 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
 
     const first = jpeg()
     it("keeps a signed photo encrypted, waiting for a decision, and tells every reviewer at once, critically", async () => {
+        // A slow database, as from Vercel's region to the database's: once over Prisma's default 5 s, the photo
+        // was rolled back after the person had done the whole face check (production, 5 October).
+        const log = AuditLogService.log.bind(AuditLogService)
+        vi.spyOn(AuditLogService, "log").mockImplementationOnce(async (...args) => {
+            await new Promise(r => setTimeout(r, 5_500))
+            return log(...args)
+        })
         const review = await send(first)
         expect(review).toMatchObject({ purpose: "ENROLMENT", status: "PENDING" })
         expect(await phoneFace()).toBe("PENDING")
@@ -113,7 +121,7 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
         expect((await critical()).map(n => [n.userId, n.superAdminId, n.read])).toEqual([["a1", null, false], [null, "sa1", false]])
         // Not active until a person approves the photo.
         expect(await Face.statusFor("e1")).toMatchObject({ active: false, pendingReview: true, phone: { faceStatus: "PENDING" } })
-    })
+    }, 20_000)
 
     it("replaces a photo still waiting, deleting it", async () => {
         const replacing = jpeg()
