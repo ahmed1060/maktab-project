@@ -220,7 +220,7 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
                 title={t('att_term_revoke')}
                 message={t('att_term_revoke_confirm').replace('{name}', revoking?.name ?? '')}
                 confirmText={t('att_term_revoke')}
-                onConfirm={() => { const a = revoking; setRevoking(null); if (a) send(`/api/attendance/agents/${a.id}`, { method: 'DELETE' }, 'att_term_revoked') }}
+                onConfirm={async () => { const a = revoking; if (a) await send(`/api/attendance/agents/${a.id}`, { method: 'DELETE' }, 'att_term_revoked'); setRevoking(null) }}
                 onCancel={() => setRevoking(null)}
             />
             <ConfirmModal
@@ -228,7 +228,7 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
                 title={t('att_term_retire')}
                 message={t('att_term_retire_confirm').replace('{name}', retiring?.name ?? '')}
                 confirmText={t('att_term_retire')}
-                onConfirm={() => { const d = retiring; setRetiring(null); if (d) send(`/api/attendance/devices/${d.id}`, { method: 'DELETE' }, 'att_term_retired') }}
+                onConfirm={async () => { const d = retiring; if (d) await send(`/api/attendance/devices/${d.id}`, { method: 'DELETE' }, 'att_term_retired'); setRetiring(null) }}
                 onCancel={() => setRetiring(null)}
             />
         </section>

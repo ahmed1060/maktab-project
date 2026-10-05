@@ -19,6 +19,7 @@ import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from "@/lib/api-error-text"
 import { useDialog } from '@/lib/useDialog'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -95,6 +96,7 @@ export default function DayOffRequestsPage() {
     })
 
     const [page, setPage] = useState(1)
+    const action = useBusyAction()
     const limit = 10
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
@@ -801,7 +803,9 @@ export default function DayOffRequestsPage() {
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button
-                                onClick={() => processAction(selectedRequest.id, 'APPROVED', daysToDeduct, deductionType)}
+                                onClick={() => action.run('approve', () => processAction(selectedRequest.id, 'APPROVED', daysToDeduct, deductionType))}
+                                disabled={action.running}
+                                aria-busy={action.is('approve')}
                                 className="btn btn-primary"
                             >
                                 {t('approve_button')}
@@ -844,7 +848,9 @@ export default function DayOffRequestsPage() {
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button
-                                onClick={() => processAction(selectedRequest.id, 'REJECTED')}
+                                onClick={() => action.run('reject', () => processAction(selectedRequest.id, 'REJECTED'))}
+                                disabled={action.running}
+                                aria-busy={action.is('reject')}
                                 className="btn"
                                 style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                             >

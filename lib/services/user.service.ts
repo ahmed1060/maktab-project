@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
 import { UserStatus } from "@prisma/client"
-import { VerificationService } from "./verification.service"
 import { supabase } from "@/lib/storage"
 import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
@@ -14,7 +13,7 @@ import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
 import { notifyTeamMoves } from "./team-notify.service"
 import { TeamHandOff, type Rehome } from "./team-handoff.service"
-import { assertStepUp } from "@/lib/step-up"
+import { assertStepUp, assertRecentStepUp } from "@/lib/step-up"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -279,10 +278,9 @@ export class UserService {
             // WAVE 10: Security Gate for Admin Password Resets
             const targetRole = regularUser?.role || 'SUPER_ADMIN'
             if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {
-                const { passcode } = input
-                if (!VerificationService.isValid(passcode || "")) {
-                    throw new Error("INVALID_PASSCODE")
-                }
+                // A recent authenticator code (lib/step-up.ts), in place of a
+                // passcode written into the code that no screen ever sent.
+                await assertRecentStepUp(session)
             }
 
             updateData.password = await bcrypt.hash(password, 10)
@@ -723,9 +721,9 @@ export class UserService {
         return updated
     }
 
-    static async resetAllPoints(companyId: string, passcode: string, session: any) {
-        if (!VerificationService.isValid(passcode)) throw new Error("INVALID_PASSCODE")
+    static async resetAllPoints(companyId: string, session: any) {
         if (session.user.role !== 'SUPER_ADMIN') throw new Error("FORBIDDEN")
+        await assertRecentStepUp(session)
 
         const result = await prisma.user.updateMany({
             where: { companyId, status: { not: 'DELETED' } },
@@ -883,10 +881,10 @@ export class UserService {
         return { targetUserId, password: tempPassword }
     }
 
-    static async delete(id: string, session: any, isPermanent = false, passcode?: string) {
-        if (isPermanent && !VerificationService.isValid(passcode || "")) {
-            throw new Error("INVALID_PASSCODE")
-        }
+    static async delete(id: string, session: any, isPermanent = false) {
+        // Permanent or not, the route has already asked for a recent
+        // authenticator code (employees.delete is high-risk); the passcode that
+        // was also checked here was never sent by any screen.
         const requesterRole = session.user.role
         const currentUserId = session.user.id
 

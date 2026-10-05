@@ -11,6 +11,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { isPermission } from '@/lib/permissions/catalogue'
 import { permissionLabelKey, scopeLabelKey } from '@/lib/permissions/matrix'
 import { roleLabel } from '@/lib/role-label'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 /**
  * Periodic access reviews (ROLES_PLAN.md §6.14): each review's lines — who
@@ -29,6 +30,7 @@ type Review = { id: string; status: 'OPEN' | 'COMPLETED'; createdAt: string; com
 
 export default function AccessReviews({ side, highlight }: { side: 'company' | 'superAdmin'; highlight?: string | null }) {
     const { t, locale } = useLanguage()
+    const action = useBusyAction()
     const isRtl = locale === 'ar'
     const { showToast } = useToast()
     const { data: session } = useSession()
@@ -97,7 +99,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
                                                 </span>
                                             ) : side === 'superAdmin' || line.userId !== session?.user?.id ? (
                                                 <span style={{ display: 'flex', gap: '0.75rem' }}>
-                                                    <button type="button" style={linkButton} onClick={() => answer(line, 'CONFIRMED')}>{t('access_review_confirm')}</button>
+                                                    <button type="button" style={linkButton} onClick={() => action.run(`confirm-${line.id}`, () => answer(line, 'CONFIRMED'))} disabled={action.running} aria-busy={action.is(`confirm-${line.id}`)}>{t('access_review_confirm')}</button>
                                                     <button type="button" style={{ ...linkButton, color: 'var(--danger-fg-strong)' }} onClick={() => setChanging(line)}>{t('access_review_change')}</button>
                                                 </span>
                                             ) : (
@@ -118,7 +120,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
                 message={changing ? `${changing.userName} · ${label(changing.permission)} · ${role(changing)}` : ''}
                 variant="warning"
                 reason={{ label: t('access_review_change_reason') }}
-                onConfirm={(reason) => { const line = changing; setChanging(null); if (line) answer(line, 'CHANGE_REQUESTED', reason) }}
+                onConfirm={async (reason) => { const line = changing; if (line) await answer(line, 'CHANGE_REQUESTED', reason); setChanging(null) }}
                 onCancel={() => setChanging(null)}
             />
         </div>

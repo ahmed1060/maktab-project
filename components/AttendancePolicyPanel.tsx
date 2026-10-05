@@ -175,12 +175,13 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                 variant="warning"
                 onConfirm={async () => {
                     const id = withdrawing
-                    setWithdrawing(null)
                     if (!id) return
-                    const res = await fetch(`/api/attendance/policy/${id}`, { method: 'DELETE' })
-                    if (!res.ok) showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
-                    await mutate()
-                    onChanged()
+                    try {
+                        const res = await fetch(`/api/attendance/policy/${id}`, { method: 'DELETE' })
+                        if (!res.ok) showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
+                        await mutate()
+                        onChanged()
+                    } finally { setWithdrawing(null) }
                 }}
                 onCancel={() => setWithdrawing(null)}
             />

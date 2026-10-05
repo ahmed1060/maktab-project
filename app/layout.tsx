@@ -8,6 +8,8 @@ import { resolveLocale } from '@/lib/locale'
 import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
 import { parseTheme, themeAttribute, THEME_COOKIE } from '@/lib/theme'
+import NavigationProgress from '@/components/NavigationProgress'
+import { Suspense } from 'react'
 
 // The two typefaces, downloaded at build time and served from this site.
 // Before, globals.css @imported them from Google Fonts: a stylesheet
@@ -55,6 +57,8 @@ export default async function RootLayout({
     <html lang={initialLocale} dir={dir} data-theme={themeAttr} className={`${outfit.variable} ${inter.variable}`}>
       <body>
         <Providers initialLocale={initialLocale} initialDict={initialDict} initialTheme={theme} themeChosen={cookieStore.has(THEME_COOKIE)}>{children}</Providers>
+        {/* useSearchParams needs a Suspense boundary of its own. */}
+        <Suspense fallback={null}><NavigationProgress /></Suspense>
         <Analytics />
         {/* Speed Insights reports the route pattern, not the URL: its
             computeRoute substitutes the dynamic segments back in, so

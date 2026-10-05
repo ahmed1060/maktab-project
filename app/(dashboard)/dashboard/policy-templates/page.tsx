@@ -71,12 +71,13 @@ export default function PolicyTemplatesPage() {
 
     const remove = async () => {
         const target = removing
-        setRemoving(null)
         if (!target) return
-        const res = await fetch(`/api/policy-templates/${target.id}`, { method: 'DELETE' })
-        if (!res.ok) return showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
-        showToast(t('ptpl_deleted'), 'success')
-        mutate()
+        try {
+            const res = await fetch(`/api/policy-templates/${target.id}`, { method: 'DELETE' })
+            if (!res.ok) return showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
+            showToast(t('ptpl_deleted'), 'success')
+            mutate()
+        } finally { setRemoving(null) }
     }
 
     const startNew = (from?: Template) => setEditing({

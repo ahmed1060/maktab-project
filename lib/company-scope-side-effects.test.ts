@@ -38,7 +38,8 @@ describe("only the switcher moves the switcher", () => {
 
     it("still reaches settings by company id", () => {
         // Dropping the side effect must not drop the navigation with it.
-        expect(LIST).toMatch(/router\.push\(`\/dashboard\/companies\/\$\{company\.id\}\/settings`\)/)
+        // A link now (lib/navigation-progress.test.ts), with nothing else on the click.
+        expect(LIST).toMatch(/<Link href=\{`\/dashboard\/companies\/\$\{company\.id\}\/settings`\}/)
     })
 })
 

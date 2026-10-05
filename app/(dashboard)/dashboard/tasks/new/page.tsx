@@ -22,6 +22,7 @@ import { cellToPrimitive } from '@/lib/xlsx-cell'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useCan } from '@/lib/useCan'
+import Link from 'next/link'
 
 const NO_VENDORS: any[] = []
 
@@ -738,14 +739,12 @@ export default function NewTaskPage() {
                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                         {isSubmitting ? t('creating') : t('create_task_button' as any)}
                     </button>
-                    <button
-                        type="button"
+                    <Link href={'/dashboard/tasks'}
                         className="btn"
-                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
-                        onClick={() => router.push('/dashboard/tasks')}
+                        style={{ textDecoration: 'none', background: 'var(--border)', color: 'var(--text-strong)' }}
                     >
                         {t('cancel')}
-                    </button>
+                    </Link>
                 </div>
             </form>
 

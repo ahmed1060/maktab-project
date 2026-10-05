@@ -242,7 +242,6 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         // every route that can take a leader away answers with.
         const teamRefusal = teamRefusalResponse(error)
         if (teamRefusal) return teamRefusal
-        if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'EMAIL_CHANGE_REQUIRES_VERIFICATION') return ApiResponse.badRequest("Email changes require verification — use Email settings")
         if (error.message === 'TARGET_PROTECTED') return ApiResponse.forbidden("This account's email is protected and cannot be changed")
 
@@ -258,15 +257,13 @@ export const DELETE = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     const isPermanent = searchParams.get('permanent') === 'true'
-    const passcode = searchParams.get('passcode') || ''
 
     if (!id) return ApiResponse.badRequest("User ID required")
 
     try {
-        await UserService.delete(id, session, isPermanent, passcode)
+        await UserService.delete(id, session, isPermanent)
         return ApiResponse.success({ id: id, permanent: isPermanent })
     } catch (error: any) {
-        if (error.message === 'INVALID_PASSCODE') return ApiResponse.forbidden("Invalid verification passcode")
         if (error.message === 'INVALID_ID') return ApiResponse.badRequest("Invalid ID or cannot delete self")
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
         if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin acts on an Admin")

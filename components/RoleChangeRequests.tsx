@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { roleLabel } from '@/lib/role-label'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 /**
  * Role change requests (ROLES_PLAN.md §6.9), both sides of one channel: a
@@ -39,6 +40,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
     const [roleId, setRoleId] = useState('')
     const [description, setDescription] = useState('')
     const [sending, setSending] = useState(false)
+    const action = useBusyAction()
     const [declining, setDeclining] = useState<ChangeRequest | null>(null)
 
     const ask = async () => {
@@ -111,7 +113,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                         )}
                         {side === 'superAdmin' && r.status === 'OPEN' && (
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                <button type="button" onClick={() => answer(r, 'DONE')} style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }}>{t('role_changes_done')}</button>
+                                <button type="button" onClick={() => action.run(`done-${r.id}`, () => answer(r, 'DONE'))} disabled={action.running} aria-busy={action.is(`done-${r.id}`)} style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }}>{t('role_changes_done')}</button>
                                 <button type="button" onClick={() => setDeclining(r)} style={{ background: 'none', border: 'none', color: 'var(--danger-fg-strong)', cursor: 'pointer', padding: 0 }}>{t('role_changes_decline')}</button>
                             </div>
                         )}
@@ -125,7 +127,7 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                 message={declining?.description ?? ''}
                 variant="danger"
                 reason={{ label: t('role_changes_response') }}
-                onConfirm={(reason) => { const r = declining; setDeclining(null); if (r) answer(r, 'DECLINED', reason) }}
+                onConfirm={async (reason) => { const r = declining; if (r) await answer(r, 'DECLINED', reason); setDeclining(null) }}
                 onCancel={() => setDeclining(null)}
             />
         </div>

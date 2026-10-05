@@ -9,6 +9,7 @@ import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { permissionsOf, useCan } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
+import Link from 'next/link'
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
@@ -309,14 +310,12 @@ export default function NewObligationPage() {
                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                         {isSubmitting ? t('creating') : t('create_obligation_button' as any)}
                     </button>
-                    <button
-                        type="button"
+                    <Link href={'/dashboard/obligations'}
                         className="btn"
-                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
-                        onClick={() => router.push('/dashboard/obligations')}
+                        style={{ textDecoration: 'none', background: 'var(--border)', color: 'var(--text-strong)' }}
                     >
                         {t('cancel')}
-                    </button>
+                    </Link>
                 </div>
             </form >
         </div >

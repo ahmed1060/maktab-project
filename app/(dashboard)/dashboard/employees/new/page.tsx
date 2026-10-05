@@ -6,6 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCan } from '@/lib/useCan'
 import RoleSelect from '@/components/RoleSelect'
 import { apiErrorText } from "@/lib/api-error-text"
+import Link from 'next/link'
 
 type Company = {
     id: string
@@ -370,14 +371,12 @@ export default function NewEmployeePage() {
                     <button type="submit" className="btn btn-primary" disabled={loading}>
                         {loading ? t('creating') : userRole === 'SUPER_ADMIN' ? t('create_user_button') : t('create_employee_button')}
                     </button>
-                    <button
-                        type="button"
+                    <Link href={'/dashboard/employees'}
                         className="btn"
-                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
-                        onClick={() => router.push('/dashboard/employees')}
+                        style={{ textDecoration: 'none', background: 'var(--border)', color: 'var(--text-strong)' }}
                     >
                         {t('cancel')}
-                    </button>
+                    </Link>
                 </div>
             </form>
         </div>

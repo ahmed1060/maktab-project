@@ -191,7 +191,7 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
                 title={t('att_loc_archive')}
                 message={t('att_loc_archive_confirm').replace('{name}', archiving?.name ?? '')}
                 confirmText={t('att_loc_archive')}
-                onConfirm={() => { const l = archiving; setArchiving(null); if (l) send(`/api/attendance/locations/${l.id}`, { method: 'DELETE' }, 'att_loc_archived') }}
+                onConfirm={async () => { const l = archiving; if (l) await send(`/api/attendance/locations/${l.id}`, { method: 'DELETE' }, 'att_loc_archived'); setArchiving(null) }}
                 onCancel={() => setArchiving(null)}
             />
         </section>

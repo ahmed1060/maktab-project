@@ -13,8 +13,15 @@ interface ConfirmModalProps {
     message: string
     confirmText?: string
     cancelText?: string
-    /** The typed reason, when `reason` is set; undefined otherwise. */
-    onConfirm: (reason?: string) => void
+    /**
+     * The typed reason, when `reason` is set; undefined otherwise. Return the
+     * promise of the work and the dialog shows it working until it settles —
+     * both buttons off, a turning ring on Confirm — instead of a dialog that
+     * seems to ignore the click. Close it once the work is done, not before.
+     */
+    onConfirm: (reason?: string) => unknown
+    /** Working, as the page tracks it, for an onConfirm that returns nothing. */
+    busy?: boolean
     onCancel: () => void
     variant?: 'danger' | 'warning' | 'info'
     // When set, the confirm button stays disabled until the typed input
@@ -45,27 +52,43 @@ export default function ConfirmModal({
     onCancel,
     variant = 'danger',
     requireTypedText,
-    reason
+    reason,
+    busy: busyFromPage = false
 }: ConfirmModalProps) {
     const { t, locale } = useLanguage()
     const mounted = useHydrated()
     const [typedValue, setTypedValue] = useState('')
     const [reasonValue, setReasonValue] = useState('')
-
+    const [working, setWorking] = useState(false)
+    const busy = working || busyFromPage
 
     // Reset the typed value every time the modal opens/closes, so a
     // previous confirmation doesn't carry over to the next action.
     useAdjustOnChange([isOpen], () => {
         setTypedValue('')
         setReasonValue('')
+        setWorking(false)
     })
 
-    const dialog = useDialog(isOpen, onCancel)
+    // Not while it works: closing then would hide the answer, and Escape or a
+    // click outside would read as "cancelled" when it was not.
+    const cancel = () => { if (!busy) onCancel() }
+    const dialog = useDialog(isOpen, cancel)
+
+    const confirm = () => {
+        if (busy) return
+        const work = onConfirm(reason ? reasonValue.trim() : undefined)
+        if (!work || typeof (work as Promise<unknown>).then !== 'function') return
+        setWorking(true)
+        ;(work as Promise<unknown>)
+            .catch(error => console.error(error))
+            .finally(() => setWorking(false))
+    }
 
     if (!isOpen || !mounted) return null
 
     const reasonTooShort = !!reason && reasonValue.trim().length < (reason.minLength ?? 3)
-    const confirmDisabled = (!!requireTypedText && typedValue !== requireTypedText) || reasonTooShort
+    const confirmDisabled = (!!requireTypedText && typedValue !== requireTypedText) || reasonTooShort || busy
 
     const finalConfirmText = confirmText || t('confirm') || 'Confirm'
     const finalCancelText = cancelText || t('cancel') || 'Cancel'
@@ -109,7 +132,7 @@ export default function ConfirmModal({
         }}>
             <div
                 className="modal-backdrop"
-                onClick={onCancel}
+                onClick={cancel}
             />
             <div {...dialog.panelProps} style={{
                 background: 'var(--surface)',
@@ -212,7 +235,8 @@ export default function ConfirmModal({
 
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                     <button
-                        onClick={onCancel}
+                        onClick={cancel}
+                        disabled={busy}
                         style={{
                             padding: '0.625rem 1.25rem',
                             border: '1px solid var(--border)',
@@ -230,13 +254,15 @@ export default function ConfirmModal({
                         {finalCancelText}
                     </button>
                     <button
-                        onClick={() => onConfirm(reason ? reasonValue.trim() : undefined)}
+                        onClick={confirm}
                         disabled={confirmDisabled}
+                        aria-busy={busy || undefined}
                         style={{
                             padding: '0.625rem 1.25rem',
                             border: 'none',
                             borderRadius: '0.5rem',
-                            background: confirmDisabled ? 'var(--border-firm)' : styles.confirmBg,
+                            // Working keeps its colour: it is the action under way, not one that can't be taken.
+                            background: confirmDisabled && !busy ? 'var(--border-firm)' : styles.confirmBg,
                             cursor: confirmDisabled ? 'not-allowed' : 'pointer',
                             fontSize: '0.875rem',
                             fontWeight: '500',

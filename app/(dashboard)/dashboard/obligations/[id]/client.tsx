@@ -7,6 +7,8 @@ import SafeDate from '@/components/SafeDate'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
 import { useCan } from '@/lib/useCan'
+import { useBusyAction } from '@/lib/useBusyAction'
+import Link from 'next/link'
 
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
@@ -25,6 +27,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
     const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const action = useBusyAction()
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
     // This banner (rendered below) was previously always green-bordered,
@@ -434,10 +437,10 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     </div>
 
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={handleForceComplete} className="btn" style={{ background: 'var(--ok-fg)', color: 'var(--text-on-accent)' }}>{t('mark_as_completed')}</button>
+                        <button onClick={() => action.run('complete', handleForceComplete)} disabled={action.running} aria-busy={action.is('complete')} className="btn" style={{ background: 'var(--ok-fg)', color: 'var(--text-on-accent)' }}>{t('mark_as_completed')}</button>
                         <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: 'var(--info-fill-hover)', color: 'var(--text-on-accent)' }}>{t('reassign_button')}</button>
                         <button onClick={() => setShowDeleteConfirm(true)} className="btn" style={{ background: 'var(--danger-fg-strong)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
-                        <button onClick={() => router.push('/dashboard/obligations')} className="btn" style={{ background: 'var(--surface)', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</button>
+                        <Link href={'/dashboard/obligations'} className="btn" style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</Link>
                     </div>
                 </div>
             )}
@@ -495,12 +498,11 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    <button
-                        onClick={() => router.push('/dashboard/obligations')}
-                        style={{ background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}
+                    <Link href={'/dashboard/obligations'}
+                        style={{ textDecoration: 'none', background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}
                     >
                         {t('close_button')}
-                    </button>
+                    </Link>
                     {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status) && (
                         <button
                             onClick={() => setShowRevertConfirm(true)}
@@ -574,7 +576,9 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     </div>
                                     {canManage && (att.uploadedById === userId || companyWide('obligations.manage')) && (
                                         <button aria-label={t('remove' as any)}
-                                            onClick={() => handleRemoveExistingAttachment(att)}
+                                            onClick={() => action.run(`remove-${url}`, () => handleRemoveExistingAttachment(att))}
+                                            disabled={action.running}
+                                            aria-busy={action.is(`remove-${url}`)}
                                             style={{
                                                 marginLeft: locale === 'ar' ? '0' : '0.5rem',
                                                 marginRight: locale === 'ar' ? '0.5rem' : '0',
@@ -741,8 +745,8 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             {/* Approve/Reject Buttons (Admins only) */}
             {mayManageThis && obligation.status === 'PENDING_CONFIRMATION' && (
                 <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
-                    <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
+                    <button onClick={() => action.run('approve', handleApprove)} disabled={action.running} aria-busy={action.is('approve')} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
+                    <button onClick={() => action.run('reject', handleReject)} disabled={action.running} aria-busy={action.is('reject')} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
                 </div>
             )}
 
@@ -774,7 +778,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     <p>{t('delete_obligation_warning' as any)}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={handleDelete} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
+                        <button onClick={() => action.run('delete', handleDelete)} disabled={action.running} aria-busy={action.is('delete')} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
@@ -825,7 +829,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
 
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button className="btn" style={{ background: 'var(--border)' }} onClick={() => setIsReassigning(false)}>{t('cancel')}</button>
-                        <button className="btn btn-primary" onClick={handleReassign} disabled={newAssigneeIds.length === 0}>
+                        <button className="btn btn-primary" onClick={() => action.run('reassign', handleReassign)} disabled={newAssigneeIds.length === 0 || action.running} aria-busy={action.is('reassign')}>
                             {t('confirm_transfer_button')}
                         </button>
                     </div>

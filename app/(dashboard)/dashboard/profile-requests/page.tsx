@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import Pagination from '@/components/Pagination'
 import { useHeader } from '@/context/HeaderContext'
 import { useCan } from '@/lib/useCan'
+import { startNavigationProgress } from '@/components/NavigationProgress'
 
 type Request = {
     id: string
@@ -120,7 +121,7 @@ export default function ProfileRequestsPage() {
             <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button
                     aria-label={t('go_back' as any)}
-                    onClick={() => router.back()}
+                    onClick={() => { startNavigationProgress(); router.back() }}
                     style={{
                         background: 'var(--veil-50)',
                         border: '1px solid var(--panel-80)',

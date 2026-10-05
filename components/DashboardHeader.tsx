@@ -15,6 +15,7 @@ import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
 import { permissionsOf } from '@/lib/useCan'
 import { moveOption } from '@/lib/listbox-keys'
+import { useBusyAction } from '@/lib/useBusyAction'
 
 // Fetcher for SWR
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json())
@@ -38,6 +39,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const action = useBusyAction()
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
     const { title: contextTitle, subtitle: contextSubtitle } = useHeader()
     const modules = useModules()
@@ -711,7 +713,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                         whole page reloads behind an overlay anyway. */}
                                     <ThemeToggleButton variant="menu-item" />
                                     <button
-                                        onClick={handleLogout}
+                                        onClick={() => action.run('logout', handleLogout)}
+                                        disabled={action.running}
+                                        aria-busy={action.is('logout')}
                                         style={{
                                             width: '100%',
                                             textAlign: locale === 'ar' ? 'right' : 'left',
