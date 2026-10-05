@@ -18,8 +18,11 @@ function run(env: Record<string, string>, dotEnv?: string) {
     // Left from an earlier build with the test version on.
     mkdirSync(join(dir, "public/face-models/v2"), { recursive: true })
     writeFileSync(join(dir, "public/face-models/v2/w600k_r50.onnx.part0"), "weights")
-    const { NEXT_PUBLIC_FACE_PROTOTYPE: _flag, FACE_MODELS: _skip, ...rest } = process.env
-    const out = execFileSync(process.execPath, [SCRIPT], { cwd: dir, env: { ...rest, ...env }, encoding: "utf8", timeout: 15_000 })
+    // Only what the test sets: not this machine's own flags.
+    const base = { ...process.env }
+    delete base.NEXT_PUBLIC_FACE_PROTOTYPE
+    delete base.FACE_MODELS
+    const out = execFileSync(process.execPath, [SCRIPT], { cwd: dir, env: { ...base, ...env }, encoding: "utf8", timeout: 15_000 })
     return { dir, out }
 }
 
