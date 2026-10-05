@@ -71,9 +71,13 @@ export function ViewerProvider({ viewer, children }: { viewer: Actor | null | un
  * Restricted" to a Super Admin until it arrived, then drew itself again.
  */
 export function useViewer(): Session["user"] | null {
-    const { data: session } = useSession()
+    const { data: session, status } = useSession()
     const fromLayout = useContext(ViewerContext) as Session["user"] | null
-    return session?.user?.role ? session.user : fromLayout
+    // Only while it loads. Signed out or expired, the session is empty too,
+    // and the layout's copy would then keep a page open to somebody who is
+    // no longer signed in.
+    if (status === "loading") return fromLayout
+    return session?.user?.role ? session.user : null
 }
 
 export function useCan(): Can {

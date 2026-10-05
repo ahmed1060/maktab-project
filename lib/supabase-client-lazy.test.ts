@@ -34,4 +34,12 @@ describe("the browser's Supabase client", () => {
         const offenders = client.filter(f => /^import .*(supabase-browser|@supabase\/supabase-js)/m.test(readFileSync(f, "utf8")))
         expect(offenders).toEqual([])
     })
+
+    it("asks for the maintenance state again once the channel is listening", () => {
+        // A broadcast sent before it connected isn't replayed, and loading the
+        // client lazily makes that window longer.
+        const heartbeat = stripComments(readFileSync("components/UserHeartbeat.tsx", "utf8"))
+        expect(heartbeat).toMatch(/\.subscribe\(state => \{ if \(state === 'SUBSCRIBED'\) checkStatusRef\.current\?\.\(\) \}\)/)
+        expect(heartbeat).toContain("checkStatusRef.current = checkStatus")
+    })
 })

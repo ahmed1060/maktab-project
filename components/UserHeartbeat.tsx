@@ -55,6 +55,9 @@ export default function UserHeartbeat() {
     // stale-closure problem a state read inside a callback recreated only
     // when `session` changes would have.
     const wasMaintenanceActive = useRef(false)
+    // The polling effect's check, for the Realtime path to run once it has
+    // connected (see there).
+    const checkStatusRef = useRef<(() => void) | null>(null)
 
     // Shared by both detection paths below (the fast Realtime broadcast and
     // the slow polling fallback) so activating maintenance behaves
@@ -128,7 +131,10 @@ export default function UserHeartbeat() {
                         handleMaintenanceEnded()
                     }
                 })
-                .subscribe()
+                // A broadcast sent before the channel connected isn't replayed,
+                // and loading the client lazily widens that gap: ask once more
+                // as soon as it is listening.
+                .subscribe(state => { if (state === 'SUBSCRIBED') checkStatusRef.current?.() })
             cleanup = () => { supabase.removeChannel(channel) }
         }).catch(() => { /* the polling below still covers maintenance mode */ })
 
@@ -182,6 +188,7 @@ export default function UserHeartbeat() {
             }
         }
 
+        checkStatusRef.current = checkStatus
         checkStatus()
 
         const interval = setInterval(() => {
@@ -189,7 +196,7 @@ export default function UserHeartbeat() {
             checkStatus()
         }, 90000)
 
-        return () => clearInterval(interval)
+        return () => { clearInterval(interval); checkStatusRef.current = null }
         // Deliberately keyed only on session — this interval must survive
         // route changes rather than being torn down and restarted on every
         // click. handleMaintenanceDetected/Ended are stable enough in

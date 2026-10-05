@@ -16,7 +16,8 @@ import { stripComments } from "./strip-comments"
  */
 
 let session: { user: Record<string, unknown> } | null = null
-vi.mock("next-auth/react", () => ({ useSession: () => ({ data: session, status: session ? "authenticated" : "loading" }) }))
+let status: "loading" | "authenticated" | "unauthenticated" = "loading"
+vi.mock("next-auth/react", () => ({ useSession: () => ({ data: session, status }) }))
 
 const { ViewerProvider, useViewer } = await import("./useCan")
 
@@ -28,7 +29,7 @@ const render = (viewer: Record<string, unknown> | null) =>
     renderToString(ViewerProvider({ viewer: viewer as never, children: createElement(Probe) }))
 
 describe("useViewer", () => {
-    beforeEach(() => { session = null })
+    beforeEach(() => { session = null; status = "loading" })
 
     it("is the layout's user while the session is still loading", () => {
         expect(render({ id: "u1", role: "SUPER_ADMIN" })).toContain("SUPER_ADMIN:u1")
@@ -36,7 +37,15 @@ describe("useViewer", () => {
 
     it("is the session's user once it has loaded, since that one refreshes", () => {
         session = { user: { id: "u1", role: "ADMIN" } }
+        status = "authenticated"
         expect(render({ id: "u1", role: "SUPER_ADMIN" })).toContain("ADMIN:u1")
+    })
+
+    it("is nobody once signed out or expired, whatever the layout drew with", () => {
+        // The session is empty then too; the layout's copy must not keep a
+        // Super Admin's page open in a tab whose session has ended.
+        status = "unauthenticated"
+        expect(render({ id: "u1", role: "SUPER_ADMIN" })).toContain("nobody:-")
     })
 
     it("is nobody outside the dashboard with no session", () => {
