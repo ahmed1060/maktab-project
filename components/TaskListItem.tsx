@@ -63,14 +63,11 @@ export default function TaskListItem({ task, currentUserId, isHighlighted }: Tas
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <h3
-                        style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
-                        title={task.title}
-                        onClick={() => setIsModalOpen(true)}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--info-solid-hover)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
-                    >
-                        {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
+                    {/* The title opens the quick view: a button, so the keyboard reaches it too (audit L1). */}
+                    <h3 style={{ margin: 0 }}>
+                        <button type="button" className="title-button" title={task.title} onClick={() => setIsModalOpen(true)}>
+                            {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
+                        </button>
                     </h3>
                     <span style={{
                         padding: '0.15rem 0.5rem',
