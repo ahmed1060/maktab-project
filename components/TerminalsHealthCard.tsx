@@ -25,9 +25,25 @@ const TONE = {
 
 export default function TerminalsHealthCard() {
     const { t } = useLanguage()
-    const { data } = useSWR('/api/admin/terminals', fetcher, { refreshInterval: 60_000 })
+    const { data, error } = useSWR('/api/admin/terminals', fetcher, { refreshInterval: 60_000 })
     const rows: Row[] | undefined = data?.data?.companies
-    if (!rows) return null
+    if (error && !rows) return null
+    // While it loads, the card is already in its place in the grid. Rendering
+    // nothing and then the card moved every card after it into a new spot on
+    // the health page (Lighthouse: a layout shift of 0.26).
+    if (!rows) {
+        return (
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '2rem' }} aria-hidden>🖐️</span>
+                    <div>
+                        <h3 style={{ margin: 0 }}>{t('att_term_health_title')}</h3>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('loading')}</p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
     const bad = rows.filter(r => r.tone === 'bad').length
 
     return (

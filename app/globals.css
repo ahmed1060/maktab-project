@@ -450,6 +450,39 @@ body::before {
   transition: all 0.3s ease;
 }
 
+/* The dashboard's layout on a phone and a desktop (components/DashboardShell.tsx).
+   In CSS, not decided by script after the page has run, so the first paint is
+   already right: before, a phone first got the desktop layout and the page
+   then slid 270px into place, which Lighthouse scored as a layout shift of up
+   to 0.85. */
+.shell-main {
+  margin-inline-start: var(--shell-sidebar, 270px);
+  transition: margin 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.floating-attribution {
+  position: fixed;
+  bottom: 1rem;
+  inset-inline-end: 1.5rem;
+  z-index: 30;
+}
+@media (max-width: 1023px) {
+  .shell-main {
+    margin-inline-start: 0;
+  }
+  .shell-aside:not([data-open="true"]) {
+    transform: translateX(-100%);
+  }
+  .shell-aside[data-rtl="true"]:not([data-open="true"]) {
+    transform: translateX(100%);
+  }
+  .floating-attribution {
+    position: static;
+    width: 100%;
+    padding: 2rem 1rem 2.5rem;
+    margin-top: auto;
+  }
+}
+
 /* Responsive Utilities */
 .lg-hidden {
   display: block;
