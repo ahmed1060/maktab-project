@@ -61,12 +61,13 @@ export async function capture(engine: Engine, camera: Camera, random: () => numb
             // The photo of the very frame matched, not one taken after the person has moved.
             const shot = snapshot(camera.video)
             const id = await engine.identify(pixels)
+            // The frame looked at, whatever was found: a check that fails here is reviewed on it (review on #47).
+            frame = shot
             if (id.faces > 1) return "MANY"
             if (!id.embedding) return "NONE"
             templates.push(id.embedding)
             if (id.live !== null) real.push(id.live)
             if (!photo) photo = shot
-            frame = shot
             return "ONE"
         }
         // A new attempt starts with nothing ticked: the last attempt's steps and timer would mislead (review on #30).

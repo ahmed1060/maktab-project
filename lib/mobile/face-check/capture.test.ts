@@ -10,7 +10,9 @@ import type { Engine } from "./engine"
  */
 
 vi.mock("./engine", () => ({ grab: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }) }))
-vi.mock("./camera", () => ({ snapshot: () => "ZnJhbWU=" }))
+/** Each snapshot numbered, so which frame was kept can be told. */
+const shots = vi.hoisted(() => ({ n: 0 }))
+vi.mock("./camera", () => ({ snapshot: () => `shot${++shots.n}` }))
 
 const { capture } = await import("./capture")
 
@@ -64,10 +66,11 @@ const passing = [
 describe("a whole capture", () => {
     it("passes a blink and a turn, matching the face before and after, and keeps the first look's photo", async () => {
         const e = engine(passing, [{ embedding: person(3) }, { embedding: person(3, 0.2), live: 0.7 }])
+        shots.n = 0
         const c = await capture(e, camera(), () => 0.9)
         expect(c.live).toBe(true)
         expect(c.templates).toHaveLength(2)
-        expect(c.photo).toBe("ZnJhbWU=")
+        expect(c.photo).toBe("shot1")
         // The anti-spoofing's lower score of the two looks.
         expect(c.real).toBeCloseTo(0.7)
         // Recognition runs on the two frontal looks only, not on every look of the challenge.
@@ -78,6 +81,14 @@ describe("a whole capture", () => {
         const c = await capture(engine(passing, [{ embedding: person(3) }, { embedding: person(100) }]), camera(), () => 0.9)
         expect(c.live).toBe(false)
         expect(c.templates).toEqual([])
+    })
+
+    it("keeps the frame where a second face was found, for the review (review on #47)", async () => {
+        shots.n = 0
+        const c = await capture(engine(passing, [{ embedding: person(3) }, { embedding: null, faces: 2 }]), camera(), () => 0.9)
+        expect(c.live).toBe(false)
+        expect(c.photo).toBe("shot1")
+        expect(c.frame).toBe("shot2")
     })
 
     it("counts a blink as MediaPipe reads one: open about 0.05, shut 0.6 or more", async () => {
