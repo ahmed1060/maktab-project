@@ -27,9 +27,9 @@ jobs:
       run:
         working-directory: agent
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -70,7 +70,7 @@ jobs:
           New-Item -ItemType Directory -Force package | Out-Null
           Copy-Item dist\nizmo-agent.exe, dist\nizmo-agent-service.exe, service\nizmo-agent-service.xml, agent.example.json, README.md package\
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: nizmo-agent-windows
           path: agent/package
