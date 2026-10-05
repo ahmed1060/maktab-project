@@ -79,7 +79,7 @@ export default function AddBonusPage() {
             <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('bonus_days_label' as any)}</label>
-                    <input
+                    <input aria-label={t('bonus_days_label' as any)}
                         type="number"
                         className="input"
                         value={amount}
@@ -96,7 +96,7 @@ export default function AddBonusPage() {
                         autoFocus
                     />
                     {fieldError && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldError}
                         </div>
                     )}
@@ -104,7 +104,7 @@ export default function AddBonusPage() {
 
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('reason_label')}</label>
-                    <textarea
+                    <textarea aria-label={t('reason_label')}
                         className="input"
                         value={reason}
                         onChange={e => setReason(e.target.value)}

@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
+import { useCan } from '@/lib/useCan'
 
 interface ViewRequestModalProps {
     isOpen: boolean
@@ -17,6 +18,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
     const { t, locale } = useLanguage()
     const [updating, setUpdating] = useState(false)
     const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const canReview = useCan().can('requests.review')
 
     if (!request) return null
 
@@ -29,8 +31,6 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
             setUpdating(false)
         }
     }
-
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)
 
     return (
         <Modal
@@ -62,11 +62,11 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                         gap: '0.4rem'
                                     }}
                                 >
-                                    🗑️ {t('delete')}
+                                    <span aria-hidden="true">🗑️</span> {t('delete')}
                                 </button>
                             )}
 
-                            {isAdmin && request.status !== 'COMPLETED' && (
+                            {canReview && request.status !== 'COMPLETED' && (
                                 <button
                                     onClick={() => handleUpdate(request.status === 'PENDING' ? 'IN_PROGRESS' : 'COMPLETED')}
                                     disabled={updating}
@@ -90,7 +90,7 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                                     {updating ? (
                                         <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: `2px solid ${request.status === 'PENDING' ? 'var(--info-fg)' : 'var(--ok-fg)'}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
                                     ) : (
-                                        <span style={{ fontSize: '1rem' }}>✓</span>
+                                        <span aria-hidden="true" style={{ fontSize: '1rem' }}>✓</span>
                                     )}
                                     {request.status === 'PENDING' ? t('mark_in_progress' as any) : t('mark_completed' as any)}
                                 </button>
@@ -147,18 +147,18 @@ export default function ViewRequestModal({ isOpen, onClose, request, userRole, o
                     fontSize: '0.85rem'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-soft)' }}>
-                        <span>📅 {t('requested_on')}:</span>
+                        <span><span aria-hidden="true">📅</span> {t('requested_on')}:</span>
                         <span style={{ fontWeight: '600', color: 'var(--text-body)' }}>{new Date(request.createdAt).toLocaleString(locale)}</span>
                     </div>
                     {request.inProgressAt && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-soft)' }}>
-                            <span>🚀 {t('started_at')}:</span>
+                            <span><span aria-hidden="true">🚀</span> {t('started_at')}:</span>
                             <span style={{ fontWeight: '600', color: 'var(--text-body)' }}>{new Date(request.inProgressAt).toLocaleString(locale)}</span>
                         </div>
                     )}
                     {request.completedAt && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-soft)' }}>
-                            <span>✅ {t('finished_at')}:</span>
+                            <span><span aria-hidden="true">✅</span> {t('finished_at')}:</span>
                             <span style={{ fontWeight: '600', color: 'var(--text-body)' }}>{new Date(request.completedAt).toLocaleString(locale)}</span>
                         </div>
                     )}

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
 
 /**
  * WCAG contrast for every foreground/background pair the palette declares, in
@@ -121,6 +122,79 @@ for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
     })
 }
 
+describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
+    // It was the browser's own ring, hidden on every .input and on about ten
+    // controls (accessibility audit, 4 October 2026, H3); now one ring in a
+    // colour held to 3:1 against what it sits on, in each theme.
+    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
+        for (const bg of ["--surface", "--surface-sunk", "--page-bg"]) {
+            it(`${themeName}: --focus-ring on ${bg}`, () => {
+                const r = ratio(tokens["--focus-ring"], tokens[bg])
+                expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+            })
+        }
+    }
+
+    it("on the sidebar, dark in both themes, it is the light ring", () => {
+        const ring = CSS.match(/\.glass-dark \{[^}]*--focus-ring: (#[0-9a-fA-F]{6})/)?.[1]
+        expect(ring).toBeDefined()
+        // Against the sidebar's darkest ground (slate 900) and its lightest:
+        // slate 900 at 65% over the light page (#eef2ff), which is #5d6475.
+        expect(ratio(ring!, "#0f172a")).toBeGreaterThanOrEqual(3)
+        expect(ratio(ring!, "#5d6475")).toBeGreaterThanOrEqual(3)
+    })
+
+    it("is shown for keyboard focus, and nothing turns it off", () => {
+        expect(CSS).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--focus-ring\);/)
+        expect(CSS).not.toMatch(/\.input:focus \{[^}]*outline: none/)
+        const screens = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? screens(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const off = [...screens("app"), ...screens("components")].filter(f => /outline: *'none'/.test(readFileSync(f, "utf8")))
+        expect(off).toEqual([])
+    })
+})
+
+describe("text and controls the audit measured below AA (4 October 2026, H2)", () => {
+    const screens = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+        e.isDirectory() ? screens(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+    const SCREENS = [...screens("app"), ...screens("components")]
+
+    it("white on a filled button is 4.5:1 across its whole gradient (was 4.47 and 4.23:1)", () => {
+        expect(CSS).toMatch(/\.btn-primary \{\s*background: linear-gradient\(135deg, var\(--button-from\) 0%, var\(--button-to\) 100%\)/)
+        for (const t of ["--button-from", "--button-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
+    })
+
+    it("white on the sign-in button is 4.5:1 (was 3.7:1)", () => {
+        for (const t of ["--hero-from", "--hero-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
+    })
+
+    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
+        it(`${themeName}: a brand-coloured link is 4.5:1 on the surface`, () => {
+            expect(ratio(tokens["--link"], tokens["--surface"])).toBeGreaterThanOrEqual(4.5)
+        })
+        it(`${themeName}: a field's outline is 3:1 on the surface and the page (was 1.4:1)`, () => {
+            for (const bg of ["--surface", "--page-bg"]) expect(ratio(tokens["--field-border"], tokens[bg])).toBeGreaterThanOrEqual(3)
+        })
+    }
+
+    it("fields draw their outline in --field-border", () => {
+        expect(CSS).toMatch(/\.input \{[^}]*border: 1px solid var\(--field-border\);/)
+    })
+
+    it("no text is coloured with a status colour's fill (-solid), only its text colour (-fg)", () => {
+        // Red for errors, late dates and delete links, and green, amber and
+        // blue status text, used the fill colours, 2.2 to 3.8:1 on white.
+        const found = SCREENS.flatMap(f => [...readFileSync(f, "utf8").matchAll(/(?<![A-Za-z])color:[^,}\n]*var\(--(danger|ok|warn|info)-solid\)/g)].map(() => f))
+        expect(found).toEqual([])
+    })
+
+    it("the sidebar's section headings use the sidebar's own text colour (were 1.2 to 3.7:1)", () => {
+        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
+        expect(shell).not.toContain("textTransform: 'uppercase', color: 'var(--text-faint)'")
+        expect(shell.split("textTransform: 'uppercase', color: 'var(--sidebar-fg)'").length - 1).toBe(3)
+    })
+})
+
 describe("the two themes are actually different", () => {
     it("inverts the surface scale rather than reusing it", () => {
         expect(luminance(DARK["--surface"])).toBeLessThan(luminance(LIGHT["--surface"]))
@@ -155,14 +229,82 @@ describe("the two themes are actually different", () => {
         // the reader has their display set to. A dark value would produce a
         // payslip printed white on black: unreadable, and expensive in a way
         // whoever pressed Print finds out about afterwards.
+        //
+        // --map-* are invariant because they are drawn on map tiles, which
+        // are light in both themes: a dark-mode ink would vanish into them.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
             "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong",
             "--paper", "--ink-on-paper",
+            "--button-from", "--button-to",
+            "--map-pin", "--map-ink", "--map-halo", "--map-shadow",
         ])
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))
         expect(missing, `tokens with no dark value:\n${missing.join("\n")}`).toEqual([])
+    })
+})
+
+describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
+    // Found by measuring every page's text in the dark theme. The brand indigo
+    // (--primary, #6366f1) was used as text there unchanged, 2.8:1 on the dark
+    // surfaces, and the audit log's action names (--accent-deepest) 2.85:1.
+    // --primary itself can't lighten in the dark theme, because white text sits
+    // on it in buttons, so text uses --brand-primary-text.
+    for (const fg of ["--brand-primary-text", "--accent-deepest"]) {
+        for (const bg of ["--surface", "--surface-sunk"]) {
+            it(`${fg} on ${bg}`, () => {
+                const r = ratio(DARK[fg], DARK[bg])
+                expect(r, `${fg} ${DARK[fg]} on ${bg} ${DARK[bg]} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+            })
+        }
+    }
+
+    it("and screens colour brand text with it, not with the button colour", () => {
+        const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const offenders = [...files("app"), ...files("components")].filter(f =>
+            /color: (?:[^,}]*\? )?'var\(--(?:brand-primary|primary)\)'/.test(readFileSync(f, "utf8")))
+        expect(offenders).toEqual([])
+    })
+})
+
+describe("fills: white text on a status colour meets AA 4.5:1", () => {
+    // Found by measuring every page's text in the dark theme: white on the
+    // Approve button's green, the points badge's blue and an amber avatar was
+    // 2.2 to 2.8:1, and much the same in the light theme. The -solid colours
+    // are also text and strokes on the page, so the grounds under white text
+    // are their own tokens, the same hues darkened.
+    const FILLS = ["--ok-fill", "--ok-fill-alt", "--ok-fill-hover", "--info-fill", "--info-fill-hover",
+        "--warn-fill", "--warn-fill-warm", "--danger-fill", "--danger-fill-hover", "--accent-fill"]
+
+    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
+        for (const fill of FILLS) {
+            it(`${themeName}: white on ${fill}`, () => {
+                expect(tokens[fill], `${fill} undefined in ${themeName}`).toBeDefined()
+                const r = ratio(tokens["--text-on-accent"] ?? LIGHT["--text-on-accent"], tokens[fill])
+                expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+            })
+        }
+    }
+
+    // A badge or a dot is a shape: in the dark theme it must still stand out
+    // from the card it's on (AA for graphics, 3:1). A hover shade shows only
+    // under the pointer, so it's held to less.
+    for (const fill of FILLS.filter(f => !f.endsWith("-hover"))) {
+        it(`dark: ${fill} stands out from --surface`, () => {
+            const r = ratio(DARK[fill], DARK["--surface"])
+            expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+        })
+    }
+
+    it("screens put a fill, not a -solid colour, behind text", () => {
+        const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+            e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
+        const offenders = [...files("app"), ...files("components")].flatMap(f =>
+            [...readFileSync(f, "utf8").matchAll(/background(?:Color)?: [^,\n]*?'var\(--((?:ok|info|warn|danger|accent)-solid[a-z-]*)\)'/g)]
+                .map(m => `${f}: ${m[1]}`))
+        expect(offenders).toEqual([])
     })
 })

@@ -8,11 +8,13 @@ import { withSentryConfig } from '@sentry/nextjs/config';
 // directives below as a starting point — watch the console on the pages
 // that hit the HERE API and Supabase storage (task locations, avatars,
 // attachments) before ever switching this to Content-Security-Policy.
+// maps.hereapi.com: HERE's map images for placing a check-in place's pin
+// (components/PointPicker.tsx).
 const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.supabase.co",
+    "img-src 'self' data: blob: https://*.supabase.co https://maps.hereapi.com",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co https://revgeocode.search.hereapi.com https://autosuggest.search.hereapi.com",
     "frame-ancestors 'none'",
@@ -45,6 +47,13 @@ const nextConfig = {
                 // task submission flow use navigator.geolocation from this origin.
                 { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
                 { key: 'Content-Security-Policy-Report-Only', value: csp },
+            ],
+        }, {
+            // The check-in page, alone, may use the front camera: the face check
+            // (lib/mobile/face-prototype). A later header with the same key wins.
+            source: '/dashboard/check-in',
+            headers: [
+                { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },
             ],
         }]
     },

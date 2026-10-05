@@ -16,7 +16,7 @@ export default function AccessDenied() {
                 fontSize: '4rem',
                 marginBottom: '1rem'
             }}>
-                🚫
+                <span aria-hidden="true">🚫</span>
             </div>
             <h1 style={{
                 fontSize: '2rem',

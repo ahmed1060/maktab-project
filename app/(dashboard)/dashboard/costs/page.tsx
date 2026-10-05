@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
+import { can, grantFor } from '@/lib/permissions/can'
+import { assignedToTeamWhere } from '@/lib/team-scope'
 
 export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
@@ -25,8 +27,8 @@ export default async function CostsPage(props: { searchParams: Promise<{
 
     const userRole = (session.user as any)?.role
 
-    // Only allow ADMIN, SUPER_ADMIN, TEAM_LEADER
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    // The page is for paying task costs: those who hold tasks.pay.
+    if (!can(session.user as any, 'tasks.pay')) {
         redirect('/dashboard')
     }
 
@@ -46,7 +48,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
 
     if (userRole !== 'SUPER_ADMIN') {
         if (!userCompanyId) {
-            return <CostsClient tasksWithCosts={[]} userRole={userRole} total={0} page={1} totalPages={0} />
+            return <CostsClient tasksWithCosts={[]} total={0} page={1} totalPages={0} />
         }
         finalCompanyId = userCompanyId
     }
@@ -74,6 +76,15 @@ export default async function CostsPage(props: { searchParams: Promise<{
         where.AND.push({
             assignees: { some: { companyId: finalCompanyId } }
         })
+    }
+
+    // A Team Leader pays their team's tasks — tasks.pay at TEAM scope, the rule
+    // every task route applies through verifyResourceAccess — so this page
+    // lists those, not every pending payment in the company. It listed the
+    // company's, which put what colleagues outside the team are owed in front
+    // of a leader who could not act on most of it.
+    if (grantFor(session.user as any, 'tasks.pay') === 'TEAM') {
+        where.AND.push(assignedToTeamWhere((session.user as any).id))
     }
 
     if (searchParams.employeeId) {
@@ -140,7 +151,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
     return (
         <CostsClient
             tasksWithCosts={serializedTasks}
-            userRole={userRole}
+           
             total={total}
             page={page}
             totalPages={totalPages}

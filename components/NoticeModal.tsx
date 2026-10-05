@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useEffect, useRef } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
+import { useDialog } from '@/lib/useDialog'
 
 export type NoticeVariant = 'success' | 'error' | 'info'
 
@@ -65,14 +66,12 @@ export default function NoticeModal({ notice, onClose, closeText }: NoticeModalP
 
     // Escape closes it, and the dismiss button takes focus when it opens — an
     // alert() could always be cleared with a keystroke and this should not be
-    // the change that makes people reach for the mouse.
+    // the change that makes people reach for the mouse. useDialog keeps Tab
+    // inside and gives focus back to what was focused before.
+    const dialog = useDialog(!!notice, onClose)
     useEffect(() => {
-        if (!notice) return
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-        document.addEventListener('keydown', onKey)
-        dismissRef.current?.focus()
-        return () => document.removeEventListener('keydown', onKey)
-    }, [notice, onClose])
+        if (notice) dismissRef.current?.focus()
+    }, [notice])
 
     if (!notice || !mounted) return null
 
@@ -81,9 +80,6 @@ export default function NoticeModal({ notice, onClose, closeText }: NoticeModalP
 
     return createPortal(
         <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-label={notice.title}
             style={{
                 position: 'fixed',
                 inset: 0,
@@ -98,6 +94,8 @@ export default function NoticeModal({ notice, onClose, closeText }: NoticeModalP
             onClick={onClose}
         >
             <div
+                {...dialog.panelProps}
+                role="alertdialog"
                 onClick={e => e.stopPropagation()}
                 style={{
                     background: 'var(--surface)',
@@ -127,7 +125,7 @@ export default function NoticeModal({ notice, onClose, closeText }: NoticeModalP
                         </svg>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>
+                        <h2 id={dialog.titleId} style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>
                             {notice.title}
                         </h2>
                         {notice.message && (

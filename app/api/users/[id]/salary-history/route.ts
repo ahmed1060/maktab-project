@@ -1,18 +1,24 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SalaryService } from "@/lib/services/salary.service"
-import { verifyResourceAccess } from "@/lib/security"
+import { verifyResourceAccess, personTarget } from "@/lib/security"
+import { can } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session, json, { params }) => {
     const userId = params.id
     const currentUserId = session.user.id
-    const userRole = session.user.role
-
     const isSelf = currentUserId === userId
-    const isAuthorizedRole = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
 
-    if (!isSelf && !isAuthorizedRole) {
+    if (!isSelf && !can(session.user, "salary.view")) {
         return ApiResponse.forbidden("Access denied")
+    }
+
+    // The grant's scope is about the person asked about: held for a team, it
+    // reaches that team. The company check below keeps the rest out, but its
+    // team rule is employees.view's, not this permission's.
+    if (!isSelf) {
+        const person = await personTarget(userId)
+        if (!person || !can(session.user, "salary.view", person)) return ApiResponse.forbidden("Access denied")
     }
 
     // Company Isolation

@@ -14,11 +14,13 @@ import EmployeeFilter from '@/components/EmployeeFilter'
 import Pagination from '@/components/Pagination'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useCan } from '@/lib/useCan'
 
 const NO_REQUESTS: any[] = []
 
 export default function RequestsSection({ userRole }: { userRole: string }) {
     const { t, locale } = useLanguage()
+    const seesOthersRequests = useCan().can('requests.view')
     const { showToast } = useToast()
     const { selectedCompanyId } = useCompany()
     const searchParams = useSearchParams()
@@ -165,7 +167,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                         boxShadow: '0 4px 12px color-mix(in srgb, var(--warn-border) 10%, transparent)'
                     }}
                 >
-                    📜 {t('history')}
+                    <span aria-hidden="true">📜</span> {t('history')}
                 </Link>
             </div>
 
@@ -181,7 +183,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
-                isEmployee={userRole === 'EMPLOYEE'}
+                isEmployee={!seesOthersRequests}
                 sortBy={sortBy}
                 sortOrder={order as any}
                 onSortChange={(field, ord) => {
@@ -207,7 +209,7 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                             fontSize: '0.95rem',
                             fontWeight: '800',
                             borderRadius: '1.25rem',
-                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
+                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-fill) 100%)',
                             border: 'none',
                             color: 'var(--text-on-accent)',
                             boxShadow: '0 4px 15px color-mix(in srgb, var(--primary) 30%, transparent)',
@@ -230,12 +232,11 @@ export default function RequestsSection({ userRole }: { userRole: string }) {
                     {t('no_requests_found')}
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '1.25rem' }}>
                     {requests.map(req => (
                         <RequestCard
                             key={req.id}
                             request={req}
-                            userRole={userRole}
                             onView={handleViewRequest}
                             onStatusUpdate={handleStatusUpdate}
                             isHighlighted={req.id === highlightId}

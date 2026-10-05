@@ -45,7 +45,7 @@ export default function TaskSubmissionForm({
     return (
         <div style={{ marginTop: '3rem', borderTop: '2px solid var(--border)', paddingTop: '2rem' }}>
             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                <span>📤</span> {t('submit_task_title')}
+                <span aria-hidden="true">📤</span> {t('submit_task_title')}
             </h3>
 
             <div style={{ marginBottom: '1.5rem' }}>
@@ -57,6 +57,7 @@ export default function TaskSubmissionForm({
                     style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                 >
                     <input
+                        aria-label={t('attachments_label' as any)}
                         type="file"
                         multiple
                         accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -71,7 +72,7 @@ export default function TaskSubmissionForm({
                         disabled={uploading}
                     />
                     <div style={{ pointerEvents: 'none' }}>
-                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
+                        <div aria-hidden="true" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
                         <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{t('upload_allowed_types_msg')}</div>
                     </div>
@@ -82,13 +83,13 @@ export default function TaskSubmissionForm({
                         {pendingFiles.map((f, i) => (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', flexDirection: 'row' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                    <span style={{ fontSize: '1.25rem' }}>📄</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.25rem' }}>📄</span>
                                     <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</div>
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
                                     </div>
                                 </div>
-                                <button onClick={() => onRemoveFile(i)} style={{ color: 'var(--danger-solid)', background: 'var(--danger-bg-subtle)', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
+                                <button onClick={() => onRemoveFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'var(--danger-bg-subtle)', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
                             </div>
                         ))}
                     </div>
@@ -98,7 +99,7 @@ export default function TaskSubmissionForm({
             <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    <input type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
+                    <input aria-label={t('add_costs_label')} type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
                     <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
                     <button onClick={onAddCost} disabled={!cost} className="btn" style={{ background: 'var(--border)', color: 'var(--info-fg)', fontWeight: '700', minWidth: '80px', opacity: 1, cursor: 'pointer' }}>{t('add_label')}</button>
                 </div>
@@ -111,7 +112,7 @@ export default function TaskSubmissionForm({
                                     <span style={{ color: 'var(--text-faint)' }}>•</span>
                                     <span style={{ color: 'var(--warn-fg-mid)' }}>{e.amount.toFixed(2)} {t('egp')}</span>
                                 </div>
-                                <button onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-solid)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
+                                <button aria-label={t('remove' as any)} onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-fg-strong)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
                             </div>
                         ))}
                     </div>
@@ -120,14 +121,14 @@ export default function TaskSubmissionForm({
 
             <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('note_optional_label')}</label>
-                <textarea className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
-                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? 'var(--danger-solid)' : 'var(--text-faint)', marginTop: '0.25rem' }}>{note.length}/500</div>
+                <textarea aria-label={t('note_optional_label')} className="input" rows={3} placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} style={{ width: '100%', resize: 'none' }} maxLength={500} />
+                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.75rem', color: note.length >= 500 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', marginTop: '0.25rem' }}>{note.length}/500</div>
             </div>
 
             <div style={{ marginBottom: '2rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
-                    <button onClick={onCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? 'var(--border)' : 'var(--info-solid)', color: capturingLocation ? 'var(--text-soft)' : 'var(--surface)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <button onClick={onCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? 'var(--border)' : 'var(--info-fill)', color: capturingLocation ? 'var(--text-soft)' : 'var(--surface)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                         {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
                     </button>
                     <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? 'var(--ok-solid-hover)' : locationStatus.includes('Failed') ? 'var(--danger-solid-hover)' : 'var(--text-soft)' }}>{locationStatus}</span>

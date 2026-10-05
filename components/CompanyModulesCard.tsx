@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useReportUnsaved } from '@/lib/useUnsavedChanges'
 import {
     MANAGEMENT_MODULES,
     MAX_MODULE_LABEL_LENGTH,
@@ -89,6 +90,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
     const preview = modulesFrom({ moduleLabels: labels, moduleIcons: icons }, t)
 
     const isDirty = !sameOverrides(savedLabels, labels) || !sameOverrides(savedIcons, icons)
+    useReportUnsaved('modules', isDirty)
 
     const setLabel = (key: ModuleKey, value: string) => {
         setLabels(prev => {
@@ -278,7 +280,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                         padding: '0.4rem 0.6rem', borderRadius: '0.6rem',
                         color: 'var(--sidebar-fg)', fontSize: '0.9rem', fontWeight: 500,
                     }}>
-                        <span style={{ fontSize: '1.2rem' }}>{entry.icon}</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>{entry.icon}</span>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.label}</span>
                     </div>
                 )

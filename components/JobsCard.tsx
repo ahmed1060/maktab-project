@@ -129,7 +129,7 @@ export default function JobsCard() {
     return (
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span style={{ fontSize: '2rem' }}>🩺</span>
+                <span aria-hidden="true" style={{ fontSize: '2rem' }}>🩺</span>
                 <div>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('jobs_header' as any)}</h3>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('jobs_subtitle' as any)}</p>
@@ -165,7 +165,7 @@ export default function JobsCard() {
                         fontSize: '0.85rem',
                         fontWeight: 600,
                     }}>
-                        <span>💾 {backupLine(health.backup)}</span>
+                        <span><span aria-hidden="true">💾</span> {backupLine(health.backup)}</span>
                         <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                             {health.backup.newestAt ? ago(health.backup.newestAt) : '—'}
                         </span>

@@ -1,18 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import PageTitle from './PageTitle'
 import SubscriptionBanner from './SubscriptionBanner'
 import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
-import { MANAGEMENT_MODULES, MENU_MODULES } from '@/lib/modules'
+import { hasBundle } from '@/lib/features/bundles'
+import { inNativeApp } from '@/lib/mobile/native'
+import AppPush from './AppPush'
+import { MANAGEMENT_MODULES, MENU_MODULES, type ModuleKey } from '@/lib/modules'
 import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/swr-fetcher'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
+import { permissionsOf } from '@/lib/useCan'
+import type { Permission } from '@/lib/permissions/catalogue'
+import PreviewBanner from '@/components/PreviewBanner'
 
 interface DashboardShellProps {
     children: React.ReactNode
@@ -24,15 +32,58 @@ interface DashboardShellProps {
     // The name shown in that mark. Falls back to the default rather than to an
     // empty string: "Powered by" with nothing after it reads as a bug.
     poweredByName?: string
+    // Whether this person sees their company's settings: resolved in the
+    // layout from the company's switch and their role (ATTENDANCE_PLAN.md §5.2).
+    showCompanySettings?: boolean
 }
 
-export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName }: DashboardShellProps) {
+/**
+ * Who is offered each management screen: the permission its page needs. A
+ * management module with no entry here is offered to nobody, so adding one
+ * means deciding who sees it.
+ */
+const MANAGEMENT_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
+    costs: 'tasks.pay',
+    employees: 'employees.view',
+    vendors: 'vendors.view',
+}
+
+const subscribeNever = () => () => {}
+
+export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
     const { t, locale } = useLanguage()
     const features = useFeatures()
+    // Read once in the browser: the server can't know the page is inside the app.
+    const inApp = useSyncExternalStore(subscribeNever, inNativeApp, () => false)
     const modules = useModules()
+    // From the user the layout passed down, not the session hook, so the
+    // sidebar is complete on the first paint.
+    const permissions = permissionsOf(user)
+    const managementLinks = MANAGEMENT_MODULES
+        .filter(key => {
+            const permission = MANAGEMENT_PERMISSION[key]
+            return !!permission && permissions.can(permission)
+        })
+        .map(key => modules.entry(key))
+    const canSeePayroll = permissions.can('payroll.view')
+    // Company settings (ATTENDANCE_PLAN.md §5.2): the layout's answer for the
+    // first paint, then asked again on every page and on focus. The layout
+    // persists across client navigation, so without this the Super Admin's
+    // switch would reach an open dashboard only on a full reload.
+    const pathname = usePathname()
+    const { data: settingsEntry, mutate: recheckSettings } = useSWR(
+        user?.role && user.role !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null,
+        fetcher,
+        { fallbackData: { data: { visible: settingsOnFirstPaint } }, revalidateOnMount: false },
+    )
+    useEffect(() => { recheckSettings() }, [pathname, recheckSettings])
+    const showCompanySettings = !!settingsEntry?.data?.visible
+    // Role requests (ROLES_PLAN.md §6.12): for whoever decides them, and
+    // whoever makes them.
+    const canSeeRoleRequests = user?.role !== 'SUPER_ADMIN' && (permissions.can('employees.assign_role') || permissions.can('employees.request_role'))
     // The mark follows the same scope as the names beside it — a Super Admin
     // looking at one company sees that company's logo, not a default mark over
     // that company's module names.
@@ -84,6 +135,14 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     // the page it lands on is what records the attempt. Hiding it instead would
     // mean nobody ever discovers what else the product does — and would make the
     // signal in LockedModuleAttempt impossible to gather.
+    // The sidebar link for the page you're on says so (aria-current), and is
+    // drawn as chosen (.nav-link[aria-current] in globals.css). The dashboard
+    // itself only on its own page, not on every page under /dashboard.
+    const currentFor = (href: string) => {
+        const here = pathname === href || (href !== '/dashboard' && pathname?.startsWith(href + '/'))
+        return here ? { 'aria-current': 'page' as const } : {}
+    }
+
     const isLockedHref = (href: string) => {
         // Not named `module`: Next forbids assigning that identifier, since it
         // collides with the CommonJS global in some bundling paths.
@@ -93,6 +152,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
+            {/* Inside the Nizmo app: pushes on, and a tapped notice opens its page. */}
+            {inApp && <AppPush />}
             {/* Renders nothing; sets the browser tab title for the current route.
                 Mounted once here rather than per page, because 27 of the 35
                 dashboard pages are Client Components and cannot export metadata. */}
@@ -110,6 +171,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     }}
                 />
             )}
+
+            {/* The first thing Tab reaches: past the 10 to 20 sidebar links, to the page itself. */}
+            <a href="#main-content" className="skip-link">{t('skip_to_content' as any)}</a>
 
             {/* Glass Sidebar */}
             <aside className="glass-dark" style={{
@@ -197,7 +261,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         boxSizing: 'border-box',
                                     }}
                                 />
-                            ) : '🚀'}
+                            ) : <span aria-hidden="true">🚀</span>}
                         </span>
                         {!isCollapsed && (
                             <div style={{
@@ -285,7 +349,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
                     {/* Mobile Close */}
                     {isMobile && (
-                        <button
+                        <button aria-label={t('close')}
                             onClick={() => setIsSidebarOpen(false)}
                             style={{ background: 'none', border: 'none', color: 'var(--text-on-accent)', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }}
                         >
@@ -303,7 +367,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     overflowX: 'hidden',
                     scrollbarGutter: 'stable'
                 }}>
-                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
+                    {!isCollapsed && <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--sidebar-fg)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('menu')}</p>}
 
                     {/* Names, icons and hrefs all come from lib/modules.ts, which
                         is also what the Company Settings screen writes overrides
@@ -312,7 +376,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     {MENU_MODULES.map(key => modules.entry(key)).map(link => (
                         <Link
                             key={link.href}
-                            href={link.href}
+                            href={link.href} {...currentFor(link.href)}
                             // Prefetch re-enabled: this is a small fixed set of
                             // links (not one per row of a list that scales with
                             // data — that's what caused the original fan-out),
@@ -347,24 +411,74 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 e.currentTarget.style.transform = 'none'
                             }}
                         >
-                            <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                            <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
                             {!isCollapsed && (
                                 <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     {link.label}
-                                    {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                    {isLockedHref(link.href) && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                 </span>
                             )}
                         </Link>
                     ))}
+
+                    {/* Checking in (ATTENDANCE_PLAN.md §9): only inside the Nizmo
+                        app, where the phone can prove where it is, and only for a
+                        company with the Mobile App add-on. */}
+                    {inApp && user?.role !== 'SUPER_ADMIN' && hasBundle(features.access, 'ATTENDANCE_MOBILE') && (
+                        <Link
+                            href="/dashboard/check-in" {...currentFor("/dashboard/check-in")}
+                            onClick={() => isMobile && setIsSidebarOpen(false)}
+                            title={isCollapsed ? t('ci_title') : ''}
+                            className="nav-link"
+                            style={{
+                                color: 'var(--sidebar-fg)', textDecoration: 'none', padding: '0.85rem 1rem', borderRadius: '1rem',
+                                display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                gap: isCollapsed ? '0' : '1rem', transition: 'all 0.2s', fontSize: '0.95rem', fontWeight: '500',
+                            }}
+                        >
+                            <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>📲</span>
+                            {!isCollapsed && <span>{t('ci_title')}</span>}
+                        </Link>
+                    )}
+
+                    {/* Attendance (ATTENDANCE_PLAN.md Phase 0): everyone in a
+                        company that bought it sees their own punches here. A
+                        company without it shows the locked entry only to those
+                        who would run it, not to every employee. */}
+                    {user?.role !== 'SUPER_ADMIN' && (features.has('ATTENDANCE') || permissions.companyWide('attendance.correct')) && (
+                        <Link
+                            href="/dashboard/attendance" {...currentFor("/dashboard/attendance")}
+                            onClick={() => isMobile && setIsSidebarOpen(false)}
+                            title={isCollapsed ? t('attendance_title') : ''}
+                            className="nav-link"
+                            style={{
+                                color: 'var(--sidebar-fg)', textDecoration: 'none', padding: '0.85rem 1rem', borderRadius: '1rem',
+                                display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                gap: isCollapsed ? '0' : '1rem', transition: 'all 0.2s', fontSize: '0.95rem', fontWeight: '500',
+                            }}
+                        >
+                            <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/attendance') ? 0.45 : 1 }}>🕘</span>
+                            {!isCollapsed && (
+                                <span style={{ opacity: isLockedHref('/dashboard/attendance') ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    {t('attendance_title')}
+                                    {isLockedHref('/dashboard/attendance') && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                </span>
+                            )}
+                        </Link>
+                    )}
 
                     {/* G5: the payslip document was reachable only by typing
                         its URL. This is the way in for the person it is about —
                         everyone, not just managers, which is why it sits in the
                         main menu rather than beside Payroll below. Locked with
                         the rest of the PAYROLL module; the page itself explains
-                        the case where a company has payslips switched off. */}
+                        the case where a company has payslips switched off.
+                        Not for the Super Admin, who is nobody's employee and
+                        has no payslips. While they preview a role it is shown,
+                        as the role would see it, and the page asks for none. */}
+                    {user?.role !== 'SUPER_ADMIN' && (
                     <Link
-                        href="/dashboard/documents"
+                        href="/dashboard/documents" {...currentFor("/dashboard/documents")}
                         onClick={() => isMobile && setIsSidebarOpen(false)}
                         title={isCollapsed ? t('my_payslips') : ''}
                         className="nav-link"
@@ -393,21 +507,22 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             e.currentTarget.style.transform = 'none'
                         }}
                     >
-                        <span style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/documents') ? 0.45 : 1 }}>📄</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref('/dashboard/documents') ? 0.45 : 1 }}>📄</span>
                         {!isCollapsed && (
                             <span style={{ opacity: isLockedHref('/dashboard/documents') ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 {t('my_payslips')}
-                                {isLockedHref('/dashboard/documents') && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                {isLockedHref('/dashboard/documents') && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                             </span>
                         )}
                     </Link>
+                    )}
 
-                    {(['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(user?.role || '')) && (
+                    {(managementLinks.length > 0 || canSeePayroll || canSeeRoleRequests || showCompanySettings) && (
                         <>
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--sidebar-fg)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
                             )}
 
                             {/* Vendors is in here: its custom name used to be the
@@ -416,10 +531,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 override, and the other eight can be renamed too.
                                 A Super Admin, who belongs to no one company, sees
                                 the defaults — see lib/auth.ts. */}
-                            {MANAGEMENT_MODULES.map(key => modules.entry(key)).map(link => (
+                            {managementLinks.map(link => (
                                 <Link
                                     key={link.href}
-                                    href={link.href}
+                                    href={link.href} {...currentFor(link.href)}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
                                     title={isCollapsed ? link.label : ''}
                                     className="nav-link"
@@ -447,11 +562,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
                                     {!isCollapsed && (
                                         <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             {link.label}
-                                            {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                            {isLockedHref(link.href) && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                         </span>
                                     )}
                                 </Link>
@@ -462,11 +577,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 not theirs to rename. It is still gated, by the
                                 same PAYROLL module that already gates salary
                                 history — hand-written here only because its
-                                entry is. Admin and Super Admin only: a Team
+                                entry is. Offered with payroll.view: a Team
                                 Leader manages people, not pay. */}
-                            {['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '') && (
+                            {canSeePayroll && (
                                 <Link
-                                    href="/dashboard/payroll"
+                                    href="/dashboard/payroll" {...currentFor("/dashboard/payroll")}
                                     onClick={() => isMobile && setIsSidebarOpen(false)}
                                     title={isCollapsed ? t('payroll') : ''}
                                     className="nav-link"
@@ -494,11 +609,79 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem' }}>🧾</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>🧾</span>
                                     {!isCollapsed && <span style={{ flex: 1 }}>{t('payroll')}</span>}
                                     {!isCollapsed && isLockedHref('/dashboard/payroll') && (
-                                        <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>
+                                        <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>
                                     )}
+                                </Link>
+                            )}
+                            {canSeeRoleRequests && (
+                                <Link
+                                    href="/dashboard/role-requests" {...currentFor("/dashboard/role-requests")}
+                                    onClick={() => isMobile && setIsSidebarOpen(false)}
+                                    title={isCollapsed ? t('role_requests_title') : ''}
+                                    className="nav-link"
+                                    style={{
+                                        color: 'var(--sidebar-fg)',
+                                        textDecoration: 'none',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '1rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                        gap: isCollapsed ? '0' : '1rem',
+                                        transition: 'all 0.2s',
+                                        fontSize: '0.95rem',
+                                        fontWeight: '500'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = 'var(--veil-10)'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
+                                        e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg)'
+                                        e.currentTarget.style.transform = 'none'
+                                    }}
+                                >
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>🪪</span>
+                                    {!isCollapsed && <span style={{ flex: 1 }}>{t('role_requests_title')}</span>}
+                                </Link>
+                            )}
+                            {showCompanySettings && (
+                                <Link
+                                    href="/dashboard/settings" {...currentFor("/dashboard/settings")}
+                                    onClick={() => isMobile && setIsSidebarOpen(false)}
+                                    title={isCollapsed ? t('company_settings_title') : ''}
+                                    className="nav-link"
+                                    style={{
+                                        color: 'var(--sidebar-fg)',
+                                        textDecoration: 'none',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '1rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                        gap: isCollapsed ? '0' : '1rem',
+                                        transition: 'all 0.2s',
+                                        fontSize: '0.95rem',
+                                        fontWeight: '500'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.background = 'var(--veil-10)'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
+                                        e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : 'translateX(5px)'
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
+                                        e.currentTarget.style.color = 'var(--sidebar-fg)'
+                                        e.currentTarget.style.transform = 'none'
+                                    }}
+                                >
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>⚙️</span>
+                                    {!isCollapsed && <span style={{ flex: 1 }}>{t('company_settings_title')}</span>}
                                 </Link>
                             )}
                         </>
@@ -510,19 +693,26 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             {isCollapsed ? (
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '1rem auto', width: '50%' }} />
                             ) : (
-                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--sidebar-fg)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('system')}</p>
                             )}
 
                             {[
                                 { href: '/dashboard/super-admins', label: t('super_admins'), icon: '🛡️' },
                                 { href: '/dashboard/companies', label: t('companies'), icon: '🏢' },
                                 { href: '/dashboard/packages', label: t('packages'), icon: '📦' },
+                                { href: '/dashboard/public-holidays', label: t('public_holidays_title'), icon: '🗓️' },
+                                { href: '/dashboard/role-templates', label: t('role_templates_title'), icon: '🧩' },
+                                { href: '/dashboard/policy-templates', label: t('ptpl_title'), icon: '⏱️' },
+                                { href: '/dashboard/check-ins', label: t('chk_title'), icon: '📍' },
+                                { href: '/dashboard/who-can', label: t('who_can_title'), icon: '🔎' },
+                                { href: '/dashboard/role-change-requests', label: t('role_changes_title'), icon: '📨' },
+                                { href: '/dashboard/access-reviews', label: t('access_review_title'), icon: '🗂️' },
                                 { href: '/dashboard/all-users', label: t('all_users'), icon: '👥' },
                                 { href: '/dashboard/audit-logs', label: t('audit_logs'), icon: '📜' },
                                 { href: '/dashboard/health', label: t('system_health') || 'System Health', icon: '❤️' },
                                 { href: '/dashboard/system-settings', label: t('system_settings') || 'System Settings', icon: '⚙️' }
                             ].map(link => (
-                                <Link key={link.href} href={link.href} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
+                                <Link key={link.href} href={link.href} {...currentFor(link.href)} onClick={() => isMobile && setIsSidebarOpen(false)} title={isCollapsed ? link.label : ''} className="nav-link" style={{
                                     color: 'var(--sidebar-fg)',
                                     textDecoration: 'none',
                                     padding: '0.85rem 1rem',
@@ -546,11 +736,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                         e.currentTarget.style.transform = 'none'
                                     }}
                                 >
-                                    <span style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: isLockedHref(link.href) ? 0.45 : 1 }}>{link.icon}</span>
                                     {!isCollapsed && (
                                         <span style={{ opacity: isLockedHref(link.href) ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             {link.label}
-                                            {isLockedHref(link.href) && <span style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
+                                            {isLockedHref(link.href) && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                         </span>
                                     )}
                                 </Link>
@@ -598,6 +788,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
             {/* Main Content Wrapper */}
             <main style={{
                 flex: 1,
+                // A flex item is never narrower than its content by default,
+                // and a header subtitle that cuts off with an ellipsis still
+                // counts at full length: a long one widened the whole page.
+                minWidth: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 [isRtl ? 'marginRight' : 'marginLeft']: (!isMobile) ? sidebarWidth : '0', // Dynamic margin based on collapse state
@@ -631,12 +825,15 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     />
                 </div>
 
-                <div style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                {/* The skip link's target: the page itself, after the header's
+                    controls (bell, account menu), which repeat on every page too. */}
+                <div id="main-content" tabIndex={-1} style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
                     {/* Above the page rather than inside it, so it appears on
                         every screen without thirty pages having to remember. It
                         renders nothing at all when the subscription is simply
                         working — there is no dismiss control because grace is
                         not something a customer should be able to dismiss. */}
+                    <PreviewBanner preview={user?.preview} />
                     <SubscriptionBanner />
                     {children}
                 </div>

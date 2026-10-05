@@ -3,9 +3,11 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createSectionSchema, updateSectionSchema } from "@/lib/validations/section.schema"
 import { SectionService } from "@/lib/services/section.service"
+import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session, _body, context) => {
-    const userRole = session.user.role
     const clientId = context.params.id
 
     // Authorization
@@ -16,18 +18,13 @@ export const GET = withStandardHandler(async (req, session, _body, context) => {
 
     if (!client) return ApiResponse.notFound("Client not found")
 
-    if (userRole !== 'SUPER_ADMIN') {
-        const userCompanyId = (session.user as any).companyId
-        if (!userCompanyId || userCompanyId !== client.companyId) {
-            return ApiResponse.notFound() // Hide existence
-        }
+    if (!can(session.user, "clients.view", { companyId: client.companyId })) {
+        return ApiResponse.notFound() // Hide existence
     }
 
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const { page, limit, skip } = parsePaging(searchParams, 10, 1000)
     const search = searchParams.get('search') || ''
-    const skip = (page - 1) * limit
 
     const where: any = { clientId }
     if (search) where.title = { contains: search, mode: 'insensitive' }
@@ -82,8 +79,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+    if (!can(session.user, "clients.edit")) {
         return ApiResponse.forbidden()
     }
 
@@ -101,8 +97,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.forbidden()
+    if (!can(session.user, "clients.delete")) return ApiResponse.forbidden()
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "clients.delete")
 
     const { searchParams } = new URL(req.url)
     const sectionId = searchParams.get('sectionId') || searchParams.get('id')

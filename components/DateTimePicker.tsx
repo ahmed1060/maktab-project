@@ -1,8 +1,10 @@
 'use client'
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useId } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { createPortal } from 'react-dom'
 import { useHydrated } from '@/lib/useHydrated'
+import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
+import { isoOf } from '@/lib/calendar-keys'
 
 interface DateTimePickerProps {
     value: string
@@ -31,10 +33,19 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
         return () => window.removeEventListener('resize', checkMobile)
     }, [])
 
+    const openerId = useId()
+    // A day can't be chosen once all of it is before `min`.
+    const isDayDisabled = (iso: string) => {
+        if (!min) return false
+        const [y, m, d] = iso.split('-').map(Number)
+        return new Date(y, m - 1, d, 23, 59, 59, 999).getTime() < new Date(min).getTime()
+    }
+    const keys = usePickerKeyboard({ isOpen, close: () => setIsOpen(false), currentMonth, setCurrentMonth, isDisabled: isDayDisabled, rtl: locale === 'ar' })
+
     // Opening jumps the calendar to the selected month, or to the earliest
-    // allowed month when nothing valid is selected. Done in the click that
-    // opens it rather than in an effect watching isOpen, which painted the
-    // stale month first and then corrected it.
+    // allowed month when nothing valid is selected, and puts focus on that
+    // day. Done in the click that opens it rather than in an effect watching
+    // isOpen, which painted the stale month first and then corrected it.
     const toggleOpen = () => {
         if (isOpen) {
             setIsOpen(false)
@@ -42,7 +53,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
         }
         const minDate = min ? new Date(min) : new Date()
         const shown = selectedDate && selectedDate >= minDate ? selectedDate : minDate
-        setCurrentMonth(new Date(shown.getFullYear(), shown.getMonth(), 1))
+        keys.opened(startDay(isoOf(shown), min ? isoOf(new Date(min)) : null, null))
         setIsOpen(true)
     }
 
@@ -162,15 +173,22 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
     return (
         <div ref={containerRef} style={{ position: 'relative', width: '100%', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            {label && <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', textAlign: locale === 'ar' ? 'right' : 'left' }}>{label}</label>}
+            {label && <label htmlFor={customTrigger ? undefined : openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', textAlign: locale === 'ar' ? 'right' : 'left' }}>{label}</label>}
             {customTrigger ? (
                 <div onClick={toggleOpen}>
                     {customTrigger}
                 </div>
             ) : (
-                <div
+                <button
+                    type="button"
+                    id={openerId}
+                    aria-haspopup="dialog"
+                    aria-expanded={isOpen}
                     onClick={toggleOpen}
                     style={{
+                        width: '100%',
+                        font: 'inherit',
+                        textAlign: 'inherit',
                         padding: '0.625rem 1rem',
                         borderRadius: '1rem',
                         border: '1px solid var(--veil-40)',
@@ -190,8 +208,8 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                     <span style={{ color: value ? 'var(--text-main)' : 'var(--text-faint)', fontWeight: value ? '600' : '400' }}>
                         {selectedDate ? `${formatDate(selectedDate)} - ${formatTime(selectedDate)}` : t('select_deadline')}
                     </span>
-                    <span style={{ color: 'var(--brand-primary)', fontSize: '1.2rem' }}>📅</span>
-                </div>
+                    <span aria-hidden="true" style={{ color: 'var(--brand-primary-text)', fontSize: '1.2rem' }}>📅</span>
+                </button>
             )}
 
             {isOpen && mounted && createPortal(
@@ -219,6 +237,8 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                         }
                     `}</style>
                     <div
+                        {...keys.popupProps}
+                        aria-label={label || t('select_deadline')}
                         onClick={(e) => e.stopPropagation()}
                         style={{
                             background: 'var(--surface)',
@@ -244,6 +264,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                     <button
                                         type="button"
+                                        aria-label={t('calendar_prev_month' as any)}
                                         onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? 1 : -1)))}
                                         style={{ background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >
@@ -252,6 +273,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                     <div style={{ fontWeight: '800', color: 'var(--text-main)', fontSize: '0.9rem' }}>{monthYear}</div>
                                     <button
                                         type="button"
+                                        aria-label={t('calendar_next_month' as any)}
                                         onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
                                         style={{ background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >
@@ -265,25 +287,25 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                     ))}
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.1rem' }}>
+                                <div {...keys.gridProps} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.1rem' }}>
                                     {days_list.map((date, i) => {
                                         if (!date) return <div key={i} />
                                         const selected = isSelected(date)
                                         const today = isToday(date)
-                                        const disabled = !!(min && new Date(date).setHours(23, 59, 59, 999) < new Date(min).getTime())
+                                        const disabled = isDayDisabled(isoOf(date))
 
                                         return (
                                             <button
                                                 key={i}
                                                 type="button"
+                                                {...keys.dayProps(isoOf(date), !!selected)}
                                                 onClick={() => !disabled && handleDateClick(date)}
-                                                disabled={disabled}
                                                 style={{
                                                     padding: '0.35rem',
                                                     borderRadius: '0.5rem',
                                                     border: 'none',
                                                     background: selected ? 'var(--brand-primary)' : today ? 'color-mix(in srgb, var(--warn-solid) 13%, transparent)' : 'transparent',
-                                                    color: selected ? 'white' : today ? 'var(--warn-solid)' : disabled ? 'var(--border-firm)' : 'var(--text-muted)',
+                                                    color: selected ? 'white' : today ? 'var(--warn-fg-mid)' : disabled ? 'var(--border-firm)' : 'var(--text-muted)',
                                                     fontSize: '0.8rem',
                                                     fontWeight: selected || today ? '700' : '500',
                                                     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -309,13 +331,13 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 paddingTop: isMobile ? '1rem' : '0'
                             }}>
                                 <div style={{ fontSize: '0.85rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <span>🕒</span> {t('time_label' as any) || 'Time'}
+                                    <span aria-hidden="true">🕒</span> {t('time_label' as any) || 'Time'}
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div>
                                         <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('hour_label')}</label>
-                                        <select
+                                        <select aria-label={t('hour_label')}
                                             className="input"
                                             value={currentH12}
                                             onChange={(e) => handleTimeChange('hour', parseInt(e.target.value))}
@@ -333,7 +355,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                                     <div>
                                         <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('minute_label')}</label>
-                                        <select
+                                        <select aria-label={t('minute_label')}
                                             className="input"
                                             value={selectedDate?.getMinutes() || 0}
                                             onChange={(e) => handleTimeChange('minute', parseInt(e.target.value))}
@@ -347,7 +369,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                                     <div>
                                         <label style={{ fontSize: '0.65rem', color: 'var(--text-faint)', fontWeight: 'bold', display: 'block', marginBottom: '0.2rem' }}>{t('am_pm_label')}</label>
-                                        <select
+                                        <select aria-label={t('am_pm_label')}
                                             className="input"
                                             value={currentPeriod}
                                             onChange={(e) => handleTimeChange('period', e.target.value)}
@@ -363,7 +385,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
                         {/* Validation Feedback */}
                         {min && selectedDate && selectedDate < new Date(min) && (
-                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', fontWeight: '600', textAlign: 'center' }}>
+                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.75rem', fontWeight: '600', textAlign: 'center' }}>
                                 {t('min_selection_error')}
                             </div>
                         )}

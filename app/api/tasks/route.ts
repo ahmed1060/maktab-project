@@ -5,6 +5,7 @@ import { createTaskSchema } from "@/lib/validations/task.schema"
 import { TaskService } from "@/lib/services/task.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildTaskWhereClause } from "@/lib/services/task-query"
+import { shapeTask } from "@/lib/permissions/shape"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -40,7 +41,9 @@ export const GET = withStandardHandler(async (req, session) => {
     ])
 
     return ApiResponse.success({
-        data: tasks,
+        // Each task as this caller may see it: an employee on a shared task
+        // gets their own line of what each assignee is paid, not the others'.
+        data: tasks.map(task => shapeTask(session.user, task)),
         total,
         page,
         totalPages: Math.ceil(total / limit)
@@ -57,7 +60,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
     try {
         // 2. Delegate to Service
         const result = await TaskService.create(validation.data, session)
-        return ApiResponse.success(result, 201)
+        return ApiResponse.success(shapeTask(session.user, result), 201)
     } catch (error: any) {
         // 3. Error Mapping
         if (error.message === 'DEADLINE_IN_PAST') return ApiResponse.badRequest("Deadline cannot be in the past")
@@ -71,6 +74,12 @@ export const POST = withStandardHandler(async (req, session, json) => {
         throw error // bubble up to withStandardHandler for 500
     }
 }, {
+    // Creating work for people is a manager's act. The route had no gate of
+    // its own, so while the screen only offered "Create task" to managers, an
+    // Employee could still POST here and create a task for anyone in their
+    // company, an Admin included — checkAssignees only checks company, and
+    // team only for a Team Leader. Bulk creation was already gated this way.
+    permission: "tasks.create",
     audit: {
         action: 'CREATE_TASK',
         entityType: 'TASK',

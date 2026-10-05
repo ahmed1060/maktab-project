@@ -1,20 +1,22 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
+import { assertStepUp } from "@/lib/step-up"
 
 export const DELETE = withStandardHandler(async (req, session, json, { params }) => {
     const taskId = params.id
-    const userRole = session.user.role
-    // userRole already declared above
 
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    if (!can(session.user, "tasks.delete")) {
         return ApiResponse.forbidden("Only Admins and Team Leaders can delete tasks")
     }
 
     // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK', "tasks.delete")
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "tasks.delete")
 
     try {
         await TaskService.delete(taskId, session)

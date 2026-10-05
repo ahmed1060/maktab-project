@@ -137,7 +137,7 @@ export default function CompanyPaymentsPage() {
         <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexDirection: 'row' }}>
                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <button
+                    <button aria-label={t('back_to_companies')}
                         onClick={() => router.push('/dashboard/companies')}
                         className="glass"
                         style={{
@@ -147,7 +147,7 @@ export default function CompanyPaymentsPage() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginBottom: '0.75rem',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -188,7 +188,7 @@ export default function CompanyPaymentsPage() {
                 </div>
             ) : payments.length === 0 ? (
                 <div className="glass" style={{ padding: '4rem', textAlign: 'center', borderRadius: '1rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
+                    <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
                     <h3 style={{ margin: '0 0 0.5rem' }}>{t('no_payments_found')}</h3>
                     <p style={{ color: 'var(--text-soft)', margin: 0 }}>{t('no_payments_hint')}</p>
                 </div>
@@ -259,11 +259,11 @@ export default function CompanyPaymentsPage() {
                                                     border: payment.status === 'PAID' ? '1px solid var(--border)' : 'none'
                                                 }}
                                             >
-                                                {payment.status === 'PAID' ? `✅ ${t('status_paid')}` : t('mark_as_paid')}
+                                                {payment.status === 'PAID' ? <><span aria-hidden="true">✅</span> {t('status_paid')}</> : t('mark_as_paid')}
                                             </button>
 
                                             {payment.status === 'UNPAID' && (
-                                                <button
+                                                <button aria-label={t('delete')}
                                                     onClick={() => handleDelete(payment.id)}
                                                     className="btn"
                                                     style={{
@@ -304,7 +304,7 @@ export default function CompanyPaymentsPage() {
                 <form onSubmit={handleAddPayment} style={{ padding: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                     <div style={{ marginBottom: '1.5rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>{t('subscription_type')}</label>
-                        <select
+                        <select aria-label={t('subscription_type')}
                             className="input"
                             value={formData.subscriptionType}
                             onChange={e => setFormData({ ...formData, subscriptionType: e.target.value as any })}
@@ -320,7 +320,7 @@ export default function CompanyPaymentsPage() {
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500' }}>{t('total_cost')}</label>
                         <div style={{ position: 'relative' }}>
                             <span style={{ position: 'absolute', [locale === 'ar' ? 'right' : 'left']: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-soft)' }}>$</span>
-                            <input
+                            <input aria-label={t('total_cost')}
                                 type="number"
                                 step="0.01"
                                 className="input"

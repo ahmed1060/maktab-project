@@ -10,7 +10,6 @@ import { createPortal } from 'react-dom'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Modal from '@/components/Modal'
 import EmployeeFilter from '@/components/EmployeeFilter'
@@ -18,6 +17,8 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import Pagination from '@/components/Pagination'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useCan } from '@/lib/useCan'
+import { useDialog } from '@/lib/useDialog'
 
 interface Note {
     id: string
@@ -65,17 +66,20 @@ export default function SectionNotesPage() {
     const [notice, setNotice] = useState<Notice | null>(null)
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, note: Note | null }>({ isOpen: false, note: null })
     const { setTitle } = useHeader()
-    const { data: session } = useSession()
     const { showToast } = useToast()
     const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false)
     const [editSectionTitle, setEditSectionTitle] = useState('')
     const [isEditingSection, setIsEditingSection] = useState(false)
 
 
-    const canEdit = !!session?.user
-    const canDelete = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
+    // Everyone may add and edit notes; deleting one is narrower.
+    const { can } = useCan()
+    const canEdit = can('clients.contribute')
+    const canDelete = can('clients.delete')
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const noteDialog = useDialog(isModalOpen, () => !isSubmitting && setIsModalOpen(false))
+    const editNoteDialog = useDialog(isEditModalOpen, () => !isSubmitting && setIsEditModalOpen(false))
     const [editingNote, setEditingNote] = useState<Note | null>(null)
     const [editNoteContent, setEditNoteContent] = useState('')
     const [editExpiryDate, setEditExpiryDate] = useState('')
@@ -388,7 +392,7 @@ export default function SectionNotesPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -435,7 +439,7 @@ export default function SectionNotesPage() {
                     <LoadingSpinner />
                 ) : filteredNotes.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                        <span className="text-4xl mb-2">📝</span>
+                        <span aria-hidden="true" className="text-4xl mb-2">📝</span>
                         <h3 className="text-lg font-bold text-slate-800">
                             {searchQuery ? t('no_search_results' as any) || 'No matching notes found' : t('no_notes_found' as any)}
                         </h3>
@@ -537,7 +541,7 @@ export default function SectionNotesPage() {
                                                     rel="noopener noreferrer"
                                                     className="hover:scale-110 transition-transform"
                                                     style={{
-                                                        color: 'var(--primary)',
+                                                        color: 'var(--brand-primary-text)',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '0.25rem',
@@ -605,7 +609,7 @@ export default function SectionNotesPage() {
 
                                         <div style={{ display: 'flex', gap: '0.75rem', position: 'absolute', bottom: '0', [locale === 'ar' ? 'left' : 'right']: '0' }}>
                                             {canEdit && (
-                                                <button
+                                                <button aria-label={t('edit')}
                                                     onClick={() => {
                                                         setEditingNote(note)
                                                         setEditNoteContent(note.content)
@@ -623,7 +627,7 @@ export default function SectionNotesPage() {
                                                 </button>
                                             )}
                                             {canDelete && (
-                                                <button
+                                                <button aria-label={t('delete')}
                                                     onClick={() => setDeleteConfirm({ isOpen: true, note })}
                                                     style={{ padding: '0.4rem', color: 'var(--text-soft)', background: 'none', border: 'none', cursor: 'pointer' }}
                                                     className="hover:text-red-500 transition-colors"
@@ -653,10 +657,10 @@ export default function SectionNotesPage() {
                             alignItems: 'center', zIndex: 9999
                         }}>
                             <div
-                                className="absolute inset-0"
+                                className="modal-backdrop"
                                 onClick={() => !isSubmitting && setIsModalOpen(false)}
                             />
-                            <div style={{
+                            <div {...noteDialog.panelProps} style={{
                                 background: 'var(--surface)',
                                 padding: '2rem',
                                 borderRadius: '1.5rem',
@@ -671,8 +675,8 @@ export default function SectionNotesPage() {
                                 border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('add_note_button' as any)}</h2>
-                                    <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
+                                    <h2 id={noteDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('add_note_button' as any)}</h2>
+                                    <span style={{ fontSize: '0.75rem', color: newNoteContent.length > MAX_CHARS ? 'var(--danger-fg-strong)' : 'var(--text-soft)' }}>
                                         {newNoteContent.length}/{MAX_CHARS}
                                     </span>
                                 </div>
@@ -681,7 +685,7 @@ export default function SectionNotesPage() {
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
-                                        <textarea
+                                        <textarea aria-label={t('note_content_label' as any)}
                                             value={newNoteContent}
                                             onChange={(e) => setNewNoteContent(e.target.value)}
                                             className="input"
@@ -692,7 +696,6 @@ export default function SectionNotesPage() {
                                                 borderRadius: '0.5rem',
                                                 minHeight: '120px',
                                                 lineHeight: '1.5',
-                                                outline: 'none',
                                                 marginBottom: '0.5rem',
                                                 textAlign: locale === 'ar' ? 'right' : 'left'
                                             }}
@@ -700,7 +703,7 @@ export default function SectionNotesPage() {
                                             autoFocus
                                         />
                                         {newNoteContent.length > MAX_CHARS && (
-                                            <p style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            <p style={{ color: 'var(--danger-fg-strong)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
                                                 {t('note_limit_exceeded' as any)}
                                             </p>
                                         )}
@@ -717,6 +720,7 @@ export default function SectionNotesPage() {
                                             style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
+                                                aria-label={t('attachments_label' as any)}
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -725,7 +729,7 @@ export default function SectionNotesPage() {
                                                 disabled={uploading}
                                             />
                                             <div style={{ pointerEvents: 'none' }}>
-                                                <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                                <div aria-hidden="true" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                                             </div>
                                         </div>
@@ -735,10 +739,10 @@ export default function SectionNotesPage() {
                                                 {pendingFiles.map((f, i) => (
                                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                            <span style={{ fontSize: '1rem' }}>📄</span>
+                                                            <span aria-hidden="true" style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
-                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -758,7 +762,7 @@ export default function SectionNotesPage() {
                                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
-                                            <input
+                                            <input aria-label={t('reminder_days_label' as any)}
                                                 type="number"
                                                 value={reminderDays}
                                                 onChange={(e) => setReminderDays(e.target.value)}
@@ -833,7 +837,7 @@ export default function SectionNotesPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
-                            <input
+                            <input aria-label={t('section_title_label' as any)}
                                 type="text"
                                 value={editSectionTitle}
                                 onChange={(e) => setEditSectionTitle(e.target.value)}
@@ -873,10 +877,10 @@ export default function SectionNotesPage() {
                             alignItems: 'center', zIndex: 9999
                         }}>
                             <div
-                                className="absolute inset-0"
+                                className="modal-backdrop"
                                 onClick={() => !isSubmitting && setIsEditModalOpen(false)}
                             />
-                            <div style={{
+                            <div {...editNoteDialog.panelProps} style={{
                                 background: 'var(--surface)',
                                 padding: '2rem',
                                 borderRadius: '1.5rem',
@@ -891,8 +895,8 @@ export default function SectionNotesPage() {
                                 border: '1px solid var(--veil-40)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
-                                    <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? 'var(--danger-solid)' : 'var(--text-soft)' }}>
+                                    <h2 id={editNoteDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', margin: 0 }}>{t('edit_note_title' as any) || 'Edit Note'}</h2>
+                                    <span style={{ fontSize: '0.75rem', color: editNoteContent.length > MAX_CHARS ? 'var(--danger-fg-strong)' : 'var(--text-soft)' }}>
                                         {editNoteContent.length}/{MAX_CHARS}
                                     </span>
                                 </div>
@@ -901,7 +905,7 @@ export default function SectionNotesPage() {
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {t('note_content_label' as any)}
                                         </label>
-                                        <textarea
+                                        <textarea aria-label={t('note_content_label' as any)}
                                             value={editNoteContent}
                                             onChange={(e) => setEditNoteContent(e.target.value)}
                                             className="input"
@@ -912,7 +916,6 @@ export default function SectionNotesPage() {
                                                 borderRadius: '0.5rem',
                                                 minHeight: '120px',
                                                 lineHeight: '1.5',
-                                                outline: 'none',
                                                 marginBottom: '0.5rem',
                                                 textAlign: locale === 'ar' ? 'right' : 'left'
                                             }}
@@ -920,7 +923,7 @@ export default function SectionNotesPage() {
                                             autoFocus
                                         />
                                         {editNoteContent.length > MAX_CHARS && (
-                                            <p style={{ color: 'var(--danger-solid)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                                            <p style={{ color: 'var(--danger-fg-strong)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
                                                 {t('note_limit_exceeded' as any)}
                                             </p>
                                         )}
@@ -939,12 +942,12 @@ export default function SectionNotesPage() {
                                                     return (
                                                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                                <span style={{ fontSize: '1rem' }}>🔗</span>
+                                                                <span aria-hidden="true" style={{ fontSize: '1rem' }}>🔗</span>
                                                                 <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--info-fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                     {typeof url === 'string' ? url.split('/').pop() : url.name}
                                                                 </div>
                                                             </div>
-                                                            <button type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                            <button aria-label={t('remove' as any)} type="button" onClick={() => handleRemoveExistingAttachment(url)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                         </div>
                                                     )
                                                 })}
@@ -958,6 +961,7 @@ export default function SectionNotesPage() {
                                             style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '1.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                                         >
                                             <input
+                                                aria-label={t('attachments_label' as any)}
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -966,7 +970,7 @@ export default function SectionNotesPage() {
                                                 disabled={uploading}
                                             />
                                             <div style={{ pointerEvents: 'none' }}>
-                                                <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
+                                                <div aria-hidden="true" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>☁️</div>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('upload_drag_files_msg')}</div>
                                             </div>
                                         </div>
@@ -976,10 +980,10 @@ export default function SectionNotesPage() {
                                                 {pendingFiles.map((f, i) => (
                                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                                                            <span style={{ fontSize: '1rem' }}>📄</span>
+                                                            <span aria-hidden="true" style={{ fontSize: '1rem' }}>📄</span>
                                                             <div style={{ fontSize: '0.75rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
                                                         </div>
-                                                        <button type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-solid)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
+                                                        <button aria-label={t('remove' as any)} type="button" onClick={() => removePendingFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>×</button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -999,7 +1003,7 @@ export default function SectionNotesPage() {
                                             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                                 {t('reminder_days_label' as any)}
                                             </label>
-                                            <input
+                                            <input aria-label={t('reminder_days_label' as any)}
                                                 type="number"
                                                 value={editReminderDays}
                                                 onChange={(e) => setEditReminderDays(e.target.value)}

@@ -14,6 +14,8 @@ import Modal from '@/components/Modal'
 import { useToast } from '@/context/ToastContext'
 import Pagination from '@/components/Pagination'
 import { useHydrated } from '@/lib/useHydrated'
+import { useCan } from '@/lib/useCan'
+import { useDialog } from '@/lib/useDialog'
 
 interface Section {
     id: string
@@ -56,12 +58,15 @@ const NO_SECTIONS: Section[] = []
 
 export default function ClientDetailsPage() {
     const { t, locale } = useLanguage()
+    // Everyone may add a section; renaming and deleting one are narrower.
+    const { can } = useCan()
     const params = useParams()
     const clientId = params.id as string
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [newSectionTitle, setNewSectionTitle] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const sectionDialog = useDialog(isModalOpen, () => !isSubmitting && setIsModalOpen(false))
     const [page, setPage] = useState(1)
     const limit = 10
     const { setTitle } = useHeader()
@@ -215,7 +220,7 @@ export default function ClientDetailsPage() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                <div className="text-red-500 text-5xl">⚠️</div>
+                <div aria-hidden="true" className="text-red-500 text-5xl">⚠️</div>
                 <h2 className="text-2xl font-bold text-slate-800">{t('failed_save_generic')}</h2>
                 <p className="text-slate-500 max-w-md">{error}</p>
                 <div className="flex gap-4">
@@ -244,7 +249,7 @@ export default function ClientDetailsPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--primary)',
+                            color: 'var(--brand-primary-text)',
                             textDecoration: 'none',
                             transition: 'all 0.3s ease',
                             border: '1px solid var(--veil-40)',
@@ -292,7 +297,7 @@ export default function ClientDetailsPage() {
                     </div>
                 ) : filteredSections.length === 0 ? (
                     <div className="glass-card flex flex-col items-center justify-center py-12 text-center text-slate-500">
-                        <span className="text-4xl mb-2">📂</span>
+                        <span aria-hidden="true" className="text-4xl mb-2">📂</span>
                         <h3 className="text-lg font-bold text-slate-800">{t('no_sections_found' as any)}</h3>
                         <p className="max-w-xs mx-auto mt-1 mb-4">
                             {searchQuery ? `${t('no_matches_found' as any)} "${searchQuery}"` : t('add_first_section_msg' as any)}
@@ -391,46 +396,50 @@ export default function ClientDetailsPage() {
                                             gap: '0.4rem',
                                             width: isMobile ? '100%' : 'auto'
                                         }}>
-                                            <button
-                                                onClick={() => {
-                                                    setEditingSectionId(section.id)
-                                                    setEditSectionTitle(section.title)
-                                                    setIsEditSectionModalOpen(true)
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: 'var(--info-bg-subtle)',
-                                                    color: 'var(--info-solid-hover)',
-                                                    padding: '0.4rem 0.85rem',
-                                                    fontSize: '0.8125rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    whiteSpace: 'nowrap',
-                                                    flex: isMobile ? 1 : 'unset'
-                                                }}
-                                            >
-                                                {t('edit')}
-                                            </button>
+                                            {can('clients.edit') && (
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingSectionId(section.id)
+                                                        setEditSectionTitle(section.title)
+                                                        setIsEditSectionModalOpen(true)
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'var(--info-bg-subtle)',
+                                                        color: 'var(--info-solid-hover)',
+                                                        padding: '0.4rem 0.85rem',
+                                                        fontSize: '0.8125rem',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap',
+                                                        flex: isMobile ? 1 : 'unset'
+                                                    }}
+                                                >
+                                                    {t('edit')}
+                                                </button>
+                                            )}
 
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault()
-                                                    setDeleteConfirm({ isOpen: true, section })
-                                                }}
-                                                className="btn"
-                                                style={{
-                                                    background: 'var(--danger-bg-subtle)',
-                                                    color: 'var(--danger-solid-hover)',
-                                                    padding: '0.4rem 0.85rem',
-                                                    fontSize: '0.8125rem',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    whiteSpace: 'nowrap',
-                                                    flex: isMobile ? 1 : 'unset'
-                                                }}
-                                            >
-                                                {t('delete')}
-                                            </button>
+                                            {can('clients.delete') && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault()
+                                                        setDeleteConfirm({ isOpen: true, section })
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'var(--danger-bg-subtle)',
+                                                        color: 'var(--danger-solid-hover)',
+                                                        padding: '0.4rem 0.85rem',
+                                                        fontSize: '0.8125rem',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        whiteSpace: 'nowrap',
+                                                        flex: isMobile ? 1 : 'unset'
+                                                    }}
+                                                >
+                                                    {t('delete')}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -498,18 +507,18 @@ export default function ClientDetailsPage() {
                     alignItems: 'center', zIndex: 9999
                 }}>
                     <div
-                        className="absolute inset-0"
+                        className="modal-backdrop"
                         onClick={() => !isSubmitting && setIsModalOpen(false)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_section_title' as any)}</h2>
+                    <div {...sectionDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={sectionDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_section_title' as any)}</h2>
 
                         <form onSubmit={handleCreateSection}>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     {t('section_title_label' as any)}
                                 </label>
-                                <input
+                                <input aria-label={t('section_title_label' as any)}
                                     type="text"
                                     required
                                     value={newSectionTitle}
@@ -520,7 +529,6 @@ export default function ClientDetailsPage() {
                                         padding: '0.75rem 1rem',
                                         borderRadius: '0.5rem',
                                         border: '1px solid var(--border)',
-                                        outline: 'none',
                                         fontSize: '0.875rem',
                                         textAlign: locale === 'ar' ? 'right' : 'left'
                                     }}
@@ -616,7 +624,7 @@ export default function ClientDetailsPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('client_name_label')}
                             </label>
-                            <input
+                            <input aria-label={t('client_name_label')}
                                 type="text"
                                 required
                                 value={editClientName}
@@ -626,7 +634,6 @@ export default function ClientDetailsPage() {
                                     padding: '0.75rem 1rem',
                                     borderRadius: '0.5rem',
                                     border: '1px solid var(--border)',
-                                    outline: 'none',
                                     fontSize: '0.875rem',
                                     textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}
@@ -664,7 +671,7 @@ export default function ClientDetailsPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {t('section_title_label' as any)}
                             </label>
-                            <input
+                            <input aria-label={t('section_title_label' as any)}
                                 type="text"
                                 required
                                 value={editSectionTitle}
@@ -674,7 +681,6 @@ export default function ClientDetailsPage() {
                                     padding: '0.75rem 1rem',
                                     borderRadius: '0.5rem',
                                     border: '1px solid var(--border)',
-                                    outline: 'none',
                                     fontSize: '0.875rem',
                                     textAlign: locale === 'ar' ? 'right' : 'left'
                                 }}

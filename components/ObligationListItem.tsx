@@ -48,19 +48,16 @@ export default function ObligationListItem({ obligation, isHighlighted }: Obliga
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <h3
-                        style={{ margin: 0, cursor: 'pointer', transition: 'color 0.2s', color: 'inherit' }}
-                        title={obligation.title}
-                        onClick={() => setIsModalOpen(true)}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--info-solid-hover)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
-                    >
-                        {obligation.title.length > 50 ? obligation.title.substring(0, 50) + '...' : obligation.title}
+                    {/* The title opens the quick view: a button, so the keyboard reaches it too (audit L1). */}
+                    <h3 style={{ margin: 0 }}>
+                        <button type="button" className="title-button" title={obligation.title} onClick={() => setIsModalOpen(true)}>
+                            {obligation.title.length > 50 ? obligation.title.substring(0, 50) + '...' : obligation.title}
+                        </button>
                     </h3>
                     <span style={{
                         padding: '0.15rem 0.5rem',
                         borderRadius: '0.5rem',
-                        background: 'var(--info-solid)',
+                        background: 'var(--info-fill)',
                         color: 'var(--text-on-accent)',
                         fontWeight: 'bold',
                         fontSize: '0.7rem'

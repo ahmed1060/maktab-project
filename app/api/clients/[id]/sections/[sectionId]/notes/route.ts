@@ -3,14 +3,15 @@ import { ApiResponse } from "@/lib/api-response"
 import { noteSchema } from "@/lib/validations/note.schema"
 import { NoteService } from "@/lib/services/note.service"
 import { prisma } from "@/lib/prisma"
+import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session, _body, { params }) => {
     const { sectionId } = params
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const { page, limit, skip } = parsePaging(searchParams, 10)
     const search = searchParams.get('search') || ''
-    const skip = (page - 1) * limit
 
     try {
         // Auth Check: Verify section belongs to company
@@ -21,10 +22,8 @@ export const GET = withStandardHandler(async (req, session, _body, { params }) =
 
         if (!section) return ApiResponse.notFound("Section not found")
 
-        if (session.user.role !== 'SUPER_ADMIN') {
-            if (section.client.companyId !== session.user.companyId) {
-                return ApiResponse.forbidden("Access denied")
-            }
+        if (!can(session.user, "clients.view", { companyId: section.client.companyId })) {
+            return ApiResponse.forbidden("Access denied")
         }
 
         const result = await NoteService.getMany(sectionId, skip, limit, search)
@@ -57,10 +56,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
 
         if (!section) return ApiResponse.notFound("Section not found")
 
-        if (session.user.role !== 'SUPER_ADMIN') {
-            if (section.client.companyId !== session.user.companyId) {
-                return ApiResponse.forbidden("Access denied")
-            }
+        if (!can(session.user, "clients.contribute", { companyId: section.client.companyId })) {
+            return ApiResponse.forbidden("Access denied")
         }
 
         // 3. Service
@@ -91,10 +88,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
         if (!note) return ApiResponse.notFound("Note not found")
 
-        if (session.user.role !== 'SUPER_ADMIN') {
-            if (note.section.client.companyId !== session.user.companyId) {
-                return ApiResponse.forbidden("Access denied")
-            }
+        // Any note, not only one's own: the notes are the company's.
+        if (!can(session.user, "clients.contribute", { companyId: note.section.client.companyId })) {
+            return ApiResponse.forbidden("Access denied")
         }
 
         // 3. Service
@@ -112,8 +108,8 @@ export const DELETE = withStandardHandler(async (req, session) => {
     if (!noteId) return ApiResponse.badRequest("Note ID required")
 
     try {
-        // 1. Auth Check: Super Admin or Admin only
-        if (!['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
+        // 1. Auth Check
+        if (!can(session.user, "clients.delete")) {
             return ApiResponse.forbidden("Unauthorized")
         }
 
@@ -124,11 +120,11 @@ export const DELETE = withStandardHandler(async (req, session) => {
 
         if (!note) return ApiResponse.notFound("Note not found")
 
-        if (session.user.role !== 'SUPER_ADMIN') {
-            if (note.section.client.companyId !== session.user.companyId) {
-                return ApiResponse.forbidden("Access denied")
-            }
+        if (!can(session.user, "clients.delete", { companyId: note.section.client.companyId })) {
+            return ApiResponse.forbidden("Access denied")
         }
+        // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+        await assertStepUp(session, "clients.delete")
 
         // 2. Service
         await NoteService.delete(noteId, session)

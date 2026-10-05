@@ -79,7 +79,7 @@ export default function TaskTransferModal({
                             <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)', textAlign: 'center' }}>{t('no_data_available')}</div>
                         )
                     ) : userFetchError ? (
-                        <div style={{ fontSize: '0.9rem', color: 'var(--danger-solid)' }}>{t('failed_fetch_data')}</div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--danger-fg-strong)' }}>{t('failed_fetch_data')}</div>
                     ) : (
                         <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
                     )}

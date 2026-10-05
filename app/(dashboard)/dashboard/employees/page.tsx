@@ -15,6 +15,7 @@ import { useHeader } from '@/context/HeaderContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { fetcher } from '@/lib/swr-fetcher'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
+import { useCan } from '@/lib/useCan'
 
 interface Employee {
     id: string
@@ -40,6 +41,11 @@ export default function EmployeesPage() {
     const modules = useModules()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+    const { can, companyWide } = useCan()
+    // The actions under each person, each offered with the permission its
+    // route checks; the row of them is shown when any is.
+    const canActOnPeople = can('employees.edit') || can('salary.view') || can('salary_adjustments.manage')
+        || can('requests.reset_points') || can('employees.delete')
     const { selectedCompanyId } = useCompany()
 
     const [page, setPage] = useState(1)
@@ -76,7 +82,8 @@ export default function EmployeesPage() {
         if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
         queryParams.set('page', page.toString())
         queryParams.set('limit', limit.toString())
-        queryParams.set('excludeRole', session.user.role === 'TEAM_LEADER' ? 'ADMIN,SUPER_ADMIN' : 'SUPER_ADMIN')
+        // Someone who sees only a team does not list the company's Admins.
+        queryParams.set('excludeRole', can('employees.view') && !companyWide('employees.view') ? 'ADMIN,SUPER_ADMIN' : 'SUPER_ADMIN')
         if ((session.user as any).id) queryParams.set('excludeUserId', (session.user as any).id)
         if (filters.search) queryParams.set('search', filters.search)
         if (filters.status) queryParams.set('status', filters.status)
@@ -95,7 +102,7 @@ export default function EmployeesPage() {
     const totalEmployees: number = result?.data?.total || 0
     const loading = isLoading || isValidating
 
-    const canAssignTeams = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+    const canAssignTeams = can('employees.assign_team')
 
     useEffect(() => {
         if (!canAssignTeams) return
@@ -272,7 +279,9 @@ export default function EmployeesPage() {
         return <LoadingSpinner message={t('loading_users')} />
     }
 
-    if (userRole === 'EMPLOYEE') {
+    // Once the session is known: before it loads nobody holds anything, and
+    // this would flash "access denied" at everyone on the way in.
+    if (session?.user && !can('employees.view')) {
         return <AccessDenied />
     }
 
@@ -300,7 +309,7 @@ export default function EmployeesPage() {
                     maxWidth: '350px',
                     animation: 'slideInRight 0.3s ease-out'
                 }}>
-                    <span style={{ fontSize: '1rem' }}>
+                    <span aria-hidden="true" style={{ fontSize: '1rem' }}>
                         {alert.type === 'success' ? '✓' : '✕'}
                     </span>
                     {alert.message}
@@ -342,7 +351,7 @@ export default function EmployeesPage() {
                     ...(userRole === 'SUPER_ADMIN' ? [{ label: t('status_suspended'), value: 'SUSPENDED' }] : [])
                 ]}
                 primaryAction={
-                    ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                    can('employees.create') && (
                         <Link href="/dashboard/employees/new" className="btn btn-primary" style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem', textDecoration: 'none' }}>
                             {t('add_employee')}
                         </Link>
@@ -359,6 +368,7 @@ export default function EmployeesPage() {
                         {t('bulk_selected').replace('{count}', String(picked.size))}
                     </strong>
                     <select
+                        aria-label={t('team_leader_label')}
                         className="input"
                         value={bulkLeaderId}
                         onChange={e => setBulkLeaderId(e.target.value)}
@@ -380,7 +390,7 @@ export default function EmployeesPage() {
 
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))',
                 gap: '1rem',
                 marginBottom: '2rem',
                 opacity: loading ? 0.6 : 1,
@@ -425,7 +435,7 @@ export default function EmployeesPage() {
                                             width: '12px',
                                             height: '12px',
                                             borderRadius: '50%',
-                                            background: emp.status === 'SUSPENDED' ? 'var(--danger-solid)' : emp.status === 'ACTIVE' ? 'var(--ok-solid-alt)' : emp.status === 'OFFLINE' ? 'var(--warn-solid)' : 'var(--text-faint)',
+                                            background: emp.status === 'SUSPENDED' ? 'var(--danger-fill)' : emp.status === 'ACTIVE' ? 'var(--ok-fill-alt)' : emp.status === 'OFFLINE' ? 'var(--warn-fill)' : 'var(--text-faint)',
                                             cursor: userRole === 'SUPER_ADMIN' ? 'pointer' : 'default',
                                             flexShrink: 0,
                                             boxShadow: `0 0 0 2px ${emp.status === 'SUSPENDED' ? 'var(--danger-border)' : emp.status === 'ACTIVE' ? 'var(--ok-bg-strong)' : emp.status === 'OFFLINE' ? 'var(--warn-bg-yellow)' : 'var(--border)'}`
@@ -532,9 +542,9 @@ export default function EmployeesPage() {
                                 )}
                             </div>
 
-                            {['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                            {canActOnPeople && (
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
-                                    {(emp.role !== 'ADMIN' || userRole === 'SUPER_ADMIN') && (
+                                    {can('employees.edit') && (emp.role !== 'ADMIN' || userRole === 'SUPER_ADMIN') && (
                                         <Link
                                             href={`/dashboard/employees/${emp.id}`}
                                             prefetch={false}
@@ -555,7 +565,7 @@ export default function EmployeesPage() {
                                             {t('edit')}
                                         </Link>
                                     )}
-                                    {emp.role !== 'ADMIN' && (
+                                    {can('salary.view') && emp.role !== 'ADMIN' && (
                                         <Link
                                             href={`/dashboard/employees/${emp.id}/history`}
                                             prefetch={false}
@@ -578,64 +588,68 @@ export default function EmployeesPage() {
                                     )}
                                     {emp.role !== 'ADMIN' && (
                                         <>
-                                            <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                                                <Link
-                                                    href={`/dashboard/employees/${emp.id}/bonus`}
-                                                    prefetch={false}
+                                            {can('salary_adjustments.manage') && (
+                                                <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                                                    <Link
+                                                        href={`/dashboard/employees/${emp.id}/bonus`}
+                                                        prefetch={false}
+                                                        className="btn"
+                                                        style={{
+                                                            background: 'var(--ok-bg-subtle)',
+                                                            color: 'var(--ok-fg)',
+                                                            padding: '0.5rem 0.75rem',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '800',
+                                                            textDecoration: 'none',
+                                                            borderRadius: '0.75rem',
+                                                            flex: 1,
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        + {t('add_bonus')}
+                                                    </Link>
+                                                    <Link
+                                                        href={`/dashboard/employees/${emp.id}/deduction`}
+                                                        prefetch={false}
+                                                        className="btn"
+                                                        style={{
+                                                            background: 'var(--danger-bg-subtle)',
+                                                            color: 'var(--danger-fg)',
+                                                            padding: '0.5rem 0.75rem',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '800',
+                                                            textDecoration: 'none',
+                                                            borderRadius: '0.75rem',
+                                                            flex: 1,
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        - {t('add_deduction')}
+                                                    </Link>
+                                                </div>
+                                            )}
+                                            {can('requests.reset_points') && (
+                                                <button
+                                                    onClick={() => handleResetPoints(emp.id)}
+                                                    disabled={resettingPoints === emp.id}
                                                     className="btn"
                                                     style={{
-                                                        background: 'var(--ok-bg-subtle)',
-                                                        color: 'var(--ok-fg)',
+                                                        background: 'var(--warn-bg-yellow-subtle)',
+                                                        color: 'var(--warn-fg)',
                                                         padding: '0.5rem 0.75rem',
                                                         fontSize: '0.8rem',
-                                                        fontWeight: '800',
-                                                        textDecoration: 'none',
+                                                        fontWeight: '700',
                                                         borderRadius: '0.75rem',
                                                         flex: 1,
-                                                        textAlign: 'center'
+                                                        opacity: resettingPoints === emp.id ? 0.7 : 1
                                                     }}
                                                 >
-                                                    + {t('add_bonus')}
-                                                </Link>
-                                                <Link
-                                                    href={`/dashboard/employees/${emp.id}/deduction`}
-                                                    prefetch={false}
-                                                    className="btn"
-                                                    style={{
-                                                        background: 'var(--danger-bg-subtle)',
-                                                        color: 'var(--danger-fg)',
-                                                        padding: '0.5rem 0.75rem',
-                                                        fontSize: '0.8rem',
-                                                        fontWeight: '800',
-                                                        textDecoration: 'none',
-                                                        borderRadius: '0.75rem',
-                                                        flex: 1,
-                                                        textAlign: 'center'
-                                                    }}
-                                                >
-                                                    - {t('add_deduction')}
-                                                </Link>
-                                            </div>
-                                            <button
-                                                onClick={() => handleResetPoints(emp.id)}
-                                                disabled={resettingPoints === emp.id}
-                                                className="btn"
-                                                style={{
-                                                    background: 'var(--warn-bg-yellow-subtle)',
-                                                    color: 'var(--warn-fg)',
-                                                    padding: '0.5rem 0.75rem',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: '700',
-                                                    borderRadius: '0.75rem',
-                                                    flex: 1,
-                                                    opacity: resettingPoints === emp.id ? 0.7 : 1
-                                                }}
-                                            >
-                                                {resettingPoints === emp.id ? t('resetting') : t('reset_points')}
-                                            </button>
+                                                    {resettingPoints === emp.id ? t('resetting') : t('reset_points')}
+                                                </button>
+                                            )}
                                         </>
                                     )}
-                                    {emp.role !== 'SUPER_ADMIN' && (
+                                    {can('employees.delete') && emp.role !== 'SUPER_ADMIN' && (
                                         <button
                                             onClick={() => handleDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}
                                             disabled={deletingUser === emp.id}
@@ -691,7 +705,7 @@ export default function EmployeesPage() {
                         <button
                             onClick={confirmDelete}
                             className="btn"
-                            style={{ background: 'var(--danger-solid-hover)', color: 'var(--text-on-accent)' }}
+                            style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}
                         >
                             {t('delete_employee')}
                         </button>

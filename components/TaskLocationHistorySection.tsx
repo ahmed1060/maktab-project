@@ -7,6 +7,7 @@ import SafeDate from '@/components/SafeDate'
 import TrashIcon from '@/components/TrashIcon'
 import { useFeatures } from '@/lib/features/useFeatures'
 import SectionBoundary from './SectionBoundary'
+import { useCan } from '@/lib/useCan'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. The lateness-
 // penalty UI state (showPenaltyUI/selectedPenalty/applyingPenalty) and the
@@ -20,13 +21,13 @@ import SectionBoundary from './SectionBoundary'
 interface TaskLocationHistorySectionProps {
     task: any
     setTask: (task: any) => void
-    userRole: string
     userId: string
     setLocationToDelete: (v: { index?: number, date?: string } | null) => void
 }
 
-function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLocationToDelete }: TaskLocationHistorySectionProps) {
+function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDelete }: TaskLocationHistorySectionProps) {
     const { t, locale } = useLanguage()
+    const { can } = useCan()
     const { showToast } = useToast()
     const router = useRouter()
     const features = useFeatures()
@@ -62,7 +63,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                         The endpoint refuses it either way — see
                         lib/features/routes.ts, which routes this one child of
                         /api/tasks to SALARY_ADJUSTMENTS. */}
-                    {features.has('SALARY_ADJUSTMENTS') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
+                    {features.has('SALARY_ADJUSTMENTS') && can('tasks.penalize') && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
                             {showPenaltyUI && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface-subtle)', padding: '0.25rem 0.5rem', borderRadius: '2rem', border: '1px solid var(--border)' }}>
@@ -130,7 +131,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                                         style={{
                                             padding: '0.25rem 0.75rem',
                                             borderRadius: '1rem',
-                                            background: 'var(--danger-solid)',
+                                            background: 'var(--danger-fill)',
                                             color: 'var(--text-on-accent)',
                                             fontSize: '0.75rem',
                                             fontWeight: 'bold',
@@ -159,7 +160,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                                     gap: '0.4rem'
                                 }}
                             >
-                                <span>⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
+                                <span aria-hidden="true">⚠️</span> {locale === 'ar' ? 'خصم تأخير' : 'Lateness Penalty'}
                             </button>
                         </div>
                     )}
@@ -176,8 +177,8 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                             }
                         } catch { }
 
-                        const canVerify = ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && task.status === 'PENDING_CONFIRMATION'
-                        const canDelete = (userRole === 'EMPLOYEE' || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
+                        const canVerify = can('tasks.review') && task.status === 'PENDING_CONFIRMATION'
+                        const canDelete = (!can('tasks.view') || task.assignees?.some((a: any) => a.id === userId)) && ['PENDING', 'IN_PROGRESS', 'REJECTED'].includes(task.status)
 
                         const handleVerify = async (status: 'CORRECT' | 'WRONG') => {
                             const timestamp = loc.date
@@ -226,7 +227,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                             <div key={i} style={{ border: '1px solid var(--info-bg-sky-firm)', background: 'var(--info-bg-sky)', borderRadius: '0.5rem', padding: '1rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: 'row', gap: '1rem' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'row' }}>
-                                        <span style={{ fontSize: '1.25rem' }}>📍</span>
+                                        <span aria-hidden="true" style={{ fontSize: '1.25rem' }}>📍</span>
                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             {mapsLink ? <a href={mapsLink} target="_blank" rel="noreferrer" style={{ fontWeight: '600', color: 'var(--info-fg)', textDecoration: 'underline' }}>{displayLoc}</a> : <span style={{ fontWeight: '600', color: 'var(--info-fg-deepest)' }}>{displayLoc}</span>}
                                             <div style={{ fontSize: '0.75rem', color: 'var(--info-fg)', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -279,6 +280,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                                                         justifyContent: 'center'
                                                     }}
                                                     title={t('mark_correct_title')}
+                                                    aria-label={t('mark_correct_title')}
                                                 >
                                                     {verifyingLocation === `${loc.date}-CORRECT` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid var(--ok-fg)', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✓'}
                                                 </button>
@@ -298,13 +300,14 @@ function TaskLocationHistorySectionBody({ task, setTask, userRole, userId, setLo
                                                         justifyContent: 'center'
                                                     }}
                                                     title={t('mark_wrong_title')}
+                                                    aria-label={t('mark_wrong_title')}
                                                 >
                                                     {verifyingLocation === `${loc.date}-WRONG` ? <div className="animate-spin-local" style={{ width: '14px', height: '14px', border: '2px solid var(--danger-fg)', borderTopColor: 'transparent', borderRadius: '50%' }} /> : '✕'}
                                                 </button>
                                             </div>
                                         )}
-                                        {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
-                                            <button onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
+                                        {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || can('tasks.edit')) && (
+                                            <button aria-label={t('delete_location_title')} onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: 'var(--danger-bg)', color: 'var(--danger-solid-hover)', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
                                                 <TrashIcon size={16} />
                                             </button>
                                         )}

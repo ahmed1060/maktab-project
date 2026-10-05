@@ -1,9 +1,11 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { AUDIT_ACTIONS, AUDIT_ACTION_GROUPS, AUDIT_ENTITY_TYPES } from '@/lib/audit-codes'
 import { useLanguage } from '@/context/LanguageContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useDialog } from '@/lib/useDialog'
 
 interface AuditLogFilterProps {
     onFilterChange: (filters: {
@@ -24,9 +26,6 @@ interface AuditLogFilterProps {
     }
     totalCount: number
     users: { id: string, firstName: string, lastName: string, role: string }[]
-    entityTypes: string[]
-    actionGroups: string[]
-    specificActions: string[]
 }
 
 export default function AuditLogFilter({
@@ -34,12 +33,17 @@ export default function AuditLogFilter({
     filters,
     totalCount,
     users,
-    entityTypes,
-    actionGroups,
-    specificActions
 }: AuditLogFilterProps) {
     const { t, locale } = useLanguage()
+    // Every labelled action and entity type (lib/audit-codes.ts), in the
+    // reader's language and alphabetical in it, so a long list can be scanned.
+    const label = (prefix: string, code: string) => (t as any)(`${prefix}${code}`) || code
+    const sorted = (prefix: string, codes: readonly string[]) =>
+        codes.map(code => ({ code, name: label(prefix, code) })).sort((a, b) => a.name.localeCompare(b.name, locale))
+    const entityOptions = sorted('audit_entity_', AUDIT_ENTITY_TYPES)
+    const actionOptions = sorted('audit_action_', AUDIT_ACTIONS)
     const [isPopupOpen, setIsPopupOpen] = useState(false)
+    const filterDialog = useDialog(isPopupOpen, () => setIsPopupOpen(false), { label: t('filters') })
     const [isMobile, setIsMobile] = useState(false)
 
     // Local states for the popup to implement "Show Results" behavior
@@ -170,7 +174,7 @@ export default function AuditLogFilter({
                                 position: 'absolute',
                                 top: '-4px',
                                 [locale === 'ar' ? 'left' : 'right']: '-4px',
-                                background: 'var(--info-solid)',
+                                background: 'var(--info-fill)',
                                 color: 'var(--text-on-accent)',
                                 width: '20px',
                                 height: '20px',
@@ -199,7 +203,7 @@ export default function AuditLogFilter({
                                     backdropFilter: isMobile ? 'blur(4px)' : 'none'
                                 }}
                             />
-                            <div style={{
+                            <div {...filterDialog.panelProps} style={{
                                 position: isMobile ? 'fixed' : 'absolute',
                                 top: isMobile ? '50%' : 'calc(100% + 0.75rem)',
                                 [locale === 'ar' ? 'left' : 'right']: isMobile ? '50%' : '0',
@@ -237,7 +241,7 @@ export default function AuditLogFilter({
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('entity')}</label>
                                     <div style={{ position: 'relative' }}>
-                                        <select
+                                        <select aria-label={t('entity')}
                                             value={localFilters.entityType}
                                             onChange={(e) => setLocalFilters(f => ({ ...f, entityType: e.target.value }))}
                                             className="input"
@@ -252,8 +256,8 @@ export default function AuditLogFilter({
                                             }}
                                         >
                                             <option value="">{t('all_entities')}</option>
-                                            {entityTypes.map(et => (
-                                                <option key={et} value={et}>{(t as any)(`audit_entity_${et}`)}</option>
+                                            {entityOptions.map(({ code, name }) => (
+                                                <option key={code} value={code}>{name}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -263,7 +267,7 @@ export default function AuditLogFilter({
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('action')}</label>
                                     <div style={{ position: 'relative' }}>
-                                        <select
+                                        <select aria-label={t('action')}
                                             value={localFilters.action}
                                             onChange={(e) => setLocalFilters(f => ({ ...f, action: e.target.value }))}
                                             className="input"
@@ -279,13 +283,13 @@ export default function AuditLogFilter({
                                         >
                                             <option value="">{t('all_actions')}</option>
                                             <optgroup label={locale === 'ar' ? 'الفئات' : 'Groups'}>
-                                                {actionGroups.map(g => (
-                                                    <option key={g} value={g}>{(t as any)(`audit_action_${g}`)}</option>
+                                                {AUDIT_ACTION_GROUPS.map(g => (
+                                                    <option key={g} value={g}>{label('audit_action_', g)}</option>
                                                 ))}
                                             </optgroup>
                                             <optgroup label={locale === 'ar' ? 'إجراءات' : 'Actions'}>
-                                                {specificActions.map(a => (
-                                                    <option key={a} value={a}>{(t as any)(`audit_action_${a}`)}</option>
+                                                {actionOptions.map(({ code, name }) => (
+                                                    <option key={code} value={code}>{name}</option>
                                                 ))}
                                             </optgroup>
                                         </select>
@@ -313,7 +317,7 @@ export default function AuditLogFilter({
                                         onClick={handleApplyFilters}
                                         style={{
                                             flex: 1, height: '48px', borderRadius: '1.25rem', border: 'none',
-                                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
+                                            background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-fill) 100%)',
                                             color: 'var(--text-on-accent)', fontWeight: '700', cursor: 'pointer', fontSize: '0.875rem'
                                         }}
                                     >
@@ -329,12 +333,16 @@ export default function AuditLogFilter({
                 <div style={{
                     height: '48px',
                     padding: '0 1.25rem',
-                    background: 'var(--text-strong)',
+                    // The same chip as every other list's total. It was
+                    // --text-strong behind --text-on-accent: dark on light in
+                    // the light theme, but near-white behind white in the
+                    // dark one, so the count couldn't be read.
+                    background: 'var(--chip-solid-bg)',
                     borderRadius: '1.25rem',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    color: 'var(--text-on-accent)'
+                    color: 'var(--chip-solid-fg)'
                 }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.5, textTransform: 'uppercase' }}>{t('total_label')}</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{totalCount}</span>

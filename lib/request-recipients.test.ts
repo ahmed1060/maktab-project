@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { whoMatches } from "@/lib/permissions/test-actors"
 
 /**
  * Who hears about a new request.
@@ -56,34 +57,44 @@ beforeEach(() => {
     db.people = [{ id: "admin-1" }]
 })
 
+/**
+ * Everybody who could be told. The recipient query is applied to them, so
+ * what is asserted is who hears about it — since roles became data the query
+ * asks for the roles holding requests.review, not for role names.
+ */
+const EVERYONE = [
+    { id: "admin-1", role: "ADMIN",       companyId: "co-1", teamLeaderId: null },
+    { id: "admin-2", role: "ADMIN",       companyId: "co-2", teamLeaderId: null },
+    { id: "tl-1",    role: "TEAM_LEADER", companyId: "co-1", teamLeaderId: null },
+    { id: "tl-2",    role: "TEAM_LEADER", companyId: "co-1", teamLeaderId: null },
+    { id: "e-1",     role: "EMPLOYEE",    companyId: "co-1", teamLeaderId: "tl-1" },
+    { id: "e-2",     role: "EMPLOYEE",    companyId: "co-1", teamLeaderId: null },
+]
+
 describe("a request reaches the people who can act on it", () => {
-    it("asks for the company's admins", async () => {
-        const where = await raise()
-        expect(where.companyId).toBe("co-1")
-        expect(where.OR).toContainEqual({ role: "ADMIN" })
+    it("reaches the company's admins", async () => {
+        expect(whoMatches(EVERYONE, await raise())).toEqual(["admin-1"])
     })
 
-    it("adds the requester's own team leader", async () => {
+    it("and the requester's own team leader", async () => {
         db.requester = { teamLeaderId: "tl-1" }
-        const where = await raise()
-        expect(where.OR).toContainEqual({ id: "tl-1", role: "TEAM_LEADER" })
+        expect(whoMatches(EVERYONE, await raise())).toEqual(["admin-1", "tl-1"])
     })
 
-    it("no longer asks for every team leader in the company", async () => {
+    it("but not every team leader in the company", async () => {
         db.requester = { teamLeaderId: "tl-1" }
-        const where = await raise()
-        expect(JSON.stringify(where)).not.toContain('"role":{"in":["ADMIN","TEAM_LEADER"]}')
+        expect(whoMatches(EVERYONE, await raise())).not.toContain("tl-2")
     })
 
     it("matches no leader at all when the requester has none", async () => {
-        // The empty string is deliberate. Leaving the id undefined would drop
-        // the constraint and match every TEAM_LEADER — the exact behaviour
-        // being removed, reintroduced by a falsy value.
+        // An undefined id would drop the constraint and match every Team
+        // Leader — the exact behaviour being removed, reintroduced by a falsy
+        // value.
         db.requester = { teamLeaderId: null }
         const where = await raise()
-        const leaderBranch = where.OR.find((b: any) => b.role === "TEAM_LEADER")
+        expect(whoMatches(EVERYONE, where)).toEqual(["admin-1"])
+        const leaderBranch = where.OR.find((b: any) => "id" in b)
         expect(leaderBranch.id).toBe("")
-        expect(leaderBranch.id).not.toBeUndefined()
     })
 
     it("still notifies whoever the query returned", async () => {

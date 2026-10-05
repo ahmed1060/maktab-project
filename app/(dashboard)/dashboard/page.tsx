@@ -14,6 +14,7 @@ import { modulesFrom } from "@/lib/modules"
 import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
 import { CompanyService } from "@/lib/services/company.service"
 import { scopesToTeam, assignedToTeamWhere, teamMemberWhere, and } from '@/lib/team-scope'
+import { can, grantFor } from '@/lib/permissions/can'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
     const session = await getServerSession(authOptions)
     const userRole = (session?.user as any)?.role
+    // Who is asking, for can(): nobody signed in holds nothing.
+    const viewer = (session?.user ?? { role: null }) as any
     const userId = (session?.user as any)?.id
 
     // Server-side localization
@@ -63,7 +66,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     const currentMonth = new Date().getMonth() + 1
     const currentYear = new Date().getFullYear()
 
-    if (['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) {
+    // The overview is for whoever sees others' tasks — company-wide or, for a
+    // Team Leader, their team's. Everyone else gets their own dashboard below.
+    if (can(viewer, 'tasks.view')) {
         // Super Admin System Overview (when no specific company is selected)
         if (userRole === 'SUPER_ADMIN' && !companyId) {
             // "Needs Attention" — the things a super admin would otherwise
@@ -87,9 +92,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             const { totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies } = await getSuperAdminOverviewStats()
 
             const chartData = [
-                { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: 'var(--ok-solid)' },
-                { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: 'var(--info-solid)' },
-                { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: 'var(--warn-solid)' },
+                { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: 'var(--ok-fg-strong)' },
+                { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: 'var(--info-fg)' },
+                { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: 'var(--warn-fg-mid)' },
                 { label: t('status_others' as any), value: taskStats.filter((s: any) => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc: any, s: any) => acc + s._count, 0), color: 'var(--text-faint)' }
             ]
 
@@ -124,8 +129,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
                     {/* Needs Attention */}
                     <section>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>⚠️ {t('needs_attention')}</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">⚠️</span> {t('needs_attention')}</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '1.5rem' }}>
                             <Link href={`/dashboard/audit-logs?action=SYSTEM_API_ERROR&startDate=${encodeURIComponent(oneDayAgo.toISOString())}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                                 <StatMetric label={t('system_errors_24h')} value={systemErrors24h} icon="🚨" color="var(--danger-solid)" />
                             </Link>
@@ -164,14 +169,16 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         // this role — the label was a promise the query did not keep, and the
         // numbers would otherwise disagree with the lists underneath them.
         const baseWhere: any = finalCompanyId ? { companyId: finalCompanyId } : {}
-        if (scopesToTeam(userRole)) and(baseWhere, assignedToTeamWhere(userId))
+        if (scopesToTeam(viewer, 'tasks.view')) and(baseWhere, assignedToTeamWhere(userId))
 
-        // "Needs Your Review" — approval queues this role can act on.
-        // Day-off/profile approval is ADMIN-only (see app/api/admin/day-off-requests
-        // and app/api/profile-requests), so a TEAM_LEADER only sees task reviews.
+        // "Needs Your Review" — approval queues this person can act on: each
+        // count is asked of the permission its approval route checks. A Team
+        // Leader holds neither, so sees only task reviews. A Super Admin
+        // looking at one company holds both, and now sees that company's
+        // queues too — they used to be left out by a check that named ADMIN.
         // Below runs everything together instead of as 4-5 sequential
         // round trips: taskStats/salaryStats/overdueTasks never depended on
-        // each other, and the two ADMIN-only counts just resolve to 0
+        // each other, and the two counts it may not act on just resolve to 0
         // instead of skipping the query entirely when the role doesn't
         // apply, so the whole page can still await one Promise.all.
         const [taskStats, salaryStats, overdueTasks, pendingDayOffRequests, pendingProfileRequests] = await Promise.all([
@@ -186,7 +193,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 where: {
                     month: currentMonth,
                     year: currentYear,
-                    user: scopesToTeam(userRole)
+                    user: scopesToTeam(viewer, 'tasks.view')
                         ? { companyId: finalCompanyId, ...teamMemberWhere(userId) }
                         : (finalCompanyId ? { companyId: finalCompanyId } : {})
                 },
@@ -203,10 +210,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 take: 5,
                 select: { id: true, title: true, deadline: true, status: true }
             }),
-            userRole === 'ADMIN'
+            can(viewer, 'dayoff.approve')
                 ? prisma.dayOffRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
                 : Promise.resolve(0),
-            userRole === 'ADMIN'
+            can(viewer, 'profile_requests.review')
                 ? prisma.profileUpdateRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
                 : Promise.resolve(0)
         ])
@@ -220,40 +227,40 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
         const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-solid)' },
-            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-solid)' },
-            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-solid)' },
-            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-solid)' }
+            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-fg-strong)' },
+            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-fg)' },
+            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-fg-mid)' },
+            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-fg-strong)' }
         ]
 
         return (
             <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                 <HeaderSetter
-                    title={userRole === 'TEAM_LEADER' ? t('team_performance') : t('admin_overview')}
+                    title={grantFor(viewer, 'tasks.view') === 'TEAM' ? t('team_performance') : t('admin_overview')}
                     subtitle={t('dashboard_subtitle' as any)}
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                     <div className="glass-card">
                         <DonutChart title={t('team_workload')} data={chartData} />
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon={modules.icon('tasks')} color="var(--ok-solid)" percentage={completionRate} subLabel={t('completion_rate')} />
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(10rem, 100%), 1fr))', gap: '1rem' }}>
                             <StatMetric label={t('team_bonuses')} value={formatDays(Number(salaryStats._sum.bonusDays || 0))} icon="⭐" color="var(--warn-solid)" subLabel={t('total_this_month')} />
                             <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryStats._sum.deductions || 0))} icon="📉" color="var(--danger-solid)" subLabel={t('total_this_month')} />
                         </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '2rem' }}>
                     <div className="glass-card" style={{ height: 'fit-content' }}>
                         <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '700' }}>{t('quick_actions')}</h3>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                             <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem' }}>
                                 + {t('create_new_task')}
                             </Link>
-                            {userRole !== 'TEAM_LEADER' && (
+                            {can(viewer, 'employees.create') && (
                                 <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'var(--veil-40)', color: 'var(--text-body)', height: '3rem', border: '1px solid var(--veil-50)' }}>
                                     + {t('add_employee')}
                                 </Link>
@@ -264,27 +271,27 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
                 {/* Needs Your Review */}
                 <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>📋 {t('needs_your_review')}</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">📋</span> {t('needs_your_review')}</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1.5rem' }}>
                         <Link href="/dashboard/tasks" style={{ textDecoration: 'none', color: 'inherit' }}>
                             <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="var(--warn-solid)" />
                         </Link>
-                        {userRole === 'ADMIN' && (
-                            <>
-                                <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon={modules.icon('dayOff')} color="var(--info-solid-sky)" />
-                                </Link>
-                                <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
-                                </Link>
-                            </>
+                        {can(viewer, 'dayoff.approve') && (
+                            <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon={modules.icon('dayOff')} color="var(--info-solid-sky)" />
+                            </Link>
+                        )}
+                        {can(viewer, 'profile_requests.review') && (
+                            <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
+                            </Link>
                         )}
                     </div>
                 </section>
 
                 {/* Overdue Tasks */}
                 <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}>⏰ {t('overdue_tasks')}</h2>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">⏰</span> {t('overdue_tasks')}</h2>
                     {overdueTasks.length === 0 ? (
                         <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
                             <p style={{ margin: 0, color: 'var(--text-faint)' }}>{t('no_overdue_tasks')}</p>
@@ -295,7 +302,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                                 <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                                     <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid var(--danger-solid)' }}>
                                         <span style={{ fontWeight: '600' }}>{task.title}</span>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--danger-solid)' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--danger-fg-strong)' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
                                     </div>
                                 </Link>
                             ))}
@@ -389,10 +396,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         const usedCredits = approvedRequests.reduce((acc, req) => acc + (req.daysDeducted || 0), 0)
 
         const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-solid)' },
-            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-solid)' },
-            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-solid)' },
-            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-solid)' }
+            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-fg-strong)' },
+            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-fg)' },
+            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-fg-mid)' },
+            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-fg-strong)' }
         ]
 
 
@@ -403,20 +410,20 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     subtitle={t('dashboard_subtitle' as any)}
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                     <div className="glass-card dashboard-chart-grid" style={{ display: 'grid', gap: '1.5rem' }}>
                         <DonutChart title={t('task_distribution')} data={chartData} />
                         <DonutChart
                             title={t('credit_overview' as any)}
                             data={[
-                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: 'var(--ok-solid)' },
-                                { label: t('used_credit' as any), value: usedCredits, color: 'var(--danger-solid)' }
+                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: 'var(--ok-fg-strong)' },
+                                { label: t('used_credit' as any), value: usedCredits, color: 'var(--danger-fg-strong)' }
                             ]}
                         />
                     </div>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
                         <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="var(--brand-primary)" percentage={completionRate} subLabel={t('completion_rate')} />
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(10rem, 100%), 1fr))', gap: '1rem' }}>
                             <StatMetric label={t('bonus')} value={formatDays(Number(salaryRecord?.bonusDays || 0))} icon="🎁" color="var(--warn-solid)" subLabel={t('extra_earnings')} />
                             <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryRecord?.deductions || 0))} icon="📉" color="var(--danger-solid)" subLabel={t('total_lost_days')} />
                         </div>
@@ -426,13 +433,13 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 {/* This Week's Focus */}
                 <section style={{ marginBottom: '3rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>🔥 {t('due_this_week')}</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}><span aria-hidden="true">🔥</span> {t('due_this_week')}</h2>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }}>
                         {upcomingTasks.length === 0 ? (
                             <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
-                                <div style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px var(--shadow-faint)' }}>🎉</div>
+                                <div aria-hidden="true" style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px var(--shadow-faint)' }}>🎉</div>
                                 <div>
                                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: 'var(--ok-fg)' }}>{t('all_caught_up')}</h3>
                                     <p style={{ margin: 0, color: 'var(--ok-fg-strong)' }}>{t('no_pending_tasks_week')}</p>
@@ -450,7 +457,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                                                     <span style={{
                                                         padding: '0.15rem 0.5rem',
                                                         borderRadius: '0.5rem',
-                                                        background: 'var(--info-solid)',
+                                                        background: 'var(--info-fill)',
                                                         color: 'var(--text-on-accent)',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.7rem'
@@ -504,7 +511,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     </section>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2.5rem', alignItems: 'start' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: '2.5rem', alignItems: 'start' }}>
                     {/* Obligations */}
                     <section>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
@@ -526,7 +533,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                                                     <span style={{
                                                         padding: '0.1rem 0.4rem',
                                                         borderRadius: '0.4rem',
-                                                        background: 'var(--info-solid)',
+                                                        background: 'var(--info-fill)',
                                                         color: 'var(--text-on-accent)',
                                                         fontWeight: 'bold',
                                                         fontSize: '0.65rem'

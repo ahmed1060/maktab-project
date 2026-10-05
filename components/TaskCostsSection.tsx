@@ -3,6 +3,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import TrashIcon from '@/components/TrashIcon'
 import SectionBoundary from './SectionBoundary'
+import { useCan } from '@/lib/useCan'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx (1834 lines before
 // this split). Purely presentational — no state of its own, just reads
@@ -11,7 +12,6 @@ import SectionBoundary from './SectionBoundary'
 interface TaskCostsSectionProps {
     task: any
     userId: string
-    userRole: string
     onDeleteItem: (type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => void
     onPaymentStatusChange: (newStatus: string, targetUserId?: string) => void
     getMemberCosts: (taskObj: any) => Record<string, number>
@@ -19,9 +19,10 @@ interface TaskCostsSectionProps {
 }
 
 function TaskCostsSectionBody({
-    task, userId, userRole, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus
+    task, userId, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus
 }: TaskCostsSectionProps) {
     const { t, locale } = useLanguage()
+    const { can } = useCan()
     const modules = useModules()
 
     if (!task.comments) return null
@@ -40,8 +41,8 @@ function TaskCostsSectionBody({
                                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
-                                        {task.status === 'IN_PROGRESS' && (c.authorId === userId || ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) && (
-                                            <button onClick={() => onDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
+                                        {task.status === 'IN_PROGRESS' && (c.authorId === userId || can('tasks.edit')) && (
+                                            <button aria-label={t('delete_cost_title')} onClick={() => onDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
                                                 <TrashIcon size={14} />
                                             </button>
                                         )}
@@ -73,7 +74,7 @@ function TaskCostsSectionBody({
                             const myStatus = mPaymentStatus[userId] || 'PENDING_PAYMENT'
                             return (
                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
-                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--info-solid)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)', position: 'relative' }}>
+                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--info-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)', position: 'relative' }}>
                                         <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('my_total_cost' as any)}</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
                                         <div style={{
@@ -90,7 +91,7 @@ function TaskCostsSectionBody({
                                             {myStatus === 'PAID' ? t('payment_status_paid' as any) || 'PAID' : t('payment_status_pending' as any) || 'PENDING'}
                                         </div>
                                     </div>
-                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
+                                    <div style={{ flex: 1, minWidth: '150px', background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
                                         <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('grand_total_cost' as any)}</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
                                         <div style={{
@@ -112,7 +113,7 @@ function TaskCostsSectionBody({
                         }
 
                         return (
-                            <div style={{ background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
+                            <div style={{ background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
                                 <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{t('total_cost')}</div>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
                                 <div style={{
@@ -133,7 +134,7 @@ function TaskCostsSectionBody({
                     })()}
 
                     {/* Individual Settlements for Admins */}
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
+                    {can('tasks.pay') && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
                         <div style={{ marginTop: '1rem', padding: '1.25rem', background: 'var(--surface-subtle)', borderRadius: '1rem', border: '1px solid var(--border)' }}>
                             <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--text-main)' }}>
                                 {t('individual_settlements' as any) || 'Individual Settlements'}
@@ -170,7 +171,7 @@ function TaskCostsSectionBody({
                                                 <button
                                                     onClick={() => onPaymentStatusChange(isPaid ? 'PENDING_PAYMENT' : 'PAID', uid)}
                                                     style={{
-                                                        background: isPaid ? 'var(--surface-sunk)' : 'var(--ok-solid)',
+                                                        background: isPaid ? 'var(--surface-sunk)' : 'var(--ok-fill)',
                                                         color: isPaid ? 'var(--text-soft)' : 'var(--text-on-accent)',
                                                         padding: '0.4rem 0.8rem',
                                                         fontSize: '0.75rem',

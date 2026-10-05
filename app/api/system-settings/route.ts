@@ -25,6 +25,9 @@ const updateSystemSettingsSchema = z.object({
             }
         })
         .optional(),
+    // How long a step-up MFA confirmation lasts (ROLES_PLAN.md §6.15). The
+    // database holds the same bounds.
+    stepUpMinutes: z.number().int().min(5).max(480).optional(),
 }).refine(data => Object.keys(data).length > 0, { message: "No fields to update" })
 
 export const GET = withStandardHandler(async (req, session) => {
@@ -63,6 +66,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
     if (before.defaultTimezone !== updated.defaultTimezone) {
         changes.defaultTimezone = { old: before.defaultTimezone, new: updated.defaultTimezone }
+    }
+    if (before.stepUpMinutes !== updated.stepUpMinutes) {
+        changes.stepUpMinutes = { old: before.stepUpMinutes, new: updated.stepUpMinutes }
     }
 
     if (Object.keys(changes).length > 0) {

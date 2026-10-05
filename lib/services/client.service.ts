@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { CreateClientInput, UpdateClientInput } from "../validations/client.schema"
+import { can } from "@/lib/permissions/can"
 
 export class ClientService {
     static async create(input: CreateClientInput, session: any) {
@@ -39,14 +40,13 @@ export class ClientService {
     static async update(input: UpdateClientInput, session: any) {
         const userRole = session.user.role
         const userId = session.user.id
-        const userCompanyId = (session.user as any).companyId
 
         const { id, name } = input
 
         const client = await prisma.businessClient.findUnique({ where: { id } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
 
-        if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) {
+        if (!can(session.user, "clients.edit", { companyId: client.companyId })) {
             throw new Error("FORBIDDEN")
         }
 
@@ -71,12 +71,11 @@ export class ClientService {
 
     static async delete(id: string, session: any) {
         const userRole = session.user.role
-        const userCompanyId = (session.user as any).companyId
 
         const client = await prisma.businessClient.findUnique({ where: { id } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
 
-        if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) {
+        if (!can(session.user, "clients.delete", { companyId: client.companyId })) {
             throw new Error("FORBIDDEN")
         }
 

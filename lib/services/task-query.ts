@@ -1,5 +1,6 @@
 import { isValidTaskStatus } from "@/lib/valid-enums"
-import { scopesToTeam, assignedToTeamWhere } from "@/lib/team-scope"
+import { assignedToTeamWhere } from "@/lib/team-scope"
+import { grantFor } from "@/lib/permissions/can"
 
 export type TaskQuerySession = {
     user: {
@@ -31,17 +32,19 @@ export function buildTaskWhereClause(
     searchParams: URLSearchParams,
     companyId: string | null
 ): TaskWhereResult {
-    const userRole = session.user.role
     const userId = session.user.id
 
     const scope: any[] = []
-    if (userRole === 'SUPER_ADMIN') {
+    // How far tasks.view reaches decides the scope: everywhere (Super Admin),
+    // the company, the team, or — without it — one's own tasks.
+    const reach = grantFor(session.user as any, "tasks.view")
+    if (reach === 'ALL') {
         if (companyId) scope.push({ companyId })
-    } else if (userRole === 'ADMIN') {
+    } else if (reach === 'COMPANY') {
         const userCompanyId = session.user.companyId
         if (!userCompanyId) return { empty: true }
         scope.push({ companyId: userCompanyId })
-    } else if (scopesToTeam(userRole)) {
+    } else if (reach === 'TEAM') {
         // A Team Leader used to share the ADMIN branch, which meant the whole
         // company. Now it is their team and themselves — and the company stays
         // on top of it, because a leader with reports somehow in another
@@ -67,7 +70,7 @@ export function buildTaskWhereClause(
     // Team Leader this narrows within their team and cannot escape it: the
     // filter is pushed alongside the scope, never over it, so asking for
     // somebody else's team intersects to nothing.
-    if (employeeIdFilter && userRole !== 'EMPLOYEE') {
+    if (employeeIdFilter && reach !== null) {
         filters.push({ assignees: { some: { id: employeeIdFilter } } })
     }
     // Which team's work. Deliberately a filter and not a grouping: a task can

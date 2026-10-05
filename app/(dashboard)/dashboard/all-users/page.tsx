@@ -12,6 +12,8 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { apiErrorText } from "@/lib/api-error-text"
+import { useDialog } from '@/lib/useDialog'
 
 type User = {
     id: string
@@ -39,6 +41,7 @@ export default function AllUsersPage() {
     const { setTitle, setSubtitle } = useHeader()
     const [filters, setFilters] = useState({ search: '', status: '', companyId: '' })
     const [showExUsersModal, setShowExUsersModal] = useState(false)
+    const exUsersDialog = useDialog(showExUsersModal, () => setShowExUsersModal(false), { label: t('ex_users_archive_title') })
     const [viewingProfileId, setViewingProfileId] = useState<string | null>(null)
     const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<{ isOpen: boolean, user: User | null }>({ isOpen: false, user: null })
     const [errorModal, setErrorModal] = useState<{ isOpen: boolean, title: string, message: string }>({ isOpen: false, title: '', message: '' })
@@ -209,7 +212,7 @@ export default function AllUsersPage() {
                 setErrorModal({
                     isOpen: true,
                     title: locale === 'ar' ? 'خطأ' : 'Error',
-                    message: errorText || t('error_generic')
+                    message: apiErrorText(errorText, t('error_generic'))
                 })
             }
         } catch (error) {
@@ -253,7 +256,7 @@ export default function AllUsersPage() {
                         {showSuperAdmins && superAdmins.length > 0 && (
                             <div>
                                 <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                    <span style={{ background: 'var(--warn-solid)', color: 'var(--text-on-accent)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
+                                    <span style={{ background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>SHSD</span>
                                     {t('super_administrators_label')}
                                 </h2>
                                 <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
@@ -425,7 +428,7 @@ export default function AllUsersPage() {
                             onClick={() => setShowExUsersModal(false)}
                         />
                         {viewingProfileId ? (
-                            <div style={{ background: 'var(--surface)', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 101 }}>
+                            <div {...exUsersDialog.panelProps} style={{ background: 'var(--surface)', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 101 }}>
                                 <EmployeeProfileForm
                                     userId={viewingProfileId}
                                     isViewMode={true}
@@ -433,12 +436,12 @@ export default function AllUsersPage() {
                                 />
                             </div>
                         ) : (
-                            <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                            <div {...exUsersDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexDirection: 'row' }}>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                                        <span style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
+                                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🗑️</span> {t('ex_users_archive_title')}
                                     </h2>
-                                    <button onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>&times;</button>
+                                    <button aria-label={t('close')} onClick={() => setShowExUsersModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>&times;</button>
                                 </div>
 
                                 <div style={{ overflowY: 'auto', overflowX: 'auto', flex: 1 }}>
@@ -492,7 +495,7 @@ export default function AllUsersPage() {
                                                             >
                                                                 {t('view_profile_button')}
                                                             </button>
-                                                            <button
+                                                            <button aria-label={t('delete')}
                                                                 onClick={() => setPermanentDeleteConfirm({ isOpen: true, user })}
                                                                 title={t('delete')}
                                                                 style={{
@@ -564,7 +567,7 @@ export default function AllUsersPage() {
                 title={errorModal.title}
             >
                 <div style={{ textAlign: 'center', padding: '1rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                    <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1rem' }}>
                         {errorModal.title === 'Success' || errorModal.title === 'نجاح' ? '✅' : '⛔'}
                     </div>
                     <p style={{ fontSize: '1.1rem', color: 'var(--text-body)' }}>{errorModal.message}</p>

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { buildUserWhereClause } from "./user-query"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * The employee list's boundary, finally exercisable.
@@ -17,8 +18,8 @@ const STATUSES = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE', 'ARCH
 const build = (session: any, qs = "", company?: string) =>
     buildUserWhereClause(session, new URLSearchParams(qs), company, ROLES, STATUSES)
 
-const leader = { user: { id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" } }
-const admin = { user: { id: "a-1", role: "ADMIN", companyId: "co-1" } }
+const leader = { user: withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: "co-1" }) }
+const admin = { user: withGrants({ id: "a-1", role: "ADMIN", companyId: "co-1" }) }
 const superAdmin = { user: { id: "sa-1", role: "SUPER_ADMIN", companyId: null } }
 
 const clause = (r: ReturnType<typeof build>) => {
@@ -66,7 +67,7 @@ describe("a Team Leader sees their team and themselves", () => {
     })
 
     it("returns nothing rather than everything when they have no company", () => {
-        expect(build({ user: { id: "tl-1", role: "TEAM_LEADER", companyId: null } }).empty).toBe(true)
+        expect(build({ user: withGrants({ id: "tl-1", role: "TEAM_LEADER", companyId: null }) }).empty).toBe(true)
     })
 })
 
@@ -84,7 +85,7 @@ describe("the roles that are not narrowed", () => {
     })
 
     it("an Admin with no company gets nothing rather than the platform", () => {
-        expect(build({ user: { id: "a-1", role: "ADMIN", companyId: null } }).empty).toBe(true)
+        expect(build({ user: withGrants({ id: "a-1", role: "ADMIN", companyId: null }) }).empty).toBe(true)
     })
 })
 

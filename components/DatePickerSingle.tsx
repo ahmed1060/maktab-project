@@ -1,8 +1,9 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
+import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
 
 interface DatePickerSingleProps {
     value: string
@@ -20,6 +21,14 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const containerRef = useRef<HTMLDivElement>(null)
     const portalRef = useRef<HTMLDivElement>(null)
+    const openerId = useId()
+    const isDayDisabled = (iso: string) => !!((minDate && iso < minDate) || (maxDate && iso > maxDate))
+    const keys = usePickerKeyboard({ isOpen, close: () => setIsOpen(false), currentMonth, setCurrentMonth, isDisabled: isDayDisabled, rtl: locale === 'ar', popupRef: portalRef })
+    const toggleOpen = () => {
+        if (isOpen) return setIsOpen(false)
+        keys.opened(startDay(value || null, minDate ?? null, maxDate ?? null))
+        setIsOpen(true)
+    }
 
     useEffect(() => {
         const checkMobile = () => {
@@ -77,6 +86,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
 
     const handleDateClick = (date: Date) => {
         const dateStr = formatToLocalISO(date)
+        if (isDayDisabled(dateStr)) return
         onChange(dateStr)
         setIsOpen(false)
     }
@@ -99,7 +109,8 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
 
     const pickerContent = (
         <div
-            ref={portalRef}
+            {...keys.popupProps}
+            aria-label={label || t('select_date' as any)}
             onClick={(e) => e.stopPropagation()}
             style={{
                 position: 'relative',
@@ -115,6 +126,8 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
             }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <button
+                    type="button"
+                    aria-label={t(locale === 'ar' ? 'calendar_next_month' : 'calendar_prev_month' as any)}
                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (locale === 'ar' ? -1 : 1)))}
                     style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-soft)' }}
                 >
@@ -122,6 +135,8 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                 </button>
                 <div style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-soft)' }}>{monthYear}</div>
                 <button
+                    type="button"
+                    aria-label={t(locale === 'ar' ? 'calendar_prev_month' : 'calendar_next_month' as any)}
                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
                     style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-soft)' }}
                 >
@@ -135,25 +150,26 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
+            <div {...keys.gridProps} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
                 {days.map((date, index) => {
                     if (!date) return <div key={`empty-${index}`} />
                     const selected = isSelected(date)
                     const isToday = date.toDateString() === new Date().toDateString()
                     const dateStr = formatToLocalISO(date)
-                    const isDisabled = (minDate && dateStr < minDate) || (maxDate && dateStr > maxDate)
+                    const isDisabled = isDayDisabled(dateStr)
 
                     return (
                         <button
                             key={index}
-                            disabled={!!isDisabled}
+                            type="button"
+                            {...keys.dayProps(dateStr, selected)}
                             onClick={() => handleDateClick(date)}
                             style={{
                                 padding: '0.5rem',
                                 border: 'none',
                                 borderRadius: '50%',
-                                background: selected ? 'var(--info-solid)' : 'transparent',
-                                color: selected ? 'white' : isToday ? 'var(--warn-solid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
+                                background: selected ? 'var(--info-fill)' : 'transparent',
+                                color: selected ? 'white' : isToday ? 'var(--warn-fg-mid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
                                 fontSize: '0.875rem',
                                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                                 fontWeight: selected || isToday ? '600' : '400',
@@ -169,8 +185,9 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
             <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-sunk)', display: 'flex', justifyContent: 'flex-end' }}>
                 {value && (
                     <button
+                        type="button"
                         onClick={handleReset}
-                        style={{ background: 'var(--danger-bg-subtle)', color: 'var(--danger-solid)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+                        style={{ background: 'var(--danger-bg-subtle)', color: 'var(--danger-fg-strong)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
                     >
                         {t('reset' as any)}
                     </button>
@@ -181,10 +198,18 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
 
     return (
         <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-            {label && <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{label}</label>}
-            <div
-                onClick={() => setIsOpen(!isOpen)}
+            {label && <label htmlFor={openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{label}</label>}
+            <button
+                type="button"
+                id={openerId}
+                aria-haspopup="dialog"
+                aria-expanded={isOpen}
+                onClick={toggleOpen}
                 style={{
+                    width: '100%',
+                    font: 'inherit',
+                    color: 'inherit',
+                    textAlign: 'inherit',
                     padding: '0 1rem',
                     borderRadius: '1.25rem',
                     border: '1px solid var(--border)',
@@ -197,14 +222,14 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                     justifyContent: 'space-between'
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: 'var(--text-faint)' }}>📅</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>📅</span>
                     <span style={{ color: value ? 'var(--text-main)' : 'var(--text-faint)' }}>
                         {value ? formatDate(value) : t('select_date' as any)}
                     </span>
-                </div>
-                <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
-            </div>
+                </span>
+                <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
+            </button>
 
             {isOpen && mounted && createPortal(
                 <div

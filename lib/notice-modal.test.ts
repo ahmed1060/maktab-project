@@ -76,7 +76,10 @@ describe("results are reported in the application's own theme", () => {
     })
 
     it("can be dismissed from the keyboard, as alert() could", () => {
-        expect(NOTICE).toContain("e.key === 'Escape'")
+        // Escape closes it through useDialog (lib/useDialog.ts), which also keeps
+        // Tab inside and gives focus back; its button takes focus on opening.
+        expect(NOTICE).toContain("useDialog(!!notice, onClose)")
+        expect(NOTICE).toContain("{...dialog.panelProps}")
         expect(NOTICE).toContain("dismissRef.current?.focus()")
     })
 })

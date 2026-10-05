@@ -2,11 +2,10 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { adminUpdateDayOffSchema } from "@/lib/validations/day-off.schema"
 import { DayOffService } from "@/lib/services/day-off.service"
+import { can } from "@/lib/permissions/can"
 
 export const PATCH = withStandardHandler(async (req, session, json, { params }) => {
-    const userRole = session.user.role
-
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+    if (!can(session.user, "dayoff.approve")) {
         return ApiResponse.forbidden("Unauthorized")
     }
 

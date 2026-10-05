@@ -16,6 +16,9 @@ import { useCompany } from '@/context/CompanyContext'
 import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useCan } from '@/lib/useCan'
+import { apiErrorText } from "@/lib/api-error-text"
+import { useDialog } from '@/lib/useDialog'
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -46,6 +49,7 @@ interface DayOffRequest {
         firstName: string
         lastName: string
         dayOffCredit: number
+        teamLeaderId?: string | null
     }
 }
 
@@ -55,13 +59,20 @@ export default function DayOffRequestsPage() {
     const modules = useModules()
     const { data: session, status } = useSession()
     const user = session?.user
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user?.role || '')
+    // The manager's view — the company's requests, not one's own — is for
+    // those who may see them; deciding one is narrower still.
+    const { can, canFor } = useCan()
+    const managesRequests = can('dayoff.view')
+    const canDecide = can('dayoff.approve')
     const { selectedCompanyId: contextCompanyId } = useCompany()
 
     const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
     const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+    const requestDialog = useDialog(isRequestModalOpen, () => setIsRequestModalOpen(false))
+    const approvalDialog = useDialog(isApprovalModalOpen && !!selectedRequest, () => setIsApprovalModalOpen(false))
+    const rejectDialog = useDialog(isRejectModalOpen && !!selectedRequest, () => setIsRejectModalOpen(false))
     const [daysToDeduct, setDaysToDeduct] = useState('')
     const [chosenDeduction, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
     const [rejectionReason, setRejectionReason] = useState('')
@@ -97,9 +108,9 @@ export default function DayOffRequestsPage() {
     // original guard exactly.
     const requestsQuery = (() => {
         if (status !== 'authenticated') return null
-        const endpoint = isAdmin ? '/api/admin/day-off-requests' : '/api/day-off-requests'
+        const endpoint = managesRequests ? '/api/admin/day-off-requests' : '/api/day-off-requests'
         const queryParams = new URLSearchParams()
-        if (isAdmin && contextCompanyId) {
+        if (managesRequests && contextCompanyId) {
             queryParams.set('companyId', contextCompanyId)
         }
         queryParams.set('page', page.toString())
@@ -113,7 +124,7 @@ export default function DayOffRequestsPage() {
 
     // User Credit Info — only ever needed for non-admins viewing their own
     // request history.
-    const userCreditQuery = status === 'authenticated' && !isAdmin && user?.id ? `/api/users?id=${user.id}` : null
+    const userCreditQuery = status === 'authenticated' && !managesRequests && user?.id ? `/api/users?id=${user.id}` : null
     const { data: userCreditResult } = useSWR(userCreditQuery, fetcher)
     const foundUser = (() => {
         const data = userCreditResult?.data
@@ -186,7 +197,7 @@ export default function DayOffRequestsPage() {
                 setReqReason('')
             } else {
                 const err = await res.text()
-                showAlert('error', err || t('failed_submit_request' as any))
+                showAlert('error', apiErrorText(err, t('failed_submit_request' as any)))
             }
         } catch {
             showAlert('error', t('error_generic'))
@@ -325,7 +336,7 @@ export default function DayOffRequestsPage() {
                     maxWidth: '350px',
                     animation: 'slideInRight 0.3s ease-out'
                 }}>
-                    <span style={{ fontSize: '1rem' }}>
+                    <span aria-hidden="true" style={{ fontSize: '1rem' }}>
                         {alert.type === 'success' ? '✓' : '✕'}
                     </span>
                     {alert.message}
@@ -338,13 +349,13 @@ export default function DayOffRequestsPage() {
                 dateTo={filters.dateTo}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
-                isEmployee={!isAdmin}
+                isEmployee={!managesRequests}
                 hideSearch={false}
                 placeholder={locale === 'ar' ? 'بحث في السبب' : 'Search Reason'}
                 totalCount={total}
                 allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
                 primaryAction={
-                    !isAdmin ? (
+                    !managesRequests ? (
                         <button onClick={() => setIsRequestModalOpen(true)} className="btn btn-primary" style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
                             {t('request_day_off' as any)}
                         </button>
@@ -352,10 +363,10 @@ export default function DayOffRequestsPage() {
                 }
             />
 
-            <div className={isAdmin ? "" : "responsive-sidebar-grid"} style={{ display: isAdmin ? 'grid' : undefined, gridTemplateColumns: isAdmin ? '1fr' : undefined, gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className={managesRequests ? "" : "responsive-sidebar-grid"} style={{ display: managesRequests ? 'grid' : undefined, gridTemplateColumns: managesRequests ? '1fr' : undefined, gap: '1.5rem', marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {/* User Credit Stats - Mobile only */}
-                    {!isAdmin && (
+                    {!managesRequests && (
                         <div className="show-on-mobile" style={{ display: 'none', width: '100%', marginBottom: '0.5rem', marginTop: '-0.75rem' }}>
                             <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', width: '100%' }}>
                                 {(() => {
@@ -412,7 +423,7 @@ export default function DayOffRequestsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '1rem' }}>
                             {filteredRequests.map((req, index) => (
                                 <div
                                     key={req.id}
@@ -428,7 +439,7 @@ export default function DayOffRequestsPage() {
                                     {/* Card Header */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            {isAdmin && (
+                                            {managesRequests && (
                                                 <h3 className="text-lg font-bold text-slate-800 leading-tight">
                                                     {req.user?.firstName} {req.user?.lastName}
                                                 </h3>
@@ -559,14 +570,14 @@ export default function DayOffRequestsPage() {
                                     </div>
 
                                     {/* Card Actions (Admin only) */}
-                                    {isAdmin && req.status === 'PENDING' && (
+                                    {canDecide && req.status === 'PENDING' && canFor('dayoff.approve', req.userId, req.user?.teamLeaderId) && (
                                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
                                             <button
                                                 onClick={() => handleAction(req.id, 'APPROVED')}
                                                 className="btn"
                                                 style={{
                                                     flex: 1,
-                                                    background: 'var(--ok-solid)',
+                                                    background: 'var(--ok-fill)',
                                                     color: 'var(--text-on-accent)',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
@@ -581,7 +592,7 @@ export default function DayOffRequestsPage() {
                                                 className="btn"
                                                 style={{
                                                     flex: 1,
-                                                    background: 'var(--danger-solid)',
+                                                    background: 'var(--danger-fill)',
                                                     color: 'var(--text-on-accent)',
                                                     fontSize: '0.875rem',
                                                     fontWeight: '700',
@@ -605,7 +616,7 @@ export default function DayOffRequestsPage() {
                     />
                 </div>
 
-                {!isAdmin && (
+                {!managesRequests && (
                     <div className="hide-on-mobile" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         <div className="card" style={{ height: 'fit-content' }}>
                             <h2 className="text-xl font-semibold mb-4">{t('credit_overview' as any)}</h2>
@@ -631,7 +642,7 @@ export default function DayOffRequestsPage() {
                                 </ResponsiveContainer>
                             </div>
                             <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--ok-solid)' }}>{formatDays(userCredit)}</p>
+                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--ok-fg-strong)' }}>{formatDays(userCredit)}</p>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('remaining_credit' as any)}</p>
                             </div>
                         </div>
@@ -642,12 +653,12 @@ export default function DayOffRequestsPage() {
             {/* Request Modal */}
             {isRequestModalOpen && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
+                    <div {...requestDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
+                        <h2 id={requestDialog.titleId} className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
                         <form onSubmit={handleSubmitRequest}>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('day_off_type' as any)}</label>
-                                <select className="input" value={reqType} onChange={e => {
+                                <select aria-label={t('day_off_type' as any)} className="input" value={reqType} onChange={e => {
                                     setReqType(e.target.value as any);
                                     setReqDate('');
                                     setReqEndDate('');
@@ -683,7 +694,7 @@ export default function DayOffRequestsPage() {
                             )}
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('reason_label' as any)}</label>
-                                <textarea
+                                <textarea aria-label={t('reason_label' as any)}
                                     className="input"
                                     style={{ height: '80px', resize: 'none' }}
                                     placeholder={t('reason_placeholder' as any)}
@@ -693,7 +704,7 @@ export default function DayOffRequestsPage() {
                                 />
                                 <div style={{
                                     fontSize: '0.75rem',
-                                    color: reqReason.length >= 100 ? 'var(--danger-solid)' : 'var(--text-faint)',
+                                    color: reqReason.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)',
                                     textAlign: locale === 'ar' ? 'left' : 'right',
                                     marginTop: '0.25rem'
                                 }}>
@@ -716,14 +727,14 @@ export default function DayOffRequestsPage() {
             {/* Approval Modal (Deduction Popup) */}
             {isApprovalModalOpen && selectedRequest && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
+                    <div {...approvalDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
+                        <h2 id={approvalDialog.titleId} className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
                         <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-soft)' }}>
                             {selectedRequest.user?.firstName} {selectedRequest.user?.lastName} - {t('day_off_credit')}: {selectedRequest.user?.dayOffCredit}
                         </p>
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('days_to_deduct_label' as any)}</label>
-                            <input
+                            <input aria-label={t('days_to_deduct_label' as any)}
                                 type="number"
                                 className="input"
                                 value={daysToDeduct}
@@ -736,8 +747,8 @@ export default function DayOffRequestsPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                 <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-soft)' }}>{t('deduct_from_label' as any)}</label>
                                 {(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) && (
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--danger-solid)', fontWeight: 'bold', background: 'var(--danger-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
-                                        ⚠️ {t('insufficient_credit' as any) || 'Insufficient Credit'}
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--danger-fg-strong)', fontWeight: 'bold', background: 'var(--danger-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
+                                        <span aria-hidden="true">⚠️</span> {t('insufficient_credit' as any) || 'Insufficient Credit'}
                                     </span>
                                 )}
                             </div>
@@ -750,7 +761,7 @@ export default function DayOffRequestsPage() {
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
                                         border: '1px solid var(--border)',
-                                        background: deductionType === 'CREDIT' ? 'var(--info-solid)' : 'var(--surface)',
+                                        background: deductionType === 'CREDIT' ? 'var(--info-fill)' : 'var(--surface)',
                                         color: deductionType === 'CREDIT' ? 'var(--text-on-accent)' : 'var(--text-soft)',
                                         cursor: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 'not-allowed' : 'pointer',
                                         fontWeight: '700',
@@ -763,7 +774,7 @@ export default function DayOffRequestsPage() {
                                         opacity: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 0.5 : 1
                                     }}
                                 >
-                                    <span>📅</span> {t('deduct_from_credit' as any)}
+                                    <span aria-hidden="true">📅</span> {t('deduct_from_credit' as any)}
                                 </button>
                                 <button
                                     onClick={() => setDeductionType('SALARY')}
@@ -772,7 +783,7 @@ export default function DayOffRequestsPage() {
                                         padding: '0.625rem',
                                         borderRadius: '0.75rem',
                                         border: '1px solid var(--border)',
-                                        background: deductionType === 'SALARY' ? 'var(--info-solid)' : 'var(--surface)',
+                                        background: deductionType === 'SALARY' ? 'var(--info-fill)' : 'var(--surface)',
                                         color: deductionType === 'SALARY' ? 'var(--text-on-accent)' : 'var(--text-soft)',
                                         cursor: 'pointer',
                                         fontWeight: '700',
@@ -784,7 +795,7 @@ export default function DayOffRequestsPage() {
                                         gap: '0.5rem'
                                     }}
                                 >
-                                    <span>💵</span> {t('deduct_from_salary' as any)}
+                                    <span aria-hidden="true">💵</span> {t('deduct_from_salary' as any)}
                                 </button>
                             </div>
                         </div>
@@ -805,8 +816,8 @@ export default function DayOffRequestsPage() {
             {/* Rejection Confirmation Modal */}
             {isRejectModalOpen && selectedRequest && (
                 <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
+                    <div {...rejectDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
+                        <h2 id={rejectDialog.titleId} className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
                         <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>
                             {t('are_you_sure_msg' as any)} {t('reject_button')} {selectedRequest.user?.firstName} {selectedRequest.user?.lastName}?
                         </p>
@@ -835,7 +846,7 @@ export default function DayOffRequestsPage() {
                             <button
                                 onClick={() => processAction(selectedRequest.id, 'REJECTED')}
                                 className="btn"
-                                style={{ background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                             >
                                 {t('reject_button')}
                             </button>

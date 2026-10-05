@@ -620,7 +620,9 @@ describe("the end-contract screen and the commit agree", () => {
 
     it("is managers only, and company-scoped", () => {
         expect(route.split("verifyResourceAccess(session, userId, 'USER')").length - 1).toBe(2)
-        expect(route.split("MANAGERS.includes(session.user.role").length - 1).toBe(2)
+        // Three: the preview asks its permission of the person too, since
+        // employees.edit may be held for a team only.
+        expect(route.split("can(session.user, ").length - 1).toBe(3)
     })
 
     it("will not let somebody end their own contract", () => {

@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useCan } from '@/lib/useCan'
+import RoleSelect from '@/components/RoleSelect'
+import { apiErrorText } from "@/lib/api-error-text"
 
 type Company = {
     id: string
@@ -18,6 +21,9 @@ export default function NewEmployeePage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('EMPLOYEE')
+    // Empty: the company's default role (ROLES_PLAN.md §6.4). `role` is the
+    // chosen role's kind, which decides whether there is a team to join.
+    const [roleId, setRoleId] = useState('')
     const [companyId, setCompanyId] = useState('')
     const [salary, setSalary] = useState('')
     const [dayOffCredit, setDayOffCredit] = useState('0')
@@ -31,6 +37,12 @@ export default function NewEmployeePage() {
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+    const { can } = useCan()
+    const canAssignTeam = can('employees.assign_team')
+    const canAssignRole = can('employees.assign_role')
+    // Somebody who may only ask for a role — HR — picks one too; the account
+    // starts on the default and the pick goes to an Admin (ROLES_PLAN.md §6.12).
+    const canRequestRole = !canAssignRole && can('employees.request_role')
 
     useEffect(() => {
         if (userRole === 'SUPER_ADMIN') {
@@ -43,13 +55,13 @@ export default function NewEmployeePage() {
                 .catch(err => console.error('Failed to fetch companies', err))
         }
         // Asked for by role rather than fetched wholesale and filtered here.
-        if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+        if (canAssignTeam) {
             fetch('/api/users?role=TEAM_LEADER&limit=1000')
                 .then(res => res.json())
                 .then(result => setLeaders(result.data?.data || []))
                 .catch(err => console.error('Failed to fetch team leaders', err))
         }
-    }, [userRole])
+    }, [userRole, canAssignTeam])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -84,7 +96,7 @@ export default function NewEmployeePage() {
         }
 
         try {
-            const body: any = { firstName, lastName, email, password, role }
+            const body: any = { firstName, lastName, email, password, role: roleId ? role : 'EMPLOYEE', ...(roleId ? { roleId } : {}) }
             if (userRole === 'SUPER_ADMIN' && companyId) {
                 body.companyId = companyId
             }
@@ -112,7 +124,7 @@ export default function NewEmployeePage() {
                 if (text.includes("Username already in use")) {
                     setError(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
                 } else {
-                    setError(text || 'Failed to create user')
+                    setError(apiErrorText(text, 'Failed to create user'))
                 }
                 setLoading(false)
                 return
@@ -146,7 +158,7 @@ export default function NewEmployeePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                        <input
+                        <input aria-label={t('first_name_label')}
                             className="input"
                             value={firstName}
                             onChange={e => {
@@ -162,14 +174,14 @@ export default function NewEmployeePage() {
                             placeholder={locale === 'ar' ? 'جون' : "John"}
                         />
                         {fieldErrors.firstName && (
-                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.firstName}
                             </div>
                         )}
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                        <input
+                        <input aria-label={t('last_name_label')}
                             className="input"
                             value={lastName}
                             onChange={e => {
@@ -185,7 +197,7 @@ export default function NewEmployeePage() {
                             placeholder={locale === 'ar' ? 'دو' : "Doe"}
                         />
                         {fieldErrors.lastName && (
-                            <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                 {fieldErrors.lastName}
                             </div>
                         )}
@@ -193,7 +205,7 @@ export default function NewEmployeePage() {
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                    <input
+                    <input aria-label={t('email')}
                         type="email"
                         className="input"
                         value={email}
@@ -209,7 +221,7 @@ export default function NewEmployeePage() {
                         placeholder="john@example.com"
                     />
                     {fieldErrors.email && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.email}
                         </div>
                     )}
@@ -217,7 +229,7 @@ export default function NewEmployeePage() {
 
                 <div style={{ position: 'relative' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                    <input
+                    <input aria-label={t('password')}
                         type={showPassword ? "text" : "password"}
                         className="input"
                         value={password}
@@ -238,6 +250,8 @@ export default function NewEmployeePage() {
                     />
                     <button
                         type="button"
+                        aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
+                        aria-pressed={showPassword}
                         onClick={() => setShowPassword(!showPassword)}
                         style={{
                             position: 'absolute',
@@ -265,7 +279,7 @@ export default function NewEmployeePage() {
                         )}
                     </button>
                     {fieldErrors.password && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             {fieldErrors.password}
                         </div>
                     )}
@@ -274,7 +288,7 @@ export default function NewEmployeePage() {
                 {!['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                        <input
+                        <input aria-label={t('monthly_base_salary_label')}
                             type="number"
                             className="input"
                             value={salary}
@@ -289,7 +303,7 @@ export default function NewEmployeePage() {
                 {(role === 'EMPLOYEE' || role === 'TEAM_LEADER') && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit')}</label>
-                        <input
+                        <input aria-label={t('day_off_credit')}
                             type="number"
                             className="input"
                             value={dayOffCredit}
@@ -305,10 +319,10 @@ export default function NewEmployeePage() {
                 {userRole === 'SUPER_ADMIN' && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
-                        <select
+                        <select aria-label={t('company_label')}
                             className="input"
                             value={companyId}
-                            onChange={e => setCompanyId(e.target.value)}
+                            onChange={e => { setCompanyId(e.target.value); setRoleId(''); setRole('EMPLOYEE') }}
                             required
                             style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         >
@@ -320,26 +334,25 @@ export default function NewEmployeePage() {
                     </div>
                 )}
 
-                {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+                {(canAssignRole || canRequestRole) && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                        <select
-                            className="input"
-                            value={role}
-                            onChange={e => setRole(e.target.value)}
-                            required
+                        <RoleSelect
+                            companyId={companyId}
+                            value={roleId}
+                            allowDefault
+                            onChange={(id, chosen) => { setRoleId(id); setRole(chosen?.baseRole ?? 'EMPLOYEE') }}
                             style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        >
-                            <option value="EMPLOYEE">{t('role_employee')}</option>
-                            <option value="TEAM_LEADER">{t('role_team_leader')}</option>
-                            {userRole === 'SUPER_ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
-                        </select>
+                        />
+                        {canRequestRole && roleId && (
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.35rem' }}>{t('role_requests_will_ask')}</p>
+                        )}
                     </div>
                 )}
-                {role === 'EMPLOYEE' && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+                {role === 'EMPLOYEE' && canAssignTeam && (
                     <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
-                        <select
+                        <select aria-label={t('team_leader_label')}
                             className="input"
                             value={teamLeaderId}
                             onChange={e => setTeamLeaderId(e.target.value)}

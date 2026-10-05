@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useDialog } from '@/lib/useDialog'
 
 interface ConfirmModalProps {
     isOpen: boolean
@@ -59,6 +60,8 @@ export default function ConfirmModal({
         setReasonValue('')
     })
 
+    const dialog = useDialog(isOpen, onCancel)
+
     if (!isOpen || !mounted) return null
 
     const reasonTooShort = !!reason && reasonValue.trim().length < (reason.minLength ?? 3)
@@ -105,10 +108,10 @@ export default function ConfirmModal({
             animation: 'fadeIn 0.2s ease-out'
         }}>
             <div
-                className="absolute inset-0"
+                className="modal-backdrop"
                 onClick={onCancel}
             />
-            <div style={{
+            <div {...dialog.panelProps} style={{
                 background: 'var(--surface)',
                 padding: '2rem',
                 borderRadius: '12px',
@@ -138,7 +141,7 @@ export default function ConfirmModal({
                         </svg>
                     </div>
                     <div style={{ flex: 1 }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>
+                        <h2 id={dialog.titleId} style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>
                             {title}
                         </h2>
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-soft)', margin: 0, lineHeight: '1.5' }}>
@@ -150,6 +153,7 @@ export default function ConfirmModal({
                                     {t('type_to_confirm_prefix') || 'Type'} <code style={{ background: 'var(--surface-sunk)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem', fontWeight: 700 }}>{requireTypedText}</code> {t('type_to_confirm_suffix') || 'to confirm'}
                                 </label>
                                 <input
+                                    aria-label={`${t('type_to_confirm_prefix') || 'Type'} ${requireTypedText} ${t('type_to_confirm_suffix') || 'to confirm'}`}
                                     type="text"
                                     value={typedValue}
                                     onChange={(e) => setTypedValue(e.target.value)}

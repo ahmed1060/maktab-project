@@ -92,5 +92,5 @@ export const PATCH = withStandardHandler(async (req, session, json) => {
     return ApiResponse.success({ updated })
 }, {
     // Admins only, matching who may set a leader on the single-employee form.
-    allowedRoles: ['ADMIN', 'SUPER_ADMIN'],
+    permission: "employees.assign_team",
 })

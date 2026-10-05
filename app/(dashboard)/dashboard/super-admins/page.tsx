@@ -11,6 +11,7 @@ import { useHeader } from '@/context/HeaderContext'
 import Pagination from '@/components/Pagination'
 import { fetcher } from '@/lib/swr-fetcher'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
+import { useDialog } from '@/lib/useDialog'
 
 type Admin = {
     id: string
@@ -29,6 +30,9 @@ export default function SuperAdminsPage() {
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [viewingAdmin, setViewingAdmin] = useState<Admin | null>(null)
     const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null)
+    const createDialog = useDialog(showCreateModal, () => setShowCreateModal(false))
+    const viewDialog = useDialog(!!viewingAdmin, () => setViewingAdmin(null))
+    const editDialog = useDialog(!!editingAdmin, () => setEditingAdmin(null))
     const [deleteConfirm, setDeleteConfirm] = useState<Admin | null>(null)
     // Replaces alert(): a native dialog ignores the palette entirely, and it
     // blocks the main thread for as long as it is up.
@@ -235,7 +239,7 @@ export default function SuperAdminsPage() {
                                                         whiteSpace: 'nowrap'
                                                     }}
                                                 >
-                                                    🔒 {locale === 'ar' ? 'محمي' : 'Protected'}
+                                                    <span aria-hidden="true">🔒</span> {locale === 'ar' ? 'محمي' : 'Protected'}
                                                 </span>
                                             )}
                                         </div>
@@ -298,27 +302,27 @@ export default function SuperAdminsPage() {
                         style={{ position: 'absolute', inset: 0 }}
                         onClick={() => setShowCreateModal(false)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_super_admin_title')}</h2>
+                    <div {...createDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={createDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('add_super_admin_title')}</h2>
                         {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleCreate}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                                    <input className="input" required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('first_name_label')} className="input" required value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                                    <input className="input" required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('last_name_label')} className="input" required value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                <input className="input" type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                <input aria-label={t('email')} className="input" type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                             </div>
                             <div style={{ marginBottom: '1rem', position: 'relative' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                                <input
+                                <input aria-label={t('password')}
                                     className="input"
                                     type={showPassword ? "text" : "password"}
                                     required
@@ -328,6 +332,8 @@ export default function SuperAdminsPage() {
                                 />
                                 <button
                                     type="button"
+                                    aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                    aria-pressed={showPassword}
                                     onClick={() => setShowPassword(!showPassword)}
                                     style={{
                                         position: 'absolute',
@@ -357,7 +363,7 @@ export default function SuperAdminsPage() {
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                                <select className="input" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <select aria-label={t('gender_label')} className="input" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <option value="MALE">{t('male')}</option>
                                     <option value="FEMALE">{t('female')}</option>
                                 </select>
@@ -382,8 +388,8 @@ export default function SuperAdminsPage() {
                         style={{ position: 'absolute', inset: 0 }}
                         onClick={() => setViewingAdmin(null)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('profile_title')}</h2>
+                    <div {...viewDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={viewDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('profile_title')}</h2>
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ color: 'var(--text-soft)', fontSize: '0.875rem', display: 'block', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('full_name_label')}</label>
                             <div style={{ fontWeight: '500', fontSize: '1.1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{viewingAdmin.firstName} {viewingAdmin.lastName}</div>
@@ -414,18 +420,18 @@ export default function SuperAdminsPage() {
                         style={{ position: 'absolute', inset: 0 }}
                         onClick={() => setEditingAdmin(null)}
                     />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('edit_admin_title')}</h2>
+                    <div {...editDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', position: 'relative', zIndex: 101, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={editDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('edit_admin_title')}</h2>
                         {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{error}</div>}
                         <form onSubmit={handleUpdate}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                                    <input className="input" required value={editData.firstName} onChange={e => setEditData({ ...editData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('first_name_label')} className="input" required value={editData.firstName} onChange={e => setEditData({ ...editData, firstName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                                    <input className="input" required value={editData.lastName} onChange={e => setEditData({ ...editData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    <input aria-label={t('last_name_label')} className="input" required value={editData.lastName} onChange={e => setEditData({ ...editData, lastName: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 </div>
                             </div>
                             <div style={{ marginBottom: '1rem' }}>
@@ -434,14 +440,14 @@ export default function SuperAdminsPage() {
                                     settings) instead of this form — the backend rejects an
                                     email change here regardless, this just avoids a confusing
                                     round-trip error. */}
-                                <input className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: 'var(--surface-sunk)', cursor: 'not-allowed' }} />
+                                <input aria-label={t('email')} className="input" type="email" required disabled value={editData.email} style={{ textAlign: locale === 'ar' ? 'right' : 'left', background: 'var(--surface-sunk)', cursor: 'not-allowed' }} />
                                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.78rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <Link href="/dashboard/security-settings" style={{ color: 'inherit', textDecoration: 'underline' }}>{t('security_settings_nav')}</Link>
                                 </p>
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                                <select className="input" value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                <select aria-label={t('gender_label')} className="input" value={editData.gender} onChange={e => setEditData({ ...editData, gender: e.target.value })} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                     <option value="MALE">{t('male')}</option>
                                     <option value="FEMALE">{t('female')}</option>
                                 </select>

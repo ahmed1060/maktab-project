@@ -21,6 +21,7 @@ import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 import { cellToPrimitive } from '@/lib/xlsx-cell'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
+import { useCan } from '@/lib/useCan'
 
 const NO_VENDORS: any[] = []
 
@@ -53,11 +54,9 @@ export default function NewTaskPage() {
     const userRole = (session?.user as any)?.role
     const modules = useModules()
     const vendorsName = modules.label('vendors')
-    // Same role check as the vendors request below — a role that was
-    // never going to see vendors either way (e.g. Employee, if this page
-    // is ever reached with that role) gets the plain location field only,
-    // same as always.
-    const canUseVendors = ['ADMIN', 'TEAM_LEADER', 'SUPER_ADMIN'].includes(userRole)
+    // The permission GET /api/vendors checks — someone who may not read the
+    // vendor list gets the plain location field only, same as always.
+    const canUseVendors = useCan().can('vendors.view')
 
     // Who can be assigned. SWR, keyed by the company a Super Admin is looking
     // at, so switching company cannot leave the previous company's people in
@@ -447,11 +446,11 @@ export default function NewTaskPage() {
                             justifyContent: 'flex-start'
                         }}
                     >
-                        <span style={{ fontSize: '1rem' }}>📥</span>
+                        <span aria-hidden="true" style={{ fontSize: '1rem' }}>📥</span>
                         {t('download_template')}
                     </button>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
+                        <button aria-label={t('view_usernames')}
                             type="button"
                             onClick={() => window.open('/dashboard/usernames', '_blank')}
                             title={t('view_usernames')}
@@ -497,7 +496,7 @@ export default function NewTaskPage() {
                                 justifyContent: 'flex-start'
                             }}
                         >
-                            <span style={{ fontSize: '1rem' }}>📤</span>
+                            <span aria-hidden="true" style={{ fontSize: '1rem' }}>📤</span>
                             {t('upload_tasks_excel')}
                             <input
                                 type="file"
@@ -521,7 +520,7 @@ export default function NewTaskPage() {
             <form onSubmit={handleSubmit}>
                 <div id="field-title" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
-                    <input
+                    <input aria-label={t('title_label' as any)}
                         className="input"
                         value={title}
                         onChange={e => {
@@ -533,17 +532,17 @@ export default function NewTaskPage() {
                         maxLength={100}
                     />
                     {fieldErrors.title && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.title}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {title.length}/100
                     </div>
                 </div>
                 <div id="field-description" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
-                    <textarea
+                    <textarea aria-label={t('description_label' as any)}
                         className="input"
                         value={description}
                         onChange={e => {
@@ -556,11 +555,11 @@ export default function NewTaskPage() {
                         maxLength={1000}
                     />
                     {fieldErrors.description && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.description}
                         </div>
                     )}
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 1000 ? 'var(--danger-solid)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: description.length >= 1000 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
                         {description.length}/1000
                     </div>
                 </div>
@@ -604,7 +603,7 @@ export default function NewTaskPage() {
                                     href="/dashboard/vendors"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    style={{ fontSize: '0.75rem', color: 'var(--info-solid)', textDecoration: 'none' }}
+                                    style={{ fontSize: '0.75rem', color: 'var(--info-fg)', textDecoration: 'none' }}
                                 >
                                     {locale === 'ar' ? `+ إضافة ${vendorsName}` : `+ Add a ${vendorsName}`}
                                 </a>
@@ -617,7 +616,7 @@ export default function NewTaskPage() {
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
                                 {vendorsName}
                             </label>
-                            <select
+                            <select aria-label={vendorsName}
                                 value={vendorId}
                                 onChange={(e) => setVendorId(e.target.value)}
                                 className="input"
@@ -644,7 +643,7 @@ export default function NewTaskPage() {
                 </div>
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <input
+                    <input aria-label={t('assignee_label')}
                         type="text"
                         className="input"
                         placeholder={t('search_placeholder')}
@@ -694,7 +693,7 @@ export default function NewTaskPage() {
                         )}
                     </div>
                     {fieldErrors.assigneeIds && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.assigneeIds}
                         </div>
                     )}
@@ -707,14 +706,14 @@ export default function NewTaskPage() {
                         min={earliestDeadline(now).toISOString()}
                     />
                     {fieldErrors.deadline && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldErrors.deadline}
                         </div>
                     )}
                 </div>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>
-                    <input
+                    <input aria-label={t('difficulty')}
                         type="number"
                         className="input"
                         value={difficulty}

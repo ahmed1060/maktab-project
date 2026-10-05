@@ -23,6 +23,8 @@ import bcrypt from "bcryptjs"
 import { demoAddress, isUnroutableAddress } from "../lib/unroutable-address"
 import { calendarMonth, startOfDayIn, DEFAULT_TIME_ZONE } from "../lib/time"
 import { daysInMonth } from "../lib/payroll"
+import { RoleService } from "../lib/services/role.service"
+import { RoleAssignmentService } from "../lib/services/role-assignment.service"
 
 const prisma = createScriptClient()
 
@@ -102,7 +104,10 @@ async function seed() {
         return
     }
 
+    // With its built-in roles, as every company is created — nobody can be
+    // added to a company that has none.
     const company = await prisma.company.create({ data: { name: COMPANY_NAME } })
+    await RoleService.seedBuiltInRoles(prisma as any, company.id)
     const hashed = await bcrypt.hash(DEMO_PASSWORD, 12)
     const ids: Record<string, string> = {}
 
@@ -115,7 +120,7 @@ async function seed() {
                 password: hashed,
                 firstName: person.firstName,
                 lastName: person.lastName,
-                role: person.role,
+                ...(await RoleAssignmentService.builtIn(prisma as any, person.role, company.id)),
                 companyId: company.id,
                 salary: person.salary,
                 status: "OFFLINE",

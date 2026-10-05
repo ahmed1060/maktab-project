@@ -5,6 +5,7 @@ import { resolvePayrollScope, managesCompany } from "./payroll-scope"
 import { issueProgress, nextIssueBatch, ISSUE_BATCH_SIZE } from "./register"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * Paying and delivering — the last phase, and the only one where every failure
@@ -21,6 +22,18 @@ const PAID_ROUTE = stripComments(readFileSync("app/api/payroll/[year]/[month]/pa
 const EXPORT_ROUTE = stripComments(readFileSync("app/api/payroll/[year]/[month]/export/route.ts", "utf8"))
 const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
 
+/**
+ * The two helpers take the caller and the permission a route needs now
+ * (ROLES_PLAN.md, Part A). These adapters keep every assertion below exactly
+ * as it was, asked in the old shape, so a changed answer is a changed rule and
+ * not a rewritten test. The route-level record of the same rules is
+ * lib/permissions/payroll-access.characterization.test.ts.
+ */
+const scopeFor = (role: string | null | undefined, companyId: string | null, requested: string | null, year: unknown, month: unknown) =>
+    resolvePayrollScope(withGrants({ id: "u", role, companyId }), "payroll.view", requested, year, month)
+const manages = (role: string | null | undefined, companyId: string | null, target: string) =>
+    managesCompany(withGrants({ id: "u", role, companyId }), "payroll.view", target)
+
 describe("who may act on a month", () => {
     const ADMIN = ["ADMIN", "c1"] as const
     const SUPER = ["SUPER_ADMIN", "c1"] as const
@@ -28,65 +41,65 @@ describe("who may act on a month", () => {
     it("ignores a company an Admin names and uses their own", () => {
         // The whole multi-tenant leak in one line: read the parameter for both
         // roles and an Admin can type an id they are not in.
-        const scope = resolvePayrollScope(...ADMIN, "c2", 2026, 9)
+        const scope = scopeFor(...ADMIN, "c2", 2026, 9)
         expect(scope.ok && scope.companyId).toBe("c1")
     })
 
     it("honours a company a Super Admin names", () => {
-        const scope = resolvePayrollScope(...SUPER, "c2", 2026, 9)
+        const scope = scopeFor(...SUPER, "c2", 2026, 9)
         expect(scope.ok && scope.companyId).toBe("c2")
     })
 
     it("falls back to a Super Admin's own company when they name none", () => {
-        expect(resolvePayrollScope(...SUPER, null, 2026, 9)).toMatchObject({ companyId: "c1" })
+        expect(scopeFor(...SUPER, null, 2026, 9)).toMatchObject({ companyId: "c1" })
     })
 
     it("refuses anybody who is not a manager, before looking at anything else", () => {
         // Checked first on purpose: an employee sending a malformed month
         // should be told they may not, not that their month is wrong.
         for (const role of ["EMPLOYEE", "TEAM_LEADER", "", null, undefined]) {
-            expect(resolvePayrollScope(role, "c1", null, 2026, 9)).toMatchObject({ reason: "NOT_A_MANAGER" })
+            expect(scopeFor(role, "c1", null, 2026, 9)).toMatchObject({ reason: "NOT_A_MANAGER" })
         }
-        expect(resolvePayrollScope("EMPLOYEE", "c1", null, 1066, 77)).toMatchObject({ reason: "NOT_A_MANAGER" })
+        expect(scopeFor("EMPLOYEE", "c1", null, 1066, 77)).toMatchObject({ reason: "NOT_A_MANAGER" })
     })
 
     it("refuses a Super Admin attached to no company and naming none", () => {
-        expect(resolvePayrollScope("SUPER_ADMIN", null, null, 2026, 9)).toMatchObject({ reason: "NO_COMPANY" })
+        expect(scopeFor("SUPER_ADMIN", null, null, 2026, 9)).toMatchObject({ reason: "NO_COMPANY" })
     })
 
     it("refuses a month that is not a month", () => {
         for (const m of [0, 13, -1, 1.5, "september", NaN, null]) {
-            expect(resolvePayrollScope(...ADMIN, null, 2026, m), String(m)).toMatchObject({ reason: "BAD_MONTH" })
+            expect(scopeFor(...ADMIN, null, 2026, m), String(m)).toMatchObject({ reason: "BAD_MONTH" })
         }
         for (const y of [1999, 2101, "twenty", NaN]) {
-            expect(resolvePayrollScope(...ADMIN, null, y, 9), String(y)).toMatchObject({ reason: "BAD_YEAR" })
+            expect(scopeFor(...ADMIN, null, y, 9), String(y)).toMatchObject({ reason: "BAD_YEAR" })
         }
     })
 
     it("accepts the string params a route actually hands it", () => {
         // Next gives these as strings off the URL. A resolver that only
         // accepted numbers would refuse every real request.
-        expect(resolvePayrollScope(...ADMIN, null, "2026", "09")).toMatchObject({ year: 2026, month: 9 })
+        expect(scopeFor(...ADMIN, null, "2026", "09")).toMatchObject({ year: 2026, month: 9 })
     })
 })
 
 describe("who may act on one document", () => {
     it("lets a manager at that company through and one at another company not", () => {
-        expect(managesCompany("ADMIN", "c1", "c1")).toBe(true)
-        expect(managesCompany("ADMIN", "c1", "c2")).toBe(false)
+        expect(manages("ADMIN", "c1", "c1")).toBe(true)
+        expect(manages("ADMIN", "c1", "c2")).toBe(false)
     })
 
     it("lets a Super Admin through wherever they happen to be attached", () => {
         // The arm that has to short-circuit: compared straight, a Super Admin
         // with a null companyId would be refused everywhere, and one attached
         // to a company would be admitted to exactly that one.
-        expect(managesCompany("SUPER_ADMIN", null, "c9")).toBe(true)
-        expect(managesCompany("SUPER_ADMIN", "c1", "c9")).toBe(true)
+        expect(manages("SUPER_ADMIN", null, "c9")).toBe(true)
+        expect(manages("SUPER_ADMIN", "c1", "c9")).toBe(true)
     })
 
     it("does not admit an employee to their own company's records", () => {
-        expect(managesCompany("EMPLOYEE", "c1", "c1")).toBe(false)
-        expect(managesCompany(null, "c1", "c1")).toBe(false)
+        expect(manages("EMPLOYEE", "c1", "c1")).toBe(false)
+        expect(manages(null, "c1", "c1")).toBe(false)
     })
 })
 
@@ -260,7 +273,7 @@ describe("the screen tells the truth about what has gone out", () => {
 
     it("offers no send button before the month is approved", () => {
         const card = PAGE.slice(PAGE.indexOf("payroll_delivery"), PAGE.indexOf("{register && card("))
-        expect(PAGE).toContain("{view && !isDraft && view.delivery && isManager && card(")
+        expect(PAGE).toContain("{view && !isDraft && view.delivery && canDeliver && card(")
         expect(card).toContain("payroll_issue")
     })
 })

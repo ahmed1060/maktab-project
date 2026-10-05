@@ -6,10 +6,21 @@ import { useLanguage } from '@/context/LanguageContext'
 import SafeDate from '@/components/SafeDate'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
+import { useCan } from '@/lib/useCan'
 
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
     const { t, locale } = useLanguage()
+    // From the role the page passed down, so the first paint is complete.
+    // Someone without obligations.view acts on an obligation only as its
+    // assignee. Deciding or deleting one you are assigned to is refused to a
+    // company-wide manager (the self-approval rules in ObligationService); a
+    // Team Leader manages their team's, their own among them.
+    const { can, companyWide, scope } = useCan()
+    const seesOthers = can('obligations.view')
+    const canManage = can('obligations.manage')
+    const teamReach = scope('obligations.view') === 'TEAM'
+    const mayManageThis = canManage && (scope('obligations.manage') === 'TEAM' || !obligation.assignees?.some((a: any) => a.id === userId))
     const [uploading, setUploading] = useState(false)
     const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -41,7 +52,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
 
     useEffect(() => {
         const isUserAssignee = obligation.assignees?.some((a: any) => a.id === userId)
-        const isRestrictedRole = userRole === 'EMPLOYEE' || (userRole === 'TEAM_LEADER' && isUserAssignee)
+        const isRestrictedRole = !seesOthers || (teamReach && isUserAssignee)
 
         if (!isRestrictedRole || !isOverdue) return
 
@@ -101,7 +112,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
 
         document.addEventListener('click', handleLocalClick, true)
         return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, isOverdue, t, userId, obligation.assignees])
+    }, [userRole, isOverdue, t, userId, obligation.assignees, seesOthers, teamReach])
 
     const handleUpload = useCallback(async (isDraft: boolean, isEmergency?: boolean) => {
         setUploading(true)
@@ -184,7 +195,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             console.log('Suspension detected, auto-saving obligation progress...')
             try {
                 // Only auto-save if employee interaction is active and not already submitted or finalized
-                if (userRole === 'EMPLOYEE' && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)) {
+                if (!seesOthers && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)) {
                     await handleUpload(true, true)
                 }
             } finally {
@@ -197,7 +208,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
         return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [obligation.status, userRole, handleUpload])
+    }, [obligation.status, userRole, handleUpload, seesOthers])
 
     // Helper to parse existing attachments
     const existingAttachments = obligation.attachments ? (() => {
@@ -216,7 +227,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
     })() : []
 
     const handleRemoveExistingAttachment = async (itemToRemove: any) => {
-        if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole)) return
+        if (!canManage) return
 
         const updatedAttachments = existingAttachments.filter((att: any) =>
             (typeof att === 'string' ? att : att.url) !== (typeof itemToRemove === 'string' ? itemToRemove : itemToRemove.url)
@@ -346,7 +357,8 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             const result = await res.json()
             const data = result.data
             const usersList = data.data || []
-            const filtered = userRole === 'TEAM_LEADER' ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
+            // A team-scoped manager is not offered the company's Admins.
+            const filtered = canManage && !companyWide('obligations.manage') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
             setAllUsers(filtered)
         }
     }
@@ -409,10 +421,10 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
         }}>
 
             {/* Deleted Assignee Alert */}
-            {obligation.assignees?.some((a: any) => a.status === 'DELETED') && ['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (
+            {obligation.assignees?.some((a: any) => a.status === 'DELETED') && canManage && (
                 <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg)', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🚫</span>
+                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🚫</span>
                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                             <strong>{t('assignee_deleted_alert')}</strong>
                             <p style={{ margin: 0, fontSize: '0.9rem' }}>
@@ -423,7 +435,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
 
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={handleForceComplete} className="btn" style={{ background: 'var(--ok-fg)', color: 'var(--text-on-accent)' }}>{t('mark_as_completed')}</button>
-                        <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: 'var(--info-solid-hover)', color: 'var(--text-on-accent)' }}>{t('reassign_button')}</button>
+                        <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: 'var(--info-fill-hover)', color: 'var(--text-on-accent)' }}>{t('reassign_button')}</button>
                         <button onClick={() => setShowDeleteConfirm(true)} className="btn" style={{ background: 'var(--danger-fg-strong)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
                         <button onClick={() => router.push('/dashboard/obligations')} className="btn" style={{ background: 'var(--surface)', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</button>
                     </div>
@@ -454,7 +466,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     <span style={{
                         padding: '0.25rem 0.75rem',
                         borderRadius: '9999px',
-                        background: 'var(--info-solid)',
+                        background: 'var(--info-fill)',
                         color: 'var(--text-on-accent)',
                         fontWeight: 'bold',
                         fontSize: '0.9rem',
@@ -505,7 +517,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                             {isReverting ? t('reverting') : t('return_to_in_progress')}
                         </button>
                     )}
-                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (userRole === 'TEAM_LEADER' || !obligation.assignees?.some((a: any) => a.id === userId)) && (
+                    {mayManageThis && (
                         <button
                             onClick={() => setShowDeleteConfirm(true)}
                             style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
@@ -540,7 +552,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     borderRadius: '0.5rem',
                                     boxShadow: '0 1px 2px var(--shadow-faint)'
                                 }}>
-                                    <span style={{ fontSize: '1.2rem' }}>📎</span>
+                                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📎</span>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <a href={url} target="_blank" rel="noopener noreferrer" style={{
                                             color: 'var(--info-solid-hover)',
@@ -560,13 +572,13 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                             </span>
                                         )}
                                     </div>
-                                    {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && (att.uploadedById === userId || ['ADMIN', 'SUPER_ADMIN'].includes(userRole)) && (
-                                        <button
+                                    {canManage && (att.uploadedById === userId || companyWide('obligations.manage')) && (
+                                        <button aria-label={t('remove' as any)}
                                             onClick={() => handleRemoveExistingAttachment(att)}
                                             style={{
                                                 marginLeft: locale === 'ar' ? '0' : '0.5rem',
                                                 marginRight: locale === 'ar' ? '0.5rem' : '0',
-                                                color: 'var(--danger-solid)',
+                                                color: 'var(--danger-fg-strong)',
                                                 background: 'none',
                                                 border: 'none',
                                                 cursor: 'pointer',
@@ -592,7 +604,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                 )}
             </div>
 
-            {userRole === 'EMPLOYEE' && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
+            {!seesOthers && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
                 <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                     <h3>{t('attachments_optional_label').split(' ')[0]}</h3>
                     <div
@@ -619,6 +631,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     >
                         <input
                             key={inputKey}
+                            aria-label={t('attachments_label' as any)}
                             type="file"
                             multiple
                             accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
@@ -640,7 +653,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                             }}
                         />
                         <div style={{ pointerEvents: 'none' }}>
-                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
+                            <div aria-hidden="true" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
                             <p style={{ margin: 0, fontWeight: '600', color: 'var(--text-muted)' }}>
                                 {t('upload_drag_files_msg')}
                             </p>
@@ -666,7 +679,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     flexDirection: 'row'
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                        <span style={{ fontSize: '1.2rem' }}>📄</span>
+                                        <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📄</span>
                                         <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                             <div style={{ fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-body)' }}>{file.name}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>
@@ -675,7 +688,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                                     <button
                                         onClick={() => removePendingFile(i)}
                                         style={{
-                                            color: 'var(--danger-solid)',
+                                            color: 'var(--danger-fg-strong)',
                                             background: 'var(--danger-bg-subtle)',
                                             border: 'none',
                                             borderRadius: '0.25rem',
@@ -715,7 +728,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             )}
 
             {/* Finalized/Pending Message for Employees */}
-            {userRole === 'EMPLOYEE' && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED'].includes(obligation.status) && (
+            {!seesOthers && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED'].includes(obligation.status) && (
                 <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', textAlign: 'center' }}>
                     <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: '500' }}>
                         {obligation.status === 'PENDING_CONFIRMATION'
@@ -726,10 +739,10 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
             )}
 
             {/* Approve/Reject Buttons (Admins only) */}
-            {['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole) && obligation.status === 'PENDING_CONFIRMATION' && (userRole === 'TEAM_LEADER' || !obligation.assignees?.some((a: any) => a.id === userId)) && (
+            {mayManageThis && obligation.status === 'PENDING_CONFIRMATION' && (
                 <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
                     <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
+                    <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
                 </div>
             )}
 
@@ -751,7 +764,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     direction: locale === 'ar' ? 'rtl' : 'ltr'
                 }}>
                     <span>{feedbackMessage}</span>
-                    <button onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                    <button aria-label={t('close')} onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
                 </div>
             )}
 
@@ -761,7 +774,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     <p>{t('delete_obligation_warning' as any)}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={handleDelete} className="btn" style={{ background: 'var(--danger-solid-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
+                        <button onClick={handleDelete} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
                     </div>
                 </div>
             </Modal>
@@ -824,7 +837,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
                     <p>{t('confirm_action_button') + '?'}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                         <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={handleRevert} className="btn" style={{ background: 'var(--info-solid-hover)', color: 'var(--text-on-accent)' }}>
+                        <button onClick={handleRevert} className="btn" style={{ background: 'var(--info-fill-hover)', color: 'var(--text-on-accent)' }}>
                             {isReverting ? '...' : t('confirm_action_button')}
                         </button>
                     </div>

@@ -1,0 +1,27 @@
+{
+  "name": "nizmo-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Nizmo check-in app: Capacitor around the website, with a native plugin for the check-in (ATTENDANCE_PLAN.md §9).",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap sync android && cap open android",
+    "ios": "cap sync ios && cap open ios",
+    "assets": "node scripts/assets.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/push-notifications": "^8.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
+    "sharp": "^0.32.6",
+    "typescript": "^5.9.3"
+  }
+}

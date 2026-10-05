@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import PreferenceBar from '@/components/PreferenceBar'
 import { reportClientError, friendlyErrorMessage } from '@/lib/client-error-report'
+import { signInErrorKey, codeErrorKey } from '@/lib/login-errors'
 
 export default function LoginPage() {
     const { t, locale } = useLanguage()
@@ -133,15 +134,7 @@ export default function LoginPage() {
             }
 
             if (res?.error) {
-                if (res.error.includes('suspended')) {
-                    setError(t('error_suspended'))
-                } else if (res.error.includes('Company access restricted')) {
-                    setError(t('error_banned'))
-                } else if (res.error.includes('This user does not belong')) {
-                    setError('Access Denied.')
-                } else {
-                    setError(t('error_invalid_credentials'))
-                }
+                setError(t(signInErrorKey(res.error)))
                 setLoading(false)
             } else if (res?.ok) {
                 await finishLogin()
@@ -176,11 +169,7 @@ export default function LoginPage() {
                 return
             }
 
-            setError(
-                res?.error === 'INVALID_MFA_CODE'
-                    ? (isAr ? 'رمز غير صالح' : 'Invalid code')
-                    : (isAr ? 'حدث خطأ' : 'Something went wrong')
-            )
+            setError(t(codeErrorKey(res?.error)))
             setLoading(false)
         } catch (err: any) {
             const ref = await reportClientError(err, '/login')
@@ -309,8 +298,9 @@ export default function LoginPage() {
                             {forgotStage === 'request' ? (
                                 <div style={{ marginBottom: '1.25rem' }}>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                    <input
+                                    <input aria-label={t('email')}
                                         type="email"
+                                        autoComplete="username"
                                         className="input"
                                         value={forgotEmail}
                                         onChange={(e) => setForgotEmail(e.target.value.slice(0, 254))}
@@ -326,9 +316,10 @@ export default function LoginPage() {
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                             {isAr ? 'الرمز' : 'Code'}
                                         </label>
-                                        <input
+                                        <input aria-label={isAr ? 'الرمز' : 'Code'}
                                             type="text"
                                             inputMode="numeric"
+                                            autoComplete="one-time-code"
                                             className="input"
                                             value={forgotCode}
                                             onChange={(e) => setForgotCode(e.target.value)}
@@ -343,8 +334,9 @@ export default function LoginPage() {
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                             {isAr ? 'كلمة المرور الجديدة' : 'New password'}
                                         </label>
-                                        <input
+                                        <input aria-label={isAr ? 'كلمة المرور الجديدة' : 'New password'}
                                             type="password"
+                                            autoComplete="new-password"
                                             className="input"
                                             value={forgotNewPassword}
                                             onChange={(e) => setForgotNewPassword(e.target.value.slice(0, 72))}
@@ -399,8 +391,9 @@ export default function LoginPage() {
                         <form onSubmit={handleCredentialsSubmit}>
                             <div style={{ marginBottom: '1.25rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                <input
+                                <input aria-label={t('email')}
                                     type="email"
+                                    autoComplete="username"
                                     className="input"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value.slice(0, 254))}
@@ -417,8 +410,9 @@ export default function LoginPage() {
                             </div>
                             <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                                <input
+                                <input aria-label={t('password')}
                                     type={showPassword ? "text" : "password"}
+                                    autoComplete="current-password"
                                     className="input"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value.slice(0, 72))}
@@ -435,6 +429,8 @@ export default function LoginPage() {
                                 />
                                 <button
                                     type="button"
+                                    aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                    aria-pressed={showPassword}
                                     onClick={() => setShowPassword(!showPassword)}
                                     style={{
                                         position: 'absolute',
@@ -465,7 +461,7 @@ export default function LoginPage() {
                                     <button
                                         type="button"
                                         onClick={() => { setMode('forgot'); setForgotEmail(email); setError('') }}
-                                        style={{ background: 'none', border: 'none', color: 'var(--hero-from)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--link)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
                                     >
                                         {isAr ? 'هل نسيت كلمة المرور؟' : 'Forgot your password?'}
                                     </button>
@@ -545,9 +541,10 @@ export default function LoginPage() {
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                     {isAr ? 'الرمز' : 'Code'}
                                 </label>
-                                <input
+                                <input aria-label={isAr ? 'الرمز' : 'Code'}
                                     type="text"
                                     inputMode="numeric"
+                                    autoComplete="one-time-code"
                                     className="input"
                                     value={mfaCode}
                                     onChange={(e) => setMfaCode(e.target.value)}
@@ -627,7 +624,7 @@ export default function LoginPage() {
                                         width: '100%',
                                         padding: '0.6rem',
                                         background: 'transparent',
-                                        color: 'var(--hero-from)',
+                                        color: 'var(--link)',
                                         border: 'none',
                                         fontSize: '0.85rem',
                                         fontWeight: '600',

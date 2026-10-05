@@ -10,6 +10,7 @@ import BackupPickerModal, { BackupEntry } from '@/components/BackupPickerModal'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useHeader } from '@/context/HeaderContext'
 import JobsCard from '@/components/JobsCard'
+import TerminalsHealthCard from '@/components/TerminalsHealthCard'
 
 type HealthMetrics = {
     auditing: {
@@ -23,7 +24,8 @@ type HealthMetrics = {
         retentionDays: number
     }
     storage: {
-        totalFiles: number
+        totalFiles: number | null
+        reachable: boolean
     }
 }
 
@@ -329,12 +331,12 @@ export default function SystemHealthPage() {
                     borderRadius: '0.75rem', padding: '0.85rem 1.25rem', marginBottom: '1.5rem',
                     fontWeight: 700, fontSize: '0.9rem'
                 }}>
-                    <span style={{ fontSize: '1.3rem' }}>🔧</span>
+                    <span aria-hidden="true" style={{ fontSize: '1.3rem' }}>🔧</span>
                     {t('maintenance_active_banner' as any)}
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
 
                 {/* Jobs Card — first, because it is the one card here that
                     reports something nobody would otherwise find out. The rest
@@ -342,18 +344,26 @@ export default function SystemHealthPage() {
                     whether the machinery that maintains that state is alive. */}
                 <JobsCard />
 
+                {/* Every company's attendance agents and terminals (ATTENDANCE_PLAN.md §13.2). */}
+                <TerminalsHealthCard />
+
                 {/* Storage Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>📁</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>📁</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('storage_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('total_assets' as any)}</p>
                         </div>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary)', textAlign: 'center', margin: '1rem 0' }}>
-                        {metrics?.storage.totalFiles}
+                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary-text)', textAlign: 'center', margin: '1rem 0' }}>
+                        {metrics?.storage.reachable === false ? '—' : metrics?.storage.totalFiles}
                     </div>
+                    {metrics?.storage.reachable === false && (
+                        <p role="status" style={{ margin: 0, textAlign: 'center', fontSize: '0.85rem', color: 'var(--danger-fg)' }}>
+                            {t('storage_unreachable' as any)}
+                        </p>
+                    )}
                     <button
                         onClick={() => setPendingAction('CLEANUP_ASSETS')}
                         disabled={!!processing}
@@ -398,7 +408,7 @@ export default function SystemHealthPage() {
                                             onClick={() => setOrphanReport(null)} disabled={deletingOrphans}>
                                             {t('cancel')}
                                         </button>
-                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                                             onClick={() => setPendingAction('DELETE_ORPHANS')} disabled={deletingOrphans}>
                                             {deletingOrphans ? t('saving') : t('orphan_report_delete' as any)}
                                         </button>
@@ -412,7 +422,7 @@ export default function SystemHealthPage() {
                 {/* Auditing Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>📜</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>📜</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('auditing_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('audit_logs')}</p>
@@ -424,7 +434,7 @@ export default function SystemHealthPage() {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--danger-solid)' }}>{metrics?.auditing.prunable}</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--danger-fg-strong)' }}>{metrics?.auditing.prunable}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_logs' as any)}</div>
                         </div>
                     </div>
@@ -441,7 +451,7 @@ export default function SystemHealthPage() {
                 {/* Notifications Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>🔔</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🔔</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('notifications')}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('system_activity' as any)}</p>
@@ -453,7 +463,7 @@ export default function SystemHealthPage() {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warn-solid)' }}>{metrics?.notifications.prunable}</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warn-fg-mid)' }}>{metrics?.notifications.prunable}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_notifications' as any)}</div>
                         </div>
                     </div>
@@ -470,7 +480,7 @@ export default function SystemHealthPage() {
                 {/* Backups Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>💾</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>💾</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('backups_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('backups_subtitle' as any)}</p>
@@ -492,7 +502,7 @@ export default function SystemHealthPage() {
                 {/* Disaster Recovery Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>🧯</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🧯</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('disaster_recovery_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('disaster_recovery_subtitle' as any)}</p>
@@ -522,7 +532,7 @@ export default function SystemHealthPage() {
                 {/* Maintenance Mode Card */}
                 <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span style={{ fontSize: '2rem' }}>🔧</span>
+                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🔧</span>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('maintenance_mode_header' as any)}</h3>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>

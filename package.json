@@ -6,7 +6,9 @@
     "node": "24.x"
   },
   "scripts": {
+    "predev": "node scripts/copy-face-models.mjs",
     "dev": "next dev -H 0.0.0.0 -p 3000",
+    "prebuild": "node scripts/copy-face-models.mjs",
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint .",
@@ -24,8 +26,10 @@
     "@supabase/supabase-js": "^2.117.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "@vladmandic/face-api": "^1.7.15",
     "bcryptjs": "^3.0.3",
     "exceljs": "^4.4.0",
+    "leaflet": "^1.9.4",
     "next": "^16.3.6",
     "next-auth": "^4.24.13",
     "nodemailer": "^10.0.10",
@@ -39,6 +43,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^24.13.6",
     "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",

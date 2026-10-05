@@ -38,7 +38,7 @@ export const GET = withStandardHandler(async (req, session) => {
     // a Team Leader can't assign an Admin, so listing one in their template
     // dropdown would just set them up to pick someone task creation then
     // rejects.
-    if (scopesToTeam(userRole)) {
+    if (scopesToTeam(session.user, "tasks.create")) {
         userWhere.role = { notIn: ['ADMIN', 'SUPER_ADMIN'] }
         // And their own team within that. An export is a read like any other,
         // and a spreadsheet of every colleague is the easiest of all of these
@@ -72,4 +72,8 @@ export const GET = withStandardHandler(async (req, session) => {
         if (error.message === 'TEMPLATE_BASE_EMPTY') return ApiResponse.error("Template file is invalid — please re-upload it")
         throw error
     }
+}, {
+    // For bulk-creating tasks, and it lists the company's people and vendors:
+    // whoever may create tasks, and nobody else.
+    permission: "tasks.create",
 })

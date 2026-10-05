@@ -5,11 +5,13 @@ import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
-import { useSession } from 'next-auth/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import SafeDate from '@/components/SafeDate'
 import Link from 'next/link'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
+import { useCan } from '@/lib/useCan'
+import { apiErrorText } from "@/lib/api-error-text"
+import { useDialog } from '@/lib/useDialog'
 
 
 interface SalaryRecord {
@@ -101,8 +103,12 @@ export default function EmployeeHistoryPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
     const router = useRouter()
-    const { data: session } = useSession()
-    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes((session?.user as any)?.role || '')
+    const { can, canFor } = useCan()
+    // Each part of the page asks for the permission its route checks.
+    const canSeeSalary = can('salary.view')
+    // Anyone's pay but their own (ROLES_PLAN.md §4.2, rule 5).
+    const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)
+    const canReevaluateDayOff = can('dayoff.approve')
 
     const [reevaluating, setReevaluating] = useState(false)
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
@@ -148,11 +154,11 @@ export default function EmployeeHistoryPage() {
     // The only route to an ended contract's statement. The person it is about
     // cannot sign in, so if it is not reachable from their page it is not
     // reachable at all.
-    const { data: settlementsResult } = useSWR(isAdmin && id ? `/api/users/${id}/settlements` : null, fetcher)
+    const { data: settlementsResult } = useSWR(can('settlements.manage') && id ? `/api/users/${id}/settlements` : null, fetcher)
     const settlements: { id: string; lastWorkingDay: string; net: number; status: string }[] = settlementsResult?.data || NO_ROWS
     // E2: raised when, recovered from which months, settled or written off by
     // whom. Every one of those was recorded and none of them was assembled.
-    const { data: debtsResult } = useSWR(isAdmin && id ? `/api/users/${id}/debts` : null, fetcher)
+    const { data: debtsResult } = useSWR(can('debts.view') && id ? `/api/users/${id}/debts` : null, fetcher)
     const debts: {
         id: string; amount: number; recovered: number; outstanding: number; writtenOff: number
         status: 'OUTSTANDING' | 'SETTLED' | 'WAIVED'; source: string; reason: string | null
@@ -162,6 +168,10 @@ export default function EmployeeHistoryPage() {
     // Arriving with ?highlight= opens the adjustments, which may be what it
     // points at; the list itself is only asked for while they are open.
     const [isAdjustmentsModalOpen, setIsAdjustmentsModalOpen] = useState(Boolean(highlightId))
+    const adjustmentsDialog = useDialog(isAdjustmentsModalOpen, () => setIsAdjustmentsModalOpen(false))
+    const reverseDialog = useDialog(!!reversing, () => setReversing(null))
+    const reevaluateDialog = useDialog(isReevaluateModalOpen && !!selectedRequest, () => setIsReevaluateModalOpen(false))
+    const deductionsDialog = useDialog(isManageDeductionsOpen, () => setIsManageDeductionsOpen(false))
     useAdjustOnChange([highlightId], () => { if (highlightId) setIsAdjustmentsModalOpen(true) })
     const { data: adjustmentsResult, mutate: fetchAdjustments } = useSWR(
         isAdjustmentsModalOpen && id ? `/api/users/${id}/adjustments` : null, fetcher,
@@ -237,7 +247,7 @@ export default function EmployeeHistoryPage() {
                 setIsReevaluateModalOpen(false)
             } else {
                 const err = await res.text()
-                setAlert({ type: 'error', message: err || t('update_failed' as any) })
+                setAlert({ type: 'error', message: apiErrorText(err, t('update_failed' as any)) })
             }
         } catch {
             setAlert({ type: 'error', message: t('update_failed' as any) })
@@ -267,7 +277,7 @@ export default function EmployeeHistoryPage() {
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ marginBottom: '2rem' }}>
-                <button
+                <button aria-label={t('go_back')}
                     onClick={() => router.back()}
                     className="glass"
                     style={{
@@ -277,7 +287,7 @@ export default function EmployeeHistoryPage() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         marginBottom: '0.75rem',
-                        color: 'var(--primary)',
+                        color: 'var(--brand-primary-text)',
                         textDecoration: 'none',
                         transition: 'all 0.3s ease',
                         border: '1px solid var(--veil-40)',
@@ -316,7 +326,7 @@ export default function EmployeeHistoryPage() {
                             className={`btn ${activeTab === 'SALARY' ? 'btn-primary' : 'glass'}`}
                             style={{ borderRadius: '1rem', padding: '0.5rem 1.5rem', height: '42px' }}
                         >
-                            {isAdmin ? t('salary_label' as any) : t('history')}
+                            {canSeeSalary ? t('salary_label' as any) : t('history')}
                         </button>
                         <button
                             onClick={() => setActiveTab('DAY_OFF')}
@@ -333,7 +343,7 @@ export default function EmployeeHistoryPage() {
                             {t('costs_tab' as any) || 'Costs'}
                         </button>
                     </div>
-                    {isAdmin && activeTab === 'SALARY' && (
+                    {canAdjust && activeTab === 'SALARY' && (
                         <button
                             onClick={() => setIsAdjustmentsModalOpen(true)}
                             className="btn btn-primary"
@@ -341,7 +351,7 @@ export default function EmployeeHistoryPage() {
                             {t('manage_adjustments' as any)}
                         </button>
                     )}
-                    {isAdmin && activeTab === 'DAY_OFF' && (
+                    {canReevaluateDayOff && activeTab === 'DAY_OFF' && (
                         <button
                             onClick={() => setIsManageDeductionsOpen(true)}
                             className="btn btn-primary"
@@ -517,7 +527,7 @@ export default function EmployeeHistoryPage() {
                                                 ) : (
                                                     <a
                                                         href={`/dashboard/documents/payslip/${figure!.source === 'PAYSLIP' ? figure!.payslipId : ''}`}
-                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--primary)' }}
+                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--brand-primary-text)' }}
                                                     >
                                                         {t('salary_figure_payslip')}
                                                     </a>
@@ -656,7 +666,7 @@ export default function EmployeeHistoryPage() {
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
-                    <div className="glass" style={{
+                    <div {...adjustmentsDialog.panelProps} className="glass" style={{
                         width: '100%',
                         maxWidth: '600px',
                         maxHeight: '80vh',
@@ -665,7 +675,7 @@ export default function EmployeeHistoryPage() {
                         position: 'relative',
                         background: 'var(--panel-95)'
                     }}>
-                        <button
+                        <button aria-label={t('close')}
                             onClick={() => setIsAdjustmentsModalOpen(false)}
                             style={{
                                 position: 'absolute',
@@ -680,7 +690,7 @@ export default function EmployeeHistoryPage() {
                         >
                             ×
                         </button>
-                        <h2 style={{ marginBottom: '1.5rem' }}>{t('adjustment_history' as any)}</h2>
+                        <h2 id={adjustmentsDialog.titleId} style={{ marginBottom: '1.5rem' }}>{t('adjustment_history' as any)}</h2>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {adjustments.length === 0 ? (
@@ -712,7 +722,7 @@ export default function EmployeeHistoryPage() {
                                                 left: '-5px',
                                                 right: '-5px',
                                                 height: '2px',
-                                                background: 'var(--danger-solid)',
+                                                background: 'var(--danger-fill)',
                                                 transform: 'rotate(-2deg)',
                                                 zIndex: 5,
                                                 opacity: 0.8,
@@ -755,7 +765,7 @@ export default function EmployeeHistoryPage() {
                                             </div>
                                         </div>
 
-                                        {adj.status === 'ACTIVE' && isAdmin && (
+                                        {adj.status === 'ACTIVE' && canAdjust && (
                                             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                                                 <button
                                                     onClick={() => { setReversing(adj); setReverseReason('') }}
@@ -786,7 +796,7 @@ export default function EmployeeHistoryPage() {
                                             </div>
                                         )}
                                         {isTerminal(adj.status) && (
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-solid)', fontWeight: 'bold', flexShrink: 0 }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--danger-fg-strong)', fontWeight: 'bold', flexShrink: 0 }}>
                                                 {adj.status === 'REVERSED'
                                                     ? t('reversed_label' as any)
                                                     : t('rolled_back_label' as any)}
@@ -811,7 +821,7 @@ export default function EmployeeHistoryPage() {
                     background: 'var(--scrim)',
                     padding: '1rem',
                 }}>
-                    <div style={{
+                    <div {...reverseDialog.panelProps} style={{
                         background: 'var(--surface)',
                         borderRadius: '1rem',
                         border: '1px solid var(--border)',
@@ -820,7 +830,7 @@ export default function EmployeeHistoryPage() {
                         width: '100%',
                         textAlign: locale === 'ar' ? 'right' : 'left',
                     }}>
-                        <h3 style={{ margin: '0 0 0.75rem' }}>{t('reverse_adjustment_title' as any)}</h3>
+                        <h3 id={reverseDialog.titleId} style={{ margin: '0 0 0.75rem' }}>{t('reverse_adjustment_title' as any)}</h3>
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: 0 }}>
                             {t('reverse_adjustment_msg' as any)}
                         </p>
@@ -832,7 +842,7 @@ export default function EmployeeHistoryPage() {
                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem' }}>
                             {t('reverse_reason' as any)}
                         </label>
-                        <textarea
+                        <textarea aria-label={t('reverse_reason' as any)}
                             className="input"
                             rows={2}
                             value={reverseReason}
@@ -850,7 +860,7 @@ export default function EmployeeHistoryPage() {
                             <button
                                 type="button"
                                 className="btn"
-                                style={{ background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}
+                                style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
                                 disabled={!!rollbackLoading}
                                 onClick={async () => {
                                     const target = reversing
@@ -878,7 +888,7 @@ export default function EmployeeHistoryPage() {
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
-                    <div className="glass" style={{
+                    <div {...reevaluateDialog.panelProps} className="glass" style={{
                         width: '100%',
                         maxWidth: '400px',
                         padding: '2rem',
@@ -887,7 +897,7 @@ export default function EmployeeHistoryPage() {
                         boxShadow: '0 20px 25px -5px var(--shadow-weak)',
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
-                        <h2 style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
+                        <h2 id={reevaluateDialog.titleId} style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
                         <p style={{ color: 'var(--text-soft)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
                             <SafeDate date={selectedRequest.date} locale={locale} format="dateOnly" /> - {t(selectedRequest.type as any) || selectedRequest.type}
                         </p>
@@ -895,7 +905,7 @@ export default function EmployeeHistoryPage() {
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                                 {t('days_label')}
                             </label>
-                            <input
+                            <input aria-label={t('days_label')}
                                 type="number"
                                 step="0.5"
                                 value={reevaluateValue}
@@ -932,7 +942,7 @@ export default function EmployeeHistoryPage() {
                     backdropFilter: 'blur(4px)',
                     padding: '1rem'
                 }}>
-                    <div className="glass" style={{
+                    <div {...deductionsDialog.panelProps} className="glass" style={{
                         width: '100%',
                         maxWidth: '700px',
                         maxHeight: '85vh',
@@ -943,8 +953,8 @@ export default function EmployeeHistoryPage() {
                         direction: locale === 'ar' ? 'rtl' : 'ltr'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: 0 }}>{t('manage_deductions')}</h2>
-                            <button onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>×</button>
+                            <h2 id={deductionsDialog.titleId} style={{ margin: 0 }}>{t('manage_deductions')}</h2>
+                            <button aria-label={t('close')} onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>×</button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {dayOffHistory?.history.flatMap(y => y.requests).filter(r => r.deductionType === 'CREDIT').length === 0 ? (

@@ -20,6 +20,7 @@ export default function SortControl({ options, sortBy, sortOrder, onSortChange }
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-soft)' }}>{t('sort_by')}:</span>
             <select
+                aria-label={t('sort_by')}
                 value={sortBy}
                 onChange={(e) => onSortChange(e.target.value, sortOrder)}
                 className="input"
@@ -38,7 +39,7 @@ export default function SortControl({ options, sortBy, sortOrder, onSortChange }
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
             </select>
-            <button
+            <button aria-label={sortOrder === 'asc' ? t('ascending') : t('descending')}
                 onClick={() => onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc')}
                 title={sortOrder === 'asc' ? t('ascending') : t('descending')}
                 style={{

@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { NotificationService } from "./notification.service"
+import { RoleService } from "./role.service"
 import { computePeriodStart, computePeriodEnd, isSubscriptionType, daysUntil } from "@/lib/billing/period"
 import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
-import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorMessage } from "@/lib/billing/lifecycle"
+import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorNotice } from "@/lib/billing/lifecycle"
 import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { VerificationService } from "./verification.service"
@@ -19,6 +20,15 @@ function serializeCompanyPayment<T extends { cost: Prisma.Decimal }>(payment: T)
     return { ...payment, cost: Number(payment.cost) }
 }
 
+/**
+ * Who a settings change is audited as. A company's own people change the tabs
+ * the Super Admin shows them (ATTENDANCE_PLAN.md §5.2), and are named as
+ * themselves, so a Super Admin can see who changed what.
+ */
+function settingsAuthor(session: any): { superAdminId: string } | { userId: string } {
+    return session.user.role === 'SUPER_ADMIN' ? { superAdminId: session.user.id } : { userId: session.user.id }
+}
+
 export class CompanyService {
     static async create(input: CreateCompanyInput, session: any) {
         // Defaulted here rather than in the database, so the choice is visible
@@ -27,12 +37,19 @@ export class CompanyService {
         // applies when nobody is thinking about it should be the sensible one.
         const trialPreset = input.trialPreset ?? DEFAULT_TRIAL_PRESET
 
-        const company = await prisma.company.create({
-            data: {
-                name: input.name,
-                trialPreset,
-                packageId: input.packageId ?? null,
-            },
+        // With its Admin, Team Leader and Employee roles, in the same
+        // transaction: an account can only be created on one of a company's
+        // roles, so a company without them could hire nobody.
+        const company = await prisma.$transaction(async (tx) => {
+            const created = await tx.company.create({
+                data: {
+                    name: input.name,
+                    trialPreset,
+                    packageId: input.packageId ?? null,
+                },
+            })
+            await RoleService.seedBuiltInRoles(tx, created.id)
+            return created
         })
 
         const { AuditLogService } = await import("./audit-log.service")
@@ -139,7 +156,7 @@ export class CompanyService {
                 await NotificationService.notifySuperAdmins(
                     superAdminIds,
                     'SUBSCRIPTION_LIFECYCLE',
-                    lifecycleOperatorMessage(notice, company.name),
+                    lifecycleOperatorNotice(notice, company.name),
                     `/dashboard/companies/${company.id}/payments`
                 )
                 notificationsSent += superAdminIds.length
@@ -152,7 +169,7 @@ export class CompanyService {
                 await NotificationService.notifySuperAdmins(
                     superAdminIds,
                     'SUBSCRIPTION_LIFECYCLE',
-                    lifecycleOperatorMessage('LOCKED', company.name),
+                    lifecycleOperatorNotice('LOCKED', company.name),
                     `/dashboard/companies/${company.id}/payments`
                 )
                 notificationsSent += superAdminIds.length
@@ -214,7 +231,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent } = input
+        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -242,7 +259,10 @@ export class CompanyService {
                 ...(payrollDay !== undefined && { payrollDay }),
                 ...(payslipsVisible !== undefined && { payslipsVisible }),
                 ...(timezone !== undefined && { timezone }),
-                ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent })
+                ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent }),
+                // Which of its settings the company's own people see (§5.2).
+                ...(adminSettingsEnabled !== undefined && { adminSettingsEnabled }),
+                ...(adminSettingsTabs !== undefined && { adminSettingsTabs })
             }
         })
 
@@ -277,10 +297,17 @@ export class CompanyService {
             changes.debtRecoveryPercent = { old: existing.debtRecoveryPercent, new: debtRecoveryPercent }
         }
 
+        if (adminSettingsEnabled !== undefined && adminSettingsEnabled !== existing.adminSettingsEnabled) {
+            changes.adminSettingsEnabled = { old: existing.adminSettingsEnabled, new: adminSettingsEnabled }
+        }
+        if (adminSettingsTabs !== undefined && [...adminSettingsTabs].sort().join() !== [...existing.adminSettingsTabs].sort().join()) {
+            changes.adminSettingsTabs = { old: existing.adminSettingsTabs, new: adminSettingsTabs }
+        }
+
         if (Object.keys(changes).length > 0) {
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', id, {
-                superAdminId: session.user.id,
+                ...settingsAuthor(session),
                 details: changes
             })
         }
@@ -304,6 +331,18 @@ export class CompanyService {
      * a deleted company falls back to the defaults rather than erroring on a
      * page load.
      */
+    /** What a company's own people are shown of its settings (lib/company-settings-access.ts). */
+    static async settingsExposure(companyId: string) {
+        return prisma.company.findUnique({
+            where: { id: companyId },
+            select: {
+                id: true, adminSettingsEnabled: true, adminSettingsTabs: true,
+                // A tab tied to a module exists only for a company holding it.
+                package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
+            },
+        })
+    }
+
     static async getBranding(companyId: string): Promise<CompanyBranding | null> {
         const company = await prisma.company.findUnique({
             where: { id: companyId },
@@ -345,7 +384,7 @@ export class CompanyService {
 
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', companyId, {
-            superAdminId: session.user.id,
+            ...settingsAuthor(session),
             details: {
                 companyName: existing.name,
                 logoUrl: { old: existing.logoUrl, new: url },
@@ -371,7 +410,7 @@ export class CompanyService {
 
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', companyId, {
-            superAdminId: session.user.id,
+            ...settingsAuthor(session),
             details: { companyName: existing.name, logoUrl: { old: existing.logoUrl, new: null } },
         })
 
@@ -472,7 +511,7 @@ export class CompanyService {
                 trialPreset: true,
                 trialExtensionDays: true,
                 package: {
-                    select: { id: true, name: true, hasCompanyManagement: true, hasHR: true },
+                    select: { id: true, name: true, hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true },
                 },
                 // The furthest-reaching confirmed period. Postgres sorts NULLs
                 // first on DESC, so a lifetime row (endDate null) wins — which
@@ -747,9 +786,9 @@ export class CompanyService {
                 continue
             }
 
-            const endsOn = payment.endDate!.toLocaleDateString()
-            const operatorMessage = `Subscription for ${payment.company.name} will expire in ${decision.send} day(s) (${endsOn}).`
-            const customerMessage = `Your subscription expires in ${decision.send} day(s) (${endsOn}). Please renew to avoid interruption.`
+            const endsOn = { date: payment.endDate!.toISOString() }
+            const operatorMessage = { key: 'notice_subscription_expiring_operator' as const, params: { company: payment.company.name, days: decision.send, date: endsOn } }
+            const customerMessage = { key: 'notice_subscription_expiring' as const, params: { days: decision.send, date: endsOn } }
 
             // relatedId carries a dashboard path rather than the payment id. The
             // bell has to reach that company's billing page, which needs the

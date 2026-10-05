@@ -149,6 +149,22 @@
   --accent-deep: #4338ca;
   --accent-deepest: #3730a3;
 
+  /* Fills: a status colour as the ground under white text (a badge, a filled
+     button). The -solid colours are also used as text and strokes on the
+     page, so they can't darken without dimming those; white on them was
+     2.1 to 3.8:1. Each fill is the same hue darkened until white on it is at
+     least 4.5:1 (lib/contrast.test.ts). */
+  --ok-fill: #0b7b56;
+  --ok-fill-alt: #157c3b;
+  --ok-fill-hover: #0e672f;
+  --info-fill: #0b61ef;
+  --info-fill-hover: #134dce;
+  --warn-fill: #966006;
+  --warn-fill-warm: #ae5104;
+  --danger-fill: #d71212;
+  --danger-fill-hover: #ae1c1c;
+  --accent-fill: #942ff5;
+
   /* Plain greys written as shorthand or as the odd one-off. */
   --grey-100: #eee;
   --grey-200: #ddd;
@@ -160,12 +176,40 @@
   --brand-primary: var(--primary);
   --brand-primary-hover: var(--primary-hover);
   --brand-accent: var(--accent);
+  /* The brand colour as text. The same indigo in the light theme; in the dark
+     one it is too dark to read on the dark surfaces (2.8:1), and --primary
+     itself can't lighten there, because white text sits on it in buttons. */
+  --brand-primary-text: var(--primary);
+
+  /* The keyboard focus ring: at least 3:1 against the surfaces and the page
+     it sits on (WCAG 1.4.11), in each theme. */
+  --focus-ring: #4338ca;
+
+  /* Filled buttons: white text at least 4.5:1 across the whole gradient (was
+     --primary to --accent, 4.47 and 4.23:1). Theme-invariant, like --primary:
+     the text on them is white in both themes. */
+  --button-from: #4f46e5;
+  --button-to: #7c3aed;
+  /* The map (components/PointPicker.tsx): its tiles are light in both themes, so these don't change in dark mode. */
+  --map-pin: #4f46e5;
+  --map-ink: #111827;
+  --map-halo: #ffffff;
+  --map-shadow: rgba(0, 0, 0, 0.5);
+
+  /* A text link in the brand colour, at least 4.5:1 on the surface. */
+  --link: #4f46e5;
+
+  /* A field's outline, at least 3:1 against the surface it sits on (WCAG
+     1.4.11): the border is what shows where a field is. Was indigo at 25%,
+     1.4:1. */
+  --field-border: #7c8595;
 
   /* The login hero gradient. Its own pair rather than reusing the brand tokens,
      because it is a decorative statement on the sign-in page and D2 may well
      decide it stays exactly as it is on a dark ground — a decision worth making
      once here rather than eleven times in that file. */
-  --hero-from: #667eea;
+  /* Was #667eea: white on it, the sign-in button, was 3.7:1. */
+  --hero-from: #4f46e5;
   --hero-to: #764ba2;
 
   /* Glass, as tokens rather than literals in the utilities below. The current
@@ -486,7 +530,7 @@ body::before {
    is unchanged. */
 .dashboard-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 2rem;
   margin-bottom: 3rem;
 }
@@ -501,6 +545,15 @@ body::before {
 @media (max-width: 700px) {
   .dashboard-stats-block {
     grid-column: auto;
+  }
+}
+
+/* On a phone two tiles side by side need more than the ~326px there is, so
+   the block came out wider than its column and the right-hand tiles were cut
+   off. One tile to a row there. */
+@media (max-width: 480px) {
+  .dashboard-stats-block {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -576,6 +629,10 @@ body::before {
 }
 
 .glass-dark {
+  /* The sidebar is dark in both themes, so its ring is light in both, and
+     lighter than the dark theme's: in the light theme the sidebar is slate 900
+     at 65% over the pale page, a ground the dark ring only reaches 2.97:1 on. */
+  --focus-ring: #c7d2fe;
   background: var(--sidebar-bg);
   /* Slate 900 at 65% */
   backdrop-filter: blur(20px);
@@ -654,7 +711,7 @@ body::before {
      colour, so the only rows that looked broken were the ones somebody had
      actually typed in. */
   background: var(--panel-85);
-  border: 1px solid rgba(99, 102, 241, 0.25); /* Subtle Indigo border for better visibility */
+  border: 1px solid var(--field-border);
   border-radius: 1rem;
   font-family: inherit;
   font-size: 1rem;
@@ -686,10 +743,102 @@ html[dir="rtl"] select.input {
 }
 
 .input:focus {
-  outline: none;
   background: var(--panel-90);
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+/* The click-outside area behind a dialog's panel: it fills the overlay, and
+   the panel (position: relative, a higher z-index) sits on top. It was written
+   as Tailwind's "absolute inset-0", which this project doesn't have, so it had
+   no size and clicking outside a dialog did nothing. */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+/* Keyboard focus, on everything that can take it (WCAG 2.4.7). Only for the
+   keyboard (and fields, which always show where you type), so a mouse click
+   doesn't leave a ring behind. The browser's own ring was hidden on .input and
+   on about ten controls that set outline: none inline. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* "Skip to content" (WCAG 2.4.1): out of sight until Tab reaches it, as the
+   first thing on every dashboard page. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: -100px;
+  z-index: 10002;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text-strong);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 6px -1px var(--shadow-weak);
+}
+.skip-link:focus {
+  top: 1rem;
+}
+/* Reached by the skip link: no ring around the whole page. */
+#main-content:focus {
+  outline: none;
+}
+
+/* The sidebar link for the page you're on (aria-current, DashboardShell). */
+.nav-link[aria-current="page"] {
+  background: var(--veil-10) !important;
+  color: var(--sidebar-fg-strong) !important;
+  border-color: var(--veil-20) !important;
+}
+
+/* The pin and the centre cross on the map for placing a check-in place
+   (components/PointPicker.tsx). */
+.map-pin {
+  background: var(--map-pin);
+  border: 3px solid var(--map-halo);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px var(--map-shadow);
+}
+/* The radius circle: SVG, coloured here rather than in Leaflet's options. */
+.map-ring {
+  stroke: var(--map-pin);
+  fill: var(--map-pin);
+}
+.map-cross {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  pointer-events: none;
+  z-index: 1000;
+  background:
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 2px 100% no-repeat,
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 100% 2px no-repeat;
+  filter: drop-shadow(0 0 1px var(--map-halo));
+}
+
+/* A title that opens something (a task's or obligation's quick view): looks
+   like the heading it sits in, works as a button (audit L1). */
+.title-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.title-button:hover {
+  color: var(--info-solid-hover);
 }
 
 /* Modern Buttons */
@@ -709,7 +858,7 @@ html[dir="rtl"] select.input {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, var(--button-from) 0%, var(--button-to) 100%);
   color: white;
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
 }
@@ -815,7 +964,7 @@ html[dir="rtl"] select.input {
 }
 
 .modal-close:hover {
-  color: var(--primary);
+  color: var(--brand-primary-text);
 }
 
 @keyframes fadeIn {
@@ -978,7 +1127,27 @@ input::-webkit-credentials-auto-fill-button {
     --accent-solid: #a86ef0;
     --accent-solid-deep: #9457e0;
     --accent-deep: #7c6ae0;
-    --accent-deepest: #6a5ad0;
+    /* Text on the dark surfaces (the audit log's action names): #6a5ad0 read
+       at 2.85:1 there. */
+    --accent-deepest: #b3a6f2;
+    --brand-primary-text: #a5b4fc;
+    --focus-ring: #a5b4fc;
+    --link: #a5b4fc;
+    --field-border: #6e7681;
+
+    /* The fills again: white on them at least 4.5:1, and the shape itself
+       at least 3:1 against the dark surfaces, so a badge doesn't sink into
+       the card it sits on. */
+    --ok-fill: #1f8051;
+    --ok-fill-alt: #228051;
+    --ok-fill-hover: #1d7348;
+    --info-fill: #1f76b2;
+    --info-fill-hover: #2d6994;
+    --warn-fill: #936916;
+    --warn-fill-warm: #ae5a1f;
+    --danger-fill: #e11117;
+    --danger-fill-hover: #c0282c;
+    --accent-fill: #9047ec;
 
     --grey-100: #21262d;
     --grey-200: #30363d;
@@ -1103,7 +1272,7 @@ input::-webkit-credentials-auto-fill-button {
 
 .legal strong { color: var(--text-strong); font-weight: 600; }
 
-.legal a { color: var(--primary); }
+.legal a { color: var(--brand-primary-text); }
 
 /* Definition rows — "what we collect" and "who we share it with" are both
    term/description pairs, and a table would scroll sideways on a phone. */
@@ -1183,4 +1352,31 @@ input::-webkit-credentials-auto-fill-button {
     @page {
         margin: 18mm;
     }
+}
+
+/* "Reduce motion" (WCAG 2.2.2, 2.3.3; audit M5). For people who ask their
+   device for less motion: the background stops drifting, cards stop lifting,
+   and fades and slides end at once instead of playing. Animations are cut to
+   a single near-instant run rather than removed, so whatever they reveal still
+   ends visible. Loading spinners keep turning, more slowly: they are how the
+   page says it is still working. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  [class*="spin"],
+  [style*="spin"] {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .glass-card:hover,
+  .card:hover,
+  .btn-primary:hover {
+    transform: none !important;
+  }
 }

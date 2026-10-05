@@ -1,16 +1,26 @@
 import { describe, it, expect } from "vitest"
 import { scopesToTeam, teamMemberWhere, assignedToTeamWhere, assignedToReportsWhere, and } from "./team-scope"
+import { withGrants } from "@/lib/permissions/test-actors"
 
 describe("who gets narrowed", () => {
-    it("narrows a team leader and nobody else", () => {
-        expect(scopesToTeam("TEAM_LEADER")).toBe(true)
-        expect(scopesToTeam("ADMIN")).toBe(false)
-        expect(scopesToTeam("SUPER_ADMIN")).toBe(false)
+    const as = (role: string | null | undefined) => withGrants({ id: "x", role, companyId: "c1" })
+
+    it("narrows whoever holds the permission at team scope, and nobody else", () => {
+        expect(scopesToTeam(as("TEAM_LEADER"), "tasks.view")).toBe(true)
+        expect(scopesToTeam(as("ADMIN"), "tasks.view")).toBe(false)
+        expect(scopesToTeam(as("SUPER_ADMIN"), "tasks.view")).toBe(false)
         // An employee is narrowed to themselves, which is tighter than this
         // rule and applied separately.
-        expect(scopesToTeam("EMPLOYEE")).toBe(false)
-        expect(scopesToTeam(null)).toBe(false)
-        expect(scopesToTeam(undefined)).toBe(false)
+        expect(scopesToTeam(as("EMPLOYEE"), "tasks.view")).toBe(false)
+        expect(scopesToTeam(as(null), "tasks.view")).toBe(false)
+        expect(scopesToTeam(as(undefined), "tasks.view")).toBe(false)
+    })
+
+    it("is asked per permission, not per role", () => {
+        // A Team Leader reaches their team's tasks, but holds no payroll grant
+        // at all — so nothing about payroll is narrowed "to their team".
+        expect(scopesToTeam(as("TEAM_LEADER"), "employees.view")).toBe(true)
+        expect(scopesToTeam(as("TEAM_LEADER"), "payroll.view")).toBe(false)
     })
 })
 

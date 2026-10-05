@@ -15,6 +15,8 @@ import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useHydrated } from '@/lib/useHydrated'
+import { useCan } from '@/lib/useCan'
+import { useDialog } from '@/lib/useDialog'
 
 interface Vendor {
     id: string
@@ -57,6 +59,8 @@ export default function VendorsPage() {
     const [editForm, setEditForm] = useState<VendorFormState>(emptyForm)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [isEditing, setIsEditing] = useState(false)
+    const addDialog = useDialog(isAddOpen, () => !isSubmitting && setIsAddOpen(false))
+    const editDialog = useDialog(isEditOpen, () => !isEditing && setIsEditOpen(false))
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean, vendor: Vendor | null }>({ isOpen: false, vendor: null })
     const [addFormCompanyId, setAddFormCompanyId] = useState('')
@@ -106,7 +110,7 @@ export default function VendorsPage() {
         return Array.isArray(raw) ? raw : []
     })()
 
-    const canManage = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
+    const canManage = useCan().can('vendors.manage')
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -246,17 +250,17 @@ export default function VendorsPage() {
                                                 card to tell them apart. */}
                                             {isAllCompaniesView && vendor.company?.name && (
                                                 <span style={{ background: 'var(--surface-sunk)', color: 'var(--text-muted)', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontWeight: 500 }}>
-                                                    🏢 {vendor.company.name}
+                                                    <span aria-hidden="true">🏢</span> {vendor.company.name}
                                                 </span>
                                             )}
-                                            <span>👤 {vendor.ownerName}</span>
-                                            <span>📞 {vendor.mobileNumber}</span>
+                                            <span><span aria-hidden="true">👤</span> {vendor.ownerName}</span>
+                                            <span><span aria-hidden="true">📞</span> {vendor.mobileNumber}</span>
                                             {vendor.locationLink ? (
-                                                <a href={vendor.locationLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-solid)' }}>
-                                                    📍 {vendor.locationName}
+                                                <a href={vendor.locationLink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-fg)' }}>
+                                                    <span aria-hidden="true">📍</span> {vendor.locationName}
                                                 </a>
                                             ) : (
-                                                <span>📍 {vendor.locationName}</span>
+                                                <span><span aria-hidden="true">📍</span> {vendor.locationName}</span>
                                             )}
                                         </div>
                                         {/* createdBy is null for a Super-Admin-created
@@ -325,9 +329,9 @@ export default function VendorsPage() {
                     background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 9999
                 }}>
-                    <div className="absolute inset-0" onClick={() => !isSubmitting && setIsAddOpen(false)} />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
+                    <div className="modal-backdrop" onClick={() => !isSubmitting && setIsAddOpen(false)} />
+                    <div {...addDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={addDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `إضافة ${vendorsName}` : `Add ${vendorsName}`}
                         </h2>
                         <form onSubmit={handleCreate}>
@@ -339,7 +343,7 @@ export default function VendorsPage() {
                                     <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
                                         {t('select_company' as any) || 'Select Company'}
                                     </label>
-                                    <select
+                                    <select aria-label={t('select_company' as any) || 'Select Company'}
                                         value={addFormCompanyId}
                                         onChange={(e) => setAddFormCompanyId(e.target.value)}
                                         className="input"
@@ -378,9 +382,9 @@ export default function VendorsPage() {
                     background: 'var(--scrim)', display: 'flex', justifyContent: 'center',
                     alignItems: 'center', zIndex: 9999
                 }}>
-                    <div className="absolute inset-0" onClick={() => !isEditing && setIsEditOpen(false)} />
-                    <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
+                    <div className="modal-backdrop" onClick={() => !isEditing && setIsEditOpen(false)} />
+                    <div {...editDialog.panelProps} style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', zIndex: 10, direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+                        <h2 id={editDialog.titleId} style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
                             {locale === 'ar' ? `تعديل ${vendorsName}` : `Edit ${vendorsName}`}
                         </h2>
                         <form onSubmit={handleEdit}>
@@ -444,15 +448,15 @@ function VendorFormFields({ form, setForm, locale, t }: {
         <>
             <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle}>{t('vendor_name' as any) || 'Vendor name'}</label>
-                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" style={inputStyle} autoFocus />
+                <input aria-label={t('vendor_name' as any) || 'Vendor name'} type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" style={inputStyle} autoFocus />
             </div>
             <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle}>{t('vendor_owner_name' as any) || 'Owner name'}</label>
-                <input type="text" value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} className="input" style={inputStyle} />
+                <input aria-label={t('vendor_owner_name' as any) || 'Owner name'} type="text" value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} className="input" style={inputStyle} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle}>{t('vendor_mobile_number' as any) || 'Mobile number'}</label>
-                <input type="tel" value={form.mobileNumber} onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })} className="input" style={inputStyle} />
+                <input aria-label={t('vendor_mobile_number' as any) || 'Mobile number'} type="tel" value={form.mobileNumber} onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })} className="input" style={inputStyle} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
                 <LocationSearchInput

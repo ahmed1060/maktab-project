@@ -33,7 +33,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
     if (!payslip) return ApiResponse.notFound("Payslip not found")
 
     const company = payslip.payrollRun.company
-    const isManager = managesCompany(session.user.role, session.user.companyId, company.id)
+    const isManager = managesCompany(session.user, "payroll.view", company.id)
     const isOwner = session.user.id === payslip.userId
 
     if (!isManager && !(isOwner && company.payslipsVisible)) {

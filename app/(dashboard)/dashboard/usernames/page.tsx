@@ -114,12 +114,12 @@ export default function UsernamesPage() {
     return (
         <div style={{ padding: '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
-                <button
+                <button aria-label={t('download_excel')}
                     onClick={downloadExcel}
                     className="btn"
                     title={t('download_excel')}
                     style={{
-                        background: 'var(--ok-solid)',
+                        background: 'var(--ok-fill)',
                         color: 'var(--text-on-accent)',
                         fontWeight: '600',
                         display: 'flex',
@@ -136,15 +136,15 @@ export default function UsernamesPage() {
                     onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px -2px var(--shadow-weak)'; }}
                     onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px var(--shadow-weak)'; }}
                 >
-                    <span style={{ fontSize: '1.2rem' }}>📊</span>
-                    <span style={{ fontSize: '1.2rem' }}>📥</span>
+                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📊</span>
+                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📥</span>
                 </button>
             </div>
 
             {loading ? <LoadingSpinner message={t('loading_users')} /> : (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))',
                     gap: '1rem'
                 }}>
                     {users.map(user => (

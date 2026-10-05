@@ -22,7 +22,7 @@ export const POST = withStandardHandler(async (_req, session, _json, { params })
     })
     if (!settlement) return ApiResponse.notFound("Settlement not found")
 
-    if (!managesCompany(session.user.role, session.user.companyId, settlement.companyId)) {
+    if (!managesCompany(session.user, "settlements.manage", settlement.companyId)) {
         return ApiResponse.forbidden("Access denied")
     }
 

@@ -39,12 +39,12 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
             <form onSubmit={onSubmit} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label className="label">{t('name_label')}</label>
-                    <input className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? 'var(--danger-solid)' : undefined }} maxLength={100} required />
+                    <input aria-label={t('name_label')} className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? 'var(--danger-solid)' : undefined }} maxLength={100} required />
                     <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.title.length}/100</div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                     <label className="label">{t('description_changes_title').split(' ')[0]}</label>
-                    <textarea className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? 'var(--danger-solid)' : undefined }} maxLength={1000} required />
+                    <textarea aria-label={t('description_changes_title').split(' ')[0]} className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? 'var(--danger-solid)' : undefined }} maxLength={1000} required />
                     <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
@@ -116,7 +116,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
 
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label className="label">{t('difficulty')}</label>
-                    <input type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
+                    <input aria-label={t('difficulty')} type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
                     <button type="button" onClick={onClose} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>

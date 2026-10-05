@@ -79,7 +79,7 @@ export default function AddDeductionPage() {
             <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('deduction_days_label' as any)}</label>
-                    <input
+                    <input aria-label={t('deduction_days_label' as any)}
                         type="number"
                         className="input"
                         value={amount}
@@ -96,7 +96,7 @@ export default function AddDeductionPage() {
                         autoFocus
                     />
                     {fieldError && (
-                        <div style={{ color: 'var(--danger-solid)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                             {fieldError}
                         </div>
                     )}
@@ -104,7 +104,7 @@ export default function AddDeductionPage() {
 
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('reason_label')}</label>
-                    <textarea
+                    <textarea aria-label={t('reason_label')}
                         className="input"
                         value={reason}
                         onChange={e => setReason(e.target.value)}
@@ -121,7 +121,7 @@ export default function AddDeductionPage() {
                     >
                         {t('cancel')}
                     </Link>
-                    <button type="submit" className="btn btn-danger" disabled={loading} style={{ flex: 1, background: 'var(--danger-solid)', color: 'var(--text-on-accent)' }}>
+                    <button type="submit" className="btn btn-danger" disabled={loading} style={{ flex: 1, background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>
                         {loading ? t('adding' as any) : t('add_deduction')}
                     </button>
                 </div>

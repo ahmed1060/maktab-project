@@ -152,7 +152,7 @@ describe("H3: a debt can be written off, deliberately", () => {
     })
 
     it("is held to the same company check as everything else in payroll", () => {
-        expect(WAIVE).toContain("managesCompany(session.user.role, session.user.companyId, debt.companyId)")
+        expect(WAIVE).toContain("managesCompany(session.user, \"debts.waive\", debt.companyId)")
     })
 
     it("refuses a debt that is already closed", () => {

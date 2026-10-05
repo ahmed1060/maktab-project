@@ -192,8 +192,9 @@ export function moduleForTitleKey(titleKey: string | null | undefined): ModuleKe
  * previews.
  *
  * The split is by audience, not by subject: everything under MENU is visible to
- * every role, everything under MANAGEMENT only to an Admin, Team Leader or
- * Super Admin. DashboardShell applies that role check; this is only the order.
+ * everyone, each entry under MANAGEMENT only to those holding the permission
+ * its page needs (MANAGEMENT_PERMISSION in DashboardShell); this is only the
+ * order.
  */
 export const MENU_MODULES: readonly ModuleKey[] = [
     'dashboard',

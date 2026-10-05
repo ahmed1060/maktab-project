@@ -8,6 +8,7 @@ import { useCompany } from '@/context/CompanyContext'
 import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useDialog } from '@/lib/useDialog'
 
 interface SortOption {
     label: string
@@ -104,6 +105,7 @@ export default function EmployeeFilter({
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const { t, locale } = useLanguage()
+    const filterDialog = useDialog(isPopupOpen, () => setIsPopupOpen(false), { label: t('filters') })
     const { data: session } = useSession()
     const { selectedCompanyId: globalCompanyId } = useCompany()
 
@@ -376,7 +378,7 @@ export default function EmployeeFilter({
                                     position: 'absolute',
                                     top: '-4px',
                                     [locale === 'ar' ? 'left' : 'right']: '-4px',
-                                    background: 'var(--info-solid)',
+                                    background: 'var(--info-fill)',
                                     color: 'var(--text-on-accent)',
                                     width: '20px',
                                     height: '20px',
@@ -405,7 +407,7 @@ export default function EmployeeFilter({
                                         backdropFilter: isMobile ? 'blur(4px)' : 'none'
                                     }}
                                 />
-                                <div style={{
+                                <div {...filterDialog.panelProps} style={{
                                     position: isMobile ? 'fixed' : 'absolute',
                                     top: isMobile ? '50%' : 'calc(100% + 0.75rem)',
                                     left: isMobile ? '50%' : (locale === 'ar' ? '0' : 'auto'),
@@ -445,7 +447,7 @@ export default function EmployeeFilter({
                                             <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '800', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-soft)', letterSpacing: '0.05em' }}>{t('sort_by')}</label>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
                                                 <div style={{ position: 'relative', flex: 1 }}>
-                                                    <select
+                                                    <select aria-label={t('sort_by')}
                                                         value={localSortBy}
                                                         onChange={(e) => setLocalSortBy(e.target.value)}
                                                         className="input"
@@ -474,7 +476,7 @@ export default function EmployeeFilter({
                                                         </svg>
                                                     </div>
                                                 </div>
-                                                <button
+                                                <button aria-label={localSortOrder === 'asc' ? t('ascending') : t('descending')}
                                                     onClick={() => setLocalSortOrder(localSortOrder === 'asc' ? 'desc' : 'asc')}
                                                     style={{
                                                         height: '48px',
@@ -515,7 +517,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('role_label') || 'Role'}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('role_label') || 'Role'}
                                                     value={localRole}
                                                     onChange={(e) => setLocalRole(e.target.value)}
                                                     className="input"
@@ -556,7 +558,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('team_column')}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('team_column')}
                                                     value={localTeam}
                                                     onChange={(e) => setLocalTeam(e.target.value)}
                                                     className="input"
@@ -597,7 +599,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('company_label')}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('company_label')}
                                                     value={localCompanyId}
                                                     onChange={(e) => setLocalCompanyId(e.target.value)}
                                                     className="input"
@@ -634,7 +636,7 @@ export default function EmployeeFilter({
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('filter_by_status')}</label>
                                             <div style={{ position: 'relative' }}>
-                                                <select
+                                                <select aria-label={t('filter_by_status')}
                                                     value={localStatus}
                                                     onChange={(e) => setLocalStatus(e.target.value)}
                                                     className="input"
@@ -717,7 +719,7 @@ export default function EmployeeFilter({
                                                 height: '48px',
                                                 borderRadius: '1.25rem',
                                                 border: 'none',
-                                                background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-solid) 100%)',
+                                                background: 'linear-gradient(135deg, var(--brand-primary) 0%, var(--accent-fill) 100%)',
                                                 color: 'var(--text-on-accent)',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
@@ -780,7 +782,7 @@ export default function EmployeeFilter({
                         gap: '0.5rem',
                         boxShadow: '0 2px 4px color-mix(in srgb, var(--warn-solid-warm) 5%, transparent)'
                     }}>
-                        <div style={{ background: 'var(--warn-solid-warm)', color: 'var(--text-on-accent)', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
+                        <div style={{ background: 'var(--warn-fill-warm)', color: 'var(--text-on-accent)', padding: '0.25rem', borderRadius: '0.5rem', display: 'flex' }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="1" x2="12" y2="23"></line>
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>

@@ -80,7 +80,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
             <div className="modal-content glass" style={{ width: '90%', maxWidth: '460px' }}>
                 <div className="modal-header" style={{ padding: '1.1rem 1.5rem' }}>
                     <h2 className="modal-title" style={{ fontSize: '1.1rem' }}>{t('manage_templates')}</h2>
-                    <button className="modal-close" onClick={handleClose}>×</button>
+                    <button aria-label={t('close')} className="modal-close" onClick={handleClose}>×</button>
                 </div>
 
                 <div className="modal-body" style={{ padding: '1.25rem 1.5rem' }}>
@@ -100,7 +100,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
                                 }}>
-                                    <span>📂</span>
+                                    <span aria-hidden="true">📂</span>
                                     {enTemplateFile ? enTemplateFile.name : t('choose_file')}
                                     <input
                                         type="file"
@@ -164,7 +164,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
                                 }}>
-                                    <span>📂</span>
+                                    <span aria-hidden="true">📂</span>
                                     {arTemplateFile ? arTemplateFile.name : t('choose_file')}
                                     <input
                                         type="file"
@@ -237,7 +237,7 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                         }}
                         onClick={() => selectedCompanyId && window.open(`/api/templates/download?locale=${locale}&companyId=${selectedCompanyId}`, '_blank')}
                     >
-                        📥 {t('download_current_template')}
+                        <span aria-hidden="true">📥</span> {t('download_current_template')}
                     </button>
                     <button className="btn btn-primary" onClick={handleClose} style={{ flex: 1, fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}>
                         {t('cancel')}
@@ -290,7 +290,7 @@ function TemplateStatusRow({ status, locale, t }: {
                     cursor: status?.exists ? 'pointer' : 'not-allowed'
                 }}
             >
-                👁 {t('view_current_template' as any) || 'View current template'}
+                <span aria-hidden="true">👁</span> {t('view_current_template' as any) || 'View current template'}
             </button>
         </div>
     )

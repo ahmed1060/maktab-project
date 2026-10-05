@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { optional } from "@/lib/notice"
+import { can } from "@/lib/permissions/can"
 import { CreateProfileRequestInput } from "../validations/profile.schema"
 
 export class ProfileService {
@@ -56,16 +58,18 @@ export class ProfileService {
     }
 
     static async approveRequest(id: string, adminNote: string, session: any) {
-        const userRole = session.user.role
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "profile_requests.review")) throw new Error("ACCESS_DENIED")
 
         const request = await prisma.profileUpdateRequest.findUnique({ where: { id } })
         if (!request) throw new Error("REQUEST_NOT_FOUND")
         if (request.status !== 'PENDING') throw new Error("REQUEST_ALREADY_PROCESSED")
 
-        const { verifyResourceAccess } = await import("@/lib/security")
+        const { verifyResourceAccess, personTarget } = await import("@/lib/security")
         const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
         if (!hasAccess) throw new Error("ACCESS_DENIED")
+        // Nobody decides their own name change (ROLES_PLAN.md §4.2, rule 5).
+        const person = await personTarget(request.userId)
+        if (!person || !can(session.user, "profile_requests.review", person)) throw new Error("OWN_REQUEST")
 
         return await prisma.$transaction(async (tx) => {
             await tx.user.update({
@@ -82,7 +86,7 @@ export class ProfileService {
             await NotificationService.notify(
                 request.userId,
                 'PROFILE_UPDATE',
-                `Your name change request has been approved! Your name is now ${request.newFirstName} ${request.newLastName}.`,
+                { key: 'notice_name_change_approved', params: { name: `${request.newFirstName} ${request.newLastName}` } },
                 request.userId,
                 tx
             )
@@ -99,16 +103,18 @@ export class ProfileService {
     }
 
     static async rejectRequest(id: string, adminNote: string, session: any) {
-        const userRole = session.user.role
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) throw new Error("ACCESS_DENIED")
+        if (!can(session.user, "profile_requests.review")) throw new Error("ACCESS_DENIED")
 
         const request = await prisma.profileUpdateRequest.findUnique({ where: { id } })
         if (!request) throw new Error("REQUEST_NOT_FOUND")
         if (request.status !== 'PENDING') throw new Error("REQUEST_ALREADY_PROCESSED")
 
-        const { verifyResourceAccess } = await import("@/lib/security")
+        const { verifyResourceAccess, personTarget } = await import("@/lib/security")
         const hasAccess = await verifyResourceAccess(session, request.userId, 'USER')
         if (!hasAccess) throw new Error("ACCESS_DENIED")
+        // Nobody decides their own name change (ROLES_PLAN.md §4.2, rule 5).
+        const person = await personTarget(request.userId)
+        if (!person || !can(session.user, "profile_requests.review", person)) throw new Error("OWN_REQUEST")
 
         return await prisma.$transaction(async (tx) => {
             await tx.profileUpdateRequest.update({
@@ -121,7 +127,7 @@ export class ProfileService {
             await NotificationService.notify(
                 request.userId,
                 'PROFILE_UPDATE_REJECTED',
-                `Your name change request has been rejected.${adminNote ? ` Note: ${adminNote}` : ''}`,
+                { key: 'notice_name_change_rejected', params: { note: optional('notice_note_suffix', { note: adminNote ?? '' }, adminNote) } },
                 request.userId,
                 tx
             )

@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { createClientSchema, updateClientSchema } from "@/lib/validations/client.schema"
 import { ClientService } from "@/lib/services/client.service"
+import { can } from "@/lib/permissions/can"
+import { assertStepUp } from "@/lib/step-up"
+import { parsePaging } from "@/lib/pagination"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -23,7 +26,7 @@ export const GET = withStandardHandler(async (req, session) => {
         })
 
         if (!client) return ApiResponse.notFound("Client not found")
-        if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) return ApiResponse.forbidden()
+        if (!can(session.user, "clients.view", { companyId: client.companyId })) return ApiResponse.forbidden()
 
         return ApiResponse.success(client)
     }
@@ -38,9 +41,7 @@ export const GET = withStandardHandler(async (req, session) => {
         where.companyId = userCompanyId
     }
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = parsePaging(searchParams, 10)
 
     const [clients, total] = await Promise.all([
         prisma.businessClient.findMany({
@@ -63,7 +64,7 @@ export const GET = withStandardHandler(async (req, session) => {
         page,
         totalPages: Math.ceil(total / limit)
     })
-})
+}, { permission: "clients.view" })
 
 export const POST = withStandardHandler(async (req, session, json) => {
     // 1. Validation
@@ -83,7 +84,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
         throw error
     }
-})
+}, { permission: "clients.contribute" })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
     // 1. Validation
@@ -92,8 +93,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
 
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN', 'TEAM_LEADER'].includes(userRole || '')) {
+    if (!can(session.user, "clients.edit")) {
         return ApiResponse.forbidden()
     }
 
@@ -113,8 +113,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    const userRole = session.user.role
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole || '')) return ApiResponse.forbidden()
+    if (!can(session.user, "clients.delete")) return ApiResponse.forbidden()
+    // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
+    await assertStepUp(session, "clients.delete")
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

@@ -37,7 +37,10 @@ describe("the endpoint is gated like everything else under /api/users", () => {
     })
 
     it("admits only Admins", () => {
-        expect(ROUTE).toMatch(/allowedRoles:\s*\['ADMIN',\s*'SUPER_ADMIN'\]/)
+        // Declared as a permission now (ROLES_PLAN.md, Part A); which built-in
+        // roles hold it is lib/permissions/built-in.ts, recorded in
+        // lib/permissions/employee-access.characterization.test.ts.
+        expect(ROUTE).toMatch(/permission:\s*"employees\.assign_team"/)
     })
 })
 
