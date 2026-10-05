@@ -31,7 +31,7 @@ const NO_NOTIFICATIONS: Notification[] = []
 // A CRITICAL notice stays unread, red and at the top until what it is about
 // is dealt with; opening the bell does not read it (ATTENDANCE_PLAN.md §13.4).
 const pinned = (n: Notification) => n.priority === 'CRITICAL' && !n.read
-const background = (n: Notification) => pinned(n) ? 'var(--danger-bg)' : n.read ? 'white' : 'var(--info-bg-sky)'
+const background = (n: Notification) => pinned(n) ? 'var(--danger-bg)' : n.read ? 'var(--surface)' : 'var(--info-bg-sky)'
 
 export default function NotificationBell({ initialUnreadCount = 0 }: { initialUnreadCount?: number }) {
     const [isOpen, setIsOpen] = useState(false)
