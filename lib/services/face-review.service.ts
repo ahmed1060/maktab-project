@@ -203,7 +203,7 @@ export class FaceReviewService {
      */
     static async decide(reviewId: string, approve: boolean, reason: string | null, reviewer: Reviewer) {
         return prisma.$transaction(async tx => {
-            const review = await tx.faceReview.findUnique({ where: { id: reviewId }, select: { id: true, companyId: true, userId: true, phoneId: true, purpose: true, status: true } })
+            const review = await tx.faceReview.findUnique({ where: { id: reviewId }, select: { id: true, companyId: true, userId: true, phoneId: true, purpose: true, status: true, modelVersion: true } })
             if (!review) fail("FACE_REVIEW_NOT_FOUND")
             // One decision: the conditional write is the lock.
             const decided = { decidedAt: new Date(), reason: reason?.trim().slice(0, 500) || null, ...(reviewer.isSuperAdmin ? { decidedBySuperAdminId: reviewer.id } : { decidedById: reviewer.id }) }
@@ -217,7 +217,9 @@ export class FaceReviewService {
             if (count === 0) fail("FACE_REVIEW_CLOSED")
             await tx.checkInPhone.update({
                 where: { id: review.phoneId },
-                data: approve ? { faceStatus: "APPROVED", ...(review.purpose === "ENROLMENT" ? { faceEnrolledAt: new Date() } : {}) } : { faceStatus: "REJECTED" },
+                // The approved templates are now the ones this photo was taken with, and so is their model:
+                // a re-verification with a new face model moves the phone onto it.
+                data: approve ? { faceStatus: "APPROVED", faceModelVersion: review.modelVersion, ...(review.purpose === "ENROLMENT" ? { faceEnrolledAt: new Date() } : {}) } : { faceStatus: "REJECTED" },
             })
             if (approve) await tx.user.update({ where: { id: review.userId }, data: { faceReverifyRequestedAt: null, faceReverifyRequestedById: null } })
             await resolveNotices(tx, reviewId)

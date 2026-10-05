@@ -1,61 +1,44 @@
 /**
- * The prototype's liveness check (mobile/README.md, "Free prototype"): an
- * active challenge read from the 68 face landmarks. Turn your head to one
- * side and back, and close your eyes and open them, in an order chosen at
- * random each time, so a photo held up fails and a recorded video has to
- * guess the order.
+ * The face check's liveness challenge: turn your head to one side and back,
+ * and close your eyes and open them, in an order chosen at random each time,
+ * so a photo held up fails and a recorded video has to guess the order.
  *
- * Not certified to anything. A commercial SDK's passive liveness (ISO
- * 30107-3) replaces this before real use.
+ * Read from MediaPipe's Face Landmarker (lib/mobile/face-check/engine.ts):
+ * how closed the eyes are comes straight from its eyeBlinkLeft/Right scores,
+ * which it estimates for the whole eye region. The prototype before it
+ * worked the same thing out from six dlib points around each eye, which
+ * hardly moved when the eyelids closed, so a blink was often never seen.
  *
- * Tuned after the first try on a phone: a quick blink fell between two looks
- * at the camera, fixed eye thresholds didn't suit everyone's eyes, a turn far
- * enough to count often lost the face, and one slow step started the whole
- * check again. Eyes are now judged against the person's own open eyes
- * (`baseline`), the turn asked for is smaller, and a step that runs out of
- * time is tried again on its own, within an overall limit.
+ * The flow is the prototype's, as tuned on a phone: eyes judged against the
+ * person's own open eyes (`baseline`), a modest turn, a step that runs out of
+ * time tried again on its own within an overall limit, and time with no face
+ * in view left off the step's clock.
+ *
+ * Not certified to anything: a commercial SDK's liveness replaces it before
+ * release (mobile/FACE_CHECK.md).
  */
-
-export type Point = { x: number; y: number }
-
-/** Landmarks per the 68-point scheme (iBUG 300-W): 30 nose tip, 36–41 one eye, 42–47 the other. */
-export type Landmarks = readonly Point[]
-
-const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
-
-/** How open one eye is: about 0.3 open, below 0.2 closed (Soukupová and Čech, 2016). */
-export function eyeAspectRatio(eye: readonly Point[]): number {
-    const [p1, p2, p3, p4, p5, p6] = eye
-    const width = dist(p1, p4)
-    return width === 0 ? 0 : (dist(p2, p6) + dist(p3, p5)) / (2 * width)
-}
-
-/** Both eyes' openness, averaged. */
-export function openness(l: Landmarks): number {
-    return (eyeAspectRatio(l.slice(36, 42)) + eyeAspectRatio(l.slice(42, 48))) / 2
-}
 
 /**
- * Where the nose tip sits between the outer eye corners, 0 to 1: about 0.5
- * facing the camera, towards 0 or 1 turned to either side.
+ * One look at the face, reduced to what the challenge needs.
+ * - eyes: how closed, 0 open to 1 shut (both eyes' blink scores, averaged);
+ * - turn: where the nose tip sits between the outer eye corners, 0 to 1:
+ *   about 0.5 facing the camera, towards 0 or 1 turned to either side.
  */
-export function turn(l: Landmarks): number {
-    const a = l[36], b = l[45], nose = l[30]
-    const span = b.x - a.x
-    return span === 0 ? 0.5 : (nose.x - a.x) / span
-}
+export type Reading = { eyes: number; turn: number }
 
 export const LIMITS = {
     /** Facing the camera: the nose within this of the middle. */
     facing: 0.12,
     /** Turned: the nose this far from the middle. Small enough that the face stays in view. */
     turned: 0.15,
-    /** Eyes count as open, before the person's own level is known. */
-    open: 0.2,
-    /** Eyes closed: below this share of the person's own open eyes. */
-    closedRatio: 0.7,
-    /** Eyes open again, and open enough to face the camera: above this share. */
-    openRatio: 0.85,
+    /** Eyes count as closed at this much more than the person's own open level... */
+    closedAbove: 0.3,
+    /** ...and never below this, however open their eyes usually are. */
+    closedAtLeast: 0.45,
+    /** Open again, and open enough to face the camera: within this of their open level. */
+    openWithin: 0.15,
+    /** Before the person's own level is known. */
+    openDefault: 0.1,
     /** A step is tried again when it takes longer than this... */
     stepMs: 8000,
     /** ...up to this many times... */
@@ -74,8 +57,8 @@ export function challenges(random: () => number = Math.random): Challenge[] {
     return random() < 0.5 ? ["TURN", "BLINK"] : ["BLINK", "TURN"]
 }
 
-/** One look at the camera: the landmarks of the one face seen, or how many faces there were. */
-export type Observation = { faces: number; landmarks: Landmarks | null; at: number }
+/** One look at the camera: the reading of the one face seen, or how many faces there were. */
+export type Observation = { faces: number; reading: Reading | null; at: number }
 
 type Stage =
     | { kind: "FACING" }
@@ -93,24 +76,29 @@ export type LivenessState = {
     lastAt: number
     /** How many times the current step has been started. */
     tries: number
-    /** How open this person's eyes are when open, measured before the challenge. */
+    /** How closed this person's eyes read when open, measured before the challenge. */
     baseline: number
     done: boolean
     failed: null | "TIMEOUT" | "FACES"
 }
 
-export function startLiveness(order: Challenge[], at: number, baseline: number = LIMITS.open / LIMITS.openRatio): LivenessState {
+export function startLiveness(order: Challenge[], at: number, baseline: number = LIMITS.openDefault): LivenessState {
     return { queue: [...order], completed: [], stage: { kind: "FACING" }, stageStarted: at, started: at, lastAt: at, tries: 1, baseline, done: false, failed: null }
 }
 
+/** Eyes this closed count as shut, for this person. */
+export const closedAt = (baseline: number) => Math.max(LIMITS.closedAtLeast, baseline + LIMITS.closedAbove)
+/** Eyes this open count as open again, for this person. */
+export const openAt = (baseline: number) => baseline + LIMITS.openWithin
+
 /** Eyes open enough to count as looking at the camera, for this person (or anyone, without a baseline). */
-export function eyesOpen(l: Landmarks, baseline?: number): boolean {
-    return openness(l) >= (baseline ? baseline * LIMITS.openRatio : LIMITS.open)
+export function eyesOpen(r: Reading, baseline: number = LIMITS.openDefault): boolean {
+    return r.eyes <= openAt(baseline)
 }
 
 /** Whether a frame faces the camera with eyes open: the frames used for matching and the photo. */
-export function frontal(l: Landmarks, baseline?: number): boolean {
-    return Math.abs(turn(l) - 0.5) <= LIMITS.facing && eyesOpen(l, baseline)
+export function frontal(r: Reading, baseline?: number): boolean {
+    return Math.abs(r.turn - 0.5) <= LIMITS.facing && eyesOpen(r, baseline)
 }
 
 /**
@@ -125,7 +113,7 @@ export function step(s: LivenessState, o: Observation): { state: LivenessState; 
     if (o.at - s.started > LIMITS.totalMs) return { state: { ...s, failed: "TIMEOUT" }, prompt: promptOf(s) }
     // No face this look (turned too far, or out of the light): nothing changes, and the time since the last
     // look is left off the step's clock, so it can't use up the step's tries; the overall limit still runs.
-    if (!o.landmarks) return { state: { ...s, stageStarted: s.stageStarted + (o.at - s.lastAt), lastAt: o.at }, prompt: promptOf(s) }
+    if (!o.reading) return { state: { ...s, stageStarted: s.stageStarted + (o.at - s.lastAt), lastAt: o.at }, prompt: promptOf(s) }
     s = { ...s, lastAt: o.at }
     if (o.at - s.stageStarted > LIMITS.stepMs) {
         if (s.tries >= LIMITS.triesPerStep) return { state: { ...s, failed: "TIMEOUT" }, prompt: promptOf(s) }
@@ -133,12 +121,12 @@ export function step(s: LivenessState, o: Observation): { state: LivenessState; 
         const state: LivenessState = { ...s, stage: restart(s.stage), stageStarted: o.at, tries: s.tries + 1 }
         return { state, prompt: promptOf(state), cue: "RETRY" }
     }
-    const l = o.landmarks
-    const offCentre = Math.abs(turn(l) - 0.5)
+    const r = o.reading
+    const offCentre = Math.abs(r.turn - 0.5)
 
     switch (s.stage.kind) {
         case "FACING": {
-            if (!frontal(l, s.baseline)) return { state: s, prompt: "FACE_CAMERA" }
+            if (!frontal(r, s.baseline)) return { state: s, prompt: "FACE_CAMERA" }
             const [first] = s.queue
             if (!first) return { state: { ...s, done: true }, prompt: "HOLD_STILL" }
             const state: LivenessState = { ...s, stage: first === "TURN" ? { kind: "TURN", turned: false } : { kind: "BLINK", closed: false }, stageStarted: o.at, tries: 1 }
@@ -153,12 +141,11 @@ export function step(s: LivenessState, o: Observation): { state: LivenessState; 
             return { state: s, prompt: "LOOK_BACK" }
         }
         case "BLINK": {
-            const eyes = openness(l)
             if (!s.stage.closed) {
-                if (eyes <= s.baseline * LIMITS.closedRatio) return { state: { ...s, stage: { kind: "BLINK", closed: true } }, prompt: "OPEN_EYES", cue: "HALF" }
+                if (r.eyes >= closedAt(s.baseline)) return { state: { ...s, stage: { kind: "BLINK", closed: true } }, prompt: "OPEN_EYES", cue: "HALF" }
                 return { state: s, prompt: "BLINK" }
             }
-            if (eyes >= s.baseline * LIMITS.openRatio) return completeStep(s, o.at)
+            if (r.eyes <= openAt(s.baseline)) return completeStep(s, o.at)
             return { state: s, prompt: "OPEN_EYES" }
         }
     }
@@ -191,23 +178,23 @@ export type Progress = {
     timeLeft: number
     /** How far the head is turned, -1 to 1, where ±1 is enough for the turn step; null with no face. */
     turnAmount: number | null
-    /** How open the eyes are, as a share of the person's own open eyes; null with no face. */
+    /** How closed the eyes are, 0 to 1, where 1 is enough for the blink step; null with no face. */
     eyes: number | null
 }
 
 export function progressOf(s: LivenessState, o: Observation, order: readonly Challenge[]): Progress {
     const current = s.done || s.stage.kind === "FACING" ? null : s.queue[0] ?? null
-    const l = o.landmarks
+    const r = o.reading
     return {
         steps: order.map(challenge => ({ challenge, done: s.completed.includes(challenge), current: challenge === current })),
         timeLeft: Math.max(0, Math.min(1, 1 - (o.at - s.stageStarted) / LIMITS.stepMs)),
-        turnAmount: l ? Math.max(-1, Math.min(1, (turn(l) - 0.5) / LIMITS.turned)) : null,
-        eyes: l ? openness(l) / s.baseline : null,
+        turnAmount: r ? Math.max(-1, Math.min(1, (r.turn - 0.5) / LIMITS.turned)) : null,
+        eyes: r ? Math.max(0, Math.min(1, r.eyes / closedAt(s.baseline))) : null,
     }
 }
 
 /** The person's own open-eye level, from a few looks straight at the camera: the middle one, so one squint doesn't set it. */
 export function baselineOf(readings: readonly number[]): number {
     const sorted = [...readings].sort((a, b) => a - b)
-    return sorted[Math.floor(sorted.length / 2)] ?? LIMITS.open / LIMITS.openRatio
+    return sorted[Math.floor(sorted.length / 2)] ?? LIMITS.openDefault
 }

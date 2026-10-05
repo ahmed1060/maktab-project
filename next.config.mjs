@@ -50,7 +50,7 @@ const nextConfig = {
             ],
         }, {
             // The check-in page, alone, may use the front camera: the face check
-            // (lib/mobile/face-prototype). A later header with the same key wins.
+            // (lib/mobile/face-check). A later header with the same key wins.
             source: '/dashboard/check-in',
             headers: [
                 { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },

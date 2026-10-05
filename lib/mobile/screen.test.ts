@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone, faceStep, pendingTemplatesAction, reverifyFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
+import { answerKey, thisPhone, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -70,6 +70,18 @@ describe("faceStep", () => {
         // Re-verification sent: waiting for it outranks asking again.
         expect(faceStep(status({ active: true, phone: { faceStatus: "APPROVED" }, reverifyDue: true, pendingReview: true }), here)).toBe("WAITING")
     })
+
+    it("sets the face up again when the app's face model isn't the one that made the approved templates", () => {
+        const approved = (modelVersion: string | null) => status({ active: true, phone: { faceStatus: "APPROVED", modelVersion } })
+        const v2 = { ...here, modelVersion: "prototype-insightface-r50-v2" }
+        expect(faceStep(approved("prototype-dlib-resnet-v1"), v2)).toBe("REVERIFY")
+        expect(faceStep(approved(null), v2)).toBe("REVERIFY")
+        expect(faceStep(approved("prototype-insightface-r50-v2"), v2)).toBe("READY")
+        // Until the app has said its model, nothing changes.
+        expect(faceStep(approved("prototype-dlib-resnet-v1"), here)).toBe("READY")
+        // And once the new photo is sent, it waits for that.
+        expect(faceStep(status({ active: true, pendingReview: true, phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } }), v2)).toBe("WAITING")
+    })
 })
 
 describe("face templates and re-verification on this phone", () => {
@@ -92,6 +104,16 @@ describe("face templates and re-verification on this phone", () => {
         expect(reverifyFirst(status({ reverifyDue: true }))).toBe(true)
         expect(reverifyFirst(status({ reverifyDue: true, pendingReview: true }))).toBe(false)
         expect(reverifyFirst(status({ reverifyDue: true, active: false }))).toBe(false)
+    })
+
+    it("starts the next check-in by setting the face up again with a new face model, and leaves the old templates out of it", () => {
+        const old = status({ phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } })
+        expect(modelChanged(old, "prototype-insightface-r50-v2")).toBe(true)
+        expect(reverifyFirst(old, "prototype-insightface-r50-v2")).toBe(true)
+        expect(reverifyFirst({ ...old, pendingReview: true }, "prototype-insightface-r50-v2")).toBe(false)
+        expect(modelChanged(old, "prototype-dlib-resnet-v1")).toBe(false)
+        // An older server that doesn't say: no change assumed.
+        expect(modelChanged(status(), "prototype-insightface-r50-v2")).toBe(false)
     })
 })
 

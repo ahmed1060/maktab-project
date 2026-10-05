@@ -199,9 +199,11 @@ verification).
          poor light and with glasses and headscarves. Compare false
          rejections.
 - [ ] **The plugin**: the `NizmoFace` plugin written around the chosen SDK
-      (mobile/README.md) and in a new store release. It replaces the free
-      prototype; remove `NEXT_PUBLIC_FACE_PROTOTYPE` and
-      `FACE_ALLOW_PROTOTYPE` everywhere.
+      (mobile/README.md) and in a new store release. It replaces the face
+      check for testing (mobile/FACE_CHECK.md), whose recognition weights
+      are non-commercial; remove `NEXT_PUBLIC_FACE_PROTOTYPE`,
+      `FACE_ALLOW_PROTOTYPE`, `lib/mobile/face-check/` and
+      `scripts/fetch-face-models.mjs`.
 - [ ] **`FACE_PHOTO_KEY`** on the server: 32 random bytes in base64 (for
       example `openssl rand -base64 32`). It encrypts the stored photos.
       Keep a copy somewhere safe: without it they can't be read.

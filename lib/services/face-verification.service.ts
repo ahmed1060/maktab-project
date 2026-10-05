@@ -233,7 +233,7 @@ export class FaceVerificationService {
         const [company, consent, phone, pending, reference, lastReview] = await Promise.all([
             this.companyStatus(person.companyId),
             this.currentConsent(userId),
-            prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { faceStatus: true, faceEnrolledAt: true } }),
+            prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { faceStatus: true, faceEnrolledAt: true, faceModelVersion: true } }),
             prisma.faceReview.count({ where: { userId, status: "PENDING" } }),
             prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true } }),
             // The app promotes the templates it sent with this review only once it is approved (lib/mobile/face.ts).
@@ -249,7 +249,8 @@ export class FaceVerificationService {
             company: { allowed: company.allowed, reason: company.reason },
             consent,
             consentVersion: FACE_CONSENT_VERSION,
-            phone: phone ? { faceStatus: phone.faceStatus, enrolledAt: phone.faceEnrolledAt } : null,
+            // Which face model made the approved templates: a phone with another model sets the face up again.
+            phone: phone ? { faceStatus: phone.faceStatus, enrolledAt: phone.faceEnrolledAt, modelVersion: phone.faceModelVersion } : null,
             pendingReview: pending > 0,
             reverifyDue: required && enrolled && (!!person.faceReverifyRequestedAt || dueBySchedule),
             lastReview,

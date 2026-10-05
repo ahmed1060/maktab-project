@@ -12,9 +12,9 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceStep, reverifyFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { answerKey, faceStep, modelChanged, reverifyFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
 import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
-import { FACE_PROTOTYPE, prototypeFaceVerifier } from '@/lib/mobile/face-prototype/verifier'
+import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
 import { send, json } from '../attendance/send'
@@ -48,6 +48,8 @@ const DEVICE_ERRORS: Record<string, TranslationKey> = {
     NO_PHONE_KEY: 'ci_key_failed',
     FACE_CANCELLED: 'face_ci_cancelled',
     CAMERA_DENIED: 'face_ci_camera_denied',
+    FACE_MODELS_UNAVAILABLE: 'face_ci_models_failed',
+    FACE_MODELS_CORRUPT: 'face_ci_models_failed',
     FACE_NOT_AVAILABLE: 'face_ci_not_available',
     LIVENESS_FAILED: 'face_ci_liveness_failed',
 }
@@ -63,8 +65,10 @@ export default function CheckInPage() {
     const { data: phoneBody, error: phoneError, mutate: refreshPhone } = useSWR(device ? '/api/attendance/phone' : null, fetcher)
     const { data: fingerprint, error: keyError, mutate: refreshFingerprint } = useSWR(device ? 'this-phone-key' : null, () => deviceFingerprint(device!))
     const camera = useFaceCamera()
-    // The face SDK's plugin when the app has one; otherwise, on a test build, the free prototype (mobile/README.md).
-    const face = useMemo(() => (native ? faceVerifier() ?? (FACE_PROTOTYPE ? prototypeFaceVerifier(camera.open) : null) : null), [native, camera.open])
+    // The face SDK's plugin when the app has one; otherwise, on a test build, the face check for testing (mobile/FACE_CHECK.md).
+    const face = useMemo(() => (native ? faceVerifier() ?? (FACE_CHECK ? faceCheckVerifier(camera.open) : null) : null), [native, camera.open])
+    // Which face model this app has: templates approved with another can't be matched, and the face is set up again.
+    const { data: faceModel } = useSWR(face ? 'this-phone-face-model' : null, async () => (await face!.info()).modelVersion)
     const { data: faceBody, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, fetcher)
     const faceStatus = faceBody?.data as FaceStatus | undefined
     const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT' | 'face'>(null)
@@ -126,14 +130,16 @@ export default function CheckInPage() {
         try {
             // Asked to re-verify: the check-in starts with it (§9.5). Not doing it
             // doesn't stop the check-in, which still counts against the approved face.
-            if (face && reverifyFirst(faceStatus)) {
+            if (face && reverifyFirst(faceStatus, faceModel)) {
                 try {
                     await enrolFace(device!, face, post)
                     showToast(t('face_ci_sent'), 'success')
                 } catch (e) { if (errorCode(e) !== 'FACE_CANCELLED') problem(e) }
                 void refreshFace()
             }
-            setAnswer(await checkIn(device!, post, direction, faceStatus?.active ? face : null))
+            // Templates from another face model can't be matched: no face check until the new face is approved,
+            // and the server sends the check-in for a review, as with no face check at all.
+            setAnswer(await checkIn(device!, post, direction, faceStatus?.active && !modelChanged(faceStatus, faceModel) ? face : null))
         } catch (e) { problem(e) } finally { setBusy(null) }
     }
 
@@ -169,7 +175,7 @@ export default function CheckInPage() {
     if (phoneError) return <section className="glass" style={box}><p style={{ margin: 0 }}>{phoneError.status === 403 ? t('ci_not_available') : t('error_generic')}</p></section>
     const which = thisPhone(phoneBody?.data as { active: Phone | null; pending: Phone | null } | undefined, { fingerprint, failed: !!keyError })
     if (!which) return <LoadingSpinner />
-    const step = faceStep(faceStatus, { phoneActive: which.mine === 'ACTIVE', verifier: !!face })
+    const step = faceStep(faceStatus, { phoneActive: which.mine === 'ACTIVE', verifier: !!face, modelVersion: faceModel })
     const { mine, other, keyFailed } = which
     const label = (ph: Phone) => ph.model || t(`audit_value_${ph.platform}` as TranslationKey)
     const working = faceStatus?.active && face ? t('face_ci_checking') : t('ci_locating')

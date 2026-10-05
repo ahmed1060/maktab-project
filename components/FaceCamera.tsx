@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
-import type { Camera, OpenCamera } from '@/lib/mobile/face-prototype/camera'
-import type { Cue, Progress } from '@/lib/mobile/face-prototype/liveness'
-import { chime, pageAudio } from '@/lib/mobile/face-prototype/chime'
+import type { Camera, OpenCamera } from '@/lib/mobile/face-check/camera'
+import type { Cue, Progress } from '@/lib/mobile/face-check/liveness'
+import { chime, pageAudio } from '@/lib/mobile/face-check/chime'
 
 /**
- * The front camera, full screen, for the face check prototype
- * (lib/mobile/face-prototype): the live picture, mirrored as a mirror is,
+ * The front camera, full screen, for the face check for testing
+ * (lib/mobile/face-check): the live picture, mirrored as a mirror is,
  * one line telling the person what to do, and a way out. `open()` resolves
  * once the camera is streaming.
  *
@@ -20,6 +20,9 @@ import { chime, pageAudio } from '@/lib/mobile/face-prototype/chime'
  * beeps, so a turn or closed eyes don't leave the person guessing. Found on
  * the first try on a phone: with only the words, nobody could tell whether
  * looking back had counted.
+ *
+ * The first time, the face check's models download (about 200 MB, kept on
+ * the phone after): a bar shows how far.
  */
 
 type Said = Parameters<Camera['say']>[0]
@@ -48,6 +51,7 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     const stream = useRef<MediaStream | null>(null)
     const cancel = useRef<((e: Error) => void) | null>(null)
     const [progress, setProgress] = useState<Progress | null>(null)
+    const [download, setDownload] = useState<number | null>(null)
     const [flash, setFlash] = useState<'ok' | 'retry' | null>(null)
     // Started by any tap on the page: by the time the camera opens, the tap that asked for it is too long ago
     // for the browser to let sound start (review on #30).
@@ -78,6 +82,7 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     const open: OpenCamera = useCallback(() => new Promise<Camera>((ready, failed) => {
         sound.unlock()
         setProgress(null)
+        setDownload(null)
         setPrompt('LOADING')
         setRequest({ ready, failed })
     }), [sound])
@@ -100,8 +105,10 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                     video: v,
                     say: next => setPrompt(p => (p ? next : p)),
                     show: setProgress,
+                    // Shown only while it's still downloading: from the phone's cache it's done at once.
+                    loading: share => setDownload(share === null || share >= 1 ? null : share),
                     cue,
-                    close: () => { stopStream(); cancel.current = null; setPrompt(null); setProgress(null) },
+                    close: () => { stopStream(); cancel.current = null; setPrompt(null); setProgress(null); setDownload(null) },
                     cancelled,
                 })
             })
@@ -130,6 +137,7 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
         setRequest(null)
         setPrompt(null)
         setProgress(null)
+        setDownload(null)
     }
 
     const current = progress?.steps.find(s => s.current)?.challenge
@@ -174,8 +182,13 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                     )}
                 </div>
             )}
+            {download !== null && (
+                <div aria-hidden style={{ width: 'min(100%, 420px)', height: '6px', borderRadius: '3px', background: 'var(--surface)', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.round(download * 100)}%`, height: '100%', background: 'var(--primary)', transition: 'width 0.2s linear' }} />
+                </div>
+            )}
             <p role="status" aria-live="polite" style={{ margin: 0, padding: '0.6rem 1rem', borderRadius: '0.75rem', background: 'var(--surface)', color: 'var(--text-main)', fontSize: '1.05rem', textAlign: 'center', maxWidth: '420px' }}>
-                {flash === 'retry' ? t('face_cam_slow') : t(PROMPTS[prompt])}
+                {flash === 'retry' ? t('face_cam_slow') : download !== null && prompt === 'LOADING' ? t('face_cam_download').replace('{pct}', String(Math.floor(download * 100))) : t(PROMPTS[prompt])}
             </p>
             {progress && (
                 // The live readings, for tuning the test version on real phones.

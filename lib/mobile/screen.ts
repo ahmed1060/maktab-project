@@ -43,7 +43,8 @@ export type FaceStatus = {
     required: boolean
     consent: { acceptedAt: string } | null
     consentVersion: string
-    phone: { faceStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" } | null
+    /** modelVersion: the face model that made the approved templates; null when it was never recorded. */
+    phone: { faceStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED"; modelVersion?: string | null } | null
     pendingReview: boolean
     reverifyDue: boolean
     /** The person's latest verification photo and where it stands. */
@@ -58,7 +59,7 @@ export type FaceStatus = {
  * set it up, and says so; once it is in use there, check-ins without a face
  * check wait for a review, which the person should know.
  */
-export function faceStep(status: FaceStatus | undefined, here: { phoneActive: boolean; verifier: boolean }):
+export function faceStep(status: FaceStatus | undefined, here: { phoneActive: boolean; verifier: boolean; modelVersion?: string | null }):
     null | "IDLE" | "CONSENT" | "WAITING" | "NEEDS_APP" | "ENROL" | "REJECTED" | "REVERIFY" | "READY" {
     if (!status) return null
     // Not in use for them now (paused, no longer offered or asked), but consent
@@ -69,8 +70,21 @@ export function faceStep(status: FaceStatus | undefined, here: { phoneActive: bo
     if (status.pendingReview) return "WAITING"
     if (!here.verifier) return "NEEDS_APP"
     const face = status.phone?.faceStatus
-    if (face === "APPROVED") return status.reverifyDue ? "REVERIFY" : "READY"
+    if (face === "APPROVED") return status.reverifyDue || modelChanged(status, here.modelVersion) ? "REVERIFY" : "READY"
     return face === "REJECTED" ? "REJECTED" : "ENROL"
+}
+
+/**
+ * Whether the approved templates were made by another face model than the
+ * app's now: they can't be matched against (a new model reads faces
+ * differently), so the face is set up again, as a re-verification, and
+ * check-ins carry on meanwhile without a face check, for a review. Not known
+ * until the app has said its model.
+ */
+export function modelChanged(status: FaceStatus | undefined, modelVersion: string | null | undefined): boolean {
+    const phone = status?.phone
+    if (!status?.active || !modelVersion || phone?.faceStatus !== "APPROVED" || phone.modelVersion === undefined) return false
+    return phone.modelVersion !== modelVersion
 }
 
 /**
@@ -84,9 +98,9 @@ export function shouldReconcileTemplates(status: FaceStatus | undefined, here: {
     return !(status.required && status.consent)
 }
 
-/** Whether the next check-in starts with re-verification: asked for or due, and none sent yet (§9.5). */
-export function reverifyFirst(status: FaceStatus | undefined): boolean {
-    return !!status?.active && status.reverifyDue && !status.pendingReview
+/** Whether the next check-in starts with re-verification: asked for, due, or a new face model, and none sent yet (§9.5). */
+export function reverifyFirst(status: FaceStatus | undefined, modelVersion?: string | null): boolean {
+    return !!status?.active && (status.reverifyDue || modelChanged(status, modelVersion)) && !status.pendingReview
 }
 
 /**

@@ -279,23 +279,18 @@ written around it. Until it exists the page says "this version of the app
 can't do the face check", nobody can set it up, and so it is in use for
 nobody.
 
-### Free prototype, for trying it out
+### Face check for testing
 
-Until a commercial SDK is chosen, a free prototype lets you try the whole
-flow on your own phone: consent, set-up, approval, check-in with the face
-check, re-verification and withdrawal. It runs inside the app's web view,
-on the phone, with no native code (`lib/mobile/face-prototype/`):
+Until a commercial SDK is chosen, a face check made of the best free models
+lets you try the whole flow on your own phone: consent, set-up, approval,
+check-in with the face check, re-verification and withdrawal. It runs inside
+the app's web view, on the phone, with no native code
+(`lib/mobile/face-check/`): InsightFace's ArcFace ResNet50 for matching,
+MediaPipe for a blink-and-turn challenge, and MiniFASNet against a photo held
+up. How it works, its accuracy and its limits: [FACE_CHECK.md](FACE_CHECK.md).
 
-- **Matching:** dlib's face recognition network, through
-  `@vladmandic/face-api` (MIT). Its weights are public domain.
-- **Liveness:** an active challenge, turning your head and blinking in a
-  random order, read from the face landmarks. A still photo or a group
-  photo fails it.
-- **Templates:** kept in the app's storage, encrypted with a device key that
-  can't be exported plus the server's wrapping key, with the same approved
-  and waiting slots.
-
-**Never with real employees.** The liveness check isn't certified, and the
+**Never with real employees.** The recognition weights are for
+non-commercial research only, the liveness check isn't certified, and the
 device key isn't in the secure hardware. Two locks keep it out of
 production:
 
@@ -321,9 +316,10 @@ To try it:
 5. In the app: agree, set up the face check, approve the photo from
    another account, then check in.
 
-The model weights (about 7 MB) are copied into `public/face-models/` before
-`dev` and `build` (`scripts/copy-face-models.mjs`), and load the first time
-the camera opens.
+The models (about 200 MB) are fetched into `public/face-models/v2/` before
+`dev` and `build` (`scripts/fetch-face-models.mjs`), only when
+`NEXT_PUBLIC_FACE_PROTOTYPE=1`: a production build has none of them. The phone downloads them
+the first time the camera opens, with a percentage on screen, and keeps them.
 
 ### Choosing the SDK
 

@@ -137,12 +137,23 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
         expect(await Reviews.decide(waiting.id, true, null, admin)).toEqual({ id: waiting.id, status: "APPROVED" })
         expect(await reason(Reviews.decide(waiting.id, false, null, admin))).toBe("FACE_REVIEW_CLOSED")
         expect(await phoneFace()).toBe("APPROVED")
-        expect(await Face.statusFor("e1")).toMatchObject({ active: true, pendingReview: false })
+        expect(await Face.statusFor("e1")).toMatchObject({ active: true, pendingReview: false, phone: { faceStatus: "APPROVED", modelVersion: "m1" } })
         expect((await critical()).every(n => n.read)).toBe(true)
         // Decided: nothing reaches its photo any more.
         expect(await reason(Reviews.photo(waiting.id, "new", admin))).toBe("FACE_REVIEW_CLOSED")
         const { rows } = await db.query(`SELECT "messageKey" FROM "Notification" WHERE "userId" = 'e1' AND type = 'ATTENDANCE_FACE'`)
         expect(rows).toEqual([{ messageKey: "notice_face_approved" }])
+    })
+
+    it("moves the phone onto a new face model once a re-verification taken with it is approved", async () => {
+        // The app's face model changed (lib/mobile/screen.ts modelChanged): its old templates can't be matched.
+        await Reviews.requestReverify("c1", "e1", admin)
+        const again = await send(jpeg(), { modelVersion: "m2" })
+        expect(again).toMatchObject({ purpose: "REVERIFY" })
+        // Still the old one until a person approves the new face.
+        expect(await Face.statusFor("e1")).toMatchObject({ active: true, phone: { modelVersion: "m1" } })
+        await Reviews.decide(again.id, true, null, admin)
+        expect(await Face.statusFor("e1")).toMatchObject({ active: true, reverifyDue: false, phone: { faceStatus: "APPROVED", modelVersion: "m2" } })
     })
 
     it("asks for re-verification; a rejected new photo is deleted, the reference stays, and face verification stops", async () => {
@@ -154,7 +165,7 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
         expect((await Reviews.photo(again.id, "reference", admin)).subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]))
         await Reviews.decide(again.id, false, "Not them", admin)
         expect((await reviews()).map(r => [r.purpose, r.status, r.hasPhoto])).toEqual([
-            ["ENROLMENT", "WITHDRAWN", false], ["ENROLMENT", "APPROVED", true], ["REVERIFY", "REJECTED", false],
+            ["ENROLMENT", "WITHDRAWN", false], ["ENROLMENT", "APPROVED", false], ["REVERIFY", "APPROVED", true], ["REVERIFY", "REJECTED", false],
         ])
         expect(await phoneFace()).toBe("REJECTED")
         expect(await Face.statusFor("e1")).toMatchObject({ active: false })
