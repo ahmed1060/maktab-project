@@ -4,7 +4,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useParams, useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -39,7 +39,9 @@ export default function CompanyPaymentsPage() {
     const params = useParams()
     const router = useRouter()
     const { id: companyId } = params as { id: string }
-    const { data: session } = useSession()
+    // Who is looking comes from the layout on the first paint (useViewer), so a
+    // Super Admin never sees "Access Restricted" while the session loads.
+    const viewer = useViewer()
     const { showToast } = useToast()
     const { t, locale } = useLanguage()
 
@@ -129,7 +131,7 @@ export default function CompanyPaymentsPage() {
         }
     }
 
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (viewer?.role !== 'SUPER_ADMIN') {
         return <AccessDenied />
     }
 

@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -14,7 +14,9 @@ import { existingSettingsTabs, type SettingsExposure } from '@/lib/company-setti
 export default function CompanySettingsPage() {
     const params = useParams()
     const { id: companyId } = params as { id: string }
-    const { data: session } = useSession()
+    // Who is looking comes from the layout on the first paint (useViewer), so a
+    // Super Admin never sees "Access Restricted" while the session loads.
+    const viewer = useViewer()
     const { showToast } = useToast()
     const { t, locale } = useLanguage()
 
@@ -29,7 +31,7 @@ export default function CompanySettingsPage() {
     // asking the server again for what it just said.
     const setCompany = (next: CompanySettings & Pick<SettingsExposure, 'package'>) => { mutate({ data: next }, { revalidate: false }) }
 
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (viewer?.role !== 'SUPER_ADMIN') {
         return <AccessDenied />
     }
 

@@ -2,6 +2,7 @@
 
 import { createContext, createElement, useContext, useMemo, type ReactNode } from "react"
 import { useSession } from "next-auth/react"
+import type { Session } from "next-auth"
 import { can, canCompanyWide, grantFor, type Actor, type Target } from "@/lib/permissions/can"
 import type { Permission, Scope } from "@/lib/permissions/catalogue"
 
@@ -62,12 +63,25 @@ export function ViewerProvider({ viewer, children }: { viewer: Actor | null | un
     return createElement(ViewerContext.Provider, { value: viewer ?? null }, children)
 }
 
+/**
+ * Who is signed in: the session once it has loaded, since it is the one that
+ * refreshes; the layout's copy until then. For a screen that asks who someone
+ * is (their role, their id) on its first paint: the session hook alone is
+ * empty for the first second, and a page that read it showed "Access
+ * Restricted" to a Super Admin until it arrived, then drew itself again.
+ */
+export function useViewer(): Session["user"] | null {
+    const { data: session, status } = useSession()
+    const fromLayout = useContext(ViewerContext) as Session["user"] | null
+    // Only while it loads. Signed out or expired, the session is empty too,
+    // and the layout's copy would then keep a page open to somebody who is
+    // no longer signed in.
+    if (status === "loading") return fromLayout
+    return session?.user?.role ? session.user : null
+}
+
 export function useCan(): Can {
-    const { data: session } = useSession()
-    const fromLayout = useContext(ViewerContext)
-    // The session once it has loaded, since it is the one that refreshes; the
-    // layout's copy until then.
-    const user = ((session?.user as Actor | undefined)?.role ? session!.user : fromLayout) as Actor | null
+    const user = useViewer() as Actor | null
     const role = user?.role
     const id = user?.id
     const companyId = user?.companyId
