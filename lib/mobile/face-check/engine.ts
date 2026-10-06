@@ -146,9 +146,12 @@ export function readingOf(points: readonly Lm[], blendshapes: readonly Category[
     const score = (name: string) => blendshapes.find(c => c.categoryName === name)?.score ?? 0
     const a = points[33], b = points[263], nose = points[1]
     const span = b.x - a.x
+    let x0 = 1, y0 = 1, x1 = 0, y1 = 0
+    for (const p of points) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y) }
     return {
         eyes: (score("eyeBlinkLeft") + score("eyeBlinkRight")) / 2,
         turn: span === 0 ? 0.5 : (nose.x - a.x) / span,
+        box: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 },
     }
 }
 

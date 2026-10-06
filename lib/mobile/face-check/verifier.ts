@@ -51,7 +51,8 @@ export function faceCheckVerifier(openCamera: OpenCamera, store: Store = indexed
         info: async () => ({ modelVersion: FACE_CHECK_MODEL, enrolled: await vault.has("approved"), pending: await vault.has("pending") }),
         enrol: wrappingKey => withCamera(async (engine, camera) => {
             for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-                const c = await capture(engine, camera)
+                // A second attempt always asks for the step: the first didn't pass.
+                const c = await capture(engine, camera, { challenge: attempt > 1 })
                 // The anti-spoofing isn't asked here: a person looks at this photo before it is used.
                 if (c.live && c.photo) {
                     await vault.save("pending", wrappingKey, c.templates)
@@ -65,7 +66,7 @@ export function faceCheckVerifier(openCamera: OpenCamera, store: Store = indexed
             if (!approved) fail("FACE_NOT_ENROLLED")
             let last: { score: number; liveness: number; frame: string | null } = { score: 0, liveness: 0, frame: null }
             for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-                const c = await capture(engine, camera)
+                const c = await capture(engine, camera, { challenge: attempt > 1 })
                 if (!c.live) {
                     last = { score: 0, liveness: 0, frame: c.frame }
                     continue

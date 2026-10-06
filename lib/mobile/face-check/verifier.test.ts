@@ -9,13 +9,13 @@ import type { Captured } from "./capture"
  * The capture and the models are stood in for.
  */
 
-const captured = vi.hoisted(() => ({ next: null as null | (() => Promise<unknown>) }))
+const captured = vi.hoisted(() => ({ next: null as null | (() => Promise<unknown>), options: [] as unknown[] }))
 const warmed = vi.hoisted(() => ({ times: 0 }))
 vi.mock("./engine", () => ({
     loadEngine: async (onProgress?: (n: number) => void) => { onProgress?.(1); return {} },
     warmEngine: async () => { warmed.times++ },
 }))
-vi.mock("./capture", () => ({ capture: () => captured.next!() }))
+vi.mock("./capture", () => ({ capture: (_e: unknown, _c: unknown, options: unknown) => { captured.options.push(options); return captured.next!() } }))
 
 const { faceCheckVerifier, FACE_CHECK_MODEL } = await import("./verifier")
 
@@ -46,7 +46,7 @@ function slowStore(): Store & { writes: number } {
 const key = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)))
 const me = [1, 0, 0]
 const someoneElse = [0, 1, 0]
-const live = (over: Partial<Captured> = {}): Captured => ({ live: true, templates: [me, me], real: 0.9, photo: "cGhvdG8=", frame: "ZnJhbWU=", ...over })
+const live = (over: Partial<Captured> = {}): Captured => ({ live: true, templates: [me, me], real: 0.9, photo: "cGhvdG8=", frame: "ZnJhbWU=", challenged: false, ...over })
 
 /** A verifier with `me` approved on this phone. */
 async function enrolled() {
@@ -111,6 +111,15 @@ describe("the face check verifier's verdict", () => {
         captured.next = async () => { tries++; return live({ real: 0.2 }) }
         expect(await verifier.verify(key)).toMatchObject({ verified: false, score: 1, liveness: 0.2, attempts: 1, frame: "ZnJhbWU=" })
         expect(tries).toBe(1)
+    })
+
+    it("asks for the step on a second attempt, not on the first", async () => {
+        const verifier = faceCheckVerifier(async () => camera(), await enrolled())
+        captured.options = []
+        let tries = 0
+        captured.next = async () => (++tries === 1 ? live({ templates: [someoneElse, someoneElse] }) : live())
+        expect(await verifier.verify(key)).toMatchObject({ verified: true, attempts: 2 })
+        expect(captured.options).toEqual([{ challenge: false }, { challenge: true }])
     })
 
     it("refuses to enrol without passing the challenge", async () => {

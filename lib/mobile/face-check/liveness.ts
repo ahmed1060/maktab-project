@@ -24,7 +24,10 @@
  * - turn: where the nose tip sits between the outer eye corners, 0 to 1:
  *   about 0.5 facing the camera, towards 0 or 1 turned to either side.
  */
-export type Reading = { eyes: number; turn: number }
+export type Reading = { eyes: number; turn: number; box?: Box }
+
+/** Where the face is in the picture, as shares of its width and height (0 to 1), as the camera sees it, unmirrored. */
+export type Box = { x: number; y: number; w: number; h: number }
 
 export const LIMITS = {
     /** Facing the camera: the nose within this of the middle. */
