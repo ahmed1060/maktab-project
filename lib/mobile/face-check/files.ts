@@ -4,6 +4,8 @@
  * the recognition worker alike, so nothing here touches the page.
  */
 
+import { ANTISPOOF_MODELS } from "./antispoof"
+
 export const MODELS_URL = "/face-models/v2"
 const CACHE = "nizmo-face-models-v2"
 
@@ -98,10 +100,21 @@ export async function manifestOf(): Promise<Manifest> {
     }
 }
 
-/** Whether every model this manifest names is on the phone already, checked: loading them costs no download. */
+/** The small models, kept whole in the cache under their address: the landmarker and the anti-spoofing pair. */
+export const SMALL_FILES = ["face_landmarker.task", ...ANTISPOOF_MODELS.map(m => m.file)]
+
+/**
+ * Whether everything the engine loads is on the phone already: every part of every model, each model
+ * checked, and the small models. Loading then costs no download (review on #48: a check of the large
+ * models alone let a background load fetch what was missing, unasked).
+ */
 export async function onPhone(manifest: Manifest): Promise<boolean> {
     const cache = await openCache()
     if (!cache) return false
-    for (const entry of Object.values(manifest.files)) if (!(await cache.match(verifiedKey(entry.sha256)))) return false
+    for (const entry of Object.values(manifest.files)) {
+        if (!(await cache.match(verifiedKey(entry.sha256)))) return false
+        for (const p of entry.parts) if (!(await cache.match(partKey(p, entry.sha256)))) return false
+    }
+    for (const f of SMALL_FILES) if (!(await cache.match(`${MODELS_URL}/${f}`))) return false
     return true
 }

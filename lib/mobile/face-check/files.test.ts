@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { createHash } from "node:crypto"
-import { joined, manifestOf, type Manifest } from "./files"
+import { joined, manifestOf, onPhone, MODELS_URL, SMALL_FILES, type Manifest } from "./files"
 
 /**
  * Getting the models to the phone (review on #47): the recognition model's
@@ -100,5 +100,20 @@ describe("checking the model once", () => {
         // The same part names, for a different model: a cache miss, so its parts come from the site.
         await expect(joined(manifest("f".repeat(64)), "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
         expect(fetched).toBe(6)
+    })
+})
+
+describe("whether the models are on the phone", () => {
+    it("only when every part, every check and every small model is (review on #48)", async () => {
+        const store = phoneCache()
+        site()
+        await joined(manifest(), "m.onnx", () => {})
+        // The large model is in and checked, but not the small ones: a load would still download.
+        expect(await onPhone(manifest())).toBe(false)
+        for (const f of SMALL_FILES) store.set(`${MODELS_URL}/${f}`, new ArrayBuffer(1))
+        expect(await onPhone(manifest())).toBe(true)
+        // A part gone from the cache since: not on the phone.
+        store.delete([...store.keys()].find(k => k.includes("part1"))!)
+        expect(await onPhone(manifest())).toBe(false)
     })
 })
