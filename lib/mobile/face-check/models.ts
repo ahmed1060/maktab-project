@@ -28,9 +28,10 @@ const NMS_THRESHOLD = 0.4
 const STRIDES = [8, 16, 32] as const
 const ANCHORS = 2
 
-/** Faces in the image, most confident first. */
-export async function detect(run: Run, img: Rgba): Promise<Face[]> {
-    // Fit inside 640 × 640 keeping the shape; the rest stays black (top-left placed), as the reference does.
+/** Faces in the image, most confident first, looked for at `size` × `size` (a multiple of 32). */
+export async function detect(run: Run, img: Rgba, size: number = DET_SIZE): Promise<Face[]> {
+    const DET_SIZE = size
+    // Fit inside size × size keeping the shape; the rest stays black (top-left placed), as the reference does.
     const ratio = img.height / img.width
     const w = ratio > 1 ? Math.floor(DET_SIZE / ratio) : DET_SIZE
     const h = ratio > 1 ? DET_SIZE : Math.floor(DET_SIZE * ratio)

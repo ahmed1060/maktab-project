@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { createHash } from "node:crypto"
-import { joined, manifestOf, type Manifest } from "./engine"
+import { joined, manifestOf, type Manifest } from "./files"
 
 /**
  * Getting the models to the phone (review on #47): the recognition model's
@@ -61,5 +61,42 @@ describe("the manifest", () => {
         await expect(manifestOf()).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
         vi.stubGlobal("fetch", async () => new Response(JSON.stringify(manifest())))
         expect(await manifestOf()).toEqual(manifest())
+    })
+})
+
+/** The phone's Cache Storage, in memory. */
+function phoneCache() {
+    const store = new Map<string, ArrayBuffer>()
+    const cache = {
+        match: async (k: string) => (store.has(k) ? new Response(store.get(k)!.slice(0)) : undefined),
+        put: async (k: string, r: Response) => { store.set(k, await r.arrayBuffer()) },
+        delete: async (k: string) => store.delete(k),
+    }
+    vi.stubGlobal("caches", { open: async () => cache })
+    return store
+}
+
+describe("checking the model once", () => {
+    it("hashes the joined model when it was downloaded, and not again when it all comes from the phone", async () => {
+        phoneCache()
+        const s = site()
+        const digest = vi.spyOn(crypto.subtle, "digest")
+        expect(await joined(manifest(), "m.onnx", () => {})).toEqual(whole)
+        expect(digest).toHaveBeenCalledTimes(1)
+        // The next app start: every part from the phone, already checked together.
+        expect(await joined(manifest(), "m.onnx", () => {})).toEqual(whole)
+        expect(digest).toHaveBeenCalledTimes(1)
+        expect(s.most).toBe(1)
+        digest.mockRestore()
+    })
+
+    it("never reads a part of an older model as a part of a new one", async () => {
+        const store = phoneCache()
+        site()
+        await joined(manifest(), "m.onnx", () => {})
+        // The same part names, for a different model: the old parts' keys don't match it.
+        const other = manifest("f".repeat(64))
+        await expect(joined(other, "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
+        expect([...store.keys()].some(k => k.includes("ffffffffffffffff"))).toBe(false)
     })
 })

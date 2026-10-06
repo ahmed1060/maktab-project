@@ -62,7 +62,16 @@ check-in on its own.
 - **First use** downloads about 200 MB (shown as a percentage on the camera
   screen), then it is kept in the app's Cache Storage. The recognition model
   is served in 40 MB parts (Vercel's limit for one file is 100 MB), joined on
-  the phone and checked against its SHA-256 before use.
+  the phone and checked against its SHA-256 once; after that the phone
+  remembers it passed.
+- **Ahead of the camera:** when the check-in screen opens and the models are
+  on the phone already, they are loaded then, and the face tracker takes its
+  first (slow) look on a blank picture, so the camera starts the check at once.
+- **Recognition runs in a worker** (`recognition-worker.mjs`, bundled by the
+  fetch script), off the page's thread: the picture never stops while it
+  works. The first look's recognition runs during the challenge rather than
+  before it. The detector looks at 320 × 320, a quarter of the work of 640,
+  with the same results on selfie-framed photos.
 - One recognition takes about 1 to 3 seconds on a mid-range phone, twice per
   check; the challenge itself runs on the phone's GPU where it can.
 - Templates are encrypted with a device key plus the server's wrapping key,
