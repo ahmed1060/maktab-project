@@ -232,6 +232,10 @@ describe("the two themes are actually different", () => {
         //
         // --map-* are invariant because they are drawn on map tiles, which
         // are light in both themes: a dark-mode ink would vanish into them.
+        //
+        // --cam-* are invariant because the face check's camera screen is
+        // dark in both themes, as every camera's view is: the picture fills
+        // it, and its guidance is light over it whatever the page around is.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
@@ -239,6 +243,7 @@ describe("the two themes are actually different", () => {
             "--paper", "--ink-on-paper",
             "--button-from", "--button-to",
             "--map-pin", "--map-ink", "--map-halo", "--map-shadow",
+            "--cam-ground", "--cam-ink", "--cam-done", "--cam-warn",
         ])
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))
