@@ -394,7 +394,13 @@ export function withStandardHandler(
             // An ordinary refusal no route answered: say what it is, with the
             // status it deserves, rather than a 500 and an error reference.
             const refusal = knownRefusal(error)
-            if (refusal) return NextResponse.json({ success: false, error: refusal.message }, { status: refusal.status })
+            if (refusal) {
+                // The code too, in the answer and the log: a refusal the logs couldn't tell apart (an expired
+                // number, or a signature) cost a check-in its face check unexplained in production.
+                const code = (error as Error).message
+                console.info(`API refusal ${refusal.status} ${code} ${req.method} ${new URL(req.url).pathname}`)
+                return NextResponse.json({ success: false, error: refusal.message, code }, { status: refusal.status })
+            }
             console.error("API Standard Handler Error:", error)
             // Never echo the raw exception to the client — it can be a
             // Prisma/Supabase/network error with internal detail in it.

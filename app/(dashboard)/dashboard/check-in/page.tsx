@@ -88,7 +88,7 @@ export default function CheckInPage() {
         if (!device || !face || !faceStatus || !phoneActive || busy) return
         const quiet = async (url: string, body: unknown) => {
             const r = await send(url, json('POST', body), '')
-            if (!r.ok) throw new Error(r.error)
+            if (!r.ok) throw Object.assign(new Error(r.error), { code: r.code })
             return r.body
         }
         // New templates waiting on their photo: kept aside until it is decided, then promoted or dropped (§9.5).
@@ -106,7 +106,8 @@ export default function CheckInPage() {
 
     const post = async (url: string, body: unknown) => {
         const r = await send(url, json('POST', body), t('ci_failed'))
-        if (!r.ok) throw new Error(r.error)
+        // The words for the person; the code for the app to decide on (lib/mobile/face.ts).
+        if (!r.ok) throw Object.assign(new Error(r.error), { code: r.code })
         return r.body
     }
     const problem = (e: unknown) => {
