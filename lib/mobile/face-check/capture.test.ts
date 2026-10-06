@@ -113,6 +113,29 @@ describe("a whole capture", () => {
         expect(c.live).toBe(true)
     })
 
+    it("starts the challenge while the first look is still being recognised", async () => {
+        // Recognition takes seconds on a phone: the person shouldn't stand waiting for it before the challenge.
+        let release: () => void = () => {}
+        const slowFirst = new Promise<void>(r => { release = r })
+        const e = engine(passing, [{ embedding: person(3) }])
+        const identify = e.identify.bind(e)
+        let calls = 0
+        e.identify = async frame => { if (calls++ === 0) await slowFirst; return identify(frame) }
+        const cam = camera()
+        const attempt = capture(e, cam, () => 0.9)
+        await new Promise(r => setTimeout(r, 30))
+        // The challenge is on screen with the first recognition still running.
+        expect(cam.shown.some(p => p !== null)).toBe(true)
+        release()
+        expect((await attempt).live).toBe(true)
+    })
+
+    it("fails when the first look's face was never found, however the challenge went", async () => {
+        const c = await capture(engine(passing, [{ embedding: null }]), camera(), () => 0.9)
+        expect(c.live).toBe(false)
+        expect(c.templates).toEqual([])
+    })
+
     it("starts each attempt with no progress left from the last one (review on #30)", async () => {
         let cancel: (e: Error) => void = () => {}
         const cancelled = new Promise<never>((_, reject) => { cancel = reject })

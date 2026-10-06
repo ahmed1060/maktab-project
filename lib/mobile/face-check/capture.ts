@@ -70,23 +70,29 @@ export async function capture(engine: Engine, camera: Camera, random: () => numb
             if (!photo) photo = shot
             return "ONE"
         }
+        /**
+         * The first look's recognition runs while the person carries on, not before: it takes seconds on a
+         * phone, and the challenge needn't wait for it. Tried again on a later frontal look until it finds
+         * the one face; its template is in before the last look's.
+         */
+        let first: Promise<unknown> | null = null
+        let firstFound = false
+        const tryFirst = () => {
+            if (firstFound || first) return
+            first = identify().then(found => {
+                firstFound = found === "ONE"
+                if (found === "MANY") camera.say("ONE_FACE")
+            }).finally(() => { first = null })
+        }
         // A new attempt starts with nothing ticked: the last attempt's steps and timer would mislead (review on #30).
         camera.show?.(null)
-        // Looking straight at the camera first: the photo and template from the first good look, the eye level from a few.
+        // Looking straight at the camera first: the eye level from a few looks, the photo and template from the first.
         while (!stop && readings.length < BASELINE_LOOKS) {
             const l = engine.read(camera.video, now())
             if (l.faces > 1) camera.say("ONE_FACE")
             // Facing the camera with eyes not shut; how open is this person's own measure, not a fixed one.
             else if (l.reading && Math.abs(l.reading.turn - 0.5) <= LIMITS.facing && l.reading.eyes <= BASELINE_MAX) {
-                if (templates.length === 0) {
-                    camera.say("HOLD_STILL")
-                    const found = await identify()
-                    if (found !== "ONE") {
-                        camera.say(found === "MANY" ? "ONE_FACE" : "FACE_CAMERA")
-                        await nextFrame()
-                        continue
-                    }
-                }
+                tryFirst()
                 readings.push(l.reading.eyes)
                 camera.say("HOLD_STILL")
             } else camera.say("FACE_CAMERA")
@@ -98,6 +104,8 @@ export async function capture(engine: Engine, camera: Camera, random: () => numb
         while (!stop && !state.done && !state.failed) {
             const l = engine.read(camera.video, now())
             const o = { faces: l.faces, reading: l.reading, at: now() }
+            // Still without the first look's face: another try whenever the person faces the camera.
+            if (l.faces === 1 && l.reading && frontal(l.reading, baseline)) tryFirst()
             const r = step(state, o)
             state = r.state
             camera.say(r.prompt)
@@ -106,6 +114,12 @@ export async function capture(engine: Engine, camera: Camera, random: () => numb
             await nextFrame()
         }
         if (!state.done) {
+            frame = snapshot(camera.video)
+            return result(false)
+        }
+        // The first look's face, once its recognition is done; without it there is nothing to compare the last with.
+        while (first) await first
+        if (!firstFound) {
             frame = snapshot(camera.video)
             return result(false)
         }
