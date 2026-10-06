@@ -78,10 +78,12 @@ async function onPage(onBytes: (n: number) => void): Promise<Recognizer> {
 async function recognition(onBytes: (n: number) => void): Promise<Recognizer> {
     if (typeof Worker === "undefined") return onPage(onBytes)
     const worker = new Worker(`${MODELS_URL}/recognition-worker.mjs`, { type: "module" })
-    return inWorker(worker, onBytes).catch(e => ((e as { code?: string }).code === "FACE_WORKER_FAILED" ? onPage(onBytes) : Promise.reject(e)))
+    // Gone after loading: the next check loads afresh (on the page, if the worker fails again).
+    return inWorker(worker, onBytes, () => { loading = null }).catch(e => ((e as { code?: string }).code === "FACE_WORKER_FAILED" ? onPage(onBytes) : Promise.reject(e)))
 }
 
-async function inWorker(worker: Worker, onBytes: (n: number) => void): Promise<Recognizer> {
+/** The recognition models in `worker`; `onDead` when it stops working after it loaded. */
+export async function inWorker(worker: Worker, onBytes: (n: number) => void, onDead: () => void = () => {}): Promise<Recognizer> {
     const waiting = new Map<number, { resolve: (r: Identified) => void; reject: (e: Error) => void }>()
     let next = 0
     await new Promise<void>((resolve, reject) => {
@@ -101,12 +103,19 @@ async function inWorker(worker: Worker, onBytes: (n: number) => void): Promise<R
         worker.onerror = () => { worker.terminate(); reject(Object.assign(new Error("FACE_WORKER_FAILED"), { code: "FACE_WORKER_FAILED" })) }
         worker.postMessage({ type: "load" })
     })
-    // Gone after loading: whatever was waiting on it fails rather than waiting for ever.
+    // Gone after loading (a crash, or the phone out of memory): whatever was waiting on it fails, and so does
+    // anything asked of it later, rather than waiting for ever on a worker that will never answer (review on #48).
+    const gone = () => Object.assign(new Error("FACE_MODELS_UNAVAILABLE"), { code: "FACE_MODELS_UNAVAILABLE" })
+    let dead = false
     worker.onerror = () => {
-        for (const w of waiting.values()) w.reject(Object.assign(new Error("FACE_MODELS_UNAVAILABLE"), { code: "FACE_MODELS_UNAVAILABLE" }))
+        dead = true
+        worker.terminate()
+        for (const w of waiting.values()) w.reject(gone())
         waiting.clear()
+        onDead()
     }
     return frame => new Promise((resolve, reject) => {
+        if (dead) return reject(gone())
         const id = ++next
         waiting.set(id, { resolve, reject })
         // The pixels move to the worker rather than being copied: a frame is several megabytes.
