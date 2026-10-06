@@ -47,7 +47,8 @@ export async function cached(url: string, onBytes?: (n: number) => void, key: st
 }
 
 const hex = (buf: ArrayBuffer) => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("")
-const partKey = (part: string, sha256: string) => `${MODELS_URL}/${part}#${sha256.slice(0, 16)}`
+// The checksum in the query, not a #fragment: Cache Storage matches addresses without their fragment (review on #48).
+const partKey = (part: string, sha256: string) => `${MODELS_URL}/${part}?sha=${sha256.slice(0, 16)}`
 const verifiedKey = (sha256: string) => `${MODELS_URL}/verified/${sha256}`
 
 /**

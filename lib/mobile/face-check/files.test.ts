@@ -64,13 +64,14 @@ describe("the manifest", () => {
     })
 })
 
-/** The phone's Cache Storage, in memory. */
+/** The phone's Cache Storage, in memory: like the real one, it matches addresses without their #fragment. */
 function phoneCache() {
     const store = new Map<string, ArrayBuffer>()
+    const key = (k: string) => k.split("#")[0]
     const cache = {
-        match: async (k: string) => (store.has(k) ? new Response(store.get(k)!.slice(0)) : undefined),
-        put: async (k: string, r: Response) => { store.set(k, await r.arrayBuffer()) },
-        delete: async (k: string) => store.delete(k),
+        match: async (k: string) => (store.has(key(k)) ? new Response(store.get(key(k))!.slice(0)) : undefined),
+        put: async (k: string, r: Response) => { store.set(key(k), await r.arrayBuffer()) },
+        delete: async (k: string) => store.delete(key(k)),
     }
     vi.stubGlobal("caches", { open: async () => cache })
     return store
@@ -90,13 +91,14 @@ describe("checking the model once", () => {
         digest.mockRestore()
     })
 
-    it("never reads a part of an older model as a part of a new one", async () => {
-        const store = phoneCache()
-        site()
+    it("downloads a new model's parts afresh, never reading an older model's (review on #48)", async () => {
+        phoneCache()
+        let fetched = 0
+        vi.stubGlobal("fetch", async (url: string) => { fetched++; return new Response(parts[Number(url.at(-1))]) })
         await joined(manifest(), "m.onnx", () => {})
-        // The same part names, for a different model: the old parts' keys don't match it.
-        const other = manifest("f".repeat(64))
-        await expect(joined(other, "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
-        expect([...store.keys()].some(k => k.includes("ffffffffffffffff"))).toBe(false)
+        expect(fetched).toBe(3)
+        // The same part names, for a different model: a cache miss, so its parts come from the site.
+        await expect(joined(manifest("f".repeat(64)), "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
+        expect(fetched).toBe(6)
     })
 })
