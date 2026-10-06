@@ -88,7 +88,7 @@ export default function CheckInPage() {
         if (!device || !face || !faceStatus || !phoneActive || busy) return
         const quiet = async (url: string, body: unknown) => {
             const r = await send(url, json('POST', body), '')
-            if (!r.ok) throw new Error(r.error)
+            if (!r.ok) throw Object.assign(new Error(r.error), { code: r.code })
             return r.body
         }
         // New templates waiting on their photo: kept aside until it is decided, then promoted or dropped (§9.5).
@@ -98,6 +98,13 @@ export default function CheckInPage() {
             .catch(() => {})
     }, [device, face, faceStatus, phoneActive, busy])
 
+    // The face check's models loaded while the person is still on this screen, when the check will be asked for:
+    // on a phone they took seconds after the camera had opened.
+    const faceInUse = !!faceStatus?.required && !!faceStatus.consent && phoneActive
+    useEffect(() => {
+        if (face && faceInUse) void face.prepare?.().catch(() => {})
+    }, [face, faceInUse])
+
     useEffect(() => {
         setTitle(t('ci_title'))
         setSubtitle(t('ci_hint'))
@@ -106,7 +113,8 @@ export default function CheckInPage() {
 
     const post = async (url: string, body: unknown) => {
         const r = await send(url, json('POST', body), t('ci_failed'))
-        if (!r.ok) throw new Error(r.error)
+        // The words for the person; the code for the app to decide on (lib/mobile/face.ts).
+        if (!r.ok) throw Object.assign(new Error(r.error), { code: r.code })
         return r.body
     }
     const problem = (e: unknown) => {

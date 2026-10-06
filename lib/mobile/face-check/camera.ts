@@ -1,4 +1,11 @@
-import type { Cue, Progress, Prompt } from "./liveness"
+import type { Box, Cue, Progress, Prompt } from "./liveness"
+
+/**
+ * What the face check says while it fits the face in the oval and takes its
+ * looks: centre it, come closer or move back, one more step when it has
+ * doubts, and done.
+ */
+export type FitPrompt = "CENTER" | "CLOSER" | "FARTHER" | "EXTRA" | "DONE"
 
 /**
  * The camera, as the face check sees it: a live video of the front camera,
@@ -7,10 +14,17 @@ import type { Cue, Progress, Prompt } from "./liveness"
  */
 export interface Camera {
     video: HTMLVideoElement
-    say(prompt: Prompt | "LOADING" | "WORKING"): void
+    say(prompt: Prompt | FitPrompt | "LOADING" | "WORKING"): void
+    /** How far the automatic capture has got, 0 to 1, for the ring around the oval; null clears it. */
+    fill?(share: number | null): void
+    /**
+     * The part of the picture the person sees, as shares of its width and height: the screen crops the
+     * camera's picture to fill it, and the face is fitted to the oval as it appears there.
+     */
+    visible?(): Box
     /** How far the first download of the models has got, 0 to 1; null once they're loaded. */
     loading?(share: number | null): void
-    /** The steps, the time left on this one and the live readings, during the challenge; null clears them. */
+    /** The step, the time left on it and the live readings, while one is asked for; null clears them. */
     show?(progress: Progress | null): void
     /** A step half or wholly done, or started again: felt and heard, not only read. */
     cue?(cue: Cue): void

@@ -1,65 +1,38 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
-import { createHash } from "node:crypto"
-import { joined, manifestOf, type Manifest } from "./engine"
+import { describe, it, expect, vi } from "vitest"
 
 /**
- * Getting the models to the phone (review on #47): the recognition model's
- * parts one at a time, and every way the download can fail named the same.
+ * The recognition worker, as the page talks to it (engine.ts): a worker that
+ * stops after it loaded (a crash, the phone out of memory) must not leave a
+ * check waiting for ever (review on #48).
  */
 
-afterEach(() => { vi.unstubAllGlobals() })
+vi.mock("@mediapipe/tasks-vision", () => ({}))
+const { inWorker } = await import("./engine")
 
-const parts = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5]), new Uint8Array([6])]
-const whole = new Uint8Array([1, 2, 3, 4, 5, 6])
-const manifest = (sha256 = createHash("sha256").update(whole).digest("hex")): Manifest => ({
-    files: { "m.onnx": { parts: ["m.onnx.part0", "m.onnx.part1", "m.onnx.part2"], size: whole.length, sha256 } },
-    total: whole.length,
-})
-
-/** A site serving the parts slowly, counting how many downloads are under way at once. */
-function site() {
-    const s = { open: 0, most: 0 }
-    vi.stubGlobal("fetch", async (url: string) => {
-        s.open++
-        s.most = Math.max(s.most, s.open)
-        await new Promise(r => setTimeout(r, 5))
-        s.open--
-        const i = Number(url.at(-1))
-        return new Response(parts[i])
-    })
-    return s
+/** A worker that loads at once and answers nothing after: what a crashed one looks like from the page. */
+function worker() {
+    const w = {
+        onmessage: null as null | ((e: MessageEvent) => void),
+        onerror: null as null | ((e: unknown) => void),
+        terminated: false,
+        postMessage(m: { type: string }) { if (m.type === "load") queueMicrotask(() => w.onmessage?.({ data: { type: "ready" } } as MessageEvent)) },
+        terminate() { w.terminated = true },
+    }
+    return w
 }
 
-describe("joining the model's parts", () => {
-    it("downloads them one at a time, into place, and checks the whole", async () => {
-        const s = site()
-        let bytes = 0
-        expect(await joined(manifest(), "m.onnx", n => { bytes += n })).toEqual(whole)
-        expect(s.most).toBe(1)
-        expect(bytes).toBe(whole.length)
-    })
+const frame = { data: new Uint8ClampedArray(4), width: 1, height: 1 }
 
-    it("refuses a model that isn't the one published", async () => {
-        site()
-        await expect(joined(manifest("0".repeat(64)), "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
-    })
-
-    it("says the models are unavailable when a part can't be downloaded", async () => {
-        vi.stubGlobal("fetch", async () => { throw new TypeError("Failed to fetch") })
-        await expect(joined(manifest(), "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
-    })
-})
-
-describe("the manifest", () => {
-    it("says the models are unavailable, whatever went wrong", async () => {
-        vi.stubGlobal("fetch", async () => { throw new TypeError("Failed to fetch") })
-        await expect(manifestOf()).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
-        // Not published (the face check is off there): the site's 404 page.
-        vi.stubGlobal("fetch", async () => new Response("<html>Not found</html>", { status: 404 }))
-        await expect(manifestOf()).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
-        vi.stubGlobal("fetch", async () => new Response("<html>hello</html>"))
-        await expect(manifestOf()).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
-        vi.stubGlobal("fetch", async () => new Response(JSON.stringify(manifest())))
-        expect(await manifestOf()).toEqual(manifest())
+describe("a recognition worker that stops", () => {
+    it("fails what was waiting, and anything asked of it after, and says so", async () => {
+        const w = worker()
+        let dead = 0
+        const identify = await inWorker(w as unknown as Worker, () => {}, () => { dead++ })
+        const waiting = identify(frame)
+        w.onerror?.(new Event("error"))
+        await expect(waiting).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
+        await expect(identify(frame)).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
+        expect(dead).toBe(1)
+        expect(w.terminated).toBe(true)
     })
 })

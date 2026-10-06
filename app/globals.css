@@ -6,6 +6,11 @@
 }
 
 :root {
+  /* The face check's camera screen (components/FaceCamera.tsx): dark in either theme, as a camera's view is. */
+  --cam-ground: #000;
+  --cam-ink: #fff;
+  --cam-done: #22c55e;
+  --cam-warn: #f59e0b;
   /* Liquid Glass Palette */
   --primary: #6366f1;
   /* Indigo 500 */
@@ -1496,3 +1501,8 @@ input::-webkit-credentials-auto-fill-button {
     transform: none !important;
   }
 }
+
+/* The face check's tick when it's done (components/FaceCamera.tsx): it pops in. */
+.face-cam-tick { animation: face-cam-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes face-cam-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .face-cam-tick { animation: none; } }

@@ -47,16 +47,29 @@ export type CheckInAnswer =
         late: { minutes: number; startsAt: string } | null
     }
 
+/** A fix older than this when the face check ends is taken again: where the person is now, not when they tapped. */
+export const FIX_FRESH_MS = 60_000
+/** A number older than this is asked for again: it lasts five minutes, and signing and sending take a moment. */
+export const NONCE_FRESH_MS = 4 * 60_000
+
 /**
- * Checks in: the face check when it is in use for the person (§9.5), then
- * the fix, and only then the number, once there is something to sign — it
- * lasts five minutes, and a slow face check or fix shouldn't spend it. The
- * face check's result is signed with the rest.
+ * Checks in: the face check when it is in use for the person (§9.5), the
+ * fix, the number and the attestation of it, and the face check's result
+ * signed with the rest.
+ *
+ * The fix, the number and its attestation start at the tap, alongside the
+ * face check, rather than one after another once it is done: in production
+ * they added seven seconds after the camera closed. A face check that ran
+ * long (the first one downloads the models) gets a fresh fix and number, so
+ * neither is sent stale.
  */
-export async function checkIn(device: CheckInDevice, post: Post, direction: "IN" | "OUT" | null, face?: FaceVerifier | null): Promise<CheckInAnswer> {
+export async function checkIn(device: CheckInDevice, post: Post, direction: "IN" | "OUT" | null, face?: FaceVerifier | null, now: () => number = Date.now): Promise<CheckInAnswer> {
     const publicKey = await device.publicKey()
     if (!publicKey) throw new Error("NO_PHONE_KEY")
     const keyFingerprint = await fingerprintOf(publicKey)
+    const started = now()
+    const early = { fix: device.location(), proof: proofOf(device, post) }
+    early.fix.catch(() => {})
     let checked: Awaited<ReturnType<typeof faceCheck>> = null
     if (face) {
         try {
@@ -68,11 +81,23 @@ export async function checkIn(device: CheckInDevice, post: Post, direction: "IN"
             if (errorCode(e) === "FACE_CANCELLED") throw e
         }
     }
-    const fix = await device.location()
-    const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "CHECK_IN" })
+    const fresh = now() - started
+    const fix = fresh > FIX_FRESH_MS ? await device.location() : await early.fix
+    const { nonce, attestation } = fresh > NONCE_FRESH_MS ? await proofOf(device, post) : await early.proof
     const body = { nonce, keyFingerprint, ...fix, direction, ...(checked ? { face: checked.face } : {}) }
-    const [signature, attestation] = await Promise.all([device.sign(checkInText(body)), device.attestation(attestedText("CHECK_IN", nonce), "CHECK_IN")])
+    const signature = await device.sign(checkInText(body))
     return post("/api/attendance/check-in", { ...body, signature, attestation, ...(checked?.frame ? { faceFrame: checked.frame } : {}) })
+}
+
+/** The number with its attestation, asked for now; a failure waits until it is awaited. */
+function proofOf(device: CheckInDevice, post: Post) {
+    const proof = (async () => {
+        const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "CHECK_IN" })
+        return { nonce: nonce as string, attestation: await device.attestation(attestedText("CHECK_IN", nonce), "CHECK_IN") }
+    })()
+    // Not unhandled while the face check runs: the error comes out where it is awaited.
+    proof.catch(() => {})
+    return proof
 }
 
 /** The code a plugin rejected with (Capacitor puts it in `code`), or the message. */

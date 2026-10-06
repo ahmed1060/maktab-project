@@ -24,6 +24,7 @@ import { createHash } from "node:crypto"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import JSZip from "jszip"
+import { build } from "esbuild"
 import nextEnv from "@next/env"
 
 // The same .env files next dev and next build read, so the flag set there counts here too (review on #47).
@@ -110,5 +111,12 @@ copyFileSync("node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm", jo
 copyFileSync("node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs", join(OUT, "ort/ort-wasm-simd-threaded.mjs"))
 for (const f of readdirSync("node_modules/@mediapipe/tasks-vision/wasm"))
     copyFileSync(join("node_modules/@mediapipe/tasks-vision/wasm", f), join(OUT, "mediapipe", f))
+// The recognition worker (lib/mobile/face-check/recognition.worker.ts), bundled here: Next's build copies a
+// worker's TypeScript as it is rather than bundling it, and a phone can't run that.
+await build({
+    entryPoints: ["lib/mobile/face-check/recognition.worker.ts"],
+    outfile: join(OUT, "recognition-worker.mjs"),
+    bundle: true, format: "esm", platform: "browser", target: "es2022", minify: true, logLevel: "warning",
+})
 writeFileSync(join(OUT, "manifest.json"), JSON.stringify(manifest, null, 1))
 console.log(`fetch-face-models: models into ${OUT}`)

@@ -7,6 +7,7 @@ import { AttendanceChallengeService as Challenges } from "@/lib/services/attenda
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
 import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance-calendar.service"
 import { AttendancePolicyService as Policy } from "@/lib/services/attendance-policy.service"
+import { AttendanceEngineService as Engine } from "@/lib/services/attendance-engine.service"
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
@@ -105,12 +106,24 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
     it("accepts a check-in at the office from the person's phone, on the office's network, from a verified app", async () => {
         e1 = await phoneOf("e1")
         attested.verified = true
+        // A slow database, as from Vercel's region to the database's: past Prisma's default 5 s the check-in was lost.
+        const forPerson = Locations.forPerson.bind(Locations)
+        vi.spyOn(Locations, "forPerson").mockImplementationOnce(async (...args) => {
+            await new Promise(r => setTimeout(r, 5_500))
+            return forPerson(...args)
+        })
+        // The day's rebuild and the lateness, each slowed to 2 s: side by side they cost 2 s, not 4.
+        const slow = <A extends unknown[], R>(f: (...a: A) => Promise<R>) => async (...a: A) => { await new Promise(r => setTimeout(r, 2_000)); return f(...a) }
+        vi.spyOn(Engine, "afterChange").mockImplementationOnce(slow(Engine.afterChange.bind(Engine)))
+        vi.spyOn(Engine, "expectedFor").mockImplementationOnce(slow(Engine.expectedFor.bind(Engine)))
+        const started = Date.now()
         const result = await checkIn("e1", e1)
+        expect(Date.now() - started).toBeLessThan(5_500 + 3_500)
         expect(result).toMatchObject({ outcome: "ACCEPTED", reasons: [], place: { name: "Head office" }, distanceMeters: 11 })
         const [punch] = await punches("e1")
         expect(punch).toMatchObject({ status: "ACCEPTED", source: "MOBILE", phoneId: e1.id, flagReasons: [] })
         expect(punch.checkIn).toMatchObject({ latitude: AT_DESK.latitude, accuracyMeters: 12, distanceMeters: 11, ip: "198.51.100.20", attested: true })
-    })
+    }, 20_000)
 
     it("flags every check-in for the Super Admin while attestation is in testing, and it doesn't count until decided", async () => {
         expect(await checkIn("e1", e1)).toMatchObject({ outcome: "FLAGGED", reasons: ["ATTESTATION_UNVERIFIED"] })

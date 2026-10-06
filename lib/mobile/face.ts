@@ -51,6 +51,11 @@ export interface FaceVerifier {
     discardPending(): Promise<void>
     /** Deletes every template, which can no longer be read anyway. */
     deleteTemplates(): Promise<void>
+    /**
+     * Gets ready ahead of the camera where it can do so without downloading
+     * anything, so the face check opens at once; optional, and never fails.
+     */
+    prepare?(): Promise<void>
 }
 
 /** The plugin's methods as the native code exposes them (mobile/README.md). */
@@ -99,6 +104,9 @@ async function keyFingerprint(device: CheckInDevice): Promise<string> {
     return sha256OfBase64(publicKey)
 }
 
+/** Refusals of the key a second try can get past. */
+const RETRY_KEY = new Set(["PHONE_CHALLENGE_INVALID", "PHONE_SIGNATURE_INVALID"])
+
 /**
  * The wrapping key for this phone's templates, signed for by the phone. When
  * the server says the templates are to go (consent withdrawn, no longer
@@ -113,7 +121,9 @@ export async function wrappingKey(device: CheckInDevice, face: FaceVerifier, pos
         const signature = await device.sign(faceKeyText(nonce, fingerprint))
         return post("/api/attendance/face/key", { nonce, keyFingerprint: fingerprint, signature })
     }
-    const answer = await ask()
+    // Once more on a number that was spent or a signature refused: the first try after the app comes back
+    // was refused like that in production, and the check-in then went without its face check.
+    const answer = await ask().catch(e => (RETRY_KEY.has((e as { code?: string })?.code ?? "") ? ask() : Promise.reject(e)))
     if (!answer.deleteTemplates) return answer.key
     await face.deleteTemplates()
     const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "FACE" })

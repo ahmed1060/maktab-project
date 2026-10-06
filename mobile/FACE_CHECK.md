@@ -29,20 +29,29 @@ against InsightFace's own Python code on 30 photos of 11 people: the same
 
 ### How a check goes
 
-1. **The first look.** Facing the camera with eyes open: the detector finds
-   exactly one face, it is aligned by its five points and turned into 512
-   numbers, and the anti-spoofing scores the frame. This frame is the photo
-   for approval.
-2. **The challenge,** in a random order: turn the head to one side and back,
-   and close the eyes and open them. Read from MediaPipe, 15 to 30 times a
-   second: the blink from its `eyeBlinkLeft`/`eyeBlinkRight` scores (about
-   0.05 open, 0.6 or more shut), judged against the person's own open eyes;
-   the turn from where the nose tip sits between the eye corners. A step
-   that takes over 8 seconds is tried again, up to three times, all within
-   45 seconds.
-3. **The last look,** facing the camera again: another 512 numbers, which
-   must be the same face as the first (cosine 0.5 or more), so one person
-   can't do the challenge for another.
+Passive first, as phone face checks people know do it (Jibble, Truein, AWS
+Face Liveness): look at the camera and it's done, with a step asked for only
+when the check has doubts.
+
+1. **Fit.** The face in the oval, as the screen shows it: about a third to
+   three quarters of its width, near the middle, facing the camera with eyes
+   open. The line says to come closer, move back or centre the face.
+2. **Two looks,** taken on their own: 0.5 s after the face settles, and
+   0.6 s after that, while a ring fills around the oval. Each is recognised
+   in the background: the detector finds exactly one face, it is aligned by
+   its five points and turned into 512 numbers, and the anti-spoofing scores
+   the frame. The first look's frame is the photo for approval. Two looks of
+   two different faces (cosine under 0.5) fail the capture.
+3. **Sure, or not.** It is sure when the anti-spoofing scores both looks 0.8
+   or more and the two looks are at least 0.75 alike (the same person 0.6 s
+   apart reads 0.85 or more). Then it's done: a green ring and a tick.
+4. **A step, only on doubt,** or on a second attempt: one of a turn of the
+   head and back, or closing the eyes and opening them, chosen at random,
+   read from MediaPipe 15 to 30 times a second (the blink from its
+   `eyeBlinkLeft`/`eyeBlinkRight` scores, judged against the person's own
+   open eyes; the turn from where the nose tip sits between the eye
+   corners). Then a last look, which must be the same face. A step that
+   takes over 8 seconds is tried again, up to three times.
 
 **Match:** both looks must be at least **0.40** cosine from an approved
 template. On the test photos, the same person's lowest pair was 0.55 (years
@@ -62,7 +71,16 @@ check-in on its own.
 - **First use** downloads about 200 MB (shown as a percentage on the camera
   screen), then it is kept in the app's Cache Storage. The recognition model
   is served in 40 MB parts (Vercel's limit for one file is 100 MB), joined on
-  the phone and checked against its SHA-256 before use.
+  the phone and checked against its SHA-256 once; after that the phone
+  remembers it passed.
+- **Ahead of the camera:** when the check-in screen opens and the models are
+  on the phone already, they are loaded then, and the face tracker takes its
+  first (slow) look on a blank picture, so the camera starts the check at once.
+- **Recognition runs in a worker** (`recognition-worker.mjs`, bundled by the
+  fetch script), off the page's thread: the picture never stops while it
+  works. The first look's recognition runs during the challenge rather than
+  before it. The detector looks at 320 × 320, a quarter of the work of 640,
+  with the same results on selfie-framed photos.
 - One recognition takes about 1 to 3 seconds on a mid-range phone, twice per
   check; the challenge itself runs on the phone's GPU where it can.
 - Templates are encrypted with a device key plus the server's wrapping key,

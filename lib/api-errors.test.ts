@@ -46,7 +46,7 @@ describe("the handler", () => {
         const route = withStandardHandler(async () => { throw new Error("OVERLAPPING_REQUEST") })
         const res = await route(new Request("https://nizmo.test/api/day-off-requests", { method: "POST" }))
         expect(res.status).toBe(409)
-        expect((await res.json()).error).toBe("You already have a leave request for that day.")
+        expect(await res.json()).toMatchObject({ error: "You already have a leave request for that day.", code: "OVERLAPPING_REQUEST" })
     })
 
     it("and a code that means nothing is still not taken for one", async () => {
