@@ -159,7 +159,10 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         const server = serverFor("e1")
         // Attestation is in testing, so every check-in here is flagged for that; the face reason is what differs.
         expect(await checkIn(phone, server, "IN", face)).toMatchObject({ outcome: "FLAGGED", reasons: ["ATTESTATION_UNVERIFIED"] })
-        expect(server.sent).toEqual(["/api/attendance/phone/challenge", "/api/attendance/face/key", "/api/attendance/phone/challenge", "/api/attendance/check-in"])
+        // The check-in's number is asked for alongside the face key, not after the camera (lib/mobile/check-in-flow.ts):
+        // the two numbers and the key in either order, the check-in last.
+        expect([...server.sent].sort()).toEqual(["/api/attendance/check-in", "/api/attendance/face/key", "/api/attendance/phone/challenge", "/api/attendance/phone/challenge"])
+        expect(server.sent.at(-1)).toBe("/api/attendance/check-in")
         // An app without the face SDK, for a person it is in use for.
         expect(await checkIn(phone, serverFor("e1"), "OUT", null)).toMatchObject({ outcome: "FLAGGED", reasons: expect.arrayContaining(["FACE_UNVERIFIED"]) })
     })
