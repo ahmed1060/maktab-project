@@ -1,5 +1,5 @@
 import type { FaceVerifier } from "@/lib/mobile/face"
-import { loadEngine, type Engine } from "./engine"
+import { loadEngine, warmEngine, type Engine } from "./engine"
 import { capture } from "./capture"
 import { matches } from "./match"
 import { LIVE_SCORE } from "./antispoof"
@@ -88,6 +88,7 @@ export function faceCheckVerifier(openCamera: OpenCamera, store: Store = indexed
         promote: () => vault.promote(),
         discardPending: () => vault.discardPending(),
         deleteTemplates: () => vault.deleteAll(),
+        prepare: () => warmEngine(),
     }
 }
 

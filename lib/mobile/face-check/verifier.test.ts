@@ -10,7 +10,11 @@ import type { Captured } from "./capture"
  */
 
 const captured = vi.hoisted(() => ({ next: null as null | (() => Promise<unknown>) }))
-vi.mock("./engine", () => ({ loadEngine: async (onProgress?: (n: number) => void) => { onProgress?.(1); return {} } }))
+const warmed = vi.hoisted(() => ({ times: 0 }))
+vi.mock("./engine", () => ({
+    loadEngine: async (onProgress?: (n: number) => void) => { onProgress?.(1); return {} },
+    warmEngine: async () => { warmed.times++ },
+}))
 vi.mock("./capture", () => ({ capture: () => captured.next!() }))
 
 const { faceCheckVerifier, FACE_CHECK_MODEL } = await import("./verifier")
@@ -73,6 +77,12 @@ describe("the face check verifier and the camera", () => {
         expect(await verifier.enrol(key)).toEqual({ photo: "cGhvdG8=" })
         expect(cam.closed).toBe(true)
         expect(cam.loads).toEqual([1, null])
+    })
+
+    it("gets the models ready ahead of the camera when the check-in screen asks it to", async () => {
+        const verifier = faceCheckVerifier(async () => camera(), slowStore())
+        await verifier.prepare?.()
+        expect(warmed.times).toBe(1)
     })
 
     it("says which model made the templates, so the server can tell old ones apart", async () => {

@@ -51,6 +51,11 @@ export interface FaceVerifier {
     discardPending(): Promise<void>
     /** Deletes every template, which can no longer be read anyway. */
     deleteTemplates(): Promise<void>
+    /**
+     * Gets ready ahead of the camera where it can do so without downloading
+     * anything, so the face check opens at once; optional, and never fails.
+     */
+    prepare?(): Promise<void>
 }
 
 /** The plugin's methods as the native code exposes them (mobile/README.md). */

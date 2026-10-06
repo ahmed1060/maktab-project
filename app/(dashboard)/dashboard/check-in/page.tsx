@@ -98,6 +98,13 @@ export default function CheckInPage() {
             .catch(() => {})
     }, [device, face, faceStatus, phoneActive, busy])
 
+    // The face check's models loaded while the person is still on this screen, when the check will be asked for:
+    // on a phone they took seconds after the camera had opened.
+    const faceInUse = !!faceStatus?.required && !!faceStatus.consent && phoneActive
+    useEffect(() => {
+        if (face && faceInUse) void face.prepare?.().catch(() => {})
+    }, [face, faceInUse])
+
     useEffect(() => {
         setTitle(t('ci_title'))
         setSubtitle(t('ci_hint'))
