@@ -91,6 +91,12 @@ describe("the months many punches can change", () => {
         expect(await punchMonthsOf(t.tx, "c1", [{ userId: "e3", local: "2026-10-01T09:30:00" }])).toEqual([["2026-10", "2026-09"]])
     })
 
+    it("is what a terminal agent's batch takes, at once (review on #49)", () => {
+        const ingest = readFileSync("lib/services/attendance-ingest.service.ts", "utf8")
+        expect(ingest).toContain("await punchMonthsOf(tx, companyId, keys.map(")
+        expect(ingest).not.toMatch(/await punchMonths\(/)
+    })
+
     it("is what approving a phone takes for what it held", () => {
         const phones = readFileSync("lib/services/attendance-phone.service.ts", "utf8")
         expect(phones).toContain("await punchMonthsOf(tx, phone.companyId, waiting.map(")

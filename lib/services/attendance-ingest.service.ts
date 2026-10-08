@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
-import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
+import { lockMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { addDays } from "@/lib/attendance/calendar"
 import { offsetMsIn } from "@/lib/time"
@@ -44,7 +44,6 @@ export type Refusal = "UNKNOWN_DEVICE" | "DEVICE_RETIRED" | "MONTH_LOCKED" | "IN
 const RETRYABLE: Record<Refusal, boolean> = { UNKNOWN_DEVICE: true, DEVICE_RETIRED: false, MONTH_LOCKED: false, IN_FUTURE: false, INVALID_TIME: false }
 
 const wallClock = (local: string) => new Date(`${local}Z`)
-const monthOf = (local: string) => local.slice(0, 7)
 
 export type IngestResult = {
     accepted: number
@@ -88,12 +87,12 @@ export class AttendanceIngestService {
             const mappings = await tx.attendanceCode.findMany({ where: { companyId, code: { in: [...new Set([...candidates.values()].map(c => c.userNumber))] } }, select: { code: true, userId: true } })
             const owner = new Map(mappings.map(m => [m.code, m.userId]))
             // A check-out just after midnight on the 1st can close the last
-            // night of the month before, so that month is locked too.
-            const monthsOf = new Map<string, string[]>()
-            for (const [key, c] of candidates) {
-                const userId = owner.get(c.userNumber)
-                monthsOf.set(key, userId ? await punchMonths(tx, companyId, userId, c.at) : [monthOf(c.at)])
-            }
+            // night of the month before, so that month is locked too. The
+            // whole batch's at once: a night shift's backlog read the days and
+            // the calendar again for each punch (review on #49).
+            const keys = [...candidates.keys()]
+            const listed = await punchMonthsOf(tx, companyId, keys.map(k => ({ userId: owner.get(candidates.get(k)!.userNumber) ?? null, local: candidates.get(k)!.at })))
+            const monthsOf = new Map(keys.map((k, i) => [k, listed[i]]))
             const months = new Set([...monthsOf.values()].flat())
             await lockMonths(tx, companyId, months)
             const locked = await lockedMonths(tx, companyId, months)
