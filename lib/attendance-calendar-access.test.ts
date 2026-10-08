@@ -44,6 +44,16 @@ vi.mock("@/lib/services/attendance-engine.service", () => ({
     AttendanceEngineService: {
         simulate: async (companyId: string, month: string) => {
             reached.push(`simulate:${companyId}:${month}`)
+            // Ranked by money, as the engine ranks them: Zainab's day is worth three of Amal's.
+            if (month === "2026-07") {
+                const day = (minor: number) => ({ deductionDays: 0, deductionMinor: 0, overtimeMinor: 0, days: 30, ...(minor ? { deductionDays: 1, deductionMinor: minor } : {}) })
+                return {
+                    month, people: [
+                        { userId: "z", name: "Zainab", current: day(0), draft: day(90000) },
+                        { userId: "a", name: "Amal", current: day(0), draft: day(30000) },
+                    ], totals: { current: day(0), draft: day(120000) },
+                }
+            }
             const sum = { deductionDays: 1, deductionMinor: 31000, overtimeMinor: 0, days: 30 }
             return { month, people: [{ userId: "emp", name: "Ehab", current: sum, draft: { ...sum, deductionDays: 2, deductionMinor: 62000 } }], totals: { current: sum, draft: sum } }
         },
@@ -261,6 +271,9 @@ describe("the policy", () => {
         expect(hidden.moneyHidden).toBe(true)
         expect(hidden.people[0].draft).toEqual({ deductionDays: 2, days: 30, deductionMinor: null, overtimeMinor: null })
         expect(hidden.totals.current.deductionMinor).toBeNull()
+        // Nor their order, which the engine sets by money: by days, then name (review on #15).
+        const ranked = (await (await (await import("@/app/api/attendance/policy/simulate/route")).POST(withBody("POST", "/api/attendance/policy/simulate", { body: POLICY.body, month: "2026-07" }))).json()).data
+        expect(ranked.people.map((p: { name: string }) => p.name)).toEqual(["Amal", "Zainab"])
     })
 
     it("has templates only the Super Admin keeps", async () => {
