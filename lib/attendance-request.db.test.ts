@@ -196,6 +196,20 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             await expect(Requests.requestPermission("c1", "e1", { date: "2027-04-05", type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" }))
                 .rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
         })
+
+        it("carry nothing a later version of the next month's policy has spent (review on #14)", async () => {
+            const hours = STANDARD_OFFICE.permissionHours
+            await Policy.saveVersion("c1", { effectiveFrom: "2028-03-01", body: { ...STANDARD_OFFICE, permissionHours: { ...hours, carryOver: "CARRY_ONCE" } } }, "a1")
+            // From 15 April, 60 minutes a month, with March's 240 carried.
+            await Policy.saveVersion("c1", { effectiveFrom: "2028-04-15", body: { ...STANDARD_OFFICE, permissionHours: { ...hours, carryOver: "CARRY_ONCE", monthlyAllowanceMinutes: 60, maxPerRequestMinutes: 60, maxRequestsPerMonth: 6 } } }, "a1")
+            const ask = (date: string, end = "13:00") => Requests.requestPermission("c1", "e1", { date, type: "MIDDAY", start: "12:00", end, reason: "x" })
+            for (const d of ["2028-04-20", "2028-04-21", "2028-04-24", "2028-04-25", "2028-04-26"]) await ask(d)
+            expect(await Requests.permissionBalance("c1", "e1", "2028-04", "2028-04-20")).toMatchObject({ allowanceMinutes: 60, carriedMinutes: 240, remainingMinutes: 0 })
+            // Two hours in March would leave April's late requests 120 carried for their 300: refused, though
+            // April's first day, under 240 a month, still had room.
+            await expect(ask("2028-03-02", "14:00")).rejects.toEqual(refusal("PERMISSION_OVER_ALLOWANCE"))
+            expect((await db.query(`SELECT count(*)::int AS n FROM "PermissionRequest" WHERE "userId" = 'e1' AND date = '2028-03-02'`)).rows[0].n).toBe(0)
+        })
     })
 
     describe("overtime", () => {

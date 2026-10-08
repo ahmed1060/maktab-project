@@ -206,12 +206,22 @@ export class AttendanceRequestService {
                 select: { id: true },
             })
             if (overlapping) fail("PERMISSION_OVERLAPS")
+            // The next month's balance on its 1st and on each day of it asked for: a policy version from mid-month
+            // may allow less, and its requests may have spent what this month would carry (review on #14).
+            const nextDays = [next, ...(await tx.permissionRequest.findMany({
+                where: { companyId, userId, status: { in: ["APPROVED", "PENDING"] }, date: monthRange(monthOf(next)) },
+                distinct: ["date"], select: { date: true },
+            })).map(r => toDateString(r.date))]
+            const overdrawnBefore: number[] = []
+            for (const day of nextDays) overdrawnBefore.push((await balanceIn(tx, companyId, userId, day)).overdrawnMinutes)
             const created = await tx.permissionRequest.create({
                 data: { companyId, userId, date: wallClock(`${input.date}T00:00:00`), type: input.type, startMinutes, endMinutes, minutes, reason: input.reason.trim() },
             })
             // Minutes the next month already spent from what this one would
             // have carried are not this month's to give again (review on #14).
-            if ((await balanceIn(tx, companyId, userId, next)).overdrawnMinutes > 0) fail("PERMISSION_OVER_ALLOWANCE")
+            for (const [i, day] of nextDays.entries()) {
+                if ((await balanceIn(tx, companyId, userId, day)).overdrawnMinutes > overdrawnBefore[i]) fail("PERMISSION_OVER_ALLOWANCE")
+            }
             await AuditLogService.log("REQUEST_ATTENDANCE_PERMISSION", "PERMISSION_REQUEST", created.id, {
                 tx, userId, details: { companyId, date: input.date, type: input.type, minutes, reason: input.reason.trim() },
             })
