@@ -531,15 +531,18 @@ export class AttendanceEngineService {
         let months = 0
         const failed: { companyId: string; month: string; error: string }[] = []
         const last = await prisma.jobHeartbeat.findUnique({ where: { job: "attendance" }, select: { lastSuccessAt: true } })
-        const since = new Date(Math.min(Date.now(), last?.lastSuccessAt?.getTime() ?? Date.now()) - 2 * 86_400_000)
+        // Run, but never through: nothing is known to be reconciled, so every change, as far back as a rebuild
+        // reaches (a year below). Two days from each failed try left out what the first ones missed (review on #49).
+        const since = last && !last.lastSuccessAt ? null : new Date(Math.min(Date.now(), last?.lastSuccessAt?.getTime() ?? Date.now()) - 2 * 86_400_000)
+        const recent = since ? { createdAt: { gte: since } } : {}
         for (const companyId of companyIds) {
             try {
                 const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
                 if (!company) continue
                 const today = calendarDateStr(new Date(), company.timezone)
                 const [salary, employment] = await Promise.all([
-                    prisma.salaryChange.findFirst({ where: { createdAt: { gte: since }, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
-                    prisma.employmentEvent.findFirst({ where: { createdAt: { gte: since }, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
+                    prisma.salaryChange.findFirst({ where: { ...recent, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
+                    prisma.employmentEvent.findFirst({ where: { ...recent, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
                 ])
                 const changed = [salary, employment].flatMap(c => (c ? [calendarDateStr(c.effectiveFrom, company.timezone)] : [])).sort()[0]
                 const lastMonth = addDays(`${today.slice(0, 7)}-01`, -1)

@@ -249,6 +249,11 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         const today = new Date().toISOString().slice(0, 7)
         const expected = (Number(today.slice(0, 4)) - 2026) * 12 + Number(today.slice(5, 7)) - 6 + 1
         expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: expected, failed: [] })
+        // Run before, but never through: every change counts, as far back as a rebuild reaches — the salaries
+        // from January, within the year (review on #49).
+        await db.query(`UPDATE "JobHeartbeat" SET "lastSuccessAt" = NULL, "lastFailureAt" = now() WHERE job = 'attendance'`)
+        const monthIndex = Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1
+        expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: monthIndex - Math.max(2026 * 12, monthIndex - 12) + 1, failed: [] })
         // Got through last night: two days back from then, as before.
         await db.query(`UPDATE "JobHeartbeat" SET "lastSuccessAt" = now() WHERE job = 'attendance'`)
         expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: 2, failed: [] })
