@@ -35,6 +35,17 @@ export interface Camera {
 
 export type OpenCamera = () => Promise<Camera>
 
+/**
+ * How much of the ring around the oval shows, 0 to 1: the capture's share, all of it once done, and all of it
+ * while a cue flashes it. A step clears the share, and its cues (half done, done, start again) flashed the colour
+ * of a ring that wasn't there: on a phone that can't vibrate, nothing showed them (review on #48).
+ */
+export function ringShare(fill: number | null, done: boolean, flashing: boolean): number {
+    if (done) return 1
+    if (fill !== null) return fill
+    return flashing ? 1 : 0
+}
+
 /** A JPEG of the video's current frame, in base64, under `maxBytes`. */
 export function snapshot(video: HTMLVideoElement, maxBytes = 380_000): string {
     const scale = Math.min(1, 640 / (video.videoWidth || 640))

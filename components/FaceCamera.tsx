@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
-import type { Camera, OpenCamera } from '@/lib/mobile/face-check/camera'
+import { ringShare, type Camera, type OpenCamera } from '@/lib/mobile/face-check/camera'
 import type { Cue, Progress } from '@/lib/mobile/face-check/liveness'
 import { chime, pageAudio } from '@/lib/mobile/face-check/chime'
 
@@ -163,6 +163,8 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     const current = progress?.steps.find(s => s.current)?.challenge
     const done = prompt === 'DONE'
     const ringColour = done || flash === 'ok' ? 'var(--cam-done)' : flash === 'retry' ? 'var(--cam-warn)' : 'var(--cam-ink)'
+    // Whole while a cue flashes it, so a step's cues show on the ring too (review on #48).
+    const ring = ringShare(fill, done, flash !== null)
     const words = flash === 'retry' ? t('face_cam_slow')
         : download !== null && prompt === 'LOADING' ? t('face_cam_download').replace('{pct}', String(Math.floor(download * 100)))
         : prompt ? t(PROMPTS[prompt]) : ''
@@ -185,8 +187,8 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                 <ellipse {...OVAL} fill="none" strokeWidth="1.2" style={{ stroke: 'color-mix(in srgb, var(--cam-ink) 28%, transparent)' }} />
                 {/* Drawn from the top, clockwise: the share done grows around the oval. */}
                 <path d={RING} fill="none" strokeWidth="1.6" strokeLinecap="round" pathLength={100}
-                    opacity={done || (fill ?? 0) > 0 ? 1 : 0}
-                    strokeDasharray="100 100" strokeDashoffset={100 - Math.round((done ? 1 : fill ?? 0) * 100)}
+                    opacity={ring > 0 ? 1 : 0}
+                    strokeDasharray="100 100" strokeDashoffset={100 - Math.round(ring * 100)}
                     style={{ stroke: ringColour, transition: 'stroke-dashoffset 0.25s ease-out, stroke 0.2s' }} />
             </svg>
             {done && (
