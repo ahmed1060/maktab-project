@@ -323,6 +323,27 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         expect((await Ingest.punches(theirs, { punches: [{ serialNumber: "R-1", userNumber: "7", at: "2026-09-16T09:00:00" }] })).refused[0].reason).toBe("UNKNOWN_DEVICE")
     })
 
+    it("holds a punch from a terminal hours fast until the company's clock reaches it (review on #17)", async () => {
+        const { offsetMsIn } = await import("@/lib/time")
+        const agent = await agentOf("c1", "Fast clock")
+        await Devices.heartbeat(agent, beat([{ serialNumber: "FAST-1", reachable: true }]))
+        const now = new Date()
+        const local = (ms: number) => new Date(now.getTime() + offsetMsIn(now, agent.timeZone) + ms).toISOString().slice(0, 19)
+        const twoHoursAhead = { serialNumber: "FAST-1", userNumber: "7", at: local(2 * 3_600_000) }
+        const twoDaysAhead = { serialNumber: "FAST-1", userNumber: "7", at: local(48 * 3_600_000) }
+        // Sent again next round, not dropped; a terminal whose date is wrong is refused for good.
+        expect((await Ingest.punches(agent, { punches: [twoHoursAhead, twoDaysAhead] })).refused).toEqual([
+            { index: 0, reason: "IN_FUTURE", retry: true },
+            { index: 1, reason: "IN_FUTURE", retry: false },
+        ])
+        vi.useFakeTimers({ toFake: ["Date"], now: now.getTime() + 61 * 60_000 })
+        try {
+            expect(await Ingest.punches(agent, { punches: [twoHoursAhead] })).toMatchObject({ accepted: 1, refused: [] })
+        } finally {
+            vi.useRealTimers()
+        }
+    })
+
     it("says how each agent and terminal is doing, and which companies need attention first", async () => {
         const { terminalsOverview } = await import("@/lib/services/attendance-terminal-status")
         await db.query(`UPDATE "AttendanceAgent" SET status = 'REVOKED', "revokedAt" = now(), "codeHash" = NULL, "codeExpiresAt" = NULL, "tokenHash" = NULL, "nextTokenHash" = NULL WHERE status <> 'REVOKED'`)

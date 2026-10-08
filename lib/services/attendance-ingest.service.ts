@@ -27,8 +27,20 @@ import { isRealWallClock, type PunchBatch } from "@/lib/attendance/agent-payload
 /** How far ahead of the company's clock a punch may be: a terminal a little fast is not wrong. */
 export const FUTURE_TOLERANCE_MINUTES = 60
 
+/**
+ * How far ahead a punch is still worth sending again: from a terminal hours
+ * fast, or set to another zone, it is a real scan, and in an hour or two it
+ * is taken (review on #17). It used to be refused for good and the agent
+ * dropped it. Further ahead the terminal's date is wrong, and a punch held
+ * that long would keep the terminal from being cleared.
+ */
+export const FUTURE_RETRY_HOURS = 24
+
 export type Refusal = "UNKNOWN_DEVICE" | "DEVICE_RETIRED" | "MONTH_LOCKED" | "IN_FUTURE" | "INVALID_TIME"
-/** Only an unknown terminal can come right: the agent's next heartbeat brings it in. */
+/**
+ * An unknown terminal can come right: the agent's next heartbeat brings it
+ * in. So can a punch a little too far ahead (FUTURE_RETRY_HOURS).
+ */
 const RETRYABLE: Record<Refusal, boolean> = { UNKNOWN_DEVICE: true, DEVICE_RETIRED: false, MONTH_LOCKED: false, IN_FUTURE: false, INVALID_TIME: false }
 
 const wallClock = (local: string) => new Date(`${local}Z`)
@@ -44,14 +56,16 @@ export class AttendanceIngestService {
     static async punches(agent: AuthenticatedAgent, batch: PunchBatch): Promise<IngestResult> {
         const { companyId, timeZone } = agent
         const now = new Date()
-        const latest = new Date(now.getTime() + offsetMsIn(now, timeZone) + FUTURE_TOLERANCE_MINUTES * 60_000).toISOString().slice(0, 19)
+        const ahead = (ms: number) => new Date(now.getTime() + offsetMsIn(now, timeZone) + ms).toISOString().slice(0, 19)
+        const latest = ahead(FUTURE_TOLERANCE_MINUTES * 60_000)
+        const latestToRetry = ahead(FUTURE_RETRY_HOURS * 3_600_000)
         const serials = [...new Set(batch.punches.map(p => p.serialNumber))]
 
         const outcome = await prisma.$transaction(async tx => {
             const devices = await tx.attendanceDevice.findMany({ where: { companyId, serialNumber: { in: serials } }, select: { id: true, serialNumber: true, mode: true, retiredAt: true } })
             const device = new Map(devices.map(d => [d.serialNumber, d]))
             const refused: IngestResult["refused"] = []
-            const refuse = (index: number, reason: Refusal) => refused.push({ index, reason, retry: RETRYABLE[reason] })
+            const refuse = (index: number, reason: Refusal, retry = RETRYABLE[reason]) => refused.push({ index, reason, retry })
 
             // Each punch once, by its key, in the order it came.
             const candidates = new Map<string, { index: number; deviceId: string; mode: string; userNumber: string; at: string }>()
@@ -61,7 +75,7 @@ export class AttendanceIngestService {
                 const d = device.get(p.serialNumber)
                 if (!d) return refuse(index, "UNKNOWN_DEVICE")
                 if (d.retiredAt) return refuse(index, "DEVICE_RETIRED")
-                if (p.at > latest) return refuse(index, "IN_FUTURE")
+                if (p.at > latest) return refuse(index, "IN_FUTURE", p.at <= latestToRetry)
                 const key = `${d.id}:${p.userNumber}:${p.at}`
                 if (!candidates.has(key)) candidates.set(key, { index, deviceId: d.id, mode: d.mode, userNumber: p.userNumber, at: p.at })
             })
