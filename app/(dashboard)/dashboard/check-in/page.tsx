@@ -141,7 +141,7 @@ export default function CheckInPage() {
             // Asked to re-verify, or no face set up on this phone (a new one): the check-in starts with it
             // (§9.3, §9.5). Not doing it doesn't stop the check-in, which still counts against the approved
             // face, or, with none on this phone, goes for a review.
-            if (face && (reverifyFirst(faceStatus, faceModel) || setUpFirst(faceStatus, { phoneActive, verifier: true }))) {
+            if (face && (reverifyFirst(faceStatus, { phoneActive, modelVersion: faceModel }) || setUpFirst(faceStatus, { phoneActive, verifier: true }))) {
                 try {
                     await enrolFace(device!, face, post)
                     showToast(t('face_ci_sent'), 'success')

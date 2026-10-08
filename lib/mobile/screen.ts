@@ -135,9 +135,15 @@ export function setUpFirst(status: FaceStatus | undefined, here: { phoneActive: 
     return step === "ENROL" || step === "REJECTED"
 }
 
-/** Whether the next check-in starts with re-verification: asked for, due, or a new face model, and none sent yet (§9.5). */
-export function reverifyFirst(status: FaceStatus | undefined, modelVersion?: string | null): boolean {
-    return !!status?.active && (status.reverifyDue || modelChanged(status, modelVersion)) && !status.pendingReview
+/**
+ * Whether the next check-in starts with re-verification: asked for, due, or a
+ * new face model, and none sent yet (§9.5). Only from the phone in use, as
+ * setting it up: the status is that phone's, and a replacement waiting for
+ * approval can't fetch a face key, so it ended in an error before every
+ * check-in (review on #27).
+ */
+export function reverifyFirst(status: FaceStatus | undefined, here: { phoneActive: boolean; modelVersion?: string | null }): boolean {
+    return here.phoneActive && !!status?.active && (status.reverifyDue || modelChanged(status, here.modelVersion)) && !status.pendingReview
 }
 
 /**

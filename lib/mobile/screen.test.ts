@@ -147,17 +147,24 @@ describe("face templates and re-verification on this phone", () => {
     })
 
     it("starts the next check-in with re-verification when it is due and none is waiting", () => {
-        expect(reverifyFirst(status())).toBe(false)
-        expect(reverifyFirst(status({ reverifyDue: true }))).toBe(true)
-        expect(reverifyFirst(status({ reverifyDue: true, pendingReview: true }))).toBe(false)
-        expect(reverifyFirst(status({ reverifyDue: true, active: false }))).toBe(false)
+        const here = { phoneActive: true }
+        expect(reverifyFirst(status(), here)).toBe(false)
+        expect(reverifyFirst(status({ reverifyDue: true }), here)).toBe(true)
+        expect(reverifyFirst(status({ reverifyDue: true, pendingReview: true }), here)).toBe(false)
+        expect(reverifyFirst(status({ reverifyDue: true, active: false }), here)).toBe(false)
+    })
+
+    it("doesn't from a replacement phone waiting for approval, whose status is the old phone's (review on #27)", () => {
+        expect(reverifyFirst(status({ reverifyDue: true }), { phoneActive: false })).toBe(false)
+        const old = status({ phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } })
+        expect(reverifyFirst(old, { phoneActive: false, modelVersion: "prototype-insightface-r50-v2" })).toBe(false)
     })
 
     it("starts the next check-in by setting the face up again with a new face model, and leaves the old templates out of it", () => {
         const old = status({ phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } })
         expect(modelChanged(old, "prototype-insightface-r50-v2")).toBe(true)
-        expect(reverifyFirst(old, "prototype-insightface-r50-v2")).toBe(true)
-        expect(reverifyFirst({ ...old, pendingReview: true }, "prototype-insightface-r50-v2")).toBe(false)
+        expect(reverifyFirst(old, { phoneActive: true, modelVersion: "prototype-insightface-r50-v2" })).toBe(true)
+        expect(reverifyFirst({ ...old, pendingReview: true }, { phoneActive: true, modelVersion: "prototype-insightface-r50-v2" })).toBe(false)
         expect(modelChanged(old, "prototype-dlib-resnet-v1")).toBe(false)
         // An older server that doesn't say: no change assumed.
         expect(modelChanged(status(), "prototype-insightface-r50-v2")).toBe(false)
