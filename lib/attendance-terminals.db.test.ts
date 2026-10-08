@@ -109,14 +109,53 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         expect(await Agents.authenticate(second)).toMatchObject({ id: agent.id })
     })
 
+    it("keeps every token a rotation hands out working for a day, so rotations that overlap never lock the agent out (review on #17)", async () => {
+        const { agent, code } = await Agents.create("c1", "Overlapping", "a1")
+        const { token: first } = await Agents.enrol(code, {})
+        const me = await Agents.authenticate(first)
+        if ("refused" in me) throw new Error("refused")
+        // A retry while the first rotation was still being written: the first one's write lands last.
+        const { token: retry } = await Agents.rotate(me)
+        const { token: earlier } = await Agents.rotate(me)
+        // The agent kept the retry's answer: it works, and becomes its token.
+        expect(await Agents.authenticate(retry)).toMatchObject({ id: agent.id })
+        expect(await Agents.authenticate(first)).toEqual({ refused: "UNAUTHENTICATED" })
+        // An answer it kept after that works too, and becomes its token in turn.
+        expect(await Agents.authenticate(earlier)).toMatchObject({ id: agent.id })
+        expect(await Agents.authenticate(retry)).toEqual({ refused: "UNAUTHENTICATED" })
+        expect(await Agents.authenticate(earlier)).toMatchObject({ id: agent.id })
+        expect((await row(agent.id)).tokenHash).not.toBeNull()
+    })
+
+    it("lets a token from a rotation lapse after a day unused, and keeps only a few waiting", async () => {
+        const { PENDING_TOKEN_HOURS, MAX_PENDING_TOKENS } = await import("@/lib/services/attendance-agent.service")
+        const { code } = await Agents.create("c1", "Lapsing", "a1")
+        const { token: current } = await Agents.enrol(code, {})
+        const me = await Agents.authenticate(current)
+        if ("refused" in me) throw new Error("refused")
+        const { token: stale } = await Agents.rotate(me)
+        await db.query(`UPDATE "AttendanceAgentPendingToken" SET "createdAt" = now() - make_interval(hours => $2) WHERE "agentId" = $1`, [me.id, PENDING_TOKEN_HOURS + 1])
+        expect(await Agents.authenticate(stale)).toEqual({ refused: "UNAUTHENTICATED" })
+        // The current one is untouched.
+        expect(await Agents.authenticate(current)).toMatchObject({ id: me.id })
+        for (let i = 0; i < MAX_PENDING_TOKENS + 3; i++) await Agents.rotate(me)
+        const { rows: [{ n }] } = await db.query(`SELECT count(*)::int AS n FROM "AttendanceAgentPendingToken" WHERE "agentId" = $1`, [me.id])
+        expect(n).toBe(MAX_PENDING_TOKENS)
+    })
+
     it("moves an agent to a new PC with a new code: the old PC stops at once", async () => {
         const { agent, code } = await Agents.create("c1", "Moving", "a1")
         const { token: oldPc } = await Agents.enrol(code, { hostname: "OLD" })
+        const me = await Agents.authenticate(oldPc)
+        if ("refused" in me) throw new Error("refused")
+        const { token: oldPcNext } = await Agents.rotate(me)
         const { code: fresh } = await Agents.reissueCode(agent.id, "a1")
         // Until the new PC enrols, the old one carries on.
         expect(await Agents.authenticate(oldPc)).toMatchObject({ id: agent.id })
         const { token: newPc } = await Agents.enrol(fresh, { hostname: "NEW" })
         expect(await Agents.authenticate(oldPc)).toEqual({ refused: "UNAUTHENTICATED" })
+        // A token a rotation handed the old PC stops too.
+        expect(await Agents.authenticate(oldPcNext)).toEqual({ refused: "UNAUTHENTICATED" })
         expect(await Agents.authenticate(newPc)).toMatchObject({ id: agent.id })
     })
 
@@ -346,7 +385,7 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
 
     it("says how each agent and terminal is doing, and which companies need attention first", async () => {
         const { terminalsOverview } = await import("@/lib/services/attendance-terminal-status")
-        await db.query(`UPDATE "AttendanceAgent" SET status = 'REVOKED', "revokedAt" = now(), "codeHash" = NULL, "codeExpiresAt" = NULL, "tokenHash" = NULL, "nextTokenHash" = NULL WHERE status <> 'REVOKED'`)
+        await db.query(`UPDATE "AttendanceAgent" SET status = 'REVOKED', "revokedAt" = now(), "codeHash" = NULL, "codeExpiresAt" = NULL, "tokenHash" = NULL WHERE status <> 'REVOKED'`)
         await db.query(`UPDATE "AttendanceDevice" SET "retiredAt" = now() WHERE "retiredAt" IS NULL`)
         const quiet = await agentOf("c1", "Quiet one")
         const fine = await agentOf("c2", "Fine one")
@@ -373,5 +412,12 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
     it("keeps a revoked agent from holding anything that works, at the database", async () => {
         const { agent } = await Agents.create("c1", "Checked", "a1")
         await expect(db.query(`UPDATE "AttendanceAgent" SET status = 'REVOKED', "revokedAt" = now() WHERE id = $1`, [agent.id])).rejects.toThrow(/AttendanceAgent_revoked/)
+        // A token from a rotation: only for an agent in use, and gone when it is revoked.
+        await expect(db.query(`INSERT INTO "AttendanceAgentPendingToken"(id, "agentId", "tokenHash") VALUES ('pt-pending', $1, 'h-pending')`, [agent.id])).rejects.toThrow(/AttendanceAgentPendingToken_agent_active/)
+        const used = await agentOf("c1", "Revoked with a token waiting")
+        await Agents.rotate(used)
+        await Agents.revoke(used.id, "a1")
+        expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceAgentPendingToken" WHERE "agentId" = $1`, [used.id])).rows[0].n).toBe(0)
+        await expect(db.query(`INSERT INTO "AttendanceAgentPendingToken"(id, "agentId", "tokenHash") VALUES ('pt-revoked', $1, 'h-revoked')`, [used.id])).rejects.toThrow(/AttendanceAgentPendingToken_agent_active/)
     })
 })

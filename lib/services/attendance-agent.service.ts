@@ -30,6 +30,12 @@ const codeExpiry = () => new Date(Date.now() + ENROLMENT_CODE_MINUTES * 60_000)
 /** What an agent's request carries once its token is checked. */
 export type AuthenticatedAgent = { id: string; companyId: string; name: string; timeZone: string }
 
+/** How long a token from a rotation stays usable before it is first used (review on #17). */
+export const PENDING_TOKEN_HOURS = 24
+/** At most this many waiting at once: enough for rotations that overlap, never a pile from an agent in a loop. */
+export const MAX_PENDING_TOKENS = 5
+const pendingSince = () => new Date(Date.now() - PENDING_TOKEN_HOURS * 3_600_000)
+
 const SHOWN = {
     id: true, name: true, status: true, codeExpiresAt: true, hostname: true, agentVersion: true,
     enrolledAt: true, lastSeenAt: true, lastSyncAt: true, queueDepth: true, clockDriftSeconds: true,
@@ -95,7 +101,8 @@ export class AttendanceAgentService {
             if (current.status === "REVOKED") fail("AGENT_REVOKED")
             await tx.attendanceAgent.update({
                 where: { id },
-                data: { status: "REVOKED", revokedAt: new Date(), revokedById: actorId, codeHash: null, codeExpiresAt: null, tokenHash: null, nextTokenHash: null },
+                // Its tokens from rotations go with it (a trigger: AttendanceAgent_revoked_drops_pending).
+                data: { status: "REVOKED", revokedAt: new Date(), revokedById: actorId, codeHash: null, codeExpiresAt: null, tokenHash: null },
             })
             await AuditLogService.log("REVOKE_ATTENDANCE_AGENT", "ATTENDANCE_AGENT", id, {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: current.companyId, name: current.name },
@@ -126,11 +133,13 @@ export class AttendanceAgentService {
             const { count } = await tx.attendanceAgent.updateMany({
                 where: { id: agent.id, codeHash },
                 data: {
-                    status: "ACTIVE", codeHash: null, codeExpiresAt: null, tokenHash: hashSecret(token), nextTokenHash: null, tokenIssuedAt: now,
+                    status: "ACTIVE", codeHash: null, codeExpiresAt: null, tokenHash: hashSecret(token), tokenIssuedAt: now,
                     enrolledAt: now, hostname: about.hostname?.slice(0, 200) || null, agentVersion: about.agentVersion?.slice(0, 50) || null,
                 },
             })
             if (count === 0) fail("ENROLMENT_CODE_INVALID")
+            // A PC enrolled in its place: the old one stops, tokens it was handed by a rotation too.
+            await tx.attendanceAgentPendingToken.deleteMany({ where: { agentId: agent.id } })
             await AuditLogService.log("ENROL_ATTENDANCE_AGENT", "ATTENDANCE_AGENT", agent.id, {
                 tx, details: { companyId: agent.companyId, name: agent.name, hostname: about.hostname ?? null, agentVersion: about.agentVersion ?? null },
             })
@@ -142,34 +151,51 @@ export class AttendanceAgentService {
      * The agent a token belongs to, if it may act now: enrolled, not revoked,
      * its company not banned and still holding the Terminals add-on (§16 —
      * removing it stops new punches from terminals). A token issued by
-     * rotation becomes the agent's only token the first time it is used.
+     * rotation, within its day, becomes the agent's token the first time it
+     * is used, and the one before stops working.
      */
     static async authenticate(token: string): Promise<AuthenticatedAgent | { refused: "UNAUTHENTICATED" | "COMPANY_BANNED" | "TERMINALS_NOT_INCLUDED" }> {
         const tokenHash = hashSecret(token)
         const agent = await prisma.attendanceAgent.findFirst({
-            where: { status: "ACTIVE", OR: [{ tokenHash }, { nextTokenHash: tokenHash }] },
+            where: { status: "ACTIVE", OR: [{ tokenHash }, { pendingTokens: { some: { tokenHash, createdAt: { gt: pendingSince() } } } }] },
             select: {
-                id: true, companyId: true, name: true, nextTokenHash: true,
+                id: true, companyId: true, name: true, tokenHash: true,
                 company: { select: { isBanned: true, timezone: true, package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } } } },
             },
         })
         if (!agent) return { refused: "UNAUTHENTICATED" }
         if (agent.company.isBanned) return { refused: "COMPANY_BANNED" }
         if (!hasBundle(resolveBundles(agent.company.package), "ATTENDANCE_TERMINALS")) return { refused: "TERMINALS_NOT_INCLUDED" }
-        if (agent.nextTokenHash === tokenHash) {
-            await prisma.attendanceAgent.updateMany({ where: { id: agent.id, nextTokenHash: tokenHash }, data: { tokenHash, nextTokenHash: null, tokenIssuedAt: new Date() } })
+        if (agent.tokenHash !== tokenHash) {
+            // The others handed out stay for the rest of their day: a reply the agent kept after this one still
+            // works, and becomes its token in turn (review on #17).
+            await prisma.$transaction(async tx => {
+                const { count } = await tx.attendanceAgentPendingToken.deleteMany({ where: { agentId: agent.id, tokenHash } })
+                if (count > 0) await tx.attendanceAgent.updateMany({ where: { id: agent.id, status: "ACTIVE" }, data: { tokenHash, tokenIssuedAt: new Date() } })
+            })
         }
         return { id: agent.id, companyId: agent.companyId, name: agent.name, timeZone: agent.company.timezone }
     }
 
     /**
      * A new token. The current one keeps working until the agent first uses
-     * the new one: a reply lost on the way, or a PC that crashes before
-     * saving it, must not lock the office's terminals out.
+     * a new one: a reply lost on the way, or a PC that crashes before saving
+     * it, must not lock the office's terminals out. Every one handed out
+     * works for a day (PENDING_TOKEN_HOURS). There was one slot, and two
+     * rotations that overlapped each replaced the other's token, so the agent
+     * could keep one that no longer worked, the old one gone once the other
+     * was used (review on #17).
      */
     static async rotate(agent: AuthenticatedAgent) {
         const token = newAgentToken()
-        await prisma.attendanceAgent.update({ where: { id: agent.id }, data: { nextTokenHash: hashSecret(token) } })
+        await prisma.$transaction(async tx => {
+            await tx.attendanceAgentPendingToken.create({ data: { agentId: agent.id, tokenHash: hashSecret(token) } })
+            // Those past their day go, and the oldest beyond a few.
+            const kept = await tx.attendanceAgentPendingToken.findMany({
+                where: { agentId: agent.id, createdAt: { gt: pendingSince() } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: MAX_PENDING_TOKENS, select: { id: true },
+            })
+            await tx.attendanceAgentPendingToken.deleteMany({ where: { agentId: agent.id, id: { notIn: kept.map(k => k.id) } } })
+        })
         return { token }
     }
 }
