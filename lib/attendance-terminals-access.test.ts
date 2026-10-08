@@ -264,6 +264,34 @@ describe("on the agent's side: the token is the identity", () => {
         expect(reached).toEqual(["punches:c1:1"])
     })
 
+    it("holds every agent while maintenance mode is on, to try again later (review on #17)", async () => {
+        const routes = {
+            punches: () => import("@/app/api/agent/punches/route"), heartbeat: () => import("@/app/api/agent/heartbeat/route"),
+            token: () => import("@/app/api/agent/token/route"), enrol: () => import("@/app/api/agent/enrol/route"),
+        }
+        const post = async (route: keyof typeof routes, token: string | null, body: unknown) => (await routes[route]()).POST(new Request(url(`/api/agent/${route}`), {
+            method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body),
+        }))
+        prismaMock.systemSettings.findUnique = async () => ({ id: "default", maintenanceMode: true })
+        try {
+            for (const [route, token, body] of [
+                ["punches", "mka_good", { punches: [{ serialNumber: "SN1", userNumber: "7", at: "2026-09-14T09:05:00" }] }],
+                ["heartbeat", "mka_good", { agentVersion: "1.0.0", queueDepth: 0, clock: "2026-10-01T08:00:00Z", devices: [] }],
+                ["token", "mka_good", {}],
+                ["enrol", null, { code: "K7QD-2MXP" }],
+            ] as const) {
+                const res = await post(route, token, body)
+                // A 5xx: the agent keeps what it holds and tries again next round.
+                expect(res.status, route).toBe(503)
+                expect((await res.json()).code, route).toBe("MAINTENANCE")
+            }
+            expect(reached).toEqual([])
+        } finally {
+            prismaMock.systemSettings.findUnique = async () => null
+        }
+        expect((await agentCall("mka_good")).status).toBe(200)
+    })
+
     it("refuses a body that is not a JSON object, or too large", async () => {
         expect((await (await agentCall("mka_good", "[1,2]")).json()).code).toBe("INVALID_BODY")
         expect((await (await agentCall("mka_good", "{nope")).json()).code).toBe("INVALID_BODY")
