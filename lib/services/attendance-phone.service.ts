@@ -87,6 +87,10 @@ export class AttendancePhoneService {
         const out = await prisma.$transaction(async tx => {
             if (!(await AttendanceChallengeService.consume(tx, userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
             await lockPerson(tx, userId)
+            // Still the session's company, read under the lock a move takes: a session from before a move to
+            // another company names the old one for up to a minute more (review on #21).
+            const person = await tx.user.findUnique({ where: { id: userId }, select: { companyId: true } })
+            if (person?.companyId !== companyId) fail("USER_NOT_FOUND")
             const known = await tx.checkInPhone.findUnique({ where: { keyFingerprint: key.fingerprint }, select: { ...SHOWN, userId: true } })
             if (known) {
                 // The same phone asking twice (a retry): the same answer.

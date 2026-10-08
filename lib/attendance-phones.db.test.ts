@@ -219,6 +219,8 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         // The old company no longer sees them, nor can decide them.
         expect((await Phones.list("c1", { kind: "COMPANY" })).map(p => p.userId)).not.toContain("m1")
         await expect(Phones.decide(waiting.id, { approve: true }, "a1")).rejects.toThrow("PHONE_NOT_PENDING")
+        // Nor can a session from before the move register a new phone under the old company (review on #21).
+        await expect(register("m1")).rejects.toThrow("USER_NOT_FOUND")
     })
 
     it("keeps one unused number per person and purpose: asking again replaces the last", async () => {
