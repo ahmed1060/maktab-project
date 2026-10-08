@@ -28,7 +28,15 @@ describe("toasts", () => {
         expect(afterMovingOn(calm)).toBe(calm)
         expect(SRC).toContain("document.addEventListener('pointerdown', onDown, true)")
         expect(SRC).toContain("if (!region.current?.contains(e.target as Node)) setToasts(afterMovingOn)")
-        expect(SRC).toMatch(/if \(page !== pathname\) \{\s*setPage\(pathname\)\s*setToasts\(afterMovingOn\)/)
+    })
+
+    it("goes on another page, the query included: a tab or a filter moved to with the keyboard, or Back (review on #49)", () => {
+        // The page is its path and its query; the provider hears of a change to either.
+        expect(SRC).toContain("const page = `${usePathname()}?${useSearchParams().toString()}`")
+        expect(SRC).toMatch(/if \(page === shown\.current\) return\s*shown\.current = page\s*onMove\(\)/)
+        expect(SRC).toContain("const movedOn = useCallback(() => setToasts(afterMovingOn), [])")
+        // In its own Suspense boundary, so reading the query doesn't hold the whole app back.
+        expect(SRC).toContain("<Suspense fallback={null}><PageChanges onMove={movedOn} /></Suspense>")
     })
 
     it("are announced: errors in an alert region, the rest in a status region, both always present", () => {

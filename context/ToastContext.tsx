@@ -1,8 +1,8 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useHydrated } from '@/lib/useHydrated'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -56,6 +56,24 @@ export const MAX_TOASTS = 5
 export function withToast(list: Toast[], toast: Toast): Toast[] {
     const rest = list.filter(t => !(t.type === toast.type && t.message === toast.message))
     return [...rest, toast].slice(-MAX_TOASTS)
+}
+
+/**
+ * Calls onMove when the page changes, its query included: a tab or a filter
+ * is often only the query, and moving to one with the keyboard, or Back,
+ * left an error over the new view (review on #49). Its own component, in
+ * its own Suspense boundary: reading the query in the provider would hold
+ * the whole app back for it.
+ */
+function PageChanges({ onMove }: { onMove: () => void }) {
+    const page = `${usePathname()}?${useSearchParams().toString()}`
+    const shown = useRef(page)
+    useEffect(() => {
+        if (page === shown.current) return
+        shown.current = page
+        onMove()
+    }, [page, onMove])
+    return null
 }
 
 /** One toast: its own clock, paused while hovered or focused. */
@@ -142,14 +160,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts(prev => prev.filter(t => t.id !== id))
     }, [])
 
-    // Errors go once the person moves on (afterMovingOn): another page, noticed while rendering, as React
-    // asks for state that follows a value...
-    const pathname = usePathname()
-    const [page, setPage] = useState(pathname)
-    if (page !== pathname) {
-        setPage(pathname)
-        setToasts(afterMovingOn)
-    }
+    // Errors go once the person moves on (afterMovingOn): another page, or the same one with another
+    // query (PageChanges)...
+    const movedOn = useCallback(() => setToasts(afterMovingOn), [])
     // ...or a tap or click anywhere but on a toast. Listened for only while an error shows, and from the
     // next one on: the tap that led to the error came before it.
     const region = useRef<HTMLDivElement>(null)
@@ -165,6 +178,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     return (
         <ToastContext.Provider value={{ showToast }}>
+            <Suspense fallback={null}><PageChanges onMove={movedOn} /></Suspense>
             {children}
             {mounted && createPortal(
                 <div ref={region} style={{
