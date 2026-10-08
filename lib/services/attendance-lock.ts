@@ -13,6 +13,13 @@ import { EARLY_MARGIN_MINUTES, LATE_MARGIN_MINUTES } from "@/lib/attendance/engi
 
 const lockKey = (companyId: string, month: string) => `attendance-month:${companyId}:${month}`
 
+/**
+ * For a transaction that may wait on these locks: an import holds them for
+ * as long as its own minute allows, and Prisma's five seconds left any other
+ * writer waiting behind it to fail instead of going next (review on #12).
+ */
+export const LOCK_WAIT = { timeout: 90_000 }
+
 /** Takes the lock for each month, in order, so two writers never wait on each other in a circle. */
 export async function lockMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>) {
     for (const month of [...new Set(months)].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey(companyId, month)}))::text`

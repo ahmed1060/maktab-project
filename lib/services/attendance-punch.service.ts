@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
-import { lockMonths, lockedMonths, punchMonths, punchMonthsOf } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths, lockedMonths, punchMonths, punchMonthsOf } from "./attendance-lock"
 import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, type DateOrder, type RowError } from "@/lib/attendance/punch-import"
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
 import { addDays } from "@/lib/attendance/calendar"
@@ -250,7 +250,7 @@ export class AttendancePunchService {
             })
             const first = punches.map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
             return { voided: voided.count, companyId: imp.companyId, from: first }
-        })
+        }, LOCK_WAIT)
         if (out.from) await recomputeAfter(out.companyId, addDays(out.from, -1))
         return { voided: out.voided }
     }
@@ -321,7 +321,7 @@ export class AttendancePunchService {
             if ((await lockedMonths(tx, companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             const id = await insertManualPunch(tx, { companyId, timezone: company.timezone, userId: person.id, local, direction: input.direction, note: input.note.trim(), actorId })
             return { id }
-        })
+        }, LOCK_WAIT)
         // From the day before: a punch after midnight may close the night before's shift.
         await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [input.userId])
         return out
@@ -346,7 +346,7 @@ export class AttendancePunchService {
                 details: { companyId: punch.companyId, userId: punch.userId, at: wallClockText(punch.punchAtLocal), reason: reason.trim() },
             })
             return punch
-        })
+        }, LOCK_WAIT)
         if (punch.userId) await recomputeAfter(punch.companyId, addDays(wallClockText(punch.punchAtLocal).slice(0, 10), -1), [punch.userId])
     }
 
@@ -405,7 +405,7 @@ export class AttendancePunchService {
             })
             const firstFilled = waiting.filter(p => fill.includes(p.id)).map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
             return { id: mapping.id, filled: fill.length, leftInLockedMonths: waiting.length - fill.length, userId: person.id, firstFilled }
-        })
+        }, LOCK_WAIT)
         if (out.firstFilled) await recomputeAfter(companyId, addDays(out.firstFilled, -1), [out.userId])
         return { id: out.id, filled: out.filled, leftInLockedMonths: out.leftInLockedMonths }
     }
@@ -436,7 +436,7 @@ export class AttendancePunchService {
             })
             const firstBack = given.filter(p => back.includes(p.id)).map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
             return { unfilled: back.length, companyId: mapping.companyId, userId: mapping.userId, firstBack }
-        })
+        }, LOCK_WAIT)
         if (out.firstBack) await recomputeAfter(out.companyId, addDays(out.firstBack, -1), [out.userId])
         return { unfilled: out.unfilled }
     }

@@ -4,7 +4,7 @@ import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
@@ -227,7 +227,7 @@ export class AttendancePhoneService {
                 params: { model: phone.model ?? "", reason: reasonParam(reason) },
             }, undefined, tx)
             return { ...phone, from: held[0] ? toDateString(held[0].punchAtLocal) : null, counted: decision.approve && released.count > 0 }
-        })
+        }, LOCK_WAIT)
         // The check-ins it held now count: the days they fall on are worked out again.
         // From the day before: an early check-in may end the night shift that began then.
         if (out.counted && out.from) await recomputeAfter(out.companyId, addDays(out.from, -1), [out.userId])

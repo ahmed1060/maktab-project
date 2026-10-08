@@ -293,6 +293,17 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         await expect(Punches.voidImport(done.importId!, "Wrong file", "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
     })
 
+    it("waits out a long import's locks instead of failing after Prisma's five seconds (review on #12)", async () => {
+        // A file still going in holds the numbers' lock.
+        await db.query("BEGIN")
+        await db.query(`SELECT pg_advisory_xact_lock(hashtext('attendance-codes:c1'))::text`)
+        const mapping = Punches.mapCode("c1", { code: "77", userId: "e1" }, "a1")
+        mapping.catch(() => {})
+        await new Promise(r => setTimeout(r, 5_500))
+        await db.query("COMMIT")
+        expect(await mapping).toMatchObject({ filled: 0 })
+    }, 20_000)
+
     it("derives no day that has not ended", async () => {
         const result = await Engine.recomputeMonth("c1", "2099-01")
         expect(result).toMatchObject({ derived: 0, written: 0 })
