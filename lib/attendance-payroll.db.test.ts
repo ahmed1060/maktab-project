@@ -310,6 +310,20 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         await expect(Discrepancies.list("c1", { after: "yesterday" })).rejects.toThrow("INVALID_CURSOR")
     })
 
+    it("names the month attendance started from as approved, or none once the switch has moved on (review on #16)", async () => {
+        // September was approved with attendance on, from September.
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-09-01' WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 9)).attendance).toMatchObject({ reachesPayroll: true, from: "2026-09" })
+        // Moved on to November since, or stopped: what it was is not today's setting.
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-11-01' WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 9)).attendance).toMatchObject({ reachesPayroll: true, from: null })
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = NULL WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 9)).attendance).toMatchObject({ reachesPayroll: true, from: null })
+        // A month not yet approved still reads the setting.
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-10-01' WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 11)).attendance).toMatchObject({ reachesPayroll: true, from: "2026-10" })
+    })
+
     it("is resolved once, however many settle it at the same moment (review on #16)", async () => {
         const { AttendanceDiscrepancyService: Discrepancies } = await import("@/lib/services/attendance-discrepancy.service")
         const outcomes = await Promise.allSettled([

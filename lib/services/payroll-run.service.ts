@@ -264,7 +264,10 @@ export class PayrollRunService {
             // What attendance costs this month: on the payslips once it reaches
             // payroll; before that, shown beside the register and deducted from
             // nobody — the dry run (ATTENDANCE_PLAN.md §20).
-            attendance: { ...attendance, discrepanciesOpen },
+            // An approved run's start month as it was approved: the switch can since have moved only past the
+            // months approved, or stopped. Still at or before this month, it is the one approved with; later or
+            // gone, that one isn't known here, and none is shown rather than today's (review on #16).
+            attendance: { ...attendance, from: recorded !== undefined && attendance.from && attendance.from > monthKey(year, month) ? null : attendance.from, discrepanciesOpen },
             // Null rather than an empty variance: "nothing changed" and "there
             // is nothing to compare against" are different answers, and the
             // first is reassuring while the second is not.

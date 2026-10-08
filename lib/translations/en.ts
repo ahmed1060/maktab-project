@@ -1375,6 +1375,7 @@ export const en = {
         day_overtime_pending: "overtime awaiting approval",
         day_overtime_short: "overtime under the minimum",
         attpay_register_on: "Attendance is on these payslips (from {month}): lateness, early leave and absence as deductions, approved overtime as earnings.",
+        attpay_register_on_approved: "Attendance is on these payslips: lateness, early leave and absence as deductions, approved overtime as earnings.",
         attpay_dry_title: "Attendance — not deducted yet",
         attpay_dry_msg: "This month's attendance would deduct {deductions} and add {overtime} of overtime. Nothing is deducted until attendance is switched on in Company Settings → Attendance; this is to check the figures first.",
         att_loc_retry: "Try again",

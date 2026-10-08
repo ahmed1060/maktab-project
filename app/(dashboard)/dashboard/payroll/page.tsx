@@ -607,7 +607,7 @@ export default function PayrollRegisterPage() {
                     .map(([userId, m]) => ({ userId, name: register?.entries.find(e => e.userId === userId)?.name ?? '', ...m, deductions: m.lateness + m.earlyLeave + m.absence }))
                     .filter(r => r.name && (r.deductions > 0 || r.overtime > 0))
                 const fromText = a.from ? new Date(`${a.from}-01T00:00:00Z`).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : ''
-                if (a.reachesPayroll) return card(<p style={{ margin: 0, fontSize: '0.9rem' }}>{t('attpay_register_on').replace('{month}', fromText)}</p>)
+                if (a.reachesPayroll) return card(<p style={{ margin: 0, fontSize: '0.9rem' }}>{a.from ? t('attpay_register_on').replace('{month}', fromText) : t('attpay_register_on_approved')}</p>)
                 if (rows.length === 0) return null
                 return card(
                     <>
