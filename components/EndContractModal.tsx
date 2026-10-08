@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useDialog } from '@/lib/useDialog'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import useSWR from 'swr'
@@ -59,6 +60,8 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const isArchived = status === 'ARCHIVED'
+    // A dialog: focus in, Tab kept inside, Escape closes, focus back where it was (Codex review of #36).
+    const dialog = useDialog(true, onClose)
 
     const [lastWorkingDay, setLastWorkingDay] = useState(todayStr)
     const [reason, setReason] = useState('')
@@ -182,9 +185,9 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
 
     return <>{createPortal(
         <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: '480px', width: '92%' }}>
+            <div className="modal-content" style={{ maxWidth: '480px', width: '92%' }} {...dialog.panelProps}>
                 <div className="modal-header">
-                    <h3 className="modal-title">
+                    <h3 className="modal-title" id={dialog.titleId}>
                         {isArchived ? t('reinstate_title') : t('end_contract_title')}
                     </h3>
                     <button aria-label={t('close')} className="modal-close" onClick={onClose}>&times;</button>

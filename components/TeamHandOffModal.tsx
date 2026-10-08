@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useDialog } from '@/lib/useDialog'
 import { useLanguage } from '@/context/LanguageContext'
 
 type Person = { id: string; firstName: string; lastName: string }
@@ -38,13 +39,15 @@ export default function TeamHandOffModal({
 }) {
     const { t, locale } = useLanguage()
     const [handoffTo, setHandoffTo] = useState('')
+    // A dialog: focus in, Tab kept inside, Escape closes, focus back where it was (Codex review of #36).
+    const dialog = useDialog(true, onCancel)
     const rtl = locale === 'ar'
 
     return createPortal(
         <div className="modal-overlay">
-            <div className="modal-content" style={{ maxWidth: '460px', width: '90%' }}>
+            <div className="modal-content" style={{ maxWidth: '460px', width: '90%' }} {...dialog.panelProps}>
                 <div className="modal-header">
-                    <h3 className="modal-title">{t('handoff_title')}</h3>
+                    <h3 className="modal-title" id={dialog.titleId}>{t('handoff_title')}</h3>
                     <button aria-label={t('close')} className="modal-close" onClick={onCancel}>&times;</button>
                 </div>
                 <div className="modal-body" style={{ textAlign: rtl ? 'right' : 'left' }}>

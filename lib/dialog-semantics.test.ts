@@ -9,9 +9,13 @@ import { join } from "node:path"
  * 2026, C2). Before, only the face camera did; the rest left focus on the
  * page behind them.
  *
- * An overlay is found by its scrim (var(--scrim)), which every one of them
- * draws, so a new one written by hand is caught too.
+ * An overlay is found by its scrim: var(--scrim) drawn inline, or the shared
+ * .modal-overlay class (app/globals.css), which draws the same one. A new
+ * one is caught whichever way it is written; four that used the class had
+ * been missed, and behaved as no dialog at all (Codex review of #36).
  */
+/** The overlays a file draws: each line opening one, by its scrim or the class that draws it. */
+const scrimsIn = (s: string) => s.split("\n").filter(l => l.includes("var(--scrim)") || l.includes('className="modal-overlay"')).length
 const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
     e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
 
@@ -26,11 +30,11 @@ const OWN = new Map([
 
 describe("overlays", () => {
     const overlays = [...files("app"), ...files("components")]
-        .filter(f => readFileSync(f, "utf8").includes("var(--scrim)") && !OWN.has(f))
+        .filter(f => scrimsIn(readFileSync(f, "utf8")) > 0 && !OWN.has(f))
 
     it.each(overlays)("%s uses useDialog for each overlay it draws", f => {
         const s = readFileSync(f, "utf8")
-        const scrims = s.split("var(--scrim)").length - 1
+        const scrims = scrimsIn(s)
         const panels = s.split("panelProps}").length - 1
         expect(s).toContain("useDialog(")
         expect(panels).toBeGreaterThanOrEqual(scrims)

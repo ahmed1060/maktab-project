@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useDialog } from '@/lib/useDialog'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -50,6 +51,9 @@ export default function BulkTaskReviewModal({
     // but stays independent per row once a person switches it manually.
     const [locationModeOverride, setLocationModeOverride] = useState<Record<number, 'type' | 'vendor'>>({})
 
+    // A dialog: focus in, Tab kept inside, Escape closes, focus back where it was (Codex review of #36).
+    const dialog = useDialog(isOpen, onClose)
+
     if (!(mounted && isOpen)) return null
 
     return createPortal(
@@ -60,9 +64,9 @@ export default function BulkTaskReviewModal({
                 maxHeight: '90vh',
                 display: 'flex',
                 flexDirection: 'column'
-            }}>
+            }} {...dialog.panelProps}>
                 <div className="modal-header">
-                    <h2 className="modal-title">{t('bulk_review_title')}</h2>
+                    <h2 className="modal-title" id={dialog.titleId}>{t('bulk_review_title')}</h2>
                     <button aria-label={t('close')} className="modal-close" onClick={onClose}>×</button>
                 </div>
 

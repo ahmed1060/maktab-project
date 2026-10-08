@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useDialog } from '@/lib/useDialog'
 import useSWR from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -68,6 +69,9 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
         setArTemplateFile(null)
     }
 
+    // A dialog: focus in, Tab kept inside, Escape closes, focus back where it was (Codex review of #36).
+    const dialog = useDialog(isOpen, handleClose)
+
     if (!(mounted && isOpen)) return null
 
     return createPortal(
@@ -77,9 +81,9 @@ export default function ManageTemplatesModal({ isOpen, onClose }: ManageTemplate
                 the app — at this modal's actual content (two short upload
                 rows), that padding plus the default 2rem section gap made
                 it look oversized and mostly empty space. */}
-            <div className="modal-content glass" style={{ width: '90%', maxWidth: '460px' }}>
+            <div className="modal-content glass" style={{ width: '90%', maxWidth: '460px' }} {...dialog.panelProps}>
                 <div className="modal-header" style={{ padding: '1.1rem 1.5rem' }}>
-                    <h2 className="modal-title" style={{ fontSize: '1.1rem' }}>{t('manage_templates')}</h2>
+                    <h2 className="modal-title" id={dialog.titleId} style={{ fontSize: '1.1rem' }}>{t('manage_templates')}</h2>
                     <button aria-label={t('close')} className="modal-close" onClick={handleClose}>×</button>
                 </div>
 
