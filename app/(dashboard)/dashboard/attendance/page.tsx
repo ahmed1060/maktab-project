@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
@@ -111,13 +111,17 @@ export default function AttendancePage() {
                     ))}
                 </div>
             )}
-            {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
-            {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
-            {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
-            {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
-            {tab === 'face' && <FaceTab q={q} />}
-            {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
-            {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
+            {/* Another company, picked without leaving the page, starts afresh: the tabs' dates were the last
+                company's, from its own calendar, and a file chosen for import was meant for it (review on #13). */}
+            <Fragment key={companyId ?? ''}>
+                {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
+                {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
+                {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
+                {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
+                {tab === 'face' && <FaceTab q={q} />}
+                {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
+                {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
+            </Fragment>
         </div>
     )
 }

@@ -234,6 +234,12 @@ describe("the screen's dates (review on #12)", () => {
         expect(page).not.toMatch(/\.getDate\(\)/)
     })
 
+    it("start afresh from another company's date when the Super Admin picks it, even one whose date is still at hand (review on #13)", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).toMatch(/<Fragment key=\{companyId \?\? ''\}>\s*\{tab === 'exceptions'[^\n]*\n\s*\{tab === 'days' && today && <DaysTab/)
+        expect(page).toMatch(/\{tab === 'numbers' && correctsCompany && <NumbersTab q=\{q\} companyId=\{companyId\} \/>\}\s*<\/Fragment>/)
+    })
+
     it("says so when the company's date can't be had, instead of waiting for it for good", () => {
         const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
         expect(page).toContain("const { data: peopleBody, error: peopleError } = useSWR(")
