@@ -372,7 +372,7 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
             ],
         })
         // A check-out just after midnight on 1 September closes 31 August's night: August is locked, so it is refused too.
-        await db.query(`INSERT INTO "AttendanceDay"(id, "companyId", "userId", date, status, "expectedEndMinutes", breakdown, "inputsHash") VALUES ('night', 'c1', 'e1', '2026-08-31', 'PRESENT', 1800, '{}', 'x')`)
+        await db.query(`INSERT INTO "AttendanceDay"(id, "companyId", "userId", date, status, "expectedStartMinutes", "expectedEndMinutes", breakdown, "inputsHash") VALUES ('night', 'c1', 'e1', '2026-08-31', 'PRESENT', 1320, 1800, '{}', 'x')`)
         expect((await Ingest.punches(agent, { punches: [{ serialNumber: "R-1", userNumber: "7", at: "2026-09-01T05:30:00" }] })).refused).toEqual([{ index: 0, reason: "MONTH_LOCKED", retry: false }])
         // Another company's agent cannot deliver to this company's terminal.
         const theirs = await agentOf("c2", "Not yours")
