@@ -84,7 +84,7 @@ export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: str
     // (review on #49). Read only for punches the night might have.
     const contested = crossing.filter(p => nightEnd(p.userId!, p.local) != null)
     const live = contested.length === 0 ? null : await (await import("./attendance-engine.service")).AttendanceEngineService.plansFor(
-        companyId, [...new Set(contested.map(p => p.userId!))], [...new Set(contested.map(p => p.local.slice(0, 10)))],
+        companyId, [...new Set(contested.map(p => p.userId!))], [...new Set(contested.map(p => p.local.slice(0, 10)))], tx,
     )
     return punches.map(({ userId, local }) => {
         const date = local.slice(0, 10)

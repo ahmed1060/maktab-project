@@ -440,22 +440,24 @@ export class AttendanceEngineService {
      * days rather than a month. Today's day isn't derived until tomorrow, so
      * a check-in that wants to say "you're late", and the no-check-in
      * reminder, ask here. The company's schedules, holidays and policy are
-     * read once, however many people.
+     * read once, however many people. Inside a transaction, through it: a
+     * query on another connection meanwhile could wait for good on a pool
+     * the transactions hold (review on #49).
      */
-    static async plansFor(companyId: string, userIds: readonly string[], dates: readonly string[]): Promise<{
+    static async plansFor(companyId: string, userIds: readonly string[], dates: readonly string[], db: Prisma.TransactionClient = prisma): Promise<{
         plans: Map<string, Map<string, ExpectedDay>>
         policyOn: (date: string) => PolicyBody | null
     }> {
         const sorted = [...dates].sort()
         const span = { gte: wallClock(`${sorted[0]}T00:00:00`), lte: wallClock(`${sorted.at(-1)}T00:00:00`) }
         const [schedules, assignments, defaults, central, exclusions, own, policies] = await Promise.all([
-            prisma.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
-            prisma.userSchedule.findMany({ where: { userId: { in: [...userIds] }, schedule: { companyId } }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
-            prisma.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
-            prisma.publicHoliday.findMany({ where: { country: "EG", date: span } }),
-            prisma.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
-            prisma.companyHoliday.findMany({ where: { companyId, date: span } }),
-            AttendancePolicyService.versions(companyId),
+            db.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
+            db.userSchedule.findMany({ where: { userId: { in: [...userIds] }, schedule: { companyId } }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
+            db.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
+            db.publicHoliday.findMany({ where: { country: "EG", date: span } }),
+            db.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
+            db.companyHoliday.findMany({ where: { companyId, date: span } }),
+            AttendancePolicyService.versions(companyId, db),
         ])
         const bySchedule = new Map(schedules.map(s => [s.id, serializeSchedule(s)]))
         const defaultChanges = defaults.map(d => ({ scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) }))

@@ -3,11 +3,12 @@ import { readFileSync } from "node:fs"
 import type { Prisma } from "@prisma/client"
 
 // The 1st's shift, from the calendar as the engine reads it (review on #49).
-const calendar = vi.hoisted(() => ({ firsts: new Map<string, { startMinutes: number; endMinutes: number }>(), asked: 0 }))
+const calendar = vi.hoisted(() => ({ firsts: new Map<string, { startMinutes: number; endMinutes: number }>(), asked: 0, through: [] as unknown[] }))
 vi.mock("@/lib/services/attendance-engine.service", () => ({
     AttendanceEngineService: {
-        plansFor: async (_companyId: string, userIds: string[], dates: string[]) => {
+        plansFor: async (_companyId: string, userIds: string[], dates: string[], db?: unknown) => {
             calendar.asked += 1
+            calendar.through.push(db)
             return {
                 plans: new Map(userIds.map(u => [u, new Map(dates.flatMap(d => {
                     const hours = calendar.firsts.get(`${u}:${d}`)
@@ -30,7 +31,7 @@ import type { ExpectedDay } from "@/lib/attendance/calendar"
  * held, and was a query each (review on #22).
  */
 describe("the months many punches can change", () => {
-    beforeEach(() => { calendar.firsts.clear(); calendar.asked = 0 })
+    beforeEach(() => { calendar.firsts.clear(); calendar.asked = 0; calendar.through = [] })
     const tx = (nights: { userId: string; date: string; expectedEndMinutes: number | null }[]) => {
         const findMany = vi.fn(async () => nights.map(n => ({ ...n, date: new Date(`${n.date}T00:00:00Z`) })))
         return { findMany, tx: { attendanceDay: { findMany, findUnique: vi.fn() } } as unknown as Prisma.TransactionClient }
@@ -43,6 +44,9 @@ describe("the months many punches can change", () => {
         const months = await punchMonthsOf(t.tx, "c1", punches)
         expect(t.findMany).toHaveBeenCalledTimes(1)
         expect(calendar.asked).toBe(1)
+        // Through the caller's transaction: on another connection, it could wait for good on a pool the
+        // writers' transactions hold (review on #49).
+        expect(calendar.through).toEqual([t.tx])
         expect(months[6]).toEqual(["2026-10", "2026-09"])
         expect(months[12]).toEqual(["2026-10", "2026-09"])
         expect(months[13]).toEqual(["2026-10"])
