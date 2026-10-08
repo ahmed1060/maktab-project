@@ -302,6 +302,8 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
             { serialNumber: "R-1", userNumber: "7", at: "2026-08-20T09:00:00" },    // August is paid
             { serialNumber: "R-1", userNumber: "7", at: "2099-01-01T09:00:00" },    // the terminal's clock is wrong
             { serialNumber: "R-1", userNumber: "7", at: "2026-09-15T09:00:00" },
+            // A damaged record (a terminal packs months of 31 days): Date would make it 2 March (review on #17).
+            { serialNumber: "R-1", userNumber: "7", at: "2026-02-30T09:00:00" },
         ] })
         expect(result).toEqual({
             accepted: 1, duplicates: 0,
@@ -310,6 +312,7 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
                 { index: 1, reason: "DEVICE_RETIRED", retry: false },
                 { index: 2, reason: "MONTH_LOCKED", retry: false },
                 { index: 3, reason: "IN_FUTURE", retry: false },
+                { index: 5, reason: "INVALID_TIME", retry: false },
             ],
         })
         // A check-out just after midnight on 1 September closes 31 August's night: August is locked, so it is refused too.

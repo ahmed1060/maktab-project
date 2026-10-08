@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { heartbeatSchema, punchBatchSchema, MAX_PUNCHES_PER_BATCH } from "./agent-payloads"
+import { heartbeatSchema, punchBatchSchema, isRealWallClock, MAX_PUNCHES_PER_BATCH } from "./agent-payloads"
 import { wallClockDrift } from "@/lib/services/attendance-device.service"
 
 describe("what an agent sends (ATTENDANCE_PLAN.md §17)", () => {
@@ -10,6 +10,20 @@ describe("what an agent sends (ATTENDANCE_PLAN.md §17)", () => {
         expect(heartbeatSchema.safeParse({ ...beat, clock: "2026-10-01T08:00:00" }).success).toBe(false)
         expect(heartbeatSchema.safeParse({ ...beat, devices: [{ serialNumber: "SN1", reachable: true, clock: "2026-10-01 08:00" }] }).success).toBe(false)
         expect(heartbeatSchema.safeParse({ ...beat, devices: [{ serialNumber: " ", reachable: true }] }).success).toBe(false)
+    })
+
+    it("knows a time no calendar has, as a damaged terminal record reads (review on #17)", () => {
+        for (const ok of ["2026-02-28T23:59:59", "2028-02-29T09:00:00", "2000-01-01T00:00:00"]) expect(isRealWallClock(ok), ok).toBe(true)
+        // A terminal packs months of 31 days; Date would quietly make the first 2 March.
+        for (const bad of ["2026-02-30T09:00:00", "2026-04-31T09:00:00", "2027-02-29T09:00:00", "2026-13-01T09:00:00", "2026-10-01T24:00:00", "2026-10-01T23:60:00", "1999-12-31T23:59:59", "2133-01-01T00:00:00"]) {
+            expect(isRealWallClock(bad), bad).toBe(false)
+        }
+    })
+
+    it("leaves out a terminal clock no calendar has, rather than refusing the heartbeat and every punch behind it", () => {
+        const parsed = heartbeatSchema.parse({ ...beat, devices: [{ serialNumber: "SN1", reachable: true, clock: "2026-02-30T08:00:10" }] })
+        expect(parsed.devices[0].clock).toBeUndefined()
+        expect(heartbeatSchema.parse(beat).devices[0].clock).toBe("2026-10-01T08:00:10")
     })
 
     it("keeps nothing it does not know, so a company or person id sent along goes nowhere", () => {

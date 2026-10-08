@@ -6,7 +6,7 @@ import { localToInstant } from "@/lib/attendance/punch-import"
 import { addDays } from "@/lib/attendance/calendar"
 import { offsetMsIn } from "@/lib/time"
 import type { AuthenticatedAgent } from "./attendance-agent.service"
-import type { PunchBatch } from "@/lib/attendance/agent-payloads"
+import { isRealWallClock, type PunchBatch } from "@/lib/attendance/agent-payloads"
 
 /**
  * Punches from the terminals, as an agent delivers them (ATTENDANCE_PLAN.md
@@ -27,9 +27,9 @@ import type { PunchBatch } from "@/lib/attendance/agent-payloads"
 /** How far ahead of the company's clock a punch may be: a terminal a little fast is not wrong. */
 export const FUTURE_TOLERANCE_MINUTES = 60
 
-export type Refusal = "UNKNOWN_DEVICE" | "DEVICE_RETIRED" | "MONTH_LOCKED" | "IN_FUTURE"
+export type Refusal = "UNKNOWN_DEVICE" | "DEVICE_RETIRED" | "MONTH_LOCKED" | "IN_FUTURE" | "INVALID_TIME"
 /** Only an unknown terminal can come right: the agent's next heartbeat brings it in. */
-const RETRYABLE: Record<Refusal, boolean> = { UNKNOWN_DEVICE: true, DEVICE_RETIRED: false, MONTH_LOCKED: false, IN_FUTURE: false }
+const RETRYABLE: Record<Refusal, boolean> = { UNKNOWN_DEVICE: true, DEVICE_RETIRED: false, MONTH_LOCKED: false, IN_FUTURE: false, INVALID_TIME: false }
 
 const wallClock = (local: string) => new Date(`${local}Z`)
 const monthOf = (local: string) => local.slice(0, 7)
@@ -56,6 +56,8 @@ export class AttendanceIngestService {
             // Each punch once, by its key, in the order it came.
             const candidates = new Map<string, { index: number; deviceId: string; mode: string; userNumber: string; at: string }>()
             batch.punches.forEach((p, index) => {
+                // A damaged record: stored, it would land on another day, in a month its own lock doesn't cover.
+                if (!isRealWallClock(p.at)) return refuse(index, "INVALID_TIME")
                 const d = device.get(p.serialNumber)
                 if (!d) return refuse(index, "UNKNOWN_DEVICE")
                 if (d.retiredAt) return refuse(index, "DEVICE_RETIRED")
