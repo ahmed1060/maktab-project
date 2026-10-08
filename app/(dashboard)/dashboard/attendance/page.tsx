@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -60,6 +60,8 @@ export default function AttendancePage() {
     const { setTitle, setSubtitle } = useHeader()
     const { data: session, status } = useSession()
     const params = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
     const p = useCan()
     const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
     const companyId = isSuperAdmin ? params.get('companyId') : null
@@ -87,11 +89,15 @@ export default function AttendancePage() {
         ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
     ]
     // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
-    // A tab picked by hand holds only under the link it was picked under: a new link wins.
+    // A tab picked by hand goes into the address too: the same notice's link followed again is then a change
+    // of address, and opens its tab, where a pick held aside kept winning (review on #21).
     const linked = params.get('tab') as Tab | null
-    const [picked, setPicked] = useState<{ tab: Tab; under: Tab | null } | null>(null)
-    const setTab = (k: Tab) => setPicked({ tab: k, under: linked })
-    const tab: Tab = picked && picked.under === linked ? picked.tab : linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
+    const setTab = (k: Tab) => {
+        const next = new URLSearchParams(params.toString())
+        next.set('tab', k)
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+    }
+    const tab: Tab = linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
 
     if (status === 'loading') return <LoadingSpinner />
     // Failed, it says so: everything below waits on the company's date, and a spinner would wait for good (review on #12).

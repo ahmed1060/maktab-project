@@ -252,6 +252,15 @@ describe("the screen's dates (review on #12)", () => {
     })
 })
 
+describe("the page's tabs (review on #21)", () => {
+    it("keep a tab picked by hand in the address, so a notice's link followed again opens its tab", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).toMatch(/const setTab = \(k: Tab\) => \{\s*const next = new URLSearchParams\(params\.toString\(\)\)\s*next\.set\('tab', k\)\s*router\.replace\(/)
+        expect(page).toContain("const tab: Tab = linked && tabs.includes(linked) ? linked :")
+        expect(page).not.toContain("setPicked")
+    })
+})
+
 describe("a long list (review on #12)", () => {
     it("says it stopped short rather than passing for the whole record", async () => {
         admin()
