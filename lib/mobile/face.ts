@@ -2,6 +2,7 @@ import { attestedText, faceDeletedText, faceKeyText, faceReviewId, faceText, typ
 import type { CheckInDevice } from "./native"
 import { pendingTemplatesAction, type FaceStatus } from "./screen"
 import type { Post } from "./check-in-flow"
+import type { PHONE_KEYS } from "./kept-storage"
 
 /**
  * Face verification, as the app does it (ATTENDANCE_PLAN.md §9.5, §10.4).
@@ -211,7 +212,8 @@ export async function settleTemplates(face: FaceVerifier, status: FaceStatus, se
 /** Which review this phone's waiting templates were sent with, kept beside them. */
 export type SentRecord = { get(): string | null; set(reviewId: string | null): void }
 
-const SENT_KEY = "nizmo-face-sent-review"
+/** Left when the site's storage is cleared (lib/mobile/kept-storage.ts). */
+const SENT_KEY: (typeof PHONE_KEYS)[number] = "nizmo-face-sent-review"
 let sentInMemory: string | null = null
 
 /** The record in the app's storage, or in memory where there is none. */
