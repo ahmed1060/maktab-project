@@ -482,6 +482,9 @@ export class UserService {
             if (companyChanging) {
                 updateData.checkInPhones = { updateMany: { where: { status: { in: ["ACTIVE", "PENDING"] } }, data: { status: "REVOKED", decidedAt: new Date(), reason: "MOVED_COMPANY" } } }
                 updateData.attendancePunches = { updateMany: { where: { status: "PENDING_DEVICE" }, data: { status: "REJECTED" } } }
+                // Their session names the old company, and nothing refreshes it: kept, it would act in the old
+                // company with the new role's grants. Ended, they sign in to the new one (review on #21).
+                updateData.sessionVersion = { increment: 1 }
             }
 
             // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).

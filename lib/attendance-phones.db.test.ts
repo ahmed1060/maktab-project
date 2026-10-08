@@ -208,7 +208,11 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         await Phones.decide(inUse.id, { approve: true }, "a1")
         const waiting = await register("m1")
         const punch = await held("m1", waiting.id)
+        const version = async () => (await db.query(`SELECT "sessionVersion" FROM "User" WHERE id = 'm1'`)).rows[0].sessionVersion
+        const before = await version()
         await UserService.update({ id: "m1", companyId: "c2" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
+        // Their session, which names the old company, ends (review on #21).
+        expect(await version()).toBe(before + 1)
         expect(await status(inUse.id)).toBe("REVOKED")
         expect(await status(waiting.id)).toBe("REVOKED")
         expect(await punchStatus(punch)).toMatchObject({ status: "REJECTED" })
