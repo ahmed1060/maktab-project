@@ -172,6 +172,17 @@ export function reverifyFirst(status: FaceStatus | undefined, here: { phoneActiv
 }
 
 /**
+ * Whether the check-in carries a face check: from the phone in use, once its
+ * face is approved, with templates made by this app's face model. The status
+ * is the phone in use's, so a replacement waiting for approval read it as
+ * its own: it asked for a face key it can't have before every check-in, two
+ * requests for nothing under "Checking your face" (review on #49).
+ */
+export function checksFace(status: FaceStatus | undefined, here: { phoneActive: boolean; modelVersion?: string | null }): boolean {
+    return here.phoneActive && !!status?.active && !modelChanged(status, here.modelVersion)
+}
+
+/**
  * What becomes of templates waiting on this phone (§9.5). They are promoted
  * only once the very review they were sent with is approved: the app
  * records the id that review is stored under before the photo goes

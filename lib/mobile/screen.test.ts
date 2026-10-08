@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
-import { answerKey, thisPhone, faceCardNote, faceModelNeeded, faceReady, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, withinTime, FACE_PLUGIN_WAIT_MS, SENT_SETTLES_MS, type FaceStatus } from "./screen"
+import { answerKey, checksFace, thisPhone, faceCardNote, faceModelNeeded, faceReady, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, withinTime, FACE_PLUGIN_WAIT_MS, SENT_SETTLES_MS, type FaceStatus } from "./screen"
 import { readSent } from "./face"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
@@ -160,6 +160,19 @@ describe("face templates and re-verification on this phone", () => {
         expect(reverifyFirst(status({ reverifyDue: true }), { phoneActive: false })).toBe(false)
         const old = status({ phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } })
         expect(reverifyFirst(old, { phoneActive: false, modelVersion: "prototype-insightface-r50-v2" })).toBe(false)
+    })
+
+    it("checks the face only from the phone in use, with its approved templates from this face model (review on #49)", () => {
+        const here = { phoneActive: true, modelVersion: "prototype-insightface-r50-v2" }
+        expect(checksFace(status(), here)).toBe(true)
+        // A replacement waiting for approval: the status is the old phone's, approved, and this one has no face key.
+        expect(checksFace(status(), { ...here, phoneActive: false })).toBe(false)
+        expect(checksFace(status({ active: false }), here)).toBe(false)
+        expect(checksFace(status({ phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } }), here)).toBe(false)
+        expect(checksFace(undefined, here)).toBe(false)
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        expect(page).toContain("checkIn(device!, post, direction, checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? face : null)")
+        expect(page).toContain("const working = face && checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? t('face_ci_checking')")
     })
 
     it("starts the next check-in by setting the face up again with a new face model, and leaves the old templates out of it", () => {

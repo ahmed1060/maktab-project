@@ -12,7 +12,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceCardNote, faceModelNeeded, faceReady, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { answerKey, checksFace, faceCardNote, faceModelNeeded, faceReady, faceStep, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
 import { enrolFace, faceInfo, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
 import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
@@ -155,9 +155,9 @@ export default function CheckInPage() {
                 } catch (e) { if (errorCode(e) !== 'FACE_CANCELLED') problem(e) }
                 void refreshFace()
             }
-            // Templates from another face model can't be matched: no face check until the new face is approved,
-            // and the server sends the check-in for a review, as with no face check at all.
-            setAnswer(await checkIn(device!, post, direction, faceStatus?.active && !modelChanged(faceStatus, faceModel) ? face : null))
+            // Templates from another face model can't be matched, and a replacement waiting for approval has
+            // none: no face check, and the server sends the check-in for a review, as with no face check at all.
+            setAnswer(await checkIn(device!, post, direction, checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? face : null))
         } catch (e) { problem(e) } finally { setBusy(null) }
     }
 
@@ -196,7 +196,7 @@ export default function CheckInPage() {
     const step = faceStep(faceStatus, { phoneActive: which.mine === 'ACTIVE', verifier: !!face, modelVersion: faceModel })
     const { mine, other, keyFailed } = which
     const label = (ph: Phone) => ph.model || t(`audit_value_${ph.platform}` as TranslationKey)
-    const working = faceStatus?.active && face ? t('face_ci_checking') : t('ci_locating')
+    const working = face && checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? t('face_ci_checking') : t('ci_locating')
 
     return (
         <div style={{ display: 'grid', gap: '1rem', maxWidth: '36rem' }}>
