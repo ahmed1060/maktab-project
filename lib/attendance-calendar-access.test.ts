@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { readFileSync } from "node:fs"
 import { state, prismaMock, withBody, url } from "./permissions/employee-access.harness"
 import { encodeGrants } from "./permissions/grants"
 import { stepUpConfirmed } from "./permissions/test-actors"
@@ -45,6 +46,12 @@ vi.mock("@/lib/services/attendance-engine.service", () => ({
         simulate: async (companyId: string, month: string) => {
             reached.push(`simulate:${companyId}:${month}`)
             // Ranked by money, as the engine ranks them: Zainab's day is worth three of Amal's.
+            // Only overtime changes: a higher multiplier.
+            if (month === "2026-06") {
+                const sum = { deductionDays: 0, deductionMinor: 0, overtimeMinor: 10000, days: 30 }
+                const more = { ...sum, overtimeMinor: 13500 }
+                return { month, people: [{ userId: "emp", name: "Ehab", current: sum, draft: more }], totals: { current: sum, draft: more } }
+            }
             if (month === "2026-07") {
                 const day = (minor: number) => ({ deductionDays: 0, deductionMinor: 0, overtimeMinor: 0, days: 30, ...(minor ? { deductionDays: 1, deductionMinor: minor } : {}) })
                 return {
@@ -274,6 +281,11 @@ describe("the policy", () => {
         // Nor their order, which the engine sets by money: by days, then name (review on #15).
         const ranked = (await (await (await import("@/app/api/attendance/policy/simulate/route")).POST(withBody("POST", "/api/attendance/policy/simulate", { body: POLICY.body, month: "2026-07" }))).json()).data
         expect(ranked.people.map((p: { name: string }) => p.name)).toEqual(["Amal", "Zainab"])
+        // A draft that changes only overtime still says whom it reaches, without the amount (review on #15).
+        const overtime = (await (await (await import("@/app/api/attendance/policy/simulate/route")).POST(withBody("POST", "/api/attendance/policy/simulate", { body: POLICY.body, month: "2026-06" }))).json()).data
+        expect(overtime.people[0]).toMatchObject({ overtimeChanged: true, current: { overtimeMinor: null }, draft: { overtimeMinor: null } })
+        expect(overtime.totals.overtimeChanged).toBe(true)
+        expect(readFileSync("components/AttendancePolicyPanel.tsx", "utf8")).toContain("|| !!x.overtimeChanged) ?? []")
     })
 
     it("has templates only the Super Admin keeps", async () => {

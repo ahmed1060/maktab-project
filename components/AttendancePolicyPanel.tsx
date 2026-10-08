@@ -473,7 +473,7 @@ export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fr
 
 type Sum = { deductionDays: number; deductionMinor: number | null; overtimeMinor: number | null; days: number }
 /** Money is null for whoever may not see salaries: then the preview is in days. */
-type Simulation = { month: string; moneyHidden?: boolean; people: { userId: string; name: string; current: Sum; draft: Sum }[]; totals: { current: Sum; draft: Sum } }
+type Simulation = { month: string; moneyHidden?: boolean; people: { userId: string; name: string; current: Sum; draft: Sum; overtimeChanged?: boolean }[]; totals: { current: Sum; draft: Sum; overtimeChanged?: boolean } }
 
 /**
  * "Under this rule, last month would have been…" (§6.7): the draft replayed
@@ -531,7 +531,8 @@ function SimulationPreview({ companyId, draft }: { companyId: string; draft: Pol
 
     const data = result?.data
     const hidden = !!data?.moneyHidden
-    const changed = data?.people.filter(x => x.current.deductionDays !== x.draft.deductionDays || x.current.deductionMinor !== x.draft.deductionMinor || x.current.overtimeMinor !== x.draft.overtimeMinor) ?? []
+    // Without the money, whether overtime pay changes comes as a flag (review on #15).
+    const changed = data?.people.filter(x => x.current.deductionDays !== x.draft.deductionDays || x.current.deductionMinor !== x.draft.deductionMinor || x.current.overtimeMinor !== x.draft.overtimeMinor || !!x.overtimeChanged) ?? []
     const days = (n: number) => t('day_days').replace('{n}', String(n))
     const signedDays = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${days(Math.round(Math.abs(n) * 10_000) / 10_000)}`
     return (
@@ -558,6 +559,7 @@ function SimulationPreview({ companyId, draft }: { companyId: string; draft: Pol
                         {!hidden && data.totals.current.overtimeMinor !== data.totals.draft.overtimeMinor && (
                             <> {t('sim_overtime').replace('{diff}', signed((data.totals.draft.overtimeMinor ?? 0) - (data.totals.current.overtimeMinor ?? 0)))}</>
                         )}
+                        {hidden && data.totals.overtimeChanged && <> {t('sim_overtime_changes')}</>}
                     </p>
                     {data.totals.current.days === 0 ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('sim_no_days')}</p>
                         : changed.length === 0 ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('sim_no_change')}</p>
@@ -576,6 +578,7 @@ function SimulationPreview({ companyId, draft }: { companyId: string; draft: Pol
                                                         {!hidden && x.current.overtimeMinor !== x.draft.overtimeMinor && (
                                                             <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: 400 }}>{t('sim_overtime').replace('{diff}', signed((x.draft.overtimeMinor ?? 0) - (x.current.overtimeMinor ?? 0)))}</div>
                                                         )}
+                                                        {hidden && x.overtimeChanged && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: 400 }}>{t('sim_overtime_changes')}</div>}
                                                     </td>
                                                 </tr>
                                             ))}

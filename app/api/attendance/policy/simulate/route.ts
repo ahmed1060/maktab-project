@@ -36,13 +36,16 @@ export const POST = withStandardHandler(async (_req, session, json) => {
     if (canCompanyWide(session.user, "salary.view") && can(session.user, "salary.view", { companyId: companyId! })) return ApiResponse.success(result)
     const days = <T extends { deductionDays: number; days: number }>(s: T) => ({ deductionDays: s.deductionDays, days: s.days, deductionMinor: null, overtimeMinor: null })
     const daysMoved = (p: { current: { deductionDays: number }; draft: { deductionDays: number } }) => p.draft.deductionDays - p.current.deductionDays
+    // Whether overtime pay would change, not by how much: a draft that changes only overtime still shows whom
+    // it reaches, rather than "nobody's" (review on #15).
+    const overtimeChanged = (s: { current: { overtimeMinor: number }; draft: { overtimeMinor: number } }) => s.draft.overtimeMinor !== s.current.overtimeMinor
     return ApiResponse.success({
         ...result,
         moneyHidden: true,
         // Ordered by days and name: the engine's order, by money, would rank everyone's pay (review on #15).
         people: result.people
-            .map(p => ({ ...p, current: days(p.current), draft: days(p.draft) }))
+            .map(p => ({ ...p, current: days(p.current), draft: days(p.draft), overtimeChanged: overtimeChanged(p) }))
             .sort((a, b) => daysMoved(b) - daysMoved(a) || a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId)),
-        totals: { current: days(result.totals.current), draft: days(result.totals.draft) },
+        totals: { current: days(result.totals.current), draft: days(result.totals.draft), overtimeChanged: overtimeChanged(result.totals) },
     })
 })

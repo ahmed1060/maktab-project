@@ -1557,6 +1557,7 @@ export const ar = {
         sim_summary: "وفق هذه القواعد، كانت خصومات {month} ستبلغ {then} بدلًا من {now} ({diff}).",
         sim_summary_days: "وفق هذه القواعد، كان {month} سيخصم {then} بدلًا من {now}. (المبالغ تظهر فقط لمن يحق لهم رؤية الرواتب.)",
         sim_overtime: "أجر العمل الإضافي {diff}.",
+        sim_overtime_changes: "يتغير أجر العمل الإضافي.",
         sim_no_days: "لم تُقَس أيام في ذلك الشهر، فلا شيء للمقارنة.",
         sim_no_change: "لن تتغير خصومات أحد ولا عمله الإضافي.",
         sim_person: "الموظف",
