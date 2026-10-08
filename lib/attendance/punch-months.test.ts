@@ -1,7 +1,25 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
 import type { Prisma } from "@prisma/client"
-import { punchMonthsOf } from "@/lib/services/attendance-lock"
+
+// The 1st's shift, from the calendar as the engine reads it (review on #49).
+const calendar = vi.hoisted(() => ({ firsts: new Map<string, { startMinutes: number; endMinutes: number }>(), asked: 0 }))
+vi.mock("@/lib/services/attendance-engine.service", () => ({
+    AttendanceEngineService: {
+        plansFor: async (_companyId: string, userIds: string[], dates: string[]) => {
+            calendar.asked += 1
+            return {
+                plans: new Map(userIds.map(u => [u, new Map(dates.flatMap(d => {
+                    const hours = calendar.firsts.get(`${u}:${d}`)
+                    return hours ? [[d, { kind: "WORK", hours: { ...hours, breakMinutes: 0 }, versionId: "v", overrideId: null }]] : []
+                }))])),
+                policyOn: () => null,
+            }
+        },
+    },
+}))
+
+const { punchMonthsOf } = await import("@/lib/services/attendance-lock")
 import { assignPunches } from "@/lib/attendance/engine"
 import type { ExpectedDay } from "@/lib/attendance/calendar"
 
@@ -12,6 +30,7 @@ import type { ExpectedDay } from "@/lib/attendance/calendar"
  * held, and was a query each (review on #22).
  */
 describe("the months many punches can change", () => {
+    beforeEach(() => { calendar.firsts.clear(); calendar.asked = 0 })
     const tx = (nights: { userId: string; date: string; expectedEndMinutes: number | null }[]) => {
         const findMany = vi.fn(async () => nights.map(n => ({ ...n, date: new Date(`${n.date}T00:00:00Z`) })))
         return { findMany, tx: { attendanceDay: { findMany, findUnique: vi.fn() } } as unknown as Prisma.TransactionClient }
@@ -23,6 +42,7 @@ describe("the months many punches can change", () => {
         const punches = Array.from({ length: 300 }, (_, i) => ({ userId: "e3", local: `2026-10-01T${String(i % 24).padStart(2, "0")}:00:00` }))
         const months = await punchMonthsOf(t.tx, "c1", punches)
         expect(t.findMany).toHaveBeenCalledTimes(1)
+        expect(calendar.asked).toBe(1)
         expect(months[6]).toEqual(["2026-10", "2026-09"])
         expect(months[12]).toEqual(["2026-10", "2026-09"])
         expect(months[13]).toEqual(["2026-10"])
@@ -32,14 +52,13 @@ describe("the months many punches can change", () => {
         const t = tx([])
         expect(await punchMonthsOf(t.tx, "c1", [{ userId: "e3", local: "2026-10-02T06:00:00" }, { userId: null, local: "2026-10-01T06:00:00" }])).toEqual([["2026-10"], ["2026-10"]])
         expect(t.findMany).not.toHaveBeenCalled()
+        expect(calendar.asked).toBe(0)
     })
 
     it("leaves to the 1st a punch nearer its own shift, as the engine assigns it (review on #13)", async () => {
         // The night roster ends with the month: 30 September 22:00–06:00, then 10:00–18:00 days from 1 October.
-        const t = tx([
-            { userId: "e3", date: "2026-09-30", expectedEndMinutes: 1800 },
-            { userId: "e3", date: "2026-10-01", expectedEndMinutes: 1080, expectedStartMinutes: 600 } as never,
-        ])
+        const t = tx([{ userId: "e3", date: "2026-09-30", expectedEndMinutes: 1800 }])
+        calendar.firsts.set("e3:2026-10-01", { startMinutes: 600, endMinutes: 1080 })
         const at = (time: string) => ({ userId: "e3", local: `2026-10-01T${time}:00` })
         const [late, early, tie] = await punchMonthsOf(t.tx, "c1", [at("09:30"), at("06:30"), at("08:00")])
         // 09:30: half an hour before the day's start, three and a half after the night's end.
@@ -56,6 +75,16 @@ describe("the months many punches can change", () => {
         const assigned = assignPunches(["09:30", "06:30", "08:00"].map(time => ({ id: time, at: `2026-10-01T${time}:00`, direction: null })), plans)
         expect(assigned.get("2026-10-01")?.map(p => p.id)).toEqual(["09:30"])
         expect(assigned.get("2026-09-30")?.map(p => p.id)).toEqual(["06:30", "08:00"])
+    })
+
+    it("takes the 1st's shift from the calendar, not a stored day a failed rebuild left behind (review on #49)", async () => {
+        // Stored, the 1st still starts at 10:00; the calendar has since moved it to 14:00, so 09:30 is the night's.
+        const t = tx([
+            { userId: "e3", date: "2026-09-30", expectedEndMinutes: 1800 },
+            { userId: "e3", date: "2026-10-01", expectedEndMinutes: 1080, expectedStartMinutes: 600 } as never,
+        ])
+        calendar.firsts.set("e3:2026-10-01", { startMinutes: 840, endMinutes: 1320 })
+        expect(await punchMonthsOf(t.tx, "c1", [{ userId: "e3", local: "2026-10-01T09:30:00" }])).toEqual([["2026-10", "2026-09"]])
     })
 
     it("is what approving a phone takes for what it held", () => {
