@@ -234,11 +234,18 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
 
     it("flags a new phone's check-ins until its face is approved: changing phone doesn't turn the face check off (§9.3)", async () => {
         await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
-        // The face set up and approved on the old phone, then the old phone revoked and a new one approved.
-        await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED', status = 'REVOKED' WHERE id = 'p1'`)
+        // The face set up and approved on the old phone; a new one asked for.
+        await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED' WHERE id = 'p1'`)
         const next = standInPhone()
         const publicKey = (await next.publicKey())!
-        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p2', 'c1', 'e1', $1, $2, 'ANDROID', 'ACTIVE')`, [publicKey, parsePhoneKey(publicKey)!.fingerprint])
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p2', 'c1', 'e1', $1, $2, 'ANDROID', 'PENDING')`, [publicKey, parsePhoneKey(publicKey)!.fingerprint])
+        // Held while the new phone waits: no face of its own, whatever the old one had, so not a failed match (review on #49).
+        const held = await checkIn(next, serverFor("e1"), "IN", null)
+        expect(held).toMatchObject({ outcome: "HELD", reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
+        expect(held).toMatchObject({ reasons: expect.not.arrayContaining(["FACE_UNVERIFIED"]) })
+        // Approved: the old phone revoked, the new one in use.
+        await db.query(`UPDATE "CheckInPhone" SET status = 'REVOKED' WHERE id = 'p1'`)
+        await db.query(`UPDATE "CheckInPhone" SET status = 'ACTIVE' WHERE id = 'p2'`)
         expect(await checkIn(next, serverFor("e1"), "IN", null)).toMatchObject({ outcome: "FLAGGED", reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
         // Its photo sent and waiting: still not a face it can be matched against.
         const review = await enrolFace(next, standInFace(), serverFor("e1"))

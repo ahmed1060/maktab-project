@@ -74,7 +74,7 @@ export class AttendanceCheckInService {
         // The phone by its key; its status is read again under the lock below.
         const phone = await prisma.checkInPhone.findFirst({
             where: { userId, keyFingerprint: input.keyFingerprint },
-            select: { id: true, publicKey: true, platform: true, appAttestKey: true, appAttestCounter: true },
+            select: { id: true, status: true, publicKey: true, platform: true, appAttestKey: true, appAttestCounter: true },
         })
         // A key we don't know can't be checked: there is nothing to check it with.
         const key = phone ? parsePhoneKey(phone.publicKey) : null
@@ -92,11 +92,13 @@ export class AttendanceCheckInService {
         // approved templates and keeps the new ones aside until approval
         // (lib/mobile/face.ts), so check-ins keep working (§9.5, review on #27).
         const faceStatus = worthAsking ? await FaceVerificationService.statusFor(userId) : null
-        const faceRequired = !!faceStatus?.active
-        // Asked of the person, who consented, but with no approved face on the phone in use to match
-        // against: a new phone (the face data never left the old one), or its photo waiting or rejected.
-        // Flagged until it has one: otherwise changing phone turned the face check off (§9.3).
-        const faceNotSetUp = !!faceStatus && faceStatus.required && !!faceStatus.consent && !faceStatus.active
+        // Matched against the face approved on the phone that signed: one still waiting for approval has none
+        // of its own, whatever the phone it replaces had (review on #49).
+        const faceRequired = !!faceStatus?.active && phone?.status === "ACTIVE"
+        // Asked of the person, who consented, but with no approved face on this phone to match against: a
+        // new phone (the face data never left the old one), or its photo waiting or rejected. Flagged until
+        // it has one: otherwise changing phone turned the face check off (§9.3).
+        const faceNotSetUp = !!faceStatus && faceStatus.required && !!faceStatus.consent && !faceRequired
         const frame = faceRequired ? frameOf(input) : null
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
