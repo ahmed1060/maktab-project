@@ -67,6 +67,14 @@ describe("a check-in from the app", () => {
         expect(judgeCheckIn(facts({ ip: null }))).toMatchObject({ outcome: "ACCEPTED" })
     })
 
+    it("is flagged when the face check failed, or when the phone in use has no approved face to check against", () => {
+        expect(judgeCheckIn(facts({ face: { required: true, verified: true } }))).toMatchObject({ outcome: "ACCEPTED" })
+        expect(judgeCheckIn(facts({ face: { required: true, verified: false } }))).toMatchObject({ outcome: "FLAGGED", reasons: ["FACE_UNVERIFIED"] })
+        // A new phone: nothing to match against, which isn't a failed match.
+        expect(judgeCheckIn(facts({ face: { required: false, verified: false, notSetUp: true } }))).toMatchObject({ outcome: "FLAGGED", reasons: ["FACE_NOT_SET_UP"] })
+        expect(judgeCheckIn(facts({ face: { required: false, verified: false } }))).toMatchObject({ outcome: "ACCEPTED" })
+    })
+
     it("names every reason when several things are off, and holds a new phone's check-in with them for its approval", () => {
         const all = facts({ fix: { ...DOWN_THE_ROAD, accuracyMeters: 500 }, places: [{ ...OFFICE, officeIpRanges: ["198.51.100.0/24"] }], attestation: { verified: false, required: false } })
         expect(judgeCheckIn(all)).toMatchObject({ outcome: "FLAGGED", reasons: ["OUTSIDE_AREA", "IMPRECISE_LOCATION", "OFFICE_IP_MISMATCH", "ATTESTATION_UNVERIFIED"] })

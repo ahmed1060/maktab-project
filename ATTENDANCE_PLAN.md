@@ -656,7 +656,9 @@ whole rule.
   `PENDING_DEVICE` and count only once it is approved, so a slow approval does not
   cost the employee a day.
 - **Face enrolment is per phone** (§9.5). A new phone means enrolling again,
-  because the face data never left the old one.
+  because the face data never left the old one. Until the new phone's photo is
+  approved, its check-ins are flagged for review ("no approved face on this
+  phone"), so changing phone never turns the face check off.
 
 ### 9.4 Location that can be trusted
 

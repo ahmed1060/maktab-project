@@ -1293,6 +1293,7 @@ export const ar = {
         att_flag_IMPRECISE_LOCATION: "الموقع غير دقيق",
         att_flag_OFFICE_IP_MISMATCH: "ليس على شبكة المكتب",
         att_flag_FACE_UNVERIFIED: "فشل التحقق بالوجه",
+        att_flag_FACE_NOT_SET_UP: "لا يوجد وجه معتمد على هذا الهاتف",
         att_flag_ATTESTATION_UNVERIFIED: "التطبيق غير موثّق (تجريبي)",
         punch_source_terminal: "جهاز: {name}",
         punch_number: "الرقم {code}، غير منسوب لأحد",

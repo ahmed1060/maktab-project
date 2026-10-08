@@ -231,4 +231,21 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         // The person checks in without face verification, and it isn't held against them.
         expect(await checkIn(phone, serverFor("e1"), "OUT", null)).toMatchObject({ reasons: ["ATTESTATION_UNVERIFIED"] })
     })
+
+    it("flags a new phone's check-ins until its face is approved: changing phone doesn't turn the face check off (§9.3)", async () => {
+        await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
+        // The face set up and approved on the old phone, then the old phone revoked and a new one approved.
+        await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED', status = 'REVOKED' WHERE id = 'p1'`)
+        const next = standInPhone()
+        const publicKey = (await next.publicKey())!
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p2', 'c1', 'e1', $1, $2, 'ANDROID', 'ACTIVE')`, [publicKey, parsePhoneKey(publicKey)!.fingerprint])
+        expect(await checkIn(next, serverFor("e1"), "IN", null)).toMatchObject({ outcome: "FLAGGED", reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
+        // Its photo sent and waiting: still not a face it can be matched against.
+        const review = await enrolFace(next, standInFace(), serverFor("e1"))
+        expect(await checkIn(next, serverFor("e1"), "OUT", null)).toMatchObject({ reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
+        // Approved, the phone's face check is in use: no longer flagged for it.
+        await Reviews.decide(review.id, true, null, { id: "a1", isSuperAdmin: false })
+        const answer = await checkIn(next, serverFor("e1"), "IN", null)
+        expect(answer).toMatchObject({ reasons: expect.not.arrayContaining(["FACE_NOT_SET_UP"]) })
+    })
 })

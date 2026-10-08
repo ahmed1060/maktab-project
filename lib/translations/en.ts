@@ -1294,6 +1294,7 @@ export const en = {
         att_flag_IMPRECISE_LOCATION: "location too vague",
         att_flag_OFFICE_IP_MISMATCH: "not on the office network",
         att_flag_FACE_UNVERIFIED: "face check failed",
+        att_flag_FACE_NOT_SET_UP: "no approved face on this phone",
         att_flag_ATTESTATION_UNVERIFIED: "app not verified (testing)",
         punch_source_terminal: "Terminal: {name}",
         punch_number: "Number {code}, nobody yet",

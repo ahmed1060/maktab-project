@@ -91,7 +91,12 @@ export class AttendanceCheckInService {
         // While a re-verification photo waits, the app still matches against the
         // approved templates and keeps the new ones aside until approval
         // (lib/mobile/face.ts), so check-ins keep working (§9.5, review on #27).
-        const faceRequired = worthAsking && (await FaceVerificationService.statusFor(userId)).active
+        const faceStatus = worthAsking ? await FaceVerificationService.statusFor(userId) : null
+        const faceRequired = !!faceStatus?.active
+        // Asked of the person, who consented, but with no approved face on the phone in use to match
+        // against: a new phone (the face data never left the old one), or its photo waiting or rejected.
+        // Flagged until it has one: otherwise changing phone turned the face check off (§9.3).
+        const faceNotSetUp = !!faceStatus && faceStatus.required && !!faceStatus.consent && !faceStatus.active
         const frame = faceRequired ? frameOf(input) : null
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
@@ -128,7 +133,7 @@ export class AttendanceCheckInService {
                 mocked: input.mocked,
                 attestation: { verified: attestation.verified, required: attestationMode() === "required" },
                 // A result from the free prototype counts only where a test deployment allows it.
-                face: { required: faceRequired, verified: !!input.face?.verified && (!isPrototypeModel(input.face.modelVersion) || prototypeAllowed()) },
+                face: { required: faceRequired, verified: !!input.face?.verified && (!isPrototypeModel(input.face.modelVersion) || prototypeAllowed()), notSetUp: faceNotSetUp },
                 places, ip,
             })
             if (verdict.outcome === "REFUSED") {
