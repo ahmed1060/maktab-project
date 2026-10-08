@@ -765,6 +765,10 @@ model FacePurge {
   bySuperAdminId String
   keysDestroyed  Int
   photosDeleted  Int
+  /// Phones that have since acknowledged deleting the templates this purge
+  /// made unreadable. Kept here, not counted from the key rows, which go
+  /// with their phone or person.
+  acknowledged   Int      @default(0)
 }
 
 enum NotificationPriority {

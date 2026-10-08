@@ -977,8 +977,9 @@ Built into the design regardless of the answers:
   photo, pending photo and flagged frame, and asks each app to delete its
   (now unreadable) ciphertext. The purge record states both facts separately:
   *"keys destroyed — all templates unusable"* (immediate and complete) and
-  *"deletion acknowledged by N of M devices"* (tracked as phones check in).
-  The same mechanism applies to one employee on consent withdrawal or
+  *"deletion acknowledged by N of M devices"* (tracked as phones check in,
+  and counted on the purge record itself, so a phone or person deleted later
+  doesn't lower N). The same mechanism applies to one employee on consent withdrawal or
   archiving.
 - **The feature is gated on the company's legal readiness** — a company cannot
   switch face verification on until it has confirmed (and we have recorded) that

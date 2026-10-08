@@ -288,6 +288,10 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         await ackAs("e2")
         expect(await Keys.lastPurge()).toMatchObject({ keysDestroyed: 1, acknowledged: 1 })
         expect(await fetchKey("e1")).toEqual({ key: null, deleteTemplates: false })
+        // The count is the purge's own: the acknowledging phone's key row going with the phone doesn't lower it
+        // (review on #27). A phone deleted outright cascades its key row.
+        await db.query(`DELETE FROM "FaceWrappingKey" WHERE "userId" = 'e1'`)
+        expect(await Keys.lastPurge()).toMatchObject({ keysDestroyed: 1, acknowledged: 1 })
         const { rows } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'PURGE_FACE_VERIFICATION'`)
         expect(rows).toEqual([{ details: { faceVerification: { old: "ON", new: "OFF" }, keysDestroyed: 1, photosDeleted: 1 } }])
     })

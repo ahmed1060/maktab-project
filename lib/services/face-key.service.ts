@@ -91,7 +91,14 @@ export class FaceKeyService {
         if (!key || !signatureValid(key.key, faceDeletedText(input.nonce, input.keyFingerprint), input.signature)) fail("PHONE_SIGNATURE_INVALID")
         await prisma.$transaction(async tx => {
             if (!(await AttendanceChallengeService.consume(tx, userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
-            await tx.faceWrappingKey.updateMany({ where: { phoneId: phone.id, key: null, deleteAckAt: null }, data: { deleteAckAt: new Date() } })
+            const acked = await tx.$queryRaw<{ destroyedAt: Date | null }[]>`
+                UPDATE "FaceWrappingKey" SET "deleteAckAt" = ${new Date()}
+                WHERE "phoneId" = ${phone.id} AND key IS NULL AND "deleteAckAt" IS NULL
+                RETURNING "destroyedAt"`
+            // Counted on the purge that destroyed this key, if one did: the key row may go with its phone or
+            // person later, and the purge's count mustn't drop with it (review on #27).
+            const destroyedAt = acked[0]?.destroyedAt
+            if (destroyedAt) await tx.facePurge.updateMany({ where: { at: destroyedAt }, data: { acknowledged: { increment: 1 } } })
         })
     }
 
@@ -147,8 +154,7 @@ export class FaceKeyService {
     static async lastPurge() {
         const last = await prisma.facePurge.findFirst({ orderBy: { at: "desc" } })
         if (!last) return null
-        const acknowledged = await prisma.faceWrappingKey.count({ where: { destroyedAt: last.at, deleteAckAt: { not: null } } })
-        return { at: last.at, keysDestroyed: last.keysDestroyed, photosDeleted: last.photosDeleted, acknowledged }
+        return { at: last.at, keysDestroyed: last.keysDestroyed, photosDeleted: last.photosDeleted, acknowledged: last.acknowledged }
     }
 }
 
