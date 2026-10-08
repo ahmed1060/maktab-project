@@ -60,7 +60,10 @@ const SHOWN = {
 
 /** One person at a time: their phones change together, or not at all. */
 async function lockPerson(tx: Prisma.TransactionClient, userId: string) {
-    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+    // Not FOR UPDATE: that also blocks the key share a notice to this person takes for its foreign key, so two
+    // deciders registering phones at once, each telling the other, waited on each other until Postgres ended
+    // one as a deadlock (review on #21). This still keeps one phone write at a time for the person.
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR NO KEY UPDATE`
 }
 
 function visibleWhere(v: Visibility): Prisma.CheckInPhoneWhereInput {

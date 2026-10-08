@@ -234,6 +234,18 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         expect(await prisma.$transaction(tx => Challenges.consume(tx, "e4", "CHECK_IN", first.nonce))).toBe(false)
     })
 
+    it("registers while a notice to the person is being written elsewhere (review on #21)", async () => {
+        // A decider registering at the same moment tells e4, holding a key share on e4's row for the foreign key.
+        await db.query("BEGIN")
+        await db.query(`SELECT id FROM "User" WHERE id = 'e4' FOR KEY SHARE`)
+        const registering = register("e4")
+        registering.catch(() => {})
+        const done = await Promise.race([registering.then(() => true), new Promise(r => setTimeout(() => r(false), 2_000))])
+        await db.query("COMMIT")
+        await registering
+        expect(done).toBe(true)
+    })
+
     it("keeps one unused number per person and purpose when asked for at once (review on #21)", async () => {
         await Promise.all(Array.from({ length: 8 }, () => Challenges.issue("e4", "FACE")))
         const { rows: [{ n }] } = await db.query(`SELECT count(*)::int AS n FROM "AttendanceChallenge" WHERE "userId" = 'e4' AND purpose = 'FACE' AND "usedAt" IS NULL`)

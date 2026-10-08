@@ -125,7 +125,16 @@ describe.skipIf(!ADMIN_URL)("face verification photos, in Postgres", () => {
 
     it("replaces a photo still waiting, deleting it", async () => {
         const replacing = jpeg()
-        await send(replacing)
+        // A notice to Ehab being written meanwhile holds a key share on his row, as its foreign key does: the
+        // photo doesn't wait on it (review on #21).
+        await db.query("BEGIN")
+        await db.query(`SELECT id FROM "User" WHERE id = 'e1' FOR KEY SHARE`)
+        const sending = send(replacing)
+        sending.catch(() => {})
+        const done = await Promise.race([sending.then(() => true), new Promise(r => setTimeout(() => r(false), 2_000))])
+        await db.query("COMMIT")
+        await sending
+        expect(done).toBe(true)
         expect((await reviews()).map(r => [r.status, r.hasPhoto])).toEqual([["WITHDRAWN", false], ["PENDING", true]])
         // The first one's notices are done with.
         expect((await critical()).filter(n => !n.read)).toHaveLength(2)

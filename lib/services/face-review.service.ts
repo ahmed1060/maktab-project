@@ -93,7 +93,9 @@ export class FaceReviewService {
             // Asked and consented, checked again under the locks withdrawal, "no
             // longer asked" and purge take: none of them can finish deleting the
             // person's photos and then have this one stored after (review on #27).
-            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+            // NO KEY UPDATE, which still waits for theirs (FOR UPDATE), but not for the key share a notice to this
+            // person takes: a reviewer sending their own photo while telling this one waited on each other (review on #21).
+            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR NO KEY UPDATE`
             await tx.$queryRaw`SELECT id FROM "SystemSettings" WHERE id = 'default' FOR SHARE`
             const [current] = await tx.$queryRaw<{ status: string }[]>`SELECT status FROM "CheckInPhone" WHERE id = ${phone.id} FOR SHARE`
             if (current?.status !== "ACTIVE") fail("FACE_PHONE_NOT_ACTIVE")
