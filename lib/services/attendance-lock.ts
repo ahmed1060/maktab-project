@@ -46,15 +46,34 @@ export async function lockedMonths(tx: Prisma.TransactionClient, companyId: stri
  * month is never rewritten, so its hours are the ones it was paid on.
  */
 export async function punchMonths(tx: Prisma.TransactionClient, companyId: string, userId: string, local: string): Promise<string[]> {
-    const date = local.slice(0, 10)
-    const before = addDays(date, -1)
-    const months = [date.slice(0, 7)]
-    if (before.slice(0, 7) === months[0]) return months
-    const day = await tx.attendanceDay.findUnique({
-        where: { companyId_userId_date: { companyId, userId, date: new Date(`${before}T00:00:00Z`) } },
-        select: { expectedEndMinutes: true },
+    return (await punchMonthsOf(tx, companyId, [{ userId, local }]))[0]
+}
+
+/**
+ * punchMonths for many punches, with one read of the days before: what a
+ * file, a withdrawal or a number mapped brings to the month locks, and a
+ * phone approved with what it held (reviews on #13 and #22). A punch with
+ * nobody yet is its own date's only; it reaches a night once it is somebody's.
+ */
+export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<string[][]> {
+    const crossing = punches.filter(p => p.userId && addDays(p.local.slice(0, 10), -1).slice(0, 7) !== p.local.slice(0, 7))
+    const nights = crossing.length === 0 ? [] : await tx.attendanceDay.findMany({
+        where: {
+            companyId,
+            userId: { in: [...new Set(crossing.map(p => p.userId!))] },
+            date: { in: [...new Set(crossing.map(p => addDays(p.local.slice(0, 10), -1)))].map(d => new Date(`${d}T00:00:00Z`)) },
+        },
+        select: { userId: true, date: true, expectedEndMinutes: true },
     })
-    const minutesAfterBefore = 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16))
-    if (day?.expectedEndMinutes != null && minutesAfterBefore <= day.expectedEndMinutes + LATE_MARGIN_MINUTES) months.push(before.slice(0, 7))
-    return months
+    const endOf = new Map(nights.map(n => [`${n.userId}:${n.date.toISOString().slice(0, 10)}`, n.expectedEndMinutes]))
+    return punches.map(({ userId, local }) => {
+        const date = local.slice(0, 10)
+        const before = addDays(date, -1)
+        const months = [date.slice(0, 7)]
+        if (!userId || before.slice(0, 7) === months[0]) return months
+        const end = endOf.get(`${userId}:${before}`)
+        const minutesAfterBefore = 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16))
+        if (end != null && minutesAfterBefore <= end + LATE_MARGIN_MINUTES) months.push(before.slice(0, 7))
+        return months
+    })
 }

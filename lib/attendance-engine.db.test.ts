@@ -276,6 +276,23 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         await expect(Punches.voidPunch(id, "Wrong person", "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
     })
 
+    it("holds a file's, a number's and a withdrawal's punch after midnight to the night's approved month too (review on #13)", async () => {
+        // Eman's 06:20 on 1 October closes her 30 September night; Ehab's is October's.
+        const file = { name: "first.csv", hash: "first", rows: [["AC-No.", "Name", "Check Time", "State"], ["3", "Eman", "01/10/2026 06:20", "C/Out"], ["1", "Ehab", "01/10/2026 06:20", "C/In"]] }
+        expect(await Punches.importRows("c1", file, { dateOrder: "DMY" }, "a1", false)).toMatchObject({ ready: 1, locked: 1 })
+        const done = await Punches.importRows("c1", file, { dateOrder: "DMY" }, "a1", true)
+        expect(done).toMatchObject({ added: 1, locked: 1 })
+        const { rows: stored } = await db.query(`SELECT id, "userId" FROM "AttendancePunch" WHERE "importId" = $1`, [done.importId])
+        expect(stored.map(r => r.userId)).toEqual(["e1"])
+        // A number nobody had, mapped to Eman: her waiting 06:10 stays unmatched, as September was paid without it.
+        await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", source, "sourceKey", "importId", "hardwareUserId", "punchAtLocal", "punchAt", "resolvedWithTimeZone")
+            VALUES ('waiting-9', 'c1', 'IMPORT', 'first:waiting-9', $1, '9', '2026-10-01 06:10', now(), 'Africa/Cairo')`, [done.importId])
+        expect(await Punches.mapCode("c1", { code: "9", userId: "e3" }, "a1")).toMatchObject({ filled: 0, leftInLockedMonths: 1 })
+        // The file's punch, had it been Eman's, can't be withdrawn with it either.
+        await db.query(`UPDATE "AttendancePunch" SET "userId" = 'e3' WHERE id = $1`, [stored[0].id])
+        await expect(Punches.voidImport(done.importId!, "Wrong file", "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+    })
+
     it("derives no day that has not ended", async () => {
         const result = await Engine.recomputeMonth("c1", "2099-01")
         expect(result).toMatchObject({ derived: 0, written: 0 })
