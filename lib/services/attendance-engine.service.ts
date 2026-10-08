@@ -276,30 +276,41 @@ async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: stri
     for (const key of new Set([...now.keys(), ...was.keys(), ...settled.keys()])) {
         const [userId, date] = key.split(":")
         const n = now.get(key), w = was.get(key), r = opened.get(key), s = settled.get(key)
+        const current = { deduction: n?.deductionMinor ?? 0, overtime: n?.overtimeMinor ?? 0, status: n ? String(n.row.status) : null }
+        if (r) {
+            // Only while still open. Resolution doesn't wait for this month's lock, so one settled since it was
+            // read is history, kept as it was settled; the day is then measured from it below, as from any
+            // settled one (review on #16).
+            const open = { id: r.id, resolvedAt: null }
+            const back = current.deduction === r.paidDeductionMinor && current.overtime === r.paidOvertimeMinor
+            const moved = r.nowDeductionMinor !== current.deduction || r.nowOvertimeMinor !== current.overtime || r.nowStatus !== current.status
+            const { count } = back
+                // Back to what was paid or settled: nothing left to settle.
+                ? await tx.attendanceDiscrepancy.deleteMany({ where: open })
+                : moved
+                    ? await tx.attendanceDiscrepancy.updateMany({ where: open, data: { nowDeductionMinor: current.deduction, nowOvertimeMinor: current.overtime, nowStatus: current.status } })
+                    : { count: 1 }
+            if (count > 0) {
+                if (!back) differing += 1
+                continue
+            }
+        }
         // What the person has been paid for the day so far: as the payroll
         // paid it, or as last settled since (review on #16) — never the
         // original once a settlement has moved it.
-        const base = r ? { deduction: r.paidDeductionMinor, overtime: r.paidOvertimeMinor, status: r.paidStatus }
-            : s ? { deduction: s.nowDeductionMinor, overtime: s.nowOvertimeMinor, status: s.nowStatus ?? "NONE" }
-                : { deduction: w?.deductionMinor ?? 0, overtime: w?.overtimeMinor ?? 0, status: w?.status ?? "NONE" }
-        const figures = {
-            paidDeductionMinor: base.deduction, paidOvertimeMinor: base.overtime, paidStatus: base.status,
-            nowDeductionMinor: n?.deductionMinor ?? 0, nowOvertimeMinor: n?.overtimeMinor ?? 0, nowStatus: n ? String(n.row.status) : null,
-        }
-        if (figures.paidDeductionMinor === figures.nowDeductionMinor && figures.paidOvertimeMinor === figures.nowOvertimeMinor) {
-            // Back to what was paid or settled: nothing left to settle.
-            if (r) await tx.attendanceDiscrepancy.delete({ where: { id: r.id } })
-            continue
-        }
+        const last = r ?? s
+        const base = last ? { deduction: last.nowDeductionMinor, overtime: last.nowOvertimeMinor, status: last.nowStatus ?? "NONE" }
+            : { deduction: w?.deductionMinor ?? 0, overtime: w?.overtimeMinor ?? 0, status: w?.status ?? "NONE" }
+        if (base.deduction === current.deduction && base.overtime === current.overtime) continue
         differing += 1
-        if (r) {
-            if (r.nowDeductionMinor !== figures.nowDeductionMinor || r.nowOvertimeMinor !== figures.nowOvertimeMinor || r.nowStatus !== figures.nowStatus) {
-                await tx.attendanceDiscrepancy.update({ where: { id: r.id }, data: { nowDeductionMinor: figures.nowDeductionMinor, nowOvertimeMinor: figures.nowOvertimeMinor, nowStatus: figures.nowStatus } })
-            }
-            continue
-        }
         // New, or changed again after being settled: a new one, the settled one kept as it was.
-        await tx.attendanceDiscrepancy.create({ data: { companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id, ...figures } })
+        await tx.attendanceDiscrepancy.create({
+            data: {
+                companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id,
+                paidDeductionMinor: base.deduction, paidOvertimeMinor: base.overtime, paidStatus: base.status,
+                nowDeductionMinor: current.deduction, nowOvertimeMinor: current.overtime, nowStatus: current.status,
+            },
+        })
     }
     return differing
 }
