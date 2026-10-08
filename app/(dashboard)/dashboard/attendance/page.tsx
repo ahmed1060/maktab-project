@@ -74,7 +74,7 @@ export default function AttendancePage() {
     const correctsCompany = p.companyWide('attendance.correct')
     // The company's date, not the device's: around midnight, or for somebody
     // abroad, they differ, and every default date below starts from it (review on #12).
-    const { data: peopleBody } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
+    const { data: peopleBody, error: peopleError } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
     const today: string | undefined = peopleBody?.data?.today
     // Whoever sees other people's attendance starts on what needs a decision (§13.1).
     const seesOthers = p.can('attendance.view_team')
@@ -92,6 +92,8 @@ export default function AttendancePage() {
     const setTab = (k: Tab) => setPicked({ tab: k, under: linked })
     const tab: Tab = picked && picked.under === linked ? picked.tab : linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
 
+    // Failed, it says so: everything below waits on the company's date, and a spinner would wait for good (review on #12).
+    if (peopleError && !today && !(isSuperAdmin && !companyId)) return <p role="alert" style={{ color: 'var(--danger-fg)' }}>{t('error_generic')}</p>
     if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>

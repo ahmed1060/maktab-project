@@ -233,6 +233,12 @@ describe("the screen's dates (review on #12)", () => {
         expect(page).not.toMatch(/new Date\(\)\s*;\s*return\s*`\$\{d\.getFullYear\(\)/)
         expect(page).not.toMatch(/\.getDate\(\)/)
     })
+
+    it("says so when the company's date can't be had, instead of waiting for it for good", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).toContain("const { data: peopleBody, error: peopleError } = useSWR(")
+        expect(page).toMatch(/if \(peopleError && !today && [^\n]*\) return <p role="alert"[^\n]*t\('error_generic'\)/)
+    })
 })
 
 describe("a long list (review on #12)", () => {
