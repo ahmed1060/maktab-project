@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
-import { faceText } from "@/lib/attendance/signed-text"
+import { faceReviewId, faceText } from "@/lib/attendance/signed-text"
 import { isPrototypeModel, prototypeAllowed } from "@/lib/attendance/face-prototype-gate"
 import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { encryptFacePhoto, decryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
@@ -85,6 +85,8 @@ export class FaceReviewService {
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
         const purpose = phone.faceStatus === "APPROVED" ? "REVERIFY" as const : "ENROLMENT" as const
         const stored = encryptFacePhoto(photo)
+        // Known to the app before it sent the photo, from the number (faceReviewId).
+        const id = await faceReviewId(input.nonce)
 
         const review = await prisma.$transaction(async tx => {
             if (!(await AttendanceChallengeService.consume(tx, userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
@@ -115,7 +117,7 @@ export class FaceReviewService {
                 await resolveNotices(tx, waiting.id)
             }
             const created = await tx.faceReview.create({
-                data: { companyId, userId, phoneId: phone.id, purpose, photo: new Uint8Array(stored), modelVersion: input.modelVersion.slice(0, 60), attested: attestation.verified },
+                data: { id, companyId, userId, phoneId: phone.id, purpose, photo: new Uint8Array(stored), modelVersion: input.modelVersion.slice(0, 60), attested: attestation.verified },
                 select: { id: true, purpose: true, status: true, createdAt: true },
             })
             if (purpose === "ENROLMENT") {

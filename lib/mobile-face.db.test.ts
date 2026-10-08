@@ -198,10 +198,56 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
             return serverFor("e1")(url, body)
         }, { sent: [] as string[] })
         await expect(enrolFace(phone, face, failing)).rejects.toThrow("Network down")
+        // Not known to have failed (no answer), so kept until the server says: it has no such review.
+        expect(face.pendingWith).not.toBeNull()
+        expect(await settleTemplates(face, await status())).toBe("DISCARDED")
+        expect(face.lockedWith).toBe(approved)
+        // Refused, they go at once.
+        const refusing = Object.assign(async (url: string, body: unknown) => {
+            if (url === "/api/attendance/face/photo") throw Object.assign(new Error("Bad photo"), { code: "FACE_PHOTO_INVALID" })
+            return serverFor("e1")(url, body)
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, refusing)).rejects.toThrow("Bad photo")
         expect(face.pendingWith).toBeNull()
         // Even had they stayed (the app stopped before sending), no review of them means they go.
         face.pendingWith = "something"
         expect(await settleTemplates(face, await status())).toBe("DISCARDED")
+        expect(face.lockedWith).toBe(approved)
+    })
+
+    it("keeps the templates of a photo stored whose answer was lost, and promotes them once it is approved (review on #27)", async () => {
+        const sent = { id: null as string | null, get() { return this.id }, set(id: string | null) { this.id = id } }
+        const answerLost = Object.assign(async (url: string, body: unknown) => {
+            const answer = await serverFor("e1")(url, body)
+            if (url === "/api/attendance/face/photo") throw new Error("Network down")
+            return answer
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, answerLost, sent)).rejects.toThrow("Network down")
+        const made = face.pendingWith
+        expect(made).not.toBeNull()
+        // The app knew the review's id before the photo went.
+        const { rows: [stored] } = await db.query(`SELECT id, status FROM "FaceReview" WHERE "userId" = 'e1' ORDER BY "createdAt" DESC LIMIT 1`)
+        expect(stored).toEqual({ id: sent.get(), status: "PENDING" })
+        expect(await settleTemplates(face, await status(), sent)).toBeNull()
+        await Reviews.decide(stored.id, true, null, { id: "a1", isSuperAdmin: false })
+        expect(await settleTemplates(face, await status(), sent)).toBe("PROMOTED")
+        expect(face.lockedWith).toBe(made)
+    })
+
+    it("never promotes new templates on an earlier review's approval when the app stopped before sending their photo", async () => {
+        const approved = face.lockedWith
+        const { rows: [earlier] } = await db.query(`SELECT id FROM "FaceReview" WHERE "userId" = 'e1' AND status = 'APPROVED' ORDER BY "createdAt" DESC LIMIT 1`)
+        // Left from before: the app recorded the earlier, approved review.
+        const sent = { id: earlier.id as string | null, get() { return this.id }, set(id: string | null) { this.id = id } }
+        let challenges = 0
+        const stopped = Object.assign(async (url: string, body: unknown) => {
+            // The photo's number never comes: the app stopped with the new templates made.
+            if (url === "/api/attendance/phone/challenge" && ++challenges === 2) throw new Error("App stopped")
+            return serverFor("e1")(url, body)
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, stopped, sent)).rejects.toThrow("App stopped")
+        expect(face.pendingWith).not.toBeNull()
+        expect(await settleTemplates(face, await status(), sent)).toBe("DISCARDED")
         expect(face.lockedWith).toBe(approved)
     })
 

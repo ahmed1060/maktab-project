@@ -143,10 +143,11 @@ export function reverifyFirst(status: FaceStatus | undefined, modelVersion?: str
 /**
  * What becomes of templates waiting on this phone (§9.5). They are promoted
  * only once the very review they were sent with is approved: the app
- * records that review's id when the photo reaches the server. Waiting
- * templates with no such record were never sent (the upload failed, or the
- * app stopped first), so nobody saw that face: they go (review on #28).
- * Nothing while their photo waits.
+ * records the id that review is stored under before the photo goes
+ * (faceReviewId), so a reply lost on the way still finds it (review on #27).
+ * Waiting templates with no such review were never sent (the upload failed,
+ * or the app stopped first), so nobody saw that face: they go (review on
+ * #28). Nothing while their photo waits.
  */
 export function pendingTemplatesAction(status: FaceStatus | undefined, info: { pending: boolean }, sentWith: string | null): "PROMOTE" | "DISCARD" | null {
     if (!status || !info.pending) return null

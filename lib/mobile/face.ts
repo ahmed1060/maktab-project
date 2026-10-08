@@ -1,4 +1,4 @@
-import { attestedText, faceDeletedText, faceKeyText, faceText, type FaceResult } from "@/lib/attendance/signed-text"
+import { attestedText, faceDeletedText, faceKeyText, faceReviewId, faceText, type FaceResult } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
 import { pendingTemplatesAction, type FaceStatus } from "./screen"
 import type { Post } from "./check-in-flow"
@@ -140,25 +140,33 @@ export async function wrappingKey(device: CheckInDevice, face: FaceVerifier, pos
 export async function enrolFace(device: CheckInDevice, face: FaceVerifier, post: Post, sent: SentRecord = sentRecord()) {
     const key = await wrappingKey(device, face, post)
     if (!key) throw new Error("FACE_NOT_AVAILABLE")
+    // The templates about to be made replace any waiting: no review of theirs yet. Left set, an earlier
+    // review's approval would promote a face nobody saw, had the app stopped before sending this one.
+    sent.set(null)
     const [{ modelVersion }, { photo }] = [await face.info(), await face.enrol(key)]
     try {
-        const review = await sendPhoto(device, post, photo, modelVersion)
-        // The waiting templates belong to this review, and are promoted only once it is approved.
-        sent.set(review.id)
-        return review
+        // The waiting templates belong to this review, and are promoted only once it is approved. Recorded
+        // before the photo goes, by the id it will be stored under.
+        return await sendPhoto(device, post, photo, modelVersion, reviewId => sent.set(reviewId))
     } catch (e) {
-        // Never reached a reviewer: the templates made for it go with it.
-        sent.set(null)
-        await face.discardPending().catch(() => {})
+        // Refused: it never reached a reviewer, and the templates made for it go with it. Anything else
+        // (no answer, the connection dropped, the server failing) may have come after the photo was stored:
+        // the templates stay, and the server's answer about that review settles them (settleTemplates).
+        // Dropped at once, an approval found the phone with nothing to match against (review on #27).
+        if ((e as { code?: string })?.code) {
+            sent.set(null)
+            await face.discardPending().catch(() => {})
+        }
         throw e
     }
 }
 
-async function sendPhoto(device: CheckInDevice, post: Post, photo: string, modelVersion: string) {
+async function sendPhoto(device: CheckInDevice, post: Post, photo: string, modelVersion: string, sending: (reviewId: string) => void) {
     const fingerprint = await keyFingerprint(device)
     const photoSha256 = await sha256OfBase64(photo)
     // After the photo: the number lasts five minutes, and enrolling takes a while.
     const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "FACE" })
+    sending(await faceReviewId(nonce))
     const [signature, attestation] = await Promise.all([
         device.sign(faceText({ nonce, keyFingerprint: fingerprint, photoSha256, modelVersion })),
         // An assertion with the key made at registration, not a new attested key.
