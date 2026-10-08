@@ -243,6 +243,9 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('run', 'c1', $1, $2, 'APPROVED', 1, now())`, [Number(month.slice(0, 4)), Number(month.slice(5, 7))])
         await Phones.decide(next.id, { approve: true }, "a1")
         expect((await punches("e2")).filter(p => p.phoneId === next.id).map(p => p.status)).toEqual(["REJECTED"])
+        // The approval's record counts it, refused for its month (review on #22).
+        const { rows: [audit] } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'APPROVE_CHECK_IN_PHONE' AND "entityId" = $1`, [next.id])
+        expect(audit.details).toMatchObject({ punches: 1, refused: 1 })
         // And a check-in now, in the closed month, is refused.
         expect(await checkIn("e2", next)).toEqual({ outcome: "REFUSED", reason: "MONTH_LOCKED" })
     })

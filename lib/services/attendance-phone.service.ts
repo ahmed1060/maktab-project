@@ -219,7 +219,8 @@ export class AttendancePhoneService {
             const released = await tx.attendancePunch.updateMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, data: { status: decision.approve ? "ACCEPTED" : "REJECTED" } })
             await AuditLogService.log(decision.approve ? "APPROVE_CHECK_IN_PHONE" : "REJECT_CHECK_IN_PHONE", "CHECK_IN_PHONE", id, {
                 tx, ...(await actorOf(tx, deciderId)),
-                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count + flagged.count },
+                // Every held check-in the decision dealt with, those refused for a closed month too (review on #22).
+                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count + flagged.count + late.length, ...(late.length > 0 ? { refused: late.length } : {}) },
             })
             await NotificationService.notify(phone.userId, "ATTENDANCE_PHONE", {
                 key: decision.approve ? "notice_att_phone_approved" : "notice_att_phone_rejected",
