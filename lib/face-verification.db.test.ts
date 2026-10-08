@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { FaceVerificationService as Face, FACE_CONSENT_VERSION } from "@/lib/services/face-verification.service"
@@ -143,5 +143,21 @@ describe.skipIf(!ADMIN_URL)("face verification switches and consent, in Postgres
         // Once a new photo waits, it is the reviewer's turn, not overdue.
         await db.query(`INSERT INTO "FaceReview"(id, "companyId", "userId", "phoneId", purpose, status, photo, "modelVersion") VALUES ('r-ov', 'c1', 'e1', 'p-ov', 'REVERIFY', 'PENDING', '\\xffd8ff', 'm1')`)
         expect(await Face.overdueReverifications("c1")).toEqual([])
+    })
+
+    it("counts the days of a re-verification as the company does, not by UTC (review on #27)", async () => {
+        await db.query(`UPDATE "FaceReview" SET status = 'WITHDRAWN', photo = NULL, "decidedAt" = now() WHERE id = 'r-ov'`)
+        // Half past midnight on Thursday 8 October in Cairo, still Wednesday the 7th by UTC.
+        await db.query(`UPDATE "User" SET "faceReverifyRequestedAt" = '2026-10-07T21:30:00Z' WHERE id = 'e1'`)
+        vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-13T09:00:00Z") })
+        try {
+            // Sunday, Monday and Tuesday since Thursday (Sunday to Thursday is the week): three, not yet overdue.
+            // From Wednesday, Thursday too made four.
+            expect(await Face.overdueReverifications("c1")).toEqual([])
+            vi.setSystemTime(new Date("2026-10-14T09:00:00Z"))
+            expect(await Face.overdueReverifications("c1")).toEqual([{ userId: "e1", name: "Ehab One", since: "2026-10-08" }])
+        } finally {
+            vi.useRealTimers()
+        }
     })
 })
