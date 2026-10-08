@@ -248,6 +248,32 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         expect(face.lockedWith).toBe(made)
     })
 
+    it("keeps the record of waiting templates when a set-up again stops before making new ones (review on #49)", async () => {
+        const sent = sentRecord()
+        const answerLost = Object.assign(async (url: string, body: unknown) => {
+            const answer = await serverFor("e1")(url, body)
+            if (url === "/api/attendance/face/photo") throw new Error("Network down")
+            return answer
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, answerLost, sent)).rejects.toThrow("Network down")
+        const made = face.pendingWith
+        const reviewId = sent.get()!.id
+        // Tried again, and the camera closed before any new templates were made.
+        const enrol = face.enrol
+        face.enrol = async () => { throw Object.assign(new Error("closed"), { code: "FACE_CANCELLED" }) }
+        try {
+            await expect(enrolFace(phone, face, serverFor("e1"), sent)).rejects.toThrow("closed")
+        } finally {
+            face.enrol = enrol
+        }
+        // The waiting templates are the earlier photo's, and still known to be.
+        expect(face.pendingWith).toBe(made)
+        expect(sent.get()?.id).toBe(reviewId)
+        await Reviews.decide(reviewId, true, null, { id: "a1", isSuperAdmin: false })
+        expect(await settleTemplates(face, await status(), sent)).toBe("PROMOTED")
+        expect(face.lockedWith).toBe(made)
+    })
+
     it("never promotes new templates on an earlier review's approval when the app stopped before sending their photo", async () => {
         const approved = face.lockedWith
         const { rows: [earlier] } = await db.query(`SELECT id FROM "FaceReview" WHERE "userId" = 'e1' AND status = 'APPROVED' ORDER BY "createdAt" DESC LIMIT 1`)

@@ -141,10 +141,13 @@ export async function wrappingKey(device: CheckInDevice, face: FaceVerifier, pos
 export async function enrolFace(device: CheckInDevice, face: FaceVerifier, post: Post, sent: SentRecord = sentRecord()) {
     const key = await wrappingKey(device, face, post)
     if (!key) throw new Error("FACE_NOT_AVAILABLE")
-    // The templates about to be made replace any waiting: no review of theirs yet. Left set, an earlier
-    // review's approval would promote a face nobody saw, had the app stopped before sending this one.
+    const { modelVersion } = await faceInfo(face)
+    const { photo } = await face.enrol(key)
+    // The templates just made replace any waiting: no review of theirs yet. Left set, an earlier review's
+    // approval would promote a face nobody saw, had the app stopped before sending this one. Cleared only
+    // now: a set-up that stopped before making them (cancelled, the camera refused, the plugin silent)
+    // left the waiting ones as they were, and lost which review they were sent with (review on #49).
     sent.set(null)
-    const [{ modelVersion }, { photo }] = [await faceInfo(face), await face.enrol(key)]
     try {
         // The waiting templates belong to this review, and are promoted only once it is approved. Recorded
         // before the photo goes, by the id it will be stored under.

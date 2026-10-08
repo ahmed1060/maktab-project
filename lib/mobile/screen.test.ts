@@ -257,8 +257,9 @@ describe("Check in waiting for the face model (review on #49)", () => {
         }
         // Every wait on the plugin's info: the gate, the set-up and the check.
         const face = readFileSync("lib/mobile/face.ts", "utf8")
-        expect(face).toContain("await faceInfo(face), await face.enrol(key)")
-        expect(face).toContain("const { modelVersion } = await faceInfo(face)")
+        // The set-up and the check each wait on it so, and nothing waits on it otherwise.
+        expect(face.match(/const \{ modelVersion \} = await faceInfo\(face\)/g)).toHaveLength(2)
+        expect(face).not.toMatch(/await face\.info\(\)\)?\.modelVersion|const \{ modelVersion \} = await face\.info\(\)/)
         expect(readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")).toContain("(await faceInfo(face!)).modelVersion")
     })
 })
