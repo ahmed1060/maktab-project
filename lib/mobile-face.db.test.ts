@@ -4,7 +4,7 @@ import { generateKeyPairSync, randomBytes, sign } from "node:crypto"
 import { Client } from "pg"
 import { checkIn, type Post } from "@/lib/mobile/check-in-flow"
 import { enrolFace, settleTemplates, wrappingKey, type FaceVerifier } from "@/lib/mobile/face"
-import type { FaceStatus } from "@/lib/mobile/screen"
+import { setUpFirst, type FaceStatus } from "@/lib/mobile/screen"
 import type { CheckInDevice } from "@/lib/mobile/native"
 import { parsePhoneKey } from "@/lib/attendance/phone-keys"
 import { checkInSchema, challengeSchema } from "@/lib/validations/attendance-phone.schema"
@@ -234,8 +234,9 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
 
     it("flags a new phone's check-ins until its face is approved: changing phone doesn't turn the face check off (§9.3)", async () => {
         await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
-        // The face set up and approved on the old phone; a new one asked for.
+        // The face set up and approved on the old phone, a re-verification photo from it waiting; a new one asked for.
         await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED' WHERE id = 'p1'`)
+        expect(await enrolFace(phone, standInFace(), serverFor("e1"))).toMatchObject({ purpose: "REVERIFY", status: "PENDING" })
         const next = standInPhone()
         const publicKey = (await next.publicKey())!
         await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p2', 'c1', 'e1', $1, $2, 'ANDROID', 'PENDING')`, [publicKey, parsePhoneKey(publicKey)!.fingerprint])
@@ -246,6 +247,10 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         // Approved: the old phone revoked, the new one in use.
         await db.query(`UPDATE "CheckInPhone" SET status = 'REVOKED' WHERE id = 'p1'`)
         await db.query(`UPDATE "CheckInPhone" SET status = 'ACTIVE' WHERE id = 'p2'`)
+        // The old phone's photo waiting doesn't stop the new one setting its face up: it would be flagged until
+        // someone decided a photo from a phone no longer in use (review on #49).
+        expect((await status()).pendingReview).toBe(false)
+        expect(setUpFirst(await status(), { phoneActive: true, verifier: true })).toBe(true)
         expect(await checkIn(next, serverFor("e1"), "IN", null)).toMatchObject({ outcome: "FLAGGED", reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
         // Its photo sent and waiting: still not a face it can be matched against.
         const review = await enrolFace(next, standInFace(), serverFor("e1"))

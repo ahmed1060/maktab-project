@@ -233,8 +233,8 @@ export class FaceVerificationService {
         const [company, consent, phone, pending, reference, lastReview] = await Promise.all([
             this.companyStatus(person.companyId),
             this.currentConsent(userId),
-            prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { faceStatus: true, faceEnrolledAt: true, faceModelVersion: true } }),
-            prisma.faceReview.count({ where: { userId, status: "PENDING" } }),
+            prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { id: true, faceStatus: true, faceEnrolledAt: true, faceModelVersion: true } }),
+            prisma.faceReview.findMany({ where: { userId, status: "PENDING" }, select: { phoneId: true } }),
             prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true } }),
             // The app promotes the templates it sent with this review only once it is approved (lib/mobile/face.ts).
             prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId }, orderBy: { createdAt: "desc" }, select: { id: true, status: true } }),
@@ -251,7 +251,9 @@ export class FaceVerificationService {
             consentVersion: FACE_CONSENT_VERSION,
             // Which face model made the approved templates: a phone with another model sets the face up again.
             phone: phone ? { faceStatus: phone.faceStatus, enrolledAt: phone.faceEnrolledAt, modelVersion: phone.faceModelVersion } : null,
-            pendingReview: pending > 0,
+            // A photo from the phone in use: one left waiting by a phone since replaced doesn't stop the new
+            // phone setting its face up, which withdraws it (review on #49).
+            pendingReview: !!phone && pending.some(r => r.phoneId === phone.id),
             reverifyDue: required && enrolled && (!!person.faceReverifyRequestedAt || dueBySchedule),
             lastReview,
         }
