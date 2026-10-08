@@ -2,10 +2,10 @@ import type { Box, Cue, Progress, Prompt } from "./liveness"
 
 /**
  * What the face check says while it fits the face in the oval and takes its
- * looks: centre it, come closer or move back, one more step when it has
- * doubts, and done.
+ * looks: hold the phone upright, centre the face, come closer or move back,
+ * one more step when it has doubts, and done.
  */
-export type FitPrompt = "CENTER" | "CLOSER" | "FARTHER" | "EXTRA" | "DONE"
+export type FitPrompt = "CENTER" | "CLOSER" | "FARTHER" | "UPRIGHT" | "EXTRA" | "DONE"
 
 /**
  * The camera, as the face check sees it: a live video of the front camera,
@@ -22,6 +22,11 @@ export interface Camera {
      * camera's picture to fill it, and the face is fitted to the oval as it appears there.
      */
     visible?(): Box
+    /**
+     * Whether the phone is held upright. The oval is drawn for a tall screen: turned on its side, the screen
+     * cut off its top and bottom, and the fit no longer matched what showed (review on #48).
+     */
+    upright?(): boolean
     /** How far the first download of the models has got, 0 to 1; null once they're loaded. */
     loading?(share: number | null): void
     /** The step, the time left on it and the live readings, while one is asked for; null clears them. */

@@ -1725,6 +1725,7 @@ export const en = {
         face_cam_download: "Downloading the face check, the first time only: {pct}%",
         face_ci_models_failed: "The face check couldn't be downloaded. Check your connection and try again.",
         face_cam_center: "Centre your face in the oval",
+        face_cam_upright: "Hold your phone upright",
         face_cam_closer: "Move a little closer",
         face_cam_farther: "Move back a little",
         face_cam_extra: "One more step, to be sure it's you",

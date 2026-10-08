@@ -1724,6 +1724,7 @@ export const ar = {
         face_cam_download: "جارٍ تنزيل التحقق من الوجه، في المرة الأولى فقط: {pct}%",
         face_ci_models_failed: "تعذّر تنزيل التحقق من الوجه. تحقق من اتصالك ثم حاول مرة أخرى.",
         face_cam_center: "ضع وجهك في منتصف الإطار",
+        face_cam_upright: "أمسك هاتفك بشكل عمودي",
         face_cam_closer: "اقترب قليلًا",
         face_cam_farther: "ابتعد قليلًا",
         face_cam_extra: "خطوة أخرى للتأكد من أنه أنت",

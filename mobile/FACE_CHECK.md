@@ -35,7 +35,9 @@ when the check has doubts.
 
 1. **Fit.** The face in the oval, as the screen shows it: about a third to
    three quarters of its width, near the middle, facing the camera with eyes
-   open. The line says to come closer, move back or centre the face.
+   open, with the phone held upright (the oval is drawn for a tall screen).
+   The line says to hold the phone upright, come closer, move back or centre
+   the face.
 2. **Two looks,** taken on their own: 0.5 s after the face settles, and
    0.6 s after that, while a ring fills around the oval. Each is recognised
    in the background: the detector finds exactly one face, it is aligned by

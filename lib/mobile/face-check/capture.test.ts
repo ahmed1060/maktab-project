@@ -129,6 +129,16 @@ describe("a passive capture", () => {
         expect(e.identified).toBe(2)
     })
 
+    it("asks for the phone upright, and takes no look, while it is on its side (review on #48)", async () => {
+        let k = 0
+        const e = engine([{ embedding: person(3) }])
+        const cam = { ...camera(), upright: () => k++ >= 3 }
+        expect((await capture(e, cam)).live).toBe(true)
+        expect(cam.said.slice(0, 3)).toEqual(["UPRIGHT", "UPRIGHT", "UPRIGHT"])
+        expect(cam.said[3]).not.toBe("UPRIGHT")
+        expect(e.identified).toBe(2)
+    })
+
     it("starts each attempt with nothing filled or ticked from the last (review on #30)", async () => {
         let cancel: (e: Error) => void = () => {}
         const cancelled = new Promise<never>((_, reject) => { cancel = reject })

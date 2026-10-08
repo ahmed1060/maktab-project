@@ -28,7 +28,7 @@ type Said = Parameters<Camera['say']>[0]
 const PROMPTS: Record<Said, TranslationKey> = {
     LOADING: 'face_cam_loading', WORKING: 'face_cam_working', FACE_CAMERA: 'face_cam_face', TURN_HEAD: 'face_cam_turn',
     LOOK_BACK: 'face_cam_back', BLINK: 'face_cam_blink', OPEN_EYES: 'face_cam_open', HOLD_STILL: 'face_cam_still', ONE_FACE: 'face_cam_one',
-    CENTER: 'face_cam_center', CLOSER: 'face_cam_closer', FARTHER: 'face_cam_farther', EXTRA: 'face_cam_extra', DONE: 'face_cam_done',
+    CENTER: 'face_cam_center', CLOSER: 'face_cam_closer', FARTHER: 'face_cam_farther', UPRIGHT: 'face_cam_upright', EXTRA: 'face_cam_extra', DONE: 'face_cam_done',
 }
 
 const STEP_ICON: Record<Progress['steps'][number]['challenge'], string> = { TURN: '↔', BLINK: '◡' }
@@ -127,6 +127,8 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                         const w = Math.min(1, ew / scale / vw), h = Math.min(1, eh / scale / vh)
                         return { x: (1 - w) / 2, y: (1 - h) / 2, w, h }
                     },
+                    // The oval is drawn for a tall screen (review on #48).
+                    upright: () => v.clientHeight >= v.clientWidth,
                     // Shown only while it's still downloading: from the phone's cache it's done at once.
                     loading: share => setDownload(share === null || share >= 1 ? null : share),
                     cue,
