@@ -119,6 +119,25 @@ export function faceReady(status: Loading, model?: Loading): boolean {
 }
 
 /**
+ * Whether Check in waits for the face model too: only when the face check can
+ * start, asked of the person and consented to. Otherwise a face plugin slow
+ * to answer held up check-ins that don't need it (review on #49).
+ */
+export function faceModelNeeded(status: FaceStatus | undefined): boolean {
+    return !!status?.required && !!status.consent
+}
+
+/** How long a call to the face plugin is waited for before it counts as failed: one that never answered held Check in for good (review on #49). */
+export const FACE_PLUGIN_WAIT_MS = 10_000
+
+/** The promise, or a refusal with that code once `ms` have passed. */
+export function withinTime<T>(promise: Promise<T>, ms: number, code: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const late = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error(code), { code })), ms) })
+    return Promise.race([promise, late]).finally(() => clearTimeout(timer))
+}
+
+/**
  * What the face card adds after its text: on an app that can't do the face
  * check, check-ins go without one and wait for a review, whether or not a
  * face was ever approved on this phone (no approved face on it, or no face

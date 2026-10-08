@@ -12,8 +12,8 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceCardNote, faceReady, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
-import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
+import { answerKey, faceCardNote, faceModelNeeded, faceReady, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { enrolFace, faceInfo, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
 import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
@@ -51,6 +51,7 @@ const DEVICE_ERRORS: Record<string, TranslationKey> = {
     FACE_MODELS_UNAVAILABLE: 'face_ci_models_failed',
     FACE_MODELS_CORRUPT: 'face_ci_models_failed',
     FACE_NOT_AVAILABLE: 'face_ci_not_available',
+    FACE_PLUGIN_TIMEOUT: 'face_ci_not_available',
     LIVENESS_FAILED: 'face_ci_liveness_failed',
 }
 
@@ -68,7 +69,7 @@ export default function CheckInPage() {
     // The face SDK's plugin when the app has one; otherwise, on a test build, the face check for testing (mobile/FACE_CHECK.md).
     const face = useMemo(() => (native ? faceVerifier() ?? (FACE_CHECK ? faceCheckVerifier(camera.open) : null) : null), [native, camera.open])
     // Which face model this app has: templates approved with another can't be matched, and the face is set up again.
-    const { data: faceModel, error: faceModelError } = useSWR(face ? 'this-phone-face-model' : null, async () => (await face!.info()).modelVersion)
+    const { data: faceModel, error: faceModelError } = useSWR(face ? 'this-phone-face-model' : null, async () => (await faceInfo(face!)).modelVersion)
     // Stamped with when it was asked for: an answer from before a photo went can't say the photo never arrived (review on #49).
     const { data: faceBody, error: faceError, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, async (url: string) => {
         const askedAt = Date.now()
@@ -76,8 +77,9 @@ export default function CheckInPage() {
         return body?.data ? { ...body, data: { ...body.data, askedAt } } : body
     })
     const faceStatus = faceBody?.data as FaceStatus | undefined
-    // Check in waits for these: tapped sooner, the set-up or the face check was skipped (review on #49).
-    const ready = faceReady({ data: faceBody, error: faceError }, face ? { data: faceModel, error: faceModelError } : undefined)
+    // Check in waits for these: tapped sooner, the set-up or the face check was skipped (review on #49). The
+    // model only when the face check can start.
+    const ready = faceReady({ data: faceBody, error: faceError }, face && faceModelNeeded(faceStatus) ? { data: faceModel, error: faceModelError } : undefined)
     const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT' | 'face'>(null)
     const [answer, setAnswer] = useState<CheckInAnswer | null>(null)
     const [switching, setSwitching] = useState(false)

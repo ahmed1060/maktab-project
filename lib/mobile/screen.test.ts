@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
-import { answerKey, thisPhone, faceCardNote, faceReady, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, SENT_SETTLES_MS, type FaceStatus } from "./screen"
+import { answerKey, thisPhone, faceCardNote, faceModelNeeded, faceReady, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, withinTime, FACE_PLUGIN_WAIT_MS, SENT_SETTLES_MS, type FaceStatus } from "./screen"
 import { readSent } from "./face"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
@@ -229,3 +229,36 @@ describe("templates waiting on their photo (§9.5)", () => {
     })
 })
 
+describe("Check in waiting for the face model (review on #49)", () => {
+    const status = (over: Partial<FaceStatus> = {}): FaceStatus => ({
+        active: false, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: null,
+        pendingReview: false, reverifyDue: false, ...over,
+    })
+
+    it("only when the face check can start: asked of them and consented to", () => {
+        expect(faceModelNeeded(status())).toBe(true)
+        expect(faceModelNeeded(status({ required: false }))).toBe(false)
+        expect(faceModelNeeded(status({ consent: null }))).toBe(false)
+        expect(faceModelNeeded(undefined)).toBe(false)
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        expect(page).toContain("face && faceModelNeeded(faceStatus) ? { data: faceModel, error: faceModelError } : undefined")
+    })
+
+    it("gives up on a face plugin that never answers, so Check in isn't held for good", async () => {
+        vi.useFakeTimers()
+        try {
+            const never = withinTime(new Promise<string>(() => {}), FACE_PLUGIN_WAIT_MS, "FACE_PLUGIN_TIMEOUT")
+            const caught = never.catch(e => (e as { code?: string }).code)
+            await vi.advanceTimersByTimeAsync(FACE_PLUGIN_WAIT_MS)
+            expect(await caught).toBe("FACE_PLUGIN_TIMEOUT")
+            expect(await withinTime(Promise.resolve("ok"), FACE_PLUGIN_WAIT_MS, "X")).toBe("ok")
+        } finally {
+            vi.useRealTimers()
+        }
+        // Every wait on the plugin's info: the gate, the set-up and the check.
+        const face = readFileSync("lib/mobile/face.ts", "utf8")
+        expect(face).toContain("await faceInfo(face), await face.enrol(key)")
+        expect(face).toContain("const { modelVersion } = await faceInfo(face)")
+        expect(readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")).toContain("(await faceInfo(face!)).modelVersion")
+    })
+})

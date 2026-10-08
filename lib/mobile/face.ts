@@ -1,6 +1,6 @@
 import { attestedText, faceDeletedText, faceKeyText, faceReviewId, faceText, type FaceResult } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
-import { pendingTemplatesAction, type FaceStatus, type SentWith } from "./screen"
+import { FACE_PLUGIN_WAIT_MS, pendingTemplatesAction, withinTime, type FaceStatus, type SentWith } from "./screen"
 import type { Post } from "./check-in-flow"
 import type { PHONE_KEYS } from "./kept-storage"
 
@@ -144,7 +144,7 @@ export async function enrolFace(device: CheckInDevice, face: FaceVerifier, post:
     // The templates about to be made replace any waiting: no review of theirs yet. Left set, an earlier
     // review's approval would promote a face nobody saw, had the app stopped before sending this one.
     sent.set(null)
-    const [{ modelVersion }, { photo }] = [await face.info(), await face.enrol(key)]
+    const [{ modelVersion }, { photo }] = [await faceInfo(face), await face.enrol(key)]
     try {
         // The waiting templates belong to this review, and are promoted only once it is approved. Recorded
         // before the photo goes, by the id it will be stored under.
@@ -185,7 +185,7 @@ async function sendPhoto(device: CheckInDevice, post: Post, photo: string, model
 export async function faceCheck(device: CheckInDevice, face: FaceVerifier, post: Post): Promise<{ face: FaceResult; frame: string | null } | null> {
     const key = await wrappingKey(device, face, post)
     if (!key) return null
-    const { modelVersion } = await face.info()
+    const { modelVersion } = await faceInfo(face)
     const r = await face.verify(key)
     const frame = !r.verified && r.frame ? r.frame : null
     return {
@@ -207,6 +207,11 @@ export async function settleTemplates(face: FaceVerifier, status: FaceStatus, se
     if (action === "DISCARD") await face.discardPending()
     if (action) sent.set(null)
     return action === "PROMOTE" ? "PROMOTED" : action === "DISCARD" ? "DISCARDED" : null
+}
+
+/** The face plugin's info, or FACE_PLUGIN_TIMEOUT if it never answers: a stalled call held a check-in for good (review on #49). */
+export function faceInfo(face: FaceVerifier) {
+    return withinTime(face.info(), FACE_PLUGIN_WAIT_MS, "FACE_PLUGIN_TIMEOUT")
 }
 
 /** Which review this phone's waiting templates were sent with, and when that was recorded, kept beside them. */
