@@ -97,6 +97,22 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             await expect(Requests.cancelPermission(asked.id, "e1")).rejects.toEqual(refusal("REQUEST_ALREADY_STARTED"))
         })
 
+        it("excuse the morning end of a night shift, asked for under the night's date (review on #14)", async () => {
+            // Nabil works nights, 22:00-06:00, and left at 05:00 on the 20th: the night of the 19th.
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId")
+                SELECT 'n1', 'n1@x', 'p', 'Nabil', 'Night', 'EMPLOYEE', 2026, 'n1', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+            const night = await Calendar.createSchedule("c1", { name: "Night", version: { effectiveFrom: "2026-10-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a1")
+            await Calendar.assign("c1", { userIds: ["n1"], scheduleId: night.id, effectiveFrom: "2026-10-01" }, "a1")
+            await Punches.addManual("c1", { userId: "n1", at: "2026-10-19T22:00", direction: "IN", note: "terminal down" }, "a1")
+            await Punches.addManual("c1", { userId: "n1", at: "2026-10-20T05:00", direction: "OUT", note: "terminal down" }, "a1")
+            expect(await day("n1", "2026-10-19")).toMatchObject({ earlyLeaveMinutes: 60, excusedMinutes: 0 })
+            // Asked the same morning, within the policy's hours after.
+            const asked = await Requests.requestPermission("c1", "n1", { date: "2026-10-19", type: "EARLY_LEAVE", start: "05:00", end: "06:00", reason: "Ill" })
+            expect(asked).toMatchObject({ minutes: 60, start: "05:00", end: "06:00", startMinutes: 1740, endMinutes: 1800 })
+            await Requests.decidePermission(asked.id, { approve: true }, "a1")
+            expect(await day("n1", "2026-10-19")).toMatchObject({ earlyLeaveMinutes: 0, excusedMinutes: 60 })
+        })
+
         it("are asked for in advance, or within the policy's hours after", async () => {
             await expect(Requests.requestPermission("c1", "e1", { date: "2026-10-18", type: "EARLY_LEAVE", start: "16:00", end: "17:00", reason: "x" }))
                 .rejects.toEqual(refusal("PERMISSION_TOO_LATE"))

@@ -171,13 +171,21 @@ export class AttendanceRequestService {
     static async requestPermission(companyId: string, userId: string, input: PermissionInput) {
         if (!isDateString(input.date)) fail("INVALID_DATE")
         if (!input.reason.trim()) fail("REASON_REQUIRED")
-        const startMinutes = minutesOf(input.start)
-        let endMinutes = minutesOf(input.end)
-        if (endMinutes <= startMinutes) endMinutes += 1440
-        const minutes = endMinutes - startMinutes
+        const asked = minutesOf(input.start)
+        let askedEnd = minutesOf(input.end)
+        if (askedEnd <= asked) askedEnd += 1440
+        const minutes = askedEnd - asked
         const next = `${addDays(`${input.date.slice(0, 8)}28`, 4).slice(0, 7)}-01`
         const out = await prisma.$transaction(async tx => {
             const company = await companyOf(tx, companyId)
+            // On a night shift, a span after midnight is the next morning's part of the date's shift: 05:00-06:00
+            // of a 22:00-06:00 night was the evening before it began, so it excused nothing and was "too late"
+            // to ask for the morning after (review on #14).
+            const { plans } = await (await import("./attendance-engine.service")).AttendanceEngineService.plansFor(companyId, [userId], [input.date], tx)
+            const shift = plans.get(userId)?.get(input.date)
+            const nextMorning = shift?.kind === "WORK" && shift.hours.endMinutes > 1440 && askedEnd <= shift.hours.startMinutes && asked + 1440 < shift.hours.endMinutes
+            const startMinutes = nextMorning ? asked + 1440 : asked
+            const endMinutes = nextMorning ? askedEnd + 1440 : askedEnd
             // And the next month's, whose carried minutes this one can spend.
             await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])
             await openMonth(tx, companyId, monthOf(input.date))
