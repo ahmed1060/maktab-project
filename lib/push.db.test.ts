@@ -166,6 +166,21 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1new'`)
     })
 
+    it("leaves notices waiting for a new phone's token out of the batch, so they never hold up newer ones (review on #49)", async () => {
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p1wait', 'c1', 'e1', 'k', 'f1wait', 'IOS', 'PENDING')`)
+        // More waiting for Ehab's new phone than a run takes, all older than Eman's.
+        await NotificationService.notify("e1", "ATTENDANCE_DAY", accepted)
+        await db.query(`INSERT INTO "Notification"(id, "userId", type, message, "messageKey", "messageParams", "createdAt")
+            SELECT gen_random_uuid()::text, "userId", type, message, "messageKey", "messageParams", "createdAt" - g * interval '1 second'
+            FROM "Notification", generate_series(1, 200) g`)
+        await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
+        await PushService.flush(new Date(), sender)
+        expect(sent.map(s => s.token)).toEqual(["tok-e2"])
+        // Ehab's are untouched, still waiting for the token.
+        expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'e1' AND "pushedAt" IS NULL AND "pushClaimedAt" IS NULL`)).rows[0].n).toBe(201)
+        await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1wait'`)
+    })
+
     it("stops once the company no longer has the Mobile App add-on", async () => {
         await db.query(`INSERT INTO "Package"(id, name, "hasHR", "updatedAt") VALUES ('hr', 'HR only', true, now())`)
         await db.query(`UPDATE "Company" SET "packageId" = 'hr' WHERE id = 'c1'`)

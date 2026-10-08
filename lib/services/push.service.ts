@@ -37,7 +37,20 @@ const FRESH_FOR_MS = 30 * 60_000
 const CLAIM_LAPSES_MS = 2 * 60_000
 const BATCH = 200
 const LIVE = { status: { in: ["ACTIVE", "PENDING"] as ("ACTIVE" | "PENDING")[] } }
-const PHONES = { ...LIVE, pushToken: { not: null } }
+const TOKEN = { pushToken: { not: null } }
+/**
+ * The people whose pushTarget has a token, for the query: their phone waiting
+ * for approval has one, or none waits and the one in use has. (One phone
+ * waits at most: CheckInPhone_one_pending.) A notice for anyone else is left
+ * out until their phone has a token: taken and put back each run, enough of
+ * them filled every batch and kept newer notices from going (review on #49).
+ */
+const REACHABLE = {
+    OR: [
+        { checkInPhones: { some: { status: "PENDING" as const, ...TOKEN } } },
+        { AND: [{ checkInPhones: { some: { status: "ACTIVE" as const, ...TOKEN } } }, { checkInPhones: { none: { status: "PENDING" as const } } }] },
+    ],
+}
 
 /**
  * The phone a person's pushes go to: the one waiting for approval when there
@@ -94,7 +107,7 @@ export class PushService {
                     { OR: [{ messageKey: null }, { messageKey: { notIn: [...NOT_PUSHED_KEYS] } }] },
                     { OR: [{ pushClaimedAt: null }, { pushClaimedAt: { lt: lapsed } }] },
                 ],
-                user: { checkInPhones: { some: PHONES } },
+                user: REACHABLE,
             },
             select: {
                 id: true, type: true, message: true, messageKey: true, messageParams: true, relatedId: true,
@@ -133,8 +146,8 @@ export class PushService {
             let delivered = false, retry = false
             const phones = n.user?.checkInPhones ?? []
             const target = pushTarget(phones)
-            // A new phone waiting for approval, its token not registered yet: the notice waits for it, while
-            // fresh, rather than being marked sent with nothing sent (review on #25).
+            // A new phone waiting for approval, its token not registered yet (asked for since the query): the
+            // notice waits for it, while fresh, rather than being marked sent with nothing sent (review on #25).
             if (!target && phones.some(p => p.status === "PENDING" && !p.pushToken)) retry = true
             for (const phone of target ? [target] : []) {
                 const outcome = await sender(phone.platform, phone.pushToken!, message)
