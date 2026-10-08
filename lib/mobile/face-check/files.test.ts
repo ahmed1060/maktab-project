@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { createHash } from "node:crypto"
-import { joined, manifestOf, onPhone, MODELS_URL, SMALL_FILES, type Manifest } from "./files"
+import { joined, manifestOf, onPhone, runtime, MODELS_URL, ORT_WASM, SMALL_FILES, type Manifest } from "./files"
 
 /**
  * Getting the models to the phone (review on #47): the recognition model's
@@ -115,5 +115,44 @@ describe("whether the models are on the phone", () => {
         // A part gone from the cache since: not on the phone.
         store.delete([...store.keys()].find(k => k.includes("part1"))!)
         expect(await onPhone(manifest())).toBe(false)
+    })
+})
+
+describe("the runtimes' WebAssembly", () => {
+    const wasm = new Uint8Array([0, 97, 115, 109, 1])
+    const withRuntime = (sha256 = createHash("sha256").update(wasm).digest("hex")): Manifest => ({
+        ...manifest(), runtime: { [ORT_WASM]: { size: wasm.length, sha256 } },
+    })
+
+    it("is kept on the phone like the models: downloaded once, checked, then from the phone (review on #48)", async () => {
+        phoneCache()
+        let fetched = 0
+        vi.stubGlobal("fetch", async () => { fetched++; return new Response(wasm) })
+        let bytes = 0
+        expect(new Uint8Array(await runtime(withRuntime(), ORT_WASM, n => { bytes += n }))).toEqual(wasm)
+        expect(new Uint8Array(await runtime(withRuntime(), ORT_WASM, () => {}))).toEqual(wasm)
+        // Not left to the browser's own cache, which a phone's web view keeps small: once, for every check after.
+        expect(fetched).toBe(1)
+        expect(bytes).toBe(wasm.length)
+    })
+
+    it("refuses a download that isn't the one published, and keeps nothing of it", async () => {
+        phoneCache()
+        let fetched = 0
+        vi.stubGlobal("fetch", async () => { fetched++; return new Response(wasm) })
+        await expect(runtime(withRuntime("0".repeat(64)), ORT_WASM, () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
+        await expect(runtime(withRuntime("0".repeat(64)), ORT_WASM, () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
+        expect(fetched).toBe(2)
+    })
+
+    it("counts in whether everything is on the phone: without it, a load ahead of the camera downloads", async () => {
+        const store = phoneCache()
+        site()
+        await joined(withRuntime(), "m.onnx", () => {})
+        for (const f of SMALL_FILES) store.set(`${MODELS_URL}/${f}`, new ArrayBuffer(1))
+        expect(await onPhone(withRuntime(), [ORT_WASM])).toBe(false)
+        vi.stubGlobal("fetch", async () => new Response(wasm))
+        await runtime(withRuntime(), ORT_WASM, () => {})
+        expect(await onPhone(withRuntime(), [ORT_WASM])).toBe(true)
     })
 })

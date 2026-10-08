@@ -1,6 +1,6 @@
 import type { FaceLandmarker } from "@mediapipe/tasks-vision"
 import { cosine } from "./models"
-import { cached, manifestOf, MODELS_URL, onPhone, type OnProgress } from "./files"
+import { cached, manifestOf, MODELS_URL, onPhone, runtime, ORT_WASM, type Manifest, type OnProgress } from "./files"
 import type { Identified, Recognizer } from "./recognizer"
 import type { Reading } from "./liveness"
 import type { Rgba } from "./image"
@@ -41,14 +41,23 @@ export function loadEngine(onProgress?: OnProgress): Promise<Engine> {
 export async function warmEngine(): Promise<void> {
     if (loading) return
     const manifest = await manifestOf().catch(() => null)
-    if (manifest && (await onPhone(manifest))) await loadEngine().catch(() => {})
+    if (!manifest) return
+    const { wasm } = await mediapipe().catch(() => ({ wasm: null }))
+    if (wasm && (await onPhone(manifest, [ORT_WASM, wasm]))) await loadEngine().catch(() => {})
+}
+
+/** MediaPipe's files for this phone (with SIMD or without), and the WebAssembly among them, as a path under MODELS_URL. */
+async function mediapipe() {
+    const { FilesetResolver } = await import("@mediapipe/tasks-vision")
+    const files = await FilesetResolver.forVisionTasks(`${MODELS_URL}/mediapipe`)
+    return { files, wasm: `mediapipe/${files.wasmBinaryPath.split("/").pop()}` }
 }
 
 async function build(onProgress?: OnProgress): Promise<Engine> {
     const manifest = await manifestOf()
     let got = 0
     const onBytes = (n: number) => { got += n; onProgress?.(Math.min(1, got / manifest.total)) }
-    const [identify, landmarker] = await Promise.all([recognition(onBytes), faceLandmarker(onBytes)])
+    const [identify, landmarker] = await Promise.all([recognition(onBytes), faceLandmarker(manifest, onBytes)])
     return {
         read(video, at) {
             const r = landmarker.detectForVideo(video, at)
@@ -63,11 +72,13 @@ async function build(onProgress?: OnProgress): Promise<Engine> {
 /** The recognition models on the page itself: where there are no workers, or the worker wouldn't start. */
 async function onPage(onBytes: (n: number) => void): Promise<Recognizer> {
     const ort = await import("onnxruntime-web/wasm")
-    ort.env.wasm.wasmPaths = `${MODELS_URL}/ort/`
+    const manifest = await manifestOf()
+    // As in the worker: its WebAssembly from the phone's cache (review on #48).
+    ort.env.wasm.wasmBinary = new Uint8Array(await runtime(manifest, ORT_WASM, onBytes))
     ort.env.wasm.numThreads = 1
     ort.env.logLevel = "error"
     const { recognizer } = await import("./recognizer")
-    return recognizer(ort, await manifestOf(), onBytes)
+    return recognizer(ort, manifest, onBytes)
 }
 
 /**
@@ -124,9 +135,13 @@ export async function inWorker(worker: Worker, onBytes: (n: number) => void, onD
     })
 }
 
-async function faceLandmarker(onBytes: (n: number) => void): Promise<FaceLandmarker> {
-    const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision")
-    const files = await FilesetResolver.forVisionTasks(`${MODELS_URL}/mediapipe`)
+async function faceLandmarker(manifest: Manifest, onBytes: (n: number) => void): Promise<FaceLandmarker> {
+    const { FaceLandmarker } = await import("@mediapipe/tasks-vision")
+    const { files: served, wasm } = await mediapipe()
+    // Its WebAssembly from the phone's cache (files.ts), handed over by address: MediaPipe takes no bytes for it
+    // (review on #48).
+    const binary = URL.createObjectURL(new Blob([await runtime(manifest, wasm, onBytes)], { type: "application/wasm" }))
+    const files = { ...served, wasmBinaryPath: binary }
     const model = new Uint8Array((await cached(`${MODELS_URL}/face_landmarker.task`, onBytes)).bytes)
     const options = (delegate: "GPU" | "CPU") => ({
         baseOptions: { modelAssetBuffer: model, delegate },
@@ -136,7 +151,9 @@ async function faceLandmarker(onBytes: (n: number) => void): Promise<FaceLandmar
         outputFaceBlendshapes: true,
     })
     // The GPU where the web view offers it; older phones fall back to the processor.
-    const landmarker = await FaceLandmarker.createFromOptions(files, options("GPU")).catch(() => FaceLandmarker.createFromOptions(files, options("CPU")))
+    const landmarker = await FaceLandmarker.createFromOptions(files, options("GPU"))
+        .catch(() => FaceLandmarker.createFromOptions(files, options("CPU")))
+        .finally(() => URL.revokeObjectURL(binary))
     // Its first look sets it up on the graphics chip, seconds on its own: done now, on a blank picture, rather than
     // with the person in front of the camera. Later looks carry on from a later time, as video mode needs.
     try {

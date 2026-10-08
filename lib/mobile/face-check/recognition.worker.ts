@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { manifestOf, MODELS_URL } from "./files"
+import { manifestOf, runtime, ORT_WASM } from "./files"
 import { recognizer, type Recognizer } from "./recognizer"
 
 /**
@@ -18,12 +18,16 @@ let ready: Promise<Recognizer> | null = null
 
 async function load(): Promise<Recognizer> {
     const ort = await import("onnxruntime-web/wasm")
-    ort.env.wasm.wasmPaths = new URL(`${MODELS_URL}/ort/`, self.location.origin).href
+    const manifest = await manifestOf()
+    const progress = (bytes: number) => self.postMessage({ type: "progress", bytes })
+    // Its WebAssembly from the phone's cache (files.ts), not left to the browser's own; the loader for it is
+    // built into this script, so nothing else is fetched (review on #48).
+    ort.env.wasm.wasmBinary = new Uint8Array(await runtime(manifest, ORT_WASM, progress))
     // One thread: a web view isn't cross-origin isolated, so it couldn't share memory between threads anyway.
     ort.env.wasm.numThreads = 1
     // Not a warning per look: the detector's outputs are declared for 640 × 640, and it runs at 320 (recognizer.ts).
     ort.env.logLevel = "error"
-    return recognizer(ort, await manifestOf(), bytes => self.postMessage({ type: "progress", bytes }))
+    return recognizer(ort, manifest, progress)
 }
 
 const codeOf = (e: unknown) => (e as { code?: string })?.code ?? "FACE_MODELS_UNAVAILABLE"

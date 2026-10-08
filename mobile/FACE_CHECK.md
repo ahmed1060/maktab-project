@@ -74,9 +74,14 @@ check-in on its own.
   screen), then it is kept in the app's Cache Storage. The recognition model
   is served in 40 MB parts (Vercel's limit for one file is 100 MB), joined on
   the phone and checked against its SHA-256 once; after that the phone
-  remembers it passed.
-- **Ahead of the camera:** when the check-in screen opens and the models are
-  on the phone already, they are loaded then, and the face tracker takes its
+  remembers it passed. The runtimes' WebAssembly (ONNX Runtime's 14 MB,
+  MediaPipe's 12) is kept there too, under its checksum, and handed to them
+  from the cache: a phone's web view keeps its own browser cache small, and
+  could otherwise download them again for a check. Only a few small scripts
+  (under 0.5 MB) are left to the browser's cache.
+- **Ahead of the camera:** when the check-in screen opens and the models and
+  runtimes are all on the phone already, they are loaded then (never
+  downloaded unasked), and the face tracker takes its
   first (slow) look on a blank picture, so the camera starts the check at once.
 - **Recognition runs in a worker** (`recognition-worker.mjs`, bundled by the
   fetch script), off the page's thread: the picture never stops while it
