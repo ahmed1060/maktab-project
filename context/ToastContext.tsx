@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { usePathname } from 'next/navigation'
 import { useHydrated } from '@/lib/useHydrated'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -20,18 +21,26 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
 
 /**
- * How long a toast stays up. The others go after five seconds. An error stays
- * long enough to read slowly: it may say what to fix, and five seconds is not
- * enough to read it, or to find it again with a screen reader (WCAG 2.2.1;
- * accessibility audit of 4 October 2026, M1). That is ten seconds at least,
- * longer for a longer message, at most twenty. It used to stay until closed,
- * and on a phone it sat over the screen's buttons until the person found the
- * ✕. Either way the clock stops while the pointer, a finger or focus is on
- * the toast.
+ * How long a toast stays up, or null for an error, which has no clock: it may
+ * say what to fix, and no clock suits everyone reading it, a screen reader's
+ * virtual cursor among them, which moves neither pointer nor focus (WCAG
+ * 2.2.1; accessibility audit of 4 October 2026, M1; review on #49). It goes
+ * instead once the person moves on (afterMovingOn). The others go after five
+ * seconds of not being looked at: the clock stops while the pointer, a finger
+ * or focus is on the toast.
  */
-export function toastLifetime(type: ToastType, message = ''): number {
-    if (type !== 'error') return 5000
-    return Math.min(20_000, Math.max(10_000, 4_000 + message.length * 60))
+export function toastLifetime(type: ToastType): number | null {
+    return type === 'error' ? null : 5000
+}
+
+/**
+ * The toasts left once the person moves on: a tap or click anywhere but on a
+ * toast, or another page. Errors go then. They used to stay until their ✕
+ * was found, over a phone's buttons; the tap that does something else now
+ * takes them away. The others keep their own clock.
+ */
+export function afterMovingOn(list: Toast[]): Toast[] {
+    return list.some(t => t.type === 'error') ? list.filter(t => t.type !== 'error') : list
 }
 
 /** At most this many toasts show at once; the oldest goes first. */
@@ -41,8 +50,8 @@ export const MAX_TOASTS = 5
  * The list with a new toast added. The same message of the same kind
  * replaces the one already showing (a retried action that fails again
  * doesn't stack copies), and the list keeps only the newest MAX_TOASTS:
- * errors stay up to twenty seconds, so without a limit a burst of them piles
- * up past the bottom of the screen (Codex review on #37).
+ * errors stay until the person moves on, so without a limit a burst of them
+ * piled up past the bottom of the screen (Codex review on #37).
  */
 export function withToast(list: Toast[], toast: Toast): Toast[] {
     const rest = list.filter(t => !(t.type === toast.type && t.message === toast.message))
@@ -52,16 +61,16 @@ export function withToast(list: Toast[], toast: Toast): Toast[] {
 /** One toast: its own clock, paused while hovered or focused. */
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
     const { t } = useLanguage()
-    const lifetime = toastLifetime(toast.type, toast.message)
+    const lifetime = toastLifetime(toast.type)
     // Pointer and focus each hold the clock; it runs again only when neither
     // is on the toast (leaving with one shouldn't restart it while the other
     // stays: Codex review on #37).
     const [hovered, setHovered] = useState(false)
     const [focused, setFocused] = useState(false)
     const paused = hovered || focused
-    const remaining = useRef(lifetime)
+    const remaining = useRef(lifetime ?? 0)
     useEffect(() => {
-        if (paused) return
+        if (lifetime === null || paused) return
         const started = Date.now()
         const timer = setTimeout(() => onDismiss(toast.id), remaining.current)
         return () => {
@@ -133,11 +142,32 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts(prev => prev.filter(t => t.id !== id))
     }, [])
 
+    // Errors go once the person moves on (afterMovingOn): another page, noticed while rendering, as React
+    // asks for state that follows a value...
+    const pathname = usePathname()
+    const [page, setPage] = useState(pathname)
+    if (page !== pathname) {
+        setPage(pathname)
+        setToasts(afterMovingOn)
+    }
+    // ...or a tap or click anywhere but on a toast. Listened for only while an error shows, and from the
+    // next one on: the tap that led to the error came before it.
+    const region = useRef<HTMLDivElement>(null)
+    const showingError = toasts.some(t => t.type === 'error')
+    useEffect(() => {
+        if (!showingError) return
+        const onDown = (e: PointerEvent) => {
+            if (!region.current?.contains(e.target as Node)) setToasts(afterMovingOn)
+        }
+        document.addEventListener('pointerdown', onDown, true)
+        return () => document.removeEventListener('pointerdown', onDown, true)
+    }, [showingError])
+
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
             {mounted && createPortal(
-                <div style={{
+                <div ref={region} style={{
                     position: 'fixed',
                     top: '20px',
                     right: '20px', // or left, or center

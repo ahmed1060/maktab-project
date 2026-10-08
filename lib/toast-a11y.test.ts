@@ -1,26 +1,34 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { toastLifetime, withToast, MAX_TOASTS, type Toast } from "@/context/ToastContext"
+import { afterMovingOn, toastLifetime, withToast, MAX_TOASTS, type Toast } from "@/context/ToastContext"
 
 /**
  * "Saved", "Deleted" and error toasts had no live region, so screen readers
  * never announced them, and every one vanished after five seconds, even
  * while being read (WCAG 4.1.3, 2.2.1; accessibility audit of 4 October
- * 2026, M1). Errors then stayed until closed, over a phone's buttons.
+ * 2026, M1). Errors then stayed until closed, over a phone's buttons; they
+ * now go when the person moves on, with no clock.
  */
 const SRC = readFileSync("context/ToastContext.tsx", "utf8")
 
 describe("toasts", () => {
-    it("an error stays long enough to read, longer for a longer message; the others go after five seconds", () => {
-        // It closes on its own: it used to stay until the ✕ was found, over the screen's buttons on a phone.
-        expect(toastLifetime("error", "Couldn't save")).toBe(10_000)
-        const reference = "We couldn't complete that action. Please try again — if it keeps happening, share this reference with your admin: B762F306"
-        expect(toastLifetime("error", reference)).toBeGreaterThan(10_000)
-        expect(toastLifetime("error", reference)).toBeLessThanOrEqual(20_000)
-        expect(toastLifetime("error", "x".repeat(2000))).toBe(20_000)
+    it("an error has no clock, which a screen reader's virtual cursor wouldn't stop (review on #49); the others go after five seconds", () => {
+        expect(toastLifetime("error")).toBeNull()
         expect(toastLifetime("success")).toBe(5000)
         expect(toastLifetime("info")).toBe(5000)
         expect(toastLifetime("warning")).toBe(5000)
+    })
+
+    it("an error goes once the person moves on: a tap anywhere but on a toast, or another page", () => {
+        const list: Toast[] = [{ id: "a", message: "Couldn't save", type: "error" }, { id: "b", message: "Saved", type: "success" }]
+        // It used to stay until its ✕ was found, over a phone's buttons.
+        expect(afterMovingOn(list).map(t => t.id)).toEqual(["b"])
+        // Nothing to take away: the same list, so nothing renders again.
+        const calm = [list[1]]
+        expect(afterMovingOn(calm)).toBe(calm)
+        expect(SRC).toContain("document.addEventListener('pointerdown', onDown, true)")
+        expect(SRC).toContain("if (!region.current?.contains(e.target as Node)) setToasts(afterMovingOn)")
+        expect(SRC).toMatch(/if \(page !== pathname\) \{\s*setPage\(pathname\)\s*setToasts\(afterMovingOn\)/)
     })
 
     it("are announced: errors in an alert region, the rest in a status region, both always present", () => {
