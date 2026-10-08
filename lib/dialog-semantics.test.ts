@@ -39,3 +39,13 @@ describe("overlays", () => {
         expect(named).toBeGreaterThanOrEqual(scrims)
     })
 })
+
+describe("useDialog", () => {
+    const hook = readFileSync("lib/useDialog.ts", "utf8")
+
+    it("gives focus back on closing a dialog drawn already open, as conditionally mounted editors are (Codex review of #36)", () => {
+        // What had focus as it was first drawn, read while rendering: before an autoFocus field inside takes it.
+        expect(hook).toMatch(/const \[focusedAtMount\] = useState\(\(\) =>/)
+        expect(hook).toMatch(/const opener = lastOutside\.current \?\? /)
+    })
+})
