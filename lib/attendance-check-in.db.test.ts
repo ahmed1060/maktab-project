@@ -11,6 +11,7 @@ import { AttendanceEngineService as Engine } from "@/lib/services/attendance-eng
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
+import { calendarDateStr } from "@/lib/time"
 
 /**
  * Checking in with the app (ATTENDANCE_PLAN.md §9.4, §9.6), against a real
@@ -239,7 +240,8 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         attested.verified = true
         const next = await phoneOf("e2", false)
         expect(await checkIn("e2", next)).toMatchObject({ outcome: "HELD" })
-        const month = new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 7)
+        // The company's month now, Cairo being UTC+2 in winter (review on #22).
+        const month = calendarDateStr(new Date(), "Africa/Cairo").slice(0, 7)
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('run', 'c1', $1, $2, 'APPROVED', 1, now())`, [Number(month.slice(0, 4)), Number(month.slice(5, 7))])
         await Phones.decide(next.id, { approve: true }, "a1")
         expect((await punches("e2")).filter(p => p.phoneId === next.id).map(p => p.status)).toEqual(["REJECTED"])
