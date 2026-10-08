@@ -234,6 +234,12 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         expect(await prisma.$transaction(tx => Challenges.consume(tx, "e4", "CHECK_IN", first.nonce))).toBe(false)
     })
 
+    it("keeps one unused number per person and purpose when asked for at once (review on #21)", async () => {
+        await Promise.all(Array.from({ length: 8 }, () => Challenges.issue("e4", "FACE")))
+        const { rows: [{ n }] } = await db.query(`SELECT count(*)::int AS n FROM "AttendanceChallenge" WHERE "userId" = 'e4' AND purpose = 'FACE' AND "usedAt" IS NULL`)
+        expect(n).toBe(1)
+    })
+
     it("holds at most one phone in use and one waiting per person, in the database too", async () => {
         await expect(db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('dup', 'c1', 'e1', 'x', 'dup', 'ANDROID', 'ACTIVE')`))
             .rejects.toThrow(/CheckInPhone_one_active/)

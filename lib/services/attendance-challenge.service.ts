@@ -25,10 +25,13 @@ export class AttendanceChallengeService {
     static async issue(userId: string, purpose: ChallengePurpose, now = new Date()) {
         const nonce = randomBytes(32).toString("base64url")
         const expiresAt = new Date(now.getTime() + CHALLENGE_TTL_MS)
-        await prisma.$transaction([
-            prisma.attendanceChallenge.deleteMany({ where: { userId, purpose, usedAt: null } }),
-            prisma.attendanceChallenge.create({ data: { userId, purpose, nonceHash: hashOf(nonce), expiresAt } }),
-        ])
+        // One at a time per person and purpose: two at once each deleted before the other's row was there,
+        // and both numbers stayed usable (review on #21).
+        await prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`attendance-challenge:${userId}:${purpose}`}))::text`
+            await tx.attendanceChallenge.deleteMany({ where: { userId, purpose, usedAt: null } })
+            await tx.attendanceChallenge.create({ data: { userId, purpose, nonceHash: hashOf(nonce), expiresAt } })
+        })
         return { nonce, expiresAt }
     }
 
