@@ -74,7 +74,9 @@ export class FaceKeyService {
                 update: { key: new Uint8Array(fresh), destroyedAt: null, deleteAckAt: null },
             })
             return { key: fresh.toString("base64"), deleteTemplates: false }
-        })
+        // A dozen round trips to the database, the person's face status among them: past Prisma's default 5 s
+        // from Vercel's region to the database's, which lost the face photo and the check-in in production.
+        }, { maxWait: 10_000, timeout: 30_000 })
     }
 
     /**
