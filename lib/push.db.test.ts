@@ -155,11 +155,12 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         await db.query(`UPDATE "CheckInPhone" SET "pushToken" = 'tok-e1' WHERE id = 'p1'`)
         await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p1new', 'c1', 'e1', 'k', 'f1new', 'IOS', 'PENDING')`)
         await NotificationService.notify("e1", "ATTENDANCE_DAY", accepted)
-        // The new phone has no token yet: nothing goes to the old one meanwhile.
-        await PushService.flush(new Date(), sender)
+        // The new phone has no token yet: nothing goes to the old one meanwhile, and the notice waits for
+        // the new one's token, not marked sent with nothing sent (review on #25).
+        expect(await PushService.flush(new Date(), sender)).toMatchObject({ sent: 0, failed: 0 })
         expect(sent).toEqual([])
+        expect((await db.query(`SELECT "pushedAt", "pushClaimedAt" FROM "Notification"`)).rows).toEqual([{ pushedAt: null, pushClaimedAt: null }])
         await db.query(`UPDATE "CheckInPhone" SET "pushToken" = 'tok-e1-new' WHERE id = 'p1new'`)
-        await db.query(`UPDATE "Notification" SET "pushedAt" = NULL, "pushClaimedAt" = NULL`)
         await PushService.flush(new Date(), sender)
         expect(sent.map(s => s.token)).toEqual(["tok-e1-new"])
         await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1new'`)

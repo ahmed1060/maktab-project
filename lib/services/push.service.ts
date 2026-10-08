@@ -131,7 +131,11 @@ export class PushService {
             const language = n.user?.language ?? "en"
             const message: PushMessage = { title: (DICTS[language] ?? en).app_name, body: textOf(n, language), link: attendanceNoticeTarget(n.type, n.relatedId) }
             let delivered = false, retry = false
-            const target = pushTarget(n.user?.checkInPhones ?? [])
+            const phones = n.user?.checkInPhones ?? []
+            const target = pushTarget(phones)
+            // A new phone waiting for approval, its token not registered yet: the notice waits for it, while
+            // fresh, rather than being marked sent with nothing sent (review on #25).
+            if (!target && phones.some(p => p.status === "PENDING" && !p.pushToken)) retry = true
             for (const phone of target ? [target] : []) {
                 const outcome = await sender(phone.platform, phone.pushToken!, message)
                 if (outcome === "SENT") delivered = true
@@ -142,7 +146,7 @@ export class PushService {
             }
             if (delivered) sent++
             if (retry && !delivered) {
-                failed++
+                if (target) failed++
                 await prisma.notification.updateMany({ where: { id: n.id, pushClaimedAt: claimedAt }, data: { pushClaimedAt: null } })
             } else {
                 // Sent, or never to be: a dead token, no phone to send to, no service for its platform.
