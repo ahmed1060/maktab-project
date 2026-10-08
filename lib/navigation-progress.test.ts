@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
-import { startsNavigation, type ClickLike } from "./navigation-progress"
+import { historyLeavesPage, startsNavigation, type ClickLike } from "./navigation-progress"
 
 /**
  * Something moves from the click that leaves a page until the next one is
@@ -44,7 +44,9 @@ describe("the bar", () => {
     it("is on every page, and finishes when the address changes", () => {
         expect(layout).toMatch(/<Suspense fallback=\{null\}><NavigationProgress \/><\/Suspense>/)
         expect(bar).toMatch(/useAdjustOnChange\(\[pathname, search\]/)
-        expect(bar).toMatch(/addEventListener\('popstate', start\)/)
+        // Back and forward too, when they go to another page (review on #45).
+        expect(bar).toMatch(/addEventListener\('popstate', onHistory\)/)
+        expect(bar).toMatch(/if \(historyLeavesPage\(shown\.current, window\.location\)\) start\(\)/)
         // It can't be left running by a navigation that never arrives.
         expect(bar).toMatch(/GIVE_UP_MS/)
         expect(css).toMatch(/\.nav-progress\[data-state="loading"\]/)
@@ -73,5 +75,19 @@ describe("the bar", () => {
             expect(src, file).not.toContain(`onClick={() => router.push(${to.startsWith("/") ? "`/dashboard/companies/${company.id}" + to : to})}`)
             expect(src, file).toContain(`<Link href={${to.startsWith("/") ? "`/dashboard/companies/${company.id}" + to : to}}`)
         }
+    })
+})
+
+describe("which steps through history start the bar", () => {
+    const shown = { pathname: "/dashboard/tasks", search: "view=my" }
+
+    it("one to another page, or the same page with other parameters", () => {
+        expect(historyLeavesPage(shown, { pathname: "/dashboard/obligations", search: "" })).toBe(true)
+        expect(historyLeavesPage(shown, { pathname: "/dashboard/tasks", search: "?view=active" })).toBe(true)
+    })
+
+    it("not one to another place on the same page, as back over the skip link is (review on #45)", () => {
+        // The address bar's search starts with "?"; the app's own doesn't.
+        expect(historyLeavesPage(shown, { pathname: "/dashboard/tasks", search: "?view=my" })).toBe(false)
     })
 })

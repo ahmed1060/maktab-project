@@ -37,3 +37,15 @@ export function startsNavigation(event: ClickLike, anchor: AnchorLike, here: str
     // The same page, or only another place on it: nothing will load.
     return to.pathname !== from.pathname || to.search !== from.search
 }
+
+export type PlaceLike = { pathname: string; search: string }
+
+/**
+ * Whether a step back or forward through history goes to another page of the
+ * app, rather than only to another place on this one (a #fragment, as the
+ * skip link leaves): only then does a page load, and the bar finish. Started
+ * for a fragment, it ran until it gave up (review on #45).
+ */
+export function historyLeavesPage(shown: PlaceLike, now: PlaceLike): boolean {
+    return shown.pathname !== now.pathname || new URLSearchParams(shown.search).toString() !== new URLSearchParams(now.search).toString()
+}
