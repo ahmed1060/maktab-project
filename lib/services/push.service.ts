@@ -118,10 +118,14 @@ export class PushService {
                 continue
             }
             // Claimed, not yet marked sent: if this run dies before the
-            // answer, the claim lapses and a later run sends it (review on #25).
+            // answer, the claim lapses and a later run sends it. At the time
+            // it is taken, not when the run began: a run minutes into its
+            // batch made a claim another run saw as lapsed at once, and both
+            // sent (review on #25).
+            const claimedAt = new Date()
             const { count } = await prisma.notification.updateMany({
                 where: { id: n.id, pushedAt: null, OR: [{ pushClaimedAt: null }, { pushClaimedAt: { lt: lapsed } }] },
-                data: { pushClaimedAt: now },
+                data: { pushClaimedAt: claimedAt },
             })
             if (count === 0) continue
             const language = n.user?.language ?? "en"
@@ -139,10 +143,10 @@ export class PushService {
             if (delivered) sent++
             if (retry && !delivered) {
                 failed++
-                await prisma.notification.updateMany({ where: { id: n.id, pushClaimedAt: now }, data: { pushClaimedAt: null } })
+                await prisma.notification.updateMany({ where: { id: n.id, pushClaimedAt: claimedAt }, data: { pushClaimedAt: null } })
             } else {
                 // Sent, or never to be: a dead token, no phone to send to, no service for its platform.
-                await prisma.notification.updateMany({ where: { id: n.id, pushClaimedAt: now }, data: { pushedAt: now } })
+                await prisma.notification.updateMany({ where: { id: n.id, pushClaimedAt: claimedAt }, data: { pushedAt: now } })
             }
         }
         return { sent, forgotten, failed }

@@ -124,6 +124,19 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         expect((await db.query(`SELECT "pushedAt" FROM "Notification"`)).rows[0].pushedAt).not.toBeNull()
     })
 
+    it("claims a notice when it takes it, not when its run began, so a run started meanwhile leaves it (review on #25)", async () => {
+        await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
+        // A run that began three minutes ago (reminders first, then a long batch) and only now reaches this notice.
+        const began = new Date(Date.now() - 3 * 60_000)
+        const meanwhile: Sender = async (...args) => {
+            // While it sends, another run starts.
+            await PushService.flush(new Date(), sender)
+            return sender(...args)
+        }
+        await PushService.flush(began, meanwhile)
+        expect(sent.map(s => s.token)).toEqual(["tok-e2"])
+    })
+
     it("forgets a token the push service says is dead, and tries again later after a plain failure", async () => {
         outcome = "FAILED"
         await NotificationService.notify("e2", "ATTENDANCE_PHONE", accepted)
