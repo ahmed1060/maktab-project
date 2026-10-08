@@ -12,7 +12,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceCardNote, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { answerKey, faceCardNote, faceReady, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
 import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
 import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
@@ -68,9 +68,11 @@ export default function CheckInPage() {
     // The face SDK's plugin when the app has one; otherwise, on a test build, the face check for testing (mobile/FACE_CHECK.md).
     const face = useMemo(() => (native ? faceVerifier() ?? (FACE_CHECK ? faceCheckVerifier(camera.open) : null) : null), [native, camera.open])
     // Which face model this app has: templates approved with another can't be matched, and the face is set up again.
-    const { data: faceModel } = useSWR(face ? 'this-phone-face-model' : null, async () => (await face!.info()).modelVersion)
-    const { data: faceBody, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, fetcher)
+    const { data: faceModel, error: faceModelError } = useSWR(face ? 'this-phone-face-model' : null, async () => (await face!.info()).modelVersion)
+    const { data: faceBody, error: faceError, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, fetcher)
     const faceStatus = faceBody?.data as FaceStatus | undefined
+    // Check in waits for these: tapped sooner, the set-up or the face check was skipped (review on #49).
+    const ready = faceReady({ data: faceBody, error: faceError }, face ? { data: faceModel, error: faceModelError } : undefined)
     const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT' | 'face'>(null)
     const [answer, setAnswer] = useState<CheckInAnswer | null>(null)
     const [switching, setSwitching] = useState(false)
@@ -205,8 +207,8 @@ export default function CheckInPage() {
                 <section className="glass" style={box}>
                     {mine === 'PENDING' && <p style={{ margin: 0, ...soft }}>{t('ci_waiting')}</p>}
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <button className="btn btn-primary" style={big} disabled={!!busy} onClick={() => punch('IN')}>{busy === 'IN' ? working : t('ci_in')}</button>
-                        <button className="btn btn-secondary" style={big} disabled={!!busy} onClick={() => punch('OUT')}>{busy === 'OUT' ? working : t('ci_out')}</button>
+                        <button className="btn btn-primary" style={big} disabled={!!busy || !ready} onClick={() => punch('IN')}>{busy === 'IN' ? working : t('ci_in')}</button>
+                        <button className="btn btn-secondary" style={big} disabled={!!busy || !ready} onClick={() => punch('OUT')}>{busy === 'OUT' ? working : t('ci_out')}</button>
                     </div>
                 </section>
             )}

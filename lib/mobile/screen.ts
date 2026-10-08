@@ -98,6 +98,20 @@ export function shouldReconcileTemplates(status: FaceStatus | undefined, here: {
     return !(status.required && status.consent)
 }
 
+type Loading = { data: unknown; error: unknown }
+
+/**
+ * Whether Check in may start: once the person's face status is known, and,
+ * with a face check in this app, which face model it has; or once either
+ * failed to load, so a failure never stops anyone checking in. Tapped
+ * sooner, nothing said to set the face up or check it, and the check-in went
+ * without either (review on #49).
+ */
+export function faceReady(status: Loading, model?: Loading): boolean {
+    const known = (l: Loading) => l.data !== undefined || !!l.error
+    return known(status) && (!model || known(model))
+}
+
 /**
  * What the face card adds after its text: on an app that can't do the face
  * check, check-ins go without one and wait for a review, whether or not a

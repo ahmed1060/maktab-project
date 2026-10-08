@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone, faceCardNote, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
+import { answerKey, thisPhone, faceCardNote, faceReady, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -81,6 +81,23 @@ describe("faceStep", () => {
         expect(faceStep(approved("prototype-dlib-resnet-v1"), here)).toBe("READY")
         // And once the new photo is sent, it waits for that.
         expect(faceStep(status({ active: true, pendingReview: true, phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } }), v2)).toBe("WAITING")
+    })
+})
+
+describe("checking in before the face status is known", () => {
+    it("waits for the face status, and the app's face model where it has a face check (review on #49)", () => {
+        const loading = { data: undefined, error: undefined }
+        const loaded = { data: { success: true }, error: undefined }
+        expect(faceReady(loading)).toBe(false)
+        expect(faceReady(loaded)).toBe(true)
+        expect(faceReady(loaded, loading)).toBe(false)
+        expect(faceReady(loaded, { data: "prototype-insightface-r50-v2", error: undefined })).toBe(true)
+    })
+
+    it("never waits on a failure: the check-in goes, and the server decides", () => {
+        const failed = { data: undefined, error: new Error("offline") }
+        expect(faceReady(failed)).toBe(true)
+        expect(faceReady({ data: { success: true }, error: undefined }, failed)).toBe(true)
     })
 })
 
