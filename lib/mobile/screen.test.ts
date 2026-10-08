@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
+import { answerKey, thisPhone, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -81,6 +81,28 @@ describe("faceStep", () => {
         expect(faceStep(approved("prototype-dlib-resnet-v1"), here)).toBe("READY")
         // And once the new photo is sent, it waits for that.
         expect(faceStep(status({ active: true, pendingReview: true, phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } }), v2)).toBe("WAITING")
+    })
+})
+
+describe("setting the face up when checking in", () => {
+    const status = (over: Partial<FaceStatus> = {}): FaceStatus => ({
+        active: false, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: { faceStatus: "NONE" }, pendingReview: false, reverifyDue: false, ...over,
+    })
+    const here = { phoneActive: true, verifier: true }
+
+    it("starts the check-in with the set-up on a phone with no face set up, or one rejected (§9.3)", () => {
+        expect(setUpFirst(status(), here)).toBe(true)
+        expect(setUpFirst(status({ phone: { faceStatus: "REJECTED" } }), here)).toBe(true)
+    })
+
+    it("doesn't once a photo waits, the face is in use, or the set-up can't happen here", () => {
+        expect(setUpFirst(status({ pendingReview: true, phone: { faceStatus: "PENDING" } }), here)).toBe(false)
+        expect(setUpFirst(status({ active: true, phone: { faceStatus: "APPROVED" } }), here)).toBe(false)
+        expect(setUpFirst(status({ consent: null }), here)).toBe(false)
+        expect(setUpFirst(status({ required: false }), here)).toBe(false)
+        expect(setUpFirst(status(), { phoneActive: false, verifier: true })).toBe(false)
+        expect(setUpFirst(status(), { phoneActive: true, verifier: false })).toBe(false)
+        expect(setUpFirst(undefined, here)).toBe(false)
     })
 })
 

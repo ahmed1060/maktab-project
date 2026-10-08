@@ -12,7 +12,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceStep, modelChanged, reverifyFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { answerKey, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
 import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
 import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
@@ -136,9 +136,10 @@ export default function CheckInPage() {
         setBusy(direction)
         setAnswer(null)
         try {
-            // Asked to re-verify: the check-in starts with it (§9.5). Not doing it
-            // doesn't stop the check-in, which still counts against the approved face.
-            if (face && reverifyFirst(faceStatus, faceModel)) {
+            // Asked to re-verify, or no face set up on this phone (a new one): the check-in starts with it
+            // (§9.3, §9.5). Not doing it doesn't stop the check-in, which still counts against the approved
+            // face, or, with none on this phone, goes for a review.
+            if (face && (reverifyFirst(faceStatus, faceModel) || setUpFirst(faceStatus, { phoneActive, verifier: true }))) {
                 try {
                     await enrolFace(device!, face, post)
                     showToast(t('face_ci_sent'), 'success')

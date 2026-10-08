@@ -98,6 +98,18 @@ export function shouldReconcileTemplates(status: FaceStatus | undefined, here: {
     return !(status.required && status.consent)
 }
 
+/**
+ * Whether the next check-in starts by setting the face up on this phone: asked
+ * of the person, who consented, with nothing on this phone to match against
+ * and no photo waiting (a new phone, or its photo rejected). Otherwise the
+ * check-in went out flagged with no camera ever shown, and the person was left
+ * to find the set-up below the buttons (§9.3).
+ */
+export function setUpFirst(status: FaceStatus | undefined, here: { phoneActive: boolean; verifier: boolean }): boolean {
+    const step = faceStep(status, here)
+    return step === "ENROL" || step === "REJECTED"
+}
+
 /** Whether the next check-in starts with re-verification: asked for, due, or a new face model, and none sent yet (§9.5). */
 export function reverifyFirst(status: FaceStatus | undefined, modelVersion?: string | null): boolean {
     return !!status?.active && (status.reverifyDue || modelChanged(status, modelVersion)) && !status.pendingReview
