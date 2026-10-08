@@ -259,6 +259,12 @@ describe("the page's tabs (review on #21)", () => {
         expect(page).toContain("const tab: Tab = linked && tabs.includes(linked) ? linked :")
         expect(page).not.toContain("setPicked")
     })
+
+    it("say a phone list failed to refresh, though an earlier one is still shown", () => {
+        const tab = readFileSync("app/(dashboard)/dashboard/attendance/RequestsTab.tsx", "utf8")
+        const list = tab.slice(tab.indexOf("{decidesPhones && phones.length > 0 && ("))
+        expect(list.slice(0, 600)).toMatch(/\{phoneError && <p role="alert"[^\n]*t\('error_generic'\)/)
+    })
 })
 
 describe("a long list (review on #12)", () => {
