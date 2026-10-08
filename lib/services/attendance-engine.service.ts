@@ -519,15 +519,19 @@ export class AttendanceEngineService {
     /**
      * The nightly reconciliation: this month and last, for every company with
      * attendance, and every month a salary or employment change recorded in
-     * the last two days reaches back to — those do not always rebuild as they
-     * happen (one written inside another change's transaction cannot), and a
-     * backdated correction can reach months ago (review on #13). One company
-     * failing is recorded and the rest go on (review on #13).
+     * the two days before the last run that reconciled everything reaches
+     * back to — those do not always rebuild as they happen (one written
+     * inside another change's transaction cannot), and a backdated correction
+     * can reach months ago (review on #13). Counted from the last success, not
+     * from now: a run missed or failed leaves its changes to the next, however
+     * late (review on #13). One company failing is recorded and the rest go on
+     * (review on #13).
      */
     static async reconcileAll(companyIds: readonly string[]) {
         let months = 0
         const failed: { companyId: string; month: string; error: string }[] = []
-        const since = new Date(Date.now() - 2 * 86_400_000)
+        const last = await prisma.jobHeartbeat.findUnique({ where: { job: "attendance" }, select: { lastSuccessAt: true } })
+        const since = new Date(Math.min(Date.now(), last?.lastSuccessAt?.getTime() ?? Date.now()) - 2 * 86_400_000)
         for (const companyId of companyIds) {
             try {
                 const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })

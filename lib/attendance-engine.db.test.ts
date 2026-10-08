@@ -240,6 +240,22 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'c2p'`)
     })
 
+    it("reaches back past nights the job missed or failed, to two days before its last success (review on #13)", async () => {
+        await db.query(`UPDATE "SalaryChange" SET "createdAt" = now() - interval '10 days'`)
+        // Recorded five days ago, inside another change's transaction; the job last got through six days ago.
+        await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom", "createdAt") VALUES ('s10', 'e3', 9400, '2026-05-31T21:00:00Z', now() - interval '5 days')`)
+        await db.query(`INSERT INTO "JobHeartbeat"(job, "lastRunAt", "lastSuccessAt", "updatedAt") VALUES ('attendance', now(), now() - interval '6 days', now())`)
+        // From June, the month s10 reaches back to, to this month.
+        const today = new Date().toISOString().slice(0, 7)
+        const expected = (Number(today.slice(0, 4)) - 2026) * 12 + Number(today.slice(5, 7)) - 6 + 1
+        expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: expected, failed: [] })
+        // Got through last night: two days back from then, as before.
+        await db.query(`UPDATE "JobHeartbeat" SET "lastSuccessAt" = now() WHERE job = 'attendance'`)
+        expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: 2, failed: [] })
+        await db.query(`DELETE FROM "JobHeartbeat" WHERE job = 'attendance'`)
+        await db.query(`DELETE FROM "SalaryChange" WHERE id = 's10'`)
+    })
+
     it("never rewrites a month whose payroll is approved", async () => {
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run9', 'c1', 9, 2026, 'APPROVED', 25, now())`)
         const before = (await days("e1")).get("2026-09-08")!.derivedAt
