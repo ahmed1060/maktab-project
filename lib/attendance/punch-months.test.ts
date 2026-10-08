@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import type { Prisma } from "@prisma/client"
 import { punchMonthsOf } from "@/lib/services/attendance-lock"
+import { assignPunches } from "@/lib/attendance/engine"
+import type { ExpectedDay } from "@/lib/attendance/calendar"
 
 /**
  * The months a punch can change (lib/services/attendance-lock.ts): its own
@@ -30,6 +32,30 @@ describe("the months many punches can change", () => {
         const t = tx([])
         expect(await punchMonthsOf(t.tx, "c1", [{ userId: "e3", local: "2026-10-02T06:00:00" }, { userId: null, local: "2026-10-01T06:00:00" }])).toEqual([["2026-10"], ["2026-10"]])
         expect(t.findMany).not.toHaveBeenCalled()
+    })
+
+    it("leaves to the 1st a punch nearer its own shift, as the engine assigns it (review on #13)", async () => {
+        // The night roster ends with the month: 30 September 22:00–06:00, then 10:00–18:00 days from 1 October.
+        const t = tx([
+            { userId: "e3", date: "2026-09-30", expectedEndMinutes: 1800 },
+            { userId: "e3", date: "2026-10-01", expectedEndMinutes: 1080, expectedStartMinutes: 600 } as never,
+        ])
+        const at = (time: string) => ({ userId: "e3", local: `2026-10-01T${time}:00` })
+        const [late, early, tie] = await punchMonthsOf(t.tx, "c1", [at("09:30"), at("06:30"), at("08:00")])
+        // 09:30: half an hour before the day's start, three and a half after the night's end.
+        expect(late).toEqual(["2026-10"])
+        // 06:30: the night's check-out.
+        expect(early).toEqual(["2026-10", "2026-09"])
+        // Two hours from each: the night's too.
+        expect(tie).toEqual(["2026-10", "2026-09"])
+        // Where the engine puts them.
+        const plans = new Map([
+            ["2026-09-30", { kind: "WORK", hours: { startMinutes: 1320, endMinutes: 1800 }, versionId: "night", overrideId: null }],
+            ["2026-10-01", { kind: "WORK", hours: { startMinutes: 600, endMinutes: 1080 }, versionId: "day", overrideId: null }],
+        ] as [string, ExpectedDay][])
+        const assigned = assignPunches(["09:30", "06:30", "08:00"].map(time => ({ id: time, at: `2026-10-01T${time}:00`, direction: null })), plans)
+        expect(assigned.get("2026-10-01")?.map(p => p.id)).toEqual(["09:30"])
+        expect(assigned.get("2026-09-30")?.map(p => p.id)).toEqual(["06:30", "08:00"])
     })
 
     it("is what approving a phone takes for what it held", () => {

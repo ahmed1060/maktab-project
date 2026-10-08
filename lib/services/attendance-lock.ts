@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { addDays } from "@/lib/attendance/calendar"
-import { LATE_MARGIN_MINUTES } from "@/lib/attendance/engine"
+import { EARLY_MARGIN_MINUTES, LATE_MARGIN_MINUTES } from "@/lib/attendance/engine"
 
 /**
  * The company-month lock (ATTENDANCE_PLAN.md §12.1). Approving a month's
@@ -57,23 +57,35 @@ export async function punchMonths(tx: Prisma.TransactionClient, companyId: strin
  */
 export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<string[][]> {
     const crossing = punches.filter(p => p.userId && addDays(p.local.slice(0, 10), -1).slice(0, 7) !== p.local.slice(0, 7))
-    const nights = crossing.length === 0 ? [] : await tx.attendanceDay.findMany({
+    // The night before, and the 1st's own shift, which takes the punch when nearer.
+    const days = crossing.length === 0 ? [] : await tx.attendanceDay.findMany({
         where: {
             companyId,
             userId: { in: [...new Set(crossing.map(p => p.userId!))] },
-            date: { in: [...new Set(crossing.map(p => addDays(p.local.slice(0, 10), -1)))].map(d => new Date(`${d}T00:00:00Z`)) },
+            date: { in: [...new Set(crossing.flatMap(p => [p.local.slice(0, 10), addDays(p.local.slice(0, 10), -1)]))].map(d => new Date(`${d}T00:00:00Z`)) },
         },
-        select: { userId: true, date: true, expectedEndMinutes: true },
+        select: { userId: true, date: true, expectedStartMinutes: true, expectedEndMinutes: true },
     })
-    const endOf = new Map(nights.map(n => [`${n.userId}:${n.date.toISOString().slice(0, 10)}`, n.expectedEndMinutes]))
+    const shiftOf = new Map(days.map(d => [`${d.userId}:${d.date.toISOString().slice(0, 10)}`, d]))
     return punches.map(({ userId, local }) => {
         const date = local.slice(0, 10)
         const before = addDays(date, -1)
         const months = [date.slice(0, 7)]
         if (!userId || before.slice(0, 7) === months[0]) return months
-        const end = endOf.get(`${userId}:${before}`)
-        const minutesAfterBefore = 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16))
-        if (end != null && minutesAfterBefore <= end + LATE_MARGIN_MINUTES) months.push(before.slice(0, 7))
+        const end = shiftOf.get(`${userId}:${before}`)?.expectedEndMinutes
+        // Minutes from the night before's midnight.
+        const t = 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16))
+        if (end == null || t > end + LATE_MARGIN_MINUTES) return months
+        // Within both windows, the nearer shift has it, as the engine assigns punches (assignPunches): the 1st's
+        // own, when nearer, keeps it in its own month (review on #13). A tie, or a 1st not yet derived, counts
+        // for the night too.
+        const own = shiftOf.get(`${userId}:${date}`)
+        if (own?.expectedStartMinutes != null && own.expectedEndMinutes != null) {
+            const start = 1440 + own.expectedStartMinutes, finish = 1440 + own.expectedEndMinutes
+            const toOwn = t < start ? start - t : t > finish ? t - finish : 0
+            if (t >= start - EARLY_MARGIN_MINUTES && t <= finish + LATE_MARGIN_MINUTES && toOwn < Math.max(0, t - end)) return months
+        }
+        months.push(before.slice(0, 7))
         return months
     })
 }
