@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
+import { answerKey, thisPhone, faceCardNote, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -81,6 +81,14 @@ describe("faceStep", () => {
         expect(faceStep(approved("prototype-dlib-resnet-v1"), here)).toBe("READY")
         // And once the new photo is sent, it waits for that.
         expect(faceStep(status({ active: true, pendingReview: true, phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } }), v2)).toBe("WAITING")
+    })
+})
+
+describe("the face card's note", () => {
+    it("says check-ins wait for a review on an app without the face check, whether or not a face was approved (review on #49)", () => {
+        expect(faceCardNote("NEEDS_APP")).toBe("face_ci_needs_app_flagged")
+        // The others' texts say it already, or there is nothing to say.
+        for (const step of ["ENROL", "REJECTED", "WAITING", "READY", "REVERIFY", "CONSENT", "IDLE", null] as const) expect(faceCardNote(step)).toBeNull()
     })
 })
 

@@ -99,6 +99,17 @@ export function shouldReconcileTemplates(status: FaceStatus | undefined, here: {
 }
 
 /**
+ * What the face card adds after its text: on an app that can't do the face
+ * check, check-ins go without one and wait for a review, whether or not a
+ * face was ever approved on this phone (no approved face on it, or no face
+ * check). It said so only when a face was in use (review on #49). The other
+ * steps' own texts say it already.
+ */
+export function faceCardNote(step: ReturnType<typeof faceStep>): "face_ci_needs_app_flagged" | null {
+    return step === "NEEDS_APP" ? "face_ci_needs_app_flagged" : null
+}
+
+/**
  * Whether the next check-in starts by setting the face up on this phone: asked
  * of the person, who consented, with nothing on this phone to match against
  * and no photo waiting (a new phone, or its photo rejected). Otherwise the

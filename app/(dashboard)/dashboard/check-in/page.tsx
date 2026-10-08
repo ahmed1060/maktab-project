@@ -12,7 +12,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { answerKey, faceCardNote, faceStep, modelChanged, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
 import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
 import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
@@ -299,10 +299,11 @@ function FaceCard({ step, active, busy, working, onConsent, onWithdraw, onEnrol 
         REJECTED: 'face_ci_rejected', REVERIFY: 'face_ci_reverify_hint', READY: 'face_ci_on', IDLE: 'face_ci_idle',
     }
     const action = step === 'ENROL' || step === 'REJECTED' ? 'face_ci_enrol' : step === 'REVERIFY' ? 'face_ci_reverify' : null
+    const note = faceCardNote(step)
     return (
         <section className="glass" style={box}>
             <p style={{ margin: 0, ...(step === 'READY' || step === 'IDLE' ? soft : {}) }}>
-                {t(text[step])}{step === 'NEEDS_APP' && active ? ` ${t('face_ci_needs_app_flagged')}` : ''}
+                {t(text[step])}{note ? ` ${t(note)}` : ''}
             </p>
             {action && <button className="btn btn-primary" disabled={busy} onClick={onEnrol}>{working ? '…' : t(action)}</button>}
             {withdraw}
