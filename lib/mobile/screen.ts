@@ -49,6 +49,12 @@ export type FaceStatus = {
     reverifyDue: boolean
     /** The person's latest verification photo and where it stands. */
     lastReview?: { id: string; status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" } | null
+    /**
+     * When the app asked for this, by its own clock (the page's fetcher adds
+     * it): an answer asked for before a photo went can't say it never
+     * arrived (review on #49).
+     */
+    askedAt?: number
 }
 
 /**
@@ -155,10 +161,26 @@ export function reverifyFirst(status: FaceStatus | undefined, here: { phoneActiv
  * or the app stopped first), so nobody saw that face: they go (review on
  * #28). Nothing while their photo waits.
  */
-export function pendingTemplatesAction(status: FaceStatus | undefined, info: { pending: boolean }, sentWith: string | null): "PROMOTE" | "DISCARD" | null {
+export function pendingTemplatesAction(status: FaceStatus | undefined, info: { pending: boolean }, sent: SentWith | null): "PROMOTE" | "DISCARD" | null {
     if (!status || !info.pending) return null
     const last = status.lastReview
-    if (!sentWith || !last || last.id !== sentWith) return status.pendingReview && sentWith ? null : "DISCARD"
-    if (last.status === "PENDING") return null
-    return last.status === "APPROVED" && status.phone?.faceStatus === "APPROVED" ? "PROMOTE" : "DISCARD"
+    if (sent && last?.id === sent.id) {
+        if (last.status === "PENDING") return null
+        return last.status === "APPROVED" && status.phone?.faceStatus === "APPROVED" ? "PROMOTE" : "DISCARD"
+    }
+    if (!sent) return "DISCARD"
+    // Sent, and the answer doesn't show it: it may have been asked for before the photo went, or while the photo
+    // was still being stored. Dropped then, an approval a moment later found nothing to promote (review on #49).
+    // Only an answer asked for once the photo can no longer be stored settles that it never was.
+    if (status.pendingReview || (status.askedAt ?? -Infinity) < sent.at + SENT_SETTLES_MS) return null
+    return "DISCARD"
 }
+
+/** Which review waiting templates were sent with, and when the app recorded it, by its own clock. */
+export type SentWith = { id: string; at: number }
+
+/**
+ * How long after the photo went it can still be stored: its one-time number
+ * lasts five minutes (CHALLENGE_TTL_MS), the save up to thirty seconds.
+ */
+export const SENT_SETTLES_MS = 6 * 60_000

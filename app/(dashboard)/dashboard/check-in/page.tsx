@@ -69,7 +69,12 @@ export default function CheckInPage() {
     const face = useMemo(() => (native ? faceVerifier() ?? (FACE_CHECK ? faceCheckVerifier(camera.open) : null) : null), [native, camera.open])
     // Which face model this app has: templates approved with another can't be matched, and the face is set up again.
     const { data: faceModel, error: faceModelError } = useSWR(face ? 'this-phone-face-model' : null, async () => (await face!.info()).modelVersion)
-    const { data: faceBody, error: faceError, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, fetcher)
+    // Stamped with when it was asked for: an answer from before a photo went can't say the photo never arrived (review on #49).
+    const { data: faceBody, error: faceError, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, async (url: string) => {
+        const askedAt = Date.now()
+        const body = await fetcher(url)
+        return body?.data ? { ...body, data: { ...body.data, askedAt } } : body
+    })
     const faceStatus = faceBody?.data as FaceStatus | undefined
     // Check in waits for these: tapped sooner, the set-up or the face check was skipped (review on #49).
     const ready = faceReady({ data: faceBody, error: faceError }, face ? { data: faceModel, error: faceModelError } : undefined)

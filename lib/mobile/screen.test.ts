@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest"
-import { answerKey, thisPhone, faceCardNote, faceReady, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, type FaceStatus } from "./screen"
+import { readFileSync } from "node:fs"
+import { answerKey, thisPhone, faceCardNote, faceReady, faceStep, modelChanged, pendingTemplatesAction, reverifyFirst, setUpFirst, shouldReconcileTemplates, SENT_SETTLES_MS, type FaceStatus } from "./screen"
+import { readSent } from "./face"
 
 /** What the check-in screen tells the person (lib/mobile/screen.ts). */
 
@@ -174,23 +176,56 @@ describe("face templates and re-verification on this phone", () => {
 describe("templates waiting on their photo (§9.5)", () => {
     const status = (over: Partial<FaceStatus> = {}): FaceStatus => ({
         active: true, required: true, consent: { acceptedAt: "2026-10-03T08:00:00Z" }, consentVersion: "v", phone: { faceStatus: "APPROVED" },
-        pendingReview: false, reverifyDue: false, lastReview: { id: "r2", status: "APPROVED" }, ...over,
+        pendingReview: false, reverifyDue: false, lastReview: { id: "r2", status: "APPROVED" }, askedAt: SENT_SETTLES_MS, ...over,
     })
     const waiting = { pending: true }
+    // Recorded before the photo went; the answers below asked for long after.
+    const r2 = { id: "r2", at: 0 }
 
     it("promotes them only once the review they were sent with is approved", () => {
-        expect(pendingTemplatesAction(status({ pendingReview: true, lastReview: { id: "r2", status: "PENDING" } }), waiting, "r2")).toBeNull()
-        expect(pendingTemplatesAction(status(), { pending: false }, "r2")).toBeNull()
-        expect(pendingTemplatesAction(status(), waiting, "r2")).toBe("PROMOTE")
+        expect(pendingTemplatesAction(status({ pendingReview: true, lastReview: { id: "r2", status: "PENDING" } }), waiting, r2)).toBeNull()
+        expect(pendingTemplatesAction(status(), { pending: false }, r2)).toBeNull()
+        expect(pendingTemplatesAction(status(), waiting, r2)).toBe("PROMOTE")
         // Approved while paused still promotes: the decision is the reviewer's.
-        expect(pendingTemplatesAction(status({ required: false, active: false }), waiting, "r2")).toBe("PROMOTE")
+        expect(pendingTemplatesAction(status({ required: false, active: false }), waiting, r2)).toBe("PROMOTE")
     })
 
     it("drops them when their review was rejected or withdrawn, or when they never reached a reviewer (review on #28)", () => {
-        expect(pendingTemplatesAction(status({ phone: { faceStatus: "REJECTED" }, lastReview: { id: "r2", status: "REJECTED" } }), waiting, "r2")).toBe("DISCARD")
-        expect(pendingTemplatesAction(status({ lastReview: { id: "r2", status: "WITHDRAWN" } }), waiting, "r2")).toBe("DISCARD")
+        expect(pendingTemplatesAction(status({ phone: { faceStatus: "REJECTED" }, lastReview: { id: "r2", status: "REJECTED" } }), waiting, r2)).toBe("DISCARD")
+        expect(pendingTemplatesAction(status({ lastReview: { id: "r2", status: "WITHDRAWN" } }), waiting, r2)).toBe("DISCARD")
         // The upload failed, or the app stopped first: the phone still looks approved, from an older review.
         expect(pendingTemplatesAction(status({ lastReview: { id: "r1", status: "APPROVED" } }), waiting, null)).toBe("DISCARD")
-        expect(pendingTemplatesAction(status({ lastReview: { id: "r1", status: "APPROVED" } }), waiting, "r2")).toBe("DISCARD")
+        expect(pendingTemplatesAction(status({ lastReview: { id: "r1", status: "APPROVED" } }), waiting, r2)).toBe("DISCARD")
+    })
+
+    it("keeps them when the answer doesn't show their photo but may predate it, or the photo may still be being stored (review on #49)", () => {
+        const sentAt = 1_000_000
+        const sent = { id: "r3", at: sentAt }
+        const older = { lastReview: { id: "r2", status: "APPROVED" as const } }
+        // Asked for before the photo went: the page's answer from then.
+        expect(pendingTemplatesAction(status({ ...older, askedAt: sentAt - 1 }), waiting, sent)).toBeNull()
+        // Asked for while it could still be stored.
+        expect(pendingTemplatesAction(status({ ...older, askedAt: sentAt + SENT_SETTLES_MS - 1 }), waiting, sent)).toBeNull()
+        // Not knowing when it was asked for: kept too.
+        expect(pendingTemplatesAction(status({ ...older, askedAt: undefined }), waiting, sent)).toBeNull()
+        // Once it can't be stored any more, the answer settles it.
+        expect(pendingTemplatesAction(status({ ...older, askedAt: sentAt + SENT_SETTLES_MS }), waiting, sent)).toBe("DISCARD")
+        // Its own photo shown: decided as before, whenever asked.
+        expect(pendingTemplatesAction(status({ lastReview: { id: "r3", status: "APPROVED" }, askedAt: sentAt - 1 }), waiting, sent)).toBe("PROMOTE")
+        // A photo's number lasts five minutes and its save up to thirty seconds (CHALLENGE_TTL_MS).
+        expect(SENT_SETTLES_MS).toBeGreaterThan(5 * 60_000 + 30_000)
+        expect(readFileSync("lib/services/attendance-challenge.service.ts", "utf8")).toContain("export const CHALLENGE_TTL_MS = 5 * 60_000")
+    })
+
+    it("reads a record kept before its time was, as old", () => {
+        expect(readSent(null)).toBeNull()
+        expect(readSent("r1")).toEqual({ id: "r1", at: 0 })
+        expect(readSent(JSON.stringify({ id: "r2", at: 5 }))).toEqual({ id: "r2", at: 5 })
+    })
+
+    it("stamps the face status with when the page asked for it (review on #49)", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        expect(page).toMatch(/const askedAt = Date\.now\(\)\s*const body = await fetcher\(url\)\s*return body\?\.data \? \{ \.\.\.body, data: \{ \.\.\.body\.data, askedAt \} \} : body/)
     })
 })
+

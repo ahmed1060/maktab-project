@@ -1,6 +1,6 @@
 import { attestedText, faceDeletedText, faceKeyText, faceReviewId, faceText, type FaceResult } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
-import { pendingTemplatesAction, type FaceStatus } from "./screen"
+import { pendingTemplatesAction, type FaceStatus, type SentWith } from "./screen"
 import type { Post } from "./check-in-flow"
 import type { PHONE_KEYS } from "./kept-storage"
 
@@ -209,23 +209,34 @@ export async function settleTemplates(face: FaceVerifier, status: FaceStatus, se
     return action === "PROMOTE" ? "PROMOTED" : action === "DISCARD" ? "DISCARDED" : null
 }
 
-/** Which review this phone's waiting templates were sent with, kept beside them. */
-export type SentRecord = { get(): string | null; set(reviewId: string | null): void }
+/** Which review this phone's waiting templates were sent with, and when that was recorded, kept beside them. */
+export type SentRecord = { get(): SentWith | null; set(reviewId: string | null): void }
+
+/** A record as stored: the review and when; or, from before that was kept, the review alone. */
+export function readSent(raw: string | null): SentWith | null {
+    if (!raw) return null
+    try {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed.id === "string") return { id: parsed.id, at: Number(parsed.at) || 0 }
+    } catch { /* the review alone */ }
+    return { id: raw, at: 0 }
+}
 
 /** Left when the site's storage is cleared (lib/mobile/kept-storage.ts). */
 const SENT_KEY: (typeof PHONE_KEYS)[number] = "nizmo-face-sent-review"
-let sentInMemory: string | null = null
+let sentInMemory: string | null = null  // as stored: JSON of a SentWith
 
 /** The record in the app's storage, or in memory where there is none. */
 export function sentRecord(): SentRecord {
     return {
         get: () => {
-            try { return globalThis.localStorage?.getItem(SENT_KEY) ?? sentInMemory } catch { return sentInMemory }
+            try { return readSent(globalThis.localStorage?.getItem(SENT_KEY) ?? sentInMemory) } catch { return readSent(sentInMemory) }
         },
         set: id => {
-            sentInMemory = id
+            const value = id ? JSON.stringify({ id, at: Date.now() }) : null
+            sentInMemory = value
             try {
-                if (id) globalThis.localStorage?.setItem(SENT_KEY, id)
+                if (value) globalThis.localStorage?.setItem(SENT_KEY, value)
                 else globalThis.localStorage?.removeItem(SENT_KEY)
             } catch { /* in memory only */ }
         },
