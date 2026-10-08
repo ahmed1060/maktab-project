@@ -189,6 +189,9 @@ export class AttendanceAgentService {
     static async rotate(agent: AuthenticatedAgent) {
         const token = newAgentToken()
         await prisma.$transaction(async tx => {
+            // One rotation at a time for the agent: each keeps the few it can see, and two at once each kept its
+            // own token beside the other's, past the cap (review on #49). This lock waits for the insert's too.
+            await tx.$queryRaw`SELECT id FROM "AttendanceAgent" WHERE id = ${agent.id} FOR NO KEY UPDATE`
             await tx.attendanceAgentPendingToken.create({ data: { agentId: agent.id, tokenHash: hashSecret(token) } })
             // Those past their day go, and the oldest beyond a few.
             const kept = await tx.attendanceAgentPendingToken.findMany({

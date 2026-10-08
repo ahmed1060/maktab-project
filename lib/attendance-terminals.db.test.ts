@@ -143,6 +143,23 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         expect(n).toBe(MAX_PENDING_TOKENS)
     })
 
+    it("keeps only a few waiting when rotations overlap (review on #49)", async () => {
+        const { MAX_PENDING_TOKENS } = await import("@/lib/services/attendance-agent.service")
+        const { code } = await Agents.create("c1", "Overlapping", "a1")
+        const me = await Agents.authenticate((await Agents.enrol(code, {})).token)
+        if ("refused" in me) throw new Error("refused")
+        for (let i = 0; i < MAX_PENDING_TOKENS; i++) await Agents.rotate(me)
+        // Another rotation has written its token and not yet committed.
+        await db.query("BEGIN")
+        await db.query(`INSERT INTO "AttendanceAgentPendingToken"(id, "agentId", "tokenHash") VALUES ('overlap', $1, 'overlap-hash')`, [me.id])
+        const rotating = Agents.rotate(me)
+        await new Promise(r => setTimeout(r, 300))
+        await db.query("COMMIT")
+        await rotating
+        const { rows: [{ n }] } = await db.query(`SELECT count(*)::int AS n FROM "AttendanceAgentPendingToken" WHERE "agentId" = $1`, [me.id])
+        expect(n).toBe(MAX_PENDING_TOKENS)
+    })
+
     it("moves an agent to a new PC with a new code: the old PC stops at once", async () => {
         const { agent, code } = await Agents.create("c1", "Moving", "a1")
         const { token: oldPc } = await Agents.enrol(code, { hostname: "OLD" })
