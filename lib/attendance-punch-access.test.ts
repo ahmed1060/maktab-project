@@ -244,6 +244,11 @@ describe("the screen's dates (review on #12)", () => {
         const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
         expect(page).toContain("const { data: peopleBody, error: peopleError } = useSWR(")
         expect(page).toMatch(/if \(peopleError && !today && [^\n]*\) return <p role="alert"[^\n]*t\('error_generic'\)/)
+        // Not before the session says who is asking: a Super Admin's request went without the company, and its
+        // refusal showed as an error for a moment (review on #49).
+        expect(page).toContain("useSWR(status !== 'loading' && (!isSuperAdmin || companyId) ? `/api/attendance/people?${q}` : null, fetcher)")
+        expect(page.indexOf("if (status === 'loading') return <LoadingSpinner />")).toBeGreaterThan(-1)
+        expect(page.indexOf("if (status === 'loading') return <LoadingSpinner />")).toBeLessThan(page.indexOf("if (peopleError && !today"))
     })
 })
 
