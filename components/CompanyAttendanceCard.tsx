@@ -15,6 +15,7 @@ import AttendanceTerminalsPanel from '@/components/AttendanceTerminalsPanel'
 import AttendanceLocationsPanel from '@/components/AttendanceLocationsPanel'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiErrorText } from '@/lib/api-error-text'
+import { rebaseOnDate, startFromStale, type Based } from '@/lib/attendance/rebase'
 import {
     companyWeekOn, defaultOn, formatMinutes, parseTime, scheduleIdOn, shiftEnd, versionOn, workDaysOf,
     type DayHours, type Override, type Version,
@@ -619,6 +620,18 @@ function HoursModal({ editing, today, companyWorkWeeks, weekdayName, busy, onClo
     const [form, setForm] = useState<HoursForm>(formFromVersion(base))
     // "From when?" (§6.1): the next payroll month unless they say otherwise.
     const [from, setFrom] = useState(editing.kind === 'schedule' ? today : firstOfNextMonth(today))
+    // A change of hours follows the version in force on its date as the date moves; edited, it says the date has
+    // another (review on #64).
+    const [formBase, setFormBase] = useState<HoursForm>(formFromVersion(base))
+    const [stale, setStale] = useState<HoursForm | null>(null)
+    const rebased = (next: Based<HoursForm>) => { setFormBase(next.base); setForm(next.current); setStale(next.stale) }
+    const changeFrom = (date: string) => {
+        setFrom(date)
+        if (editing.kind !== 'version' || !date) return
+        const based = { base: formBase, current: form, stale }
+        const inForce = versionOn(editing.schedule.versions, date)
+        rebased(rebaseOnDate(based, inForce ? formFromVersion(inForce) : null))
+    }
     const [startDate, setStartDate] = useState(editing.kind === 'override' ? editing.override?.startDate ?? '' : '')
     const [endDate, setEndDate] = useState(editing.kind === 'override' ? editing.override?.endDate ?? '' : '')
     // The company's week on the date these hours start, which is what they inherit.
@@ -674,14 +687,21 @@ function HoursModal({ editing, today, companyWorkWeeks, weekdayName, busy, onClo
                 ) : (
                     <div>
                         <label htmlFor="hours-from" className="label">{t('attendance_from_when')}</label>
-                        <input id="hours-from" className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} aria-describedby="hours-from-hint" />
+                        <input id="hours-from" className="input" type="date" value={from} onChange={e => changeFrom(e.target.value)} aria-describedby="hours-from-hint" />
                         <div id="hours-from-hint" style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginTop: '0.3rem' }}>
                             {t('attendance_from_when_hint')}
                             {' '}
-                            <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => setFrom(today)}>{t('attendance_from_today')}</button>
+                            <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => changeFrom(today)}>{t('attendance_from_today')}</button>
                             {' · '}
-                            <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => setFrom(firstOfNextMonth(today))}>{t('attendance_from_next_month')}</button>
+                            <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => changeFrom(firstOfNextMonth(today))}>{t('attendance_from_next_month')}</button>
                         </div>
+                        {stale && (
+                            <div role="status" style={{ fontSize: '0.78rem', color: 'var(--warn-fg)', marginTop: '0.3rem' }}>
+                                {t('attendance_base_changed')}{' '}
+                                <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }}
+                                    onClick={() => rebased(startFromStale({ base: formBase, current: form, stale }))}>{t('attendance_base_use')}</button>
+                            </div>
+                        )}
                     </div>
                 )}
 

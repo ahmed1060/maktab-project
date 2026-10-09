@@ -21,10 +21,16 @@ describe("a form moved to another date", () => {
         expect(rebaseOnDate(edited, march).stale).toBeNull()
     })
 
-    it("is what the policy editor does when its date changes", () => {
+    it("is what the policy editor and the hours form do when their date changes", () => {
         const policy = readFileSync("components/AttendancePolicyPanel.tsx", "utf8")
         expect(policy).toContain("rebased(rebaseOnDate(based, startOn(date)))")
         expect(policy).not.toMatch(/onChange=\{e => setFrom\(e\.target\.value\)\}|onClick=\{\(\) => setFrom\(today\)\}/)
         expect(policy).toContain("startOn={editing.templateId ? undefined : date => policyOn(data.versions, date)?.body ?? null}")
+        const hours = readFileSync("components/CompanyAttendanceCard.tsx", "utf8")
+        expect(hours).toContain("rebased(rebaseOnDate(based, inForce ? formFromVersion(inForce) : null))")
+        expect(hours).toContain("const inForce = versionOn(editing.schedule.versions, date)")
+        // Every way the date moves goes through it: the field and both shortcuts.
+        const form = hours.slice(hours.indexOf("function HoursModal"), hours.indexOf("function HoursModal") + 9000)
+        expect(form).not.toMatch(/setFrom\((today|firstOfNextMonth\(today\)|e\.target\.value)\)/)
     })
 })
