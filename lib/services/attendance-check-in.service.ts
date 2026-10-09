@@ -205,13 +205,15 @@ export class AttendanceCheckInService {
      */
     static async lateness(companyId: string, userId: string, punchId: string, local: string): Promise<{ minutes: number; startsAt: string } | null> {
         const date = local.slice(0, 10)
-        const days = [addDays(date, -1), date, addDays(date, 1)]
+        // Two days back: an arrival after midnight is the day before's night, and that night's own
+        // morning check-out, earlier the same day, is the night before's (review on #61).
+        const days = [addDays(date, -2), addDays(date, -1), date, addDays(date, 1)]
         const [{ plans, latenessOn }, nearby] = await Promise.all([
             AttendanceEngineService.expectedFor(companyId, userId, days),
             prisma.attendancePunch.findMany({
                 where: {
                     userId, voidedAt: null, status: { in: ["ACCEPTED", "FLAGGED", "PENDING_DEVICE"] },
-                    punchAtLocal: { gte: new Date(`${days[0]}T00:00:00Z`), lt: new Date(`${addDays(days[2], 1)}T00:00:00Z`) },
+                    punchAtLocal: { gte: new Date(`${days[0]}T00:00:00Z`), lt: new Date(`${addDays(days.at(-1)!, 1)}T00:00:00Z`) },
                 },
                 select: { id: true, punchAtLocal: true, direction: true },
             }),

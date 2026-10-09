@@ -233,6 +233,10 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T03:00:00Z" })).toMatchObject({ late: null })
         // Monday night's arrival at 22:30: the morning's punches were last night's, so this is the first, and late.
         expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T19:30:00Z" })).toMatchObject({ at: "2026-09-28T22:30:00", late: { minutes: 30, startsAt: "22:00" } })
+        // Its check-out at 06:00 Tuesday, then Tuesday night's arrival at 00:20 Wednesday: the first of Tuesday's night,
+        // though Monday night's check-out came on Tuesday too (review on #61).
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T03:00:00Z" })).toMatchObject({ late: null })
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T21:20:00Z" })).toMatchObject({ at: "2026-09-30T00:20:00", late: { minutes: 140, startsAt: "22:00" } })
     })
 
     // Last: it approves this month's payroll, which closes the month to every later check-in here.
