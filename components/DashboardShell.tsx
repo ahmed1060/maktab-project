@@ -72,12 +72,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     // Company settings (ATTENDANCE_PLAN.md §5.2): the layout's answer for the
     // first paint, then asked again on every page and on focus. The layout
     // persists across client navigation, so without this the Super Admin's
-    // switch would reach an open dashboard only on a full reload.
+    // switch would reach an open dashboard only on a full reload. Focus is
+    // turned on here: the app's SWRConfig turns it off everywhere else.
     const pathname = usePathname()
     const { data: settingsEntry, mutate: recheckSettings } = useSWR(
         user?.role && user.role !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null,
         fetcher,
-        { fallbackData: { data: { visible: settingsOnFirstPaint } }, revalidateOnMount: false },
+        { fallbackData: { data: { visible: settingsOnFirstPaint } }, revalidateOnMount: false, revalidateOnFocus: true },
     )
     useEffect(() => { recheckSettings() }, [pathname, recheckSettings])
     const showCompanySettings = !!settingsEntry?.data?.visible

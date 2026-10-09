@@ -248,4 +248,12 @@ describe("the menu entry", () => {
         expect(SHELL).toContain("'/api/company-settings/visible'")
         expect(SHELL).toContain("useEffect(() => { recheckSettings() }, [pathname, recheckSettings])")
     })
+
+    it("is asked again when the window comes back into focus, though the app turns that off (review on #5)", () => {
+        // A Super Admin's change, made while the dashboard sat in another
+        // window, reached it only on the next page.
+        expect(readFileSync("app/providers.tsx", "utf8")).toContain("revalidateOnFocus: false")
+        const entry = SHELL.slice(SHELL.indexOf("'/api/company-settings/visible'"))
+        expect(entry.slice(0, entry.indexOf(")"))).toContain("revalidateOnFocus: true")
+    })
 })
