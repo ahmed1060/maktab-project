@@ -4,6 +4,7 @@ import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 import { COMPANY_SETTINGS_TABS, settingsTab } from "./company-settings-tabs"
 import { leavingHref } from "./useUnsavedChanges"
+import { startsNavigation } from "./navigation-progress"
 
 /**
  * The company settings tabs (ATTENDANCE_PLAN.md §5.1): one registry, and a
@@ -91,6 +92,25 @@ describe("the company settings tabs", () => {
             expect(leavingHref(link("/dashboard/tasks"), { ...click, ctrlKey: true }, here)).toBeNull()
             expect(leavingHref(link("/dashboard/tasks"), { ...click, button: 1 }, here)).toBeNull()
             expect(leavingHref(link("#top"), click, here)).toBeNull()
+        })
+
+        it("only prevents the click: the link's own click still runs, and the progress bar doesn't start (review on #5)", () => {
+            // The click was stopped, so a sidebar link's own click, which
+            // closes the sidebar on a phone, never ran: confirmed, the next
+            // page opened under the sidebar. And the progress bar, listening
+            // on the document first, had already started and ran on after Cancel.
+            const guard = readFileSync("lib/useUnsavedChanges.tsx", "utf8")
+            const links = guard.slice(guard.indexOf("export function useGuardLinks"), guard.indexOf("export function useUnsavedState"))
+            expect(links).toContain("e.preventDefault()")
+            expect(links).not.toMatch(/stopPropagation|stopImmediatePropagation/)
+            // On the window, so before the progress bar's listener on the document.
+            expect(links).toContain("window.addEventListener('click', onClick, true)")
+            expect(readFileSync("components/NavigationProgress.tsx", "utf8")).toContain("document.addEventListener('click', onClick, true)")
+            const sidebarLink = { href: new URL("/dashboard/tasks", here).href, target: "", hasAttribute: () => false }
+            expect(startsNavigation(click, sidebarLink, here)).toBe(true)
+            expect(startsNavigation({ ...click, defaultPrevented: true }, sidebarLink, here)).toBe(false)
+            // The sidebar's links close it in their own click.
+            expect(readFileSync("components/DashboardShell.tsx", "utf8")).toContain("onClick={() => isMobile && setIsSidebarOpen(false)}")
         })
 
         it("is wired to the tabs, and the back link is a link", () => {

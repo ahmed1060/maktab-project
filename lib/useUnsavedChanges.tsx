@@ -58,7 +58,13 @@ export function leavingHref(
  * While there are unsaved edits, a click on an in-app link (the sidebar, a
  * back link) asks first instead of leaving: `onLeave` gets where it was going.
  * Client-side navigation fires no beforeunload, so without this it would drop
- * the edits silently. Listens in the capture phase, before Next's Link.
+ * the edits silently.
+ *
+ * Listens on the window in the capture phase, so it comes before anything
+ * else: the top progress bar's listener on the document sees the click as
+ * prevented and doesn't start. Only prevented, not stopped: the link's own
+ * click still runs, so a sidebar link still closes the sidebar on a phone,
+ * and Next's Link sees it prevented and doesn't navigate (review on #5).
  */
 export function useGuardLinks(dirty: boolean, onLeave: (href: string) => void) {
     const leave = useRef(onLeave)
@@ -70,11 +76,10 @@ export function useGuardLinks(dirty: boolean, onLeave: (href: string) => void) {
             const href = leavingHref(a && { href: a.href, target: a.target, download: a.hasAttribute('download') }, e, window.location.href)
             if (!href) return
             e.preventDefault()
-            e.stopPropagation()
             leave.current(href)
         }
-        document.addEventListener('click', onClick, true)
-        return () => document.removeEventListener('click', onClick, true)
+        window.addEventListener('click', onClick, true)
+        return () => window.removeEventListener('click', onClick, true)
     }, [dirty])
 }
 
