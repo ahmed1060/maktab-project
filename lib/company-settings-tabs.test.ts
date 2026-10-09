@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 import { COMPANY_SETTINGS_TABS, settingsTab } from "./company-settings-tabs"
-import { leavingHref } from "./useUnsavedChanges"
+import { leavingHref, unsavedGuard } from "./useUnsavedChanges"
 import { startsNavigation } from "./navigation-progress"
 
 /**
@@ -71,6 +71,38 @@ describe("the company settings tabs", () => {
         const kept = save.indexOf("setSaved({ enabled, months })")
         expect(kept).toBeGreaterThan(save.indexOf("if (!res.ok) return"))
         expect(kept).toBeLessThan(save.indexOf("onSaved()"))
+    })
+
+    it("ask before a card's own way out too: the Roles tab's Preview (review on #5)", () => {
+        // Preview moved to the dashboard with router.push, which neither the
+        // link guard nor the browser's prompt sees: an access review edit on
+        // the same tab was dropped without a word.
+        const changes: boolean[] = [], asked: Array<() => void> = []
+        let gone = 0
+        const guard = unsavedGuard(d => changes.push(d), go => asked.push(go))
+        guard.leave(() => gone++)
+        expect(gone).toBe(1)
+        expect(asked).toHaveLength(0)
+
+        guard.report("access-review", true)
+        guard.leave(() => gone++)
+        expect(gone).toBe(1)
+        expect(asked).toHaveLength(1)
+        // Only once the person chooses to discard the edits.
+        asked[0]()
+        expect(gone).toBe(2)
+
+        guard.report("access-review", false)
+        guard.leave(() => gone++)
+        expect(gone).toBe(3)
+        expect(asked).toHaveLength(1)
+        expect(changes).toEqual([true, false])
+
+        expect(TABS).toContain("<UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>")
+        expect(TABS).toContain("else next.go()")
+        const roles = readFileSync("components/CompanyRolesCard.tsx", "utf8")
+        expect(roles).toContain("onClick={() => leave(() => preview(role))}")
+        expect(roles).not.toContain("onClick={() => preview(role)}")
     })
 
     describe("and before leaving the page by a link", () => {

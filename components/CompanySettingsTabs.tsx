@@ -57,8 +57,9 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const { dirty, setDirty } = useUnsavedState()
-    // Where unsaved edits were about to be left for: another tab, or a page.
-    const [leavingFor, setLeavingFor] = useState<{ tab: CompanySettingsTabKey } | { href: string } | null>(null)
+    // Where unsaved edits were about to be left for: another tab, a page, or
+    // a card's own way out (the Roles tab's Preview).
+    const [leavingFor, setLeavingFor] = useState<{ tab: CompanySettingsTabKey } | { href: string } | { go: () => void } | null>(null)
     useGuardLinks(dirty, href => setLeavingFor({ href }))
 
     const tabs = COMPANY_SETTINGS_TABS.filter(x => shown.includes(x.key))
@@ -86,7 +87,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                 options={tabs.map(x => ({ value: x.key, label: t(x.labelKey as any) }))}
             />}
 
-            <UnsavedChangesProvider onChange={setDirty}>
+            <UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>
                 {tab === 'general' && (
                     <CompanyGeneralCard companyId={companyId} autoVerifyLocation={company.autoVerifyLocation} onSaved={onSaved} readOnly={readOnly} />
                 )}
@@ -157,7 +158,8 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                     if (!next) return
                     setDirty(false)
                     if ('tab' in next) open(next.tab)
-                    else router.push(next.href)
+                    else if ('href' in next) router.push(next.href)
+                    else next.go()
                 }}
                 onCancel={() => setLeavingFor(null)}
             />

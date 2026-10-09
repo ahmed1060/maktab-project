@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 /**
  * Unsaved edits on a page made of several forms (the company settings tabs).
@@ -8,21 +8,41 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
  * Outside a provider, reporting does nothing.
  */
 
-type Guard = { report: (id: string, dirty: boolean) => void }
+type Guard = ReturnType<typeof unsavedGuard>
 
 const UnsavedContext = createContext<Guard | null>(null)
 
-export function UnsavedChangesProvider({ children, onChange }: { children: React.ReactNode; onChange: (dirty: boolean) => void }) {
-    const dirty = useRef(new Set<string>())
-    const report = useCallback((id: string, isDirty: boolean) => {
-        const before = dirty.current.size > 0
-        if (isDirty) dirty.current.add(id)
-        else dirty.current.delete(id)
-        const after = dirty.current.size > 0
-        if (before !== after) onChange(after)
-    }, [onChange])
-    const value = useMemo(() => ({ report }), [report])
-    return <UnsavedContext.Provider value={value}>{children}</UnsavedContext.Provider>
+/**
+ * Which forms hold edits, and leaving them. `leave(go)` goes at once while
+ * none does; otherwise it hands `go` to `ask`, to run only once the person
+ * has chosen to discard them. Apart from React, so it can be tested.
+ */
+export function unsavedGuard(changed: (dirty: boolean) => void, ask: (go: () => void) => void) {
+    const dirty = new Set<string>()
+    return {
+        report(id: string, isDirty: boolean) {
+            const before = dirty.size > 0
+            if (isDirty) dirty.add(id)
+            else dirty.delete(id)
+            const after = dirty.size > 0
+            if (before !== after) changed(after)
+        },
+        leave(go: () => void) {
+            if (dirty.size > 0) ask(go)
+            else go()
+        },
+    }
+}
+
+/**
+ * `onLeave` asks before a form's own way out (a button that navigates);
+ * without it, those go at once. Both callbacks are read once, when the
+ * provider mounts, so the guard every form reports to stays one object: pass
+ * ones that don't change (a state setter, or a function of one).
+ */
+export function UnsavedChangesProvider({ children, onChange, onLeave = go => go() }: { children: React.ReactNode; onChange: (dirty: boolean) => void; onLeave?: (go: () => void) => void }) {
+    const [guard] = useState(() => unsavedGuard(onChange, onLeave))
+    return <UnsavedContext.Provider value={guard}>{children}</UnsavedContext.Provider>
 }
 
 /** Tell the page whether this form holds unsaved edits. Cleared when the form goes away. */
@@ -32,6 +52,16 @@ export function useReportUnsaved(id: string, dirty: boolean) {
         guard?.report(id, dirty)
     }, [guard, id, dirty])
     useEffect(() => () => guard?.report(id, false), [guard, id])
+}
+
+/**
+ * Leave by a form's own button rather than a link (the Roles tab's Preview):
+ * while edits are unsaved the page asks first, as it does for a link, which
+ * the link guard can't see. Outside a provider, it goes at once.
+ */
+export function useLeaveGuard() {
+    const guard = useContext(UnsavedContext)
+    return useCallback((go: () => void) => (guard ? guard.leave(go) : go()), [guard])
 }
 
 /**
