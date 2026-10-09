@@ -123,17 +123,13 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
             self.locationManager = manager
             self.waiting.append(call)
             self.askedAt = Date()
-            self.giveUp?.cancel()
-            let giveUp = DispatchWorkItem { [weak self] in self?.fail("The phone couldn't find its location.", "LOCATION_UNAVAILABLE") }
-            self.giveUp = giveUp
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.locationTimeout, execute: giveUp)
             switch manager.authorizationStatus {
             case .notDetermined:
                 manager.requestWhenInUseAuthorization()
             case .denied, .restricted:
                 self.fail("Location permission was refused.", "LOCATION_DENIED")
             default:
-                manager.startUpdatingLocation()
+                self.startLooking(manager)
             }
         }
     }
@@ -201,8 +197,18 @@ public class NizmoCheckInPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerD
         case .denied, .restricted:
             fail("Location permission was refused.", "LOCATION_DENIED")
         default:
-            manager.startUpdatingLocation()
+            startLooking(manager)
         }
+    }
+
+    /// Looks for a fix, giving up after the timeout. It counts from here, once location is allowed: a first
+    /// check-in's system question can take longer to answer than the fix (review on #61).
+    private func startLooking(_ manager: CLLocationManager) {
+        giveUp?.cancel()
+        let giveUp = DispatchWorkItem { [weak self] in self?.fail("The phone couldn't find its location.", "LOCATION_UNAVAILABLE") }
+        self.giveUp = giveUp
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.locationTimeout, execute: giveUp)
+        manager.startUpdatingLocation()
     }
 
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
