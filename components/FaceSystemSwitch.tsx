@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { apiErrorText } from '@/lib/api-error-text'
+import { leftAfterPress, photosLeft } from '@/lib/face-rekey-progress'
 
 /**
  * Face verification for the whole system (ATTENDANCE_PLAN.md §10.4), on the
@@ -31,9 +32,9 @@ export default function FaceSystemSwitch() {
     const [purging, setPurging] = useState(false)
     const [busy, setBusy] = useState(false)
     // A rotation runs a bounded share per press: where the last press stopped,
-    // and how many it has moved since the status was read (review on #33).
+    // and how many are left by the screen's own count (review on #33; photosLeft).
     const [rekeyFrom, setRekeyFrom] = useState<{ table: string; after: string } | null>(null)
-    const [rekeyMoved, setRekeyMoved] = useState(0)
+    const [rekeyLeft, setRekeyLeft] = useState<number | null>(null)
     // While it loads, the card already holds its place: rendering nothing and
     // then the card pushed the Branding card below it down on System settings
     // (Lighthouse: a layout shift of 0.2).
@@ -76,7 +77,12 @@ export default function FaceSystemSwitch() {
     }
     const last = purgeBody?.data ?? null
 
+    const rotation = rekeyBody?.data.rotating ? rekeyBody.data : null
+    const left = rotation && !rotation.sameKey ? photosLeft(rekeyLeft, rotation.previous) : 0
+
     const rekey = async () => {
+        // What showed as the press began: a status read during it may already have some of its moves.
+        const shown = left
         setBusy(true)
         try {
             const res = await fetch('/api/system-settings/face/rekey', {
@@ -89,17 +95,16 @@ export default function FaceSystemSwitch() {
             if (run.next) {
                 // More to read: the next press goes on from here, and the full count waits for the end.
                 setRekeyFrom(run.next)
-                setRekeyMoved(m => m + run.moved)
+                setRekeyLeft(leftAfterPress(shown, run.moved))
             } else {
                 setRekeyFrom(null)
-                setRekeyMoved(0)
+                setRekeyLeft(null)
                 reloadRekey()
             }
         } catch {
             showToast(t('error_generic'), 'error')
         } finally { setBusy(false) }
     }
-    const rotation = rekeyBody?.data.rotating ? rekeyBody.data : null
 
     const tone = state === 'ON' ? 'var(--ok-fg)' : state === 'PAUSED' ? 'var(--warn-fg)' : 'var(--text-soft)'
     return (
@@ -128,7 +133,7 @@ export default function FaceSystemSwitch() {
                         <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_same_key')}</p>
                     ) : rotation.previous > 0 ? (
                         <>
-                            <p style={{ fontSize: '0.8rem', margin: 0 }}>{t('face_rekey_status').replace('{previous}', String(Math.max(0, rotation.previous - rekeyMoved))).replace('{total}', String(rotation.total))}</p>
+                            <p style={{ fontSize: '0.8rem', margin: 0 }}>{t('face_rekey_status').replace('{previous}', String(left)).replace('{total}', String(rotation.total))}</p>
                             <div><button className="btn btn-primary" disabled={busy} onClick={rekey}>{t('face_rekey_run')}</button></div>
                         </>
                     ) : (
