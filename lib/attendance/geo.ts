@@ -51,9 +51,12 @@ export function locateErrorKey(code: number): 'att_loc_here_denied' | 'att_loc_h
 
 /**
  * Whether a position that has just arrived should still fill the field: only
- * if it answers the latest request, and the field hasn't changed since it was
- * asked for. A slow fix must not overwrite a point typed or picked meanwhile.
+ * if it answers the latest request, and the field hasn't been edited since it
+ * was asked for. A slow fix must not overwrite a point typed or picked
+ * meanwhile. Edits are counted, not compared by their text: a point typed and
+ * cleared again, or changed and changed back, leaves the same text, and the
+ * fix overwrote what the person had last decided (review on #38).
  */
-export function fixStillWanted(asked: { request: number; value: string }, now: { request: number; value: string }): boolean {
-    return asked.request === now.request && asked.value === now.value
+export function fixStillWanted(asked: { request: number; edits: number }, now: { request: number; edits: number }): boolean {
+    return asked.request === now.request && asked.edits === now.edits
 }

@@ -46,11 +46,14 @@ export default function PointPicker({ value, radius, onChange }: { value: string
     // The latest request for this device's position: a newer one, or a point
     // typed or picked while waiting, makes an earlier answer stale.
     const request = useRef(0)
+    // Every change to the field, typed, picked or dragged, counted.
+    const edits = useRef(0)
+    useEffect(() => { edits.current++ }, [value])
 
     const locate = () => {
         if (!navigator.geolocation) return setStatus({ kind: 'error', key: 'att_loc_here_unsupported' })
-        const asked = { request: ++request.current, value: latest.current.value }
-        const wanted = () => alive.current && fixStillWanted(asked, { request: request.current, value: latest.current.value })
+        const asked = { request: ++request.current, edits: edits.current }
+        const wanted = () => alive.current && fixStillWanted(asked, { request: request.current, edits: edits.current })
         setLocating(true)
         setStatus(null)
         navigator.geolocation.getCurrentPosition(

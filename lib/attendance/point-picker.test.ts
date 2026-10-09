@@ -81,9 +81,19 @@ describe("a slow position", () => {
     // Codex review on #38: a fix arriving after the person typed or picked a
     // point overwrote their choice.
     it("fills the field only if nothing changed while waiting", () => {
-        expect(fixStillWanted({ request: 1, value: "" }, { request: 1, value: "" })).toBe(true)
-        expect(fixStillWanted({ request: 1, value: "" }, { request: 1, value: "30.1, 31.2" })).toBe(false)
-        expect(fixStillWanted({ request: 1, value: "" }, { request: 2, value: "" })).toBe(false)
+        expect(fixStillWanted({ request: 1, edits: 3 }, { request: 1, edits: 3 })).toBe(true)
+        expect(fixStillWanted({ request: 1, edits: 3 }, { request: 1, edits: 4 })).toBe(false)
+        expect(fixStillWanted({ request: 1, edits: 3 }, { request: 2, edits: 3 })).toBe(false)
+    })
+
+    it("counts edits, so a point typed and cleared again still counts as changed (review on #38)", () => {
+        // Compared by its text, an empty field asked from, typed in and cleared
+        // was the same, and the late fix overwrote the person's last decision.
+        expect(fixStillWanted({ request: 1, edits: 3 }, { request: 1, edits: 5 })).toBe(false)
+        const picker = readFileSync("components/PointPicker.tsx", "utf8")
+        expect(picker).toContain("useEffect(() => { edits.current++ }, [value])")
+        expect(picker).toContain("const asked = { request: ++request.current, edits: edits.current }")
+        expect(picker).toContain("fixStillWanted(asked, { request: request.current, edits: edits.current })")
     })
 
     it("is checked before the picker writes the position", () => {
