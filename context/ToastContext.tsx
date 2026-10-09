@@ -14,6 +14,8 @@ export interface Toast {
     type: ToastType
     /** How many times it came again while showing (withToast). */
     repeat?: number
+    /** When it was last shown or came again, in the list's own order (withToast). */
+    seen?: number
 }
 
 interface ToastContextType {
@@ -54,14 +56,22 @@ export const MAX_TOASTS = 5
  * showing stays, where it is and under its own key, and counts the repeat,
  * which starts its clock again and reads its text out again. Replaced by a
  * new one, it was taken down and put up again, and focus on its ✕ was lost
- * (review on #37). The list keeps only the newest MAX_TOASTS: errors stay
- * until the person moves on, so without a limit a burst of them piled up
- * past the bottom of the screen (Codex review on #37).
+ * (review on #37). The list keeps only the MAX_TOASTS shown most recently:
+ * errors stay until the person moves on, so without a limit a burst of them
+ * piled up past the bottom of the screen (Codex review on #37). A toast that
+ * came again counts from then, though it keeps its place: counted by place,
+ * the next new toast took down the one just repeated (Codex review on #49).
  */
 export function withToast(list: Toast[], toast: Toast): Toast[] {
+    const seen = list.reduce((n, t) => Math.max(n, t.seen ?? 0), 0) + 1
     const same = list.find(t => t.type === toast.type && t.message === toast.message)
-    if (same) return list.map(t => (t === same ? { ...t, repeat: (t.repeat ?? 0) + 1 } : t))
-    return [...list, toast].slice(-MAX_TOASTS)
+    if (same) return list.map(t => (t === same ? { ...t, repeat: (t.repeat ?? 0) + 1, seen } : t))
+    const next = [...list, { ...toast, seen }]
+    if (next.length <= MAX_TOASTS) return next
+    // The ones shown longest ago go; among those never counted, the first in the list.
+    const newest = next.map((t, i) => ({ t, i })).sort((a, b) => (b.t.seen ?? 0) - (a.t.seen ?? 0) || b.i - a.i)
+    const kept = new Set(newest.slice(0, MAX_TOASTS).map(({ t }) => t))
+    return next.filter(t => kept.has(t))
 }
 
 /**

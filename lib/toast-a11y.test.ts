@@ -92,6 +92,23 @@ describe("toasts", () => {
         expect(SRC).toContain("if (counted.current !== repeat) { counted.current = repeat; remaining.current = lifetime }")
     })
 
+    it("count a toast that came again as just shown when the oldest goes, in its own place (Codex review on #49)", () => {
+        // Counted by place, the next new toast took down the one just repeated, and focus on its ✕ with it.
+        const err = (id: string, message: string): Toast => ({ id, message, type: "error" })
+        let list: Toast[] = []
+        for (const id of ["a", "b", "c", "d", "e"]) list = withToast(list, err(id, `m-${id}`))
+        list = withToast(list, err("a2", "m-a"))
+        expect(list.map(t => t.id)).toEqual(["a", "b", "c", "d", "e"])
+        list = withToast(list, err("f", "m-f"))
+        expect(list.map(t => t.id)).toEqual(["a", "c", "d", "e", "f"])
+        expect(list[0].repeat).toBe(1)
+        // Then it is the oldest again only once four more have come since.
+        for (const id of ["g", "h", "i"]) list = withToast(list, err(id, `m-${id}`))
+        expect(list.map(t => t.id)).toEqual(["a", "f", "g", "h", "i"])
+        list = withToast(list, err("j", "m-j"))
+        expect(list.map(t => t.id)).toEqual(["f", "g", "h", "i", "j"])
+    })
+
     it("bring a toast into view when it comes, and when it comes again (review on #37)", () => {
         // A stack taller than a small screen scrolls; the newest was below what showed.
         expect(SRC).toContain("useEffect(() => { box.current?.scrollIntoView({ block: 'nearest' }) }, [repeat])")
