@@ -119,12 +119,14 @@ export class RateLimiter {
      * Gives back one attempt that getLimitData counted and that turned out
      * not to be a failure (sign-in counts first, so parallel guesses can't
      * slip past the check, then returns the attempt when it succeeds).
-     * Never below zero, and a no-op once the window has been reset.
+     * Never below zero. Only in the window it was counted in, `resetAt` as
+     * getLimitData gave it: a refund that comes after a new window began is a
+     * no-op, not a guess made in that window forgotten (review on #29).
      */
-    static async refund(key: string) {
+    static async refund(key: string, resetAt: number) {
         try {
             await prisma.rateLimit.updateMany({
-                where: { key, count: { gt: 0 } },
+                where: { key, count: { gt: 0 }, resetAt: new Date(resetAt) },
                 data: { count: { decrement: 1 } },
             })
         } catch { }

@@ -26,7 +26,8 @@ vi.mock("@/lib/prisma", () => ({
             update: async ({ where }: any) => { db.limits[where.key].count++; return db.limits[where.key] },
             updateMany: async ({ where, data }: any) => {
                 const row = db.limits[where.key]
-                if (row && row.count > (where.count?.gt ?? -Infinity)) { row.count -= data.count.decrement; return { count: 1 } }
+                const sameWindow = !where.resetAt || row?.resetAt.getTime() === where.resetAt.getTime()
+                if (row && sameWindow && row.count > (where.count?.gt ?? -Infinity)) { row.count -= data.count.decrement; return { count: 1 } }
                 return { count: 0 }
             },
         },
@@ -43,6 +44,7 @@ vi.mock("@/lib/services/audit-log.service", () => ({
 }))
 
 const { authOptions } = await import("@/lib/auth")
+const { RateLimiter } = await import("@/lib/api-utils")
 const authorize = (credentials: Record<string, string>) =>
     (authOptions.providers[0] as any).options.authorize(credentials, {} as any)
 
@@ -72,5 +74,20 @@ describe("signing in, five tries in fifteen minutes", () => {
     it("still stops a sixth try after five wrong codes", async () => {
         for (let i = 0; i < 5; i++) await expect(authorize({ email, password, mfaCode: "000000" })).rejects.toThrow("INVALID_MFA_CODE")
         await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Too many login attempts")
+    })
+})
+
+describe("what gives an attempt back (review on #29)", () => {
+    it("only in the window it was counted in", async () => {
+        // Counted in one window; by the time the attempt comes back a new
+        // window has begun, with a wrong guess in it. That guess stays counted.
+        const { resetAt } = await RateLimiter.getLimitData("login:198.51.100.1", 5, 15 * 60 * 1000)
+        db.limits["login:198.51.100.1"] = { count: 1, resetAt: new Date(resetAt + 15 * 60 * 1000) }
+        await RateLimiter.refund("login:198.51.100.1", resetAt)
+        expect(db.limits["login:198.51.100.1"].count).toBe(1)
+        // In its own window it is given back.
+        const again = await RateLimiter.getLimitData("login:198.51.100.2", 5, 15 * 60 * 1000)
+        await RateLimiter.refund("login:198.51.100.2", again.resetAt)
+        expect(db.limits["login:198.51.100.2"].count).toBe(0)
     })
 })

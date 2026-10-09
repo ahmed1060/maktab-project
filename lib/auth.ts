@@ -86,6 +86,8 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 let loginKey: string | null = null
+                // The window the attempt was counted in: a refund applies only there.
+                let loginWindow = 0
                 try {
                     // Rate Limiting (5 attempts per 15 minutes per IP)
                     // headers() is async since Next 15.
@@ -109,6 +111,7 @@ export const authOptions: NextAuthOptions = {
                     // whole office behind one address shared five sign-ins.
                     loginKey = `login:${ip}`
                     const { limited, resetAt } = await RateLimiter.getLimitData(loginKey, 5, 15 * 60 * 1000)
+                    loginWindow = resetAt
                     if (limited) {
                         const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         throw new Error(`Too many login attempts. Please try again at ${timeStr}.`)
@@ -199,7 +202,7 @@ export const authOptions: NextAuthOptions = {
                             cookieHeader,
                         })
 
-                        await RateLimiter.refund(loginKey)
+                        await RateLimiter.refund(loginKey, loginWindow)
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -295,7 +298,7 @@ export const authOptions: NextAuthOptions = {
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
-                    await RateLimiter.refund(loginKey)
+                    await RateLimiter.refund(loginKey, loginWindow)
 
                     // Audit Log (Success - Centralized)
                     const { AuditLogService } = await import("./services/audit-log.service")
@@ -337,7 +340,7 @@ export const authOptions: NextAuthOptions = {
                     }
 
                 } catch (error) {
-                    if (loginKey && (error as Error)?.message === 'MFA_REQUIRED') await RateLimiter.refund(loginKey)
+                    if (loginKey && (error as Error)?.message === 'MFA_REQUIRED') await RateLimiter.refund(loginKey, loginWindow)
                     console.error('Auth error:', error)
                     throw error
                 }
