@@ -100,8 +100,10 @@ export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: str
         const date = local.slice(0, 10)
         const months = [monthOf(date)]
         if (!userId || !onEdge(date)) return months
-        const t = Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16))
-        // Each in minutes from the punch's own midnight, in date order: a tie goes to the earlier, as in the engine.
+        // In seconds, as the engine compares them: to the minute, a punch half a minute nearer the next day's shift
+        // tied with the day's own, went to the earlier, and the next month's lock was left out (Codex review on #49).
+        const t = Number(local.slice(11, 13)) * 3600 + Number(local.slice(14, 16)) * 60 + Number(local.slice(17, 19) || 0)
+        // Each from the punch's own midnight, in date order: a tie goes to the earlier, as in the engine.
         const nearest = (prior: Shift | null) => {
             const shifts: { date: string; shift: Shift | null; offset: number }[] = [
                 { date: addDays(date, -1), shift: prior, offset: -1440 },
@@ -111,8 +113,8 @@ export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: str
             let best: { date: string; distance: number } | null = null
             for (const { date: day, shift, offset } of shifts) {
                 if (!shift) continue
-                const start = shift.start + offset, end = shift.end + offset
-                if (t < start - EARLY_MARGIN_MINUTES || t > end + LATE_MARGIN_MINUTES) continue
+                const start = (shift.start + offset) * 60, end = (shift.end + offset) * 60
+                if (t < start - EARLY_MARGIN_MINUTES * 60 || t > end + LATE_MARGIN_MINUTES * 60) continue
                 const distance = t < start ? start - t : t > end ? t - end : 0
                 if (!best || distance < best.distance) best = { date: day, distance }
             }

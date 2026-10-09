@@ -102,6 +102,24 @@ describe("the months many punches can change", () => {
         expect(await punchMonthsOf(t.tx, "c1", [at("23:30")])).toEqual([["2026-09"]])
     })
 
+    it("weighs the seconds as the engine does, so a punch half a minute nearer the 1st's shift takes its month (Codex review on #49)", async () => {
+        // 30 September's shift ends at 23:30 and 1 October's starts at midnight: 23:45:30 is 15:30 after the one and
+        // 14:30 before the other. To the minute both were 15, and the tie gave it to September.
+        const t = tx([])
+        calendar.days.set("e3:2026-09-30", { startMinutes: 930, endMinutes: 1410 })
+        calendar.days.set("e3:2026-10-01", { startMinutes: 0, endMinutes: 480 })
+        const at = (time: string) => ({ userId: "e3", local: `2026-09-30T${time}` })
+        expect(await punchMonthsOf(t.tx, "c1", [at("23:45:30"), at("23:44:30")])).toEqual([["2026-09", "2026-10"], ["2026-09"]])
+        // Where the engine puts them.
+        const plans = new Map([
+            ["2026-09-30", { kind: "WORK", hours: { startMinutes: 930, endMinutes: 1410 }, versionId: "eve", overrideId: null }],
+            ["2026-10-01", { kind: "WORK", hours: { startMinutes: 0, endMinutes: 480 }, versionId: "night", overrideId: null }],
+        ] as [string, ExpectedDay][])
+        const assigned = assignPunches(["23:45:30", "23:44:30"].map(time => ({ id: time, at: `2026-09-30T${time}`, direction: null })), plans)
+        expect(assigned.get("2026-10-01")?.map(p => p.id)).toEqual(["23:45:30"])
+        expect(assigned.get("2026-09-30")?.map(p => p.id)).toEqual(["23:44:30"])
+    })
+
     it("reads the night before from the calendar when no day was derived for it (review on #14)", async () => {
         const t = tx([])
         calendar.days.set("e3:2026-09-30", { startMinutes: 1320, endMinutes: 1800 })
