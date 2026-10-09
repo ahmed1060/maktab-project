@@ -207,11 +207,20 @@ export class AttendanceRequestService {
             })
             if (overlapping) fail("PERMISSION_OVERLAPS")
             // The next month's balance on its 1st and on each day of it asked for: a policy version from mid-month
-            // may allow less, and its requests may have spent what this month would carry (review on #14).
+            // may allow less, and its requests may have spent what this month would carry (review on #14). Once per
+            // policy version in force among them: the balance changes with nothing else, and a day each was six
+            // queries, twice, for every date the next month has requests on (review on #49).
+            const policies = await AttendancePolicyService.versions(companyId, tx)
+            const versionsSeen = new Set<string | undefined>()
             const nextDays = [next, ...(await tx.permissionRequest.findMany({
                 where: { companyId, userId, status: { in: ["APPROVED", "PENDING"] }, date: monthRange(monthOf(next)) },
-                distinct: ["date"], select: { date: true },
-            })).map(r => toDateString(r.date))]
+                distinct: ["date"], select: { date: true }, orderBy: { date: "asc" },
+            })).map(r => toDateString(r.date))].filter(day => {
+                const version = policyOn(policies, day)?.id
+                if (versionsSeen.has(version)) return false
+                versionsSeen.add(version)
+                return true
+            })
             const overdrawnBefore: number[] = []
             for (const day of nextDays) overdrawnBefore.push((await balanceIn(tx, companyId, userId, day)).overdrawnMinutes)
             const created = await tx.permissionRequest.create({

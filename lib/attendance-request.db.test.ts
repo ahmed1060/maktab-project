@@ -210,6 +210,27 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             await expect(ask("2028-03-02", "14:00")).rejects.toEqual(refusal("PERMISSION_OVER_ALLOWANCE"))
             expect((await db.query(`SELECT count(*)::int AS n FROM "PermissionRequest" WHERE "userId" = 'e1' AND date = '2028-03-02'`)).rows[0].n).toBe(0)
         })
+
+        it("read the next month's balance once per policy version, however many days it has requests on (review on #49)", async () => {
+            const hours = { ...STANDARD_OFFICE.permissionHours, enabled: true, carryOver: "CARRY_ONCE" as const, monthlyAllowanceMinutes: 900, maxPerRequestMinutes: 60, maxRequestsPerMonth: 20 }
+            await Policy.saveVersion("c1", { effectiveFrom: "2029-01-01", body: { ...STANDARD_OFFICE, permissionHours: hours } }, "a1")
+            const ask = (date: string) => Requests.requestPermission("c1", "e1", { date, type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" })
+            const reads = vi.spyOn(Policy, "versions")
+            try {
+                // February has requests on one day; a January request then reads the policies so many times.
+                await ask("2029-02-05")
+                reads.mockClear()
+                await ask("2029-01-08")
+                const once = reads.mock.calls.length
+                // Twelve more February days under the same policy: nothing more to read for them.
+                for (let d = 6; d <= 17; d++) await ask(`2029-02-${String(d).padStart(2, "0")}`)
+                reads.mockClear()
+                await ask("2029-01-09")
+                expect(reads.mock.calls.length).toBe(once)
+            } finally {
+                reads.mockRestore()
+            }
+        })
     })
 
     describe("overtime", () => {
