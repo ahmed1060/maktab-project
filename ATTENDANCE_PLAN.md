@@ -1,12 +1,14 @@
 # Attendance & Time Tracking — Implementation Plan
 
-Status: **approved plan. Foundation built** (§20): roles and permissions in #2
-and #3, the Company Options tabs and Admin settings exposure in #5. Phase 0
-onwards is not built, and starts only once the current website is complete and
-stable. Until then this
-document is the agreed design: what we will build, in what order, and which
-decisions are already settled so that the person who picks it up is not
-re-arguing them.
+Status: **built through Phase 3b** (§20). The Foundation is #2, #3 and #5;
+Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 2
+(terminals and the Local Sync Agent) is #17–#19; Phase 3 (the check-in app) is
+#20–#26; Phase 3b (face verification) is #27, with later fixes and speed work in
+the PRs after it. Phase 4 (direct device push through the agent) is not built.
+This document is the design those PRs follow: what was decided, and why, so
+that whoever changes it is not re-arguing settled points. Where the build
+settled something left open here, its PR says so, and the code and
+`prisma/schema.prisma` are the record of what exists.
 
 It started as a response to an earlier draft (`zkteco_integration_guide.md`)
 that described a universal hardware webhook, and absorbed four rounds of
@@ -1290,8 +1292,8 @@ One left, deliberately deferred to implementation:
 
 ## 20. Phasing
 
-Starts after the current website is complete and stable. Each phase is
-independently shippable.
+Each phase is independently shippable. Every phase up to and including 3b is
+built; Phase 4 is not.
 
 ### Foundation — built
 
@@ -1303,7 +1305,7 @@ independently shippable.
 
 Both are useful to the website on their own and are the natural first step.
 
-### Phase 0 — Engine, settings, import
+### Phase 0 — Engine, settings, import — built (#9–#15)
 
 Schedules, overrides, holidays with add/remove, work week; policy with effective
 dating, templates and the simulator; permission hours; overtime approval; the
@@ -1313,31 +1315,31 @@ screen; the employee's own view; in-app notifications; the add-on bundle.
 *Exit: one real tenant runs a full month on imported data and agrees the numbers
 are right.*
 
-### Phase 1 — Payroll integration
+### Phase 1 — Payroll integration — built (#16)
 
 Outcomes into `SalaryAdjustment`, the lock, discrepancies after lock. Simulator
 dry run for the first month before anything is deducted.
 
-### Phase 2 — Terminals and the Local Sync Agent
+### Phase 2 — Terminals and the Local Sync Agent — built (#17–#19)
 
 For office and fixed-site staff. Device registry, enrolment, ingest, heartbeat,
 device health.
 
-### Phase 3 — Native check-in app
+### Phase 3 — Native check-in app — built (#20–#26)
 
 For field staff. Capacitor app; hardware-bound key; phone registration and change
 with approval; held punches; mock detection, attestation, geofence, optional
 office IP; push notifications and the no-check-in reminder; permission hours from
 the check-in screen; flagged review; Super Admin integrity view.
 
-### Phase 3b — Face verification
+### Phase 3b — Face verification — built (#27)
 
 Separate from Phase 3 on purpose, so it cannot hold the rest of the app back. Built
 complete and shipped **switched off**; the protected Super Admin enables it when
 they decide to (§10). Consent flow, enrolment with verification photo and approval, on-device
 matching with liveness, fallback to flagged.
 
-### Phase 4 — Direct device push, through the agent
+### Phase 4 — Direct device push, through the agent — not built
 
 Only on demand. Terminals that push (ZKTeco ADMS) often speak **plain HTTP only**,
 so a public ingress would expose device credentials, employee IDs and punch times
