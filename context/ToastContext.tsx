@@ -106,9 +106,14 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
             remaining.current = Math.max(0, remaining.current - (Date.now() - started))
         }
     }, [lifetime, paused, onDismiss, toast.id, repeat])
+    // In view when it comes, and when it comes again: a stack taller than a small screen scrolls,
+    // and the newest was below what showed (review on #37).
+    const box = useRef<HTMLDivElement>(null)
+    useEffect(() => { box.current?.scrollIntoView({ block: 'nearest' }) }, [repeat])
 
     return (
         <div
+            ref={box}
             // Pointer events: a finger on a phone holds the clock as a mouse does.
             onPointerEnter={() => setHovered(true)}
             onPointerLeave={() => setHovered(false)}

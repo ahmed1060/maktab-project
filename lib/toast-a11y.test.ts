@@ -91,6 +91,12 @@ describe("toasts", () => {
         expect(SRC).toContain("<div key={repeat} style={{ color: '#1e293b'")
         expect(SRC).toContain("if (counted.current !== repeat) { counted.current = repeat; remaining.current = lifetime }")
     })
+
+    it("bring a toast into view when it comes, and when it comes again (review on #37)", () => {
+        // A stack taller than a small screen scrolls; the newest was below what showed.
+        expect(SRC).toContain("useEffect(() => { box.current?.scrollIntoView({ block: 'nearest' }) }, [repeat])")
+        expect(SRC).toContain("ref={box}")
+    })
 })
 
 describe("the skip link's target (review on #37)", () => {
