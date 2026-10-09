@@ -12,6 +12,8 @@ export interface Toast {
     id: string
     message: string
     type: ToastType
+    /** How many times it came again while showing (withToast). */
+    repeat?: number
 }
 
 interface ToastContextType {
@@ -48,14 +50,18 @@ export const MAX_TOASTS = 5
 
 /**
  * The list with a new toast added. The same message of the same kind
- * replaces the one already showing (a retried action that fails again
- * doesn't stack copies), and the list keeps only the newest MAX_TOASTS:
- * errors stay until the person moves on, so without a limit a burst of them
- * piled up past the bottom of the screen (Codex review on #37).
+ * doesn't stack a copy (a retried action that fails again): the one already
+ * showing stays, where it is and under its own key, and counts the repeat,
+ * which starts its clock again and reads its text out again. Replaced by a
+ * new one, it was taken down and put up again, and focus on its ✕ was lost
+ * (review on #37). The list keeps only the newest MAX_TOASTS: errors stay
+ * until the person moves on, so without a limit a burst of them piled up
+ * past the bottom of the screen (Codex review on #37).
  */
 export function withToast(list: Toast[], toast: Toast): Toast[] {
-    const rest = list.filter(t => !(t.type === toast.type && t.message === toast.message))
-    return [...rest, toast].slice(-MAX_TOASTS)
+    const same = list.find(t => t.type === toast.type && t.message === toast.message)
+    if (same) return list.map(t => (t === same ? { ...t, repeat: (t.repeat ?? 0) + 1 } : t))
+    return [...list, toast].slice(-MAX_TOASTS)
 }
 
 /**
@@ -87,15 +93,19 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
     const [focused, setFocused] = useState(false)
     const paused = hovered || focused
     const remaining = useRef(lifetime ?? 0)
+    const repeat = toast.repeat ?? 0
+    const counted = useRef(repeat)
     useEffect(() => {
         if (lifetime === null || paused) return
+        // Come again: a whole lifetime from now.
+        if (counted.current !== repeat) { counted.current = repeat; remaining.current = lifetime }
         const started = Date.now()
         const timer = setTimeout(() => onDismiss(toast.id), remaining.current)
         return () => {
             clearTimeout(timer)
             remaining.current = Math.max(0, remaining.current - (Date.now() - started))
         }
-    }, [lifetime, paused, onDismiss, toast.id])
+    }, [lifetime, paused, onDismiss, toast.id, repeat])
 
     return (
         <div
@@ -124,7 +134,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
                 gap: '12px'
             }}
         >
-            <div style={{ color: '#1e293b', fontSize: '0.9rem', lineHeight: '1.5' }}>
+            {/* Keyed by the repeat: only the text is put up again, so a screen reader reads it again while
+                focus on the ✕ stays where it is. */}
+            <div key={repeat} style={{ color: '#1e293b', fontSize: '0.9rem', lineHeight: '1.5' }}>
                 {toast.message}
             </div>
             <button

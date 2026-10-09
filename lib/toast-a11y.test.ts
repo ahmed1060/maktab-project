@@ -62,10 +62,10 @@ describe("toasts", () => {
         expect(SRC).toContain("aria-label={t('close')}")
     })
 
-    it("never pile up: a repeated message replaces itself, and only the newest few show (Codex review on #37)", () => {
+    it("never pile up: a repeated message counts on the one showing, and only the newest few show (Codex review on #37)", () => {
         const err = (id: string, message = "Couldn't save"): Toast => ({ id, message, type: "error" })
-        // The same failure again: one toast, the newest.
-        expect(withToast([err("a")], err("b")).map(t => t.id)).toEqual(["b"])
+        // The same failure again: one toast.
+        expect(withToast([err("a")], err("b")).length).toBe(1)
         // A different message, or the same words as a different kind, both stay.
         expect(withToast([err("a")], err("b", "Other")).map(t => t.id)).toEqual(["a", "b"])
         expect(withToast([err("a")], { id: "b", message: "Couldn't save", type: "info" }).length).toBe(2)
@@ -75,6 +75,21 @@ describe("toasts", () => {
         expect(list.length).toBe(MAX_TOASTS)
         expect(list[0].id).toBe("e3")
         expect(SRC).toContain("maxHeight: 'calc(100vh - 40px)'")
+    })
+
+    it("keep a repeated toast where it is, under its own key, so focus on its ✕ stays (review on #37)", () => {
+        // Replaced by a new one, it was taken down and put up again, and a keyboard
+        // user's focus on its ✕ fell back to the page.
+        const err = (id: string, message = "Couldn't save"): Toast => ({ id, message, type: "error" })
+        const list = [err("a"), err("b", "Other")]
+        const again = withToast(list, err("c"))
+        expect(again.map(t => t.id)).toEqual(["a", "b"])
+        expect(again[0].repeat).toBe(1)
+        expect(withToast(again, err("d"))[0].repeat).toBe(2)
+        // Its text is put up again, keyed by the repeat, so it is read out again,
+        // and its clock starts again.
+        expect(SRC).toContain("<div key={repeat} style={{ color: '#1e293b'")
+        expect(SRC).toContain("if (counted.current !== repeat) { counted.current = repeat; remaining.current = lifetime }")
     })
 })
 
