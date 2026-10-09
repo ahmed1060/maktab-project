@@ -241,6 +241,8 @@ describe("templates waiting on their photo (§9.5)", () => {
         const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
         expect(page).toContain("`/api/attendance/permissions/balance?date=${late.date}`")
         expect(page).toContain("initial={{ date: late.date, type: 'LATE_ARRIVAL'")
+        // And for the stretch no permission already asked for covers, which a request for the whole lateness would overlap.
+        expect(page).toContain("start: late.ask.start, end: late.ask.end }}")
         expect(page).not.toMatch(/balance\?date=\$\{answer!?\.at|date: answer\.at\.slice\(0, 10\), type: 'LATE_ARRIVAL'/)
     })
 

@@ -222,6 +222,24 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-07T06:40:00Z" })).toMatchObject({ late: { minutes: 40 } })
     })
 
+    it("offers what permission hours already asked for leave uncovered, as the engine charges it (review on #61)", async () => {
+        // Tuesday 8th 09:00–09:15 granted, Wednesday 9th 09:30–10:30 waiting, Thursday 10th 09:00–09:30 granted.
+        await db.query(`INSERT INTO "PermissionRequest"(id, "companyId", "userId", date, type, "startMinutes", "endMinutes", minutes, reason, status) VALUES
+            ('p8', 'c1', 'e4', '2026-09-08', 'LATE_ARRIVAL', 540, 555, 15, 'Bank', 'APPROVED'),
+            ('p9', 'c1', 'e4', '2026-09-09', 'LATE_ARRIVAL', 570, 630, 60, 'Doctor', 'PENDING'),
+            ('p10', 'c1', 'e4', '2026-09-10', 'LATE_ARRIVAL', 540, 570, 30, 'School', 'APPROVED'),
+            ('early', 'c1', 'e4', '2026-09-13', 'EARLY_LEAVE', 540, 600, 60, 'Not lateness', 'APPROVED')`)
+        const phone = await phoneOf("e4")
+        // 09:40 each day. The 8th: 09:15–09:40 is still charged, and is what the app offers.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-08T06:40:00Z" })).toMatchObject({ late: { minutes: 25, startsAt: "09:00", date: "2026-09-08", ask: { start: "09:15", end: "09:40" } } })
+        // The 9th: 09:00–09:30, before the hour asked for.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-09T06:40:00Z" })).toMatchObject({ late: { minutes: 30, ask: { start: "09:00", end: "09:30" } } })
+        // The 10th: ten minutes left, within the grace.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-10T06:40:00Z" })).toMatchObject({ late: null })
+        // Sunday 13th: an hour of early leave excuses no lateness.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-13T06:40:00Z" })).toMatchObject({ late: { minutes: 40, ask: { start: "09:00", end: "09:40" } } })
+    })
+
     it("measures a night shift's arrival against the night it starts, after midnight too, and not after the morning's check-out", async () => {
         // 22:00–06:00, nights starting Sunday to Thursday; the same policy as above.
         const night = await Calendar.createSchedule("c1", { name: "Night", version: { effectiveFrom: "2026-01-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a1")

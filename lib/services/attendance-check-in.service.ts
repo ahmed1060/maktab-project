@@ -59,9 +59,12 @@ export type CheckInResult =
         /**
          * The day's first check-in, past its start and its grace: the app offers to ask for permission hours (§13.6).
          * The date is the shift's, which for a night shift's arrival after midnight is the day before (review on #61).
+         * The minutes are those no permission asked for or granted covers, and ask is the first stretch of them.
          */
-        late: { minutes: number; startsAt: string; date: string } | null
+        late: Lateness | null
     }
+
+export type Lateness = { minutes: number; startsAt: string; date: string; ask: { start: string; end: string } }
 
 function fail(code: string): never {
     throw new Error(code)
@@ -206,7 +209,7 @@ export class AttendanceCheckInService {
      * later check-in, a rest day, no schedule, or lateness not charged at all,
      * when asking for permission would be pointless.
      */
-    static async lateness(companyId: string, userId: string, punchId: string, local: string): Promise<{ minutes: number; startsAt: string; date: string } | null> {
+    static async lateness(companyId: string, userId: string, punchId: string, local: string): Promise<Lateness | null> {
         const date = local.slice(0, 10)
         // Two days back: an arrival after midnight is the day before's night, and that night's own
         // morning check-out, earlier the same day, is the night before's (review on #61).
@@ -230,29 +233,39 @@ export class AttendanceCheckInService {
         if (await AttendanceCheckInService.latenessWaived(companyId, userId, day)) return null
         // Minutes from the start of the shift's own day, past midnight included.
         const daysAfter = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000
-        const minutes = daysAfter * 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)) - expected.hours.startMinutes
+        const arrival = daysAfter * 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16))
+        // What permission hours asked for or granted leave of it, as the engine counts them (coveredMinutes):
+        // only where their times overlap, so 09:00–09:15 leaves 09:15–10:00 of a 10:00 arrival (review on #61).
+        const asked = await prisma.permissionRequest.findMany({
+            where: { companyId, userId, date: new Date(`${day}T00:00:00Z`), type: "LATE_ARRIVAL", status: { in: ["PENDING", "APPROVED"] } },
+            select: { startMinutes: true, endMinutes: true },
+        })
+        const gaps = uncovered(expected.hours.startMinutes, arrival, asked)
+        const minutes = gaps.reduce((sum, [from, to]) => sum + to - from, 0)
         if (minutes <= rule.graceMinutes) return null
-        return { minutes, startsAt: formatMinutes(expected.hours.startMinutes), date: day }
+        const [from, to] = gaps[0]
+        return { minutes, startsAt: formatMinutes(expected.hours.startMinutes), date: day, ask: { start: formatMinutes(from % 1440), end: formatMinutes(to % 1440) } }
     }
 
     /**
      * Whether lateness that day costs nothing anyway, as the engine measures
      * it (deriveMonth, measureDay): on approved leave, suspended for the whole
-     * day or not employed on it, already excused on the exceptions screen, or
-     * with a late-arrival permission already asked for or granted. Offering
-     * another would spend allowance on nothing, or be refused as overlapping
-     * (review on #24).
+     * day or not employed on it, or already excused on the exceptions screen.
+     * Offering permission hours would spend allowance on nothing (review on
+     * #24). Permission hours already asked for are the caller's to weigh: they
+     * excuse only the times they cover (review on #61).
      */
     static async latenessWaived(companyId: string, userId: string, day: string): Promise<boolean> {
-        return (await this.latenessWaivedFor(companyId, [{ userId, date: day }])).has(`${userId}|${day}`)
+        return (await this.latenessWaivedFor(companyId, [{ userId, date: day }], { permissions: false })).has(`${userId}|${day}`)
     }
 
     /**
      * latenessWaived for many people and days at once: five queries however
      * many, for the reminder job (review on #25). The keys of the waived ones,
-     * as "userId|date".
+     * as "userId|date". Unless told otherwise, a late-arrival permission asked
+     * for or granted that day waives it too: whoever asked expects to be late.
      */
-    static async latenessWaivedFor(companyId: string, pairs: readonly { userId: string; date: string }[]): Promise<Set<string>> {
+    static async latenessWaivedFor(companyId: string, pairs: readonly { userId: string; date: string }[], { permissions: countPermissions = true } = {}): Promise<Set<string>> {
         const waived = new Set<string>()
         if (pairs.length === 0) return waived
         const userIds = [...new Set(pairs.map(p => p.userId))]
@@ -266,7 +279,9 @@ export class AttendanceCheckInService {
                 },
                 select: { userId: true, date: true, endDate: true },
             }),
-            prisma.permissionRequest.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, type: "LATE_ARRIVAL", status: { in: ["PENDING", "APPROVED"] } }, select: { userId: true, date: true } }),
+            countPermissions
+                ? prisma.permissionRequest.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, type: "LATE_ARRIVAL", status: { in: ["PENDING", "APPROVED"] } }, select: { userId: true, date: true } })
+                : [],
             prisma.attendanceDayDecision.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, outcome: "EXCUSED", subject: "LATENESS" }, select: { userId: true, date: true } }),
             prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } } } }),
             prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }),
@@ -294,6 +309,19 @@ export class AttendanceCheckInService {
     private static async refuse(db: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string | null, reason: string, ip: string | null, at: Date, details?: Prisma.InputJsonValue) {
         await db.checkInRefusal.create({ data: { companyId, userId, phoneId, reason, ip, at, ...(details && { details }) } })
     }
+}
+
+/** The stretches of from–to that none of the spans covers, in order; minutes from the same midnight. */
+function uncovered(from: number, to: number, spans: readonly { startMinutes: number; endMinutes: number }[]): [number, number][] {
+    const gaps: [number, number][] = []
+    let reach = from
+    for (const span of [...spans].sort((a, b) => a.startMinutes - b.startMinutes)) {
+        if (span.startMinutes > reach) gaps.push([reach, Math.min(span.startMinutes, to)])
+        reach = Math.max(reach, span.endMinutes)
+        if (reach >= to) break
+    }
+    if (reach < to) gaps.push([reach, to])
+    return gaps.filter(([a, b]) => b > a)
 }
 
 /**

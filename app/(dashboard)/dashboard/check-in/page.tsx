@@ -242,7 +242,7 @@ export default function CheckInPage() {
             {asking && answer && answer.outcome !== 'REFUSED' && late && (
                 <AskPermissionModal
                     today={answer.at.slice(0, 10)}
-                    initial={{ date: late.date, type: 'LATE_ARRIVAL', start: late.startsAt.slice(0, 5), end: answer.at.slice(11, 16) }}
+                    initial={{ date: late.date, type: 'LATE_ARRIVAL', start: late.ask.start, end: late.ask.end }}
                     onClose={() => setAsking(false)}
                     onDone={() => { setAsking(false); setAnswer(null) }}
                 />
