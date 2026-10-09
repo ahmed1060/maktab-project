@@ -1216,6 +1216,8 @@ export const en = {
         attendance_policy_saved: "Policy saved from the date you chose",
         attendance_policy_withdraw_confirm: "Withdraw this policy? The one before it stays in force.",
         attendance_policy_from_hint: "Days before this keep the rules they were measured under.",
+        attendance_base_changed: "Another version is in force on that date. Your changes are still based on the one you opened.",
+        attendance_base_use: "Start from that date's version",
         attendance_day_1: "1 day",
         attendance_day_half: "½ day",
         attendance_day_quarter: "¼ day",

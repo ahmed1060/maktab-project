@@ -10,6 +10,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { fetcher } from '@/lib/swr-fetcher'
 import { apiErrorText } from '@/lib/api-error-text'
 import { policyOn, PERMISSION_TYPES, type DeductionRule, type PolicyBody, type PolicyVersion } from '@/lib/attendance/policy'
+import { rebaseOnDate, startFromStale, type Based } from '@/lib/attendance/rebase'
 
 /**
  * A company's attendance policy (ATTENDANCE_PLAN.md §6): what lateness, early
@@ -156,6 +157,7 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                 <PolicyEditor
                     companyId={companyId}
                     start={editing.start}
+                    startOn={editing.templateId ? undefined : date => policyOn(data.versions, date)?.body ?? null}
                     defaultFrom={shown ? firstOfNextMonth(data.today) : data.today}
                     today={data.today}
                     weekday={weekday}
@@ -306,10 +308,12 @@ const { t } = useLanguage()
  * can preview the draft on last month (§6.7); for a template (§6.8) it has
  * neither — a template is a starting point — and shows its own fields above.
  */
-export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fraction, title, header, canSave = true, onClose, onSave }: {
+export function PolicyEditor({ companyId, start, startOn, defaultFrom, today, weekday, fraction, title, header, canSave = true, onClose, onSave }: {
     /** The company whose days a draft is replayed over; none for a template. */
     companyId?: string
     start: PolicyBody
+    /** The policy in force on a date, which the draft follows when its date moves; none from a template. */
+    startOn?: (date: string) => PolicyBody | null
     /** "From when?" — left out for a template, which has no date. */
     defaultFrom?: string
     today?: string
@@ -325,6 +329,15 @@ export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fr
     const [p, setP] = useState<PolicyBody>(structuredClone(start))
     const [from, setFrom] = useState(defaultFrom ?? '')
     const [saving, setSaving] = useState(false)
+    // What the draft started from, and the policy in force on a date it was moved to after editing (review on #64).
+    const [base, setBase] = useState<PolicyBody>(start)
+    const [stale, setStale] = useState<PolicyBody | null>(null)
+    const rebased = (next: Based<PolicyBody>) => { setBase(next.base); setP(next.current); setStale(next.stale) }
+    const changeFrom = (date: string) => {
+        setFrom(date)
+        const based = { base, current: p, stale }
+        if (startOn && date) rebased(rebaseOnDate(based, startOn(date)))
+    }
 
 
     const ph = p.permissionHours
@@ -335,11 +348,18 @@ export function PolicyEditor({ companyId, start, defaultFrom, today, weekday, fr
                 {defaultFrom !== undefined && (
                     <label style={field}>
                         <span className="label">{t('attendance_from_when')}</span>
-                        <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
+                        <input className="input" type="date" value={from} onChange={e => changeFrom(e.target.value)} />
                         <span style={{ fontSize: '0.78rem', color: 'var(--text-soft)' }}>
                             {t('attendance_policy_from_hint')}{' '}
-                            {today && <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => setFrom(today)}>{t('attendance_from_today')}</button>}
+                            {today && <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }} onClick={() => changeFrom(today)}>{t('attendance_from_today')}</button>}
                         </span>
+                        {stale && (
+                            <span role="status" style={{ fontSize: '0.78rem', color: 'var(--warn-fg)' }}>
+                                {t('attendance_base_changed')}{' '}
+                                <button type="button" style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0 }}
+                                    onClick={() => rebased(startFromStale({ base, current: p, stale }))}>{t('attendance_base_use')}</button>
+                            </span>
+                        )}
                     </label>
                 )}
 

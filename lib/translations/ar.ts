@@ -1215,6 +1215,8 @@ export const ar = {
         attendance_policy_saved: "تم حفظ السياسة اعتبارًا من التاريخ المختار",
         attendance_policy_withdraw_confirm: "سحب هذه السياسة؟ تبقى السياسة السابقة لها سارية.",
         attendance_policy_from_hint: "الأيام قبل هذا التاريخ تحتفظ بالقواعد التي قيست بها.",
+        attendance_base_changed: "تسري نسخة أخرى في ذلك التاريخ. تعديلاتك ما زالت مبنية على النسخة التي فتحتها.",
+        attendance_base_use: "ابدأ من نسخة ذلك التاريخ",
         attendance_day_1: "يوم كامل",
         attendance_day_half: "نصف يوم",
         attendance_day_quarter: "ربع يوم",
