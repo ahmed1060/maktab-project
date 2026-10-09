@@ -102,20 +102,30 @@ export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: str
         if (!userId || !onEdge(date)) return months
         const t = Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16))
         // Each in minutes from the punch's own midnight, in date order: a tie goes to the earlier, as in the engine.
-        const shifts: { date: string; shift: Shift | null; offset: number }[] = [
-            { date: addDays(date, -1), shift: before(userId, addDays(date, -1)), offset: -1440 },
-            { date, shift: planned(userId, date), offset: 0 },
-            { date: addDays(date, 1), shift: planned(userId, addDays(date, 1)), offset: 1440 },
-        ]
-        let best: { date: string; distance: number } | null = null
-        for (const { date: day, shift, offset } of shifts) {
-            if (!shift) continue
-            const start = shift.start + offset, end = shift.end + offset
-            if (t < start - EARLY_MARGIN_MINUTES || t > end + LATE_MARGIN_MINUTES) continue
-            const distance = t < start ? start - t : t > end ? t - end : 0
-            if (!best || distance < best.distance) best = { date: day, distance }
+        const nearest = (prior: Shift | null) => {
+            const shifts: { date: string; shift: Shift | null; offset: number }[] = [
+                { date: addDays(date, -1), shift: prior, offset: -1440 },
+                { date, shift: planned(userId, date), offset: 0 },
+                { date: addDays(date, 1), shift: planned(userId, addDays(date, 1)), offset: 1440 },
+            ]
+            let best: { date: string; distance: number } | null = null
+            for (const { date: day, shift, offset } of shifts) {
+                if (!shift) continue
+                const start = shift.start + offset, end = shift.end + offset
+                if (t < start - EARLY_MARGIN_MINUTES || t > end + LATE_MARGIN_MINUTES) continue
+                const distance = t < start ? start - t : t > end ? t - end : 0
+                if (!best || distance < best.distance) best = { date: day, distance }
+            }
+            return best?.date ?? null
         }
-        if (best && monthOf(best.date) !== months[0]) months.push(monthOf(best.date))
+        // The night before as stored, and as the calendar has it now: a derived day a failed rebuild left behind
+        // can disagree with the calendar an approval rebuilds from, and either may be the one that counts (review
+        // on #49). Both months, when they differ: a lock too many is a wait; one too few, a punch an approved
+        // month never counts.
+        for (const prior of [before(userId, addDays(date, -1)), planned(userId, addDays(date, -1))]) {
+            const day = nearest(prior)
+            if (day && !months.includes(monthOf(day))) months.push(monthOf(day))
+        }
         return months
     })
 }

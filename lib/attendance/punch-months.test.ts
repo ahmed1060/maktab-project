@@ -106,8 +106,12 @@ describe("the months many punches can change", () => {
         const t = tx([])
         calendar.days.set("e3:2026-09-30", { startMinutes: 1320, endMinutes: 1800 })
         expect(await punchMonthsOf(t.tx, "c1", [{ userId: "e3", local: "2026-10-01T05:00:00" }])).toEqual([["2026-10", "2026-09"]])
-        // A derived day that was no working day stays the truth for its month.
+        // A derived day that was no working day, with the calendar's night since: a rebuild that failed left it,
+        // and September's approval rebuilds from the calendar, so September's lock is taken too (review on #49).
         const rest = tx([{ userId: "e3", date: "2026-09-30", expectedStartMinutes: null, expectedEndMinutes: null }])
+        expect(await punchMonthsOf(rest.tx, "c1", [{ userId: "e3", local: "2026-10-01T05:00:00" }])).toEqual([["2026-10", "2026-09"]])
+        // Both a rest day: October's alone.
+        calendar.days.delete("e3:2026-09-30")
         expect(await punchMonthsOf(rest.tx, "c1", [{ userId: "e3", local: "2026-10-01T05:00:00" }])).toEqual([["2026-10"]])
     })
 
