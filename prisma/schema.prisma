@@ -1785,7 +1785,8 @@ model ScheduleDefault {
   createdById   String
   createdAt     DateTime     @default(now())
   company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  /// Checked at commit (migration 20261101000000), so a company's cascade can take its schedules in any order.
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: NoAction)
 
   @@unique([companyId, effectiveFrom])
   @@index([scheduleId])
@@ -1801,7 +1802,8 @@ model UserSchedule {
   createdById   String
   createdAt     DateTime     @default(now())
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  /// Checked at commit (migration 20261101000000), so a company's cascade can take its schedules in any order.
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: NoAction)
 
   @@unique([userId, effectiveFrom])
   @@index([scheduleId])

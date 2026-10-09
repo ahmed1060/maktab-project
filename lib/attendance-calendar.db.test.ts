@@ -367,4 +367,25 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
         }
         expect(rows.filter(r => r.entityType === "ATTENDANCE_CALENDAR").every(r => r.userId === "a1" && r.superAdminId === null)).toBe(true)
     })
+
+    // Last: it deletes the second company.
+    it("lets a company be deleted with its schedules, its defaults and the people on them (review on #64)", async () => {
+        const theirs = (await db.query(`SELECT id FROM "WorkSchedule" WHERE "companyId" = 'c2' AND name = 'Office'`)).rows[0].id
+        await db.query(`INSERT INTO "UserSchedule"(id, "userId", "scheduleId", "effectiveFrom", "createdById") VALUES ('us-e2', 'e2', $1, '2026-12-01', 'a1')`, [theirs])
+        const held = await db.query(`SELECT (SELECT count(*)::int FROM "ScheduleDefault" WHERE "companyId" = 'c2') AS defaults,
+            (SELECT count(*)::int FROM "UserSchedule" u JOIN "WorkSchedule" s ON s.id = u."scheduleId" WHERE s."companyId" = 'c2') AS people`)
+        expect(held.rows[0].defaults).toBeGreaterThan(0)
+        expect(held.rows[0].people).toBeGreaterThan(0)
+        // The company's cascades run in the order their trigger names sort, which follows the constraints' ids.
+        // Made again, the key from people to their company sorts after the one from schedules: their assignments then
+        // still pointed at a schedule being deleted, and a RESTRICT check refused it.
+        await db.query(`ALTER TABLE "User" DROP CONSTRAINT "User_companyId_fkey",
+            ADD CONSTRAINT "User_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"(id) ON DELETE CASCADE ON UPDATE CASCADE`)
+        // As CompanyService.delete does it: the database cascades the rest.
+        await (await import("@/lib/prisma")).prisma.company.delete({ where: { id: "c2" } })
+        expect((await db.query(`SELECT count(*)::int AS n FROM "WorkSchedule" WHERE "companyId" = 'c2'`)).rows[0].n).toBe(0)
+        // A schedule that is a default, or somebody's, still can't be deleted on its own.
+        const office = (await db.query(`SELECT id FROM "WorkSchedule" WHERE "companyId" = 'c1' AND name = 'Office'`)).rows[0].id
+        await expect(db.query(`DELETE FROM "WorkSchedule" WHERE id = $1`, [office])).rejects.toThrow(/foreign key/)
+    })
 })
