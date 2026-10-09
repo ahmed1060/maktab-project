@@ -7,6 +7,7 @@ import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phon
 import { AttendanceChallengeService as Challenges } from "@/lib/services/attendance-challenge.service"
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
 import { AttendancePunchService as Punches } from "@/lib/services/attendance-punch.service"
+import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance-calendar.service"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
 
@@ -152,6 +153,25 @@ describe.skipIf(!ADMIN_URL)("flagged check-ins, in Postgres", () => {
         expect(await status(late)).toBe("FLAGGED")
         // Nor is it listed to decide: its buttons could never work (review on #23).
         expect((await Flags.list("COMPANY", { companyId: "c2", visible: { kind: "COMPANY" } })).map(f => f.id)).not.toContain(late)
+    })
+
+    it("doesn't list a night's check-out after midnight on the 1st once the night's month is approved (review on #63)", async () => {
+        // Xena works nights, 22:00–06:00; November's payroll is approved, December's isn't.
+        // From November: October's payroll is approved too (above), and closed to calendar changes.
+        const night = await Calendar.createSchedule("c2", { name: "Night", version: { effectiveFrom: "2026-11-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a2")
+        await Calendar.assign("c2", { userIds: ["x2"], scheduleId: night.id, effectiveFrom: "2026-11-01" }, "a2")
+        await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('run-nov', 'c2', 2026, 11, 'APPROVED', 1, now())`)
+        const flagged = (id: string, local: string) => db.query(
+            `INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status, "flagReasons")
+             VALUES ($1, 'c2', 'x2', 'MOBILE', $1, $2, $3, 'Africa/Cairo', 'FLAGGED', '{OUTSIDE_AREA}')`, [id, local, `${local}+02:00`])
+        // Monday 30 November's night ends at 06:00 on Tuesday 1 December: a check-out at 00:30 is November's.
+        await flagged("dec-night", "2026-12-01T00:30:00")
+        // 13:00 on the 1st belongs to no night: December's alone.
+        await flagged("dec-day", "2026-12-01T13:00:00")
+        await expect(Flags.decide("dec-night", { accept: true }, "a2")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+        const listed = (await Flags.list("COMPANY", { companyId: "c2", visible: { kind: "COMPANY" } })).map(f => f.id)
+        expect(listed).toContain("dec-day")
+        expect(listed).not.toContain("dec-night")
     })
 
     it("shows the Super Admin, per company, what was refused and flagged, and why", async () => {
