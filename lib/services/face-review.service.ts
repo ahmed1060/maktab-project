@@ -79,8 +79,9 @@ export class FaceReviewService {
         const key = parsePhoneKey(phone.publicKey)
         const photoSha256 = createHash("sha256").update(photo).digest("hex")
         if (!key || !signatureValid(key.key, faceText({ ...input, photoSha256 }), input.signature)) fail("PHONE_SIGNATURE_INVALID")
-        // Google and Apple only for a request that could count (review on #26).
-        if (!(await AttendanceChallengeService.isLive(userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+        // Google and Apple only for a request that could count (review on #26): the number is used up first, so of
+        // copies of one request only one asks (review on #65).
+        if (!(await AttendanceChallengeService.claim(userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
         let attestation: AttestationResult = await verifyAttestation({ platform: phone.platform, token: input.attestation, challenge: input.nonce, purpose: "FACE", phone })
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
         const purpose = phone.faceStatus === "APPROVED" ? "REVERIFY" as const : "ENROLMENT" as const
@@ -89,7 +90,6 @@ export class FaceReviewService {
         const id = await faceReviewId(input.nonce)
 
         const review = await prisma.$transaction(async tx => {
-            if (!(await AttendanceChallengeService.consume(tx, userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
             // Asked and consented, checked again under the locks withdrawal, "no
             // longer asked" and purge take: none of them can finish deleting the
             // person's photos and then have this one stored after (review on #27).

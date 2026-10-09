@@ -82,13 +82,13 @@ export class AttendancePhoneService {
         const key = parsePhoneKey(input.publicKey) ?? fail("PHONE_KEY_INVALID")
         const text = signedText("REGISTER", input.nonce, [key.fingerprint, input.platform])
         if (!signatureValid(key.key, text, input.signature)) fail("PHONE_SIGNATURE_INVALID")
-        // A used or made-up number is refused before Google or Apple is asked (review on #26).
-        if (!(await AttendanceChallengeService.isLive(userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+        // Used up before Google or Apple is asked: a used or made-up number is refused without a call to them
+        // (review on #26), and of copies of one request only one asks (review on #65).
+        if (!(await AttendanceChallengeService.claim(userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
         const attestation = await verifyAttestation({ platform: input.platform, token: input.attestation, challenge: input.nonce, purpose: "REGISTER" })
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
 
         const out = await prisma.$transaction(async tx => {
-            if (!(await AttendanceChallengeService.consume(tx, userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
             await lockPerson(tx, userId)
             // Still the session's company, read under the lock a move takes: a session from before a move to
             // another company names the old one for up to a minute more (review on #21).

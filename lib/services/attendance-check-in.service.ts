@@ -85,10 +85,14 @@ export class AttendanceCheckInService {
         // A key we don't know can't be checked: there is nothing to check it with.
         const key = phone ? parsePhoneKey(phone.publicKey) : null
         const badSignature = !!phone && !(key && signatureValid(key.key, checkInText(input), input.signature))
-        // Google and Apple only for a request that could count: our phone, its
-        // signature, a number not yet used. Anything else is refused below
-        // without a call that spends the app's quota (review on #26).
-        const worthAsking = !!phone && !badSignature && (await AttendanceChallengeService.isLive(userId, "CHECK_IN", input.nonce, now))
+        // The number used up first, even for a bad signature: one recorded
+        // failure per number given, never one per request replayed (review on
+        // #22). Then Google and Apple only for a request that could count: our
+        // phone, its signature, and the one copy of it that had the number.
+        // Anything else is refused without a call that spends the app's quota
+        // (reviews on #26, #65).
+        if (!(await AttendanceChallengeService.claim(userId, "CHECK_IN", input.nonce, now))) fail("PHONE_CHALLENGE_INVALID")
+        const worthAsking = !!phone && !badSignature
         let attestation: AttestationResult = worthAsking
             ? await verifyAttestation({ platform: phone.platform, token: input.attestation, challenge: input.nonce, purpose: "CHECK_IN", phone })
             : { verified: false, reason: "NOT_CHECKED" }
@@ -111,9 +115,6 @@ export class AttendanceCheckInService {
         const local = new Date(now.getTime() + offsetMsIn(now, timeZone)).toISOString().slice(0, 19)
 
         const out = await prisma.$transaction(async tx => {
-            // The number first, even for a bad signature: one recorded failure
-            // per number given, never one per request replayed (review on #22).
-            if (!(await AttendanceChallengeService.consume(tx, userId, "CHECK_IN", input.nonce, now))) fail("PHONE_CHALLENGE_INVALID")
             if (badSignature) {
                 await AttendanceCheckInService.refuse(tx, companyId, userId, phone!.id, "BAD_SIGNATURE", ip, now)
                 return { result: null, counts: false }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phone.service"
@@ -13,6 +13,20 @@ import { UserService } from "@/lib/services/user.service"
  * check-ins released or discarded, and a lost phone revoked. Against a real
  * Postgres built from the migrations.
  */
+
+// Google and Apple, counted: the real verifier, which has no credentials here, a moment slower if asked.
+const provider = vi.hoisted(() => ({ asked: 0, slowMs: 0 }))
+vi.mock("@/lib/attendance/attestation", async importOriginal => {
+    const real = await importOriginal<typeof import("@/lib/attendance/attestation")>()
+    return {
+        ...real,
+        verifyAttestation: async (...args: Parameters<typeof real.verifyAttestation>) => {
+            provider.asked += 1
+            if (provider.slowMs) await new Promise(r => setTimeout(r, provider.slowMs))
+            return real.verifyAttestation(...args)
+        },
+    }
+})
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
@@ -264,4 +278,22 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         expect(team.map(p => p.userId)).toEqual(["e1"])
         expect(team[0]).toMatchObject({ name: "Ehab One", status: "ACTIVE", held: 0 })
     })
+
+    // Last: it leaves a phone waiting for Ezz.
+    it("asks Google or Apple once for copies of one signed registration sent at once (review on #65)", async () => {
+        const phone = phoneKeyPair()
+        const { nonce } = await Challenges.issue("e5", "REGISTER")
+        const fingerprint = parsePhoneKey(phone.publicBase64)!.fingerprint
+        const signature = phone.sign(signedText("REGISTER", nonce, [fingerprint, "ANDROID"]))
+        provider.asked = 0
+        provider.slowMs = 200
+        try {
+            const outcomes = await Promise.allSettled(Array.from({ length: 5 }, () =>
+                Phones.register("c1", "e5", { nonce, publicKey: phone.publicBase64, signature, platform: "ANDROID", model: "Pixel 8" })))
+            expect(outcomes.filter(o => o.status === "fulfilled")).toHaveLength(1)
+            expect(provider.asked).toBe(1)
+        } finally {
+            provider.slowMs = 0
+        }
+    }, 20_000)
 })

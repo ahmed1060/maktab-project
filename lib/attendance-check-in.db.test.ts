@@ -21,10 +21,14 @@ import { calendarDateStr } from "@/lib/time"
  * proved itself; the keys and signatures are real.
  */
 
-const attested = { verified: false }
+const attested = { verified: false, asked: 0, slowMs: 0 }
 vi.mock("@/lib/attendance/attestation", () => ({
     attestationMode: () => (process.env.ATTENDANCE_ATTESTATION === "required" ? "required" : "testing"),
-    verifyAttestation: async () => ({ verified: attested.verified, reason: attested.verified ? null : "NOT_CONFIGURED" }),
+    verifyAttestation: async () => {
+        attested.asked += 1
+        if (attested.slowMs) await new Promise(r => setTimeout(r, attested.slowMs))
+        return { verified: attested.verified, reason: attested.verified ? null : "NOT_CONFIGURED" }
+    },
 }))
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
@@ -79,7 +83,7 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await admin.end()
     })
 
-    beforeEach(() => { attested.verified = false; delete process.env.ATTENDANCE_ATTESTATION })
+    beforeEach(() => { attested.verified = false; attested.asked = 0; attested.slowMs = 0; delete process.env.ATTENDANCE_ATTESTATION })
 
     /** A phone of this person's, registered and — unless asked otherwise — approved. */
     async function phoneOf(userId: string, approve = true) {
@@ -257,6 +261,20 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T03:00:00Z" })).toMatchObject({ late: null })
         expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T21:20:00Z" })).toMatchObject({ at: "2026-09-30T00:20:00", late: { minutes: 140, startsAt: "22:00", date: "2026-09-29" } })
     })
+
+    it("asks Google or Apple once for copies of one signed check-in sent at once (review on #65)", async () => {
+        const phone = await phoneOf("e1")
+        const { nonce } = await Challenges.issue("e1", "CHECK_IN")
+        const body = { nonce, keyFingerprint: phone.fingerprint, ...AT_DESK, mocked: false, direction: null }
+        const signed = { ...body, signature: phone.key.sign(checkInText(body)) }
+        attested.asked = 0
+        // The provider takes a moment, as it does: every copy has been checked before any is answered.
+        attested.slowMs = 200
+        const outcomes = await Promise.allSettled(Array.from({ length: 5 }, () => CheckIns.checkIn("c1", "e1", signed, "198.51.100.20")))
+        expect(outcomes.filter(o => o.status === "fulfilled")).toHaveLength(1)
+        expect(outcomes.filter(o => o.status === "rejected").map(o => (o as PromiseRejectedResult).reason.message)).toEqual(Array(4).fill("PHONE_CHALLENGE_INVALID"))
+        expect(attested.asked).toBe(1)
+    }, 20_000)
 
     // Last: it approves this month's payroll, which closes the month to every later check-in here.
     it("doesn't count a held check-in in a month whose payroll was approved before the phone was", async () => {
