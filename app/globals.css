@@ -823,7 +823,12 @@ html[dir="rtl"] select.input {
 .skip-link:focus {
   top: 1rem;
 }
-/* Reached by the skip link: no ring around the whole page. */
+/* Reached by the skip link: no ring around the whole page. Stopped below
+   the sticky header (72px, and 1rem down from the top once the page has
+   scrolled), not under it, so the page's first heading shows (review on #37). */
+#main-content {
+  scroll-margin-top: calc(72px + 1rem);
+}
 #main-content:focus {
   outline: none;
 }

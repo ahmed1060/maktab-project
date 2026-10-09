@@ -77,3 +77,16 @@ describe("toasts", () => {
         expect(SRC).toContain("maxHeight: 'calc(100vh - 40px)'")
     })
 })
+
+describe("the skip link's target (review on #37)", () => {
+    it("stops below the sticky header, not under it", () => {
+        const css = readFileSync("app/globals.css", "utf8")
+        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
+        const header = readFileSync("components/DashboardHeader.tsx", "utf8")
+        // The header: 72px tall, sticky at the top, and 1rem down once the page has scrolled.
+        expect(header).toContain("height: '72px'")
+        expect(shell).toContain("position: 'sticky'")
+        expect(shell).toContain("marginTop: isScrolled ? '1rem' : '0'")
+        expect(css).toMatch(/#main-content \{\s*scroll-margin-top: calc\(72px \+ 1rem\);/)
+    })
+})
