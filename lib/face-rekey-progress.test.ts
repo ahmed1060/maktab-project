@@ -7,6 +7,23 @@ import { leftAfterPress, photosLeft } from "./face-rekey-progress"
  * (components/FaceSystemSwitch.tsx), while it goes on press by press.
  */
 
+describe("whether a rotation is on", () => {
+    it("is told at once, from the previous key being set, as the full status would say (Codex review on #49)", async () => {
+        const { FacePhotoKeyService } = await import("./services/face-photo-key.service")
+        const was = process.env.FACE_PHOTO_KEY_PREVIOUS
+        try {
+            delete process.env.FACE_PHOTO_KEY_PREVIOUS
+            expect(FacePhotoKeyService.rotating()).toBe(false)
+            expect(await FacePhotoKeyService.status()).toEqual({ rotating: false })
+            process.env.FACE_PHOTO_KEY_PREVIOUS = "set"
+            expect(FacePhotoKeyService.rotating()).toBe(true)
+        } finally {
+            if (was === undefined) delete process.env.FACE_PHOTO_KEY_PREVIOUS
+            else process.env.FACE_PHOTO_KEY_PREVIOUS = was
+        }
+    })
+})
+
 describe("the photos still on the old key, between presses", () => {
     it("counts each press off what showed, until the status is read at the end", () => {
         let own: number | null = null

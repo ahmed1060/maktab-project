@@ -2,6 +2,7 @@ import { z } from "zod"
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { FaceVerificationService } from "@/lib/services/face-verification.service"
+import { FacePhotoKeyService } from "@/lib/services/face-photo-key.service"
 
 /**
  * Face verification for the whole system (ATTENDANCE_PLAN.md §10.4). Every
@@ -10,7 +11,8 @@ import { FaceVerificationService } from "@/lib/services/face-verification.servic
  */
 export const GET = withStandardHandler(async (_req, session) => {
     if (session.user.role !== "SUPER_ADMIN") return ApiResponse.forbidden()
-    return ApiResponse.success({ state: await FaceVerificationService.systemState(), canChange: !!session.user.isProtected })
+    // Whether a key rotation is on, so the card keeps its place while its slower status is read (Codex review on #49).
+    return ApiResponse.success({ state: await FaceVerificationService.systemState(), canChange: !!session.user.isProtected, rotating: FacePhotoKeyService.rotating() })
 })
 
 const schema = z.object({ state: z.enum(["ON", "PAUSED"]) })

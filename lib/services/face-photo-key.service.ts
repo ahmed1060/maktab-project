@@ -49,13 +49,22 @@ async function* storedPhotos(from: RekeyFrom | null = null): AsyncGenerator<[Tab
  */
 export class FacePhotoKeyService {
     /**
+     * Whether a rotation is on, at once: status() reads every stored photo,
+     * so the face card asks this with its own status and holds the rotation's
+     * place meanwhile (Codex review on #49).
+     */
+    static rotating(): boolean {
+        return !!process.env.FACE_PHOTO_KEY_PREVIOUS
+    }
+
+    /**
      * Where a rotation stands: nothing while no previous key is set (no
      * photo is opened then); that the two keys are the same, if they are;
      * otherwise how many photos are still on the old key, and how many no
      * key opens.
      */
     static async status() {
-        if (!process.env.FACE_PHOTO_KEY_PREVIOUS) return { rotating: false as const }
+        if (!FacePhotoKeyService.rotating()) return { rotating: false as const }
         if (rotationKeysSame()) return { rotating: true as const, sameKey: true as const }
         let total = 0, previous = 0, unreadable = 0
         for await (const [, row] of storedPhotos()) {

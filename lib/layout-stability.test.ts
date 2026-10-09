@@ -49,8 +49,8 @@ describe("cards that load their own data", () => {
         expect(src).not.toContain("if (error) return null")
         const start = src.indexOf("if (!data ||")
         const shell = src.slice(start, src.indexOf("const { state, canChange } = data.data"))
-        // It waits for the purge record and the rotation too, as they'd push the card when they came.
-        expect(shell).toContain("if (!data || !settled(purgeBody, purgeError) || !settled(rekeyBody, rekeyError))")
+        // It waits for the purge record too, as it would push the card when it came.
+        expect(shell).toContain("if (!data || !settled(purgeBody, purgeError)) {")
         expect(shell).toContain("<p style={HINT}>{t('face_sys_hint')}</p>")
         expect(shell).toContain("<StateLine text={error ? t('error_generic') : t('loading')}")
         expect(shell).toContain("<Controls />")
@@ -61,6 +61,20 @@ describe("cards that load their own data", () => {
         expect(card).toContain("<Controls>")
         // The state line is as tall as its longest text, whichever shows.
         expect(src).toMatch(/STATES\.map\(s => <span key=\{s\} aria-hidden="true" style=\{\{ gridArea: '1 \/ 1', visibility: 'hidden' \}\}>/)
+    })
+
+    it("the face card doesn't wait for the rotation's status, and keeps its place instead (Codex review on #49)", () => {
+        // The status reads every stored photo. Waited for, it held Pause and purge back: usable after 9.2 s with the
+        // status taking 8 s, measured in Chromium; now after 2.5 s on a phone, Branding still moving 0px.
+        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
+        expect(src).not.toContain("!settled(rekeyBody, rekeyError)")
+        // The card's own status says whether a rotation is on, at once.
+        const route = readFileSync("app/api/system-settings/face/route.ts", "utf8")
+        expect(route).toContain("rotating: FacePhotoKeyService.rotating()")
+        expect(src).toContain("const rotationWaiting = !!data.data.rotating && !rotation && (rekeyBody === undefined || !!rekeyError)")
+        const section = src.slice(src.indexOf("{(rotation || rotationWaiting) && ("))
+        expect(section).toContain("{rekeyError ? t('error_generic') : t('loading')}")
+        expect(section).toContain("<div style={{ minHeight: '2.5rem' }} />")
     })
 
     it("the face card's controls are as tall as the most any state shows, wrapped too (Codex review on #49)", () => {

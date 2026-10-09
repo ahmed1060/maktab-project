@@ -72,7 +72,7 @@ type Rekey = { rotating: false } | { rotating: true; sameKey: true } | { rotatin
 export default function FaceSystemSwitch() {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const { data, error, mutate } = useSWR<{ data: { state: State; canChange: boolean } }>('/api/system-settings/face', fetcher)
+    const { data, error, mutate } = useSWR<{ data: { state: State; canChange: boolean; rotating?: boolean } }>('/api/system-settings/face', fetcher)
     const { data: purgeBody, error: purgeError, mutate: reloadPurge } = useSWR<{ data: { at: string; keysDestroyed: number; photosDeleted: number; acknowledged: number } | null }>('/api/system-settings/face/purge', fetcher)
     const { data: rekeyBody, error: rekeyError, mutate: reloadRekey } = useSWR<{ data: Rekey }>('/api/system-settings/face/rekey', fetcher)
     const [asking, setAsking] = useState<'ON' | 'PAUSED' | null>(null)
@@ -88,9 +88,10 @@ export default function FaceSystemSwitch() {
     // hint, state line and a row of controls, and stays when the status can't
     // be read: a heading and a line alone still pushed Branding 158px down on
     // a phone, and an error took the card away (Codex review on #43). The
-    // purge record and the rotation wait with it, as they'd push it too.
+    // purge record waits with it, as it would push it too. The rotation
+    // doesn't: its status reads every stored photo (Codex review on #49).
     const settled = (body: unknown, failed: unknown) => body !== undefined || !!failed
-    if (!data || !settled(purgeBody, purgeError) || !settled(rekeyBody, rekeyError)) {
+    if (!data || !settled(purgeBody, purgeError)) {
         return (
             <section className="glass" style={CARD} aria-busy={!error}>
                 <h3 style={{ margin: 0 }}>{t('face_sys_title')}</h3>
@@ -131,6 +132,9 @@ export default function FaceSystemSwitch() {
     const last = purgeBody?.data ?? null
 
     const rotation = rekeyBody?.data.rotating ? rekeyBody.data : null
+    // A rotation on, by the card's own status, whose status isn't here yet or failed: its place is kept,
+    // and the rest of the card is usable meanwhile (Codex review on #49).
+    const rotationWaiting = !!data.data.rotating && !rotation && (rekeyBody === undefined || !!rekeyError)
     const left = rotation && !rotation.sameKey ? photosLeft(rekeyLeft, rotation.previous) : 0
 
     const rekey = async () => {
@@ -177,10 +181,16 @@ export default function FaceSystemSwitch() {
                     {t('face_purge_record').replace('{date}', last.at.slice(0, 10)).replaceAll('{keys}', String(last.keysDestroyed)).replace('{photos}', String(last.photosDeleted)).replace('{acks}', String(last.acknowledged))}
                 </p>
             )}
-            {rotation && (
+            {(rotation || rotationWaiting) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                     <p style={{ margin: 0, fontWeight: 600 }}>{t('face_rekey_title')}</p>
-                    {rotation.sameKey ? (
+                    {!rotation ? (
+                        // The status line's place, and a button's (40px), while it's read.
+                        <>
+                            <p style={{ fontSize: '0.8rem', margin: 0, color: rekeyError ? 'var(--danger-fg)' : 'var(--text-soft)' }}>{rekeyError ? t('error_generic') : t('loading')}</p>
+                            <div style={{ minHeight: '2.5rem' }} />
+                        </>
+                    ) : rotation.sameKey ? (
                         <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_same_key')}</p>
                     ) : rotation.previous > 0 ? (
                         <>
@@ -190,7 +200,7 @@ export default function FaceSystemSwitch() {
                     ) : (
                         <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--ok-fg)' }}>{t('face_rekey_done')}</p>
                     )}
-                    {!rotation.sameKey && rotation.unreadable > 0 && (
+                    {rotation && !rotation.sameKey && rotation.unreadable > 0 && (
                         <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_unreadable').replace('{n}', String(rotation.unreadable))}</p>
                     )}
                 </div>
