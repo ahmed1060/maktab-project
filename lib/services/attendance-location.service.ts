@@ -126,6 +126,10 @@ export class AttendanceLocationService {
             await tx.$queryRaw`SELECT id FROM "WorkLocation" WHERE id = ${id} FOR UPDATE`
             const location = await tx.workLocation.findUnique({ where: { id }, select: { companyId: true, name: true, archivedAt: true, people: { select: { userId: true } } } }) ?? fail("LOCATION_NOT_FOUND")
             if (location.archivedAt) fail("LOCATION_ARCHIVED")
+            // Their rows too, against a move to another company (UserService.update), whose update of the row
+            // conflicts with this: a move under way finishes first and is seen below, or waits and then takes the
+            // links this adds (review on #67).
+            if (wanted.length > 0) await tx.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${wanted}::text[]) ORDER BY id FOR SHARE`
             const theirs = await tx.user.count({ where: { id: { in: wanted }, companyId: location.companyId } })
             if (theirs !== wanted.length) fail("LOCATION_PEOPLE_NOT_IN_COMPANY")
             const had = new Set(location.people.map(p => p.userId))

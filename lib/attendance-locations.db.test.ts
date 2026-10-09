@@ -121,6 +121,54 @@ describe.skipIf(!ADMIN_URL)("work locations, in Postgres", () => {
         expect((await Locations.forPerson("c1", "e2")).map(x => x.name)).not.toContain("Before the move")
     })
 
+    /** Until another connection waits on a lock, or a moment has passed without one. */
+    const untilSomebodyWaits = async () => {
+        for (let i = 0; i < 40; i++) {
+            if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE NOT granted`)).rows[0].n > 0) return
+            await new Promise(r => setTimeout(r, 50))
+        }
+    }
+    const linked = async (locationId: string) => (await db.query(`SELECT "userId" FROM "UserWorkLocation" WHERE "locationId" = $1`, [locationId])).rows.map(r => r.userId)
+
+    it("doesn't list a person on a place while a move to another company is under way (review on #67)", async () => {
+        const l = await Locations.create("c1", { ...OFFICE, name: "During a move" }, "a1")
+        // The move has written and not yet committed. Read before it commits, the person was still the old company's,
+        // and the place was theirs once it had: a move back would bring it back.
+        const roleIn = async (company: string) => (await db.query(`SELECT id FROM "Role" WHERE "companyId" = $1 AND "builtIn" = 'EMPLOYEE'`, [company])).rows[0].id
+        const [there, here] = [await roleIn("c2"), await roleIn("c1")]
+        await db.query("BEGIN")
+        let staffing: Promise<string>
+        try {
+            await db.query(`UPDATE "User" SET "companyId" = 'c2', "roleId" = $1 WHERE id = 'e1'`, [there])
+            staffing = Locations.setPeople(l.id, ["e1"], "a1").then(() => "SET", (e: Error) => e.message)
+            await untilSomebodyWaits()
+        } finally {
+            await db.query("COMMIT")
+        }
+        expect(await staffing).toBe("LOCATION_PEOPLE_NOT_IN_COMPANY")
+        expect(await linked(l.id)).toEqual([])
+        await db.query(`UPDATE "User" SET "companyId" = 'c1', "roleId" = $1 WHERE id = 'e1'`, [here])
+    })
+
+    it("takes the place a staffing change gave a person while their move waited for it (review on #67)", async () => {
+        const l = await Locations.create("c1", { ...OFFICE, name: "Before a waiting move" }, "a1")
+        // A change of the place's people holds the person, as setPeople does, and lists them.
+        await db.query("BEGIN")
+        let moving: Promise<unknown>
+        try {
+            await db.query(`SELECT id FROM "User" WHERE id = 'e1' FOR SHARE`)
+            await db.query(`INSERT INTO "UserWorkLocation"("userId", "locationId") VALUES ('e1', $1)`, [l.id])
+            moving = UserService.update({ id: "e1", companyId: "c2" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
+            await untilSomebodyWaits()
+        } finally {
+            await db.query("COMMIT")
+        }
+        await moving
+        expect(await linked(l.id)).toEqual([])
+        await UserService.update({ id: "e1", companyId: "c1" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
+        expect((await Locations.forPerson("c1", "e1")).map(x => x.name)).not.toContain("Before a waiting move")
+    })
+
     it("lets a person check in where they are listed, or where everyone may, and nowhere archived", async () => {
         const listed = await Locations.create("c1", { ...OFFICE, name: "Listed" }, "a1")
         await Locations.setPeople(listed.id, ["e1"], "a1")

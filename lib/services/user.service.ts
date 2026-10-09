@@ -472,10 +472,6 @@ export class UserService {
                     : { actingUntil: null, returnRoleId: null })
             }
 
-            // The places they could check in at with the app were the old
-            // company's (ATTENDANCE_PLAN.md §8.5): none of them is theirs now,
-            // and a move back must not quietly bring them back.
-            if (companyChanging) updateData.workLocations = { deleteMany: {} }
             // Their check-in phone was approved by the old company, and what a
             // new one is holding is the old company's to judge (§9.3): both end
             // with the move, in the same write. The new company approves afresh.
@@ -493,10 +489,18 @@ export class UserService {
             })
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
-            const updated = rehome
+            const updated = rehome || companyChanging
                 ? await prisma.$transaction(async (tx) => {
-                    await TeamHandOff.apply(tx, id, rehome!, { id: session.user.id, role: userRole })
-                    return tx.user.update({ where: { id }, data: updateData, select: writeSelect })
+                    if (rehome) await TeamHandOff.apply(tx, id, rehome, { id: session.user.id, role: userRole })
+                    const written = await tx.user.update({ where: { id }, data: updateData, select: writeSelect })
+                    // The places they could check in at with the app were the old
+                    // company's (ATTENDANCE_PLAN.md §8.5): none of them is theirs now,
+                    // and a move back must not quietly bring them back. Deleted after
+                    // the update has locked their row, so a change of a place's people
+                    // that read their old company has committed and its links go too,
+                    // or waits and then sees the new one (review on #67).
+                    if (companyChanging) await tx.userWorkLocation.deleteMany({ where: { userId: id } })
+                    return written
                 })
                 : await prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
             // A role given directly settles any request still waiting for this
