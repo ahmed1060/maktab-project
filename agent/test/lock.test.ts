@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -42,4 +42,17 @@ describe("the folder's lock", () => {
         expect(() => acquireLock(path)).toThrow(LockedError)
         expect(readFileSync(path, "utf8")).toBe(String(other))
     })
+
+    it("waits out a takeover that died part way, and takes the lock once it has gone stale (review on #49)", () => {
+        // A process died holding the takeover folder 4 s ago: stale at 10 s, so 6 s more. Giving up after 5 s of
+        // tries left a service restarted at once unable to start.
+        const path = join(mkdtempSync(join(tmpdir(), "agent-lock-")), "agent.lock")
+        writeFileSync(path, String(GONE))
+        mkdirSync(`${path}.takeover`)
+        const fourSecondsAgo = (Date.now() - 4_000) / 1000
+        utimesSync(`${path}.takeover`, fourSecondsAgo, fourSecondsAgo)
+        const lock = acquireLock(path)
+        expect(readFileSync(path, "utf8")).toBe(String(process.pid))
+        lock.release()
+    }, 20_000)
 })

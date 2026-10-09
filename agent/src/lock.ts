@@ -32,7 +32,8 @@ function alive(pid: number): boolean {
 
 /** How long a takeover may hold its folder before it is taken for one that died part way. */
 const TAKEOVER_STALE_MS = 10_000
-const TAKEOVER_TRIES = 100
+/** How long to keep trying: past the stale age, so a takeover that died part way is cleared, not given up on (review on #49). */
+const TAKEOVER_WAIT_MS = TAKEOVER_STALE_MS + 5_000
 const pause = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 
 const pidIn = (path: string) => Number(readFileSync(path, "utf8").trim())
@@ -61,7 +62,8 @@ function takeOver(path: string): boolean {
 }
 
 export function acquireLock(path: string): { release(): void } {
-    for (let attempt = 0; attempt < TAKEOVER_TRIES; attempt++) {
+    const deadline = Date.now() + TAKEOVER_WAIT_MS
+    while (Date.now() <= deadline) {
         try {
             const fd = openSync(path, "wx")
             writeSync(fd, String(process.pid))
