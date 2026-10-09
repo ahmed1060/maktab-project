@@ -104,6 +104,24 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
             expect((await defaultsOf("c1")).length).toBe(2)
         })
 
+        it("doesn't make a schedule archived meanwhile the default (review on #64)", async () => {
+            await Calendar.createSchedule("c1", { name: "Relief", version: { ...HOURS, effectiveFrom: "2026-10-01" } }, "a1")
+            const spare = await id("Relief")
+            // An archive under way holds the schedule's lock, and commits once the change of default has read the schedule.
+            await db.query("BEGIN")
+            await db.query(`SELECT pg_advisory_xact_lock(hashtext($1))::text`, [`schedule:${spare}`])
+            const setting = Calendar.setDefault(spare, "2026-12-01", "a1").then(() => "SET", (e: Error) => e.message)
+            // Until the change waits on that lock, or has gone ahead without it.
+            for (let i = 0; i < 40; i++) {
+                if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`)).rows[0].n > 0) break
+                await new Promise(r => setTimeout(r, 50))
+            }
+            await db.query(`UPDATE "WorkSchedule" SET "archivedAt" = now() WHERE id = $1`, [spare])
+            await db.query("COMMIT")
+            expect(await setting).toBe("SCHEDULE_ARCHIVED")
+            expect((await defaultsOf("c1")).map(d => d.name)).not.toContain("Relief")
+        })
+
         it("withdraws a later change of default, never the first", async () => {
             const rows = (await db.query(`SELECT id, "effectiveFrom"::text AS "from" FROM "ScheduleDefault" WHERE "companyId" = 'c1' ORDER BY "effectiveFrom"`)).rows
             await expect(Calendar.withdrawDefault(rows[0].id, "a1")).rejects.toEqual(refusal("SCHEDULE_DEFAULT_REQUIRED"))

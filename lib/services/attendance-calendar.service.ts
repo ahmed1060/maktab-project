@@ -258,6 +258,11 @@ export class AttendanceCalendarService {
         const companyId = schedule.companyId
         await prisma.$transaction(async tx => {
             await serialize(tx, `defaults:${companyId}`)
+            // And the schedule's, which archiving takes, read again under it: an archive that committed a moment
+            // ago must be seen, or an archived schedule becomes the default (review on #64).
+            await serialize(tx, `schedule:${scheduleId}`)
+            const current = await tx.workSchedule.findUnique({ where: { id: scheduleId }, select: { archivedAt: true } })
+            if (current?.archivedAt) fail("SCHEDULE_ARCHIVED")
             const rows = await tx.scheduleDefault.findMany({ where: { companyId }, select: { effectiveFrom: true } })
             const dates = rows.map(r => toDateString(r.effectiveFrom)).filter(d => d !== effectiveFrom)
             await this.assertSpanUnlocked(companyId, spanOf(dates, effectiveFrom), tx)
