@@ -4,6 +4,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
+import type { TranslationKey } from '@/lib/translations'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { apiErrorText } from '@/lib/api-error-text'
@@ -23,9 +24,14 @@ type State = 'OFF' | 'ON' | 'PAUSED'
 
 const CARD = { padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' } as const
 const HINT = { fontSize: '0.8rem', color: 'var(--text-soft)', margin: 0 } as const
-// One button's height (40px), whether the row holds buttons, the protected-only line or nothing yet.
-const CONTROLS = { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', minHeight: '2.5rem' } as const
+const CONTROLS = { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', alignContent: 'flex-start' } as const
 const STATES: readonly State[] = ['OFF', 'ON', 'PAUSED']
+// What each state offers the protected Super Admin, in order.
+const BUTTONS: Record<State, readonly { cls: string; label: TranslationKey; action: 'ON' | 'PAUSED' | 'PURGE' }[]> = {
+    OFF: [{ cls: 'btn btn-primary', label: 'face_sys_turn_on', action: 'ON' }],
+    ON: [{ cls: 'btn btn-secondary', label: 'face_sys_pause', action: 'PAUSED' }, { cls: 'btn btn-danger', label: 'face_purge', action: 'PURGE' }],
+    PAUSED: [{ cls: 'btn btn-primary', label: 'face_sys_resume', action: 'ON' }, { cls: 'btn btn-danger', label: 'face_purge', action: 'PURGE' }],
+}
 
 /**
  * The state line, as tall as its longest state's text, whichever shows: on a
@@ -39,6 +45,26 @@ function StateLine({ text, color }: { text: string; color: string }) {
             {STATES.map(s => <span key={s} aria-hidden="true" style={{ gridArea: '1 / 1', visibility: 'hidden' }}>{t(`face_sys_state_${s}`)}</span>)}
             <span style={{ gridArea: '1 / 1' }}>{text}</span>
         </p>
+    )
+}
+/**
+ * The row of controls, as tall as the tallest any state can show, at any
+ * width: buttons, the protected-only line, or nothing yet. On a narrow phone,
+ * or with the text zoomed, "Pause" and "Pause and purge" take two rows, and a
+ * placeholder one button high still moved the cards below when they came
+ * (Codex review on #49).
+ */
+function Controls({ children }: { children?: React.ReactNode }) {
+    const { t } = useLanguage()
+    return (
+        <div style={{ display: 'grid' }}>
+            {STATES.map(s => (
+                <div key={s} aria-hidden="true" style={{ ...CONTROLS, gridArea: '1 / 1', visibility: 'hidden' }}>
+                    {BUTTONS[s].map(b => <span key={b.action} className={b.cls}>{t(b.label)}</span>)}
+                </div>
+            ))}
+            <div style={{ ...CONTROLS, gridArea: '1 / 1' }}>{children}</div>
+        </div>
     )
 }
 type Rekey = { rotating: false } | { rotating: true; sameKey: true } | { rotating: true; sameKey?: undefined; total: number; previous: number; unreadable: number }
@@ -70,7 +96,7 @@ export default function FaceSystemSwitch() {
                 <h3 style={{ margin: 0 }}>{t('face_sys_title')}</h3>
                 <p style={HINT}>{t('face_sys_hint')}</p>
                 <StateLine text={error ? t('error_generic') : t('loading')} color={error ? 'var(--danger-fg)' : 'var(--text-soft)'} />
-                <div style={CONTROLS} />
+                <Controls />
             </section>
         )
     }
@@ -139,17 +165,13 @@ export default function FaceSystemSwitch() {
             <h3 style={{ margin: 0 }}>{t('face_sys_title')}</h3>
             <p style={HINT}>{t('face_sys_hint')}</p>
             <StateLine text={t(`face_sys_state_${state}`)} color={tone} />
-            <div style={CONTROLS}>
-                {canChange ? (
-                    <>
-                        {state !== 'ON' && <button className="btn btn-primary" disabled={busy} onClick={() => setAsking('ON')}>{t(state === 'PAUSED' ? 'face_sys_resume' : 'face_sys_turn_on')}</button>}
-                        {state === 'ON' && <button className="btn btn-secondary" disabled={busy} onClick={() => setAsking('PAUSED')}>{t('face_sys_pause')}</button>}
-                        {state !== 'OFF' && <button className="btn btn-danger" disabled={busy} onClick={() => setPurging(true)}>{t('face_purge')}</button>}
-                    </>
-                ) : (
+            <Controls>
+                {canChange ? BUTTONS[state].map(b => (
+                    <button key={b.action} className={b.cls} disabled={busy} onClick={() => (b.action === 'PURGE' ? setPurging(true) : setAsking(b.action))}>{t(b.label)}</button>
+                )) : (
                     <p style={HINT}>{t('face_sys_protected_only')}</p>
                 )}
-            </div>
+            </Controls>
             {last && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: 0 }}>
                     {t('face_purge_record').replace('{date}', last.at.slice(0, 10)).replaceAll('{keys}', String(last.keysDestroyed)).replace('{photos}', String(last.photosDeleted)).replace('{acks}', String(last.acknowledged))}

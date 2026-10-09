@@ -53,14 +53,28 @@ describe("cards that load their own data", () => {
         expect(shell).toContain("if (!data || !settled(purgeBody, purgeError) || !settled(rekeyBody, rekeyError))")
         expect(shell).toContain("<p style={HINT}>{t('face_sys_hint')}</p>")
         expect(shell).toContain("<StateLine text={error ? t('error_generic') : t('loading')}")
-        expect(shell).toContain("<div style={CONTROLS} />")
+        expect(shell).toContain("<Controls />")
         // The loaded card has the same rows, the controls in the same box.
         const card = src.slice(src.indexOf("const tone ="))
         expect(card).toContain("<p style={HINT}>{t('face_sys_hint')}</p>")
         expect(card).toContain("<StateLine text={t(`face_sys_state_${state}`)} color={tone} />")
-        expect(card).toContain("<div style={CONTROLS}>")
-        expect(src).toContain("minHeight: '2.5rem'")
+        expect(card).toContain("<Controls>")
         // The state line is as tall as its longest text, whichever shows.
         expect(src).toMatch(/STATES\.map\(s => <span key=\{s\} aria-hidden="true" style=\{\{ gridArea: '1 \/ 1', visibility: 'hidden' \}\}>/)
+    })
+
+    it("the face card's controls are as tall as the most any state shows, wrapped too (Codex review on #49)", () => {
+        // One button high, the placeholder still let "Pause" and "Pause and purge", two rows on a 320px phone,
+        // push Branding 48px down when they came. Measured in Chromium after: 0px at 320, 412 and 1350px.
+        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
+        const controls = src.slice(src.indexOf("function Controls("), src.indexOf("type Rekey ="))
+        // A hidden copy of every state's buttons, in the same cell as what shows.
+        expect(controls).toContain("{STATES.map(s => (")
+        expect(controls).toContain(`<div key={s} aria-hidden="true" style={{ ...CONTROLS, gridArea: '1 / 1', visibility: 'hidden' }}>`)
+        expect(controls).toContain("{BUTTONS[s].map(b => <span key={b.action} className={b.cls}>{t(b.label)}</span>)}")
+        expect(controls).toContain("<div style={{ ...CONTROLS, gridArea: '1 / 1' }}>{children}</div>")
+        // The buttons shown are the same list, so a copy can't drift from them.
+        expect(src).toContain("{canChange ? BUTTONS[state].map(b => (")
+        expect(src).toContain("ON: [{ cls: 'btn btn-secondary', label: 'face_sys_pause', action: 'PAUSED' }, { cls: 'btn btn-danger', label: 'face_purge', action: 'PURGE' }],")
     })
 })
