@@ -158,20 +158,27 @@ export class AttendanceFlagService {
     static async integrity(days = 30, now = new Date()) {
         const since = new Date(now.getTime() - days * 86_400_000)
         // Counted in Postgres: only the counts leave the database, however
-        // many check-ins came in (review on #23).
-        const [refusals, totals, flags] = await Promise.all([
+        // many check-ins came in (review on #23). The totals and the reasons
+        // in one statement, so from one snapshot: two could straddle a
+        // check-in arriving, a reason counted with no flagged check-in to
+        // show for it (review on #63).
+        const [refusals, totals] = await Promise.all([
             prisma.checkInRefusal.groupBy({ by: ["companyId", "reason"], where: { at: { gte: since } }, _count: { _all: true } }),
-            prisma.$queryRaw<{ companyId: string; checkIns: number; accepted: number; flagged: number }[]>`
-                SELECT "companyId", COUNT(*)::int AS "checkIns",
-                       (COUNT(*) FILTER (WHERE status = 'ACCEPTED'))::int AS accepted,
-                       (COUNT(*) FILTER (WHERE cardinality("flagReasons") > 0))::int AS flagged
-                FROM "AttendancePunch" WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
-                GROUP BY "companyId"`,
-            prisma.$queryRaw<{ companyId: string; reason: string; n: number }[]>`
-                SELECT "companyId", reason, COUNT(*)::int AS n
-                FROM "AttendancePunch", unnest("flagReasons") AS reason
-                WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
-                GROUP BY "companyId", reason`,
+            prisma.$queryRaw<{ companyId: string; checkIns: number; accepted: number; flagged: number; flaggedBy: Record<string, number> }[]>`
+                WITH recent AS (
+                    SELECT "companyId", status, "flagReasons" FROM "AttendancePunch" WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
+                ), reasons AS (
+                    SELECT "companyId", jsonb_object_agg(reason, n) AS "flaggedBy"
+                    FROM (SELECT "companyId", reason, COUNT(*)::int AS n FROM recent, unnest("flagReasons") AS reason GROUP BY "companyId", reason) counted
+                    GROUP BY "companyId"
+                )
+                SELECT t."companyId", t."checkIns", t.accepted, t.flagged, COALESCE(r."flaggedBy", '{}'::jsonb) AS "flaggedBy"
+                FROM (
+                    SELECT "companyId", COUNT(*)::int AS "checkIns",
+                           (COUNT(*) FILTER (WHERE status = 'ACCEPTED'))::int AS accepted,
+                           (COUNT(*) FILTER (WHERE cardinality("flagReasons") > 0))::int AS flagged
+                    FROM recent GROUP BY "companyId"
+                ) t LEFT JOIN reasons r ON r."companyId" = t."companyId"`,
         ])
         const ids = [...new Set([...refusals.map(r => r.companyId), ...totals.map(t => t.companyId)])]
         const companies = await prisma.company.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
@@ -182,8 +189,7 @@ export class AttendanceFlagService {
             if (!rows.has(companyId)) rows.set(companyId, { companyId, name: names.get(companyId) ?? "?", checkIns: 0, accepted: 0, flagged: 0, refused: 0, refusedBy: {}, flaggedBy: {} })
             return rows.get(companyId)!
         }
-        for (const t of totals) Object.assign(row(t.companyId), { checkIns: t.checkIns, accepted: t.accepted, flagged: t.flagged })
-        for (const f of flags) row(f.companyId).flaggedBy[f.reason] = f.n
+        for (const t of totals) Object.assign(row(t.companyId), { checkIns: t.checkIns, accepted: t.accepted, flagged: t.flagged, flaggedBy: t.flaggedBy })
         for (const g of refusals) {
             const r = row(g.companyId)
             r.refused += g._count._all

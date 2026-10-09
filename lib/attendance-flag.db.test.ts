@@ -26,6 +26,21 @@ vi.mock("@/lib/attendance/attestation", () => ({
     verifyAttestation: async () => ({ verified: attested.verified, reason: attested.verified ? null : "NOT_CONFIGURED" }),
 }))
 
+// Raw queries can be wrapped, to land a check-in between two of them.
+const raw = vi.hoisted(() => ({ wrap: null as null | ((run: (...args: unknown[]) => Promise<unknown>) => (...args: unknown[]) => Promise<unknown>) }))
+vi.mock("@/lib/prisma", async importOriginal => {
+    const real = await importOriginal<typeof import("@/lib/prisma")>()
+    const prisma = new Proxy(real.prisma, {
+        get(target, key) {
+            const value = Reflect.get(target, key)
+            if (typeof value !== "function") return value
+            const bound = value.bind(target)
+            return key === "$queryRaw" && raw.wrap ? raw.wrap(bound) : bound
+        },
+    })
+    return { ...real, prisma }
+})
+
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
@@ -185,5 +200,30 @@ describe.skipIf(!ADMIN_URL)("flagged check-ins, in Postgres", () => {
         expect(one.checkIns).toBe(3)
         // Worst first: the company with refusals before the one without.
         expect(view[0].companyId).toBe("c1")
+    })
+
+    it("counts a company's check-ins and their reasons from one moment, as check-ins keep arriving (review on #63)", async () => {
+        // A flagged check-in arrives for a third company just after the first of the view's counts.
+        await db.query(`INSERT INTO "Company"(id, name, "updatedAt", timezone) VALUES ('c3', 'Three', now(), 'Africa/Cairo')`)
+        let arrived: Promise<unknown> | null = null
+        raw.wrap = run => (...args) => {
+            if (arrived) return arrived.then(() => run(...args))
+            const first = run(...args)
+            arrived = first.then(() => db.query(
+                `INSERT INTO "AttendancePunch"(id, "companyId", "hardwareUserId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status, "flagReasons")
+                 VALUES ('c3-flag', 'c3', '7', 'MOBILE', 'c3-flag', now(), now(), 'Africa/Cairo', 'FLAGGED', '{OUTSIDE_AREA}')`))
+            return arrived.then(() => first)
+        }
+        try {
+            const view = await Flags.integrity()
+            // Two statements straddled it: OUTSIDE_AREA counted for c3, with no check-in there to have it.
+            for (const r of view) {
+                expect(r.flagged <= r.checkIns).toBe(true)
+                expect(Object.keys(r.flaggedBy).length === 0 || r.flagged > 0).toBe(true)
+            }
+        } finally {
+            raw.wrap = null
+        }
+        expect(arrived).not.toBeNull()
     })
 })
