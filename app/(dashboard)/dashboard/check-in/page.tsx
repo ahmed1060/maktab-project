@@ -77,9 +77,10 @@ export default function CheckInPage() {
         return body?.data ? { ...body, data: { ...body.data, askedAt } } : body
     })
     const faceStatus = faceBody?.data as FaceStatus | undefined
+    const phoneActive = !!fingerprint && (phoneBody?.data as { active: Phone | null } | undefined)?.active?.keyFingerprint === fingerprint
     // Check in waits for these: tapped sooner, the set-up or the face check was skipped (review on #49). The
-    // model only when the face check can start.
-    const ready = faceReady({ data: faceBody, error: faceError }, face && faceModelNeeded(faceStatus) ? { data: faceModel, error: faceModelError } : undefined)
+    // model only when the face check can start. The buttons show once the phone is known, so phoneActive is too.
+    const ready = faceReady({ data: faceBody, error: faceError }, face && faceModelNeeded(faceStatus, { phoneActive }) ? { data: faceModel, error: faceModelError } : undefined)
     const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT' | 'face'>(null)
     const [answer, setAnswer] = useState<CheckInAnswer | null>(null)
     const [switching, setSwitching] = useState(false)
@@ -92,7 +93,6 @@ export default function CheckInPage() {
     // Face templates on this phone while face verification isn't in use for
     // the person: the server may have said they are to go, and nothing else
     // would ever ask (review on #27). It says whether to delete or keep them.
-    const phoneActive = !!fingerprint && (phoneBody?.data as { active: Phone | null } | undefined)?.active?.keyFingerprint === fingerprint
     useEffect(() => {
         // Not while a capture or check-in runs: its templates may not have reached the server yet.
         if (!device || !face || !faceStatus || !phoneActive || busy) return

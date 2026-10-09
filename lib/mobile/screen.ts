@@ -120,11 +120,14 @@ export function faceReady(status: Loading, model?: Loading): boolean {
 
 /**
  * Whether Check in waits for the face model too: only when the face check can
- * start, asked of the person and consented to. Otherwise a face plugin slow
- * to answer held up check-ins that don't need it (review on #49).
+ * start, asked of the person and consented to, on the phone in use. Otherwise
+ * a face plugin slow to answer held up check-ins that don't need it (review on
+ * #49). A replacement waiting for approval neither sets a face up nor checks
+ * one (setUpFirst, checksFace), so its check-in waited up to ten seconds for
+ * nothing (Codex review on #49).
  */
-export function faceModelNeeded(status: FaceStatus | undefined): boolean {
-    return !!status?.required && !!status.consent
+export function faceModelNeeded(status: FaceStatus | undefined, here: { phoneActive: boolean }): boolean {
+    return here.phoneActive && !!status?.required && !!status.consent
 }
 
 /** How long a call to the face plugin is waited for before it counts as failed: one that never answered held Check in for good (review on #49). */

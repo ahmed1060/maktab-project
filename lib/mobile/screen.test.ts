@@ -259,12 +259,25 @@ describe("Check in waiting for the face model (review on #49)", () => {
     })
 
     it("only when the face check can start: asked of them and consented to", () => {
-        expect(faceModelNeeded(status())).toBe(true)
-        expect(faceModelNeeded(status({ required: false }))).toBe(false)
-        expect(faceModelNeeded(status({ consent: null }))).toBe(false)
-        expect(faceModelNeeded(undefined)).toBe(false)
+        const here = { phoneActive: true }
+        expect(faceModelNeeded(status(), here)).toBe(true)
+        expect(faceModelNeeded(status({ required: false }), here)).toBe(false)
+        expect(faceModelNeeded(status({ consent: null }), here)).toBe(false)
+        expect(faceModelNeeded(undefined, here)).toBe(false)
         const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
-        expect(page).toContain("face && faceModelNeeded(faceStatus) ? { data: faceModel, error: faceModelError } : undefined")
+        expect(page).toContain("face && faceModelNeeded(faceStatus, { phoneActive }) ? { data: faceModel, error: faceModelError } : undefined")
+    })
+
+    it("not on a replacement waiting for approval, which neither sets a face up nor checks one (Codex review on #49)", () => {
+        // The status is the person's, so required and consented: the replacement's check-in waited on its face plugin.
+        const pending = { phoneActive: false }
+        expect(faceModelNeeded(status(), pending)).toBe(false)
+        expect(setUpFirst(status(), { ...pending, verifier: true })).toBe(false)
+        expect(checksFace(status({ active: true }), pending)).toBe(false)
+        // The buttons show only once this phone is known, so phoneActive is settled by then.
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        expect(page.indexOf("const phoneActive =")).toBeLessThan(page.indexOf("const ready = faceReady("))
+        expect(page).toContain("if (!which) return <LoadingSpinner />")
     })
 
     it("gives up on a face plugin that never answers, so Check in isn't held for good", async () => {
