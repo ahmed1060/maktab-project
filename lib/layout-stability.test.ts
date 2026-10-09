@@ -35,8 +35,32 @@ describe("cards that load their own data", () => {
     ])("%s holds its place while it loads", (f, title) => {
         const src = readFileSync(f, "utf8")
         expect(src).not.toMatch(/if \(!(rows|data)\) return null/)
-        const loading = src.slice(src.search(/if \(!(rows|data)\) \{/), src.search(/if \(!(rows|data)\) \{/) + 900)
+        const start = src.search(/if \(!(rows|data)(\) \{| \|\|)/)
+        expect(start).toBeGreaterThan(-1)
+        const loading = src.slice(start, start + 900)
         expect(loading).toContain(`t('${title}')`)
         expect(loading).toContain("t('loading')")
+    })
+
+    it("the face card holds the loaded card's footprint, and stays on an error (Codex review on #43)", () => {
+        // A heading and one line grew to the whole card when the status came (Branding moved 158px on a
+        // phone), and an error took the card away (124px the other way). Measured in Chromium after: 0px.
+        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
+        expect(src).not.toContain("if (error) return null")
+        const start = src.indexOf("if (!data ||")
+        const shell = src.slice(start, src.indexOf("const { state, canChange } = data.data"))
+        // It waits for the purge record and the rotation too, as they'd push the card when they came.
+        expect(shell).toContain("if (!data || !settled(purgeBody, purgeError) || !settled(rekeyBody, rekeyError))")
+        expect(shell).toContain("<p style={HINT}>{t('face_sys_hint')}</p>")
+        expect(shell).toContain("<StateLine text={error ? t('error_generic') : t('loading')}")
+        expect(shell).toContain("<div style={CONTROLS} />")
+        // The loaded card has the same rows, the controls in the same box.
+        const card = src.slice(src.indexOf("const tone ="))
+        expect(card).toContain("<p style={HINT}>{t('face_sys_hint')}</p>")
+        expect(card).toContain("<StateLine text={t(`face_sys_state_${state}`)} color={tone} />")
+        expect(card).toContain("<div style={CONTROLS}>")
+        expect(src).toContain("minHeight: '2.5rem'")
+        // The state line is as tall as its longest text, whichever shows.
+        expect(src).toMatch(/STATES\.map\(s => <span key=\{s\} aria-hidden="true" style=\{\{ gridArea: '1 \/ 1', visibility: 'hidden' \}\}>/)
     })
 })

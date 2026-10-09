@@ -20,14 +20,35 @@ import { leftAfterPress, photosLeft } from '@/lib/face-rekey-progress'
  * sees how many stored photos are still on the old key and moves them.
  */
 type State = 'OFF' | 'ON' | 'PAUSED'
+
+const CARD = { padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' } as const
+const HINT = { fontSize: '0.8rem', color: 'var(--text-soft)', margin: 0 } as const
+// One button's height (40px), whether the row holds buttons, the protected-only line or nothing yet.
+const CONTROLS = { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', minHeight: '2.5rem' } as const
+const STATES: readonly State[] = ['OFF', 'ON', 'PAUSED']
+
+/**
+ * The state line, as tall as its longest state's text, whichever shows: on a
+ * phone "On: …" takes two lines and the loading line one, and that moved
+ * the cards below when the state arrived (Codex review on #43).
+ */
+function StateLine({ text, color }: { text: string; color: string }) {
+    const { t } = useLanguage()
+    return (
+        <p style={{ margin: 0, fontWeight: 600, color, display: 'grid' }}>
+            {STATES.map(s => <span key={s} aria-hidden="true" style={{ gridArea: '1 / 1', visibility: 'hidden' }}>{t(`face_sys_state_${s}`)}</span>)}
+            <span style={{ gridArea: '1 / 1' }}>{text}</span>
+        </p>
+    )
+}
 type Rekey = { rotating: false } | { rotating: true; sameKey: true } | { rotating: true; sameKey?: undefined; total: number; previous: number; unreadable: number }
 
 export default function FaceSystemSwitch() {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const { data, error, mutate } = useSWR<{ data: { state: State; canChange: boolean } }>('/api/system-settings/face', fetcher)
-    const { data: purgeBody, mutate: reloadPurge } = useSWR<{ data: { at: string; keysDestroyed: number; photosDeleted: number; acknowledged: number } | null }>('/api/system-settings/face/purge', fetcher)
-    const { data: rekeyBody, mutate: reloadRekey } = useSWR<{ data: Rekey }>('/api/system-settings/face/rekey', fetcher)
+    const { data: purgeBody, error: purgeError, mutate: reloadPurge } = useSWR<{ data: { at: string; keysDestroyed: number; photosDeleted: number; acknowledged: number } | null }>('/api/system-settings/face/purge', fetcher)
+    const { data: rekeyBody, error: rekeyError, mutate: reloadRekey } = useSWR<{ data: Rekey }>('/api/system-settings/face/rekey', fetcher)
     const [asking, setAsking] = useState<'ON' | 'PAUSED' | null>(null)
     const [purging, setPurging] = useState(false)
     const [busy, setBusy] = useState(false)
@@ -37,13 +58,19 @@ export default function FaceSystemSwitch() {
     const [rekeyLeft, setRekeyLeft] = useState<number | null>(null)
     // While it loads, the card already holds its place: rendering nothing and
     // then the card pushed the Branding card below it down on System settings
-    // (Lighthouse: a layout shift of 0.2).
-    if (!data) {
-        if (error) return null
+    // (Lighthouse: a layout shift of 0.2). It holds the loaded card's place,
+    // hint, state line and a row of controls, and stays when the status can't
+    // be read: a heading and a line alone still pushed Branding 158px down on
+    // a phone, and an error took the card away (Codex review on #43). The
+    // purge record and the rotation wait with it, as they'd push it too.
+    const settled = (body: unknown, failed: unknown) => body !== undefined || !!failed
+    if (!data || !settled(purgeBody, purgeError) || !settled(rekeyBody, rekeyError)) {
         return (
-            <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <section className="glass" style={CARD} aria-busy={!error}>
                 <h3 style={{ margin: 0 }}>{t('face_sys_title')}</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)', margin: 0 }}>{t('loading')}</p>
+                <p style={HINT}>{t('face_sys_hint')}</p>
+                <StateLine text={error ? t('error_generic') : t('loading')} color={error ? 'var(--danger-fg)' : 'var(--text-soft)'} />
+                <div style={CONTROLS} />
             </section>
         )
     }
@@ -108,19 +135,21 @@ export default function FaceSystemSwitch() {
 
     const tone = state === 'ON' ? 'var(--ok-fg)' : state === 'PAUSED' ? 'var(--warn-fg)' : 'var(--text-soft)'
     return (
-        <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <section className="glass" style={CARD}>
             <h3 style={{ margin: 0 }}>{t('face_sys_title')}</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: 0 }}>{t('face_sys_hint')}</p>
-            <p style={{ margin: 0, fontWeight: 600, color: tone }}>{t(`face_sys_state_${state}`)}</p>
-            {canChange ? (
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {state !== 'ON' && <button className="btn btn-primary" disabled={busy} onClick={() => setAsking('ON')}>{t(state === 'PAUSED' ? 'face_sys_resume' : 'face_sys_turn_on')}</button>}
-                    {state === 'ON' && <button className="btn btn-secondary" disabled={busy} onClick={() => setAsking('PAUSED')}>{t('face_sys_pause')}</button>}
-                    {state !== 'OFF' && <button className="btn btn-danger" disabled={busy} onClick={() => setPurging(true)}>{t('face_purge')}</button>}
-                </div>
-            ) : (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: 0 }}>{t('face_sys_protected_only')}</p>
-            )}
+            <p style={HINT}>{t('face_sys_hint')}</p>
+            <StateLine text={t(`face_sys_state_${state}`)} color={tone} />
+            <div style={CONTROLS}>
+                {canChange ? (
+                    <>
+                        {state !== 'ON' && <button className="btn btn-primary" disabled={busy} onClick={() => setAsking('ON')}>{t(state === 'PAUSED' ? 'face_sys_resume' : 'face_sys_turn_on')}</button>}
+                        {state === 'ON' && <button className="btn btn-secondary" disabled={busy} onClick={() => setAsking('PAUSED')}>{t('face_sys_pause')}</button>}
+                        {state !== 'OFF' && <button className="btn btn-danger" disabled={busy} onClick={() => setPurging(true)}>{t('face_purge')}</button>}
+                    </>
+                ) : (
+                    <p style={HINT}>{t('face_sys_protected_only')}</p>
+                )}
+            </div>
             {last && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: 0 }}>
                     {t('face_purge_record').replace('{date}', last.at.slice(0, 10)).replaceAll('{keys}', String(last.keysDestroyed)).replace('{photos}', String(last.photosDeleted)).replace('{acks}', String(last.acknowledged))}
