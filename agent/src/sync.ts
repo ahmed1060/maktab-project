@@ -151,8 +151,13 @@ export class SyncAgent {
         // cursors passed over records it now wants, so every log is read again
         // from the start; the server stores each punch once (review on #18).
         const from = sendFrom ?? ""
-        if (this.state.readFrom != null && from < this.state.readFrom) {
-            this.log.info(`Sending from ${sendFrom ?? "the beginning"} now (was ${this.state.readFrom}); reading each terminal's log again.`)
+        // A state file from an agent before readFrom was kept has cursors but no start to compare with: the start may
+        // have been moved earlier with the upgrade, so each log is read again, once (review on #62).
+        const unknown = this.state.readFrom == null && Object.values(this.state.devices).some(d => d.cursor.count > 0)
+        if (unknown || (this.state.readFrom != null && from < this.state.readFrom)) {
+            this.log.info(unknown
+                ? `Sending from ${sendFrom ?? "the beginning"}; this folder doesn't say where reading last started, so each terminal's log is read again.`
+                : `Sending from ${sendFrom ?? "the beginning"} now (was ${this.state.readFrom}); reading each terminal's log again.`)
             for (const remembered of Object.values(this.state.devices)) remembered.cursor = { count: 0, lastKey: null }
         }
         this.state.readFrom = from

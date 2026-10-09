@@ -109,6 +109,19 @@ describe("a round of the agent", () => {
         expect(await agent().round()).toMatchObject({ queued: 0 })
     })
 
+    it("reads each log again once, from a folder an older agent kept, whose start may have moved (review on #62)", async () => {
+        await agent().enrol("K7QD-2MXP")
+        device.scan("7", "2025-01-15T09:00:00")
+        device.scan("7", at(today, "09:00:00"))
+        expect(await agent().round()).toMatchObject({ queued: 1, delivered: 1 })
+        // As an agent before readFrom left it, with the start moved earlier at the upgrade.
+        delete state.readFrom
+        config = { ...config, sendFrom: "2025-01-01" }
+        expect(await agent().round()).toMatchObject({ queued: 2, delivered: 1, duplicates: 1 })
+        expect([...server.stored.values()].map(p => p.at)).toContain("2025-01-15T09:00:00")
+        expect(await agent().round()).toMatchObject({ queued: 0 })
+    })
+
     it("keeps every punch when the server cannot be reached, and delivers them later", async () => {
         await agent().enrol("K7QD-2MXP")
         for (let i = 0; i < 3; i++) device.scan(String(i), at(today, `09:0${i}:00`))
