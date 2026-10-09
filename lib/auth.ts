@@ -86,8 +86,16 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 let loginKey: string | null = null
-                // The window the attempt was counted in: a refund applies only there.
+                // The window the attempt was counted in, whether the password
+                // was right, and whether the attempt has been given back.
                 let loginWindow = 0
+                let passwordOk = false
+                let givenBack = false
+                const giveBack = async () => {
+                    if (!loginKey || givenBack) return
+                    givenBack = true
+                    await RateLimiter.refund(loginKey, loginWindow)
+                }
                 try {
                     // Rate Limiting (5 attempts per 15 minutes per IP)
                     // headers() is async since Next 15.
@@ -188,6 +196,7 @@ export const authOptions: NextAuthOptions = {
                     // Password confirmed correct — only now do account-state checks,
                     // so their specific error messages only ever reach someone who
                     // already holds the real password.
+                    passwordOk = true
                     if (superAdmin) {
                         // F-27: before the login is considered complete, not after —
                         // a login that only fails the MFA step must never reach the
@@ -202,7 +211,7 @@ export const authOptions: NextAuthOptions = {
                             cookieHeader,
                         })
 
-                        await RateLimiter.refund(loginKey, loginWindow)
+                        await giveBack()
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -298,7 +307,7 @@ export const authOptions: NextAuthOptions = {
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
-                    await RateLimiter.refund(loginKey, loginWindow)
+                    await giveBack()
 
                     // Audit Log (Success - Centralized)
                     const { AuditLogService } = await import("./services/audit-log.service")
@@ -340,7 +349,14 @@ export const authOptions: NextAuthOptions = {
                     }
 
                 } catch (error) {
-                    if (loginKey && (error as Error)?.message === 'MFA_REQUIRED') await RateLimiter.refund(loginKey, loginWindow)
+                    // Only a wrong password or a wrong code uses up one of the
+                    // five. The step that asks for the code gives it back, and so
+                    // does an account turned away once its password was right
+                    // (another company, banned, out of subscription, suspended or
+                    // closed): otherwise one renewed or reactivated in the window
+                    // stayed locked out behind the rate limit (review on #29).
+                    const message = (error as Error)?.message
+                    if (message === 'MFA_REQUIRED' || (passwordOk && message !== 'INVALID_MFA_CODE')) await giveBack()
                     console.error('Auth error:', error)
                     throw error
                 }
