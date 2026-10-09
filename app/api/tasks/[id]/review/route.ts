@@ -17,7 +17,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     }
 
     // Company Isolation Check
-    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK', "tasks.review")
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     try {

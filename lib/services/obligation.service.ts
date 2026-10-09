@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { noticeRow } from "@/lib/notice-row"
 import { can, canCompanyWide } from "@/lib/permissions/can"
+import { scopesToTeam } from "@/lib/team-scope"
+import { isTeamWork } from "@/lib/security"
 import { checkAssignees } from "./assignee-guard"
 import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
@@ -101,7 +103,10 @@ export class ObligationService {
             }
 
             // 1. Authorization
+            // Managing held for a team manages the team's obligations only,
+            // however widely the role may see them.
             const isManager = can(session.user, "obligations.manage")
+                && (!scopesToTeam(session.user, "obligations.manage") || isTeamWork(current.assignees, userId))
             const isAssignee = current.assignees.some((a: any) => a.id === userId)
             if (!isManager && !isAssignee) throw new Error("ACCESS_DENIED")
 
@@ -224,7 +229,7 @@ export class ObligationService {
         return await prisma.$transaction(async (tx) => {
             const obligation = await tx.obligation.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true, teamLeaderId: true } }, attachments: true, companyId: true, title: true }
             })
 
             if (!obligation) throw new Error("OBLIGATION_NOT_FOUND")
@@ -235,6 +240,9 @@ export class ObligationService {
                     throw new Error("ACCESS_DENIED")
                 }
             }
+
+            // Managing held for a team deletes the team's obligations only.
+            if (scopesToTeam(session.user, "obligations.manage") && !isTeamWork(obligation.assignees, userId)) throw new Error("ACCESS_DENIED")
 
             // Self-delete rule
             const isSelfAssigned = obligation.assignees.some((a: any) => a.id === userId)

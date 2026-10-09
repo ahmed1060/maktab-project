@@ -281,6 +281,25 @@ export class RoleAssignmentService {
     }
 
     /**
+     * Refuses changing somebody else's credentials — their password, their
+     * email, a temporary password — to anyone who could not have given them
+     * their role. Whoever controls an account holds its role's access, so
+     * taking one over is handing that role to oneself: only the Super Admin
+     * for an Admin-based role (rule 2 and the rule above), and otherwise only
+     * someone whose grants cover the role's (rule 4).
+     */
+    static async mayTakeOver(actor: Assigner, target: { role?: string | null; roleId?: string | null }, client: Client = prisma): Promise<void> {
+        if (actor.role === "SUPER_ADMIN") return
+        if (target.role === "ADMIN" || target.role === "SUPER_ADMIN") throw new Error("ADMIN_IS_SUPER_ADMINS")
+        if (!target.roleId) return
+        const role = await client.role.findUnique({ where: { id: target.roleId }, select: ROLE_ROW })
+        if (!role) return
+        const reason = refusal(actor, role)
+        if (reason === "FORBIDDEN_ROLE_ASSIGNMENT") throw new Error("ADMIN_IS_SUPER_ADMINS")
+        if (reason) throw new Error("TARGET_EXCEEDS_YOURS")
+    }
+
+    /**
      * Refuses a change that would leave a company with nobody at work on its
      * built-in Admin role (ROLES_PLAN.md §4.2, rule 8) — the one role
      * guaranteed to be able to fix every other, so a company without one

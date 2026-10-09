@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { roleKindParam } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
-import { scopesToTeam } from "@/lib/team-scope"
-import { verifyResourceAccess } from "@/lib/security"
+import { personTarget } from "@/lib/security"
 import { CreateRequestInput } from "../validations/request.schema"
 
 export class RequestService {
@@ -127,7 +126,7 @@ export class RequestService {
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
         else if (can(session.user, "requests.view")) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
-            await requireTeamReach(session, request.userId)
+            await requireTeamReach(session, request.userId, "requests.view")
         } else {
             if (request.userId !== userId) throw new Error("ACCESS_DENIED")
         }
@@ -148,7 +147,7 @@ export class RequestService {
             if (!request) throw new Error("REQUEST_NOT_FOUND")
 
             if (userRole !== 'SUPER_ADMIN' && request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
-            await requireTeamReach(session, request.userId)
+            await requireTeamReach(session, request.userId, "requests.review")
 
             // --- NEW: State Transition Guard ---
             if (request.status === 'COMPLETED' && ['PENDING', 'IN_PROGRESS'].includes(status)) {
@@ -200,7 +199,7 @@ export class RequestService {
         if (userRole === 'SUPER_ADMIN') { /* OK */ }
         else if (can(session.user, "requests.review")) {
             if (request.companyId !== userCompanyId) throw new Error("ACCESS_DENIED")
-            await requireTeamReach(session, request.userId)
+            await requireTeamReach(session, request.userId, "requests.review")
         } else {
             if (request.userId !== userId) throw new Error("ACCESS_DENIED")
         }
@@ -223,10 +222,15 @@ export class RequestService {
  * A Team Leader reaches only requests raised by their team, or by themselves —
  * the same rule the request list applies. Viewing, changing and deleting one
  * request checked only the company, so a Team Leader could act on requests
- * outside their team, the Admin's own included. verifyResourceAccess on the
- * person who raised it is the team rule every other per-person check uses.
+ * outside their team, the Admin's own included. can() on the person who
+ * raised it is the team rule every other per-person check uses.
  */
-async function requireTeamReach(session: any, requesterId: string) {
-    if (!scopesToTeam(session.user, "requests.view")) return
-    if (!(await verifyResourceAccess(session, requesterId, 'USER'))) throw new Error("ACCESS_DENIED")
+async function requireTeamReach(session: any, requesterId: string, acting: "requests.view" | "requests.review") {
+    // Asked of the requests permissions themselves, seeing and the one being
+    // used, each at its own scope: a role may see every request yet review
+    // only its team's. (This used to defer to the people rule, which narrows
+    // by employees.view, a different permission.)
+    if (session.user.role === "SUPER_ADMIN") return
+    const person = await personTarget(requesterId)
+    if (!person || !can(session.user, "requests.view", person) || !can(session.user, acting, person)) throw new Error("ACCESS_DENIED")
 }

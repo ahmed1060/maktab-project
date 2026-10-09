@@ -13,7 +13,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         return ApiResponse.forbidden()
     }
 
-    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK')
+    const hasAccess = await verifyResourceAccess(session, taskId, 'TASK', "tasks.pay")
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
     // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
     await assertStepUp(session, "tasks.pay")

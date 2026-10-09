@@ -233,6 +233,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
         if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
+        if (error.message === 'TARGET_EXCEEDS_YOURS') return ApiResponse.forbidden("This person's role holds access yours doesn't, so only someone who could give it may change their password or email")
         const refusedRole = assignmentRefusal(error)
         if (refusedRole) return refusedRole
         // Team refusals, including the hand-off question, in the one shape
