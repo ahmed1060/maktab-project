@@ -80,7 +80,7 @@ export class AttendanceCheckInService {
         // The phone by its key; its status is read again under the lock below.
         const phone = await prisma.checkInPhone.findFirst({
             where: { userId, keyFingerprint: input.keyFingerprint },
-            select: { id: true, status: true, publicKey: true, platform: true, appAttestKey: true, appAttestCounter: true },
+            select: { id: true, status: true, publicKey: true, platform: true, appAttestKey: true, appAttestCounter: true, appAttestEnvironment: true },
         })
         // A key we don't know can't be checked: there is nothing to check it with.
         const key = phone ? parsePhoneKey(phone.publicKey) : null

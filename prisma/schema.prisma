@@ -2438,6 +2438,12 @@ model CheckInPhone {
   /// phone that wasn't attested.
   appAttestKey     String?
   appAttestCounter Int                @default(0)
+  /// Which App Attest environment attested the key: "production", or
+  /// "development" for a build from Xcode. A development key counts only
+  /// while APP_ATTEST_ALLOW_DEVELOPMENT is set, as at registration
+  /// (migration 20261102000000). Null without a key, and for one kept
+  /// before then, read as production.
+  appAttestEnvironment String?
   /// Face verification on this phone (§9.5): the templates stay on it; the
   /// server knows only that it was enrolled, with which model, and whether a
   /// person approved the verification photo.

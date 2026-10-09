@@ -40,7 +40,7 @@ export type Attestation = {
     challenge: string
     purpose: AttestationPurpose
     /** At check-in, the App Attest key kept from the phone's registration (iOS). */
-    phone?: { appAttestKey: string | null; appAttestCounter: number } | null
+    phone?: { appAttestKey: string | null; appAttestCounter: number; appAttestEnvironment?: string | null } | null
 }
 
 export type AttestationResult = {
@@ -52,7 +52,7 @@ export type AttestationResult = {
      * to keep, which only goes up. The caller stores it, only if the counter
      * kept is still lower, in the same transaction as what it proves.
      */
-    appAttest?: { publicKey?: string; counter: number }
+    appAttest?: { publicKey?: string; counter: number; environment?: "production" | "development" }
 }
 
 type Env = Record<string, string | undefined>
@@ -95,11 +95,14 @@ export async function verifyAttestation(
         if (attestation.purpose === "REGISTER") {
             if (typeof sent.keyId !== "string" || typeof sent.attestation !== "string") return no("MALFORMED")
             const out = verifyAppAttestation({ attestation: Buffer.from(sent.attestation, "base64"), keyId: sent.keyId, challenge: text, config, now: deps.now })
-            return { verified: true, reason: null, appAttest: { publicKey: out.publicKey, counter: out.counter } }
+            return { verified: true, reason: null, appAttest: { publicKey: out.publicKey, counter: out.counter, environment: out.environment } }
         }
         if (typeof sent.assertion !== "string") return no("MALFORMED")
         // A phone registered before attestation was set up, or that failed it, has no key to check with.
         if (!attestation.phone?.appAttestKey) return no("NO_ATTESTED_KEY")
+        // A key from a development build, kept while those were allowed, counts only while they still are: removed for
+        // production, its phone is no longer attested (review on #65).
+        if (attestation.phone.appAttestEnvironment === "development" && !config.allowDevelopment) return no("WRONG_ENVIRONMENT")
         const out = verifyAppAssertion({
             assertion: Buffer.from(sent.assertion, "base64"), challenge: text,
             publicKey: attestation.phone.appAttestKey, previousCounter: attestation.phone.appAttestCounter, config,

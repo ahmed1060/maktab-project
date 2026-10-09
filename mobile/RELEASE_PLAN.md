@@ -152,7 +152,10 @@ reminder endpoints.
 - [ ] **The check-in reminder job** runs every 5 minutes: Vercel Pro cron, or
       cron-job.org with the `Authorization: Bearer <CRON_SECRET>` header
       (README.md, Reminders).
-- [ ] Remove `APP_ATTEST_ALLOW_DEVELOPMENT` and `APNS_SANDBOX`.
+- [ ] Remove `APP_ATTEST_ALLOW_DEVELOPMENT` and `APNS_SANDBOX`. iPhones that
+      registered with a development build (from Xcode) then stop counting as
+      attested: their check-ins are flagged, or refused once attestation is
+      required, until they register again from the store build.
 - [ ] Once real phones on both platforms pass attestation (Check-in review
       shows no "app check" reasons for store installs), set
       `ATTENDANCE_ATTESTATION=required`. From then on an unverified app is

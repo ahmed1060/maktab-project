@@ -100,13 +100,25 @@ describe("App Attest, on iOS", () => {
     const appId = "TEAM123456.com.shsd.nizmo"
     const iosEnv = { APP_ATTEST_APP_ID: appId }
     const key = fakeAppAttestKey(appId)
-    const phone: { appAttestKey: string | null; appAttestCounter: number } = { appAttestKey: key.publicKey, appAttestCounter: 3 }
+    const phone: { appAttestKey: string | null; appAttestCounter: number; appAttestEnvironment?: string | null } = { appAttestKey: key.publicKey, appAttestCounter: 3 }
     const assert = (token: string | null, p: typeof phone | null = phone, env: Record<string, string> = iosEnv) =>
         verifyAttestation({ platform: "IOS", token, challenge, purpose: "CHECK_IN", phone: p }, { env, now })
 
     it("passes a check-in signed by the key kept at registration, and gives the counter to keep", async () => {
         const assertion = key.assertion(attestedText("CHECK_IN", challenge), 4)
         expect(await assert(JSON.stringify({ assertion }))).toEqual({ verified: true, reason: null, appAttest: { counter: 4 } })
+    })
+
+    it("passes a development build's key only while development builds are allowed (review on #65)", async () => {
+        // Registered from Xcode while APP_ATTEST_ALLOW_DEVELOPMENT was set: once it is removed for production, the
+        // phone kept passing as attested.
+        const assertion = JSON.stringify({ assertion: key.assertion(attestedText("CHECK_IN", challenge), 4) })
+        const fromXcode = { ...phone, appAttestEnvironment: "development" }
+        expect(await assert(assertion, fromXcode, { ...iosEnv, APP_ATTEST_ALLOW_DEVELOPMENT: "1" })).toEqual({ verified: true, reason: null, appAttest: { counter: 4 } })
+        expect(await assert(assertion, fromXcode)).toEqual({ verified: false, reason: "WRONG_ENVIRONMENT" })
+        // A store build's key, and one kept before environments were: production's.
+        expect(await assert(assertion, { ...phone, appAttestEnvironment: "production" })).toMatchObject({ verified: true })
+        expect(await assert(assertion, { ...phone, appAttestEnvironment: null })).toMatchObject({ verified: true })
     })
 
     it("refuses a replayed counter, another number, another key", async () => {

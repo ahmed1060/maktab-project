@@ -73,7 +73,7 @@ export class FaceReviewService {
         if (photo.length === 0 || photo.length > MAX_PHOTO_BYTES || !isJpeg(photo)) fail("FACE_PHOTO_INVALID")
         const phone = await prisma.checkInPhone.findFirst({
             where: { userId, companyId, keyFingerprint: input.keyFingerprint, status: "ACTIVE" },
-            select: { id: true, publicKey: true, platform: true, faceStatus: true, appAttestKey: true, appAttestCounter: true },
+            select: { id: true, publicKey: true, platform: true, faceStatus: true, appAttestKey: true, appAttestCounter: true, appAttestEnvironment: true },
         })
         if (!phone) fail("FACE_PHONE_NOT_ACTIVE")
         const key = parsePhoneKey(phone.publicKey)

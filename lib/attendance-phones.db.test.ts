@@ -15,7 +15,7 @@ import { UserService } from "@/lib/services/user.service"
  */
 
 // Google and Apple, counted: the real verifier, which has no credentials here, a moment slower if asked.
-const provider = vi.hoisted(() => ({ asked: 0, slowMs: 0 }))
+const provider = vi.hoisted(() => ({ asked: 0, slowMs: 0, answer: null as null | Record<string, unknown> }))
 vi.mock("@/lib/attendance/attestation", async importOriginal => {
     const real = await importOriginal<typeof import("@/lib/attendance/attestation")>()
     return {
@@ -23,6 +23,7 @@ vi.mock("@/lib/attendance/attestation", async importOriginal => {
         verifyAttestation: async (...args: Parameters<typeof real.verifyAttestation>) => {
             provider.asked += 1
             if (provider.slowMs) await new Promise(r => setTimeout(r, provider.slowMs))
+            if (provider.answer) return provider.answer as Awaited<ReturnType<typeof real.verifyAttestation>>
             return real.verifyAttestation(...args)
         },
     }
@@ -277,6 +278,21 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         const team = await Phones.list("c1", { kind: "TEAM", leaderId: "t1" })
         expect(team.map(p => p.userId)).toEqual(["e1"])
         expect(team[0]).toMatchObject({ name: "Ehab One", status: "ACTIVE", held: 0 })
+    })
+
+    it("keeps which App Attest environment attested an iPhone's key (review on #65)", async () => {
+        // Apple's answer for a build from Xcode, as the verifier gives it once development builds are allowed.
+        provider.answer = { verified: true, reason: null, appAttest: { publicKey: "MFkw-the-attested-key", counter: 0, environment: "development" } }
+        try {
+            const phone = phoneKeyPair()
+            const { nonce } = await Challenges.issue("e3", "REGISTER")
+            const fingerprint = parsePhoneKey(phone.publicBase64)!.fingerprint
+            const registered = await Phones.register("c1", "e3", { nonce, publicKey: phone.publicBase64, signature: phone.sign(signedText("REGISTER", nonce, [fingerprint, "IOS"])), platform: "IOS", model: "iPhone 15" })
+            const { rows: [kept] } = await db.query(`SELECT "appAttestKey", "appAttestEnvironment" FROM "CheckInPhone" WHERE id = $1`, [registered.id])
+            expect(kept).toEqual({ appAttestKey: "MFkw-the-attested-key", appAttestEnvironment: "development" })
+        } finally {
+            provider.answer = null
+        }
     })
 
     // Last: it leaves a phone waiting for Ezz.

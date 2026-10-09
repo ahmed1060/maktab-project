@@ -109,6 +109,7 @@ export class AttendancePhoneService {
                     attested: attestation.verified,
                     // iOS: the attested key, which each check-in's assertion is checked with.
                     appAttestKey: attestation.appAttest?.publicKey ?? null,
+                    appAttestEnvironment: attestation.appAttest?.publicKey ? attestation.appAttest.environment ?? null : null,
                 },
                 select: SHOWN,
             })
