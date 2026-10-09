@@ -236,6 +236,14 @@ describe("templates waiting on their photo (§9.5)", () => {
         expect(readSent(JSON.stringify({ id: "r2", at: 5 }))).toEqual({ id: "r2", at: 5 })
     })
 
+    it("offers permission hours under the late shift's own date, not the check-in's (review on #61)", () => {
+        // A Sunday 22:00 night checked into at 00:30 Monday: Monday's balance and a Monday 22:00 request were another night's.
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        expect(page).toContain("`/api/attendance/permissions/balance?date=${late.date}`")
+        expect(page).toContain("initial={{ date: late.date, type: 'LATE_ARRIVAL'")
+        expect(page).not.toMatch(/balance\?date=\$\{answer!?\.at|date: answer\.at\.slice\(0, 10\), type: 'LATE_ARRIVAL'/)
+    })
+
     it("stamps the face status with when the page asked for it (review on #49)", () => {
         const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
         expect(page).toMatch(/const askedAt = Date\.now\(\)\s*const body = await fetcher\(url\)\s*return body\?\.data \? \{ \.\.\.body, data: \{ \.\.\.body\.data, askedAt \} \} : body/)

@@ -197,7 +197,7 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await Policy.saveVersion("c1", { effectiveFrom: "2026-01-01", body: STANDARD_OFFICE }, "a1")
         const e4 = await phoneOf("e4")
         // Cairo is UTC+3 in September. Sunday 27th, 09:40: flagged while attestation is in testing, and still late.
-        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T06:40:00Z" })).toMatchObject({ outcome: "FLAGGED", at: "2026-09-27T09:40:00", late: { minutes: 40, startsAt: "09:00" } })
+        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T06:40:00Z" })).toMatchObject({ outcome: "FLAGGED", at: "2026-09-27T09:40:00", late: { minutes: 40, startsAt: "09:00", date: "2026-09-27" } })
         // Back from lunch the same day: not the first.
         expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T10:00:00Z" })).toMatchObject({ late: null })
         // Monday 28th, 09:10: within the grace.
@@ -228,15 +228,16 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await Calendar.assign("c1", { userIds: ["e5"], scheduleId: night.id, effectiveFrom: "2026-01-01" }, "a1")
         const e5 = await phoneOf("e5")
         // Sunday night's arrival at 00:30 on Monday: two and a half hours late for 22:00.
-        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-27T21:30:00Z" })).toMatchObject({ at: "2026-09-28T00:30:00", late: { minutes: 150, startsAt: "22:00" } })
+        // Under Sunday's date, for the balance and the permission the app offers: Monday's would be another night's (review on #61).
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-27T21:30:00Z" })).toMatchObject({ at: "2026-09-28T00:30:00", late: { minutes: 150, startsAt: "22:00", date: "2026-09-27" } })
         // Its check-out at 06:00 Monday: not a first check-in.
         expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T03:00:00Z" })).toMatchObject({ late: null })
         // Monday night's arrival at 22:30: the morning's punches were last night's, so this is the first, and late.
-        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T19:30:00Z" })).toMatchObject({ at: "2026-09-28T22:30:00", late: { minutes: 30, startsAt: "22:00" } })
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T19:30:00Z" })).toMatchObject({ at: "2026-09-28T22:30:00", late: { minutes: 30, startsAt: "22:00", date: "2026-09-28" } })
         // Its check-out at 06:00 Tuesday, then Tuesday night's arrival at 00:20 Wednesday: the first of Tuesday's night,
         // though Monday night's check-out came on Tuesday too (review on #61).
         expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T03:00:00Z" })).toMatchObject({ late: null })
-        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T21:20:00Z" })).toMatchObject({ at: "2026-09-30T00:20:00", late: { minutes: 140, startsAt: "22:00" } })
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T21:20:00Z" })).toMatchObject({ at: "2026-09-30T00:20:00", late: { minutes: 140, startsAt: "22:00", date: "2026-09-29" } })
     })
 
     // Last: it approves this month's payroll, which closes the month to every later check-in here.

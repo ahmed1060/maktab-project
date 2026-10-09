@@ -86,7 +86,8 @@ export default function CheckInPage() {
     const [asking, setAsking] = useState(false)
     const [withdrawing, setWithdrawing] = useState(false)
     const late = answer && answer.outcome !== 'REFUSED' ? answer.late : null
-    const { data: balanceBody } = useSWR(late && answer?.outcome !== 'REFUSED' ? `/api/attendance/permissions/balance?date=${answer!.at.slice(0, 10)}` : null, fetcher)
+    // The shift's month and policy: a night shift's arrival after midnight is the night before's (review on #61).
+    const { data: balanceBody } = useSWR(late && answer?.outcome !== 'REFUSED' ? `/api/attendance/permissions/balance?date=${late.date}` : null, fetcher)
 
     // Face templates on this phone while face verification isn't in use for
     // the person: the server may have said they are to go, and nothing else
@@ -241,7 +242,7 @@ export default function CheckInPage() {
             {asking && answer && answer.outcome !== 'REFUSED' && late && (
                 <AskPermissionModal
                     today={answer.at.slice(0, 10)}
-                    initial={{ date: answer.at.slice(0, 10), type: 'LATE_ARRIVAL', start: late.startsAt.slice(0, 5), end: answer.at.slice(11, 16) }}
+                    initial={{ date: late.date, type: 'LATE_ARRIVAL', start: late.startsAt.slice(0, 5), end: answer.at.slice(11, 16) }}
                     onClose={() => setAsking(false)}
                     onDone={() => { setAsking(false); setAnswer(null) }}
                 />

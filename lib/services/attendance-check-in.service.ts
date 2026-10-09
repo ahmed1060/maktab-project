@@ -56,8 +56,11 @@ export type CheckInResult =
     | { outcome: "REFUSED"; reason: string }
     | {
         outcome: "ACCEPTED" | "FLAGGED" | "HELD"; reasons: FlagReason[]; place: { id: string; name: string }; distanceMeters: number; at: string
-        /** The day's first check-in, past its start and its grace: the app offers to ask for permission hours (§13.6). */
-        late: { minutes: number; startsAt: string } | null
+        /**
+         * The day's first check-in, past its start and its grace: the app offers to ask for permission hours (§13.6).
+         * The date is the shift's, which for a night shift's arrival after midnight is the day before (review on #61).
+         */
+        late: { minutes: number; startsAt: string; date: string } | null
     }
 
 function fail(code: string): never {
@@ -203,7 +206,7 @@ export class AttendanceCheckInService {
      * later check-in, a rest day, no schedule, or lateness not charged at all,
      * when asking for permission would be pointless.
      */
-    static async lateness(companyId: string, userId: string, punchId: string, local: string): Promise<{ minutes: number; startsAt: string } | null> {
+    static async lateness(companyId: string, userId: string, punchId: string, local: string): Promise<{ minutes: number; startsAt: string; date: string } | null> {
         const date = local.slice(0, 10)
         // Two days back: an arrival after midnight is the day before's night, and that night's own
         // morning check-out, earlier the same day, is the night before's (review on #61).
@@ -229,7 +232,7 @@ export class AttendanceCheckInService {
         const daysAfter = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / 86_400_000
         const minutes = daysAfter * 1440 + Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)) - expected.hours.startMinutes
         if (minutes <= rule.graceMinutes) return null
-        return { minutes, startsAt: formatMinutes(expected.hours.startMinutes) }
+        return { minutes, startsAt: formatMinutes(expected.hours.startMinutes), date: day }
     }
 
     /**

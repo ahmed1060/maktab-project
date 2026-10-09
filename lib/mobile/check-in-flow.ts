@@ -44,7 +44,8 @@ export type CheckInAnswer =
     | { outcome: "REFUSED"; reason: string }
     | {
         outcome: "ACCEPTED" | "FLAGGED" | "HELD"; reasons: string[]; place: { id: string; name: string }; distanceMeters: number; at: string
-        late: { minutes: number; startsAt: string } | null
+        /** The date is the shift's: the day before, for a night shift's arrival after midnight. */
+        late: { minutes: number; startsAt: string; date: string } | null
     }
 
 /** A fix older than this when the face check ends is taken again: where the person is now, not when they tapped. */
