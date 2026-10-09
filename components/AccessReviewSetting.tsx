@@ -19,7 +19,11 @@ export default function AccessReviewSetting({ companyId, setting, onSaved }: { c
     const [enabled, setEnabled] = useState(setting.accessReviewEnabled)
     const [months, setMonths] = useState(setting.accessReviewMonths)
     const [saving, setSaving] = useState(false)
-    const dirty = enabled !== setting.accessReviewEnabled || months !== setting.accessReviewMonths
+    // What the server holds: the setting given, then what was just saved. The
+    // card remounts once the new setting arrives, but until then (or if that
+    // read fails) a saved edit is not an unsaved one (review on #5).
+    const [saved, setSaved] = useState({ enabled: setting.accessReviewEnabled, months: setting.accessReviewMonths })
+    const dirty = enabled !== saved.enabled || months !== saved.months
     useReportUnsaved('access-review', dirty)
 
     const save = async () => {
@@ -31,6 +35,7 @@ export default function AccessReviewSetting({ companyId, setting, onSaved }: { c
                 body: JSON.stringify({ companyId, enabled, months }),
             })
             if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
+            setSaved({ enabled, months })
             showToast(t('access_review_saved'), 'success')
             onSaved()
         } finally {

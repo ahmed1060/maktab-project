@@ -60,6 +60,18 @@ describe("the company settings tabs", () => {
         expect(TABS).toContain("if (dirty) setLeavingFor({ tab: next })")
     })
 
+    it("count the access review switch as saved once it is, not once the page has read it back (review on #5)", () => {
+        // It compared with the setting it was given, which changes only after
+        // a fresh read: until then Save stayed on and leaving asked about
+        // edits already kept, and for good if that read failed.
+        const review = readFileSync("components/AccessReviewSetting.tsx", "utf8")
+        expect(review).toContain("const dirty = enabled !== saved.enabled || months !== saved.months")
+        const save = review.slice(review.indexOf("const save = async"))
+        const kept = save.indexOf("setSaved({ enabled, months })")
+        expect(kept).toBeGreaterThan(save.indexOf("if (!res.ok) return"))
+        expect(kept).toBeLessThan(save.indexOf("onSaved()"))
+    })
+
     describe("and before leaving the page by a link", () => {
         const here = "https://nizmo.test/dashboard/companies/c1/settings?tab=payroll"
         const click = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false }
