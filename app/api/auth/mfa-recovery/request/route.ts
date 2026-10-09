@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
         if (!isValid || !account) {
             return ApiResponse.forbidden("Invalid credentials")
         }
+        // The password was right: asking for a code is not a guess, so the
+        // attempt is given back, as authorize() gives back the step that asks
+        // for one. Otherwise each sign-in by emailed code used one of the
+        // address's five (review on #29).
+        await RateLimiter.refund(`login:${ip}`, resetAt)
 
         if (!(account as any).mfaEnabled || !(account as any).emailVerifiedAt) {
             // Reachable in practice only if MFA got enabled before email

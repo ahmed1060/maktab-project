@@ -50,10 +50,17 @@ vi.mock("@/lib/services/audit-log.service", () => ({
         logSystemError: async () => "ref", friendlyErrorMessage: () => "error",
     },
 }))
+// The code sent by email for "email me a code instead".
+vi.mock("@/lib/services/verification-code.service", () => ({
+    VerificationCodeService: { issue: async () => {}, verify: async (_email: string, _purpose: string, code: string) => code === "654321" },
+}))
 
 const { authOptions } = await import("@/lib/auth")
 const { RateLimiter } = await import("@/lib/api-utils")
-
+const { POST: askForCode } = await import("@/app/api/auth/mfa-recovery/request/route")
+const emailMeACode = (body: Record<string, string>) => askForCode(new Request("http://localhost/api/auth/mfa-recovery/request", {
+    method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.7" }, body: JSON.stringify(body),
+}) as any)
 const authorize = (credentials: Record<string, string>) =>
     (authOptions.providers[0] as any).options.authorize(credentials, {} as any)
 
@@ -101,6 +108,17 @@ describe("what gives an attempt back (review on #29)", () => {
         for (let i = 0; i < 6; i++) await expect(authorize(held), `try ${i + 1}`).rejects.toThrow("Your account has been suspended or deleted.")
         db.users.held.status = "ACTIVE"
         expect(await authorize(held)).toMatchObject({ id: "held" })
+    })
+
+    it("asking for a code by email with the right password, as the step that asks for the code does", async () => {
+        for (let i = 0; i < 6; i++) {
+            const res = await emailMeACode({ email, password })
+            expect(res.status, `request ${i + 1}`).toBe(200)
+        }
+        expect(await authorize({ email, password, mfaRecoveryCode: "654321" })).toMatchObject({ id: "sa" })
+        // A wrong password there still counts.
+        for (let i = 0; i < 5; i++) expect((await emailMeACode({ email, password: "wrong" })).status).toBe(403)
+        expect((await emailMeACode({ email, password })).status).toBe(429)
     })
 
     it("only in the window it was counted in", async () => {
