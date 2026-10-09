@@ -23,7 +23,8 @@ export type RoleForToken = {
     /**
      * Set once an acting role is over and the person's return is due: the base
      * role they return to, whose grants `grants` then holds (§6.13). The row
-     * still names the acting role until the nightly job moves them back.
+     * still names the acting role until the nightly job moves them back, so
+     * the session reloads this at every check until then.
      */
     role?: UserRole; actingEnded?: true
 }

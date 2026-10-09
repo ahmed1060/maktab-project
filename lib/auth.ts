@@ -599,7 +599,11 @@ export const authOptions: NextAuthOptions = {
                             // And once an acting role is over (§6.13): the grants
                             // of the role they return to, from then on, rather
                             // than whenever the nightly job moves them back.
-                            const actingOver = !!u?.actingUntil && u.actingUntil <= new Date() && !token.actingEnded
+                            // Reloaded at every check until then, not once: the
+                            // row and the token still name the acting role, so
+                            // an edit to the role returned to, or a change of
+                            // which role that is, shows nowhere else (review on #3).
+                            const actingOver = !!u?.actingUntil && u.actingUntil <= new Date()
                             if (u && ((u.roleId ?? null) !== (token.roleId ?? null) || (u.assignedRole?.version ?? 0) !== (token.roleVersion ?? 0) || actingOver)) {
                                 const loaded = await RoleService.forToken(userId)
                                 Object.assign(token, loaded)
