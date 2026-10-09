@@ -538,6 +538,13 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
                     {phoneError ? <p style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p> : <LoadingSpinner />}
                 </>
             )}
+            {/* Loaded empty before, and failing now: no list to show, but somebody may have a phone waiting since (review on #49). */}
+            {decidesPhones && phoneBody && phones.length === 0 && phoneError && (
+                <>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
+                    <p role="alert" style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p>
+                </>
+            )}
             {decidesPhones && phones.length > 0 && (
                 <>
                     <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>

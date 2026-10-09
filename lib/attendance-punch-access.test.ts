@@ -265,6 +265,14 @@ describe("the page's tabs (review on #21)", () => {
         const list = tab.slice(tab.indexOf("{decidesPhones && phones.length > 0 && ("))
         expect(list.slice(0, 600)).toMatch(/\{phoneError && <p role="alert"[^\n]*t\('error_generic'\)/)
     })
+
+    it("say a phone list failed to refresh when the one before was empty (review on #49)", () => {
+        // Neither the loading branch (it had loaded) nor the list (it had nothing) showed the failure.
+        const tab = readFileSync("app/(dashboard)/dashboard/attendance/RequestsTab.tsx", "utf8")
+        const empty = tab.slice(tab.indexOf("{decidesPhones && phoneBody && phones.length === 0 && phoneError && ("))
+        expect(tab).toContain("{decidesPhones && phoneBody && phones.length === 0 && phoneError && (")
+        expect(empty.slice(0, 400)).toMatch(/<p role="alert"[^\n]*t\('error_generic'\)/)
+    })
 })
 
 describe("a long list (review on #12)", () => {
