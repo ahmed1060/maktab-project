@@ -96,6 +96,10 @@ export class RoleRequestService {
                 select: SHAPE,
             }).catch(error => {
                 if (error?.code === "P2002") throw new Error("ALREADY_PENDING")
+                // Deleted while this was asked: the delete held the role's row,
+                // and this waited for it to commit. Answered as a moment later
+                // would be, as a role that isn't this company's (review on #3).
+                if (error?.code === "P2003" && String(error?.message).includes("RoleRequest_roleId_fkey")) throw new Error("ROLE_NOT_IN_COMPANY")
                 throw error
             })
             await audit("CREATE_ROLE_REQUEST", created.id, session, {
