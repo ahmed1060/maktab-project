@@ -67,6 +67,29 @@ export async function startCamera(ask: () => Promise<MediaStream>, play: (media:
     return media
 }
 
+/**
+ * The camera started for one capture by the camera screen, whose effect calls the clean-up this returns once that
+ * capture is closed or replaced, or the page has gone. The capture is always told: `ready` with the camera playing,
+ * or `failed`. Only a start still current undoes the screen when it fails (`undo`: the camera, the overlay). One
+ * closed while it started was undone by the close, and a capture opened since may be on the screen: undoing it
+ * then stopped that capture's camera and took its overlay down (Codex review on #49).
+ */
+export function startCapture(
+    capture: { ready(media: MediaStream): void; failed(error: Error): void },
+    ask: () => Promise<MediaStream>,
+    play: (media: MediaStream) => Promise<void>,
+    undo: () => void,
+): () => void {
+    let gone = false
+    startCamera(ask, play, () => gone)
+        .then(media => capture.ready(media))
+        .catch((error: Error) => {
+            if (!gone) undo()
+            capture.failed(error)
+        })
+    return () => { gone = true }
+}
+
 /** A JPEG of the video's current frame, in base64, under `maxBytes`. */
 export function snapshot(video: HTMLVideoElement, maxBytes = 380_000): string {
     const scale = Math.min(1, 640 / (video.videoWidth || 640))

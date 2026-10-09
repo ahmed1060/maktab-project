@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
-import { ringShare, startCamera, type Camera, type OpenCamera } from '@/lib/mobile/face-check/camera'
+import { ringShare, startCapture, type Camera, type OpenCamera } from '@/lib/mobile/face-check/camera'
 import type { Cue, Progress } from '@/lib/mobile/face-check/liveness'
 import { chime, pageAudio } from '@/lib/mobile/face-check/chime'
 
@@ -103,14 +103,9 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     // Once the overlay is up: the camera, then the session handed back.
     useEffect(() => {
         if (!request || !video.current) return
-        let gone = false
         const v = video.current
-        startCamera(
-            () => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }),
-            async media => { stream.current = media; v.srcObject = media; await v.play() },
-            () => gone,
-        )
-            .then(() => {
+        return startCapture({
+            ready: () => {
                 const cancelled = new Promise<never>((_, reject) => { cancel.current = reject })
                 cancelled.catch(() => {})
                 setRequest(null)
@@ -135,16 +130,15 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                     close: () => { stopStream(); cancel.current = null; reset() },
                     cancelled,
                 })
-            })
-            .catch((error: Error) => {
-                // Refused, couldn't play, or the page left while it started: the camera is off, and the capture
-                // waiting on it is told, never left waiting (review on #28).
-                stopStream()
-                setRequest(null)
-                setPrompt(null)
-                request.failed(error)
-            })
-        return () => { gone = true }
+            },
+            // Refused, couldn't play, or closed or left while it started: the capture waiting on it is told,
+            // never left waiting (review on #28).
+            failed: error => request.failed(error),
+        },
+        () => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }),
+        async media => { stream.current = media; v.srcObject = media; await v.play() },
+        // Only while this capture is still the one showing (Codex review on #49): the camera off, the overlay down.
+        () => { stopStream(); setRequest(null); setPrompt(null) })
     }, [request, cue])
 
     // Leaving the page mid-capture: the capture is cancelled and the camera turned off (review on #28).
