@@ -99,10 +99,25 @@ describe("the company settings tabs", () => {
         expect(changes).toEqual([true, false])
 
         expect(TABS).toContain("<UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>")
-        expect(TABS).toContain("else next.go()")
+        expect(TABS).toContain("if ('go' in next) return next.go()")
         const roles = readFileSync("components/CompanyRolesCard.tsx", "utf8")
         expect(roles).toContain("onClick={() => leave(() => preview(role))}")
         expect(roles).not.toContain("onClick={() => preview(role)}")
+    })
+
+    it("keep the edits guarded until Preview has gone, and stay if it fails (review on #49)", () => {
+        // Discarding switched the guard off before Preview's session update,
+        // which can wait or fail: meanwhile, or for good after a failure, the
+        // edits still on screen could be left by a link without a word.
+        const confirm = TABS.slice(TABS.indexOf("onConfirm={() => {"))
+        expect(confirm.indexOf("if ('go' in next) return next.go()")).toBeGreaterThan(-1)
+        expect(confirm.indexOf("if ('go' in next) return next.go()")).toBeLessThan(confirm.indexOf("setDirty(false)"))
+        // A failed update comes back without the preview: it says so and stays.
+        const roles = readFileSync("components/CompanyRolesCard.tsx", "utf8")
+        const preview = roles.slice(roles.indexOf("const preview = async"), roles.indexOf("router.refresh()"))
+        expect(preview).toContain("await update({ previewRoleId: role.id }).catch(() => null)")
+        expect(preview.indexOf("if (!session?.user?.preview) return showToast(t('error_generic'), 'error')")).toBeGreaterThan(-1)
+        expect(preview.indexOf("if (!session?.user?.preview)")).toBeLessThan(preview.indexOf("router.push('/dashboard')"))
     })
 
     describe("and before leaving the page by a link", () => {

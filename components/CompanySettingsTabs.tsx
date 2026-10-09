@@ -156,10 +156,13 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                     const next = leavingFor
                     setLeavingFor(null)
                     if (!next) return
+                    // A card's own way out keeps the edits guarded until it
+                    // has gone: it may wait on the server, or fail and stay,
+                    // with the edits still on screen (review on #49).
+                    if ('go' in next) return next.go()
                     setDirty(false)
                     if ('tab' in next) open(next.tab)
-                    else if ('href' in next) router.push(next.href)
-                    else next.go()
+                    else router.push(next.href)
                 }}
                 onCancel={() => setLeavingFor(null)}
             />

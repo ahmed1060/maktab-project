@@ -54,7 +54,10 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     // See the dashboard as a holder of this role would (§6.6). Read-only;
     // the banner on every screen is the way out.
     const preview = async (role: Role) => {
-        await update({ previewRoleId: role.id })
+        // The session comes back without the preview if the update failed:
+        // stay, and say so, rather than open an ordinary dashboard (review on #49).
+        const session = await update({ previewRoleId: role.id }).catch(() => null)
+        if (!session?.user?.preview) return showToast(t('error_generic'), 'error')
         // Refreshed, so the layout reads the session as the preview presents it.
         router.push('/dashboard')
         router.refresh()
