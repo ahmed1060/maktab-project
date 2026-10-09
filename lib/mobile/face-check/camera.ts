@@ -51,6 +51,22 @@ export function ringShare(fill: number | null, done: boolean, flashing: boolean)
     return flashing ? 1 : 0
 }
 
+/**
+ * The camera, started for a capture the page may leave while it starts: asked for, then playing. If `gone()`
+ * turns true while either waits, the camera is turned off again and this rejects with FACE_CANCELLED, so the
+ * capture never waits for good, and nothing starts on a page that has gone (review on #28). A camera refused, or
+ * one that won't play, rejects with CAMERA_DENIED and is off.
+ */
+export async function startCamera(ask: () => Promise<MediaStream>, play: (media: MediaStream) => Promise<void>, gone: () => boolean): Promise<MediaStream> {
+    const failed = (code: string) => Object.assign(new Error(code), { code })
+    const media = await ask().catch(() => { throw failed("CAMERA_DENIED") })
+    const stop = () => media.getTracks().forEach(track => track.stop())
+    if (gone()) { stop(); throw failed("FACE_CANCELLED") }
+    await play(media).catch(() => { stop(); throw failed("CAMERA_DENIED") })
+    if (gone()) { stop(); throw failed("FACE_CANCELLED") }
+    return media
+}
+
 /** A JPEG of the video's current frame, in base64, under `maxBytes`. */
 export function snapshot(video: HTMLVideoElement, maxBytes = 380_000): string {
     const scale = Math.min(1, 640 / (video.videoWidth || 640))

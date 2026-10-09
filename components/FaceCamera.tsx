@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
-import { ringShare, type Camera, type OpenCamera } from '@/lib/mobile/face-check/camera'
+import { ringShare, startCamera, type Camera, type OpenCamera } from '@/lib/mobile/face-check/camera'
 import type { Cue, Progress } from '@/lib/mobile/face-check/liveness'
 import { chime, pageAudio } from '@/lib/mobile/face-check/chime'
 
@@ -104,13 +104,13 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     useEffect(() => {
         if (!request || !video.current) return
         let gone = false
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
-            .then(async media => {
-                if (gone) { media.getTracks().forEach(track => track.stop()); return }
-                stream.current = media
-                const v = video.current!
-                v.srcObject = media
-                await v.play()
+        const v = video.current
+        startCamera(
+            () => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }),
+            async media => { stream.current = media; v.srcObject = media; await v.play() },
+            () => gone,
+        )
+            .then(() => {
                 const cancelled = new Promise<never>((_, reject) => { cancel.current = reject })
                 cancelled.catch(() => {})
                 setRequest(null)
@@ -136,12 +136,13 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                     cancelled,
                 })
             })
-            .catch(() => {
-                // Granted but couldn't play: the camera mustn't stay on with nothing showing (review on #28).
+            .catch((error: Error) => {
+                // Refused, couldn't play, or the page left while it started: the camera is off, and the capture
+                // waiting on it is told, never left waiting (review on #28).
                 stopStream()
                 setRequest(null)
                 setPrompt(null)
-                request.failed(codeError('CAMERA_DENIED'))
+                request.failed(error)
             })
         return () => { gone = true }
     }, [request, cue])
