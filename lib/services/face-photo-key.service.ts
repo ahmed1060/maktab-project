@@ -12,16 +12,27 @@ type Stored = { id: string; photo: Uint8Array | null }
 const PAGE = 25
 /** Photos one press re-encrypts, so a press ends well inside a function's time limit; press again for the rest. */
 const PER_RUN = 200
+/**
+ * Photos one press reads, moved or not: photos already on the new key are
+ * read to be passed over, and a press that read every photo each time made
+ * a large rotation's total work grow with the square of its size (review on #33).
+ */
+const READS_PER_RUN = 1000
 
 const TABLES = {
     review: (after: string) => prisma.faceReview.findMany({ where: { id: { gt: after }, photo: { not: null } }, select: { id: true, photo: true }, orderBy: { id: "asc" }, take: PAGE }),
     frame: (after: string) => prisma.faceFrame.findMany({ where: { id: { gt: after } }, select: { id: true, photo: true }, orderBy: { id: "asc" }, take: PAGE }),
 }
 
-/** Every stored face photo (verification and reference photos, flagged frames), a page at a time. */
-async function* storedPhotos(): AsyncGenerator<[keyof typeof TABLES, Stored]> {
-    for (const table of Object.keys(TABLES) as (keyof typeof TABLES)[]) {
-        let after = ""
+type Table = keyof typeof TABLES
+/** Where a run stopped: the last photo it read. The next run reads on from there. */
+export type RekeyFrom = { table: Table; after: string }
+
+/** Every stored face photo (verification and reference photos, flagged frames), a page at a time, from `from` on. */
+async function* storedPhotos(from: RekeyFrom | null = null): AsyncGenerator<[Table, Stored]> {
+    const tables = Object.keys(TABLES) as Table[]
+    for (const table of tables.slice(from ? tables.indexOf(from.table) : 0)) {
+        let after = from && table === from.table ? from.after : ""
         for (;;) {
             const rows = await TABLES[table](after)
             for (const row of rows) yield [table, row]
@@ -58,20 +69,28 @@ export class FacePhotoKeyService {
 
     /**
      * Re-encrypts up to PER_RUN photos still on the previous key with the
-     * current one; run again for the rest. Each row is written only if it
-     * still holds what was read, so a photo replaced or deleted meanwhile is
-     * left as it now is. A photo no key opens is counted, not touched. For
-     * any Super Admin (the route checks): nothing is shown or deleted, and
-     * once all are moved a run does nothing more.
+     * current one, reading at most READS_PER_RUN, from where the last run
+     * stopped (`from`); `next` is where this one stopped, null once it reached
+     * the end. New photos are written with the current key, so none behind a
+     * run's place can need moving. Each row is written only if it still holds
+     * what was read, so a photo replaced or deleted meanwhile is left as it
+     * now is. A photo no key opens is counted, not touched. For any Super
+     * Admin (the route checks): nothing is shown or deleted, and once all are
+     * moved a run does nothing more. It says what this run did, not where the
+     * whole rotation stands: that is status(), read once at the end.
      */
-    static async rekey(session: { user: Actor }) {
+    static async rekey(session: { user: Actor }, from: RekeyFrom | null = null, limits = { moves: PER_RUN, reads: READS_PER_RUN }) {
         if (!process.env.FACE_PHOTO_KEY_PREVIOUS) throw new Error("FACE_KEY_NOT_ROTATING")
         if (rotationKeysSame()) throw new Error("FACE_KEY_SAME")
-        let moved = 0
-        for await (const [table, row] of storedPhotos()) {
-            if (moved >= PER_RUN) break
+        let moved = 0, unreadable = 0, read = 0
+        let next: RekeyFrom | null = null
+        for await (const [table, row] of storedPhotos(from)) {
+            if (moved >= limits.moves || read >= limits.reads) break
+            read++
+            next = { table, after: row.id }
             const stored = Buffer.from(row.photo!)
             const r = reencryptFacePhoto(stored)
+            if (r === "unreadable") unreadable++
             if (r === "current" || r === "unreadable") continue
             const where = { id: row.id, photo: { equals: new Uint8Array(stored) } }
             const { count } = table === "review"
@@ -79,9 +98,9 @@ export class FacePhotoKeyService {
                 : await prisma.faceFrame.updateMany({ where, data: { photo: new Uint8Array(r) } })
             moved += count
         }
-        const after = await FacePhotoKeyService.status()
-        const unreadable = "unreadable" in after ? after.unreadable : 0
+        // Stopped at a limit: the next run reads on from here. Read to the end: nothing is left behind it.
+        const stopped = moved >= limits.moves || read >= limits.reads
         await AuditLogService.log("REKEY_FACE_PHOTOS", "SYSTEM", "default", { superAdminId: session.user.id, details: { moved, unreadable } })
-        return { moved, ...after }
+        return { moved, unreadable, next: stopped ? next : null }
     }
 }

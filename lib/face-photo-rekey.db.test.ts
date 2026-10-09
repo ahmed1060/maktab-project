@@ -78,8 +78,8 @@ describe.skipIf(!ADMIN_URL)("rotating the face photo key, in Postgres", () => {
         process.env.FACE_PHOTO_KEY_PREVIOUS = oldKey
         expect(await Rotation.status()).toEqual({ rotating: true, total: 4, previous: 3, unreadable: 1 })
 
-        const result = await Rotation.rekey(sa)
-        expect(result).toMatchObject({ moved: 3, unreadable: 1, rotating: true, total: 4, previous: 0 })
+        expect(await Rotation.rekey(sa)).toEqual({ moved: 3, unreadable: 1, next: null })
+        expect(await Rotation.status()).toEqual({ rotating: true, total: 4, previous: 0, unreadable: 1 })
 
         // The same pictures, now with the new key alone.
         const only = { FACE_PHOTO_KEY: newKey }
@@ -97,7 +97,7 @@ describe.skipIf(!ADMIN_URL)("rotating the face photo key, in Postgres", () => {
         process.env.FACE_PHOTO_KEY = newKey
         process.env.FACE_PHOTO_KEY_PREVIOUS = oldKey
         const before = await photoOf("FaceReview", "ref")
-        expect(await Rotation.rekey(sa)).toMatchObject({ moved: 0, unreadable: 1, previous: 0 })
+        expect(await Rotation.rekey(sa)).toEqual({ moved: 0, unreadable: 1, next: null })
         expect(await photoOf("FaceReview", "ref")).toEqual(before)
     })
 
@@ -108,7 +108,7 @@ describe.skipIf(!ADMIN_URL)("rotating the face photo key, in Postgres", () => {
         await expect(Rotation.rekey(sa)).rejects.toThrow("FACE_KEY_SAME")
     })
 
-    it("works through many photos a bounded number per run, and says how many are left (review on #33)", async () => {
+    it("works through many photos a bounded number per run, each run reading on from the last (review on #33)", async () => {
         process.env.FACE_PHOTO_KEY = newKey
         process.env.FACE_PHOTO_KEY_PREVIOUS = oldKey
         const many = 230
@@ -118,7 +118,30 @@ describe.skipIf(!ADMIN_URL)("rotating the face photo key, in Postgres", () => {
             await db.query(`INSERT INTO "FaceFrame"(id, "punchId", "companyId", "userId", photo) VALUES ($1, $1, 'c1', 'e1', $2)`, [id, encryptFacePhoto(jpeg(), { FACE_PHOTO_KEY: oldKey })])
         }
         expect(await Rotation.status()).toMatchObject({ previous: many, unreadable: 1 })
-        expect(await Rotation.rekey(sa)).toMatchObject({ moved: 200, previous: many - 200 })
-        expect(await Rotation.rekey(sa)).toMatchObject({ moved: many - 200, previous: 0, unreadable: 1 })
+        const first = await Rotation.rekey(sa)
+        expect(first).toMatchObject({ moved: 200, next: { table: "frame" } })
+        // The next press reads on from where the first stopped, and neither
+        // reads the whole table again to say where the rotation stands: each
+        // press did, and a rotation's total work grew with the square of its size.
+        const second = await Rotation.rekey(sa, first.next)
+        expect(second).toEqual({ moved: many - 200, unreadable: 0, next: null })
+        expect(await Rotation.status()).toMatchObject({ previous: 0, unreadable: 1 })
+    }, 120_000)
+
+    it("reads a bounded number of photos per press, moved or not (review on #33)", async () => {
+        process.env.FACE_PHOTO_KEY = newKey
+        process.env.FACE_PHOTO_KEY_PREVIOUS = oldKey
+        for (let i = 0; i < 12; i++) {
+            const id = `r-${String(i).padStart(3, "0")}`
+            await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status) VALUES ($1, 'c1', 'e1', 'MOBILE', $1, '2026-10-03 09:00', now(), 'Africa/Cairo', 'FLAGGED')`, [id])
+            await db.query(`INSERT INTO "FaceFrame"(id, "punchId", "companyId", "userId", photo) VALUES ($1, $1, 'c1', 'e1', $2)`, [id, encryptFacePhoto(jpeg(), { FACE_PHOTO_KEY: oldKey })])
+        }
+        // Everything before r-000 is on the new key already: read, passed over, and counted against the press.
+        const limits = { moves: 1000, reads: 10 }
+        let run = await Rotation.rekey(sa, null, limits), presses = 1, moved = run.moved
+        while (run.next) { run = await Rotation.rekey(sa, run.next, limits); presses++; moved += run.moved }
+        expect(moved).toBe(12)
+        expect(presses).toBeGreaterThan(20)
+        expect(await Rotation.status()).toMatchObject({ previous: 0 })
     }, 120_000)
 })
