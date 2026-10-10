@@ -137,9 +137,10 @@ export default function FaceSystemSwitch() {
     const last = purgeBody?.data ?? null
 
     const rotation = rekeyBody?.data.rotating ? rekeyBody.data : null
-    // A rotation on, by the card's own status, whose status isn't here yet or failed: its place is kept,
-    // and the rest of the card is usable meanwhile (Codex review on #49).
-    const rotationWaiting = !!data.data.rotating && !rotation && (rekeyBody === undefined || !!rekeyError)
+    // A rotation on, by the card's own status, whose details aren't here: its place is kept, and the rest
+    // of the card is usable meanwhile. The card's status decides, as an answer kept from before the
+    // rotation began still says none, while the slow one is read (Codex review on #49).
+    const rotationWaiting = !!data.data.rotating && !rotation
     const left = rotation && !rotation.sameKey ? photosLeft(rekeyLeft, rotation.previous) : 0
 
     const rekey = async () => {

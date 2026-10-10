@@ -71,7 +71,9 @@ describe("cards that load their own data", () => {
         // The card's own status says whether a rotation is on, at once.
         const route = readFileSync("app/api/system-settings/face/route.ts", "utf8")
         expect(route).toContain("rotating: FacePhotoKeyService.rotating()")
-        expect(src).toContain("const rotationWaiting = !!data.data.rotating && !rotation && (rekeyBody === undefined || !!rekeyError)")
+        // Whatever the rotation's own answer says meanwhile: one kept from before it began says there is none.
+        expect(src).toContain("const rotationWaiting = !!data.data.rotating && !rotation\n")
+        expect(src).not.toContain("(rekeyBody === undefined || !!rekeyError)")
         const section = src.slice(src.indexOf("{(rotation || rotationWaiting) && ("))
         expect(section).toContain("{rekeyError ? t('error_generic') : t('loading')}")
         expect(section).toContain("<div style={{ minHeight: '2.5rem' }} />")
