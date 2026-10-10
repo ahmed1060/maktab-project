@@ -87,6 +87,8 @@ describe("cards that load their own data", () => {
         expect(controls).toContain(`<div key={s} aria-hidden="true" style={{ ...CONTROLS, gridArea: '1 / 1', visibility: 'hidden' }}>`)
         expect(controls).toContain("{BUTTONS[s].map(b => <span key={b.action} className={b.cls}>{t(b.label)}</span>)}")
         expect(controls).toContain("<div style={{ ...CONTROLS, gridArea: '1 / 1' }}>{children}</div>")
+        // The protected-only line too, which can wrap further than the buttons (Codex review on #49).
+        expect(controls).toContain(`<div aria-hidden="true" style={{ ...CONTROLS, gridArea: '1 / 1', visibility: 'hidden' }}>\n                <p style={HINT}>{t('face_sys_protected_only')}</p>`)
         // The buttons shown are the same list, so a copy can't drift from them.
         expect(src).toContain("{canChange ? BUTTONS[state].map(b => (")
         expect(src).toContain("ON: [{ cls: 'btn btn-secondary', label: 'face_sys_pause', action: 'PAUSED' }, { cls: 'btn btn-danger', label: 'face_purge', action: 'PURGE' }],")

@@ -63,6 +63,11 @@ function Controls({ children }: { children?: React.ReactNode }) {
                     {BUTTONS[s].map(b => <span key={b.action} className={b.cls}>{t(b.label)}</span>)}
                 </div>
             ))}
+            {/* And the line a Super Admin who isn't the protected one sees instead, which can wrap further on a
+                narrow phone or with the text zoomed (Codex review on #49). */}
+            <div aria-hidden="true" style={{ ...CONTROLS, gridArea: '1 / 1', visibility: 'hidden' }}>
+                <p style={HINT}>{t('face_sys_protected_only')}</p>
+            </div>
             <div style={{ ...CONTROLS, gridArea: '1 / 1' }}>{children}</div>
         </div>
     )
