@@ -76,7 +76,19 @@ describe("cards that load their own data", () => {
         expect(src).not.toContain("(rekeyBody === undefined || !!rekeyError)")
         const section = src.slice(src.indexOf("{(rotation || rotationWaiting) && ("))
         expect(section).toContain("{rekeyError ? t('error_generic') : t('loading')}")
-        expect(section).toContain("<div style={{ minHeight: '2.5rem' }} />")
+        expect(section).toContain("<RotationBody>")
+    })
+
+    it("the rotation's section is as tall as the most it can show, done included (Codex review on #49)", () => {
+        // Kept to the button's layout, the done line every load shows once all are moved still moved Branding
+        // (16px at 412px, 32px at 1350px), and the other layouts up to 56px. Measured in Chromium after: 0px for
+        // each layout at 320, 412 and 1350px.
+        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
+        const body = src.slice(src.indexOf("function RotationBody("), src.indexOf("type Rekey ="))
+        for (const key of ["face_rekey_status", "face_rekey_run", "face_rekey_done", "face_rekey_same_key", "face_rekey_unreadable"]) expect(body, key).toContain(`t('${key}')`)
+        expect(body).toContain(`{layouts.map(layout => <div key={layout.key} aria-hidden="true" style={{ ...COLUMN, gridArea: '1 / 1', visibility: 'hidden' }}>{layout}</div>)}`)
+        expect(body).toContain("<div style={{ ...COLUMN, gridArea: '1 / 1' }}>{children}</div>")
+        expect(src).not.toContain("<div style={{ minHeight: '2.5rem' }} />")
     })
 
     it("the face card's controls are as tall as the most any state shows, wrapped too (Codex review on #49)", () => {

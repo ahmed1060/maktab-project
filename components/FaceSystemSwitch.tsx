@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import useSWR from 'swr'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
@@ -69,6 +69,32 @@ function Controls({ children }: { children?: React.ReactNode }) {
                 <p style={HINT}>{t('face_sys_protected_only')}</p>
             </div>
             <div style={{ ...CONTROLS, gridArea: '1 / 1' }}>{children}</div>
+        </div>
+    )
+}
+const LINE = { fontSize: '0.8rem', margin: 0 } as const
+const COLUMN = { display: 'flex', flexDirection: 'column', gap: '0.5rem' } as const
+
+/**
+ * The rotation's section below its title, as tall as the tallest of what it
+ * can show: photos left with the button, done, the same key twice, each with
+ * the unreadable line where it can come. Hidden copies sit in one cell with
+ * what shows. Kept to the button's layout alone, the done line that every
+ * load shows once all are moved still moved the cards below (Codex review on
+ * #49).
+ */
+function RotationBody({ children }: { children: React.ReactNode }) {
+    const { t } = useLanguage()
+    const unreadable = <p style={LINE}>{t('face_rekey_unreadable').replace('{n}', '0000')}</p>
+    const layouts = [
+        <Fragment key="left"><p style={LINE}>{t('face_rekey_status').replace('{previous}', '0000').replace('{total}', '0000')}</p><div><span className="btn btn-primary">{t('face_rekey_run')}</span></div>{unreadable}</Fragment>,
+        <Fragment key="done"><p style={LINE}>{t('face_rekey_done')}</p>{unreadable}</Fragment>,
+        <p key="same" style={LINE}>{t('face_rekey_same_key')}</p>,
+    ]
+    return (
+        <div style={{ display: 'grid' }}>
+            {layouts.map(layout => <div key={layout.key} aria-hidden="true" style={{ ...COLUMN, gridArea: '1 / 1', visibility: 'hidden' }}>{layout}</div>)}
+            <div style={{ ...COLUMN, gridArea: '1 / 1' }}>{children}</div>
         </div>
     )
 }
@@ -190,25 +216,23 @@ export default function FaceSystemSwitch() {
             {(rotation || rotationWaiting) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                     <p style={{ margin: 0, fontWeight: 600 }}>{t('face_rekey_title')}</p>
-                    {!rotation ? (
-                        // The status line's place, and a button's (40px), while it's read.
-                        <>
-                            <p style={{ fontSize: '0.8rem', margin: 0, color: rekeyError ? 'var(--danger-fg)' : 'var(--text-soft)' }}>{rekeyError ? t('error_generic') : t('loading')}</p>
-                            <div style={{ minHeight: '2.5rem' }} />
-                        </>
-                    ) : rotation.sameKey ? (
-                        <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_same_key')}</p>
-                    ) : rotation.previous > 0 ? (
-                        <>
-                            <p style={{ fontSize: '0.8rem', margin: 0 }}>{t('face_rekey_status').replace('{previous}', String(left)).replace('{total}', String(rotation.total))}</p>
-                            <div><button className="btn btn-primary" disabled={busy} onClick={rekey}>{t('face_rekey_run')}</button></div>
-                        </>
-                    ) : (
-                        <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--ok-fg)' }}>{t('face_rekey_done')}</p>
-                    )}
-                    {rotation && !rotation.sameKey && rotation.unreadable > 0 && (
-                        <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--warn-fg)' }}>{t('face_rekey_unreadable').replace('{n}', String(rotation.unreadable))}</p>
-                    )}
+                    <RotationBody>
+                        {!rotation ? (
+                            <p style={{ ...LINE, color: rekeyError ? 'var(--danger-fg)' : 'var(--text-soft)' }}>{rekeyError ? t('error_generic') : t('loading')}</p>
+                        ) : rotation.sameKey ? (
+                            <p style={{ ...LINE, color: 'var(--warn-fg)' }}>{t('face_rekey_same_key')}</p>
+                        ) : rotation.previous > 0 ? (
+                            <>
+                                <p style={LINE}>{t('face_rekey_status').replace('{previous}', String(left)).replace('{total}', String(rotation.total))}</p>
+                                <div><button className="btn btn-primary" disabled={busy} onClick={rekey}>{t('face_rekey_run')}</button></div>
+                            </>
+                        ) : (
+                            <p style={{ ...LINE, color: 'var(--ok-fg)' }}>{t('face_rekey_done')}</p>
+                        )}
+                        {rotation && !rotation.sameKey && rotation.unreadable > 0 && (
+                            <p style={{ ...LINE, color: 'var(--warn-fg)' }}>{t('face_rekey_unreadable').replace('{n}', String(rotation.unreadable))}</p>
+                        )}
+                    </RotationBody>
                 </div>
             )}
             <ConfirmModal
