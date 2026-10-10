@@ -159,6 +159,10 @@ describe("the map", () => {
         expect(picker).toContain("hereProviders(")
     })
 
+    it("shows HERE's notice at once, not only once the list is fetched", () => {
+        expect(picker).toMatch(/let notice = hereAttribution\(new Date\(\)\.getFullYear\(\)\)\n\s*map\.attributionControl\.addAttribution\(notice\)/)
+    })
+
     it("may fetch the list (CSP)", () => {
         const config = readFileSync("next.config.mjs", "utf8")
         expect(config).toMatch(/connect-src[^"]*https:\/\/maps\.hereapi\.com/)

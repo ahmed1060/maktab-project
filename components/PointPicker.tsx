@@ -90,8 +90,10 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             const street = layer('map').addTo(map)
             L.control.layers({ [t('att_loc_layer_map')]: street, [t('att_loc_layer_satellite')]: layer('satellite') }, undefined, { position: 'topright' }).addTo(map)
             // HERE's notice names the suppliers for the style, zoom and area showing.
+            // HERE alone shows at once, so the map is never without it while the list loads.
             let style: HereStyle = 'map'
-            let notice = ''
+            let notice = hereAttribution(new Date().getFullYear())
+            map.attributionControl.addAttribution(notice)
             const credit = () => {
                 if (!map) return
                 const m = map
