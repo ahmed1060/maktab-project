@@ -17,6 +17,13 @@ export function hereTileUrl(style: HereStyle, lang: string, apiKey: string): str
     return `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/${style === 'satellite' ? 'jpeg' : 'png8'}?${params}`
 }
 
+/**
+ * Leaflet's own credit, ahead of HERE's. Leaflet's default draws a flag
+ * beside its name, which is no part of the credit; the product owner chose
+ * not to show it.
+ */
+export const LEAFLET_CREDIT = '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>'
+
 /*
  * The copyright notice. HERE asks for "© <year> HERE, <labels>", where the
  * labels are the data suppliers for the style showing, at this zoom, inside

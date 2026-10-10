@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { hereAttribution, hereTileUrl } from "@/lib/here-tiles"
+import { readFileSync } from "node:fs"
+import { hereAttribution, hereTileUrl, LEAFLET_CREDIT } from "@/lib/here-tiles"
 
 /** The place-pin map uses HERE, which the system already pays for, not OpenStreetMap. */
 describe("HERE map images", () => {
@@ -21,5 +22,11 @@ describe("HERE map images", () => {
 
     it("credits HERE", () => {
         expect(hereAttribution(2026)).toBe("&copy; 2026 HERE")
+    })
+
+    it("credits Leaflet by name alone, without the flag its default draws", () => {
+        expect(LEAFLET_CREDIT).toMatch(/^<a href="https:\/\/leafletjs\.com"[^>]*>Leaflet<\/a>$/)
+        expect(LEAFLET_CREDIT).not.toContain("<svg")
+        expect(readFileSync("components/PointPicker.tsx", "utf8")).toContain("map.attributionControl.setPrefix(LEAFLET_CREDIT)")
     })
 })
