@@ -86,7 +86,7 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             if (cancelled || !box.current) return
             const start = parsePoint(latest.current.value)
             map = L.map(box.current, { center: start ? [start.latitude, start.longitude] : CAIRO, zoom: start ? 17 : 11 })
-            const layer = (style: HereStyle) => L.tileLayer(hereTileUrl(style, locale, hereKey!), { maxZoom: 20 })
+            const layer = (style: HereStyle) => L.tileLayer(hereTileUrl(style, locale, hereKey!, { sharp: L.Browser.retina }), { maxZoom: 20 })
             const street = layer('map').addTo(map)
             L.control.layers({ [t('att_loc_layer_map')]: street, [t('att_loc_layer_satellite')]: layer('satellite') }, undefined, { position: 'topright' }).addTo(map)
             map.attributionControl.setPrefix(LEAFLET_CREDIT)
