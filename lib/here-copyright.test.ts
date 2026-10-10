@@ -50,6 +50,11 @@ describe("HERE's supplier list", () => {
         expect(list.sources.in[0].boxes).toHaveLength(2)
     })
 
+    it("takes the long text from alt where copyrightText is missing (the guide's own example uses alt)", () => {
+        const alt = parseHereCopyrights({ copyrights: { in: [{ label: "IGN Guatemala", alt: "Aprobado por el IGN", minLevel: 10, maxLevel: 20 }] } })!
+        expect(alt.sources.in[0].copyrightText).toBe("Aprobado por el IGN")
+    })
+
     it("is not read from something else", () => {
         expect(parseHereCopyrights(null)).toBeNull()
         expect(parseHereCopyrights({ error: "Unauthorized" })).toBeNull()

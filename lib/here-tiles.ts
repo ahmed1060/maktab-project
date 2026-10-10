@@ -59,7 +59,8 @@ export function parseHereCopyrights(json: unknown): HereCopyrights | null {
                 : []
             return [{
                 label: c.label.trim(),
-                copyrightText: typeof c.copyrightText === 'string' ? c.copyrightText : '',
+                // The API reference names it copyrightText; the guide's example calls it alt.
+                copyrightText: typeof c.copyrightText === 'string' ? c.copyrightText : typeof c.alt === 'string' ? c.alt : '',
                 minLevel: num(c.minLevel) ? c.minLevel : 0,
                 maxLevel: num(c.maxLevel) ? c.maxLevel : Infinity,
                 boxes,
