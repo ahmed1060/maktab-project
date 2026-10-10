@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import { useLanguage } from '@/context/LanguageContext'
-import { hereAttribution, hereTileUrl } from '@/lib/here-tiles'
+import { hereAttribution, hereProviders, hereTileUrl, loadHereCopyrights, type HereStyle } from '@/lib/here-tiles'
 import { fixStillWanted, formatPoint, locateErrorKey, MAX_ACCURACY_METERS, parsePoint } from '@/lib/attendance/geo'
 
 /**
@@ -86,9 +86,28 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             if (cancelled || !box.current) return
             const start = parsePoint(latest.current.value)
             map = L.map(box.current, { center: start ? [start.latitude, start.longitude] : CAIRO, zoom: start ? 17 : 11 })
-            const layer = (style: 'map' | 'satellite') => L.tileLayer(hereTileUrl(style, locale, hereKey!), { maxZoom: 20, attribution: hereAttribution(new Date().getFullYear()) })
+            const layer = (style: HereStyle) => L.tileLayer(hereTileUrl(style, locale, hereKey!), { maxZoom: 20 })
             const street = layer('map').addTo(map)
             L.control.layers({ [t('att_loc_layer_map')]: street, [t('att_loc_layer_satellite')]: layer('satellite') }, undefined, { position: 'topright' }).addTo(map)
+            // HERE's notice names the suppliers for the style, zoom and area showing.
+            let style: HereStyle = 'map'
+            let notice = ''
+            const credit = () => {
+                if (!map) return
+                const m = map
+                loadHereCopyrights(hereKey!).then(list => {
+                    if (cancelled || map !== m) return
+                    const b = m.getBounds()
+                    const view = { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }
+                    const next = hereAttribution(new Date().getFullYear(), list ? hereProviders(list, style, m.getZoom(), view) : [])
+                    if (next === notice) return
+                    m.attributionControl.removeAttribution(notice).addAttribution(next)
+                    notice = next
+                })
+            }
+            map.on('baselayerchange', e => { style = e.layer === street ? 'map' : 'satellite' })
+            map.on('moveend zoomend baselayerchange', credit)
+            credit()
             map.on('click', e => put(e.latlng.lat, e.latlng.lng))
             leaflet.current = { L, map }
             setDrawn(n => n + 1)
