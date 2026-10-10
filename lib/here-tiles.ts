@@ -10,12 +10,27 @@ export type HereStyle = 'map' | 'satellite'
 
 const STYLE: Record<HereStyle, string> = { map: 'explore.day', satellite: 'explore.satellite.day' }
 
-/** A Leaflet tile URL template ({z}/{x}/{y}) for this style, labelled in `lang`. */
-export function hereTileUrl(style: HereStyle, lang: string, apiKey: string): string {
-    const params = new URLSearchParams({ style: STYLE[style], size: '256', lang, apiKey })
+/**
+ * A Leaflet tile URL template ({z}/{x}/{y}) for this style, labelled in `lang`.
+ *
+ * `sharp`, for a high-density screen (most phones): each tile has twice the
+ * pixels, for the same area and the same size of label, so Leaflet draws it
+ * at 256 points and nothing is enlarged. The standard tile was enlarged
+ * there, which blurred street names and roads. It is still one request per
+ * tile: https://docs.here.com/map-rendering/docs/tile-resolution
+ */
+export function hereTileUrl(style: HereStyle, lang: string, apiKey: string, { sharp = false } = {}): string {
+    const params = new URLSearchParams({ style: STYLE[style], ...(sharp ? { size: '512', scale: '2' } : { size: '256' }), lang, apiKey })
     // Leaflet fills {z}/{x}/{y}; the rest must reach HERE as written.
     return `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/${style === 'satellite' ? 'jpeg' : 'png8'}?${params}`
 }
+
+/**
+ * Leaflet's own credit, ahead of HERE's. Leaflet's default draws a flag
+ * beside its name, which is no part of the credit; the product owner chose
+ * not to show it.
+ */
+export const LEAFLET_CREDIT = '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>'
 
 /*
  * The copyright notice. HERE asks for "© <year> HERE, <labels>", where the
