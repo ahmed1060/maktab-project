@@ -111,6 +111,14 @@ copyFileSync("node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm", jo
 copyFileSync("node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs", join(OUT, "ort/ort-wasm-simd-threaded.mjs"))
 for (const f of readdirSync("node_modules/@mediapipe/tasks-vision/wasm"))
     copyFileSync(join("node_modules/@mediapipe/tasks-vision/wasm", f), join(OUT, "mediapipe", f))
+// The runtimes' WebAssembly, kept on the phone like the models, under its checksum (lib/mobile/face-check/files.ts,
+// review on #48). The progress bar counts the two a phone loads: ONNX Runtime's, and MediaPipe's with SIMD.
+manifest.runtime = {}
+for (const path of ["ort/ort-wasm-simd-threaded.wasm", ...readdirSync(join(OUT, "mediapipe")).filter(f => f.endsWith(".wasm")).map(f => `mediapipe/${f}`)]) {
+    const buf = readFileSync(join(OUT, path))
+    manifest.runtime[path] = { size: buf.length, sha256: sha256(buf) }
+}
+manifest.total += manifest.runtime["ort/ort-wasm-simd-threaded.wasm"].size + manifest.runtime["mediapipe/vision_wasm_internal.wasm"].size
 // The recognition worker (lib/mobile/face-check/recognition.worker.ts), bundled here: Next's build copies a
 // worker's TypeScript as it is rather than bundling it, and a phone can't run that.
 await build({

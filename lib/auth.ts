@@ -86,6 +86,16 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 let loginKey: string | null = null
+                // The window the attempt was counted in, whether the password
+                // was right, and whether the attempt has been given back.
+                let loginWindow = 0
+                let passwordOk = false
+                let givenBack = false
+                const giveBack = async () => {
+                    if (!loginKey || givenBack) return
+                    givenBack = true
+                    await RateLimiter.refund(loginKey, loginWindow)
+                }
                 try {
                     // Rate Limiting (5 attempts per 15 minutes per IP)
                     // headers() is async since Next 15.
@@ -109,6 +119,7 @@ export const authOptions: NextAuthOptions = {
                     // whole office behind one address shared five sign-ins.
                     loginKey = `login:${ip}`
                     const { limited, resetAt } = await RateLimiter.getLimitData(loginKey, 5, 15 * 60 * 1000)
+                    loginWindow = resetAt
                     if (limited) {
                         const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         throw new Error(`Too many login attempts. Please try again at ${timeStr}.`)
@@ -185,6 +196,7 @@ export const authOptions: NextAuthOptions = {
                     // Password confirmed correct — only now do account-state checks,
                     // so their specific error messages only ever reach someone who
                     // already holds the real password.
+                    passwordOk = true
                     if (superAdmin) {
                         // F-27: before the login is considered complete, not after —
                         // a login that only fails the MFA step must never reach the
@@ -199,7 +211,7 @@ export const authOptions: NextAuthOptions = {
                             cookieHeader,
                         })
 
-                        await RateLimiter.refund(loginKey)
+                        await giveBack()
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -295,7 +307,7 @@ export const authOptions: NextAuthOptions = {
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
-                    await RateLimiter.refund(loginKey)
+                    await giveBack()
 
                     // Audit Log (Success - Centralized)
                     const { AuditLogService } = await import("./services/audit-log.service")
@@ -337,7 +349,14 @@ export const authOptions: NextAuthOptions = {
                     }
 
                 } catch (error) {
-                    if (loginKey && (error as Error)?.message === 'MFA_REQUIRED') await RateLimiter.refund(loginKey)
+                    // Only a wrong password or a wrong code uses up one of the
+                    // five. The step that asks for the code gives it back, and so
+                    // does an account turned away once its password was right
+                    // (another company, banned, out of subscription, suspended or
+                    // closed): otherwise one renewed or reactivated in the window
+                    // stayed locked out behind the rate limit (review on #29).
+                    const message = (error as Error)?.message
+                    if (message === 'MFA_REQUIRED' || (passwordOk && message !== 'INVALID_MFA_CODE')) await giveBack()
                     console.error('Auth error:', error)
                     throw error
                 }
@@ -599,7 +618,11 @@ export const authOptions: NextAuthOptions = {
                             // And once an acting role is over (§6.13): the grants
                             // of the role they return to, from then on, rather
                             // than whenever the nightly job moves them back.
-                            const actingOver = !!u?.actingUntil && u.actingUntil <= new Date() && !token.actingEnded
+                            // Reloaded at every check until then, not once: the
+                            // row and the token still name the acting role, so
+                            // an edit to the role returned to, or a change of
+                            // which role that is, shows nowhere else (review on #3).
+                            const actingOver = !!u?.actingUntil && u.actingUntil <= new Date()
                             if (u && ((u.roleId ?? null) !== (token.roleId ?? null) || (u.assignedRole?.version ?? 0) !== (token.roleVersion ?? 0) || actingOver)) {
                                 const loaded = await RoleService.forToken(userId)
                                 Object.assign(token, loaded)

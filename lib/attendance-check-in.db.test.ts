@@ -11,6 +11,7 @@ import { AttendanceEngineService as Engine } from "@/lib/services/attendance-eng
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
+import { calendarDateStr } from "@/lib/time"
 
 /**
  * Checking in with the app (ATTENDANCE_PLAN.md §9.4, §9.6), against a real
@@ -20,10 +21,14 @@ import { phoneKeyPair } from "@/lib/attendance/test-phone"
  * proved itself; the keys and signatures are real.
  */
 
-const attested = { verified: false }
+const attested = { verified: false, asked: 0, slowMs: 0 }
 vi.mock("@/lib/attendance/attestation", () => ({
     attestationMode: () => (process.env.ATTENDANCE_ATTESTATION === "required" ? "required" : "testing"),
-    verifyAttestation: async () => ({ verified: attested.verified, reason: attested.verified ? null : "NOT_CONFIGURED" }),
+    verifyAttestation: async () => {
+        attested.asked += 1
+        if (attested.slowMs) await new Promise(r => setTimeout(r, attested.slowMs))
+        return { verified: attested.verified, reason: attested.verified ? null : "NOT_CONFIGURED" }
+    },
 }))
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
@@ -78,7 +83,7 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await admin.end()
     })
 
-    beforeEach(() => { attested.verified = false; delete process.env.ATTENDANCE_ATTESTATION })
+    beforeEach(() => { attested.verified = false; attested.asked = 0; attested.slowMs = 0; delete process.env.ATTENDANCE_ATTESTATION })
 
     /** A phone of this person's, registered and — unless asked otherwise — approved. */
     async function phoneOf(userId: string, approve = true) {
@@ -196,7 +201,7 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         await Policy.saveVersion("c1", { effectiveFrom: "2026-01-01", body: STANDARD_OFFICE }, "a1")
         const e4 = await phoneOf("e4")
         // Cairo is UTC+3 in September. Sunday 27th, 09:40: flagged while attestation is in testing, and still late.
-        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T06:40:00Z" })).toMatchObject({ outcome: "FLAGGED", at: "2026-09-27T09:40:00", late: { minutes: 40, startsAt: "09:00" } })
+        expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T06:40:00Z" })).toMatchObject({ outcome: "FLAGGED", at: "2026-09-27T09:40:00", late: { minutes: 40, startsAt: "09:00", date: "2026-09-27" } })
         // Back from lunch the same day: not the first.
         expect(await checkIn("e4", e4, AT_DESK, { at: "2026-09-27T10:00:00Z" })).toMatchObject({ late: null })
         // Monday 28th, 09:10: within the grace.
@@ -221,28 +226,69 @@ describe.skipIf(!ADMIN_URL)("checking in with the app, in Postgres", () => {
         expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-07T06:40:00Z" })).toMatchObject({ late: { minutes: 40 } })
     })
 
+    it("offers what permission hours already asked for leave uncovered, as the engine charges it (review on #61)", async () => {
+        // Tuesday 8th 09:00–09:15 granted, Wednesday 9th 09:30–10:30 waiting, Thursday 10th 09:00–09:30 granted.
+        await db.query(`INSERT INTO "PermissionRequest"(id, "companyId", "userId", date, type, "startMinutes", "endMinutes", minutes, reason, status) VALUES
+            ('p8', 'c1', 'e4', '2026-09-08', 'LATE_ARRIVAL', 540, 555, 15, 'Bank', 'APPROVED'),
+            ('p9', 'c1', 'e4', '2026-09-09', 'LATE_ARRIVAL', 570, 630, 60, 'Doctor', 'PENDING'),
+            ('p10', 'c1', 'e4', '2026-09-10', 'LATE_ARRIVAL', 540, 570, 30, 'School', 'APPROVED'),
+            ('early', 'c1', 'e4', '2026-09-13', 'EARLY_LEAVE', 540, 600, 60, 'Not lateness', 'APPROVED')`)
+        const phone = await phoneOf("e4")
+        // 09:40 each day. The 8th: 09:15–09:40 is still charged, and is what the app offers.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-08T06:40:00Z" })).toMatchObject({ late: { minutes: 25, startsAt: "09:00", date: "2026-09-08", ask: { start: "09:15", end: "09:40" } } })
+        // The 9th: 09:00–09:30, before the hour asked for.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-09T06:40:00Z" })).toMatchObject({ late: { minutes: 30, ask: { start: "09:00", end: "09:30" } } })
+        // The 10th: ten minutes left, within the grace.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-10T06:40:00Z" })).toMatchObject({ late: null })
+        // Sunday 13th: an hour of early leave excuses no lateness.
+        expect(await checkIn("e4", phone, AT_DESK, { at: "2026-09-13T06:40:00Z" })).toMatchObject({ late: { minutes: 40, ask: { start: "09:00", end: "09:40" } } })
+    })
+
     it("measures a night shift's arrival against the night it starts, after midnight too, and not after the morning's check-out", async () => {
         // 22:00–06:00, nights starting Sunday to Thursday; the same policy as above.
         const night = await Calendar.createSchedule("c1", { name: "Night", version: { effectiveFrom: "2026-01-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a1")
         await Calendar.assign("c1", { userIds: ["e5"], scheduleId: night.id, effectiveFrom: "2026-01-01" }, "a1")
         const e5 = await phoneOf("e5")
         // Sunday night's arrival at 00:30 on Monday: two and a half hours late for 22:00.
-        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-27T21:30:00Z" })).toMatchObject({ at: "2026-09-28T00:30:00", late: { minutes: 150, startsAt: "22:00" } })
+        // Under Sunday's date, for the balance and the permission the app offers: Monday's would be another night's (review on #61).
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-27T21:30:00Z" })).toMatchObject({ at: "2026-09-28T00:30:00", late: { minutes: 150, startsAt: "22:00", date: "2026-09-27" } })
         // Its check-out at 06:00 Monday: not a first check-in.
         expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T03:00:00Z" })).toMatchObject({ late: null })
         // Monday night's arrival at 22:30: the morning's punches were last night's, so this is the first, and late.
-        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T19:30:00Z" })).toMatchObject({ at: "2026-09-28T22:30:00", late: { minutes: 30, startsAt: "22:00" } })
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-28T19:30:00Z" })).toMatchObject({ at: "2026-09-28T22:30:00", late: { minutes: 30, startsAt: "22:00", date: "2026-09-28" } })
+        // Its check-out at 06:00 Tuesday, then Tuesday night's arrival at 00:20 Wednesday: the first of Tuesday's night,
+        // though Monday night's check-out came on Tuesday too (review on #61).
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T03:00:00Z" })).toMatchObject({ late: null })
+        expect(await checkIn("e5", e5, AT_DESK, { at: "2026-09-29T21:20:00Z" })).toMatchObject({ at: "2026-09-30T00:20:00", late: { minutes: 140, startsAt: "22:00", date: "2026-09-29" } })
     })
+
+    it("asks Google or Apple once for copies of one signed check-in sent at once (review on #65)", async () => {
+        const phone = await phoneOf("e1")
+        const { nonce } = await Challenges.issue("e1", "CHECK_IN")
+        const body = { nonce, keyFingerprint: phone.fingerprint, ...AT_DESK, mocked: false, direction: null }
+        const signed = { ...body, signature: phone.key.sign(checkInText(body)) }
+        attested.asked = 0
+        // The provider takes a moment, as it does: every copy has been checked before any is answered.
+        attested.slowMs = 200
+        const outcomes = await Promise.allSettled(Array.from({ length: 5 }, () => CheckIns.checkIn("c1", "e1", signed, "198.51.100.20")))
+        expect(outcomes.filter(o => o.status === "fulfilled")).toHaveLength(1)
+        expect(outcomes.filter(o => o.status === "rejected").map(o => (o as PromiseRejectedResult).reason.message)).toEqual(Array(4).fill("PHONE_CHALLENGE_INVALID"))
+        expect(attested.asked).toBe(1)
+    }, 20_000)
 
     // Last: it approves this month's payroll, which closes the month to every later check-in here.
     it("doesn't count a held check-in in a month whose payroll was approved before the phone was", async () => {
         attested.verified = true
         const next = await phoneOf("e2", false)
         expect(await checkIn("e2", next)).toMatchObject({ outcome: "HELD" })
-        const month = new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 7)
+        // The company's month now, Cairo being UTC+2 in winter (review on #22).
+        const month = calendarDateStr(new Date(), "Africa/Cairo").slice(0, 7)
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('run', 'c1', $1, $2, 'APPROVED', 1, now())`, [Number(month.slice(0, 4)), Number(month.slice(5, 7))])
         await Phones.decide(next.id, { approve: true }, "a1")
         expect((await punches("e2")).filter(p => p.phoneId === next.id).map(p => p.status)).toEqual(["REJECTED"])
+        // The approval's record counts it, refused for its month (review on #22).
+        const { rows: [audit] } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'APPROVE_CHECK_IN_PHONE' AND "entityId" = $1`, [next.id])
+        expect(audit.details).toMatchObject({ punches: 1, refused: 1 })
         // And a check-in now, in the closed month, is refused.
         expect(await checkIn("e2", next)).toEqual({ outcome: "REFUSED", reason: "MONTH_LOCKED" })
     })

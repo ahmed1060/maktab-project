@@ -25,10 +25,13 @@ export class AttendanceChallengeService {
     static async issue(userId: string, purpose: ChallengePurpose, now = new Date()) {
         const nonce = randomBytes(32).toString("base64url")
         const expiresAt = new Date(now.getTime() + CHALLENGE_TTL_MS)
-        await prisma.$transaction([
-            prisma.attendanceChallenge.deleteMany({ where: { userId, purpose, usedAt: null } }),
-            prisma.attendanceChallenge.create({ data: { userId, purpose, nonceHash: hashOf(nonce), expiresAt } }),
-        ])
+        // One at a time per person and purpose: two at once each deleted before the other's row was there,
+        // and both numbers stayed usable (review on #21).
+        await prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`attendance-challenge:${userId}:${purpose}`}))::text`
+            await tx.attendanceChallenge.deleteMany({ where: { userId, purpose, usedAt: null } })
+            await tx.attendanceChallenge.create({ data: { userId, purpose, nonceHash: hashOf(nonce), expiresAt } })
+        })
         return { nonce, expiresAt }
     }
 
@@ -47,17 +50,14 @@ export class AttendanceChallengeService {
     }
 
     /**
-     * Whether the number could still be used, without using it: checked
-     * before asking Google or Apple anything, so a replayed or made-up
-     * request costs no call to them (review on #26). consume() still decides.
+     * Used up now, on its own, before Google or Apple is asked anything: a
+     * replayed or made-up request costs no call to them (review on #26), and
+     * of copies of one signed request sent at once only one goes on to ask.
+     * A check that it was still unused, without using it, let each copy ask
+     * before any had used it (review on #65).
      */
-    static async isLive(userId: string, purpose: ChallengePurpose, nonce: string, now = new Date()): Promise<boolean> {
-        if (typeof nonce !== "string" || nonce.length < 20 || nonce.length > 100) return false
-        const found = await prisma.attendanceChallenge.findFirst({
-            where: { nonceHash: hashOf(nonce), userId, purpose, usedAt: null, expiresAt: { gt: now } },
-            select: { id: true },
-        })
-        return !!found
+    static async claim(userId: string, purpose: ChallengePurpose, nonce: string, now = new Date()): Promise<boolean> {
+        return AttendanceChallengeService.consume(prisma, userId, purpose, nonce, now)
     }
 
     /** Old numbers, used or not, for the nightly prune. */

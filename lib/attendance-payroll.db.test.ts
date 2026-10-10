@@ -263,6 +263,31 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         expect(await prisma.attendanceDiscrepancy.count({ where: { userId: "e1", date: new Date("2026-09-08T00:00:00Z") } })).toBe(1)
     })
 
+    it("leaves one settled while a rebuild was reading it as it was settled, and measures from it (review on #16)", async () => {
+        const { AttendanceEngineService: Engine } = await import("@/lib/services/attendance-engine.service")
+        const { prisma } = await import("@/lib/prisma")
+        const day = { userId: "e1", date: new Date("2026-09-08T00:00:00Z") }
+        // The leave withdrawn again: open, the absence measured from the refund.
+        await prisma.dayOffRequest.delete({ where: { id: "late-leave" } })
+        await Engine.recomputeMonth("c1", "2026-09")
+        const open = await prisma.attendanceDiscrepancy.findFirstOrThrow({ where: { ...day, resolvedAt: null } })
+        // His salary corrected, so the next rebuild moves the open one's figures; and it is settled meanwhile.
+        await prisma.salaryChange.update({ where: { id: "back" }, data: { monthlyAmount: 15000 } })
+        await db.query("BEGIN")
+        await db.query(`SELECT id FROM "AttendanceDiscrepancy" WHERE id = $1 FOR UPDATE`, [open.id])
+        await db.query(`UPDATE "AttendanceDiscrepancy" SET "resolvedAt" = now(), "resolvedById" = 'a1', resolution = 'Deducted in October' WHERE id = $1`, [open.id])
+        const rebuilding = Engine.recomputeMonth("c1", "2026-09")
+        await new Promise(r => setTimeout(r, 500))
+        await db.query("COMMIT")
+        await rebuilding
+        // As it was settled.
+        expect(await prisma.attendanceDiscrepancy.findUniqueOrThrow({ where: { id: open.id } })).toMatchObject({ nowDeductionMinor: open.nowDeductionMinor, resolution: "Deducted in October" })
+        // And what the correction changes since, open from there.
+        const next = await prisma.attendanceDiscrepancy.findFirstOrThrow({ where: { ...day, resolvedAt: null } })
+        expect(next).toMatchObject({ paidDeductionMinor: open.nowDeductionMinor, paidStatus: "ABSENT", nowStatus: "ABSENT" })
+        expect(next.nowDeductionMinor).toBeGreaterThan(open.nowDeductionMinor)
+    })
+
     it("lists every open difference a page at a time, none cut off (review on #16)", async () => {
         const { AttendanceDiscrepancyService: Discrepancies } = await import("@/lib/services/attendance-discrepancy.service")
         const { rows: [run] } = await db.query(`SELECT id FROM "PayrollRun" WHERE "companyId" = 'c1'`)
@@ -283,6 +308,20 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         expect(seen).toEqual(all)
         expect(all.length).toBeGreaterThan(5)
         await expect(Discrepancies.list("c1", { after: "yesterday" })).rejects.toThrow("INVALID_CURSOR")
+    })
+
+    it("names the month attendance started from as approved, or none once the switch has moved on (review on #16)", async () => {
+        // September was approved with attendance on, from September.
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-09-01' WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 9)).attendance).toMatchObject({ reachesPayroll: true, from: "2026-09" })
+        // Moved on to November since, or stopped: what it was is not today's setting.
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-11-01' WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 9)).attendance).toMatchObject({ reachesPayroll: true, from: null })
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = NULL WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 9)).attendance).toMatchObject({ reachesPayroll: true, from: null })
+        // A month not yet approved still reads the setting.
+        await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-10-01' WHERE id = 'c1'`)
+        expect((await Payroll.view("c1", 2026, 11)).attendance).toMatchObject({ reachesPayroll: true, from: "2026-10" })
     })
 
     it("is resolved once, however many settle it at the same moment (review on #16)", async () => {

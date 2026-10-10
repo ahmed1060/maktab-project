@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { dialogKeyDown, focusables } from '@/lib/focus-trap'
 
 /**
@@ -40,9 +40,16 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
         return () => document.removeEventListener('focusin', onFocus)
     }, [isOpen, titleId])
 
+    // Drawn already open (shown by its parent rather than toggled, as the
+    // flagged face check and the attendance editors are): what had focus as
+    // it was first drawn opened it. Read while rendering, before an autoFocus
+    // field inside takes focus; the effect above never ran closed, so it read
+    // nothing, and closing left focus on the page (Codex review of #36).
+    const [focusedAtMount] = useState(() => (typeof document === 'undefined' ? null : document.activeElement as HTMLElement | null))
+
     useEffect(() => {
         if (!isOpen) return
-        const opener = lastOutside.current
+        const opener = lastOutside.current ?? (focusedAtMount === document.body ? null : focusedAtMount)
         // After the panel is drawn (it may be in a portal), and after any
         // autoFocus field inside it has taken focus.
         let panel: HTMLElement | null = null
@@ -58,7 +65,7 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
             const now = document.activeElement
             if (opener && opener.isConnected && (!now || now === document.body || panel?.contains(now) || !now.isConnected)) opener.focus()
         }
-    }, [isOpen])
+    }, [isOpen, focusedAtMount])
 
     const onKeyDown = (e: KeyboardEvent) => {
         dialogKeyDown(e, ref.current, document.activeElement, close.current)

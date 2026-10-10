@@ -12,7 +12,15 @@ const CACHE = "nizmo-face-models-v2"
 /** How far the first download has got, 0 to 1, for the screen. */
 export type OnProgress = (share: number) => void
 
-export type Manifest = { files: Record<string, { parts: string[]; size: number; sha256: string }>; total: number }
+export type Manifest = {
+    files: Record<string, { parts: string[]; size: number; sha256: string }>
+    /** The runtimes' WebAssembly, by path under MODELS_URL. */
+    runtime?: Record<string, { size: number; sha256: string }>
+    total: number
+}
+
+/** ONNX Runtime's WebAssembly, which the recognition models run on. */
+export const ORT_WASM = "ort/ort-wasm-simd-threaded.wasm"
 
 export const unavailable = () => Object.assign(new Error("FACE_MODELS_UNAVAILABLE"), { code: "FACE_MODELS_UNAVAILABLE" })
 
@@ -87,6 +95,27 @@ export async function joined(manifest: Manifest, name: string, onBytes: (n: numb
     return out
 }
 
+const runtimeKey = (path: string, sha256: string) => `${MODELS_URL}/${path}?sha=${sha256.slice(0, 16)}`
+
+/**
+ * A runtime's WebAssembly (ONNX Runtime's 14 MB, MediaPipe's 12), kept on the phone like the models, under its
+ * checksum so a new version is a cache miss. The browser's own cache held them before, and a phone's web view
+ * keeps it small: they could be downloaded again at the next check, and a load ahead of the camera fetched them
+ * unasked (review on #48). Checked against the manifest when downloaded; a download that isn't the one
+ * published is kept nowhere, so the next try downloads it afresh.
+ */
+export async function runtime(manifest: Manifest, path: string, onBytes: (n: number) => void): Promise<ArrayBuffer> {
+    const entry = manifest.runtime?.[path]
+    if (!entry) throw unavailable()
+    const key = runtimeKey(path, entry.sha256)
+    const { bytes, fresh } = await cached(`${MODELS_URL}/${path}`, onBytes, key)
+    if (fresh && hex(await crypto.subtle.digest("SHA-256", bytes)) !== entry.sha256) {
+        await (await openCache())?.delete(key)
+        throw Object.assign(new Error("FACE_MODELS_CORRUPT"), { code: "FACE_MODELS_CORRUPT" })
+    }
+    return bytes
+}
+
 /** What the site serves, never cached: offline, missing or not JSON is FACE_MODELS_UNAVAILABLE (review on #47). */
 export async function manifestOf(): Promise<Manifest> {
     try {
@@ -105,10 +134,11 @@ export const SMALL_FILES = ["face_landmarker.task", ...ANTISPOOF_MODELS.map(m =>
 
 /**
  * Whether everything the engine loads is on the phone already: every part of every model, each model
- * checked, and the small models. Loading then costs no download (review on #48: a check of the large
- * models alone let a background load fetch what was missing, unasked).
+ * checked, the small models, and the `runtimes` it runs on. Loading then costs no download beyond a few
+ * small scripts (review on #48: a check of the large models alone let a background load fetch what was
+ * missing, unasked).
  */
-export async function onPhone(manifest: Manifest): Promise<boolean> {
+export async function onPhone(manifest: Manifest, runtimes: readonly string[] = []): Promise<boolean> {
     const cache = await openCache()
     if (!cache) return false
     for (const entry of Object.values(manifest.files)) {
@@ -116,5 +146,9 @@ export async function onPhone(manifest: Manifest): Promise<boolean> {
         for (const p of entry.parts) if (!(await cache.match(partKey(p, entry.sha256)))) return false
     }
     for (const f of SMALL_FILES) if (!(await cache.match(`${MODELS_URL}/${f}`))) return false
+    for (const path of runtimes) {
+        const entry = manifest.runtime?.[path]
+        if (!entry || !(await cache.match(runtimeKey(path, entry.sha256)))) return false
+    }
     return true
 }

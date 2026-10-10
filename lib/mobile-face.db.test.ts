@@ -4,7 +4,7 @@ import { generateKeyPairSync, randomBytes, sign } from "node:crypto"
 import { Client } from "pg"
 import { checkIn, type Post } from "@/lib/mobile/check-in-flow"
 import { enrolFace, settleTemplates, wrappingKey, type FaceVerifier } from "@/lib/mobile/face"
-import type { FaceStatus } from "@/lib/mobile/screen"
+import { SENT_SETTLES_MS, setUpFirst, type FaceStatus, type SentWith } from "@/lib/mobile/screen"
 import type { CheckInDevice } from "@/lib/mobile/native"
 import { parsePhoneKey } from "@/lib/attendance/phone-keys"
 import { checkInSchema, challengeSchema } from "@/lib/validations/attendance-phone.schema"
@@ -94,8 +94,13 @@ function serverFor(userId: string): Post & { sent: string[] } {
 }
 
 describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", () => {
-    /** What GET /api/attendance/face gives the app. */
-    const status = async () => JSON.parse(JSON.stringify(await Face.statusFor("e1"))) as FaceStatus
+    /** What GET /api/attendance/face gives the app, stamped with when the app asked, as the page's fetcher does. */
+    const status = async (askedAt = Date.now()) => ({ ...JSON.parse(JSON.stringify(await Face.statusFor("e1"))), askedAt }) as FaceStatus
+    /** A record of the review templates were sent with, kept here rather than in the app's storage. */
+    const sentRecord = (id: string | null = null) => {
+        let value: SentWith | null = id ? { id, at: Date.now() } : null
+        return { get: () => value, set: (reviewId: string | null) => { value = reviewId ? { id: reviewId, at: Date.now() } : null } }
+    }
     const dbName = `mobile_face_test_${Date.now()}`
     let db: Client
     const phone = standInPhone()
@@ -197,11 +202,92 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
             if (url === "/api/attendance/face/photo") throw new Error("Network down")
             return serverFor("e1")(url, body)
         }, { sent: [] as string[] })
-        await expect(enrolFace(phone, face, failing)).rejects.toThrow("Network down")
+        const sent = sentRecord()
+        await expect(enrolFace(phone, face, failing, sent)).rejects.toThrow("Network down")
+        // Not known to have failed (no answer), so kept until the server says: it has no such review. Not an
+        // answer from just now, while the photo could still be being stored (review on #49)...
+        expect(face.pendingWith).not.toBeNull()
+        expect(await settleTemplates(face, await status(), sent)).toBeNull()
+        // ...but one asked for once its one-time number has run out.
+        expect(await settleTemplates(face, await status(Date.now() + SENT_SETTLES_MS), sent)).toBe("DISCARDED")
+        expect(face.lockedWith).toBe(approved)
+        // Refused, they go at once.
+        const refusing = Object.assign(async (url: string, body: unknown) => {
+            if (url === "/api/attendance/face/photo") throw Object.assign(new Error("Bad photo"), { code: "FACE_PHOTO_INVALID" })
+            return serverFor("e1")(url, body)
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, refusing)).rejects.toThrow("Bad photo")
         expect(face.pendingWith).toBeNull()
         // Even had they stayed (the app stopped before sending), no review of them means they go.
         face.pendingWith = "something"
         expect(await settleTemplates(face, await status())).toBe("DISCARDED")
+        expect(face.lockedWith).toBe(approved)
+    })
+
+    it("keeps the templates of a photo stored whose answer was lost, and promotes them once it is approved (review on #27)", async () => {
+        const sent = sentRecord()
+        // What the page had before the photo went; the reply lost, nothing fetched it again (review on #49).
+        const before = await status()
+        const answerLost = Object.assign(async (url: string, body: unknown) => {
+            const answer = await serverFor("e1")(url, body)
+            if (url === "/api/attendance/face/photo") throw new Error("Network down")
+            return answer
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, answerLost, sent)).rejects.toThrow("Network down")
+        const made = face.pendingWith
+        expect(made).not.toBeNull()
+        // The app knew the review's id before the photo went.
+        const { rows: [stored] } = await db.query(`SELECT id, status FROM "FaceReview" WHERE "userId" = 'e1' ORDER BY "createdAt" DESC LIMIT 1`)
+        expect(stored).toEqual({ id: sent.get()!.id, status: "PENDING" })
+        // The page's answer from before the photo went doesn't show it: the templates stay, not dropped.
+        expect(await settleTemplates(face, before, sent)).toBeNull()
+        expect(face.pendingWith).toBe(made)
+        expect(await settleTemplates(face, await status(), sent)).toBeNull()
+        await Reviews.decide(stored.id, true, null, { id: "a1", isSuperAdmin: false })
+        expect(await settleTemplates(face, await status(), sent)).toBe("PROMOTED")
+        expect(face.lockedWith).toBe(made)
+    })
+
+    it("keeps the record of waiting templates when a set-up again stops before making new ones (review on #49)", async () => {
+        const sent = sentRecord()
+        const answerLost = Object.assign(async (url: string, body: unknown) => {
+            const answer = await serverFor("e1")(url, body)
+            if (url === "/api/attendance/face/photo") throw new Error("Network down")
+            return answer
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, answerLost, sent)).rejects.toThrow("Network down")
+        const made = face.pendingWith
+        const reviewId = sent.get()!.id
+        // Tried again, and the camera closed before any new templates were made.
+        const enrol = face.enrol
+        face.enrol = async () => { throw Object.assign(new Error("closed"), { code: "FACE_CANCELLED" }) }
+        try {
+            await expect(enrolFace(phone, face, serverFor("e1"), sent)).rejects.toThrow("closed")
+        } finally {
+            face.enrol = enrol
+        }
+        // The waiting templates are the earlier photo's, and still known to be.
+        expect(face.pendingWith).toBe(made)
+        expect(sent.get()?.id).toBe(reviewId)
+        await Reviews.decide(reviewId, true, null, { id: "a1", isSuperAdmin: false })
+        expect(await settleTemplates(face, await status(), sent)).toBe("PROMOTED")
+        expect(face.lockedWith).toBe(made)
+    })
+
+    it("never promotes new templates on an earlier review's approval when the app stopped before sending their photo", async () => {
+        const approved = face.lockedWith
+        const { rows: [earlier] } = await db.query(`SELECT id FROM "FaceReview" WHERE "userId" = 'e1' AND status = 'APPROVED' ORDER BY "createdAt" DESC LIMIT 1`)
+        // Left from before: the app recorded the earlier, approved review.
+        const sent = sentRecord(earlier.id)
+        let challenges = 0
+        const stopped = Object.assign(async (url: string, body: unknown) => {
+            // The photo's number never comes: the app stopped with the new templates made.
+            if (url === "/api/attendance/phone/challenge" && ++challenges === 2) throw new Error("App stopped")
+            return serverFor("e1")(url, body)
+        }, { sent: [] as string[] })
+        await expect(enrolFace(phone, face, stopped, sent)).rejects.toThrow("App stopped")
+        expect(face.pendingWith).not.toBeNull()
+        expect(await settleTemplates(face, await status(), sent)).toBe("DISCARDED")
         expect(face.lockedWith).toBe(approved)
     })
 
@@ -230,5 +316,34 @@ describe.skipIf(!ADMIN_URL)("the app's face verification, against the server", (
         expect(k).toEqual({ gone: true, acked: true })
         // The person checks in without face verification, and it isn't held against them.
         expect(await checkIn(phone, serverFor("e1"), "OUT", null)).toMatchObject({ reasons: ["ATTESTATION_UNVERIFIED"] })
+    })
+
+    it("flags a new phone's check-ins until its face is approved: changing phone doesn't turn the face check off (§9.3)", async () => {
+        await Face.acceptConsent("c1", "e1", FACE_CONSENT_VERSION)
+        // The face set up and approved on the old phone, a re-verification photo from it waiting; a new one asked for.
+        await db.query(`UPDATE "CheckInPhone" SET "faceStatus" = 'APPROVED' WHERE id = 'p1'`)
+        expect(await enrolFace(phone, standInFace(), serverFor("e1"))).toMatchObject({ purpose: "REVERIFY", status: "PENDING" })
+        const next = standInPhone()
+        const publicKey = (await next.publicKey())!
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p2', 'c1', 'e1', $1, $2, 'ANDROID', 'PENDING')`, [publicKey, parsePhoneKey(publicKey)!.fingerprint])
+        // Held while the new phone waits: no face of its own, whatever the old one had, so not a failed match (review on #49).
+        const held = await checkIn(next, serverFor("e1"), "IN", null)
+        expect(held).toMatchObject({ outcome: "HELD", reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
+        expect(held).toMatchObject({ reasons: expect.not.arrayContaining(["FACE_UNVERIFIED"]) })
+        // Approved: the old phone revoked, the new one in use.
+        await db.query(`UPDATE "CheckInPhone" SET status = 'REVOKED' WHERE id = 'p1'`)
+        await db.query(`UPDATE "CheckInPhone" SET status = 'ACTIVE' WHERE id = 'p2'`)
+        // The old phone's photo waiting doesn't stop the new one setting its face up: it would be flagged until
+        // someone decided a photo from a phone no longer in use (review on #49).
+        expect((await status()).pendingReview).toBe(false)
+        expect(setUpFirst(await status(), { phoneActive: true, verifier: true })).toBe(true)
+        expect(await checkIn(next, serverFor("e1"), "IN", null)).toMatchObject({ outcome: "FLAGGED", reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
+        // Its photo sent and waiting: still not a face it can be matched against.
+        const review = await enrolFace(next, standInFace(), serverFor("e1"))
+        expect(await checkIn(next, serverFor("e1"), "OUT", null)).toMatchObject({ reasons: expect.arrayContaining(["FACE_NOT_SET_UP"]) })
+        // Approved, the phone's face check is in use: no longer flagged for it.
+        await Reviews.decide(review.id, true, null, { id: "a1", isSuperAdmin: false })
+        const answer = await checkIn(next, serverFor("e1"), "IN", null)
+        expect(answer).toMatchObject({ reasons: expect.not.arrayContaining(["FACE_NOT_SET_UP"]) })
     })
 })

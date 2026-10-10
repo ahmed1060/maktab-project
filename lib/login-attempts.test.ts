@@ -12,13 +12,18 @@ import bcrypt from "bcryptjs"
 
 const db = {
     superAdmins: {} as Record<string, any>,
+    users: {} as Record<string, any>,
+    failLogin: false,
     limits: {} as Record<string, { count: number; resetAt: Date }>,
 }
 
 vi.mock("@/lib/prisma", () => ({
     prisma: {
         superAdmin: { findUnique: async ({ where }: any) => Object.values(db.superAdmins).find((a: any) => a.email === where.email) ?? null },
-        user: { findUnique: async () => null },
+        user: {
+            findUnique: async ({ where }: any) => Object.values(db.users).find((u: any) => u.email === where.email) ?? null,
+            update: async () => ({}),
+        },
         systemSettings: { findUnique: async () => null },
         rateLimit: {
             findUnique: async ({ where }: any) => db.limits[where.key] ?? null,
@@ -26,7 +31,8 @@ vi.mock("@/lib/prisma", () => ({
             update: async ({ where }: any) => { db.limits[where.key].count++; return db.limits[where.key] },
             updateMany: async ({ where, data }: any) => {
                 const row = db.limits[where.key]
-                if (row && row.count > (where.count?.gt ?? -Infinity)) { row.count -= data.count.decrement; return { count: 1 } }
+                const sameWindow = !where.resetAt || row?.resetAt.getTime() === where.resetAt.getTime()
+                if (row && sameWindow && row.count > (where.count?.gt ?? -Infinity)) { row.count -= data.count.decrement; return { count: 1 } }
                 return { count: 0 }
             },
         },
@@ -39,10 +45,22 @@ vi.mock("@/lib/services/mfa.service", () => ({
 }))
 vi.mock("@/lib/services/trusted-device.service", () => ({ TrustedDeviceService: { isTrusted: async () => false } }))
 vi.mock("@/lib/services/audit-log.service", () => ({
-    AuditLogService: { log: async () => {}, logSystemError: async () => "ref" },
+    AuditLogService: {
+        log: async (action: string) => { if (action === "LOGIN" && db.failLogin) throw new Error("audit down") },
+        logSystemError: async () => "ref", friendlyErrorMessage: () => "error",
+    },
+}))
+// The code sent by email for "email me a code instead".
+vi.mock("@/lib/services/verification-code.service", () => ({
+    VerificationCodeService: { issue: async () => {}, verify: async (_email: string, _purpose: string, code: string) => code === "654321" },
 }))
 
 const { authOptions } = await import("@/lib/auth")
+const { RateLimiter } = await import("@/lib/api-utils")
+const { POST: askForCode } = await import("@/app/api/auth/mfa-recovery/request/route")
+const emailMeACode = (body: Record<string, string>) => askForCode(new Request("http://localhost/api/auth/mfa-recovery/request", {
+    method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.7" }, body: JSON.stringify(body),
+}) as any)
 const authorize = (credentials: Record<string, string>) =>
     (authOptions.providers[0] as any).options.authorize(credentials, {} as any)
 
@@ -51,8 +69,15 @@ const password = "the-right-password"
 
 beforeEach(() => {
     db.limits = {}
+    db.failLogin = false
     db.superAdmins = {
-        sa: { id: "sa", email, password: bcrypt.hashSync(password, 4), firstName: "S", lastName: "A", mfaEnabled: true, mfaSecret: "stored" },
+        sa: { id: "sa", email, password: bcrypt.hashSync(password, 4), firstName: "S", lastName: "A", mfaEnabled: true, mfaSecret: "stored", emailVerifiedAt: new Date() },
+    }
+    db.users = {
+        held: {
+            id: "held", email: "held@example.test", password: bcrypt.hashSync(password, 4), firstName: "H", lastName: "D",
+            role: "EMPLOYEE", status: "SUSPENDED", companyId: "c1", company: { id: "c1", name: "One", isBanned: false, package: null, payments: [] },
+        },
     }
 })
 
@@ -72,5 +97,51 @@ describe("signing in, five tries in fifteen minutes", () => {
     it("still stops a sixth try after five wrong codes", async () => {
         for (let i = 0; i < 5; i++) await expect(authorize({ email, password, mfaCode: "000000" })).rejects.toThrow("INVALID_MFA_CODE")
         await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Too many login attempts")
+    })
+})
+
+describe("what gives an attempt back (review on #29)", () => {
+    it("an account turned away after its password was right, so one put right in the window can sign in", async () => {
+        // Suspended, banned, out of subscription, another company or closed:
+        // none is a wrong guess, but each used one of the address's five.
+        const held = { email: "held@example.test", password }
+        for (let i = 0; i < 6; i++) await expect(authorize(held), `try ${i + 1}`).rejects.toThrow("Your account has been suspended or deleted.")
+        db.users.held.status = "ACTIVE"
+        expect(await authorize(held)).toMatchObject({ id: "held" })
+    })
+
+    it("asking for a code by email with the right password, as the step that asks for the code does", async () => {
+        for (let i = 0; i < 6; i++) {
+            const res = await emailMeACode({ email, password })
+            expect(res.status, `request ${i + 1}`).toBe(200)
+        }
+        expect(await authorize({ email, password, mfaRecoveryCode: "654321" })).toMatchObject({ id: "sa" })
+        // A wrong password there still counts.
+        for (let i = 0; i < 5; i++) expect((await emailMeACode({ email, password: "wrong" })).status).toBe(403)
+        expect((await emailMeACode({ email, password })).status).toBe(429)
+    })
+
+    it("only in the window it was counted in", async () => {
+        // Counted in one window; by the time the attempt comes back a new
+        // window has begun, with a wrong guess in it. That guess stays counted.
+        const { resetAt } = await RateLimiter.getLimitData("login:198.51.100.1", 5, 15 * 60 * 1000)
+        db.limits["login:198.51.100.1"] = { count: 1, resetAt: new Date(resetAt + 15 * 60 * 1000) }
+        await RateLimiter.refund("login:198.51.100.1", resetAt)
+        expect(db.limits["login:198.51.100.1"].count).toBe(1)
+        // In its own window it is given back.
+        const again = await RateLimiter.getLimitData("login:198.51.100.2", 5, 15 * 60 * 1000)
+        await RateLimiter.refund("login:198.51.100.2", again.resetAt)
+        expect(db.limits["login:198.51.100.2"].count).toBe(0)
+    })
+
+    it("once, even if something fails after a sign-in has given it back", async () => {
+        // Guards the refund above: the success gives it back, then the audit
+        // write fails, and the catch must not give back a second, which would
+        // forget the wrong guess before it. (The old code refunded neither.)
+        db.superAdmins.sa.mfaEnabled = false
+        expect(await authorize({ email, password: "wrong" })).toBeNull()
+        db.failLogin = true
+        await expect(authorize({ email, password })).rejects.toThrow("audit down")
+        expect(db.limits["login:203.0.113.7"].count).toBe(1)
     })
 })

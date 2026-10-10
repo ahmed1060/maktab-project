@@ -113,13 +113,20 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
     })
 
     it("gives the phone in use its wrapping key, the same each time, signed for", async () => {
+        // A slow database, as from Vercel's region to the database's: past Prisma's default 5 s the key was lost,
+        // as the face photo and the check-in were in production (5 October).
+        const statusFor = Face.statusFor.bind(Face)
+        vi.spyOn(Face, "statusFor").mockImplementationOnce(async (...args) => {
+            await new Promise(r => setTimeout(r, 5_500))
+            return statusFor(...args)
+        })
         const first = await fetchKey("e1")
         expect(first).toMatchObject({ deleteTemplates: false })
         expect(Buffer.from(first.key!, "base64")).toHaveLength(32)
         expect(await fetchKey("e1")).toEqual(first)
         const { nonce } = await Challenges.issue("e1", "FACE")
         expect(await reason(Keys.fetch("c1", "e1", { nonce, keyFingerprint: phones.e1.fingerprint, signature: signAs("e2", keyText(nonce, phones.e1.fingerprint)) }))).toBe("PHONE_SIGNATURE_INVALID")
-    })
+    }, 20_000)
 
     it("counts a check-in whose face check passed, signed in; flags one without, or with a failed check", async () => {
         const passed = { verified: true, score: 0.93, liveness: 0.97, modelVersion: "m1", attempts: 1 }
@@ -281,6 +288,10 @@ describe.skipIf(!ADMIN_URL)("face verification at check-in, crypto-shredding and
         await ackAs("e2")
         expect(await Keys.lastPurge()).toMatchObject({ keysDestroyed: 1, acknowledged: 1 })
         expect(await fetchKey("e1")).toEqual({ key: null, deleteTemplates: false })
+        // The count is the purge's own: the acknowledging phone's key row going with the phone doesn't lower it
+        // (review on #27). A phone deleted outright cascades its key row.
+        await db.query(`DELETE FROM "FaceWrappingKey" WHERE "userId" = 'e1'`)
+        expect(await Keys.lastPurge()).toMatchObject({ keysDestroyed: 1, acknowledged: 1 })
         const { rows } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'PURGE_FACE_VERIFICATION'`)
         expect(rows).toEqual([{ details: { faceVerification: { old: "ON", new: "OFF" }, keysDestroyed: 1, photosDeleted: 1 } }])
     })

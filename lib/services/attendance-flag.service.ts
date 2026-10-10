@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
+import { lockMonths, lockedMonths, punchMonths, punchMonthsOf } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { addDays } from "@/lib/attendance/calendar"
 import { optional } from "@/lib/notice"
@@ -38,6 +38,9 @@ async function actorOf(tx: Prisma.TransactionClient, actorId: string) {
 
 const wallClockText = (d: Date) => d.toISOString().slice(0, 19)
 
+/** How many a queue shows: the oldest first. */
+const QUEUE = 500
+
 function visibleSql(v: Visibility): Prisma.Sql {
     if (v.kind === "COMPANY") return Prisma.sql`TRUE`
     if (v.kind === "TEAM") return Prisma.sql`u."teamLeaderId" = ${v.leaderId}`
@@ -60,25 +63,43 @@ const shown = (p: Prisma.AttendancePunchGetPayload<{ select: typeof SHOWN }>) =>
 export class AttendanceFlagService {
     /**
      * What waits for this reviewer: one company's, or — for the Super Admin's
-     * queue — every company's. Not those in a month whose payroll is approved
-     * or paid: they can't be decided (§12.1), and the oldest 500 would
-     * otherwise crowd out every one that can (review on #23).
+     * queue — every company's. Not those decide() would refuse for a month
+     * whose payroll is approved or paid (§12.1): their buttons could never
+     * work, and the oldest 500 would otherwise crowd out every one that can
+     * (review on #23). Its own month is ruled out in the query; the month a
+     * night before the 1st or a shift starting on it falls in, as decide()
+     * takes it (punchMonthsOf), page by page after (review on #63).
      */
     static async list(reviewer: Reviewer, scope: { companyId: string; visible: Visibility } | "ALL") {
         const forReviewer = reviewer === "PLATFORM"
             ? Prisma.sql`${PLATFORM_REASON} = ANY(p."flagReasons")`
             : Prisma.sql`NOT (${PLATFORM_REASON} = ANY(COALESCE(p."flagReasons", ARRAY[]::text[])))`
         const inScope = scope === "ALL" ? Prisma.sql`TRUE` : Prisma.sql`p."companyId" = ${scope.companyId} AND ${visibleSql(scope.visible)}`
-        const ids = await prisma.$queryRaw<{ id: string }[]>`
-            SELECT p.id FROM "AttendancePunch" p JOIN "User" u ON u.id = p."userId"
-            WHERE p.status = 'FLAGGED' AND p."voidedAt" IS NULL AND ${forReviewer} AND ${inScope}
-              AND NOT EXISTS (
-                SELECT 1 FROM "PayrollRun" r
-                WHERE r."companyId" = p."companyId" AND r.status IN ('APPROVED', 'PAID')
-                  AND r.year = EXTRACT(YEAR FROM p."punchAtLocal") AND r.month = EXTRACT(MONTH FROM p."punchAtLocal"))
-            ORDER BY p."punchAtLocal" ASC
-            LIMIT 500`
-        const rows = await prisma.attendancePunch.findMany({ where: { id: { in: ids.map(r => r.id) } }, select: SHOWN, orderBy: { punchAtLocal: "asc" } })
+        const ids: string[] = []
+        let after: { punchAtLocal: Date; id: string } | null = null
+        for (;;) {
+            const page: { id: string; companyId: string; userId: string; punchAtLocal: Date }[] = await prisma.$queryRaw`
+                SELECT p.id, p."companyId", p."userId", p."punchAtLocal" FROM "AttendancePunch" p JOIN "User" u ON u.id = p."userId"
+                WHERE p.status = 'FLAGGED' AND p."voidedAt" IS NULL AND ${forReviewer} AND ${inScope}
+                  AND NOT EXISTS (
+                    SELECT 1 FROM "PayrollRun" r
+                    WHERE r."companyId" = p."companyId" AND r.status IN ('APPROVED', 'PAID')
+                      AND r.year = EXTRACT(YEAR FROM p."punchAtLocal") AND r.month = EXTRACT(MONTH FROM p."punchAtLocal"))
+                  AND ${after ? Prisma.sql`(p."punchAtLocal", p.id) > (${after.punchAtLocal}, ${after.id})` : Prisma.sql`TRUE`}
+                ORDER BY p."punchAtLocal" ASC, p.id ASC
+                LIMIT ${QUEUE}`
+            const locked = new Set<string>()
+            for (const companyId of new Set(page.map(p => p.companyId))) {
+                const theirs = page.filter(p => p.companyId === companyId)
+                const months = await punchMonthsOf(prisma, companyId, theirs.map(p => ({ userId: p.userId, local: wallClockText(p.punchAtLocal) })))
+                const closed = await lockedMonths(prisma, companyId, months.flat())
+                theirs.forEach((p, i) => { if (months[i].some(m => closed.has(m))) locked.add(p.id) })
+            }
+            ids.push(...page.filter(p => !locked.has(p.id)).map(p => p.id))
+            if (page.length < QUEUE || ids.length >= QUEUE) break
+            after = page.at(-1)!
+        }
+        const rows = await prisma.attendancePunch.findMany({ where: { id: { in: ids.slice(0, QUEUE) } }, select: SHOWN, orderBy: [{ punchAtLocal: "asc" }, { id: "asc" }] })
         return rows.map(shown)
     }
 
@@ -137,20 +158,27 @@ export class AttendanceFlagService {
     static async integrity(days = 30, now = new Date()) {
         const since = new Date(now.getTime() - days * 86_400_000)
         // Counted in Postgres: only the counts leave the database, however
-        // many check-ins came in (review on #23).
-        const [refusals, totals, flags] = await Promise.all([
+        // many check-ins came in (review on #23). The totals and the reasons
+        // in one statement, so from one snapshot: two could straddle a
+        // check-in arriving, a reason counted with no flagged check-in to
+        // show for it (review on #63).
+        const [refusals, totals] = await Promise.all([
             prisma.checkInRefusal.groupBy({ by: ["companyId", "reason"], where: { at: { gte: since } }, _count: { _all: true } }),
-            prisma.$queryRaw<{ companyId: string; checkIns: number; accepted: number; flagged: number }[]>`
-                SELECT "companyId", COUNT(*)::int AS "checkIns",
-                       (COUNT(*) FILTER (WHERE status = 'ACCEPTED'))::int AS accepted,
-                       (COUNT(*) FILTER (WHERE cardinality("flagReasons") > 0))::int AS flagged
-                FROM "AttendancePunch" WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
-                GROUP BY "companyId"`,
-            prisma.$queryRaw<{ companyId: string; reason: string; n: number }[]>`
-                SELECT "companyId", reason, COUNT(*)::int AS n
-                FROM "AttendancePunch", unnest("flagReasons") AS reason
-                WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
-                GROUP BY "companyId", reason`,
+            prisma.$queryRaw<{ companyId: string; checkIns: number; accepted: number; flagged: number; flaggedBy: Record<string, number> }[]>`
+                WITH recent AS (
+                    SELECT "companyId", status, "flagReasons" FROM "AttendancePunch" WHERE source = 'MOBILE' AND "receivedAt" >= ${since}
+                ), reasons AS (
+                    SELECT "companyId", jsonb_object_agg(reason, n) AS "flaggedBy"
+                    FROM (SELECT "companyId", reason, COUNT(*)::int AS n FROM recent, unnest("flagReasons") AS reason GROUP BY "companyId", reason) counted
+                    GROUP BY "companyId"
+                )
+                SELECT t."companyId", t."checkIns", t.accepted, t.flagged, COALESCE(r."flaggedBy", '{}'::jsonb) AS "flaggedBy"
+                FROM (
+                    SELECT "companyId", COUNT(*)::int AS "checkIns",
+                           (COUNT(*) FILTER (WHERE status = 'ACCEPTED'))::int AS accepted,
+                           (COUNT(*) FILTER (WHERE cardinality("flagReasons") > 0))::int AS flagged
+                    FROM recent GROUP BY "companyId"
+                ) t LEFT JOIN reasons r ON r."companyId" = t."companyId"`,
         ])
         const ids = [...new Set([...refusals.map(r => r.companyId), ...totals.map(t => t.companyId)])]
         const companies = await prisma.company.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
@@ -161,8 +189,7 @@ export class AttendanceFlagService {
             if (!rows.has(companyId)) rows.set(companyId, { companyId, name: names.get(companyId) ?? "?", checkIns: 0, accepted: 0, flagged: 0, refused: 0, refusedBy: {}, flaggedBy: {} })
             return rows.get(companyId)!
         }
-        for (const t of totals) Object.assign(row(t.companyId), { checkIns: t.checkIns, accepted: t.accepted, flagged: t.flagged })
-        for (const f of flags) row(f.companyId).flaggedBy[f.reason] = f.n
+        for (const t of totals) Object.assign(row(t.companyId), { checkIns: t.checkIns, accepted: t.accepted, flagged: t.flagged, flaggedBy: t.flaggedBy })
         for (const g of refusals) {
             const r = row(g.companyId)
             r.refused += g._count._all

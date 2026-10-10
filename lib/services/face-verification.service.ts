@@ -8,7 +8,7 @@ import { AuditLogService } from "./audit-log.service"
 import { CompanyService } from "./company.service"
 import { hasBundle, resolveBundles } from "@/lib/features/bundles"
 import { reverifyOverdue } from "@/lib/attendance/face-overdue"
-import { toDateString } from "@/lib/attendance/calendar"
+import { calendarDateStr } from "@/lib/time"
 
 /**
  * Face verification's switches and consent (ATTENDANCE_PLAN.md §9.5, §10.4).
@@ -115,7 +115,11 @@ export class FaceVerificationService {
     static async overdueReverifications(companyId: string): Promise<{ userId: string; name: string; since: string }[]> {
         const status = await this.companyStatus(companyId)
         if (!status.allowed) return []
-        const today = await AttendanceCalendarService.today(companyId)
+        // Days as the company counts them: a request just after its midnight is that day, not the UTC
+        // date before, which made it overdue a working day early (review on #27).
+        const zone = (await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }))?.timezone ?? undefined
+        const dateOf = (instant: Date) => calendarDateStr(instant, zone)
+        const today = dateOf(new Date())
         const policy = policyOn(await AttendancePolicyService.versions(companyId), today)
         const workWeek = policy?.body.workWeek ?? [0, 1, 2, 3, 4]
         const people = await prisma.user.findMany({
@@ -136,8 +140,8 @@ export class FaceVerificationService {
             const due = status.reverifyMonths && decided ? addMonths(decided, status.reverifyMonths) : null
             const since = [p.faceReverifyRequestedAt, due && due <= new Date() ? due : null]
                 .filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0]
-            if (since && reverifyOverdue(toDateString(since), today, workWeek)) {
-                out.push({ userId: p.id, name: `${p.firstName} ${p.lastName}`.trim(), since: toDateString(since) })
+            if (since && reverifyOverdue(dateOf(since), today, workWeek)) {
+                out.push({ userId: p.id, name: `${p.firstName} ${p.lastName}`.trim(), since: dateOf(since) })
             }
         }
         return out
@@ -233,8 +237,8 @@ export class FaceVerificationService {
         const [company, consent, phone, pending, reference, lastReview] = await Promise.all([
             this.companyStatus(person.companyId),
             this.currentConsent(userId),
-            prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { faceStatus: true, faceEnrolledAt: true, faceModelVersion: true } }),
-            prisma.faceReview.count({ where: { userId, status: "PENDING" } }),
+            prisma.checkInPhone.findFirst({ where: { userId, status: "ACTIVE" }, select: { id: true, faceStatus: true, faceEnrolledAt: true, faceModelVersion: true } }),
+            prisma.faceReview.findMany({ where: { userId, status: "PENDING" }, select: { phoneId: true } }),
             prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId, status: "APPROVED", photo: { not: null } }, select: { decidedAt: true } }),
             // The app promotes the templates it sent with this review only once it is approved (lib/mobile/face.ts).
             prisma.faceReview.findFirst({ where: { companyId: person.companyId, userId }, orderBy: { createdAt: "desc" }, select: { id: true, status: true } }),
@@ -251,7 +255,9 @@ export class FaceVerificationService {
             consentVersion: FACE_CONSENT_VERSION,
             // Which face model made the approved templates: a phone with another model sets the face up again.
             phone: phone ? { faceStatus: phone.faceStatus, enrolledAt: phone.faceEnrolledAt, modelVersion: phone.faceModelVersion } : null,
-            pendingReview: pending > 0,
+            // A photo from the phone in use: one left waiting by a phone since replaced doesn't stop the new
+            // phone setting its face up, which withdraws it (review on #49).
+            pendingReview: !!phone && pending.some(r => r.phoneId === phone.id),
             reverifyDue: required && enrolled && (!!person.faceReverifyRequestedAt || dueBySchedule),
             lastReview,
         }

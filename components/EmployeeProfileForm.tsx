@@ -98,6 +98,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [isVerifying, setIsVerifying] = useState(false)
     const [showVerificationPassword, setShowVerificationPassword] = useState(false)
     const [verificationCallback, setVerificationCallback] = useState<{ type: 'UPDATE' | 'RESET_PASSWORD', data?: any } | null>(null)
+    const closeVerification = () => {
+        setVerificationModalOpen(false)
+        setVerificationPassword('')
+        setVerificationCallback(null)
+    }
+    // A dialog like the others: focus in, Tab kept inside, Escape closes, focus back (Codex review of #36).
+    const verifyDialog = useDialog(verificationModalOpen, closeVerification)
 
     useEffect(() => {
         // Prevent default drag and drop behavior globally for this page
@@ -1157,16 +1164,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             {
                 verificationModalOpen && createPortal(
                     <div className="modal-overlay">
-                        <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }}>
+                        <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }} {...verifyDialog.panelProps}>
                             <div className="modal-header">
-                                <h3 className="modal-title">{t('verify_identity')}</h3>
+                                <h3 className="modal-title" id={verifyDialog.titleId}>{t('verify_identity')}</h3>
                                 <button aria-label={t('close')}
                                     className="modal-close"
-                                    onClick={() => {
-                                        setVerificationModalOpen(false)
-                                        setVerificationPassword('')
-                                        setVerificationCallback(null)
-                                    }}
+                                    onClick={closeVerification}
                                 >
                                     &times;
                                 </button>
@@ -1257,11 +1260,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 <button
                                     className="btn"
                                     style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', minWidth: '100px' }}
-                                    onClick={() => {
-                                        setVerificationModalOpen(false)
-                                        setVerificationPassword('')
-                                        setVerificationCallback(null)
-                                    }}
+                                    onClick={closeVerification}
                                 >
                                     {t('cancel')}
                                 </button>

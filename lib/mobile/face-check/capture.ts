@@ -139,9 +139,11 @@ export async function capture(engine: Engine, camera: Camera, options: CaptureOp
                 return result(false)
             }
             const l = engine.read(camera.video, now())
-            const misfit = l.faces === 1 && l.reading ? fitOf(l.reading.box, camera.visible?.()) : null
-            if (l.faces > 1 || !looking(l.reading, l.faces) || misfit) {
-                camera.say(l.faces > 1 ? "ONE_FACE" : !looking(l.reading, l.faces) ? "FACE_CAMERA" : misfit!)
+            // Upright first: on its side, the oval on the screen isn't the one the fit measures against.
+            const misfit = camera.upright && !camera.upright() ? "UPRIGHT"
+                : l.faces === 1 && l.reading ? fitOf(l.reading.box, camera.visible?.()) : null
+            if (misfit === "UPRIGHT" || l.faces > 1 || !looking(l.reading, l.faces) || misfit) {
+                camera.say(misfit === "UPRIGHT" ? misfit : l.faces > 1 ? "ONE_FACE" : !looking(l.reading, l.faces) ? "FACE_CAMERA" : misfit!)
                 // Out of place: the look under way starts again; the ring keeps the looks already taken.
                 steadySince = null
                 camera.fill?.(looks.length / 2)

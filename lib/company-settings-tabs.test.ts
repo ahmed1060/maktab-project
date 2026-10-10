@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 import { COMPANY_SETTINGS_TABS, settingsTab } from "./company-settings-tabs"
-import { leavingHref } from "./useUnsavedChanges"
+import { leavingHref, unsavedGuard } from "./useUnsavedChanges"
+import { startsNavigation } from "./navigation-progress"
 
 /**
  * The company settings tabs (ATTENDANCE_PLAN.md §5.1): one registry, and a
@@ -60,6 +61,65 @@ describe("the company settings tabs", () => {
         expect(TABS).toContain("if (dirty) setLeavingFor({ tab: next })")
     })
 
+    it("count the access review switch as saved once it is, not once the page has read it back (review on #5)", () => {
+        // It compared with the setting it was given, which changes only after
+        // a fresh read: until then Save stayed on and leaving asked about
+        // edits already kept, and for good if that read failed.
+        const review = readFileSync("components/AccessReviewSetting.tsx", "utf8")
+        expect(review).toContain("const dirty = enabled !== saved.enabled || months !== saved.months")
+        const save = review.slice(review.indexOf("const save = async"))
+        const kept = save.indexOf("setSaved({ enabled, months })")
+        expect(kept).toBeGreaterThan(save.indexOf("if (!res.ok) return"))
+        expect(kept).toBeLessThan(save.indexOf("onSaved()"))
+    })
+
+    it("ask before a card's own way out too: the Roles tab's Preview (review on #5)", () => {
+        // Preview moved to the dashboard with router.push, which neither the
+        // link guard nor the browser's prompt sees: an access review edit on
+        // the same tab was dropped without a word.
+        const changes: boolean[] = [], asked: Array<() => void> = []
+        let gone = 0
+        const guard = unsavedGuard(d => changes.push(d), go => asked.push(go))
+        guard.leave(() => gone++)
+        expect(gone).toBe(1)
+        expect(asked).toHaveLength(0)
+
+        guard.report("access-review", true)
+        guard.leave(() => gone++)
+        expect(gone).toBe(1)
+        expect(asked).toHaveLength(1)
+        // Only once the person chooses to discard the edits.
+        asked[0]()
+        expect(gone).toBe(2)
+
+        guard.report("access-review", false)
+        guard.leave(() => gone++)
+        expect(gone).toBe(3)
+        expect(asked).toHaveLength(1)
+        expect(changes).toEqual([true, false])
+
+        expect(TABS).toContain("<UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>")
+        expect(TABS).toContain("if ('go' in next) return next.go()")
+        const roles = readFileSync("components/CompanyRolesCard.tsx", "utf8")
+        expect(roles).toContain("onClick={() => leave(() => preview(role))}")
+        expect(roles).not.toContain("onClick={() => preview(role)}")
+    })
+
+    it("keep the edits guarded until Preview has gone, and stay if it fails (review on #49)", () => {
+        // Discarding switched the guard off before Preview's session update,
+        // which can wait or fail: meanwhile, or for good after a failure, the
+        // edits still on screen could be left by a link without a word.
+        const confirm = TABS.slice(TABS.indexOf("onConfirm={() => {"))
+        expect(confirm.indexOf("if ('go' in next) return next.go()")).toBeGreaterThan(-1)
+        expect(confirm.indexOf("if ('go' in next) return next.go()")).toBeLessThan(confirm.indexOf("setDirty(false)"))
+        // A failed update comes back without the preview: it says so and stays.
+        const roles = readFileSync("components/CompanyRolesCard.tsx", "utf8")
+        const preview = roles.slice(roles.indexOf("const preview = async"), roles.indexOf("router.refresh()"))
+        expect(preview).toContain("await update({ previewRoleId: role.id }).catch(() => null)")
+        expect(preview.indexOf("if (!session?.user?.preview) return showToast(t('error_generic'), 'error')")).toBeGreaterThan(-1)
+        expect(preview.indexOf("if (!session?.user?.preview)")).toBeLessThan(preview.indexOf("router.push('/dashboard')"))
+    })
+
     describe("and before leaving the page by a link", () => {
         const here = "https://nizmo.test/dashboard/companies/c1/settings?tab=payroll"
         const click = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false }
@@ -79,6 +139,25 @@ describe("the company settings tabs", () => {
             expect(leavingHref(link("/dashboard/tasks"), { ...click, ctrlKey: true }, here)).toBeNull()
             expect(leavingHref(link("/dashboard/tasks"), { ...click, button: 1 }, here)).toBeNull()
             expect(leavingHref(link("#top"), click, here)).toBeNull()
+        })
+
+        it("only prevents the click: the link's own click still runs, and the progress bar doesn't start (review on #5)", () => {
+            // The click was stopped, so a sidebar link's own click, which
+            // closes the sidebar on a phone, never ran: confirmed, the next
+            // page opened under the sidebar. And the progress bar, listening
+            // on the document first, had already started and ran on after Cancel.
+            const guard = readFileSync("lib/useUnsavedChanges.tsx", "utf8")
+            const links = guard.slice(guard.indexOf("export function useGuardLinks"), guard.indexOf("export function useUnsavedState"))
+            expect(links).toContain("e.preventDefault()")
+            expect(links).not.toMatch(/stopPropagation|stopImmediatePropagation/)
+            // On the window, so before the progress bar's listener on the document.
+            expect(links).toContain("window.addEventListener('click', onClick, true)")
+            expect(readFileSync("components/NavigationProgress.tsx", "utf8")).toContain("document.addEventListener('click', onClick, true)")
+            const sidebarLink = { href: new URL("/dashboard/tasks", here).href, target: "", hasAttribute: () => false }
+            expect(startsNavigation(click, sidebarLink, here)).toBe(true)
+            expect(startsNavigation({ ...click, defaultPrevented: true }, sidebarLink, here)).toBe(false)
+            // The sidebar's links close it in their own click.
+            expect(readFileSync("components/DashboardShell.tsx", "utf8")).toContain("onClick={() => isMobile && setIsSidebarOpen(false)}")
         })
 
         it("is wired to the tabs, and the back link is a link", () => {

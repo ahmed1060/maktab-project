@@ -33,4 +33,10 @@ describe.each(PICKERS)("%s", file => {
         expect(s).toContain("calendar_prev_month")
         expect(s).toContain("calendar_next_month")
     })
+
+    it("names each month button for what it does in Arabic too, where the first one goes forward (Codex review of #35)", () => {
+        // In Arabic the first button moves to the next month and the second to the previous one.
+        expect(s).toMatch(/aria-label=\{t\(locale === 'ar' \? 'calendar_next_month' : 'calendar_prev_month'/)
+        expect(s).toMatch(/aria-label=\{t\(locale === 'ar' \? 'calendar_prev_month' : 'calendar_next_month'/)
+    })
 })

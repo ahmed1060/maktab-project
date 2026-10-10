@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -60,6 +60,8 @@ export default function AttendancePage() {
     const { setTitle, setSubtitle } = useHeader()
     const { data: session, status } = useSession()
     const params = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
     const p = useCan()
     const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
     const companyId = isSuperAdmin ? params.get('companyId') : null
@@ -74,7 +76,8 @@ export default function AttendancePage() {
     const correctsCompany = p.companyWide('attendance.correct')
     // The company's date, not the device's: around midnight, or for somebody
     // abroad, they differ, and every default date below starts from it (review on #12).
-    const { data: peopleBody } = useSWR(!isSuperAdmin || companyId ? `/api/attendance/people?${q}` : null, fetcher)
+    // Asked once the session says who is asking: before, a Super Admin's request went without the company (review on #49).
+    const { data: peopleBody, error: peopleError } = useSWR(status !== 'loading' && (!isSuperAdmin || companyId) ? `/api/attendance/people?${q}` : null, fetcher)
     const today: string | undefined = peopleBody?.data?.today
     // Whoever sees other people's attendance starts on what needs a decision (§13.1).
     const seesOthers = p.can('attendance.view_team')
@@ -86,13 +89,20 @@ export default function AttendancePage() {
         ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
     ]
     // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
-    // A tab picked by hand holds only under the link it was picked under: a new link wins.
+    // A tab picked by hand goes into the address too: the same notice's link followed again is then a change
+    // of address, and opens its tab, where a pick held aside kept winning (review on #21).
     const linked = params.get('tab') as Tab | null
-    const [picked, setPicked] = useState<{ tab: Tab; under: Tab | null } | null>(null)
-    const setTab = (k: Tab) => setPicked({ tab: k, under: linked })
-    const tab: Tab = picked && picked.under === linked ? picked.tab : linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
+    const setTab = (k: Tab) => {
+        const next = new URLSearchParams(params.toString())
+        next.set('tab', k)
+        router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+    }
+    const tab: Tab = linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
 
-    if (status === 'loading' || (!today && !(isSuperAdmin && !companyId))) return <LoadingSpinner />
+    if (status === 'loading') return <LoadingSpinner />
+    // Failed, it says so: everything below waits on the company's date, and a spinner would wait for good (review on #12).
+    if (peopleError && !today && !(isSuperAdmin && !companyId)) return <p role="alert" style={{ color: 'var(--danger-fg)' }}>{t('error_generic')}</p>
+    if (!today && !(isSuperAdmin && !companyId)) return <LoadingSpinner />
     if (isSuperAdmin && !companyId) {
         return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
     }
@@ -109,13 +119,17 @@ export default function AttendancePage() {
                     ))}
                 </div>
             )}
-            {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
-            {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
-            {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
-            {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
-            {tab === 'face' && <FaceTab q={q} />}
-            {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
-            {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
+            {/* Another company, picked without leaving the page, starts afresh: the tabs' dates were the last
+                company's, from its own calendar, and a file chosen for import was meant for it (review on #13). */}
+            <Fragment key={companyId ?? ''}>
+                {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
+                {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
+                {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
+                {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
+                {tab === 'face' && <FaceTab q={q} />}
+                {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
+                {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
+            </Fragment>
         </div>
     )
 }

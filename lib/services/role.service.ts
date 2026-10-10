@@ -23,7 +23,8 @@ export type RoleForToken = {
     /**
      * Set once an acting role is over and the person's return is due: the base
      * role they return to, whose grants `grants` then holds (§6.13). The row
-     * still names the acting role until the nightly job moves them back.
+     * still names the acting role until the nightly job moves them back, so
+     * the session reloads this at every check until then.
      */
     role?: UserRole; actingEnded?: true
 }
@@ -298,10 +299,15 @@ export class RoleService {
         if (role.holders > 0) throw new Error("ROLE_HELD")
         if (await prisma.user.count({ where: { returnRoleId: id } }) > 0) throw new Error("ROLE_HELD")
         if (role.isDefault) throw new Error("ROLE_IS_DEFAULT")
-        // Somebody has asked for it: deleting the role would delete their
-        // request with it, unseen. Decide or cancel the requests first.
-        if (await prisma.roleRequest.count({ where: { roleId: id, status: "PENDING" } }) > 0) throw new Error("ROLE_REQUESTED")
         await prisma.$transaction(async (tx) => {
+            // Somebody has asked for it: deleting the role would delete their
+            // request with it, unseen. Decide or cancel the requests first.
+            // Counted under the role's row lock (review on #3): a request
+            // being made holds a share of it through its foreign key until it
+            // commits, so the count waits for it and sees it; one made after
+            // waits for the delete and finds the role gone.
+            await tx.$queryRaw`SELECT id FROM "Role" WHERE id = ${id} FOR UPDATE`
+            if (await tx.roleRequest.count({ where: { roleId: id, status: "PENDING" } }) > 0) throw new Error("ROLE_REQUESTED")
             await tx.role.delete({ where: { id } })
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log("DELETE_ROLE", "ROLE", id, {

@@ -29,6 +29,8 @@ describe("recording a company payment", () => {
 
     it("refuses a cost that isn't a positive number", async () => {
         for (const cost of [-100, "abc", "0"]) expect((await record({ cost, subscriptionType: "MONTHLY" })).status, String(cost)).toBe(400)
+        // Not a number at all, though Number() makes one of it (review on #6).
+        for (const cost of [true, [5], " "]) expect((await record({ cost, subscriptionType: "MONTHLY" })).status, JSON.stringify(cost)).toBe(400)
         expect(created).toEqual([])
     })
 

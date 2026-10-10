@@ -1,7 +1,8 @@
-import { attestedText, faceDeletedText, faceKeyText, faceText, type FaceResult } from "@/lib/attendance/signed-text"
+import { attestedText, faceDeletedText, faceKeyText, faceReviewId, faceText, type FaceResult } from "@/lib/attendance/signed-text"
 import type { CheckInDevice } from "./native"
-import { pendingTemplatesAction, type FaceStatus } from "./screen"
+import { FACE_PLUGIN_WAIT_MS, pendingTemplatesAction, withinTime, type FaceStatus, type SentWith } from "./screen"
 import type { Post } from "./check-in-flow"
+import type { PHONE_KEYS } from "./kept-storage"
 
 /**
  * Face verification, as the app does it (ATTENDANCE_PLAN.md §9.5, §10.4).
@@ -140,25 +141,36 @@ export async function wrappingKey(device: CheckInDevice, face: FaceVerifier, pos
 export async function enrolFace(device: CheckInDevice, face: FaceVerifier, post: Post, sent: SentRecord = sentRecord()) {
     const key = await wrappingKey(device, face, post)
     if (!key) throw new Error("FACE_NOT_AVAILABLE")
-    const [{ modelVersion }, { photo }] = [await face.info(), await face.enrol(key)]
+    const { modelVersion } = await faceInfo(face)
+    const { photo } = await face.enrol(key)
+    // The templates just made replace any waiting: no review of theirs yet. Left set, an earlier review's
+    // approval would promote a face nobody saw, had the app stopped before sending this one. Cleared only
+    // now: a set-up that stopped before making them (cancelled, the camera refused, the plugin silent)
+    // left the waiting ones as they were, and lost which review they were sent with (review on #49).
+    sent.set(null)
     try {
-        const review = await sendPhoto(device, post, photo, modelVersion)
-        // The waiting templates belong to this review, and are promoted only once it is approved.
-        sent.set(review.id)
-        return review
+        // The waiting templates belong to this review, and are promoted only once it is approved. Recorded
+        // before the photo goes, by the id it will be stored under.
+        return await sendPhoto(device, post, photo, modelVersion, reviewId => sent.set(reviewId))
     } catch (e) {
-        // Never reached a reviewer: the templates made for it go with it.
-        sent.set(null)
-        await face.discardPending().catch(() => {})
+        // Refused: it never reached a reviewer, and the templates made for it go with it. Anything else
+        // (no answer, the connection dropped, the server failing) may have come after the photo was stored:
+        // the templates stay, and the server's answer about that review settles them (settleTemplates).
+        // Dropped at once, an approval found the phone with nothing to match against (review on #27).
+        if ((e as { code?: string })?.code) {
+            sent.set(null)
+            await face.discardPending().catch(() => {})
+        }
         throw e
     }
 }
 
-async function sendPhoto(device: CheckInDevice, post: Post, photo: string, modelVersion: string) {
+async function sendPhoto(device: CheckInDevice, post: Post, photo: string, modelVersion: string, sending: (reviewId: string) => void) {
     const fingerprint = await keyFingerprint(device)
     const photoSha256 = await sha256OfBase64(photo)
     // After the photo: the number lasts five minutes, and enrolling takes a while.
     const { nonce } = await post("/api/attendance/phone/challenge", { purpose: "FACE" })
+    sending(await faceReviewId(nonce))
     const [signature, attestation] = await Promise.all([
         device.sign(faceText({ nonce, keyFingerprint: fingerprint, photoSha256, modelVersion })),
         // An assertion with the key made at registration, not a new attested key.
@@ -176,7 +188,7 @@ async function sendPhoto(device: CheckInDevice, post: Post, photo: string, model
 export async function faceCheck(device: CheckInDevice, face: FaceVerifier, post: Post): Promise<{ face: FaceResult; frame: string | null } | null> {
     const key = await wrappingKey(device, face, post)
     if (!key) return null
-    const { modelVersion } = await face.info()
+    const { modelVersion } = await faceInfo(face)
     const r = await face.verify(key)
     const frame = !r.verified && r.frame ? r.frame : null
     return {
@@ -200,22 +212,39 @@ export async function settleTemplates(face: FaceVerifier, status: FaceStatus, se
     return action === "PROMOTE" ? "PROMOTED" : action === "DISCARD" ? "DISCARDED" : null
 }
 
-/** Which review this phone's waiting templates were sent with, kept beside them. */
-export type SentRecord = { get(): string | null; set(reviewId: string | null): void }
+/** The face plugin's info, or FACE_PLUGIN_TIMEOUT if it never answers: a stalled call held a check-in for good (review on #49). */
+export function faceInfo(face: FaceVerifier) {
+    return withinTime(face.info(), FACE_PLUGIN_WAIT_MS, "FACE_PLUGIN_TIMEOUT")
+}
 
-const SENT_KEY = "nizmo-face-sent-review"
-let sentInMemory: string | null = null
+/** Which review this phone's waiting templates were sent with, and when that was recorded, kept beside them. */
+export type SentRecord = { get(): SentWith | null; set(reviewId: string | null): void }
+
+/** A record as stored: the review and when; or, from before that was kept, the review alone. */
+export function readSent(raw: string | null): SentWith | null {
+    if (!raw) return null
+    try {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed.id === "string") return { id: parsed.id, at: Number(parsed.at) || 0 }
+    } catch { /* the review alone */ }
+    return { id: raw, at: 0 }
+}
+
+/** Left when the site's storage is cleared (lib/mobile/kept-storage.ts). */
+const SENT_KEY: (typeof PHONE_KEYS)[number] = "nizmo-face-sent-review"
+let sentInMemory: string | null = null  // as stored: JSON of a SentWith
 
 /** The record in the app's storage, or in memory where there is none. */
 export function sentRecord(): SentRecord {
     return {
         get: () => {
-            try { return globalThis.localStorage?.getItem(SENT_KEY) ?? sentInMemory } catch { return sentInMemory }
+            try { return readSent(globalThis.localStorage?.getItem(SENT_KEY) ?? sentInMemory) } catch { return readSent(sentInMemory) }
         },
         set: id => {
-            sentInMemory = id
+            const value = id ? JSON.stringify({ id, at: Date.now() }) : null
+            sentInMemory = value
             try {
-                if (id) globalThis.localStorage?.setItem(SENT_KEY, id)
+                if (value) globalThis.localStorage?.setItem(SENT_KEY, value)
                 else globalThis.localStorage?.removeItem(SENT_KEY)
             } catch { /* in memory only */ }
         },

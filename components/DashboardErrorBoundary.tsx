@@ -2,6 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { reportClientError } from '@/lib/client-error-report'
+import { clearStorageKeepingPhone } from '@/lib/mobile/kept-storage'
 
 interface Props {
     children: ReactNode
@@ -24,9 +25,9 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
     }
 
     private handleReset = () => {
-        // Clear potentially corrupted state
+        // Clear potentially corrupted state, but not what the phone keeps about itself
         document.cookie = 'NEXT_LOCALE=en;path=/;max-age=31536000'
-        localStorage.clear()
+        clearStorageKeepingPhone(localStorage)
         window.location.reload()
     }
 

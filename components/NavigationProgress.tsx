@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
-import { startsNavigation } from '@/lib/navigation-progress'
+import { historyLeavesPage, startsNavigation } from '@/lib/navigation-progress'
 
 const START = 'app:navigation-start'
 // Never left running: a navigation that fails or is abandoned still ends here.
@@ -28,6 +28,10 @@ export default function NavigationProgress() {
     const search = useSearchParams().toString()
     const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle')
 
+    // The page showing, for a step back or forward to compare with: only one to another page starts the bar.
+    const shown = useRef({ pathname, search })
+    useEffect(() => { shown.current = { pathname, search } }, [pathname, search])
+
     // Arrived: finish the bar in the same render the address changes.
     useAdjustOnChange([pathname, search], () => {
         if (state === 'loading') setState('done')
@@ -41,11 +45,13 @@ export default function NavigationProgress() {
         }
         // Capture, so a link inside something that stops the click still counts.
         document.addEventListener('click', onClick, true)
-        window.addEventListener('popstate', start)
+        // Not for one to another place on this page (a #fragment): nothing loads, and the bar would run on (review on #45).
+        const onHistory = () => { if (historyLeavesPage(shown.current, window.location)) start() }
+        window.addEventListener('popstate', onHistory)
         window.addEventListener(START, start)
         return () => {
             document.removeEventListener('click', onClick, true)
-            window.removeEventListener('popstate', start)
+            window.removeEventListener('popstate', onHistory)
             window.removeEventListener(START, start)
         }
     }, [])

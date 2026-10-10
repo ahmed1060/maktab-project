@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { knownRefusal } from "@/lib/api-errors"
 import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { AuditLogService } from "@/lib/services/audit-log.service"
+import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { AttendanceAgentService, type AuthenticatedAgent } from "@/lib/services/attendance-agent.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
 import { bearerToken } from "./agent-credentials"
@@ -49,6 +50,19 @@ async function failed(req: Request, error: unknown, agentId: string | null) {
     return refuse(500, "SERVER_ERROR", AuditLogService.friendlyErrorMessage(ref))
 }
 
+/**
+ * Maintenance mode holds agents too (review on #17). It is on while a Super
+ * Admin works on the data, a backup's restore among them, and a punch stored
+ * then could be lost to the restore or change what is being restored. Read
+ * live, as the agent has no session to carry it, and checked before the
+ * token, whose first use is itself a write. The agent keeps its punches and
+ * tries again next round, as it does for any 5xx.
+ */
+async function underMaintenance() {
+    return (await SystemSettingsService.get()).maintenanceMode
+}
+const MAINTENANCE = () => refuse(503, "MAINTENANCE", "The system is under maintenance. The agent keeps its punches and sends them once it is over.")
+
 const REFUSED = {
     UNAUTHENTICATED: [401, "This agent isn't enrolled, or has been revoked. Enrol it again with a new code."],
     COMPANY_BANNED: [403, "This company's account is suspended."],
@@ -60,6 +74,7 @@ export function withAgentHandler(handler: (req: Request, agent: AuthenticatedAge
     return async (req: Request) => {
         let agentId: string | null = null
         try {
+            if (await underMaintenance()) return MAINTENANCE()
             const token = bearerToken(req.headers.get("authorization"))
             if (!token) return refuse(401, "UNAUTHENTICATED", REFUSED.UNAUTHENTICATED[1])
             const agent = await AttendanceAgentService.authenticate(token)
@@ -80,6 +95,7 @@ export function withAgentHandler(handler: (req: Request, agent: AuthenticatedAge
 export function withEnrolmentHandler(handler: (req: Request, body: Record<string, unknown>) => Promise<NextResponse>) {
     return async (req: Request) => {
         try {
+            if (await underMaintenance()) return MAINTENANCE()
             const { limited } = await RateLimiter.getLimitData(`agent-enrol:${getClientIp(req.headers)}`, 10, 15 * 60_000)
             if (limited) return refuse(429, "RATE_LIMITED", "Too many enrolment attempts from this address. Wait fifteen minutes and try again.")
             const read = await readBody(req)

@@ -264,7 +264,8 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                     <button
                                         type="button"
-                                        aria-label={t('calendar_prev_month' as any)}
+                                        // In Arabic this one goes forward: it is named for what it does (Codex review of #35).
+                                        aria-label={t(locale === 'ar' ? 'calendar_next_month' : 'calendar_prev_month' as any)}
                                         onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? 1 : -1)))}
                                         style={{ background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >
@@ -273,7 +274,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                                     <div style={{ fontWeight: '800', color: 'var(--text-main)', fontSize: '0.9rem' }}>{monthYear}</div>
                                     <button
                                         type="button"
-                                        aria-label={t('calendar_next_month' as any)}
+                                        aria-label={t(locale === 'ar' ? 'calendar_prev_month' : 'calendar_next_month' as any)}
                                         onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
                                         style={{ background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.3rem', cursor: 'pointer' }}
                                     >

@@ -14,6 +14,7 @@ import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission,
 import type { SerializedAccess } from '@/lib/features/bundles'
 import { BUILT_IN_LABEL, roleLabel } from '@/lib/role-label'
 import { useBusyAction } from '@/lib/useBusyAction'
+import { useLeaveGuard } from '@/lib/useUnsavedChanges'
 
 /**
  * A company's roles, in its settings (ROLES_PLAN.md §6.2): how many people hold
@@ -48,11 +49,15 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const action = useBusyAction()
     const { update } = useSession()
     const router = useRouter()
+    const leave = useLeaveGuard()
 
     // See the dashboard as a holder of this role would (§6.6). Read-only;
     // the banner on every screen is the way out.
     const preview = async (role: Role) => {
-        await update({ previewRoleId: role.id })
+        // The session comes back without the preview if the update failed:
+        // stay, and say so, rather than open an ordinary dashboard (review on #49).
+        const session = await update({ previewRoleId: role.id }).catch(() => null)
+        if (!session?.user?.preview) return showToast(t('error_generic'), 'error')
         // Refreshed, so the layout reads the session as the preview presents it.
         router.push('/dashboard')
         router.refresh()
@@ -142,7 +147,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                             </div>
                         </div>
                         <button type="button" style={linkButton} onClick={() => setEditing(role)}>{t('roles_edit')}</button>
-                        <button type="button" style={linkButton} onClick={() => preview(role)}>{t('roles_preview')}</button>
+                        <button type="button" style={linkButton} onClick={() => leave(() => preview(role))}>{t('roles_preview')}</button>
                         {!role.isDefault && role.baseRole !== 'ADMIN' && (
                             <button type="button" style={linkButton} onClick={() => action.run(`default-${role.id}`, () => makeDefault(role))} disabled={action.running} aria-busy={action.is(`default-${role.id}`)}>{t('roles_make_default')}</button>
                         )}

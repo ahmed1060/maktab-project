@@ -233,6 +233,46 @@ describe("the screen's dates (review on #12)", () => {
         expect(page).not.toMatch(/new Date\(\)\s*;\s*return\s*`\$\{d\.getFullYear\(\)/)
         expect(page).not.toMatch(/\.getDate\(\)/)
     })
+
+    it("start afresh from another company's date when the Super Admin picks it, even one whose date is still at hand (review on #13)", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).toMatch(/<Fragment key=\{companyId \?\? ''\}>\s*\{tab === 'exceptions'[^\n]*\n\s*\{tab === 'days' && today && <DaysTab/)
+        expect(page).toMatch(/\{tab === 'numbers' && correctsCompany && <NumbersTab q=\{q\} companyId=\{companyId\} \/>\}\s*<\/Fragment>/)
+    })
+
+    it("says so when the company's date can't be had, instead of waiting for it for good", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).toContain("const { data: peopleBody, error: peopleError } = useSWR(")
+        expect(page).toMatch(/if \(peopleError && !today && [^\n]*\) return <p role="alert"[^\n]*t\('error_generic'\)/)
+        // Not before the session says who is asking: a Super Admin's request went without the company, and its
+        // refusal showed as an error for a moment (review on #49).
+        expect(page).toContain("useSWR(status !== 'loading' && (!isSuperAdmin || companyId) ? `/api/attendance/people?${q}` : null, fetcher)")
+        expect(page.indexOf("if (status === 'loading') return <LoadingSpinner />")).toBeGreaterThan(-1)
+        expect(page.indexOf("if (status === 'loading') return <LoadingSpinner />")).toBeLessThan(page.indexOf("if (peopleError && !today"))
+    })
+})
+
+describe("the page's tabs (review on #21)", () => {
+    it("keep a tab picked by hand in the address, so a notice's link followed again opens its tab", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(page).toMatch(/const setTab = \(k: Tab\) => \{\s*const next = new URLSearchParams\(params\.toString\(\)\)\s*next\.set\('tab', k\)\s*router\.replace\(/)
+        expect(page).toContain("const tab: Tab = linked && tabs.includes(linked) ? linked :")
+        expect(page).not.toContain("setPicked")
+    })
+
+    it("say a phone list failed to refresh, though an earlier one is still shown", () => {
+        const tab = readFileSync("app/(dashboard)/dashboard/attendance/RequestsTab.tsx", "utf8")
+        const list = tab.slice(tab.indexOf("{decidesPhones && phones.length > 0 && ("))
+        expect(list.slice(0, 600)).toMatch(/\{phoneError && <p role="alert"[^\n]*t\('error_generic'\)/)
+    })
+
+    it("say a phone list failed to refresh when the one before was empty (review on #49)", () => {
+        // Neither the loading branch (it had loaded) nor the list (it had nothing) showed the failure.
+        const tab = readFileSync("app/(dashboard)/dashboard/attendance/RequestsTab.tsx", "utf8")
+        const empty = tab.slice(tab.indexOf("{decidesPhones && phoneBody && phones.length === 0 && phoneError && ("))
+        expect(tab).toContain("{decidesPhones && phoneBody && phones.length === 0 && phoneError && (")
+        expect(empty.slice(0, 400)).toMatch(/<p role="alert"[^\n]*t\('error_generic'\)/)
+    })
 })
 
 describe("a long list (review on #12)", () => {

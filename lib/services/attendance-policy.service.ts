@@ -53,8 +53,8 @@ async function actorOf(tx: Prisma.TransactionClient, actorId: string) {
 
 export class AttendancePolicyService {
     /** Every version, oldest first, each parsed. */
-    static async versions(companyId: string): Promise<(PolicyVersion & { appliedTemplateId: string | null; createdAt: Date })[]> {
-        const rows = await prisma.attendancePolicy.findMany({ where: { companyId }, orderBy: { effectiveFrom: "asc" } })
+    static async versions(companyId: string, db: Prisma.TransactionClient = prisma): Promise<(PolicyVersion & { appliedTemplateId: string | null; createdAt: Date })[]> {
+        const rows = await db.attendancePolicy.findMany({ where: { companyId }, orderBy: { effectiveFrom: "asc" } })
         return rows.map(r => ({
             id: r.id,
             effectiveFrom: toDateString(r.effectiveFrom),

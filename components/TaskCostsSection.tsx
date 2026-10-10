@@ -4,6 +4,7 @@ import { useModules } from '@/lib/useModules'
 import TrashIcon from '@/components/TrashIcon'
 import SectionBoundary from './SectionBoundary'
 import { useCan } from '@/lib/useCan'
+import { isReviewed } from '@/lib/task-reviewed'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx (1834 lines before
 // this split). Purely presentational — no state of its own, just reads
@@ -133,8 +134,8 @@ function TaskCostsSectionBody({
                         )
                     })()}
 
-                    {/* Individual Settlements for Admins */}
-                    {can('tasks.pay') && !['PENDING', 'IN_PROGRESS'].includes(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
+                    {/* Individual Settlements for Admins: once the task is reviewed, as the server pays only then */}
+                    {can('tasks.pay') && isReviewed(task.status) && (task.assignees?.length || 0) > 1 && Object.keys(getMemberCosts(task)).length > 0 && (
                         <div style={{ marginTop: '1rem', padding: '1.25rem', background: 'var(--surface-subtle)', borderRadius: '1rem', border: '1px solid var(--border)' }}>
                             <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--text-main)' }}>
                                 {t('individual_settlements' as any) || 'Individual Settlements'}

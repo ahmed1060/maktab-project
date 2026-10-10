@@ -276,30 +276,41 @@ async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: stri
     for (const key of new Set([...now.keys(), ...was.keys(), ...settled.keys()])) {
         const [userId, date] = key.split(":")
         const n = now.get(key), w = was.get(key), r = opened.get(key), s = settled.get(key)
+        const current = { deduction: n?.deductionMinor ?? 0, overtime: n?.overtimeMinor ?? 0, status: n ? String(n.row.status) : null }
+        if (r) {
+            // Only while still open. Resolution doesn't wait for this month's lock, so one settled since it was
+            // read is history, kept as it was settled; the day is then measured from it below, as from any
+            // settled one (review on #16).
+            const open = { id: r.id, resolvedAt: null }
+            const back = current.deduction === r.paidDeductionMinor && current.overtime === r.paidOvertimeMinor
+            const moved = r.nowDeductionMinor !== current.deduction || r.nowOvertimeMinor !== current.overtime || r.nowStatus !== current.status
+            const { count } = back
+                // Back to what was paid or settled: nothing left to settle.
+                ? await tx.attendanceDiscrepancy.deleteMany({ where: open })
+                : moved
+                    ? await tx.attendanceDiscrepancy.updateMany({ where: open, data: { nowDeductionMinor: current.deduction, nowOvertimeMinor: current.overtime, nowStatus: current.status } })
+                    : { count: 1 }
+            if (count > 0) {
+                if (!back) differing += 1
+                continue
+            }
+        }
         // What the person has been paid for the day so far: as the payroll
         // paid it, or as last settled since (review on #16) — never the
         // original once a settlement has moved it.
-        const base = r ? { deduction: r.paidDeductionMinor, overtime: r.paidOvertimeMinor, status: r.paidStatus }
-            : s ? { deduction: s.nowDeductionMinor, overtime: s.nowOvertimeMinor, status: s.nowStatus ?? "NONE" }
-                : { deduction: w?.deductionMinor ?? 0, overtime: w?.overtimeMinor ?? 0, status: w?.status ?? "NONE" }
-        const figures = {
-            paidDeductionMinor: base.deduction, paidOvertimeMinor: base.overtime, paidStatus: base.status,
-            nowDeductionMinor: n?.deductionMinor ?? 0, nowOvertimeMinor: n?.overtimeMinor ?? 0, nowStatus: n ? String(n.row.status) : null,
-        }
-        if (figures.paidDeductionMinor === figures.nowDeductionMinor && figures.paidOvertimeMinor === figures.nowOvertimeMinor) {
-            // Back to what was paid or settled: nothing left to settle.
-            if (r) await tx.attendanceDiscrepancy.delete({ where: { id: r.id } })
-            continue
-        }
+        const last = r ?? s
+        const base = last ? { deduction: last.nowDeductionMinor, overtime: last.nowOvertimeMinor, status: last.nowStatus ?? "NONE" }
+            : { deduction: w?.deductionMinor ?? 0, overtime: w?.overtimeMinor ?? 0, status: w?.status ?? "NONE" }
+        if (base.deduction === current.deduction && base.overtime === current.overtime) continue
         differing += 1
-        if (r) {
-            if (r.nowDeductionMinor !== figures.nowDeductionMinor || r.nowOvertimeMinor !== figures.nowOvertimeMinor || r.nowStatus !== figures.nowStatus) {
-                await tx.attendanceDiscrepancy.update({ where: { id: r.id }, data: { nowDeductionMinor: figures.nowDeductionMinor, nowOvertimeMinor: figures.nowOvertimeMinor, nowStatus: figures.nowStatus } })
-            }
-            continue
-        }
         // New, or changed again after being settled: a new one, the settled one kept as it was.
-        await tx.attendanceDiscrepancy.create({ data: { companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id, ...figures } })
+        await tx.attendanceDiscrepancy.create({
+            data: {
+                companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id,
+                paidDeductionMinor: base.deduction, paidOvertimeMinor: base.overtime, paidStatus: base.status,
+                nowDeductionMinor: current.deduction, nowOvertimeMinor: current.overtime, nowStatus: current.status,
+            },
+        })
     }
     return differing
 }
@@ -429,22 +440,24 @@ export class AttendanceEngineService {
      * days rather than a month. Today's day isn't derived until tomorrow, so
      * a check-in that wants to say "you're late", and the no-check-in
      * reminder, ask here. The company's schedules, holidays and policy are
-     * read once, however many people.
+     * read once, however many people. Inside a transaction, through it: a
+     * query on another connection meanwhile could wait for good on a pool
+     * the transactions hold (review on #49).
      */
-    static async plansFor(companyId: string, userIds: readonly string[], dates: readonly string[]): Promise<{
+    static async plansFor(companyId: string, userIds: readonly string[], dates: readonly string[], db: Prisma.TransactionClient = prisma): Promise<{
         plans: Map<string, Map<string, ExpectedDay>>
         policyOn: (date: string) => PolicyBody | null
     }> {
         const sorted = [...dates].sort()
         const span = { gte: wallClock(`${sorted[0]}T00:00:00`), lte: wallClock(`${sorted.at(-1)}T00:00:00`) }
         const [schedules, assignments, defaults, central, exclusions, own, policies] = await Promise.all([
-            prisma.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
-            prisma.userSchedule.findMany({ where: { userId: { in: [...userIds] }, schedule: { companyId } }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
-            prisma.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
-            prisma.publicHoliday.findMany({ where: { country: "EG", date: span } }),
-            prisma.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
-            prisma.companyHoliday.findMany({ where: { companyId, date: span } }),
-            AttendancePolicyService.versions(companyId),
+            db.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
+            db.userSchedule.findMany({ where: { userId: { in: [...userIds] }, schedule: { companyId } }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
+            db.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
+            db.publicHoliday.findMany({ where: { country: "EG", date: span } }),
+            db.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
+            db.companyHoliday.findMany({ where: { companyId, date: span } }),
+            AttendancePolicyService.versions(companyId, db),
         ])
         const bySchedule = new Map(schedules.map(s => [s.id, serializeSchedule(s)]))
         const defaultChanges = defaults.map(d => ({ scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) }))
@@ -508,23 +521,30 @@ export class AttendanceEngineService {
     /**
      * The nightly reconciliation: this month and last, for every company with
      * attendance, and every month a salary or employment change recorded in
-     * the last two days reaches back to — those do not always rebuild as they
-     * happen (one written inside another change's transaction cannot), and a
-     * backdated correction can reach months ago (review on #13). One company
-     * failing is recorded and the rest go on (review on #13).
+     * the two days before the last run that reconciled everything reaches
+     * back to — those do not always rebuild as they happen (one written
+     * inside another change's transaction cannot), and a backdated correction
+     * can reach months ago (review on #13). Counted from the last success, not
+     * from now: a run missed or failed leaves its changes to the next, however
+     * late (review on #13). One company failing is recorded and the rest go on
+     * (review on #13).
      */
     static async reconcileAll(companyIds: readonly string[]) {
         let months = 0
         const failed: { companyId: string; month: string; error: string }[] = []
-        const since = new Date(Date.now() - 2 * 86_400_000)
+        const last = await prisma.jobHeartbeat.findUnique({ where: { job: "attendance" }, select: { lastSuccessAt: true } })
+        // Run, but never through: nothing is known to be reconciled, so every change, as far back as a rebuild
+        // reaches (a year below). Two days from each failed try left out what the first ones missed (review on #49).
+        const since = last && !last.lastSuccessAt ? null : new Date(Math.min(Date.now(), last?.lastSuccessAt?.getTime() ?? Date.now()) - 2 * 86_400_000)
+        const recent = since ? { createdAt: { gte: since } } : {}
         for (const companyId of companyIds) {
             try {
                 const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
                 if (!company) continue
                 const today = calendarDateStr(new Date(), company.timezone)
                 const [salary, employment] = await Promise.all([
-                    prisma.salaryChange.findFirst({ where: { createdAt: { gte: since }, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
-                    prisma.employmentEvent.findFirst({ where: { createdAt: { gte: since }, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
+                    prisma.salaryChange.findFirst({ where: { ...recent, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
+                    prisma.employmentEvent.findFirst({ where: { ...recent, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
                 ])
                 const changed = [salary, employment].flatMap(c => (c ? [calendarDateStr(c.effectiveFrom, company.timezone)] : [])).sort()[0]
                 const lastMonth = addDays(`${today.slice(0, 7)}-01`, -1)

@@ -10,6 +10,7 @@ import { supabase } from "@/lib/storage"
 import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
+import { isReviewed } from "@/lib/task-reviewed"
 
 /**
  * TaskService
@@ -863,7 +864,7 @@ export class TaskService {
             // Only reviewed work is paid for, as the bulk route already holds:
             // paying a task still in progress marked it Completed, skipping
             // its review. And a per-person payment is for one of its people.
-            if (!['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status)) throw new Error("TASK_NOT_REVIEWED")
+            if (!isReviewed(task.status)) throw new Error("TASK_NOT_REVIEWED")
             if (targetUserId) {
                 const member = task.assignees.find(a => a.id === targetUserId)
                 if (!member) throw new Error("NOT_AN_ASSIGNEE")

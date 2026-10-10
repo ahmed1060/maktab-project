@@ -40,6 +40,21 @@ export function faceText(input: { nonce: string; keyFingerprint: string; photoSh
     return signedText("FACE", input.nonce, [input.keyFingerprint, input.photoSha256, input.modelVersion])
 }
 
+/**
+ * The id the verification photo sent with this one-time number is stored
+ * under: the app knows it before sending, so an answer lost on the way
+ * (the photo stored, the reply never back) still leaves the app knowing
+ * which review its waiting templates belong to (review on #27). One number,
+ * one photo: the server spends it as it stores the photo. Shaped as a UUID.
+ */
+export async function faceReviewId(nonce: string): Promise<string> {
+    const digest = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(`nizmo-face-review/v1\n${nonce}`)))
+    digest[6] = (digest[6] & 0x0f) | 0x40
+    digest[8] = (digest[8] & 0x3f) | 0x80
+    const hex = [...digest.slice(0, 16)].map(b => b.toString(16).padStart(2, "0")).join("")
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
+}
+
 /** What a phone signs to fetch the wrapping key for its face templates (§10.4). */
 export function faceKeyText(nonce: string, keyFingerprint: string): string {
     return signedText("FACE", nonce, [keyFingerprint, "WRAPPING_KEY"])

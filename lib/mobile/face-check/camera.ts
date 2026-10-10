@@ -2,10 +2,10 @@ import type { Box, Cue, Progress, Prompt } from "./liveness"
 
 /**
  * What the face check says while it fits the face in the oval and takes its
- * looks: centre it, come closer or move back, one more step when it has
- * doubts, and done.
+ * looks: hold the phone upright, centre the face, come closer or move back,
+ * one more step when it has doubts, and done.
  */
-export type FitPrompt = "CENTER" | "CLOSER" | "FARTHER" | "EXTRA" | "DONE"
+export type FitPrompt = "CENTER" | "CLOSER" | "FARTHER" | "UPRIGHT" | "EXTRA" | "DONE"
 
 /**
  * The camera, as the face check sees it: a live video of the front camera,
@@ -22,6 +22,11 @@ export interface Camera {
      * camera's picture to fill it, and the face is fitted to the oval as it appears there.
      */
     visible?(): Box
+    /**
+     * Whether the phone is held upright. The oval is drawn for a tall screen: turned on its side, the screen
+     * cut off its top and bottom, and the fit no longer matched what showed (review on #48).
+     */
+    upright?(): boolean
     /** How far the first download of the models has got, 0 to 1; null once they're loaded. */
     loading?(share: number | null): void
     /** The step, the time left on it and the live readings, while one is asked for; null clears them. */
@@ -34,6 +39,56 @@ export interface Camera {
 }
 
 export type OpenCamera = () => Promise<Camera>
+
+/**
+ * How much of the ring around the oval shows, 0 to 1: the capture's share, all of it once done, and all of it
+ * while a cue flashes it. A step clears the share, and its cues (half done, done, start again) flashed the colour
+ * of a ring that wasn't there: on a phone that can't vibrate, nothing showed them (review on #48).
+ */
+export function ringShare(fill: number | null, done: boolean, flashing: boolean): number {
+    if (done) return 1
+    if (fill !== null) return fill
+    return flashing ? 1 : 0
+}
+
+/**
+ * The camera, started for a capture the page may leave while it starts: asked for, then playing. If `gone()`
+ * turns true while either waits, the camera is turned off again and this rejects with FACE_CANCELLED, so the
+ * capture never waits for good, and nothing starts on a page that has gone (review on #28). A camera refused, or
+ * one that won't play, rejects with CAMERA_DENIED and is off.
+ */
+export async function startCamera(ask: () => Promise<MediaStream>, play: (media: MediaStream) => Promise<void>, gone: () => boolean): Promise<MediaStream> {
+    const failed = (code: string) => Object.assign(new Error(code), { code })
+    const media = await ask().catch(() => { throw failed("CAMERA_DENIED") })
+    const stop = () => media.getTracks().forEach(track => track.stop())
+    if (gone()) { stop(); throw failed("FACE_CANCELLED") }
+    await play(media).catch(() => { stop(); throw failed("CAMERA_DENIED") })
+    if (gone()) { stop(); throw failed("FACE_CANCELLED") }
+    return media
+}
+
+/**
+ * The camera started for one capture by the camera screen, whose effect calls the clean-up this returns once that
+ * capture is closed or replaced, or the page has gone. The capture is always told: `ready` with the camera playing,
+ * or `failed`. Only a start still current undoes the screen when it fails (`undo`: the camera, the overlay). One
+ * closed while it started was undone by the close, and a capture opened since may be on the screen: undoing it
+ * then stopped that capture's camera and took its overlay down (Codex review on #49).
+ */
+export function startCapture(
+    capture: { ready(media: MediaStream): void; failed(error: Error): void },
+    ask: () => Promise<MediaStream>,
+    play: (media: MediaStream) => Promise<void>,
+    undo: () => void,
+): () => void {
+    let gone = false
+    startCamera(ask, play, () => gone)
+        .then(media => capture.ready(media))
+        .catch((error: Error) => {
+            if (!gone) undo()
+            capture.failed(error)
+        })
+    return () => { gone = true }
+}
 
 /** A JPEG of the video's current frame, in base64, under `maxBytes`. */
 export function snapshot(video: HTMLVideoElement, maxBytes = 380_000): string {

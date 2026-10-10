@@ -765,6 +765,10 @@ model FacePurge {
   bySuperAdminId String
   keysDestroyed  Int
   photosDeleted  Int
+  /// Phones that have since acknowledged deleting the templates this purge
+  /// made unreadable. Kept here, not counted from the key rows, which go
+  /// with their phone or person.
+  acknowledged   Int      @default(0)
 }
 
 enum NotificationPriority {
@@ -1781,7 +1785,8 @@ model ScheduleDefault {
   createdById   String
   createdAt     DateTime     @default(now())
   company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  /// Checked at commit (migration 20261101000000), so a company's cascade can take its schedules in any order.
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: NoAction)
 
   @@unique([companyId, effectiveFrom])
   @@index([scheduleId])
@@ -1797,7 +1802,8 @@ model UserSchedule {
   createdById   String
   createdAt     DateTime     @default(now())
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  /// Checked at commit (migration 20261101000000), so a company's cascade can take its schedules in any order.
+  schedule      WorkSchedule @relation(fields: [scheduleId], references: [id], onDelete: NoAction)
 
   @@unique([userId, effectiveFrom])
   @@index([scheduleId])
@@ -2018,9 +2024,6 @@ model AttendanceAgent {
   codeExpiresAt     DateTime?
   /// sha256 of the agent's token.
   tokenHash         String?            @unique
-  /// A token issued by rotation, not yet used: the old one works until the
-  /// agent first uses this one, so a reply lost in transit locks nobody out.
-  nextTokenHash     String?            @unique
   tokenIssuedAt     DateTime?
   hostname          String?
   agentVersion      String?
@@ -2041,8 +2044,24 @@ model AttendanceAgent {
   revokedById       String?
   company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   devices           AttendanceDevice[]
+  pendingTokens     AttendanceAgentPendingToken[]
 
   @@index([companyId])
+}
+
+/// A token a rotation handed the agent, not yet used: the current one works
+/// until the agent first uses one of these, so a reply lost in transit locks
+/// nobody out. Every one handed out works for a day, so rotations that
+/// overlap can't replace the one the agent kept (migration 20261031000000:
+/// only an agent in use holds any, and revoking drops them).
+model AttendanceAgentPendingToken {
+  id        String          @id @default(uuid())
+  agentId   String
+  tokenHash String          @unique
+  createdAt DateTime        @default(now())
+  agent     AttendanceAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
 }
 
 /// A fingerprint terminal, known by its serial number. Brought in by the
@@ -2419,6 +2438,12 @@ model CheckInPhone {
   /// phone that wasn't attested.
   appAttestKey     String?
   appAttestCounter Int                @default(0)
+  /// Which App Attest environment attested the key: "production", or
+  /// "development" for a build from Xcode. A development key counts only
+  /// while APP_ATTEST_ALLOW_DEVELOPMENT is set, as at registration
+  /// (migration 20261102000000). Null without a key, and for one kept
+  /// before then, read as production.
+  appAttestEnvironment String?
   /// Face verification on this phone (§9.5): the templates stay on it; the
   /// server knows only that it was enrolled, with which model, and whether a
   /// person approved the verification photo.

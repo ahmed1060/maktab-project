@@ -97,6 +97,22 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             await expect(Requests.cancelPermission(asked.id, "e1")).rejects.toEqual(refusal("REQUEST_ALREADY_STARTED"))
         })
 
+        it("excuse the morning end of a night shift, asked for under the night's date (review on #14)", async () => {
+            // Nabil works nights, 22:00-06:00, and left at 05:00 on the 20th: the night of the 19th.
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId")
+                SELECT 'n1', 'n1@x', 'p', 'Nabil', 'Night', 'EMPLOYEE', 2026, 'n1', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+            const night = await Calendar.createSchedule("c1", { name: "Night", version: { effectiveFrom: "2026-10-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a1")
+            await Calendar.assign("c1", { userIds: ["n1"], scheduleId: night.id, effectiveFrom: "2026-10-01" }, "a1")
+            await Punches.addManual("c1", { userId: "n1", at: "2026-10-19T22:00", direction: "IN", note: "terminal down" }, "a1")
+            await Punches.addManual("c1", { userId: "n1", at: "2026-10-20T05:00", direction: "OUT", note: "terminal down" }, "a1")
+            expect(await day("n1", "2026-10-19")).toMatchObject({ earlyLeaveMinutes: 60, excusedMinutes: 0 })
+            // Asked the same morning, within the policy's hours after.
+            const asked = await Requests.requestPermission("c1", "n1", { date: "2026-10-19", type: "EARLY_LEAVE", start: "05:00", end: "06:00", reason: "Ill" })
+            expect(asked).toMatchObject({ minutes: 60, start: "05:00", end: "06:00", startMinutes: 1740, endMinutes: 1800 })
+            await Requests.decidePermission(asked.id, { approve: true }, "a1")
+            expect(await day("n1", "2026-10-19")).toMatchObject({ earlyLeaveMinutes: 0, excusedMinutes: 60 })
+        })
+
         it("are asked for in advance, or within the policy's hours after", async () => {
             await expect(Requests.requestPermission("c1", "e1", { date: "2026-10-18", type: "EARLY_LEAVE", start: "16:00", end: "17:00", reason: "x" }))
                 .rejects.toEqual(refusal("PERMISSION_TOO_LATE"))
@@ -179,6 +195,41 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run4', 'c1', 4, 2027, 'APPROVED', 25, now())`)
             await expect(Requests.requestPermission("c1", "e1", { date: "2027-04-05", type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" }))
                 .rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+        })
+
+        it("carry nothing a later version of the next month's policy has spent (review on #14)", async () => {
+            const hours = STANDARD_OFFICE.permissionHours
+            await Policy.saveVersion("c1", { effectiveFrom: "2028-03-01", body: { ...STANDARD_OFFICE, permissionHours: { ...hours, carryOver: "CARRY_ONCE" } } }, "a1")
+            // From 15 April, 60 minutes a month, with March's 240 carried.
+            await Policy.saveVersion("c1", { effectiveFrom: "2028-04-15", body: { ...STANDARD_OFFICE, permissionHours: { ...hours, carryOver: "CARRY_ONCE", monthlyAllowanceMinutes: 60, maxPerRequestMinutes: 60, maxRequestsPerMonth: 6 } } }, "a1")
+            const ask = (date: string, end = "13:00") => Requests.requestPermission("c1", "e1", { date, type: "MIDDAY", start: "12:00", end, reason: "x" })
+            for (const d of ["2028-04-20", "2028-04-21", "2028-04-24", "2028-04-25", "2028-04-26"]) await ask(d)
+            expect(await Requests.permissionBalance("c1", "e1", "2028-04", "2028-04-20")).toMatchObject({ allowanceMinutes: 60, carriedMinutes: 240, remainingMinutes: 0 })
+            // Two hours in March would leave April's late requests 120 carried for their 300: refused, though
+            // April's first day, under 240 a month, still had room.
+            await expect(ask("2028-03-02", "14:00")).rejects.toEqual(refusal("PERMISSION_OVER_ALLOWANCE"))
+            expect((await db.query(`SELECT count(*)::int AS n FROM "PermissionRequest" WHERE "userId" = 'e1' AND date = '2028-03-02'`)).rows[0].n).toBe(0)
+        })
+
+        it("read the next month's balance once per policy version, however many days it has requests on (review on #49)", async () => {
+            const hours = { ...STANDARD_OFFICE.permissionHours, enabled: true, carryOver: "CARRY_ONCE" as const, monthlyAllowanceMinutes: 900, maxPerRequestMinutes: 60, maxRequestsPerMonth: 20 }
+            await Policy.saveVersion("c1", { effectiveFrom: "2029-01-01", body: { ...STANDARD_OFFICE, permissionHours: hours } }, "a1")
+            const ask = (date: string) => Requests.requestPermission("c1", "e1", { date, type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" })
+            const reads = vi.spyOn(Policy, "versions")
+            try {
+                // February has requests on one day; a January request then reads the policies so many times.
+                await ask("2029-02-05")
+                reads.mockClear()
+                await ask("2029-01-08")
+                const once = reads.mock.calls.length
+                // Twelve more February days under the same policy: nothing more to read for them.
+                for (let d = 6; d <= 17; d++) await ask(`2029-02-${String(d).padStart(2, "0")}`)
+                reads.mockClear()
+                await ask("2029-01-09")
+                expect(reads.mock.calls.length).toBe(once)
+            } finally {
+                reads.mockRestore()
+            }
         })
     })
 

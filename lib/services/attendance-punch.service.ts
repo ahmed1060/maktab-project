@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
-import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths, lockedMonths, punchMonths, punchMonthsOf } from "./attendance-lock"
 import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, type DateOrder, type RowError } from "@/lib/attendance/punch-import"
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
 import { addDays } from "@/lib/attendance/calendar"
@@ -134,20 +134,22 @@ export class AttendancePunchService {
 
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
         const run = async (tx: Prisma.TransactionClient) => {
-            const months = new Set(good.map(r => monthOf(r.local)))
-            if (commit) {
-                // The mappings are read under the lock mapping takes, in the
-                // same order (numbers, then months), so a number mapped while
-                // this file goes in either reaches these rows or finds them
-                // waiting afterwards — never neither (review on #12).
-                await serialize(tx, `attendance-codes:${companyId}`)
-                await lockMonths(tx, companyId, months)
-            }
+            // The mappings are read under the lock mapping takes, in the
+            // same order (numbers, then months), so a number mapped while
+            // this file goes in either reaches these rows or finds them
+            // waiting afterwards — never neither (review on #12).
+            if (commit) await serialize(tx, `attendance-codes:${companyId}`)
             const mappings = await tx.attendanceCode.findMany({
                 where: { companyId, code: { in: [...new Set(good.map(r => r.code))] } },
                 select: { code: true, userId: true, user: { select: { firstName: true, lastName: true } } },
             })
             const owner = new Map(mappings.map(m => [m.code, m]))
+            // Each row's months: its own date's, and the month before for a
+            // check-out after midnight that closes somebody's night there
+            // (review on #13), as a punch added by hand.
+            const rowMonths = await punchMonthsOf(tx, companyId, good.map(r => ({ userId: owner.get(r.code)?.userId ?? null, local: r.local })))
+            const months = new Set(rowMonths.flat())
+            if (commit) await lockMonths(tx, companyId, months)
             // A file withdrawn and sent again — read with the right date order
             // or columns this time — is a new import, not a duplicate of the
             // withdrawn one (review on #12): each withdrawal of a file starts
@@ -156,7 +158,7 @@ export class AttendancePunchService {
             const generation = await tx.attendanceImport.count({ where: { companyId, fileHash: file.hash, voidedAt: { not: null } } })
             const sourceKey = (row: number) => generation === 0 ? `${file.hash}:${row}` : `${file.hash}#${generation}:${row}`
             const locked = await lockedMonths(tx, companyId, months)
-            const open = good.filter(r => !locked.has(monthOf(r.local)))
+            const open = good.filter((_, i) => !rowMonths[i].some(m => locked.has(m)))
             const existing = await tx.attendancePunch.findMany({
                 where: { companyId, source: "IMPORT", sourceKey: { in: open.map(r => sourceKey(r.row)) } },
                 select: { sourceKey: true },
@@ -233,8 +235,8 @@ export class AttendancePunchService {
         const out = await prisma.$transaction(async tx => {
             const imp = await tx.attendanceImport.findUnique({ where: { id } }) ?? fail("IMPORT_NOT_FOUND")
             if (imp.voidedAt) fail("IMPORT_ALREADY_VOIDED")
-            const punches = await tx.attendancePunch.findMany({ where: { importId: id, voidedAt: null }, select: { id: true, punchAtLocal: true } })
-            const months = punches.map(p => monthOf(wallClockText(p.punchAtLocal)))
+            const punches = await tx.attendancePunch.findMany({ where: { importId: id, voidedAt: null }, select: { id: true, userId: true, punchAtLocal: true } })
+            const months = (await punchMonthsOf(tx, imp.companyId, punches.map(p => ({ userId: p.userId, local: wallClockText(p.punchAtLocal) })))).flat()
             await lockMonths(tx, imp.companyId, months)
             if ((await lockedMonths(tx, imp.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             const now = new Date()
@@ -248,7 +250,7 @@ export class AttendancePunchService {
             })
             const first = punches.map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
             return { voided: voided.count, companyId: imp.companyId, from: first }
-        })
+        }, LOCK_WAIT)
         if (out.from) await recomputeAfter(out.companyId, addDays(out.from, -1))
         return { voided: out.voided }
     }
@@ -319,7 +321,7 @@ export class AttendancePunchService {
             if ((await lockedMonths(tx, companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             const id = await insertManualPunch(tx, { companyId, timezone: company.timezone, userId: person.id, local, direction: input.direction, note: input.note.trim(), actorId })
             return { id }
-        })
+        }, LOCK_WAIT)
         // From the day before: a punch after midnight may close the night before's shift.
         await recomputeAfter(companyId, addDays(local.slice(0, 10), -1), [input.userId])
         return out
@@ -344,7 +346,7 @@ export class AttendancePunchService {
                 details: { companyId: punch.companyId, userId: punch.userId, at: wallClockText(punch.punchAtLocal), reason: reason.trim() },
             })
             return punch
-        })
+        }, LOCK_WAIT)
         if (punch.userId) await recomputeAfter(punch.companyId, addDays(wallClockText(punch.punchAtLocal).slice(0, 10), -1), [punch.userId])
     }
 
@@ -390,10 +392,12 @@ export class AttendancePunchService {
             if (await tx.attendanceCode.findUnique({ where: { companyId_code: { companyId, code } } })) fail("CODE_TAKEN")
             const mapping = await tx.attendanceCode.create({ data: { companyId, code, userId: person.id, createdById: actorId } })
             const waiting = await tx.attendancePunch.findMany({ where: { companyId, userId: null, hardwareUserId: code }, select: { id: true, punchAtLocal: true } })
-            const months = waiting.map(p => monthOf(wallClockText(p.punchAtLocal)))
+            // Now somebody's, a check-out after midnight may be a night's in the month before (review on #13).
+            const punchMonthsList = await punchMonthsOf(tx, companyId, waiting.map(p => ({ userId: person.id, local: wallClockText(p.punchAtLocal) })))
+            const months = punchMonthsList.flat()
             await lockMonths(tx, companyId, months)
             const locked = await lockedMonths(tx, companyId, months)
-            const fill = waiting.filter(p => !locked.has(monthOf(wallClockText(p.punchAtLocal)))).map(p => p.id)
+            const fill = waiting.filter((_, i) => !punchMonthsList[i].some(m => locked.has(m))).map(p => p.id)
             if (fill.length > 0) await tx.attendancePunch.updateMany({ where: { id: { in: fill } }, data: { userId: person.id } })
             await AuditLogService.log("MAP_ATTENDANCE_CODE", "ATTENDANCE_CODE", mapping.id, {
                 tx, ...(await actorOf(tx, actorId)),
@@ -401,7 +405,7 @@ export class AttendancePunchService {
             })
             const firstFilled = waiting.filter(p => fill.includes(p.id)).map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
             return { id: mapping.id, filled: fill.length, leftInLockedMonths: waiting.length - fill.length, userId: person.id, firstFilled }
-        })
+        }, LOCK_WAIT)
         if (out.firstFilled) await recomputeAfter(companyId, addDays(out.firstFilled, -1), [out.userId])
         return { id: out.id, filled: out.filled, leftInLockedMonths: out.leftInLockedMonths }
     }
@@ -419,10 +423,11 @@ export class AttendancePunchService {
                 where: { companyId: mapping.companyId, userId: mapping.userId, hardwareUserId: mapping.code, source: { not: "MANUAL" } },
                 select: { id: true, punchAtLocal: true },
             })
-            const months = given.map(p => monthOf(wallClockText(p.punchAtLocal)))
+            const punchMonthsList = await punchMonthsOf(tx, mapping.companyId, given.map(p => ({ userId: mapping.userId, local: wallClockText(p.punchAtLocal) })))
+            const months = punchMonthsList.flat()
             await lockMonths(tx, mapping.companyId, months)
             const locked = await lockedMonths(tx, mapping.companyId, months)
-            const back = given.filter(p => !locked.has(monthOf(wallClockText(p.punchAtLocal)))).map(p => p.id)
+            const back = given.filter((_, i) => !punchMonthsList[i].some(m => locked.has(m))).map(p => p.id)
             if (back.length > 0) await tx.attendancePunch.updateMany({ where: { id: { in: back } }, data: { userId: null } })
             await tx.attendanceCode.delete({ where: { id } })
             await AuditLogService.log("UNMAP_ATTENDANCE_CODE", "ATTENDANCE_CODE", id, {
@@ -431,7 +436,7 @@ export class AttendancePunchService {
             })
             const firstBack = given.filter(p => back.includes(p.id)).map(p => wallClockText(p.punchAtLocal).slice(0, 10)).sort()[0] ?? null
             return { unfilled: back.length, companyId: mapping.companyId, userId: mapping.userId, firstBack }
-        })
+        }, LOCK_WAIT)
         if (out.firstBack) await recomputeAfter(out.companyId, addDays(out.firstBack, -1), [out.userId])
         return { unfilled: out.unfilled }
     }

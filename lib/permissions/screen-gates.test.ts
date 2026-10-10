@@ -143,7 +143,7 @@ const GATES: Gate[] = [
     { what: "task: remove an attachment (flag: uploaded it)", file: TASK, uses: "(att.uploadedById === userId || can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
     { what: "task: remove a note (flag: wrote it)", file: TASK, uses: "(log.authorId === userId || canEditTask)", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
     { what: "task: remove a cost (flag: added it)", file: "components/TaskCostsSection.tsx", uses: "(c.authorId === userId || can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
-    { what: "task: individual settlements", file: "components/TaskCostsSection.tsx", uses: "can('tasks.pay') && !['PENDING', 'IN_PROGRESS']", before: managers, now: p => p.can("tasks.pay") },
+    { what: "task: individual settlements", file: "components/TaskCostsSection.tsx", uses: "can('tasks.pay') && isReviewed(task.status)", before: managers, now: p => p.can("tasks.pay") },
     { what: "task: penalty", file: "components/TaskLocationHistorySection.tsx", uses: "can('tasks.penalize') && !['PENDING', 'IN_PROGRESS']", before: managers, now: p => p.can("tasks.penalize") },
     { what: "task: verify a location", file: "components/TaskLocationHistorySection.tsx", uses: "const canVerify = can('tasks.review')", before: managers, now: p => p.can("tasks.review") },
     { what: "task: delete a location (flag: on the task)", file: "components/TaskLocationHistorySection.tsx", uses: "(!can('tasks.view') || task.assignees", before: (r, on) => r === "EMPLOYEE" || on, now: (p, on) => !p.can("tasks.view") || on },

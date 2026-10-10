@@ -235,8 +235,10 @@ them, as today.
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
 | | `obligations.manage` | Create, edit, delete, revert | `obligations/*` |
 | **Clients** | `clients.view` | See clients, sections, notes | `GET /clients/*` |
-| | `clients.manage` | Create / edit / delete clients, sections, notes | `clients/*` |
-| **Vendors** | `vendors.view` / `vendors.manage` | As clients | `vendors` |
+| | `clients.contribute` | Add a client, a section or a note, and edit any note (built as its own right: clients are a shared notebook as much as a register) | `POST /clients`, `clients/[id]/sections`, `…/notes` |
+| | `clients.edit` | Rename a client or a section | `PUT /clients`, `PUT clients/[id]/sections` |
+| | `clients.delete` | Delete a client, a section or a note — **cannot be undone**, high-risk (§6.15) | `DELETE /clients`, `…/sections`, `…/notes` |
+| **Vendors** | `vendors.view` / `vendors.manage` | See vendors; create, edit and delete them | `vendors` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |
@@ -483,66 +485,77 @@ existing `sessionVersion` bump and signs the affected people out.
 
 ## 5. Data model
 
+As built. `prisma/schema.prisma` is the record; relations are left out here.
+
 ```prisma
 model RoleTemplate {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
   baseRole    UserRole                 // ADMIN | TEAM_LEADER | EMPLOYEE
-  grants      Json                     // [{ permission, scope }] — validated
-                                       // against the catalogue by zod
-  createdAt, updatedAt
+  grants      Json                     // [{ permission, scope }], validated
+                                       // against the catalogue
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Role {
-  id               String   @id @default(uuid())
-  companyId        String
-  name             String
-  description      String?
-  baseRole         UserRole
-  isBuiltIn        Boolean  @default(false)   // the migrated four; not deletable
-  copiedFromTemplateId String?                // informational only, never a live link
-  version          Int      @default(1)       // bumped on every edit (§4.4)
-  grants           RoleGrant[]
-  users            User[]
-  createdAt, updatedAt
+  id                   String    @id @default(uuid())
+  companyId            String
+  name                 String
+  description          String?
+  baseRole             UserRole            // CHECK: never SUPER_ADMIN
+  builtIn              UserRole?           // which of the built-in three this is,
+                                           // if one (CHECK: equals baseRole); not deletable
+  version              Int       @default(1)   // bumped on every edit (§4.4)
+  copiedFromTemplateId String?             // informational only, never a live link
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
   @@unique([companyId, name])
+  @@unique([companyId, builtIn])
 }
 
 model RoleGrant {
   roleId      String
-  permission  String      // a catalogue key; unknown keys rejected on write
-  scope       PermissionScope?   // null for permissions that are not scopable
+  permission  String            // a catalogue key; unknown keys rejected on write
+  scope       PermissionScope
   @@id([roleId, permission])
-  @@index([permission, roleId])   // "who can do this?" looks up by permission
+  @@index([permission, roleId])  // "who can do this?" looks up by permission
 }
 
 enum PermissionScope { OWN TEAM COMPANY }
 
-model RoleAssignmentRequest {
+model RoleRequest {                // §6.12
   id            String   @id @default(uuid())
   companyId     String
   userId        String            // who would receive the role
-  requestedRoleId String
+  roleId        String            // the role asked for
   requestedById String
-  status        String   @default("PENDING")   // PENDING | APPROVED | REJECTED
-  reviewedById  String?
-  reviewedAt    DateTime?
-  rejectionReason String?
+  note          String?
+  actingUntil   DateTime?         // asked for as an acting role (§6.13)
+  status        RoleRequestStatus @default(PENDING)  // PENDING | APPROVED | REJECTED | CANCELLED
+  decidedById   String?
+  decisionNote  String?
+  decidedAt     DateTime?
+  remindedAt    DateTime?
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   @@index([companyId, status])
+  @@index([userId])
 }
 
+// Also built: RoleChangeRequest (§6.9), and AccessReview with its
+// AccessReviewLine rows (§6.14).
+
 // On Company:
-  defaultRoleId  String   // the role every new account starts on (§6.4)
+  defaultRoleId  String?   // the role every new account starts on (§6.4)
 
 // On User:
-  roleId   String?      // required for every user except a User row whose
-                        // role is SUPER_ADMIN (see §7 step 3) — enforced by
-                        // CHECK ("roleId" IS NOT NULL OR "role" = 'SUPER_ADMIN')
-  actingUntil      DateTime?   // §6.13, if adopted
-  previousRoleId   String?     // restored when actingUntil passes
-  role     UserRole     // kept, now derived from Role.baseRole (§3.1)
+  roleId        String?    // CHECK ("roleId" IS NOT NULL OR "role" = 'SUPER_ADMIN'
+                           //        OR "companyId" IS NULL)
+  actingUntil   DateTime?  // §6.13: acting in roleId until then,
+  returnRoleId  String?    // then back to this role. Both set, or neither.
+  role          UserRole   // kept, now derived from Role.baseRole (§3.1)
 ```
 
 Grants are rows rather than Json on `Role` because the "who can do this?" view is a
@@ -701,8 +714,10 @@ the Super Admin. Clients with an auditor will be asked for exactly this record.
 ### 6.15 High-risk permissions and step-up confirmation — adopted
 
 A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
-`tasks.penalize`, `salary.edit`, `salary_adjustments.manage`, `payroll.approve`,
-`payroll.mark_paid`, `debts.waive`, `employees.delete`, `employees.end_contract`.
+`tasks.penalize`, `tasks.delete`, `clients.delete`, `salary.edit`,
+`salary_adjustments.manage`, `payroll.approve`, `payroll.mark_paid`,
+`debts.waive`, `employees.delete`, `employees.end_contract`. The catalogue
+(`lib/permissions/catalogue.ts`, `highRisk`) is the list the code checks.
 
 - **Marked in the catalogue as high-risk**, with the reason ("moves money",
   "cannot be undone"). The role editor shows the label — the "affects pay" label
@@ -727,8 +742,10 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
     Super Admin, so it can be tuned without a release. A stolen session, or someone using an
   unlocked laptop, then cannot approve payroll or waive a debt. The existing
   passcode on permanent deletion is the same idea already in the codebase.
-- Everyone holding a high-risk permission must have MFA enabled; assigning such a
-  role to someone without it prompts them to enrol at next sign-in.
+- Everyone using a high-risk permission must have MFA enabled. Nobody is made to
+  enrol at sign-in: the first time someone without it uses one, the action is
+  refused with `MFA_ENROL_REQUIRED` and the screen takes them to set it up
+  (decided in the build).
 
 ---
 

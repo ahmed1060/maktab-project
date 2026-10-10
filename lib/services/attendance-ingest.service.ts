@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma"
 import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
-import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
+import { lockMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { addDays } from "@/lib/attendance/calendar"
 import { offsetMsIn } from "@/lib/time"
 import type { AuthenticatedAgent } from "./attendance-agent.service"
-import type { PunchBatch } from "@/lib/attendance/agent-payloads"
+import { isRealWallClock, type PunchBatch } from "@/lib/attendance/agent-payloads"
 
 /**
  * Punches from the terminals, as an agent delivers them (ATTENDANCE_PLAN.md
@@ -27,12 +27,23 @@ import type { PunchBatch } from "@/lib/attendance/agent-payloads"
 /** How far ahead of the company's clock a punch may be: a terminal a little fast is not wrong. */
 export const FUTURE_TOLERANCE_MINUTES = 60
 
-export type Refusal = "UNKNOWN_DEVICE" | "DEVICE_RETIRED" | "MONTH_LOCKED" | "IN_FUTURE"
-/** Only an unknown terminal can come right: the agent's next heartbeat brings it in. */
-const RETRYABLE: Record<Refusal, boolean> = { UNKNOWN_DEVICE: true, DEVICE_RETIRED: false, MONTH_LOCKED: false, IN_FUTURE: false }
+/**
+ * How far ahead a punch is still worth sending again: from a terminal hours
+ * fast, or set to another zone, it is a real scan, and in an hour or two it
+ * is taken (review on #17). It used to be refused for good and the agent
+ * dropped it. Further ahead the terminal's date is wrong, and a punch held
+ * that long would keep the terminal from being cleared.
+ */
+export const FUTURE_RETRY_HOURS = 24
+
+export type Refusal = "UNKNOWN_DEVICE" | "DEVICE_RETIRED" | "MONTH_LOCKED" | "IN_FUTURE" | "INVALID_TIME"
+/**
+ * An unknown terminal can come right: the agent's next heartbeat brings it
+ * in. So can a punch a little too far ahead (FUTURE_RETRY_HOURS).
+ */
+const RETRYABLE: Record<Refusal, boolean> = { UNKNOWN_DEVICE: true, DEVICE_RETIRED: false, MONTH_LOCKED: false, IN_FUTURE: false, INVALID_TIME: false }
 
 const wallClock = (local: string) => new Date(`${local}Z`)
-const monthOf = (local: string) => local.slice(0, 7)
 
 export type IngestResult = {
     accepted: number
@@ -44,22 +55,26 @@ export class AttendanceIngestService {
     static async punches(agent: AuthenticatedAgent, batch: PunchBatch): Promise<IngestResult> {
         const { companyId, timeZone } = agent
         const now = new Date()
-        const latest = new Date(now.getTime() + offsetMsIn(now, timeZone) + FUTURE_TOLERANCE_MINUTES * 60_000).toISOString().slice(0, 19)
+        const ahead = (ms: number) => new Date(now.getTime() + offsetMsIn(now, timeZone) + ms).toISOString().slice(0, 19)
+        const latest = ahead(FUTURE_TOLERANCE_MINUTES * 60_000)
+        const latestToRetry = ahead(FUTURE_RETRY_HOURS * 3_600_000)
         const serials = [...new Set(batch.punches.map(p => p.serialNumber))]
 
         const outcome = await prisma.$transaction(async tx => {
             const devices = await tx.attendanceDevice.findMany({ where: { companyId, serialNumber: { in: serials } }, select: { id: true, serialNumber: true, mode: true, retiredAt: true } })
             const device = new Map(devices.map(d => [d.serialNumber, d]))
             const refused: IngestResult["refused"] = []
-            const refuse = (index: number, reason: Refusal) => refused.push({ index, reason, retry: RETRYABLE[reason] })
+            const refuse = (index: number, reason: Refusal, retry = RETRYABLE[reason]) => refused.push({ index, reason, retry })
 
             // Each punch once, by its key, in the order it came.
             const candidates = new Map<string, { index: number; deviceId: string; mode: string; userNumber: string; at: string }>()
             batch.punches.forEach((p, index) => {
+                // A damaged record: stored, it would land on another day, in a month its own lock doesn't cover.
+                if (!isRealWallClock(p.at)) return refuse(index, "INVALID_TIME")
                 const d = device.get(p.serialNumber)
                 if (!d) return refuse(index, "UNKNOWN_DEVICE")
                 if (d.retiredAt) return refuse(index, "DEVICE_RETIRED")
-                if (p.at > latest) return refuse(index, "IN_FUTURE")
+                if (p.at > latest) return refuse(index, "IN_FUTURE", p.at <= latestToRetry)
                 const key = `${d.id}:${p.userNumber}:${p.at}`
                 if (!candidates.has(key)) candidates.set(key, { index, deviceId: d.id, mode: d.mode, userNumber: p.userNumber, at: p.at })
             })
@@ -72,12 +87,12 @@ export class AttendanceIngestService {
             const mappings = await tx.attendanceCode.findMany({ where: { companyId, code: { in: [...new Set([...candidates.values()].map(c => c.userNumber))] } }, select: { code: true, userId: true } })
             const owner = new Map(mappings.map(m => [m.code, m.userId]))
             // A check-out just after midnight on the 1st can close the last
-            // night of the month before, so that month is locked too.
-            const monthsOf = new Map<string, string[]>()
-            for (const [key, c] of candidates) {
-                const userId = owner.get(c.userNumber)
-                monthsOf.set(key, userId ? await punchMonths(tx, companyId, userId, c.at) : [monthOf(c.at)])
-            }
+            // night of the month before, so that month is locked too. The
+            // whole batch's at once: a night shift's backlog read the days and
+            // the calendar again for each punch (review on #49).
+            const keys = [...candidates.keys()]
+            const listed = await punchMonthsOf(tx, companyId, keys.map(k => ({ userId: owner.get(candidates.get(k)!.userNumber) ?? null, local: candidates.get(k)!.at })))
+            const monthsOf = new Map(keys.map((k, i) => [k, listed[i]]))
             const months = new Set([...monthsOf.values()].flat())
             await lockMonths(tx, companyId, months)
             const locked = await lockedMonths(tx, companyId, months)

@@ -374,6 +374,30 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await expect(RoleService.getById(role.id)).rejects.toThrow("ROLE_NOT_FOUND")
         })
 
+        it("refuses deleting a role somebody is asking for at that moment, rather than taking the request with it (review on #3)", async () => {
+            const role = await RoleService.create({ companyId: "c2", name: "Asked for meanwhile", baseRole: "EMPLOYEE", grants: [] }, sa)
+            // The request is written and not yet committed. Counted before it
+            // committed, the delete found none and its cascade took the request.
+            await db.query("BEGIN")
+            let deleting: Promise<unknown>
+            try {
+                await db.query(`INSERT INTO "RoleRequest" (id, "companyId", "userId", "roleId", "requestedById", "updatedAt")
+                    VALUES ('asked-meanwhile', 'c2', 'e2', $1, 'e2', now())`, [role.id])
+                deleting = RoleService.delete(role.id, sa).catch((error: Error) => error.message)
+                for (let i = 0; i < 40; i++) {
+                    if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE NOT granted`)).rows[0].n > 0) break
+                    await new Promise(r => setTimeout(r, 50))
+                }
+            } finally {
+                await db.query("COMMIT")
+            }
+            expect(await deleting).toBe("ROLE_REQUESTED")
+            expect(await prisma.roleRequest.count({ where: { id: "asked-meanwhile" } })).toBe(1)
+            expect(await prisma.role.count({ where: { id: role.id } })).toBe(1)
+            await prisma.roleRequest.delete({ where: { id: "asked-meanwhile" } })
+            await RoleService.delete(role.id, sa)
+        })
+
         it("keeps a company's default role its own, and not Admin-based", async () => {
             const role = await RoleService.create({ companyId: "c2", name: "Trainee", baseRole: "EMPLOYEE", grants: [] }, sa)
             await db.query(`UPDATE "Company" SET "defaultRoleId" = $1 WHERE id = 'c2'`, [role.id])
@@ -501,6 +525,29 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 VALUES ('hr1', 'hr1@x', 'p', 'H', 'R', 'EMPLOYEE', $1, 2026, 'hr1', 'c1'),
                        ('new1', 'new1@x', 'p', 'N', 'Ew', 'EMPLOYEE', (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'), 2026, 'new1', 'c1'),
                        ('new2', 'new2@x', 'p', 'N', 'Two', 'EMPLOYEE', (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'), 2026, 'new2', 'c1')`, [hrRole])
+        })
+
+        it("refuses asking for a role while it is being deleted, as it would a moment later (review on #3)", async () => {
+            const going = (await RoleService.create({ companyId: "c1", name: "Going", baseRole: "EMPLOYEE", grants: [] }, sa)).id
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "roleId", "lastDayOffResetYear", username, "companyId")
+                VALUES ('new3', 'new3@x', 'p', 'N', 'Three', 'EMPLOYEE', (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'), 2026, 'new3', 'c1')`)
+            // The delete holds the role's row until it commits; the request
+            // waits for it, then finds the role gone.
+            await db.query("BEGIN")
+            let asking: Promise<unknown>
+            try {
+                await db.query(`DELETE FROM "Role" WHERE id = $1`, [going])
+                asking = RoleRequestService.create({ userId: "new3", roleId: going }, hr).catch((error: Error) => error)
+                for (let i = 0; i < 40; i++) {
+                    if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE NOT granted`)).rows[0].n > 0) break
+                    await new Promise(r => setTimeout(r, 50))
+                }
+            } finally {
+                await db.query("COMMIT")
+            }
+            expect(((await asking) as Error).message).toBe("ROLE_NOT_IN_COMPANY")
+            await expect(RoleRequestService.create({ userId: "new3", roleId: going }, hr)).rejects.toThrow("ROLE_NOT_IN_COMPANY")
+            expect(await prisma.roleRequest.count({ where: { userId: "new3" } })).toBe(0)
         })
 
         it("asks, and the person keeps their role until it is decided", async () => {

@@ -24,7 +24,9 @@ type Ort = typeof import("onnxruntime-web/wasm")
 /** Sessions for every model, one model at a time: each one's bytes can go once its session holds them. */
 export async function recognizer(ort: Ort, manifest: Manifest, onBytes: (n: number) => void): Promise<Recognizer> {
     const session = async (bytes: Uint8Array): Promise<Run> => {
-        const s = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] })
+        // Errors only: the detector's outputs are declared for 640 × 640 and it runs at 320 (DETECT_SIZE), which
+        // the session warns about at every look. The session's own level, which env.logLevel doesn't set.
+        const s = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"], logSeverityLevel: 3 })
         return async (input, dims) => {
             const out = await s.run({ [s.inputNames[0]]: new ort.Tensor("float32", input, dims as number[]) })
             return s.outputNames.map(n => out[n].data as Float32Array)

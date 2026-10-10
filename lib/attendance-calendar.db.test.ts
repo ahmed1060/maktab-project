@@ -104,6 +104,24 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
             expect((await defaultsOf("c1")).length).toBe(2)
         })
 
+        it("doesn't make a schedule archived meanwhile the default (review on #64)", async () => {
+            await Calendar.createSchedule("c1", { name: "Relief", version: { ...HOURS, effectiveFrom: "2026-10-01" } }, "a1")
+            const spare = await id("Relief")
+            // An archive under way holds the schedule's lock, and commits once the change of default has read the schedule.
+            await db.query("BEGIN")
+            await db.query(`SELECT pg_advisory_xact_lock(hashtext($1))::text`, [`schedule:${spare}`])
+            const setting = Calendar.setDefault(spare, "2026-12-01", "a1").then(() => "SET", (e: Error) => e.message)
+            // Until the change waits on that lock, or has gone ahead without it.
+            for (let i = 0; i < 40; i++) {
+                if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`)).rows[0].n > 0) break
+                await new Promise(r => setTimeout(r, 50))
+            }
+            await db.query(`UPDATE "WorkSchedule" SET "archivedAt" = now() WHERE id = $1`, [spare])
+            await db.query("COMMIT")
+            expect(await setting).toBe("SCHEDULE_ARCHIVED")
+            expect((await defaultsOf("c1")).map(d => d.name)).not.toContain("Relief")
+        })
+
         it("withdraws a later change of default, never the first", async () => {
             const rows = (await db.query(`SELECT id, "effectiveFrom"::text AS "from" FROM "ScheduleDefault" WHERE "companyId" = 'c1' ORDER BY "effectiveFrom"`)).rows
             await expect(Calendar.withdrawDefault(rows[0].id, "a1")).rejects.toEqual(refusal("SCHEDULE_DEFAULT_REQUIRED"))
@@ -348,5 +366,26 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
             expect(actions, a).toContain(a)
         }
         expect(rows.filter(r => r.entityType === "ATTENDANCE_CALENDAR").every(r => r.userId === "a1" && r.superAdminId === null)).toBe(true)
+    })
+
+    // Last: it deletes the second company.
+    it("lets a company be deleted with its schedules, its defaults and the people on them (review on #64)", async () => {
+        const theirs = (await db.query(`SELECT id FROM "WorkSchedule" WHERE "companyId" = 'c2' AND name = 'Office'`)).rows[0].id
+        await db.query(`INSERT INTO "UserSchedule"(id, "userId", "scheduleId", "effectiveFrom", "createdById") VALUES ('us-e2', 'e2', $1, '2026-12-01', 'a1')`, [theirs])
+        const held = await db.query(`SELECT (SELECT count(*)::int FROM "ScheduleDefault" WHERE "companyId" = 'c2') AS defaults,
+            (SELECT count(*)::int FROM "UserSchedule" u JOIN "WorkSchedule" s ON s.id = u."scheduleId" WHERE s."companyId" = 'c2') AS people`)
+        expect(held.rows[0].defaults).toBeGreaterThan(0)
+        expect(held.rows[0].people).toBeGreaterThan(0)
+        // The company's cascades run in the order their trigger names sort, which follows the constraints' ids.
+        // Made again, the key from people to their company sorts after the one from schedules: their assignments then
+        // still pointed at a schedule being deleted, and a RESTRICT check refused it.
+        await db.query(`ALTER TABLE "User" DROP CONSTRAINT "User_companyId_fkey",
+            ADD CONSTRAINT "User_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"(id) ON DELETE CASCADE ON UPDATE CASCADE`)
+        // As CompanyService.delete does it: the database cascades the rest.
+        await (await import("@/lib/prisma")).prisma.company.delete({ where: { id: "c2" } })
+        expect((await db.query(`SELECT count(*)::int AS n FROM "WorkSchedule" WHERE "companyId" = 'c2'`)).rows[0].n).toBe(0)
+        // A schedule that is a default, or somebody's, still can't be deleted on its own.
+        const office = (await db.query(`SELECT id FROM "WorkSchedule" WHERE "companyId" = 'c1' AND name = 'Office'`)).rows[0].id
+        await expect(db.query(`DELETE FROM "WorkSchedule" WHERE id = $1`, [office])).rejects.toThrow(/foreign key/)
     })
 })

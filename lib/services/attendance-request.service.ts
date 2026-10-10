@@ -171,13 +171,21 @@ export class AttendanceRequestService {
     static async requestPermission(companyId: string, userId: string, input: PermissionInput) {
         if (!isDateString(input.date)) fail("INVALID_DATE")
         if (!input.reason.trim()) fail("REASON_REQUIRED")
-        const startMinutes = minutesOf(input.start)
-        let endMinutes = minutesOf(input.end)
-        if (endMinutes <= startMinutes) endMinutes += 1440
-        const minutes = endMinutes - startMinutes
+        const asked = minutesOf(input.start)
+        let askedEnd = minutesOf(input.end)
+        if (askedEnd <= asked) askedEnd += 1440
+        const minutes = askedEnd - asked
         const next = `${addDays(`${input.date.slice(0, 8)}28`, 4).slice(0, 7)}-01`
         const out = await prisma.$transaction(async tx => {
             const company = await companyOf(tx, companyId)
+            // On a night shift, a span after midnight is the next morning's part of the date's shift: 05:00-06:00
+            // of a 22:00-06:00 night was the evening before it began, so it excused nothing and was "too late"
+            // to ask for the morning after (review on #14).
+            const { plans } = await (await import("./attendance-engine.service")).AttendanceEngineService.plansFor(companyId, [userId], [input.date], tx)
+            const shift = plans.get(userId)?.get(input.date)
+            const nextMorning = shift?.kind === "WORK" && shift.hours.endMinutes > 1440 && askedEnd <= shift.hours.startMinutes && asked + 1440 < shift.hours.endMinutes
+            const startMinutes = nextMorning ? asked + 1440 : asked
+            const endMinutes = nextMorning ? askedEnd + 1440 : askedEnd
             // And the next month's, whose carried minutes this one can spend.
             await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])
             await openMonth(tx, companyId, monthOf(input.date))
@@ -198,12 +206,31 @@ export class AttendanceRequestService {
                 select: { id: true },
             })
             if (overlapping) fail("PERMISSION_OVERLAPS")
+            // The next month's balance on its 1st and on each day of it asked for: a policy version from mid-month
+            // may allow less, and its requests may have spent what this month would carry (review on #14). Once per
+            // policy version in force among them: the balance changes with nothing else, and a day each was six
+            // queries, twice, for every date the next month has requests on (review on #49).
+            const policies = await AttendancePolicyService.versions(companyId, tx)
+            const versionsSeen = new Set<string | undefined>()
+            const nextDays = [next, ...(await tx.permissionRequest.findMany({
+                where: { companyId, userId, status: { in: ["APPROVED", "PENDING"] }, date: monthRange(monthOf(next)) },
+                distinct: ["date"], select: { date: true }, orderBy: { date: "asc" },
+            })).map(r => toDateString(r.date))].filter(day => {
+                const version = policyOn(policies, day)?.id
+                if (versionsSeen.has(version)) return false
+                versionsSeen.add(version)
+                return true
+            })
+            const overdrawnBefore: number[] = []
+            for (const day of nextDays) overdrawnBefore.push((await balanceIn(tx, companyId, userId, day)).overdrawnMinutes)
             const created = await tx.permissionRequest.create({
                 data: { companyId, userId, date: wallClock(`${input.date}T00:00:00`), type: input.type, startMinutes, endMinutes, minutes, reason: input.reason.trim() },
             })
             // Minutes the next month already spent from what this one would
             // have carried are not this month's to give again (review on #14).
-            if ((await balanceIn(tx, companyId, userId, next)).overdrawnMinutes > 0) fail("PERMISSION_OVER_ALLOWANCE")
+            for (const [i, day] of nextDays.entries()) {
+                if ((await balanceIn(tx, companyId, userId, day)).overdrawnMinutes > overdrawnBefore[i]) fail("PERMISSION_OVER_ALLOWANCE")
+            }
             await AuditLogService.log("REQUEST_ATTENDANCE_PERMISSION", "PERMISSION_REQUEST", created.id, {
                 tx, userId, details: { companyId, date: input.date, type: input.type, minutes, reason: input.reason.trim() },
             })

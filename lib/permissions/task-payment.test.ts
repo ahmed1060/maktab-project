@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { readFileSync } from "node:fs"
 import { state, prismaMock, taskState, as, withBody, TASKS, PEOPLE } from "./task-access.harness"
+import { isReviewed } from "@/lib/task-reviewed"
 
 vi.setConfig({ testTimeout: 60_000 })
 
@@ -39,6 +41,16 @@ describe("recording a task's payment", () => {
             taskState.status = status
             expect((await pay({ paymentStatus: "PAID" })).status, status).toBe(200)
         }
+    })
+
+    it("is offered on the task page exactly when the server takes it: not on a submission waiting for review (review on #6)", async () => {
+        for (const status of ["PENDING", "IN_PROGRESS", "PENDING_CONFIRMATION", "APPROVED", "COMPLETED", "REJECTED"]) {
+            taskState.status = status
+            const taken = (await pay({ paymentStatus: "PAID", targetUserId: "emp" })).status === 200
+            expect(isReviewed(status), status).toBe(taken)
+        }
+        expect(isReviewed("PENDING_CONFIRMATION")).toBe(false)
+        expect(readFileSync("components/TaskCostsSection.tsx", "utf8")).toMatch(/can\('tasks\.pay'\) && isReviewed\(task\.status\)/)
     })
 
     it("for one of the team's people, when paying is held for a team, even on a shared task", async () => {

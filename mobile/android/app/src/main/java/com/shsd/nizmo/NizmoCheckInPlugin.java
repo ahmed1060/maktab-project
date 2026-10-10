@@ -67,8 +67,6 @@ public class NizmoCheckInPlugin extends Plugin {
     private static final String KEY_ALIAS = "nizmo-check-in";
     /** How long to wait for a fix before saying there isn't one. */
     private static final long LOCATION_TIMEOUT_MS = 30_000;
-    /** A fix older than this says where the phone was, not where it is. */
-    private static final long MAX_FIX_AGE_MS = 30_000;
 
     @PluginMethod
     public void getInfo(PluginCall call) {
@@ -239,12 +237,18 @@ public class NizmoCheckInPlugin extends Plugin {
             call.reject("No location provider is available.", "LOCATION_UNAVAILABLE");
             return;
         }
+        // On the clock fixes carry, which doesn't jump when the time is changed.
+        long askedAt = SystemClock.elapsedRealtimeNanos();
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // A fresh fix, never a cached one: a cached fix says where the phone was, not where it is.
-                manager.getCurrentLocation(provider, null, getContext().getMainExecutor(), location -> answer(call, location));
+                // getCurrentLocation may hand back a recent cached fix. One taken before the person asked says
+                // where the phone was, not where it is: a live one is waited for instead (review on #24, #61).
+                manager.getCurrentLocation(provider, null, getContext().getMainExecutor(), location -> {
+                    if (location == null || takenSince(location, askedAt)) answer(call, location);
+                    else liveUpdate(manager, provider, call, askedAt);
+                });
             } else {
-                singleUpdate(manager, provider, call);
+                liveUpdate(manager, provider, call, askedAt);
             }
         } catch (SecurityException e) {
             call.reject("Location permission was refused.", "LOCATION_DENIED", e);
@@ -258,15 +262,16 @@ public class NizmoCheckInPlugin extends Plugin {
         return null;
     }
 
-    @SuppressWarnings("deprecation")
-    private void singleUpdate(LocationManager manager, String provider, PluginCall call) {
+    /** Updates until one taken since the person asked arrives, or the timeout: the first may be an old one. */
+    private void liveUpdate(LocationManager manager, String provider, PluginCall call, long askedAt) {
         Handler handler = new Handler(Looper.getMainLooper());
         final boolean[] done = { false };
         LocationListener listener = new LocationListener() {
             @Override
             public void onLocationChanged(@NonNull Location location) {
-                if (done[0]) return;
+                if (done[0] || !takenSince(location, askedAt)) return;
                 done[0] = true;
+                manager.removeUpdates(this);
                 answer(call, location);
             }
         };
@@ -276,19 +281,23 @@ public class NizmoCheckInPlugin extends Plugin {
             manager.removeUpdates(listener);
             answer(call, null);
         }, LOCATION_TIMEOUT_MS);
-        manager.requestSingleUpdate(provider, listener, Looper.getMainLooper());
+        try {
+            manager.requestLocationUpdates(provider, 0L, 0f, listener, Looper.getMainLooper());
+        } catch (SecurityException e) {
+            done[0] = true;
+            handler.removeCallbacksAndMessages(null);
+            call.reject("Location permission was refused.", "LOCATION_DENIED", e);
+        }
     }
 
-    /** How long ago the fix was taken, on the clock that doesn't jump when the time is changed. */
-    private static long ageMillis(Location location) {
-        return (SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos()) / 1_000_000;
+    /** Whether the fix was taken at or after the request, on the clock that doesn't jump when the time is changed. */
+    private static boolean takenSince(Location location, long askedAt) {
+        return location.getElapsedRealtimeNanos() >= askedAt;
     }
 
     @SuppressWarnings("deprecation")
     private static void answer(PluginCall call, Location location) {
-        // getCurrentLocation may hand back a recent cached fix; one taken before
-        // the person asked is refused rather than signed (review on #24).
-        if (location == null || ageMillis(location) > MAX_FIX_AGE_MS) {
+        if (location == null) {
             call.reject("The phone couldn't find its location.", "LOCATION_UNAVAILABLE");
             return;
         }

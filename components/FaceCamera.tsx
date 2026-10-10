@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
-import type { Camera, OpenCamera } from '@/lib/mobile/face-check/camera'
+import { ringShare, startCapture, type Camera, type OpenCamera } from '@/lib/mobile/face-check/camera'
 import type { Cue, Progress } from '@/lib/mobile/face-check/liveness'
 import { chime, pageAudio } from '@/lib/mobile/face-check/chime'
 
@@ -28,7 +28,7 @@ type Said = Parameters<Camera['say']>[0]
 const PROMPTS: Record<Said, TranslationKey> = {
     LOADING: 'face_cam_loading', WORKING: 'face_cam_working', FACE_CAMERA: 'face_cam_face', TURN_HEAD: 'face_cam_turn',
     LOOK_BACK: 'face_cam_back', BLINK: 'face_cam_blink', OPEN_EYES: 'face_cam_open', HOLD_STILL: 'face_cam_still', ONE_FACE: 'face_cam_one',
-    CENTER: 'face_cam_center', CLOSER: 'face_cam_closer', FARTHER: 'face_cam_farther', EXTRA: 'face_cam_extra', DONE: 'face_cam_done',
+    CENTER: 'face_cam_center', CLOSER: 'face_cam_closer', FARTHER: 'face_cam_farther', UPRIGHT: 'face_cam_upright', EXTRA: 'face_cam_extra', DONE: 'face_cam_done',
 }
 
 const STEP_ICON: Record<Progress['steps'][number]['challenge'], string> = { TURN: '↔', BLINK: '◡' }
@@ -103,14 +103,9 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     // Once the overlay is up: the camera, then the session handed back.
     useEffect(() => {
         if (!request || !video.current) return
-        let gone = false
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
-            .then(async media => {
-                if (gone) { media.getTracks().forEach(track => track.stop()); return }
-                stream.current = media
-                const v = video.current!
-                v.srcObject = media
-                await v.play()
+        const v = video.current
+        return startCapture({
+            ready: () => {
                 const cancelled = new Promise<never>((_, reject) => { cancel.current = reject })
                 cancelled.catch(() => {})
                 setRequest(null)
@@ -127,21 +122,23 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                         const w = Math.min(1, ew / scale / vw), h = Math.min(1, eh / scale / vh)
                         return { x: (1 - w) / 2, y: (1 - h) / 2, w, h }
                     },
+                    // The oval is drawn for a tall screen (review on #48).
+                    upright: () => v.clientHeight >= v.clientWidth,
                     // Shown only while it's still downloading: from the phone's cache it's done at once.
                     loading: share => setDownload(share === null || share >= 1 ? null : share),
                     cue,
                     close: () => { stopStream(); cancel.current = null; reset() },
                     cancelled,
                 })
-            })
-            .catch(() => {
-                // Granted but couldn't play: the camera mustn't stay on with nothing showing (review on #28).
-                stopStream()
-                setRequest(null)
-                setPrompt(null)
-                request.failed(codeError('CAMERA_DENIED'))
-            })
-        return () => { gone = true }
+            },
+            // Refused, couldn't play, or closed or left while it started: the capture waiting on it is told,
+            // never left waiting (review on #28).
+            failed: error => request.failed(error),
+        },
+        () => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }),
+        async media => { stream.current = media; v.srcObject = media; await v.play() },
+        // Only while this capture is still the one showing (Codex review on #49): the camera off, the overlay down.
+        () => { stopStream(); setRequest(null); setPrompt(null) })
     }, [request, cue])
 
     // Leaving the page mid-capture: the capture is cancelled and the camera turned off (review on #28).
@@ -163,6 +160,8 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
     const current = progress?.steps.find(s => s.current)?.challenge
     const done = prompt === 'DONE'
     const ringColour = done || flash === 'ok' ? 'var(--cam-done)' : flash === 'retry' ? 'var(--cam-warn)' : 'var(--cam-ink)'
+    // Whole while a cue flashes it, so a step's cues show on the ring too (review on #48).
+    const ring = ringShare(fill, done, flash !== null)
     const words = flash === 'retry' ? t('face_cam_slow')
         : download !== null && prompt === 'LOADING' ? t('face_cam_download').replace('{pct}', String(Math.floor(download * 100)))
         : prompt ? t(PROMPTS[prompt]) : ''
@@ -185,8 +184,8 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
                 <ellipse {...OVAL} fill="none" strokeWidth="1.2" style={{ stroke: 'color-mix(in srgb, var(--cam-ink) 28%, transparent)' }} />
                 {/* Drawn from the top, clockwise: the share done grows around the oval. */}
                 <path d={RING} fill="none" strokeWidth="1.6" strokeLinecap="round" pathLength={100}
-                    opacity={done || (fill ?? 0) > 0 ? 1 : 0}
-                    strokeDasharray="100 100" strokeDashoffset={100 - Math.round((done ? 1 : fill ?? 0) * 100)}
+                    opacity={ring > 0 ? 1 : 0}
+                    strokeDasharray="100 100" strokeDashoffset={100 - Math.round(ring * 100)}
                     style={{ stroke: ringColour, transition: 'stroke-dashoffset 0.25s ease-out, stroke 0.2s' }} />
             </svg>
             {done && (

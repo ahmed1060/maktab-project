@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phone.service"
@@ -13,6 +13,21 @@ import { UserService } from "@/lib/services/user.service"
  * check-ins released or discarded, and a lost phone revoked. Against a real
  * Postgres built from the migrations.
  */
+
+// Google and Apple, counted: the real verifier, which has no credentials here, a moment slower if asked.
+const provider = vi.hoisted(() => ({ asked: 0, slowMs: 0, answer: null as null | Record<string, unknown> }))
+vi.mock("@/lib/attendance/attestation", async importOriginal => {
+    const real = await importOriginal<typeof import("@/lib/attendance/attestation")>()
+    return {
+        ...real,
+        verifyAttestation: async (...args: Parameters<typeof real.verifyAttestation>) => {
+            provider.asked += 1
+            if (provider.slowMs) await new Promise(r => setTimeout(r, provider.slowMs))
+            if (provider.answer) return provider.answer as Awaited<ReturnType<typeof real.verifyAttestation>>
+            return real.verifyAttestation(...args)
+        },
+    }
+})
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
@@ -208,13 +223,19 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         await Phones.decide(inUse.id, { approve: true }, "a1")
         const waiting = await register("m1")
         const punch = await held("m1", waiting.id)
+        const version = async () => (await db.query(`SELECT "sessionVersion" FROM "User" WHERE id = 'm1'`)).rows[0].sessionVersion
+        const before = await version()
         await UserService.update({ id: "m1", companyId: "c2" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
+        // Their session, which names the old company, ends (review on #21).
+        expect(await version()).toBe(before + 1)
         expect(await status(inUse.id)).toBe("REVOKED")
         expect(await status(waiting.id)).toBe("REVOKED")
         expect(await punchStatus(punch)).toMatchObject({ status: "REJECTED" })
         // The old company no longer sees them, nor can decide them.
         expect((await Phones.list("c1", { kind: "COMPANY" })).map(p => p.userId)).not.toContain("m1")
         await expect(Phones.decide(waiting.id, { approve: true }, "a1")).rejects.toThrow("PHONE_NOT_PENDING")
+        // Nor can a session from before the move register a new phone under the old company (review on #21).
+        await expect(register("m1")).rejects.toThrow("USER_NOT_FOUND")
     })
 
     it("keeps one unused number per person and purpose: asking again replaces the last", async () => {
@@ -226,6 +247,24 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         expect(rows).toEqual([{ purpose: "CHECK_IN", n: 1 }, { purpose: "REGISTER", n: 1 }])
         const { prisma } = await import("@/lib/prisma")
         expect(await prisma.$transaction(tx => Challenges.consume(tx, "e4", "CHECK_IN", first.nonce))).toBe(false)
+    })
+
+    it("registers while a notice to the person is being written elsewhere (review on #21)", async () => {
+        // A decider registering at the same moment tells e4, holding a key share on e4's row for the foreign key.
+        await db.query("BEGIN")
+        await db.query(`SELECT id FROM "User" WHERE id = 'e4' FOR KEY SHARE`)
+        const registering = register("e4")
+        registering.catch(() => {})
+        const done = await Promise.race([registering.then(() => true), new Promise(r => setTimeout(() => r(false), 2_000))])
+        await db.query("COMMIT")
+        await registering
+        expect(done).toBe(true)
+    })
+
+    it("keeps one unused number per person and purpose when asked for at once (review on #21)", async () => {
+        await Promise.all(Array.from({ length: 8 }, () => Challenges.issue("e4", "FACE")))
+        const { rows: [{ n }] } = await db.query(`SELECT count(*)::int AS n FROM "AttendanceChallenge" WHERE "userId" = 'e4' AND purpose = 'FACE' AND "usedAt" IS NULL`)
+        expect(n).toBe(1)
     })
 
     it("holds at most one phone in use and one waiting per person, in the database too", async () => {
@@ -240,4 +279,37 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         expect(team.map(p => p.userId)).toEqual(["e1"])
         expect(team[0]).toMatchObject({ name: "Ehab One", status: "ACTIVE", held: 0 })
     })
+
+    it("keeps which App Attest environment attested an iPhone's key (review on #65)", async () => {
+        // Apple's answer for a build from Xcode, as the verifier gives it once development builds are allowed.
+        provider.answer = { verified: true, reason: null, appAttest: { publicKey: "MFkw-the-attested-key", counter: 0, environment: "development" } }
+        try {
+            const phone = phoneKeyPair()
+            const { nonce } = await Challenges.issue("e3", "REGISTER")
+            const fingerprint = parsePhoneKey(phone.publicBase64)!.fingerprint
+            const registered = await Phones.register("c1", "e3", { nonce, publicKey: phone.publicBase64, signature: phone.sign(signedText("REGISTER", nonce, [fingerprint, "IOS"])), platform: "IOS", model: "iPhone 15" })
+            const { rows: [kept] } = await db.query(`SELECT "appAttestKey", "appAttestEnvironment" FROM "CheckInPhone" WHERE id = $1`, [registered.id])
+            expect(kept).toEqual({ appAttestKey: "MFkw-the-attested-key", appAttestEnvironment: "development" })
+        } finally {
+            provider.answer = null
+        }
+    })
+
+    // Last: it leaves a phone waiting for Ezz.
+    it("asks Google or Apple once for copies of one signed registration sent at once (review on #65)", async () => {
+        const phone = phoneKeyPair()
+        const { nonce } = await Challenges.issue("e5", "REGISTER")
+        const fingerprint = parsePhoneKey(phone.publicBase64)!.fingerprint
+        const signature = phone.sign(signedText("REGISTER", nonce, [fingerprint, "ANDROID"]))
+        provider.asked = 0
+        provider.slowMs = 200
+        try {
+            const outcomes = await Promise.allSettled(Array.from({ length: 5 }, () =>
+                Phones.register("c1", "e5", { nonce, publicKey: phone.publicBase64, signature, platform: "ANDROID", model: "Pixel 8" })))
+            expect(outcomes.filter(o => o.status === "fulfilled")).toHaveLength(1)
+            expect(provider.asked).toBe(1)
+        } finally {
+            provider.slowMs = 0
+        }
+    }, 20_000)
 })

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
-import { faceText } from "@/lib/attendance/signed-text"
+import { faceReviewId, faceText } from "@/lib/attendance/signed-text"
 import { isPrototypeModel, prototypeAllowed } from "@/lib/attendance/face-prototype-gate"
 import { attestationMode, verifyAttestation, type AttestationResult } from "@/lib/attendance/attestation"
 import { encryptFacePhoto, decryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
@@ -73,25 +73,29 @@ export class FaceReviewService {
         if (photo.length === 0 || photo.length > MAX_PHOTO_BYTES || !isJpeg(photo)) fail("FACE_PHOTO_INVALID")
         const phone = await prisma.checkInPhone.findFirst({
             where: { userId, companyId, keyFingerprint: input.keyFingerprint, status: "ACTIVE" },
-            select: { id: true, publicKey: true, platform: true, faceStatus: true, appAttestKey: true, appAttestCounter: true },
+            select: { id: true, publicKey: true, platform: true, faceStatus: true, appAttestKey: true, appAttestCounter: true, appAttestEnvironment: true },
         })
         if (!phone) fail("FACE_PHONE_NOT_ACTIVE")
         const key = parsePhoneKey(phone.publicKey)
         const photoSha256 = createHash("sha256").update(photo).digest("hex")
         if (!key || !signatureValid(key.key, faceText({ ...input, photoSha256 }), input.signature)) fail("PHONE_SIGNATURE_INVALID")
-        // Google and Apple only for a request that could count (review on #26).
-        if (!(await AttendanceChallengeService.isLive(userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+        // Google and Apple only for a request that could count (review on #26): the number is used up first, so of
+        // copies of one request only one asks (review on #65).
+        if (!(await AttendanceChallengeService.claim(userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
         let attestation: AttestationResult = await verifyAttestation({ platform: phone.platform, token: input.attestation, challenge: input.nonce, purpose: "FACE", phone })
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
         const purpose = phone.faceStatus === "APPROVED" ? "REVERIFY" as const : "ENROLMENT" as const
         const stored = encryptFacePhoto(photo)
+        // Known to the app before it sent the photo, from the number (faceReviewId).
+        const id = await faceReviewId(input.nonce)
 
         const review = await prisma.$transaction(async tx => {
-            if (!(await AttendanceChallengeService.consume(tx, userId, "FACE", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
             // Asked and consented, checked again under the locks withdrawal, "no
             // longer asked" and purge take: none of them can finish deleting the
             // person's photos and then have this one stored after (review on #27).
-            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+            // NO KEY UPDATE, which still waits for theirs (FOR UPDATE), but not for the key share a notice to this
+            // person takes: a reviewer sending their own photo while telling this one waited on each other (review on #21).
+            await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR NO KEY UPDATE`
             await tx.$queryRaw`SELECT id FROM "SystemSettings" WHERE id = 'default' FOR SHARE`
             const [current] = await tx.$queryRaw<{ status: string }[]>`SELECT status FROM "CheckInPhone" WHERE id = ${phone.id} FOR SHARE`
             if (current?.status !== "ACTIVE") fail("FACE_PHONE_NOT_ACTIVE")
@@ -115,7 +119,7 @@ export class FaceReviewService {
                 await resolveNotices(tx, waiting.id)
             }
             const created = await tx.faceReview.create({
-                data: { companyId, userId, phoneId: phone.id, purpose, photo: new Uint8Array(stored), modelVersion: input.modelVersion.slice(0, 60), attested: attestation.verified },
+                data: { id, companyId, userId, phoneId: phone.id, purpose, photo: new Uint8Array(stored), modelVersion: input.modelVersion.slice(0, 60), attested: attestation.verified },
                 select: { id: true, purpose: true, status: true, createdAt: true },
             })
             if (purpose === "ENROLMENT") {

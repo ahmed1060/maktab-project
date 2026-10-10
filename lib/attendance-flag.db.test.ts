@@ -7,6 +7,7 @@ import { AttendancePhoneService as Phones } from "@/lib/services/attendance-phon
 import { AttendanceChallengeService as Challenges } from "@/lib/services/attendance-challenge.service"
 import { AttendanceLocationService as Locations } from "@/lib/services/attendance-location.service"
 import { AttendancePunchService as Punches } from "@/lib/services/attendance-punch.service"
+import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance-calendar.service"
 import { parsePhoneKey, signedText } from "@/lib/attendance/phone-keys"
 import { phoneKeyPair } from "@/lib/attendance/test-phone"
 
@@ -24,6 +25,21 @@ vi.mock("@/lib/attendance/attestation", () => ({
     attestationMode: () => "testing",
     verifyAttestation: async () => ({ verified: attested.verified, reason: attested.verified ? null : "NOT_CONFIGURED" }),
 }))
+
+// Raw queries can be wrapped, to land a check-in between two of them.
+const raw = vi.hoisted(() => ({ wrap: null as null | ((run: (...args: unknown[]) => Promise<unknown>) => (...args: unknown[]) => Promise<unknown>) }))
+vi.mock("@/lib/prisma", async importOriginal => {
+    const real = await importOriginal<typeof import("@/lib/prisma")>()
+    const prisma = new Proxy(real.prisma, {
+        get(target, key) {
+            const value = Reflect.get(target, key)
+            if (typeof value !== "function") return value
+            const bound = value.bind(target)
+            return key === "$queryRaw" && raw.wrap ? raw.wrap(bound) : bound
+        },
+    })
+    return { ...real, prisma }
+})
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
@@ -154,6 +170,25 @@ describe.skipIf(!ADMIN_URL)("flagged check-ins, in Postgres", () => {
         expect((await Flags.list("COMPANY", { companyId: "c2", visible: { kind: "COMPANY" } })).map(f => f.id)).not.toContain(late)
     })
 
+    it("doesn't list a night's check-out after midnight on the 1st once the night's month is approved (review on #63)", async () => {
+        // Xena works nights, 22:00–06:00; November's payroll is approved, December's isn't.
+        // From November: October's payroll is approved too (above), and closed to calendar changes.
+        const night = await Calendar.createSchedule("c2", { name: "Night", version: { effectiveFrom: "2026-11-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "a2")
+        await Calendar.assign("c2", { userIds: ["x2"], scheduleId: night.id, effectiveFrom: "2026-11-01" }, "a2")
+        await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('run-nov', 'c2', 2026, 11, 'APPROVED', 1, now())`)
+        const flagged = (id: string, local: string) => db.query(
+            `INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status, "flagReasons")
+             VALUES ($1, 'c2', 'x2', 'MOBILE', $1, $2, $3, 'Africa/Cairo', 'FLAGGED', '{OUTSIDE_AREA}')`, [id, local, `${local}+02:00`])
+        // Monday 30 November's night ends at 06:00 on Tuesday 1 December: a check-out at 00:30 is November's.
+        await flagged("dec-night", "2026-12-01T00:30:00")
+        // 13:00 on the 1st belongs to no night: December's alone.
+        await flagged("dec-day", "2026-12-01T13:00:00")
+        await expect(Flags.decide("dec-night", { accept: true }, "a2")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+        const listed = (await Flags.list("COMPANY", { companyId: "c2", visible: { kind: "COMPANY" } })).map(f => f.id)
+        expect(listed).toContain("dec-day")
+        expect(listed).not.toContain("dec-night")
+    })
+
     it("shows the Super Admin, per company, what was refused and flagged, and why", async () => {
         attested.verified = true
         await checkIn("c1", "e1", AT_DESK, true)
@@ -165,5 +200,30 @@ describe.skipIf(!ADMIN_URL)("flagged check-ins, in Postgres", () => {
         expect(one.checkIns).toBe(3)
         // Worst first: the company with refusals before the one without.
         expect(view[0].companyId).toBe("c1")
+    })
+
+    it("counts a company's check-ins and their reasons from one moment, as check-ins keep arriving (review on #63)", async () => {
+        // A flagged check-in arrives for a third company just after the first of the view's counts.
+        await db.query(`INSERT INTO "Company"(id, name, "updatedAt", timezone) VALUES ('c3', 'Three', now(), 'Africa/Cairo')`)
+        let arrived: Promise<unknown> | null = null
+        raw.wrap = run => (...args) => {
+            if (arrived) return arrived.then(() => run(...args))
+            const first = run(...args)
+            arrived = first.then(() => db.query(
+                `INSERT INTO "AttendancePunch"(id, "companyId", "hardwareUserId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status, "flagReasons")
+                 VALUES ('c3-flag', 'c3', '7', 'MOBILE', 'c3-flag', now(), now(), 'Africa/Cairo', 'FLAGGED', '{OUTSIDE_AREA}')`))
+            return arrived.then(() => first)
+        }
+        try {
+            const view = await Flags.integrity()
+            // Two statements straddled it: OUTSIDE_AREA counted for c3, with no check-in there to have it.
+            for (const r of view) {
+                expect(r.flagged <= r.checkIns).toBe(true)
+                expect(Object.keys(r.flaggedBy).length === 0 || r.flagged > 0).toBe(true)
+            }
+        } finally {
+            raw.wrap = null
+        }
+        expect(arrived).not.toBeNull()
     })
 })

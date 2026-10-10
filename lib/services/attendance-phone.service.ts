@@ -4,7 +4,7 @@ import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
@@ -60,7 +60,10 @@ const SHOWN = {
 
 /** One person at a time: their phones change together, or not at all. */
 async function lockPerson(tx: Prisma.TransactionClient, userId: string) {
-    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+    // Not FOR UPDATE: that also blocks the key share a notice to this person takes for its foreign key, so two
+    // deciders registering phones at once, each telling the other, waited on each other until Postgres ended
+    // one as a deadlock (review on #21). This still keeps one phone write at a time for the person.
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR NO KEY UPDATE`
 }
 
 function visibleWhere(v: Visibility): Prisma.CheckInPhoneWhereInput {
@@ -79,14 +82,18 @@ export class AttendancePhoneService {
         const key = parsePhoneKey(input.publicKey) ?? fail("PHONE_KEY_INVALID")
         const text = signedText("REGISTER", input.nonce, [key.fingerprint, input.platform])
         if (!signatureValid(key.key, text, input.signature)) fail("PHONE_SIGNATURE_INVALID")
-        // A used or made-up number is refused before Google or Apple is asked (review on #26).
-        if (!(await AttendanceChallengeService.isLive(userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
+        // Used up before Google or Apple is asked: a used or made-up number is refused without a call to them
+        // (review on #26), and of copies of one request only one asks (review on #65).
+        if (!(await AttendanceChallengeService.claim(userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
         const attestation = await verifyAttestation({ platform: input.platform, token: input.attestation, challenge: input.nonce, purpose: "REGISTER" })
         if (!attestation.verified && attestationMode() === "required") fail("PHONE_ATTESTATION_FAILED")
 
         const out = await prisma.$transaction(async tx => {
-            if (!(await AttendanceChallengeService.consume(tx, userId, "REGISTER", input.nonce))) fail("PHONE_CHALLENGE_INVALID")
             await lockPerson(tx, userId)
+            // Still the session's company, read under the lock a move takes: a session from before a move to
+            // another company names the old one for up to a minute more (review on #21).
+            const person = await tx.user.findUnique({ where: { id: userId }, select: { companyId: true } })
+            if (person?.companyId !== companyId) fail("USER_NOT_FOUND")
             const known = await tx.checkInPhone.findUnique({ where: { keyFingerprint: key.fingerprint }, select: { ...SHOWN, userId: true } })
             if (known) {
                 // The same phone asking twice (a retry): the same answer.
@@ -102,6 +109,7 @@ export class AttendancePhoneService {
                     attested: attestation.verified,
                     // iOS: the attested key, which each check-in's assertion is checked with.
                     appAttestKey: attestation.appAttest?.publicKey ?? null,
+                    appAttestEnvironment: attestation.appAttest?.publicKey ? attestation.appAttest.environment ?? null : null,
                 },
                 select: SHOWN,
             })
@@ -200,14 +208,15 @@ export class AttendancePhoneService {
             // A check-in held in a month whose payroll was approved meanwhile
             // can't count now: that month is closed to every punch (§12.1,
             // review on #22). Locked as any punch write is, then discarded.
+            // Their months in one read, however many it held (review on #22).
+            let late: string[] = []
             if (decision.approve) {
                 const waiting = await tx.attendancePunch.findMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, select: { id: true, punchAtLocal: true } })
-                const monthsOf = new Map<string, string[]>()
-                for (const w of waiting) monthsOf.set(w.id, await punchMonths(tx, phone.companyId, phone.userId, w.punchAtLocal.toISOString().slice(0, 19)))
-                const months = [...new Set([...monthsOf.values()].flat())]
+                const monthsOf = await punchMonthsOf(tx, phone.companyId, waiting.map(w => ({ userId: phone.userId, local: w.punchAtLocal.toISOString().slice(0, 19) })))
+                const months = [...new Set(monthsOf.flat())]
                 await lockMonths(tx, phone.companyId, months)
                 const closed = await lockedMonths(tx, phone.companyId, months)
-                const late = waiting.filter(w => monthsOf.get(w.id)!.some(m => closed.has(m))).map(w => w.id)
+                late = waiting.filter((_, i) => monthsOf[i].some(m => closed.has(m))).map(w => w.id)
                 if (late.length > 0) await tx.attendancePunch.updateMany({ where: { id: { in: late } }, data: { status: "REJECTED" } })
             }
             // Approved, what it held counts, or is flagged with the reasons it
@@ -218,14 +227,15 @@ export class AttendancePhoneService {
             const released = await tx.attendancePunch.updateMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, data: { status: decision.approve ? "ACCEPTED" : "REJECTED" } })
             await AuditLogService.log(decision.approve ? "APPROVE_CHECK_IN_PHONE" : "REJECT_CHECK_IN_PHONE", "CHECK_IN_PHONE", id, {
                 tx, ...(await actorOf(tx, deciderId)),
-                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count + flagged.count },
+                // Every held check-in the decision dealt with, those refused for a closed month too (review on #22).
+                details: { companyId: phone.companyId, userId: phone.userId, model: phone.model, reason, replaced, punches: released.count + flagged.count + late.length, ...(late.length > 0 ? { refused: late.length } : {}) },
             })
             await NotificationService.notify(phone.userId, "ATTENDANCE_PHONE", {
                 key: decision.approve ? "notice_att_phone_approved" : "notice_att_phone_rejected",
                 params: { model: phone.model ?? "", reason: reasonParam(reason) },
             }, undefined, tx)
             return { ...phone, from: held[0] ? toDateString(held[0].punchAtLocal) : null, counted: decision.approve && released.count > 0 }
-        })
+        }, LOCK_WAIT)
         // The check-ins it held now count: the days they fall on are worked out again.
         // From the day before: an early check-in may end the night shift that began then.
         if (out.counted && out.from) await recomputeAfter(out.companyId, addDays(out.from, -1), [out.userId])

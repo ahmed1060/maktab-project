@@ -240,6 +240,27 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'c2p'`)
     })
 
+    it("reaches back past nights the job missed or failed, to two days before its last success (review on #13)", async () => {
+        await db.query(`UPDATE "SalaryChange" SET "createdAt" = now() - interval '10 days'`)
+        // Recorded five days ago, inside another change's transaction; the job last got through six days ago.
+        await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom", "createdAt") VALUES ('s10', 'e3', 9400, '2026-05-31T21:00:00Z', now() - interval '5 days')`)
+        await db.query(`INSERT INTO "JobHeartbeat"(job, "lastRunAt", "lastSuccessAt", "updatedAt") VALUES ('attendance', now(), now() - interval '6 days', now())`)
+        // From June, the month s10 reaches back to, to this month.
+        const today = new Date().toISOString().slice(0, 7)
+        const expected = (Number(today.slice(0, 4)) - 2026) * 12 + Number(today.slice(5, 7)) - 6 + 1
+        expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: expected, failed: [] })
+        // Run before, but never through: every change counts, as far back as a rebuild reaches — the salaries
+        // from January, within the year (review on #49).
+        await db.query(`UPDATE "JobHeartbeat" SET "lastSuccessAt" = NULL, "lastFailureAt" = now() WHERE job = 'attendance'`)
+        const monthIndex = Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1
+        expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: monthIndex - Math.max(2026 * 12, monthIndex - 12) + 1, failed: [] })
+        // Got through last night: two days back from then, as before.
+        await db.query(`UPDATE "JobHeartbeat" SET "lastSuccessAt" = now() WHERE job = 'attendance'`)
+        expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: 2, failed: [] })
+        await db.query(`DELETE FROM "JobHeartbeat" WHERE job = 'attendance'`)
+        await db.query(`DELETE FROM "SalaryChange" WHERE id = 's10'`)
+    })
+
     it("never rewrites a month whose payroll is approved", async () => {
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run9', 'c1', 9, 2026, 'APPROVED', 25, now())`)
         const before = (await days("e1")).get("2026-09-08")!.derivedAt
@@ -259,6 +280,34 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         await db.query(`UPDATE "AttendancePunch" SET "userId" = 'e3' WHERE id = $1`, [id])
         await expect(Punches.voidPunch(id, "Wrong person", "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
     })
+
+    it("holds a file's, a number's and a withdrawal's punch after midnight to the night's approved month too (review on #13)", async () => {
+        // Eman's 06:20 on 1 October closes her 30 September night; Ehab's is October's.
+        const file = { name: "first.csv", hash: "first", rows: [["AC-No.", "Name", "Check Time", "State"], ["3", "Eman", "01/10/2026 06:20", "C/Out"], ["1", "Ehab", "01/10/2026 06:20", "C/In"]] }
+        expect(await Punches.importRows("c1", file, { dateOrder: "DMY" }, "a1", false)).toMatchObject({ ready: 1, locked: 1 })
+        const done = await Punches.importRows("c1", file, { dateOrder: "DMY" }, "a1", true)
+        expect(done).toMatchObject({ added: 1, locked: 1 })
+        const { rows: stored } = await db.query(`SELECT id, "userId" FROM "AttendancePunch" WHERE "importId" = $1`, [done.importId])
+        expect(stored.map(r => r.userId)).toEqual(["e1"])
+        // A number nobody had, mapped to Eman: her waiting 06:10 stays unmatched, as September was paid without it.
+        await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", source, "sourceKey", "importId", "hardwareUserId", "punchAtLocal", "punchAt", "resolvedWithTimeZone")
+            VALUES ('waiting-9', 'c1', 'IMPORT', 'first:waiting-9', $1, '9', '2026-10-01 06:10', now(), 'Africa/Cairo')`, [done.importId])
+        expect(await Punches.mapCode("c1", { code: "9", userId: "e3" }, "a1")).toMatchObject({ filled: 0, leftInLockedMonths: 1 })
+        // The file's punch, had it been Eman's, can't be withdrawn with it either.
+        await db.query(`UPDATE "AttendancePunch" SET "userId" = 'e3' WHERE id = $1`, [stored[0].id])
+        await expect(Punches.voidImport(done.importId!, "Wrong file", "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+    })
+
+    it("waits out a long import's locks instead of failing after Prisma's five seconds (review on #12)", async () => {
+        // A file still going in holds the numbers' lock.
+        await db.query("BEGIN")
+        await db.query(`SELECT pg_advisory_xact_lock(hashtext('attendance-codes:c1'))::text`)
+        const mapping = Punches.mapCode("c1", { code: "77", userId: "e1" }, "a1")
+        mapping.catch(() => {})
+        await new Promise(r => setTimeout(r, 5_500))
+        await db.query("COMMIT")
+        expect(await mapping).toMatchObject({ filled: 0 })
+    }, 20_000)
 
     it("derives no day that has not ended", async () => {
         const result = await Engine.recomputeMonth("c1", "2099-01")

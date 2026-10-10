@@ -12,8 +12,8 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { checkInDevice, inNativeApp } from '@/lib/mobile/native'
 import { checkIn, deviceFingerprint, errorCode, registerPhone, type CheckInAnswer } from '@/lib/mobile/check-in-flow'
-import { answerKey, faceStep, modelChanged, reverifyFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
-import { enrolFace, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
+import { answerKey, checksFace, faceCardNote, faceModelNeeded, faceReady, faceStep, reverifyFirst, setUpFirst, shouldReconcileTemplates, thisPhone, type FaceStatus } from '@/lib/mobile/screen'
+import { enrolFace, faceInfo, faceVerifier, settleTemplates, wrappingKey } from '@/lib/mobile/face'
 import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
@@ -51,6 +51,7 @@ const DEVICE_ERRORS: Record<string, TranslationKey> = {
     FACE_MODELS_UNAVAILABLE: 'face_ci_models_failed',
     FACE_MODELS_CORRUPT: 'face_ci_models_failed',
     FACE_NOT_AVAILABLE: 'face_ci_not_available',
+    FACE_PLUGIN_TIMEOUT: 'face_ci_not_available',
     LIVENESS_FAILED: 'face_ci_liveness_failed',
 }
 
@@ -68,21 +69,30 @@ export default function CheckInPage() {
     // The face SDK's plugin when the app has one; otherwise, on a test build, the face check for testing (mobile/FACE_CHECK.md).
     const face = useMemo(() => (native ? faceVerifier() ?? (FACE_CHECK ? faceCheckVerifier(camera.open) : null) : null), [native, camera.open])
     // Which face model this app has: templates approved with another can't be matched, and the face is set up again.
-    const { data: faceModel } = useSWR(face ? 'this-phone-face-model' : null, async () => (await face!.info()).modelVersion)
-    const { data: faceBody, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, fetcher)
+    const { data: faceModel, error: faceModelError } = useSWR(face ? 'this-phone-face-model' : null, async () => (await faceInfo(face!)).modelVersion)
+    // Stamped with when it was asked for: an answer from before a photo went can't say the photo never arrived (review on #49).
+    const { data: faceBody, error: faceError, mutate: refreshFace } = useSWR(device ? '/api/attendance/face' : null, async (url: string) => {
+        const askedAt = Date.now()
+        const body = await fetcher(url)
+        return body?.data ? { ...body, data: { ...body.data, askedAt } } : body
+    })
     const faceStatus = faceBody?.data as FaceStatus | undefined
+    const phoneActive = !!fingerprint && (phoneBody?.data as { active: Phone | null } | undefined)?.active?.keyFingerprint === fingerprint
+    // Check in waits for these: tapped sooner, the set-up or the face check was skipped (review on #49). The
+    // model only when the face check can start. The buttons show once the phone is known, so phoneActive is too.
+    const ready = faceReady({ data: faceBody, error: faceError }, face && faceModelNeeded(faceStatus, { phoneActive }) ? { data: faceModel, error: faceModelError } : undefined)
     const [busy, setBusy] = useState<null | 'register' | 'IN' | 'OUT' | 'face'>(null)
     const [answer, setAnswer] = useState<CheckInAnswer | null>(null)
     const [switching, setSwitching] = useState(false)
     const [asking, setAsking] = useState(false)
     const [withdrawing, setWithdrawing] = useState(false)
     const late = answer && answer.outcome !== 'REFUSED' ? answer.late : null
-    const { data: balanceBody } = useSWR(late && answer?.outcome !== 'REFUSED' ? `/api/attendance/permissions/balance?date=${answer!.at.slice(0, 10)}` : null, fetcher)
+    // The shift's month and policy: a night shift's arrival after midnight is the night before's (review on #61).
+    const { data: balanceBody } = useSWR(late && answer?.outcome !== 'REFUSED' ? `/api/attendance/permissions/balance?date=${late.date}` : null, fetcher)
 
     // Face templates on this phone while face verification isn't in use for
     // the person: the server may have said they are to go, and nothing else
     // would ever ask (review on #27). It says whether to delete or keep them.
-    const phoneActive = !!fingerprint && (phoneBody?.data as { active: Phone | null } | undefined)?.active?.keyFingerprint === fingerprint
     useEffect(() => {
         // Not while a capture or check-in runs: its templates may not have reached the server yet.
         if (!device || !face || !faceStatus || !phoneActive || busy) return
@@ -136,18 +146,19 @@ export default function CheckInPage() {
         setBusy(direction)
         setAnswer(null)
         try {
-            // Asked to re-verify: the check-in starts with it (§9.5). Not doing it
-            // doesn't stop the check-in, which still counts against the approved face.
-            if (face && reverifyFirst(faceStatus, faceModel)) {
+            // Asked to re-verify, or no face set up on this phone (a new one): the check-in starts with it
+            // (§9.3, §9.5). Not doing it doesn't stop the check-in, which still counts against the approved
+            // face, or, with none on this phone, goes for a review.
+            if (face && (reverifyFirst(faceStatus, { phoneActive, modelVersion: faceModel }) || setUpFirst(faceStatus, { phoneActive, verifier: true }))) {
                 try {
                     await enrolFace(device!, face, post)
                     showToast(t('face_ci_sent'), 'success')
                 } catch (e) { if (errorCode(e) !== 'FACE_CANCELLED') problem(e) }
                 void refreshFace()
             }
-            // Templates from another face model can't be matched: no face check until the new face is approved,
-            // and the server sends the check-in for a review, as with no face check at all.
-            setAnswer(await checkIn(device!, post, direction, faceStatus?.active && !modelChanged(faceStatus, faceModel) ? face : null))
+            // Templates from another face model can't be matched, and a replacement waiting for approval has
+            // none: no face check, and the server sends the check-in for a review, as with no face check at all.
+            setAnswer(await checkIn(device!, post, direction, checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? face : null))
         } catch (e) { problem(e) } finally { setBusy(null) }
     }
 
@@ -186,7 +197,7 @@ export default function CheckInPage() {
     const step = faceStep(faceStatus, { phoneActive: which.mine === 'ACTIVE', verifier: !!face, modelVersion: faceModel })
     const { mine, other, keyFailed } = which
     const label = (ph: Phone) => ph.model || t(`audit_value_${ph.platform}` as TranslationKey)
-    const working = faceStatus?.active && face ? t('face_ci_checking') : t('ci_locating')
+    const working = face && checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? t('face_ci_checking') : t('ci_locating')
 
     return (
         <div style={{ display: 'grid', gap: '1rem', maxWidth: '36rem' }}>
@@ -204,8 +215,8 @@ export default function CheckInPage() {
                 <section className="glass" style={box}>
                     {mine === 'PENDING' && <p style={{ margin: 0, ...soft }}>{t('ci_waiting')}</p>}
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <button className="btn btn-primary" style={big} disabled={!!busy} onClick={() => punch('IN')}>{busy === 'IN' ? working : t('ci_in')}</button>
-                        <button className="btn btn-secondary" style={big} disabled={!!busy} onClick={() => punch('OUT')}>{busy === 'OUT' ? working : t('ci_out')}</button>
+                        <button className="btn btn-primary" style={big} disabled={!!busy || !ready} onClick={() => punch('IN')}>{busy === 'IN' ? working : t('ci_in')}</button>
+                        <button className="btn btn-secondary" style={big} disabled={!!busy || !ready} onClick={() => punch('OUT')}>{busy === 'OUT' ? working : t('ci_out')}</button>
                     </div>
                 </section>
             )}
@@ -231,7 +242,7 @@ export default function CheckInPage() {
             {asking && answer && answer.outcome !== 'REFUSED' && late && (
                 <AskPermissionModal
                     today={answer.at.slice(0, 10)}
-                    initial={{ date: answer.at.slice(0, 10), type: 'LATE_ARRIVAL', start: late.startsAt.slice(0, 5), end: answer.at.slice(11, 16) }}
+                    initial={{ date: late.date, type: 'LATE_ARRIVAL', start: late.ask.start, end: late.ask.end }}
                     onClose={() => setAsking(false)}
                     onDone={() => { setAsking(false); setAnswer(null) }}
                 />
@@ -298,10 +309,11 @@ function FaceCard({ step, active, busy, working, onConsent, onWithdraw, onEnrol 
         REJECTED: 'face_ci_rejected', REVERIFY: 'face_ci_reverify_hint', READY: 'face_ci_on', IDLE: 'face_ci_idle',
     }
     const action = step === 'ENROL' || step === 'REJECTED' ? 'face_ci_enrol' : step === 'REVERIFY' ? 'face_ci_reverify' : null
+    const note = faceCardNote(step)
     return (
         <section className="glass" style={box}>
             <p style={{ margin: 0, ...(step === 'READY' || step === 'IDLE' ? soft : {}) }}>
-                {t(text[step])}{step === 'NEEDS_APP' && active ? ` ${t('face_ci_needs_app_flagged')}` : ''}
+                {t(text[step])}{note ? ` ${t(note)}` : ''}
             </p>
             {action && <button className="btn btn-primary" disabled={busy} onClick={onEnrol}>{working ? '…' : t(action)}</button>}
             {withdraw}

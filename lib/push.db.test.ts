@@ -124,6 +124,19 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         expect((await db.query(`SELECT "pushedAt" FROM "Notification"`)).rows[0].pushedAt).not.toBeNull()
     })
 
+    it("claims a notice when it takes it, not when its run began, so a run started meanwhile leaves it (review on #25)", async () => {
+        await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
+        // A run that began three minutes ago (reminders first, then a long batch) and only now reaches this notice.
+        const began = new Date(Date.now() - 3 * 60_000)
+        const meanwhile: Sender = async (...args) => {
+            // While it sends, another run starts.
+            await PushService.flush(new Date(), sender)
+            return sender(...args)
+        }
+        await PushService.flush(began, meanwhile)
+        expect(sent.map(s => s.token)).toEqual(["tok-e2"])
+    })
+
     it("forgets a token the push service says is dead, and tries again later after a plain failure", async () => {
         outcome = "FAILED"
         await NotificationService.notify("e2", "ATTENDANCE_PHONE", accepted)
@@ -142,14 +155,30 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         await db.query(`UPDATE "CheckInPhone" SET "pushToken" = 'tok-e1' WHERE id = 'p1'`)
         await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p1new', 'c1', 'e1', 'k', 'f1new', 'IOS', 'PENDING')`)
         await NotificationService.notify("e1", "ATTENDANCE_DAY", accepted)
-        // The new phone has no token yet: nothing goes to the old one meanwhile.
-        await PushService.flush(new Date(), sender)
+        // The new phone has no token yet: nothing goes to the old one meanwhile, and the notice waits for
+        // the new one's token, not marked sent with nothing sent (review on #25).
+        expect(await PushService.flush(new Date(), sender)).toMatchObject({ sent: 0, failed: 0 })
         expect(sent).toEqual([])
+        expect((await db.query(`SELECT "pushedAt", "pushClaimedAt" FROM "Notification"`)).rows).toEqual([{ pushedAt: null, pushClaimedAt: null }])
         await db.query(`UPDATE "CheckInPhone" SET "pushToken" = 'tok-e1-new' WHERE id = 'p1new'`)
-        await db.query(`UPDATE "Notification" SET "pushedAt" = NULL, "pushClaimedAt" = NULL`)
         await PushService.flush(new Date(), sender)
         expect(sent.map(s => s.token)).toEqual(["tok-e1-new"])
         await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1new'`)
+    })
+
+    it("leaves notices waiting for a new phone's token out of the batch, so they never hold up newer ones (review on #49)", async () => {
+        await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform, status) VALUES ('p1wait', 'c1', 'e1', 'k', 'f1wait', 'IOS', 'PENDING')`)
+        // More waiting for Ehab's new phone than a run takes, all older than Eman's.
+        await NotificationService.notify("e1", "ATTENDANCE_DAY", accepted)
+        await db.query(`INSERT INTO "Notification"(id, "userId", type, message, "messageKey", "messageParams", "createdAt")
+            SELECT gen_random_uuid()::text, "userId", type, message, "messageKey", "messageParams", "createdAt" - g * interval '1 second'
+            FROM "Notification", generate_series(1, 200) g`)
+        await NotificationService.notify("e2", "ATTENDANCE_CHECK_IN", accepted)
+        await PushService.flush(new Date(), sender)
+        expect(sent.map(s => s.token)).toEqual(["tok-e2"])
+        // Ehab's are untouched, still waiting for the token.
+        expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'e1' AND "pushedAt" IS NULL AND "pushClaimedAt" IS NULL`)).rows[0].n).toBe(201)
+        await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'p1wait'`)
     })
 
     it("stops once the company no longer has the Mobile App add-on", async () => {
