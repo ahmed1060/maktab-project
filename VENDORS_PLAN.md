@@ -9,8 +9,60 @@ Each part is marked:
 - **Decided**: the product owner agreed to it.
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
+- **Under discussion**: being talked through.
 
 Nothing here is built yet.
+
+> **A note on names.** Vendors are being renamed **Clients** on screen (§0).
+> This plan keeps saying "vendor", because that's what the code calls them
+> and because today's Clients section is a different thing.
+
+---
+
+## 0. Names on screen
+
+### 0.1 Vendors become Clients (Decided)
+
+Everywhere the screens say "Vendor", they'll say **"Client"** instead
+(Arabic **"العملاء"**). That covers:
+
+- the side bar and page titles;
+- forms and filters;
+- the Excel template's sheet and column;
+- permission labels;
+- notifications and the audit log.
+
+"Charged to Vendors" becomes **"Charged to Clients"** on its own, because it
+uses each company's own label.
+
+### 0.2 Today's Clients section gets a new name (Open)
+
+What it does today:
+
+- each business has **sections**;
+- each section holds **notes**;
+- a note can have an attached file, an expiry date, and a reminder some days
+  before it expires.
+
+So it's a record-keeping and reminder tool. Suggested names:
+
+| Suggestion | Arabic | Why |
+|---|---|---|
+| **Records** (suggested) | السجلات | Fits notes and files kept per business |
+| Documents | المستندات | Puts the attached files and expiry dates first |
+| Files | الملفات | Simple and familiar |
+
+### 0.3 Screen names only (Proposed)
+
+- **Only the words on screen change.** The code, database and permission
+  keys keep their current internal names.
+  - Renaming those would mean migrating stored roles, packages and every
+    company's settings, which is risky and gains nothing for users.
+  - Developers will see `vendors.*` for what screens call Clients, and
+    `clients.*` for the renamed section. A table in the code will record the
+    mapping.
+- **A company's own custom label still wins.** If a company already renamed
+  the section, it keeps that name.
 
 ---
 
@@ -70,7 +122,7 @@ Nothing here is built yet.
   task vendor's locations (HQ first), then shared locations. A task with no
   vendor shows shared locations only.
 
-### 2.4 Adding a location from the task form (Proposed)
+### 2.4 Adding a location from the task form (Decided)
 
 - **"+ New location"** in the location picker. You enter a name and a map
   pin: search for the place, tap the map, or use this device's current
@@ -80,15 +132,15 @@ Nothing here is built yet.
 - A one-off place never blocks creating a task, and it joins the list for
   next time.
 
-### 2.5 Map pin and check radius
+### 2.5 Map pin and check radius (Decided)
 
-- **Every location must have a map pin** (Decided). A location can't be saved
-  with a name only. The pin is what the employee location check measures
-  against, so every task gets the check, and the per-location radius always
-  has a point to measure from.
-- **A check radius per location** (Decided). Each location can have its own
-  radius. When it's left empty, the default of 70 m is used. The map shows
-  the radius as a circle around the pin.
+- **Every location must have a map pin.** A location can't be saved with a
+  name only. The pin is what the employee location check measures against,
+  so every task gets the check, and the per-location radius always has a
+  point to measure from.
+- **A check radius per location.** Each location can have its own radius.
+  When it's left empty, the default of 70 m is used. The map shows the
+  radius as a circle around the pin.
 - **A pin corrected later applies to open tasks.** Tasks link to the
   location, so they use the corrected pin and radius. Location checks
   already done keep their result. Old tasks with typed locations keep
@@ -110,7 +162,7 @@ Nothing here is built yet.
 - The review screen flags a location that doesn't belong to the row's vendor
   and isn't shared, as it flags unknown vendors today.
 
-### 2.8 Existing vendors (Proposed)
+### 2.8 Existing vendors (Decided)
 
 - Each vendor's current single location becomes its HQ automatically.
 - If that location has no coordinates, it's marked **"Needs a pin"** on the
@@ -118,7 +170,7 @@ Nothing here is built yet.
 - Because pins are required, a location marked "Needs a pin" can't be picked
   on a task until someone places its pin.
 
-### 2.9 Permissions (Proposed)
+### 2.9 Permissions (Decided)
 
 | Permission | Default |
 |---|---|
@@ -128,30 +180,26 @@ Nothing here is built yet.
 ### 2.10 Kept separate
 
 The attendance check-in places (Company Settings → work locations) are a
-separate system. The two need clearly different names on screen (see the
-naming list in §9).
+separate system. The two need clearly different names on screen (§9).
 
 ---
 
-## 3. Vendor link and filters
+## 3. Vendor link and filters (Decided)
 
 1. **The vendor and location pickers** (§2.3) on creating a task, editing a
    task, and the bulk import review. A change is checked to be in the same
-   company and recorded in the task's history. (Decided)
-2. **A vendor filter on the Tasks and Costs pages** (Decided):
+   company and recorded in the task's history.
+2. **A vendor filter on the Tasks and Costs pages**:
    - lists the company's vendors, plus **"No vendor"**;
    - kept in the address (`?vendorId=`), so a filtered link can be shared;
    - shown only to people allowed to see vendors;
    - English and Arabic labels.
 3. **A location filter on the Tasks page**, next to the vendor filter.
-   (Proposed)
 4. **"Mark all as paid" applies the vendor and location filters too**, with a
-   test that it pays only the filtered costs. (Decided)
+   test that it pays only the filtered costs.
 5. **Totals for the current filters on the Costs page.** They count across all
    pages, and with an employee filter they show that employee's share.
-   (Decided)
 6. **"View tasks" on each vendor**, opening Tasks filtered to that vendor.
-   (Decided)
 
 ---
 
@@ -165,39 +213,41 @@ naming list in §9).
    deleted. It's hidden from dropdowns, kept in filters and history, and can
    be restored.
 4. **Fix the bug so cost descriptions are saved** (§1). Shipping it on its own
-   first is open (question 3 in §9).
+   first is open (§9, question 1).
 
 ---
 
-## 5. Saved lists for cost names and task titles
+## 5. Saved lists for cost names and task titles (Decided)
 
-1. **Each company has its own lists** of cost names and task titles. (Decided)
+1. **Each company has its own lists** of cost names and task titles.
 2. **Type or pick.** As you type, matching names from the list appear. If
    what you typed isn't on the list, a line offers **"+ Add 'X' to the
-   list"**. (Decided)
-3. **What's saved:** the text as entered plus a link to the list entry. Old
+   list"**.
+3. **Names are added only by tapping "+ Add".** They're never added
+   automatically.
+4. **Task titles are titles only.** Picking one doesn't fill in the
+   description or difficulty; there are no "task types".
+5. **What's saved:** the text as entered plus a link to the list entry. Old
    records never change when an entry is edited, and reports still group
-   them. (Proposed)
-4. **A management page under Company Settings** (Proposed):
+   them.
+6. **A management page under Company Settings:**
    - rename an entry;
    - merge two entries, such as "transport" into "Transport";
    - archive an entry;
    - names can't repeat, ignoring capital letters.
-5. **Permissions** (Proposed):
+7. **Permissions:**
 
    | Permission | Default |
    |---|---|
    | Add names to the lists | Everyone |
    | Manage the lists (rename, merge, archive) | Admin |
 
-6. **Where the field appears** (Decided):
+8. **Where the field appears:**
    - task titles: creating a task, editing a task, and the bulk import
      review (Excel titles are matched to the list by name);
    - cost names: the Add cost form.
-7. **Filters and totals:** by cost name on the Costs page, and by title on
-   the Tasks page. (Proposed)
-8. **"Paid to" shop names as a third list**, using the same type-or-pick
-   field. (Proposed)
+9. **Filters and totals:** by cost name on the Costs page, and by title on
+   the Tasks page.
 
 ---
 
@@ -218,21 +268,25 @@ times:
 
 The company never buys on credit, so nothing is tracked as owed to shops.
 
-### 6.2 The Add cost form (Decided)
+### 6.2 The Add cost form
 
-- **The cost's details:** the amount, the cost name (from the list), a
-  receipt photo, and **Paid to** (the shop's name).
-- **"I paid it, pay me back"** creates an employee cost, as today.
-- **"Charge to [vendor]"** creates a vendor charge. It's on by default when
-  the task has a vendor.
+- **The cost's details** (Decided): the amount, the cost name (from the
+  list), and a receipt photo. **Paid to** is under discussion (§6.7).
+- **"I paid it, pay me back"** (Decided) creates an employee cost, as today.
+  It's on by default, so nothing changes for people who add costs the way
+  they do now.
+- **"Charge to [vendor]"** (Decided) creates a vendor charge. It's on by
+  default when the task has a vendor.
 - Both choices can be on for the same cost.
+- **Who can tick "Charge to vendor"** is open (§9, A1).
+- **What "pay me back" switched off means** is open (§9, A2).
 
 ### 6.3 Service fee (Decided)
 
 - Three amounts side by side: **Paid | Service fee | Total**.
 - Typing a service fee works out the total; typing a total works out the
   service fee.
-- The fee can't be negative, so the total is never below what was paid.
+- **The fee can't be negative**, so the total is never below what was paid.
 - If the paid amount is corrected, the fee stays and the total updates.
 - Amounts are kept to 2 decimal places.
 - The server stores the paid amount and the fee, and always works out the
@@ -247,13 +301,14 @@ The company never buys on credit, so nothing is tracked as owed to shops.
     collect**.
 - **Each vendor's page:**
   - **Owes us** and **Collected**;
-  - each charge: what was bought, where from, on which task, with the
-    receipt;
+  - each charge: what was bought, on which task, with the receipt;
   - **Mark collected** for exactly the charges shown, for example "Collect 7
     charges, 3,450 EGP from Al Noor".
 
 ### 6.5 Rules (Decided)
 
+- **A vendor charge always comes from a task cost.** There are no standalone
+  bills.
 - **Collecting doesn't change the task's status.**
 - **Collected charges are locked.** To fix one, mark it uncollected first;
   the audit log records both steps.
@@ -266,7 +321,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   instead.
 - Audit log entries, and English and Arabic labels, throughout.
 
-### 6.6 Permissions (Decided: they are permissions. Proposed: the defaults)
+### 6.6 Permissions (Decided)
 
 | Permission | Admin | Team Leader | Employee |
 |---|---|---|---|
@@ -278,14 +333,29 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   paying costs does.
 - Admins in existing companies get all three automatically through a
   migration.
-- Ticking "Charge to vendor" needs no permission.
+
+### 6.7 Paid to (Under discussion)
+
+This is the shop or person who received the money for a cost, for example
+"Delta Spare Parts".
+
+- **It isn't** a vendor (client), a location (decided in §12), or someone the
+  company owes money to (it never buys on credit).
+- **Options:**
+  - **(a) None.** The receipt photo already shows the shop.
+  - **(b) Typed text.** Quick, but spellings vary, so totals per shop
+    aren't reliable.
+  - **(c) A saved list** (type or pick, as in §5). Names stay consistent and
+    totals per shop work.
+- **Suggested:** (c), optional on each cost.
 
 ---
 
-## 7. Build order (Proposed)
+## 7. Build order (Decided, apart from step 0)
 
-| PR | What it covers |
+| Step | What it covers |
 |---|---|
+| 0 | **Proposed:** the name changes in §0, on their own, so they're easy to review |
 | 1 | Locations system: the database, every vendor's HQ, per-location radius, the Locations page, locations on each vendor's page, permissions (§2) |
 | 2 | Tasks use locations: the vendor and location pickers on create, edit and bulk review; "+ New location"; the Excel Locations sheet; typed locations removed; the check uses the location's pin and radius (§2.3–2.7, §3.1) |
 | 3 | Filters and totals: vendor and location filters, "No vendor", totals, "View tasks", "Mark all as paid" applying the filters (§3) |
@@ -293,7 +363,13 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 | 5 | Saved lists (§5) |
 | 6 | Vendor charges (§6) |
 
-Each PR is opened against `main` and merged only on the product owner's word.
+- Each step is its own PR, opened against `main` and merged only on the
+  product owner's word.
+- **This work comes before the UI refactor** (Decided). When the refactor
+  starts:
+  - write its plan first;
+  - do it page by page, in small PRs merged into `main`;
+  - start a fresh branch from `main` and copy the design skill across.
 
 ---
 
@@ -302,58 +378,57 @@ Each PR is opened against `main` and merged only on the product owner's word.
 - **An exportable vendor statement:** what the vendor was charged and what
   was collected for a date range, with receipts. It can be sent to the
   vendor or checked against their records.
-- **Task types and adding list names automatically,** if questions 1 and 2
-  in §9 say so.
 
 ---
 
 ## 9. Open questions
 
-1. **Task titles: title only, or a "task type"?** A task type would also fill
-   in the description and difficulty when picked. Suggested: title only for
-   now.
-2. **Should the lists ever add a name automatically,** for example after it's
-   typed 3 times? Suggested: no, keep the "+ Add" line.
-3. **The cost description bug:** fix it on its own right away, or inside the
-   payment safety PR?
-4. **Names** (decided later). The working names are:
+1. **When to fix the cost description bug.**
+   - (a) As its own small PR now. It would be ready within a day, and costs
+     keep their descriptions from then on.
+   - (b) Inside step 4 (payment safety), several PRs from now. Any cost
+     entered in production before then loses its description for good.
+   - Production has no costs yet, so nothing has been lost so far.
+   - Suggested: (a).
+2. **A new name for today's Clients section** (§0.2). Suggested: Records.
+3. **Screen names only** (§0.3), and step 0 as its own PR.
+4. **Are the businesses in today's Clients section the same ones that will
+   now be called Clients (today's vendors)?** If they are, the notes and
+   reminders could later move onto each client's page, so the same business
+   isn't kept in two places. If not, the two stay separate.
+5. **A1: who can tick "Charge to vendor" when adding a cost?**
+   - (a) Anyone on the task, with no permission needed. The person holding
+     the receipt decides on the spot.
+   - (b) Only people with a permission. Charging the client is a business
+     decision, so employees record the cost and someone else decides.
+   - Suggested: (a), plus anyone allowed to set the service fee can charge
+     or un-charge a cost later, until it's collected. That catches mistakes
+     either way.
+6. **A2: what does "pay me back" switched off mean?** Suggested: the company
+   paid directly. The four combinations:
+
+   | Pay me back | Charge to vendor | Meaning |
+   |---|---|---|
+   | On | On | The employee paid. The company pays them back, and the vendor pays the company |
+   | On | Off | The employee paid. The company pays them back and keeps the cost (for example, transport) |
+   | Off | On | The company paid directly. The vendor pays the company back |
+   | Off | Off | The company paid directly and keeps the cost. It's recorded for the record only |
+
+7. **Paid to** (§6.7): option (a), (b) or (c), and whether it's optional.
+8. **Names still to settle:**
    - Paid to;
-   - Charged to Vendors (using each company's own label for vendors);
    - the statuses To collect and Collected;
-   - Locations, which must differ from the attendance "work locations";
-   - the permission names in §2.9, §5.5 and §6.6.
+   - Locations, which must read differently from the attendance "work
+     locations";
+   - the permission names in §2.9, §5.7 and §6.6.
 
-## 10. Proposals waiting for an answer
-
-1. **The permission defaults** in §2.9, §5.5 and §6.6, including two-factor
-   sign-in for Mark collected.
-2. **"+ New location" from the task form** (§2.4).
-3. **Existing vendors' locations becoming their HQ** (§2.8).
-4. **The location filter on Tasks** (§3.3).
-5. **List management, and filters and totals by cost name and title**
-   (§5.3, §5.4, §5.7).
-6. **"Paid to" as a third saved list** (§5.8).
-7. **The build order** (§7).
-8. **This work before the UI refactor.** When the refactor starts:
-   - write its plan first;
-   - do it page by page, in small PRs merged into `main`;
-   - start a fresh branch from `main` and copy the design skill across,
-     rather than reviving the old `ui-refactor` branch.
-
-## 11. Assumptions to confirm
-
-- **Anyone on the task can tick "Charge to vendor"** when adding a cost.
-- **With "pay me back" off, the company paid directly.**
-- **A vendor charge always comes from a task cost.** There are no standalone
-  vendor bills.
-- **The service fee is zero or more.** There's no discount below what was
-  paid.
-
-## 12. Turned down
+## 10. Turned down
 
 - **"Paid to" picked from shared locations.** Paid to stays separate from
   locations.
 - **Tracking money owed to shops.** The company doesn't buy on credit.
+- **Task types.** Task titles are titles only.
+- **Adding list names automatically.** Only "+ Add" adds them.
 
 ---
 
@@ -376,3 +451,18 @@ Each PR is opened against `main` and merged only on the product owner's word.
 - **2026-10-11:** A map pin is required for every location (§2.5). A
   location marked "Needs a pin" can't be picked on a task until it has one
   (§2.8). The open questions in §9 are renumbered.
+- **2026-10-11:** Answers to the open questions and proposals.
+  - **Decided:**
+    - task titles are titles only, and list names are added only by "+ Add";
+    - Vendors become Clients on screen (§0.1);
+    - "+ New location", existing vendors' HQ, the location filter, list
+      management, every permission default, the build order, and doing this
+      before the UI refactor;
+    - a vendor charge always comes from a task cost;
+    - the service fee is zero or more.
+  - **Added:**
+    - names suggested for today's Clients section (§0.2);
+    - screen names only, and step 0 (§0.3, §7);
+    - "pay me back" on by default (§6.2);
+    - Paid to under discussion (§6.7).
+  - **Open, with explanations:** questions 1–8 in §9.
