@@ -82,8 +82,10 @@ Nothing here is built yet.
 
 ### 2.5 Map pin and check radius
 
-- **Every location has a map pin** (Open: see question 1 in §9). The pin is
-  what the employee location check measures against.
+- **Every location must have a map pin** (Decided). A location can't be saved
+  with a name only. The pin is what the employee location check measures
+  against, so every task gets the check, and the per-location radius always
+  has a point to measure from.
 - **A check radius per location** (Decided). Each location can have its own
   radius. When it's left empty, the default of 70 m is used. The map shows
   the radius as a circle around the pin.
@@ -113,6 +115,8 @@ Nothing here is built yet.
 - Each vendor's current single location becomes its HQ automatically.
 - If that location has no coordinates, it's marked **"Needs a pin"** on the
   Locations page.
+- Because pins are required, a location marked "Needs a pin" can't be picked
+  on a task until someone places its pin.
 
 ### 2.9 Permissions (Proposed)
 
@@ -161,7 +165,7 @@ naming list in §9).
    deleted. It's hidden from dropdowns, kept in filters and history, and can
    be restored.
 4. **Fix the bug so cost descriptions are saved** (§1). Shipping it on its own
-   first is open (question 4 in §9).
+   first is open (question 3 in §9).
 
 ---
 
@@ -298,28 +302,21 @@ Each PR is opened against `main` and merged only on the product owner's word.
 - **An exportable vendor statement:** what the vendor was charged and what
   was collected for a date range, with receipts. It can be sent to the
   vendor or checked against their records.
-- **Task types and adding list names automatically,** if questions 2 and 3
+- **Task types and adding list names automatically,** if questions 1 and 2
   in §9 say so.
 
 ---
 
 ## 9. Open questions
 
-1. **Is a map pin required for every location?** Each location can be saved
-   with just a name, or with a name and an exact point on the map.
-   - With a pin, every task at that location gets the employee location
-     check, and the per-location radius means something.
-   - Without one, the location is quicker to add, but tasks there are never
-     checked.
-   - Suggested: required.
-2. **Task titles: title only, or a "task type"?** A task type would also fill
+1. **Task titles: title only, or a "task type"?** A task type would also fill
    in the description and difficulty when picked. Suggested: title only for
    now.
-3. **Should the lists ever add a name automatically,** for example after it's
+2. **Should the lists ever add a name automatically,** for example after it's
    typed 3 times? Suggested: no, keep the "+ Add" line.
-4. **The cost description bug:** fix it on its own right away, or inside the
+3. **The cost description bug:** fix it on its own right away, or inside the
    payment safety PR?
-5. **Names** (decided later). The working names are:
+4. **Names** (decided later). The working names are:
    - Paid to;
    - Charged to Vendors (using each company's own label for vendors);
    - the statuses To collect and Collected;
@@ -376,3 +373,6 @@ Each PR is opened against `main` and merged only on the product owner's word.
   - the check radius per location;
   - other vendors' locations not offered on a task;
   - "Paid to" not taken from shared locations.
+- **2026-10-11:** A map pin is required for every location (§2.5). A
+  location marked "Needs a pin" can't be picked on a task until it has one
+  (§2.8). The open questions in §9 are renumbered.
