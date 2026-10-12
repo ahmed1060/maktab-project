@@ -1,0 +1,502 @@
+# Clients, locations and costs: plan
+
+This file holds the whole plan for clients (today's vendors), task
+locations, costs and saved lists. It is updated with every decision and
+enhancement; the change log at the end records each update.
+
+Each part is marked:
+
+- **Decided**: the product owner agreed to it.
+- **Proposed**: suggested, waiting for the product owner's answer.
+- **Open**: a question that needs answering before that part is built.
+
+Nothing here is built yet.
+
+> **A note on names.** Today's **Vendors** are renamed **Clients**, and
+> today's **Clients** section becomes **Records** (§0). From here on, this
+> plan uses the new names: "client" means what the app calls a vendor
+> today. Where it refers to today's code, it gives the current names
+> (`Vendor`, `vendorId`).
+
+---
+
+## 0. Renaming, and records moving onto clients
+
+### 0.1 Vendors become Clients, on screen and in code (Decided)
+
+Everything says **Client** (Arabic **العملاء**): the side bar, pages,
+forms, filters, the Excel template, permissions, notifications, the audit
+log, and the code itself.
+
+In code that means:
+
+- models and services;
+- pages (`/dashboard/vendors` becomes `/dashboard/clients`);
+- API routes;
+- permission names (`vendors.*` becomes `clients.*`);
+- module names, translation keys and tests.
+
+Production has no data in these parts, so now is the right time.
+
+### 0.2 Today's Clients section becomes Records, and moves onto clients (Decided)
+
+- Today's Clients section keeps, for each business, **sections** of
+  **notes**. A note can have an attached file, an expiry date and a
+  reminder. These are now called **Records** (Arabic **السجلات**).
+- They're the same businesses as the clients, so records **move onto each
+  client's page** and the same business is no longer kept in two places.
+- **Timing** (Open: question 1 in §9). Suggested: now, as part of step 0.
+  Production has no clients, sections or notes in this section, so its own
+  list of businesses can simply be removed instead of renamed and merged
+  later.
+- **A Records item in the side bar** (Open: question 2 in §9). It would list
+  every record across clients, with search and an "expiring soon" filter.
+  Suggested: yes.
+- **Permissions:** today's `clients.*` (see, contribute, rename, delete)
+  become `records.*`, covering sections and notes on a client's page.
+- **The daily expiry reminder** (`/api/notes/check-expiry`) moves with the
+  records.
+
+### 0.3 Shipping the rename without breaking production (Proposed)
+
+**Why this needs care.** Every build, previews included, runs
+`prisma migrate deploy` on the one shared database (`package.json`'s build
+script). A PR's database changes therefore reach production as soon as the
+PR is pushed. Production keeps running the old code against them until the
+PR is merged and deployed, and review can take hours.
+
+Two things make a single big rename unsafe:
+
+- **The names swap.** "Clients" has to become "Records" before "Vendors"
+  can become "Clients".
+- **Every task page reads the vendor table.** Renaming that table while the
+  old code is still live breaks all task pages until the merge.
+
+**So step 0 is split into small PRs:**
+
+| PR | What it does | Effect on production while it waits for review |
+|---|---|---|
+| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move | Only today's Clients section stops working, and it's empty |
+| 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now | None |
+| 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
+| 0d | The database names are renamed (Open: question 3 in §9) | See question 3 |
+
+The app ignores permission names it doesn't know instead of failing
+(`lib/permissions/matrix.ts`), so the short overlaps above can't break
+sign-in.
+
+### 0.4 What production holds today
+
+- 0 vendors, 0 clients, 0 sections and 0 notes;
+- 0 audit entries for either, and no company has changed their labels or
+  icons;
+- **36 role permission rows** use the `vendors.*` and `clients.*` names.
+  These are rewritten by 0a and 0c.
+
+Packages store bundle names, not module names, so renaming the modules
+needs no data change.
+
+---
+
+## 1. Why: what the code does today
+
+- **A task gets a client only if one is picked when the task is created.**
+  The edit window has only a typed location, so a task's client can't be
+  added, changed or removed later (`components/TaskEditDetailsModal.tsx`;
+  `TaskService.updateDetails` ignores `vendorId`).
+- **Typed locations rarely have map coordinates.** After a task is created,
+  an employee's reported position is checked against the task's location
+  (`extractCoords(task.location)` in `lib/services/task.service.ts`). With no
+  coordinates, the check is skipped.
+- **One check radius for everything**: 70 m by default
+  (`SystemSettings.locationVerifyRadiusMeters`), whether the place is a small
+  shop or a large factory.
+- **"Mark all as paid" re-runs the search on the server**
+  (`app/api/tasks/payment/bulk/route.ts`), so it can pay costs added after
+  the person looked at the page.
+- **A paid task can be deleted, and its payment record goes with it**
+  (`TaskService.delete` doesn't check payment).
+- **Deleting a vendor quietly unlinks all its tasks** (`onDelete: SetNull`).
+- **Bug: cost descriptions are thrown away.** The task's cost form sends a
+  description with each cost, but the server saves only the amount ("Added
+  cost: 150.00 EGP"), so every cost shows "No description".
+
+---
+
+## 2. Locations system
+
+### 2.1 Kinds of location (Decided)
+
+- **HQ**: each client has exactly one, marked as its head quarters.
+- **Client locations**: branches and sites belonging to one client.
+- **Shared locations**: places not tied to any client, usable by tasks for
+  any client.
+
+### 2.2 Names (Decided)
+
+- The person adding a location types only its own name, such as "Maadi
+  branch".
+- A client's location is shown as **"Client - Location"**, for example
+  "Al Noor - Maadi branch". A shared location is shown by its name alone.
+- The client's name isn't stored inside the location's name; it's joined
+  when shown. That way renaming a client updates all its locations.
+
+### 2.3 On tasks (Decided)
+
+- **The client is optional; the location is required.**
+- **There's no typed location any more.** The location is always picked
+  from the list.
+- Picking a client selects its HQ as the location straight away. Another of
+  that client's locations, or a shared one, can be picked instead.
+- **Other clients' locations aren't offered.** The location list shows the
+  task client's locations (HQ first), then shared locations. A task with no
+  client shows shared locations only.
+
+### 2.4 Adding a location from the task form (Decided)
+
+- **"+ New location"** in the location picker. You enter a name and a map
+  pin: search for the place, tap the map, or use this device's current
+  location (the same map as the attendance check-in places).
+- The new location is attached to the task's selected client automatically.
+  A **"Shared location"** tick makes it shared instead.
+- A one-off place never blocks creating a task, and it joins the list for
+  next time.
+
+### 2.5 Map pin and check radius (Decided)
+
+- **Every location must have a map pin.** A location can't be saved with a
+  name only. The pin is what the employee location check measures against,
+  so every task gets the check, and the per-location radius always has a
+  point to measure from.
+- **A check radius per location.** Each location can have its own radius.
+  When it's left empty, the default of 70 m is used. The map shows the
+  radius as a circle around the pin.
+- **A pin corrected later applies to open tasks.** Tasks link to the
+  location, so they use the corrected pin and radius. Location checks
+  already done keep their result. Old tasks with typed locations keep
+  showing their text.
+
+### 2.6 Pages (Decided)
+
+- **A Locations page**, like the Clients page:
+  - lists every location, filtered by client or shared, with search;
+  - add, edit, archive, and set HQ.
+- **Each client's page** lists that client's locations.
+
+### 2.7 Bulk upload (Decided)
+
+- The Excel template already has a sheet behind the client dropdown
+  (`lib/services/template-generator.service.ts`).
+- Add a **Locations** sheet behind a new **Location** column, listing names
+  such as "Al Noor - Maadi branch".
+- The review screen flags a location that doesn't belong to the row's client
+  and isn't shared, as it flags unknown clients today.
+
+### 2.8 Existing clients (Decided)
+
+- Each client's current single location becomes its HQ automatically.
+- If that location has no coordinates, it's marked **"Needs a pin"** on the
+  Locations page.
+- Because pins are required, a location marked "Needs a pin" can't be picked
+  on a task until someone places its pin.
+
+### 2.9 Permissions (Decided)
+
+| Permission | Default |
+|---|---|
+| Add locations | Anyone who can create tasks |
+| Manage locations (edit pin and radius, archive, set HQ) | Admin |
+
+### 2.10 Kept separate
+
+The attendance check-in places (Company Settings → work locations) are a
+separate system. The two need clearly different names on screen (§9).
+
+---
+
+## 3. Client link and filters (Decided)
+
+1. **The client and location pickers** (§2.3) on creating a task, editing a
+   task, and the bulk import review. A change is checked to be in the same
+   company and recorded in the task's history.
+2. **A client filter on the Tasks and Costs pages**:
+   - lists the company's clients, plus **"No client"**;
+   - kept in the address, so a filtered link can be shared;
+   - shown only to people allowed to see clients;
+   - English and Arabic labels.
+3. **A location filter on the Tasks page**, next to the client filter.
+4. **"Mark all as paid" applies the client and location filters too**, with a
+   test that it pays only the filtered costs.
+5. **Totals for the current filters on the Costs page.** They count across all
+   pages, and with an employee filter they show that employee's share.
+6. **"View tasks" on each client**, opening Tasks filtered to that client.
+
+---
+
+## 4. Payment safety (Decided)
+
+1. **"Mark all as paid" pays exactly what was confirmed.** The window says
+   "Pay 7 costs, 3,450 EGP"; the server pays those 7 and nothing else. If
+   anything changed in the meantime, it refuses and asks you to look again.
+2. **A task with paid costs can't be deleted.**
+3. **Archive clients.** A client linked to any task is archived instead of
+   deleted. It's hidden from dropdowns, kept in filters and history, and can
+   be restored.
+4. **Fix the bug so cost descriptions are saved** (§1), in this step.
+
+---
+
+## 5. Saved lists for cost names and task titles (Decided)
+
+1. **Each company has its own lists** of cost names and task titles.
+2. **Type or pick.** As you type, matching names from the list appear. If
+   what you typed isn't on the list, a line offers **"+ Add 'X' to the
+   list"**.
+3. **Names are added only by tapping "+ Add".** They're never added
+   automatically.
+4. **Task titles are titles only.** Picking one doesn't fill in the
+   description or difficulty; there are no "task types".
+5. **What's saved:** the text as entered plus a link to the list entry. Old
+   records never change when an entry is edited, and reports still group
+   them.
+6. **A management page under Company Settings:**
+   - rename an entry;
+   - merge two entries, such as "transport" into "Transport";
+   - archive an entry;
+   - names can't repeat, ignoring capital letters.
+7. **Permissions:**
+
+   | Permission | Default |
+   |---|---|
+   | Add names to the lists | Everyone |
+   | Manage the lists (rename, merge, archive) | Admin |
+
+8. **Where the field appears:**
+   - task titles: creating a task, editing a task, and the bulk import
+     review (Excel titles are matched to the list by name);
+   - cost names: the Add cost form.
+9. **Filters and totals:** by cost name on the Costs page, and by title on
+   the Tasks page.
+
+---
+
+## 6. Client charges
+
+### 6.1 The money (Decided)
+
+- The company works as a middleman for the task's client.
+- An employee may pay another shop on that client's behalf.
+- The company then collects the money from the client.
+
+One cost can create two separate things to track, settled at different
+times:
+
+1. **The employee is paid back.** This is the existing employee cost,
+   unchanged.
+2. **The client owes the company.** This is the new client charge.
+
+The company never buys on credit, so nothing is tracked as owed to shops.
+
+### 6.2 The Add cost form: no extra work for the employee (Decided)
+
+- **The employee enters only the cost's details:** the amount, the cost
+  name (from the list), and a receipt photo. There are no ticks to decide.
+- **Every cost is paid back to the employee**, as today.
+- **Every cost on a task with a client is charged to that client**
+  automatically.
+- **Exceptions are handled on the Costs page.** On the Charged to Clients
+  tab, a **"Not charged to client"** tick removes a cost from the client. It
+  can be used until the charge is collected, and unticking it charges the
+  cost again. Who may use it is open (question 4 in §9).
+
+### 6.3 Service fee (Decided)
+
+- Three amounts side by side: **Paid | Service fee | Total**.
+- Typing a service fee works out the total; typing a total works out the
+  service fee.
+- **The fee can't be negative**, so the total is never below what was paid.
+- If the paid amount is corrected, the fee stays and the total updates.
+- Amounts are kept to 2 decimal places.
+- The server stores the paid amount and the fee, and always works out the
+  total itself.
+- The fee is locked once the charge is collected.
+
+### 6.4 Where charges show (Decided)
+
+- **Costs page tabs: Employee costs | Charged to Clients.**
+  - Charged to Clients filters by client, date, status and search.
+  - It shows three totals: **Paid out**, **Service fees** and **Total to
+    collect**.
+- **Each client's page:**
+  - **Owes us** and **Collected**;
+  - each charge: what was bought, on which task, with the receipt;
+  - **Mark collected** for exactly the charges shown, for example "Collect 7
+    charges, 3,450 EGP from Al Noor".
+
+### 6.5 Rules (Decided)
+
+- **A client charge always comes from a task cost.** There are no standalone
+  bills.
+- **Collecting doesn't change the task's status.**
+- **Collected charges are locked.** To fix one, mark it uncollected first;
+  the audit log records both steps.
+- **Charges always go to the task's client.** If the client is changed:
+  - charges not yet collected move with it;
+  - if any were collected, the change is refused until they're marked
+    uncollected.
+- A cost whose charge was collected can't be removed.
+- A task or client with charges can't be deleted; the client is archived
+  instead.
+- Audit log entries, and English and Arabic labels, throughout.
+
+### 6.6 Permissions (Decided, apart from the "Not charged" tick)
+
+| Permission | Admin | Team Leader | Employee |
+|---|---|---|---|
+| View client charges | Company | Their team's tasks | No |
+| Set service fee | Company | No | No |
+| Mark collected | Company | No | No |
+
+- **Mark collected** moves money, so it asks for two-factor sign-in, as
+  paying costs does.
+- Admins in existing companies get these automatically through a migration.
+- **The "Not charged to client" tick** (Proposed): covered by **Set service
+  fee**, renamed **Manage charges** (set the fee, and remove a cost from the
+  client).
+
+### 6.7 Paid to (Proposed: drop it for now)
+
+- **Paid to isn't the same as the cost name:**
+  - the **cost name** is what the money was for, such as "Spare parts";
+  - **Paid to** is who received it, such as "Delta Spare Parts".
+- Paid to would add a field the employee has to fill in. The receipt photo
+  already shows the shop, and the goal is as little work for the employee as
+  possible.
+- **Suggested: leave it out now**, and add it later (§8) if you want totals
+  per shop.
+
+---
+
+## 7. Build order (Decided)
+
+| Step | What it covers |
+|---|---|
+| 0 | Renaming and records moving onto clients, as PRs 0a–0d (§0) |
+| 1 | Locations system: the database, every client's HQ, per-location radius, the Locations page, locations on each client's page, permissions (§2) |
+| 2 | Tasks use locations: the client and location pickers on create, edit and bulk review; "+ New location"; the Excel Locations sheet; typed locations removed; the check uses the location's pin and radius (§2.3–2.7, §3.1) |
+| 3 | Filters and totals: client and location filters, "No client", totals, "View tasks", "Mark all as paid" applying the filters (§3) |
+| 4 | Payment safety and the cost description fix (§4) |
+| 5 | Saved lists (§5) |
+| 6 | Client charges (§6) |
+
+- Each step is its own PR (or several, for step 0), opened against `main`
+  and merged only on the product owner's word.
+- **This work comes before the UI refactor.** When the refactor starts:
+  - write its plan first;
+  - do it page by page, in small PRs merged into `main`;
+  - start a fresh branch from `main` and copy the design skill across.
+
+---
+
+## 8. Later (future enhancements)
+
+- **An exportable client statement:** what the client was charged and what
+  was collected for a date range, with receipts. It can be sent to the
+  client or checked against their records.
+- **"Paid by the company."** A tick on the Costs page for a cost the company
+  paid directly (office cash or card), so the employee isn't paid back. Until
+  then, every cost is paid back to the employee who added it.
+- **Paid to,** if it's dropped now (§6.7): who received the money, from a
+  saved list, for totals per shop.
+
+---
+
+## 9. Open questions
+
+1. **When do records move onto clients?** Suggested: now, in step 0 (PR 0a).
+   Production has no clients, sections or notes in today's Clients section,
+   so its list of businesses can simply be removed. Doing it later would
+   mean renaming it now and then migrating it again.
+2. **A Records item in the side bar,** listing every record across clients
+   with search and "expiring soon"? Suggested: yes.
+3. **Database names for the client table** (PR 0d). The code is fully
+   renamed either way. The question is the database's own names (the
+   `Vendor` table and `vendorId` columns):
+   - **(a) Keep them, mapped to the new names in code.** Developers only see
+     the new names; Prisma maps them to the old ones. No downtime.
+   - **(b) Rename them too, during a short planned maintenance window.**
+     Turn on maintenance mode, push this small last PR, merge as soon as
+     its checks pass, then turn maintenance mode off. Fully clean, at the
+     cost of about 15 minutes with the app closed, at a time you choose.
+   - Suggested: (b), since you want clean code and nobody depends on the
+     app yet.
+4. **Who may use the "Not charged to client" tick** on the Costs page?
+   Suggested: Manage charges (§6.6), Admin by default.
+5. **Paid to: drop it for now** (§6.7)?
+6. **Names still to settle:**
+   - the statuses To collect and Collected;
+   - Locations, which must read differently from the attendance "work
+     locations";
+   - the permission names in §2.9, §5.7 and §6.6.
+
+## 10. Turned down
+
+- **"Paid to" picked from shared locations.** Paid to stays separate from
+  locations.
+- **Tracking money owed to shops.** The company doesn't buy on credit.
+- **Task types.** Task titles are titles only.
+- **Adding list names automatically.** Only "+ Add" adds them.
+- **Renaming on screen only.** The code is renamed too.
+- **Ticks on the employee's Add cost form.** Every cost is paid back and
+  charged; exceptions are handled on the Costs page.
+
+---
+
+## Change log
+
+- **2026-10-11:** File created. It covers:
+  - the vendor link and filters;
+  - payment safety, including enhancements 1–6 adjusted for the middleman
+    model;
+  - the service fee and Total linked both ways;
+  - permissions for vendor charges;
+  - saved lists for cost names and task titles;
+  - the locations system: HQ, vendor and shared locations, no typed
+    locations, and the vendor optional with the location required.
+
+  Added in this update:
+  - the check radius per location;
+  - other vendors' locations not offered on a task;
+  - "Paid to" not taken from shared locations.
+- **2026-10-11:** A map pin is required for every location (§2.5). A
+  location marked "Needs a pin" can't be picked on a task until it has one
+  (§2.8). The open questions in §9 are renumbered.
+- **2026-10-11:** Answers to the open questions and proposals.
+  - **Decided:**
+    - task titles are titles only, and list names are added only by "+ Add";
+    - Vendors become Clients on screen;
+    - "+ New location", existing vendors' HQ, the location filter, list
+      management, every permission default, the build order, and doing this
+      before the UI refactor;
+    - a vendor charge always comes from a task cost;
+    - the service fee is zero or more.
+  - **Added:**
+    - names suggested for today's Clients section;
+    - "pay me back" on by default;
+    - Paid to under discussion.
+- **2026-10-12:** Further answers.
+  - **Decided:**
+    - today's Clients section is named **Records**, and records move onto
+      each client's page;
+    - the rename covers the code as well as the screens;
+    - the cost description fix ships in step 4;
+    - no ticks on the employee's Add cost form: every cost is paid back and
+      charged to the task's client, with a "Not charged to client" tick on
+      the Costs page for exceptions;
+    - "Paid by the company" moved to future enhancements.
+  - **Added:**
+    - how the rename ships without breaking production (PRs 0a–0d, §0.3);
+    - what production holds today (§0.4);
+    - Paid to explained against the cost name, with dropping it suggested
+      (§6.7).
+  - The plan now uses the new names throughout.
