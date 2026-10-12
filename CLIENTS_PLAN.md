@@ -1,8 +1,9 @@
 # Clients, locations and costs: plan
 
 This file holds the whole plan for clients (today's vendors), task
-locations, costs and saved lists. It is updated with every decision and
-enhancement; the change log at the end records each update.
+locations, costs, cash advances (عهدة) and saved lists. It is updated with
+every decision and enhancement; the change log at the end records each
+update.
 
 Each part is marked:
 
@@ -45,11 +46,11 @@ Production has no data in these parts, so now is the right time.
   reminder. These are now called **Records** (Arabic **السجلات**).
 - They're the same businesses as the clients, so records **move onto each
   client's page** and the same business is no longer kept in two places.
-- **Timing** (Open: question 1 in §9). Suggested: now, as part of step 0.
+- **Timing** (Open: question 1 in §10). Suggested: now, as part of step 0.
   Production has no clients, sections or notes in this section, so its own
   list of businesses can simply be removed instead of renamed and merged
   later.
-- **A Records item in the side bar** (Open: question 2 in §9). It would list
+- **A Records item in the side bar** (Open: question 2 in §10). It would list
   every record across clients, with search and an "expiring soon" filter.
   Suggested: yes.
 - **Permissions:** today's `clients.*` (see, contribute, rename, delete)
@@ -79,7 +80,7 @@ Two things make a single big rename unsafe:
 | 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move | Only today's Clients section stops working, and it's empty |
 | 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now | None |
 | 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
-| 0d | The database names are renamed (Open: question 3 in §9) | See question 3 |
+| 0d | The database names are renamed (Open: question 3 in §10) | See question 3 |
 
 The app ignores permission names it doesn't know instead of failing
 (`lib/permissions/matrix.ts`), so the short overlaps above can't break
@@ -210,7 +211,7 @@ needs no data change.
 ### 2.10 Kept separate
 
 The attendance check-in places (Company Settings → work locations) are a
-separate system. The two need clearly different names on screen (§9).
+separate system. The two need clearly different names on screen (§10).
 
 ---
 
@@ -243,6 +244,15 @@ separate system. The two need clearly different names on screen (§9).
    deleted. It's hidden from dropdowns, kept in filters and history, and can
    be restored.
 4. **Fix the bug so cost descriptions are saved** (§1), in this step.
+5. **Costs get their own table** (Proposed).
+   - Today each cost is an entry inside the task's JSON comments, with no id
+     of its own. Removing one finds it by its timestamp.
+   - Client charges (§6) and cash advances (§7) both need to point at one
+     particular cost, for example to undo a charge or an advance payment
+     when the cost is removed.
+   - So costs move into their own table here, where the description fix
+     already changes how they're saved. Production has no costs yet, so
+     there's nothing to move.
 
 ---
 
@@ -307,7 +317,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 - **Exceptions are handled on the Costs page.** On the Charged to Clients
   tab, a **"Not charged to client"** tick removes a cost from the client. It
   can be used until the charge is collected, and unticking it charges the
-  cost again. Who may use it is open (question 4 in §9).
+  cost again. Who may use it is open (question 4 in §10).
 
 ### 6.3 Service fee (Decided)
 
@@ -372,12 +382,115 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 - Paid to would add a field the employee has to fill in. The receipt photo
   already shows the shop, and the goal is as little work for the employee as
   possible.
-- **Suggested: leave it out now**, and add it later (§8) if you want totals
+- **Suggested: leave it out now**, and add it later (§9) if you want totals
   per shop.
 
 ---
 
-## 7. Build order (Decided)
+## 7. Cash advances (عهدة)
+
+### 7.1 What it is (Decided)
+
+- Money the company gives an employee up front, to pay task costs from.
+- **If they spend less,** they keep the rest and carry on paying from it.
+- **If they spend more,** the extra is owed to them by the company.
+- **Optional per company.** A company that doesn't use it works exactly as
+  today.
+
+### 7.2 How costs use it (Proposed)
+
+Each employee has **one running balance**: what they were given, less what
+they spent and what they returned. A cost they add is paid from that
+balance first, automatically:
+
+| Balance before | Cost added | Paid from the advance | Balance after | Owed to the employee |
+|---|---|---|---|---|
+| 1,000 | 300 | 300 | 700 | 0 |
+| 200 | 500 | 200 | 0 | 300 |
+| 0 | 500 | 0 | 0 | 500 (as today) |
+
+- **No extra work for the employee.** The Add cost form only shows their
+  balance ("Your advance: 700 EGP"); there's nothing to choose.
+- **Charging the client doesn't change.** The client is charged the full
+  cost wherever the money came from (§6).
+- **Each person on a task spends from their own advance.**
+
+### 7.3 Giving, returning and leaving (Proposed)
+
+- **Give an advance:**
+  - the amount, the date, a note, and optionally a photo of the signed
+    hand-over;
+  - it adds to the employee's balance;
+  - topping up is simply another advance.
+- **The employee confirms receipt** in the app ("I received 1,000 EGP"),
+  so there's no later dispute over whether the money was handed over. The
+  balance can be spent straight away; until confirmed, the advance shows as
+  awaiting confirmation.
+- **Record a return.** When the employee hands back unspent cash, an Admin
+  records it and the balance goes down.
+- **Owed money at hand-over.** When giving an advance to someone the company
+  owes, the screen says so ("Ahmed is owed 300 EGP") and offers to pay it in
+  the same hand-over.
+- **Leaving the company.** Any balance still held becomes a debt
+  (source: cash advance) in the existing debts feature, recovered through
+  payroll or the final settlement as other debts are.
+
+### 7.4 The ledger and rules (Proposed)
+
+- **Every movement is an entry:**
+  - **Given**;
+  - **Spent**, linked to the cost and its task;
+  - **Returned**;
+  - **Correction**.
+
+  The balance is always the sum of the entries, never a stored number that
+  could drift.
+- **Entries are never edited.** A mistake is fixed with a correction entry,
+  and the audit log records it.
+- **The balance never goes below zero.** Anything spent beyond it is owed to
+  the employee.
+- **Spent entries are made when the cost is added,** so the balance shown is
+  always current.
+- **Removing a cost** (allowed only while the task is In progress) puts its
+  advance part back on the balance.
+- **"Mark all as paid" pays only the part owed to the employee,** never the
+  part already paid from the advance.
+- **An advance can be given only to an active employee** of the company.
+- **The company can't switch the feature off** while any employee still
+  holds advance money.
+- Amounts are kept to 2 decimal places, and English and Arabic labels are
+  used throughout.
+
+### 7.5 Where it shows (Proposed)
+
+- **Costs page, a Cash advances tab:**
+  - each employee's balance;
+  - Give advance, Record return, and each employee's history;
+  - the total held by employees.
+- **On each cost**, in the Employee costs tab and on the task: **From
+  advance** and **To pay back**.
+- **The employee's own page:** My advance, with the balance and its history
+  (given, spent on which task, returned).
+
+### 7.6 Turning it on (Proposed)
+
+A **Cash advances** switch in Company Settings, off by default. Who can
+turn it on is open (question 7 in §10).
+
+### 7.7 Permissions (Proposed)
+
+| Permission | Admin | Team Leader | Employee |
+|---|---|---|---|
+| View cash advances | Company | Their team | Their own only |
+| Give and settle cash advances (give, record returns, corrections) | Company | No | No |
+
+- **Giving and settling moves money,** so it asks for two-factor sign-in,
+  as paying costs does.
+- Every employee always sees their own balance.
+
+---
+
+## 8. Build order (Decided)
 
 | Step | What it covers |
 |---|---|
@@ -388,6 +501,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 | 4 | Payment safety and the cost description fix (§4) |
 | 5 | Saved lists (§5) |
 | 6 | Client charges (§6) |
+| 7 | **Proposed:** cash advances (§7) |
 
 - Each step is its own PR (or several, for step 0), opened against `main`
   and merged only on the product owner's word.
@@ -398,7 +512,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 
 ---
 
-## 8. Later (future enhancements)
+## 9. Later (future enhancements)
 
 - **An exportable client statement:** what the client was charged and what
   was collected for a date range, with receipts. It can be sent to the
@@ -408,10 +522,12 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   then, every cost is paid back to the employee who added it.
 - **Paid to,** if it's dropped now (§6.7): who received the money, from a
   saved list, for totals per shop.
+- **An advance for a particular task or client,** in addition to the general
+  running balance (§7).
 
 ---
 
-## 9. Open questions
+## 10. Open questions
 
 1. **When do records move onto clients?** Suggested: now, in step 0 (PR 0a).
    Production has no clients, sections or notes in today's Clients section,
@@ -437,9 +553,23 @@ The company never buys on credit, so nothing is tracked as owed to shops.
    - the statuses To collect and Collected;
    - Locations, which must read differently from the attendance "work
      locations";
-   - the permission names in §2.9, §5.7 and §6.6.
+   - the permission names in §2.9, §5.7, §6.6 and §7.7;
+   - the English name for عهدة. Suggested: **Cash advance**.
+7. **Who turns cash advances on** for a company?
+   - (a) The company's Admin, with a switch in Company Settings.
+   - (b) The Super Admin, as part of the company's package, if you want to
+     sell it as a feature.
+   - Suggested: (a).
+8. **Cash advance details** (§7.2–7.5): one running balance per employee,
+   paid from automatically; the employee confirming receipt; offering to
+   pay what's owed at hand-over; and a leftover balance becoming a debt when
+   the employee leaves. Agreed?
+9. **Can Team Leaders give advances to their team?** Suggested: not by
+   default. Because it's a permission, it can be given to any role.
+10. **Costs in their own table** (§4.5), as part of step 4?
+11. **Cash advances as step 7,** after client charges (§8)?
 
-## 10. Turned down
+## 11. Turned down
 
 - **"Paid to" picked from shared locations.** Paid to stays separate from
   locations.
@@ -500,3 +630,18 @@ The company never buys on credit, so nothing is tracked as owed to shops.
     - Paid to explained against the cost name, with dropping it suggested
       (§6.7).
   - The plan now uses the new names throughout.
+- **2026-10-12:** Cash advances (عهدة) added (§7).
+  - **Decided:** money given to an employee up front to pay task costs
+    from; an unspent rest is kept and spent later; spending more is owed
+    to the employee; optional per company.
+  - **Proposed:**
+    - one running balance per employee, paid from automatically;
+    - the employee confirming receipt;
+    - returns and owed money settled at hand-over;
+    - a leftover balance becoming a debt when the employee leaves;
+    - the ledger and its rules, where it shows, the switch, and the
+      permissions;
+    - costs moved into their own table in step 4 (§4.5);
+    - cash advances as step 7.
+  - **Open:** questions 7–11 in §10. Later sections are renumbered (build
+    order §8, later §9, open questions §10, turned down §11).
