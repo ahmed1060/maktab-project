@@ -244,7 +244,7 @@ separate system. The two need clearly different names on screen (§10).
    deleted. It's hidden from dropdowns, kept in filters and history, and can
    be restored.
 4. **Fix the bug so cost descriptions are saved** (§1), in this step.
-5. **Costs get their own table** (Proposed).
+5. **Costs get their own table** (Decided).
    - Today each cost is an entry inside the task's JSON comments, with no id
      of its own. Removing one finds it by its timestamp.
    - Client charges (§6) and cash advances (§7) both need to point at one
@@ -397,7 +397,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 - **Optional per company.** A company that doesn't use it works exactly as
   today.
 
-### 7.2 How costs use it (Proposed)
+### 7.2 How costs use it (Decided)
 
 Each employee has **one running balance**: what they were given, less what
 they spent and what they returned. A cost they add is paid from that
@@ -415,7 +415,7 @@ balance first, automatically:
   cost wherever the money came from (§6).
 - **Each person on a task spends from their own advance.**
 
-### 7.3 Giving, returning and leaving (Proposed)
+### 7.3 Giving, returning and leaving (Decided)
 
 - **Give an advance:**
   - the amount, the date, a note, and optionally a photo of the signed
@@ -435,7 +435,7 @@ balance first, automatically:
   (source: cash advance) in the existing debts feature, recovered through
   payroll or the final settlement as other debts are.
 
-### 7.4 The ledger and rules (Proposed)
+### 7.4 The ledger and rules (Decided)
 
 - **Every movement is an entry:**
   - **Given**;
@@ -456,12 +456,12 @@ balance first, automatically:
 - **"Mark all as paid" pays only the part owed to the employee,** never the
   part already paid from the advance.
 - **An advance can be given only to an active employee** of the company.
-- **The company can't switch the feature off** while any employee still
-  holds advance money.
+- **The feature can't be switched off,** by the Admin or the Super Admin,
+  while any employee still holds advance money.
 - Amounts are kept to 2 decimal places, and English and Arabic labels are
   used throughout.
 
-### 7.5 Where it shows (Proposed)
+### 7.5 Where it shows (Decided)
 
 - **Costs page, a Cash advances tab:**
   - each employee's balance;
@@ -472,12 +472,16 @@ balance first, automatically:
 - **The employee's own page:** My advance, with the balance and its history
   (given, spent on which task, returned).
 
-### 7.6 Turning it on (Proposed)
+### 7.6 Turning it on (Decided)
 
-A **Cash advances** switch in Company Settings, off by default. Who can
-turn it on is open (question 7 in §10).
+- **The Super Admin allows cash advances for a company.** A company that
+  hasn't been allowed them doesn't see the feature at all.
+- **Once allowed, the company's Admin can switch them off and on again** in
+  Company Settings.
+- **Neither of them can switch it off** while any employee still holds
+  advance money. The balances must be spent or returned first.
 
-### 7.7 Permissions (Proposed)
+### 7.7 Permissions (Decided)
 
 | Permission | Admin | Team Leader | Employee |
 |---|---|---|---|
@@ -487,6 +491,8 @@ turn it on is open (question 7 in §10).
 - **Giving and settling moves money,** so it asks for two-factor sign-in,
   as paying costs does.
 - Every employee always sees their own balance.
+- **Team Leaders don't give advances by default.** Because it's a
+  permission, it can be given to any role.
 
 ---
 
@@ -501,7 +507,7 @@ turn it on is open (question 7 in §10).
 | 4 | Payment safety and the cost description fix (§4) |
 | 5 | Saved lists (§5) |
 | 6 | Client charges (§6) |
-| 7 | **Proposed:** cash advances (§7) |
+| 7 | Cash advances (§7) |
 
 - Each step is its own PR (or several, for step 0), opened against `main`
   and merged only on the product owner's word.
@@ -555,19 +561,8 @@ turn it on is open (question 7 in §10).
      locations";
    - the permission names in §2.9, §5.7, §6.6 and §7.7;
    - the English name for عهدة. Suggested: **Cash advance**.
-7. **Who turns cash advances on** for a company?
-   - (a) The company's Admin, with a switch in Company Settings.
-   - (b) The Super Admin, as part of the company's package, if you want to
-     sell it as a feature.
-   - Suggested: (a).
-8. **Cash advance details** (§7.2–7.5): one running balance per employee,
-   paid from automatically; the employee confirming receipt; offering to
-   pay what's owed at hand-over; and a leftover balance becoming a debt when
-   the employee leaves. Agreed?
-9. **Can Team Leaders give advances to their team?** Suggested: not by
-   default. Because it's a permission, it can be given to any role.
-10. **Costs in their own table** (§4.5), as part of step 4?
-11. **Cash advances as step 7,** after client charges (§8)?
+7. **Shipping the rename as small PRs 0a–0d** (§0.3), so production keeps
+   working while each one waits for review?
 
 ## 11. Turned down
 
@@ -645,3 +640,14 @@ turn it on is open (question 7 in §10).
     - cash advances as step 7.
   - **Open:** questions 7–11 in §10. Later sections are renumbered (build
     order §8, later §9, open questions §10, turned down §11).
+- **2026-10-12:** Cash advance answers.
+  - **Decided:**
+    - the Super Admin allows cash advances for a company, and its Admin can
+      then switch them off and on (§7.6);
+    - neither can switch them off while employees hold advance money;
+    - the details in §7.2–7.5;
+    - Team Leaders don't give advances by default (§7.7);
+    - costs move into their own table in step 4 (§4.5);
+    - cash advances are step 7.
+  - **Added to the open questions:** shipping the rename as PRs 0a–0d
+    (question 7 in §10).
