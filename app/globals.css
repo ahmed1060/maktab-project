@@ -123,7 +123,6 @@
   --warn-border-warm: #fed7aa;
   --warn-border-warm-firm: #fdba74;
   --warn-fg-warm: #9a3412;
-  --warn-fg-warm-strong: #c2410c;
   --warn-solid-warm: #fb923c;
 
   --warn-bg-yellow: #fef9c3;
@@ -1216,7 +1215,6 @@ input::-webkit-credentials-auto-fill-button {
     --warn-border-warm: #6b3d1c;
     --warn-border-warm-firm: #8a4f24;
     --warn-fg-warm: #f5b183;
-    --warn-fg-warm-strong: #ffc59e;
     --warn-solid-warm: #e08a4e;
     --warn-bg-yellow: #35300d;
     --warn-bg-yellow-subtle: #262208;
