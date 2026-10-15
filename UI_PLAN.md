@@ -315,8 +315,21 @@ Clients pages) are rebuilt in step 0, so they're fixed there.
 
 ## 6. Open questions
 
-None right now. The seven questions asked on 2026-10-15 were answered the
-same day:
+8. **Impeccable** (§7): its `SKILL.md` asks for a launcher to be run at the
+   start of every session, and that launcher downloads and runs a compiled
+   program. That program can't be read like the rest of the skill, and isn't
+   pinned, so Impeccable can't meet the rule in §7.3 as it ships. It was left
+   out of the building-blocks PR. Choices:
+   - add only its written guidance (its reference pages, without the
+     launcher), adapted the way `web-design-guidelines` was;
+   - or leave it out, and build with `DESIGN.md`, UI/UX Pro Max and the
+     Vercel audit.
+
+   Suggested: leave it out for now. `DESIGN.md` already covers what it
+   would give, and the dashboard home (§4.1) can be the first page built
+   with the building blocks alone.
+
+The seven questions asked on 2026-10-15 were answered the same day:
 
 1. **The side bar groups:** agreed, with Check in at the top and empty
    groups hidden (§2.1, §2.2).
@@ -503,3 +516,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-15:** Nizmo's indigo is used as `#6063ea` (4.70:1), not
   `#5d60e3` (§4.6). The code darkens a colour in finer steps than the
   mock-ups did, so less of the chosen colour is lost.
+- **2026-10-15:** The building-blocks PR adds UI/UX Pro Max and Vercel Web
+  Design Guidelines to `.claude/skills/`, pinned, with where each came from
+  in `.claude/skills/SOURCES.md`. Vercel's rules are a pinned copy rather
+  than fetched on every run. Impeccable is left out: it downloads and runs a
+  program that can't be read or pinned (§7.3). Whether to add its written
+  guidance alone is question 8 in §6.
