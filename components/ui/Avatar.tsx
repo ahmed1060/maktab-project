@@ -1,6 +1,13 @@
-/** Up to two initials, from the first two words of a name, in whatever script it's written. */
+const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/
+
+/**
+ * Up to two initials, from the first two words of a name, in whatever script
+ * it's written. Arabic letters side by side join into a word (م and ع make
+ * «مع», "with"), so they're kept apart by a zero-width non-joiner.
+ */
 export function initials(name: string): string {
-    return name.trim().split(/\s+/).slice(0, 2).map(w => Array.from(w)[0] ?? '').join('').toUpperCase()
+    const letters = name.trim().split(/\s+/).slice(0, 2).map(w => Array.from(w)[0] ?? '')
+    return ARABIC.test(letters.join('')) ? letters.join('\u200C') : letters.join('').toUpperCase()
 }
 
 /** A person's initials in a circle. Always beside their name, so it's hidden from screen readers. */

@@ -19,6 +19,23 @@
   font-family: var(--font-ui);
 }
 
+/* Taps act at once (no double-tap zoom wait), and the pressed state is the
+   block's own rather than the browser's grey flash. */
+.ui-btn,
+.ui-tab,
+.ui-pager-page,
+.ui-select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Headings break into even lines rather than leaving one word on the last. */
+.ui-page-title,
+.ui-card-title,
+.ui-empty-title {
+  text-wrap: balance;
+}
+
 /* Even-width digits wherever numbers line up (DESIGN.md §3.3). */
 .ui-num,
 .ui-table td,
@@ -451,10 +468,20 @@
   color: var(--muted);
   font-size: var(--text-sm);
 }
-.ui-pager-pages {
+.ui-pager {
+  flex-wrap: wrap;
+}
+.ui-pager-pages,
+.ui-pager-numbers {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+.ui-pager-where {
+  display: none;
+  padding-inline: var(--space-2);
+  white-space: nowrap;
+  color: var(--ink-2);
 }
 .ui-pager-page {
   display: inline-grid;
@@ -469,6 +496,9 @@
   font: inherit;
   cursor: pointer;
   text-decoration: none;
+}
+.ui-pager-page:hover:not(:disabled):not([aria-current="page"]) {
+  background: var(--brand-tint);
 }
 .ui-pager-page[aria-current="page"] {
   background: var(--brand);
@@ -628,6 +658,12 @@ html[lang="ar"] .ui-empty-title {
   .ui-pager-page {
     min-width: 44px;
     height: 44px;
+  }
+  .ui-pager-numbers {
+    display: none;
+  }
+  .ui-pager-where {
+    display: inline;
   }
   .ui-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));

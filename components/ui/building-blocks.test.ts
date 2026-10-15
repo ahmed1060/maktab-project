@@ -49,6 +49,8 @@ describe("the pager", () => {
         expect(html).toMatch(/aria-label="Previous page" disabled=""/)
         expect(html).toContain('aria-label="Page 2 of 3"')
         expect(html).toContain("18 tasks")
+        // The phone's "Page 1 of 3", shown in place of the numbers.
+        expect(html).toContain('<span class="ui-pager-where" aria-hidden="true">Page 1 of 3</span>')
     })
 
     it("counts in Arabic-Indic digits in Arabic, and its arrows mirror", () => {
@@ -160,7 +162,8 @@ describe("statuses and people", () => {
     it("initials come from the first two words, in any script", () => {
         expect(ui.initials("Mohamed Adel")).toBe("MA")
         expect(ui.initials("  sara   hassan ali ")).toBe("SH")
-        expect(ui.initials("محمد عادل")).toBe("مع")
+        // Kept apart, or م and ع join into the word «مع».
+        expect(ui.initials("محمد عادل")).toBe("م\u200Cع")
         expect(ui.initials("Omar")).toBe("O")
     })
 

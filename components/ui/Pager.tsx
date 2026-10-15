@@ -26,6 +26,8 @@ export function pageWindow(page: number, pageCount: number): (number | null)[] {
 /**
  * A list's footer (DESIGN.md §5.4): how many items, on the start side, and the
  * pages on the end side. Previous and next point the reading direction's way.
+ * On a phone the numbers give way to "Page 2 of 9" between previous and next,
+ * which fits however many pages there are at full touch size.
  */
 export function Pager({ page, pageCount, onPage, summary }: {
     page: number
@@ -45,13 +47,17 @@ export function Pager({ page, pageCount, onPage, summary }: {
                     <button type="button" className="ui-pager-page" aria-label={t('previous_page')} disabled={page <= 1} onClick={() => onPage(page - 1)}>
                         <Icon icon={CaretLeftIcon} size={16} directional />
                     </button>
-                    {pageWindow(page, pageCount).map((p, i) => p === null
-                        ? <span key={`gap-${i}`} className="ui-pager-gap" aria-hidden="true">…</span>
-                        : (
-                            <button key={p} type="button" className="ui-pager-page" aria-label={label(p)} aria-current={p === page ? 'page' : undefined} onClick={() => onPage(p)}>
-                                {num(p)}
-                            </button>
-                        ))}
+                    <span className="ui-pager-numbers">
+                        {pageWindow(page, pageCount).map((p, i) => p === null
+                            ? <span key={`gap-${i}`} className="ui-pager-gap" aria-hidden="true">…</span>
+                            : (
+                                <button key={p} type="button" className="ui-pager-page" aria-label={label(p)} aria-current={p === page ? 'page' : undefined} onClick={() => onPage(p)}>
+                                    {num(p)}
+                                </button>
+                            ))}
+                    </span>
+                    {/* A phone has no room for the numbers: where you are, between previous and next. */}
+                    <span className="ui-pager-where" aria-hidden="true">{label(page)}</span>
                     <button type="button" className="ui-pager-page" aria-label={t('next_page')} disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
                         <Icon icon={CaretRightIcon} size={16} directional />
                     </button>

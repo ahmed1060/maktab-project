@@ -32,23 +32,23 @@ const TASKS: Sample[] = [
 const TEXT = {
     en: {
         page: 'Building blocks', title: 'Tasks', subtitle: 'Manage team tasks, deadlines, and project progress', create: 'Create new task',
-        search: 'Search tasks', employee: 'Employee', allEmployees: 'All employees', status: 'Status', allStatuses: 'All statuses', sort: 'Sort by', smart: 'Smart sort (status)',
+        search: 'Search tasks…', employee: 'Employee', allEmployees: 'All employees', status: 'Status', allStatuses: 'All statuses', sort: 'Sort by', smart: 'Smart sort (status)',
         tabs: 'Which tasks', all: 'All tasks', mine: 'My tasks', task: 'Task', assignee: 'Assignee', deadline: 'Deadline', difficulty: 'Difficulty', actions: 'Actions',
         results: '18 tasks', start: 'Start', next: 'Continue', view: 'View',
         pending: 'Pending', progress: 'In Progress', waiting: 'Pending Confirmation', done: 'Completed', rejected: 'Rejected', approved: 'Approved',
         tiles: ['Pending', 'In progress', 'Waiting for confirmation', 'Overdue'],
-        buttons: 'Buttons', primary: 'Primary', secondary: 'Secondary', quiet: 'Quiet', danger: 'Delete client', small: 'In a row', busy: 'Saving', disabled: 'Not allowed',
+        buttons: 'Buttons', primary: 'Primary', secondary: 'Secondary', quiet: 'Quiet', danger: 'Delete client', small: 'In a row', busy: 'Saving…', disabled: 'Not allowed',
         form: 'A form', name: 'Client name', nameHint: 'As it appears on their commercial register.', code: 'Tax number', codeError: 'Enter the 9 digits on the tax card.',
         badges: 'Status badges', empty: 'No tasks yet', emptyAction: 'Create a task', pts: (n: number) => n === 1 ? '1 pt' : `${n} pts`,
     },
     ar: {
         page: 'مكونات الواجهة', title: 'المهام', subtitle: 'إدارة مهام الفريق والمواعيد النهائية وتقدم المشروع', create: 'إنشاء مهمة جديدة',
-        search: 'بحث في المهام', employee: 'الموظف', allEmployees: 'كل الموظفين', status: 'الحالة', allStatuses: 'جميع الحالات', sort: 'ترتيب حسب', smart: 'ترتيب ذكي (الحالة)',
+        search: 'بحث في المهام…', employee: 'الموظف', allEmployees: 'كل الموظفين', status: 'الحالة', allStatuses: 'جميع الحالات', sort: 'ترتيب حسب', smart: 'ترتيب ذكي (الحالة)',
         tabs: 'أي المهام', all: 'كل المهام', mine: 'مهامي', task: 'المهمة', assignee: 'المكلف', deadline: 'الموعد النهائي', difficulty: 'الصعوبة', actions: 'الإجراءات',
         results: '١٨ مهمة', start: 'بدء', next: 'متابعة', view: 'عرض',
         pending: 'معلق', progress: 'قيد التنفيذ', waiting: 'بانتظار التأكيد', done: 'مكتمل', rejected: 'مرفوض', approved: 'مقبول',
         tiles: ['معلقة', 'قيد التنفيذ', 'بانتظار التأكيد', 'متأخرة'],
-        buttons: 'الأزرار', primary: 'أساسي', secondary: 'ثانوي', quiet: 'هادئ', danger: 'حذف العميل', small: 'داخل صف', busy: 'جارٍ الحفظ', disabled: 'غير مسموح',
+        buttons: 'الأزرار', primary: 'أساسي', secondary: 'ثانوي', quiet: 'هادئ', danger: 'حذف العميل', small: 'داخل صف', busy: 'جارٍ الحفظ…', disabled: 'غير مسموح',
         form: 'نموذج', name: 'اسم العميل', nameHint: 'كما يظهر في السجل التجاري.', code: 'الرقم الضريبي', codeError: 'أدخل الأرقام التسعة الموجودة على البطاقة الضريبية.',
         badges: 'حالات', empty: 'لا توجد مهام بعد', emptyAction: 'إنشاء مهمة', pts: (n: number) => n === 1 ? 'نقطة واحدة' : n === 2 ? 'نقطتان' : `${n.toLocaleString('ar-EG')} نقاط`,
     },
@@ -94,7 +94,7 @@ export default function UiKitPage() {
     ]
 
     return (
-        <div style={{ background: 'var(--page)', padding: 'var(--space-8)', borderRadius: 'var(--radius-panel)', display: 'grid', gap: 'var(--space-6)' }}>
+        <div style={{ background: 'var(--page)', padding: 'clamp(var(--space-4), 4vw, var(--space-8))', borderRadius: 'var(--radius-panel)', display: 'grid', gap: 'var(--space-6)' }}>
             <PageHeader title={s.title} subtitle={s.subtitle} action={<ButtonLink href="#" variant="primary" icon={PlusIcon}>{s.create}</ButtonLink>} />
 
             <TotalTiles items={s.tiles.map((label, i) => ({ label, value: [6, 4, 2, 1][i].toLocaleString(ar ? 'ar-EG' : 'en-GB') }))} />
