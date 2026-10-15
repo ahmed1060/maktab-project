@@ -308,8 +308,33 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Page header:**
   - the title (`--text-3xl`, or `--text-2xl` on phones);
   - an optional one-line subtitle in `--muted`;
-  - the page's primary button on the end side. On phones, the button goes
-    full width below the title.
+  - the page's primary button on the end side, with at most one secondary
+    button beside it. On phones, the buttons go full width below the title.
+  - Until the app shell (§5.1) replaces the old top bar, the old top bar
+    hides its own title on a page that has a page header, so the page is
+    named once.
+- **Page layout:** a page's parts are stacked with the "between sections"
+  spacing from §4.1.
+- **Section:** a part of a page made of several panels, such as a row of
+  tiles. Its heading is `--text-xl`, weight 500, above the panels, with an
+  optional quiet link on the end side, such as "View all". A part made of
+  one panel uses a card's title instead.
+- **Rows:** a short list inside a panel, such as the five most overdue tasks
+  on the dashboard.
+  - Rows are split by hairlines. Each row is a link, with the title (and an
+    optional detail line in `--muted`) on the start side, and its status,
+    date or count on the end side.
+  - An overdue row gets the red start-edge bar and the faint red background,
+    as in a table.
+  - A full list, with filters and pages, uses the table (§5.4) instead.
+- **Row menu:** the actions on one item that don't fit in its row, behind a
+  quiet "More actions" button.
+  - The pop-up is level 2 (§4.3) with 8px corners, on the end side of the
+    button.
+  - The arrow keys move through it, Escape closes it and returns to the
+    button, and choosing an item closes it.
+  - A destructive item, such as Delete, is in the danger text colour and
+    is last, after a hairline. It still asks before it acts.
 - **Status badge:** a pill, `--text-xs`, weight 500, with the background and
   text colours from §2.3.
 - **Tabs:** text tabs with a 2px `--brand` line under the selected one, and
@@ -318,6 +343,10 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Total tiles:**
   - a label in `--text-sm` and `--muted`, above the value in `--text-2xl`
     and weight 600 with even-width digits;
+  - an optional note under the value, in `--text-sm` and `--muted`, such
+    as "This month" or "40% completed";
+  - a tile can be a link to the list it counts. Its label is then in
+    `--brand-text`, and the whole tile is the target;
   - up to 4 in a row on computers, 2 on phones.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
@@ -469,3 +498,9 @@ changed:
   what they show already names them. On phones, the Filters button shows
   the filters below the search instead of opening a sheet, so each filter
   is on the page once.
+- **2026-10-15:** Added, for the dashboard home, Employees and Day Off
+  Requests (`UI_PLAN.md` §4.1): the page layout, sections, rows, the row
+  menu, tile notes and tile links, and a second button in the page header.
+  The old top bar hides its title on a page with a page header until the
+  app shell replaces it. The row menu is the first menu, so the menu corner
+  (8px) and level-2 shadow from §4.2 and §4.3 become tokens now.
