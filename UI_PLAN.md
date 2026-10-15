@@ -259,7 +259,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
   - A colour too light for white text is darkened, keeping its hue, until
     white text reads at 4.5:1 or better.
   - Nizmo's own indigo is just under that (4.47:1), so it's used as
-    `#5d60e3` (4.95:1), which looks almost the same.
+    `#6063ea` (4.70:1), which looks almost the same.
   - Dark mode uses a lighter version of the colour.
 - **Some colours never change:**
   - the status colours: Pending, In Progress, Approved, Completed, Rejected
@@ -500,3 +500,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Its §11 lists what was changed from the Stripe write-up: sentence-case
   labels, no gradients, a darker helper grey, stronger field edges, a fixed
   blue for In Progress, and one corner size for each level.
+- **2026-10-15:** Nizmo's indigo is used as `#6063ea` (4.70:1), not
+  `#5d60e3` (§4.6). The code darkens a colour in finer steps than the
+  mock-ups did, so less of the chosen colour is lost.

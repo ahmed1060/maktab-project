@@ -59,7 +59,7 @@ below, which are all worked out from the one chosen colour.
 | `--brand-tint-strong` | 14% brand on the panel colour | Avatars with initials |
 
 - **The default is Nizmo's own indigo, `#6366f1`.** White text on it is
-  4.47:1, just under the rule, so it's used as `#5d60e3` (4.95:1).
+  4.47:1, just under the rule, so it's used as `#6063ea` (4.70:1).
 - **In dark mode:**
   - `--brand-text` is lightened until it reads at 4.5:1 or better on dark
     panels;
@@ -452,3 +452,6 @@ changed:
 - **2026-10-15:** The line token is renamed from `--hairline` to `--rule`.
   `--hairline` already exists with a different value (a faint 5% black)
   that 12 places in the old pages use.
+- **2026-10-15:** Nizmo's indigo is used as `#6063ea` (4.70:1), not
+  `#5d60e3`. The code darkens a colour in finer steps than the mock-ups did,
+  so less of the chosen colour is lost.
