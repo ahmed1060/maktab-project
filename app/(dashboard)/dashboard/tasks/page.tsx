@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
-import { and, assignedToReportsWhere } from '@/lib/team-scope'
+import { and, assignedToReportsWhere, assignedToTeamWhere } from '@/lib/team-scope'
 import { grantFor } from '@/lib/permissions/can'
 import { shapeTask } from '@/lib/permissions/shape'
 
@@ -54,6 +54,11 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         whereClause.companyId = userCompanyId
         if (view === 'my') {
             and(whereClause, { assignees: { some: { id: userId } } })
+        } else if (view === 'team') {
+            // The team's tasks with the leader's own among them: what the
+            // dashboard counts for a Team Leader, so its numbers' links land
+            // on the tasks they counted. It has no tab of its own here.
+            and(whereClause, assignedToTeamWhere(userId))
         } else {
             // The team's work in flight. This used to read `none: { id: me }`
             // — everything in the company that was not the leader's own —

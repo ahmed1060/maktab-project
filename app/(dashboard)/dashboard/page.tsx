@@ -10,6 +10,7 @@ import {
 } from "@/components/ui"
 import { countOf } from "@/lib/plural"
 import { usedDayOffCredit } from "@/lib/day-off-credit"
+import { tasksListHref } from "./tasks/list-href"
 import { cookies, headers } from "next/headers"
 import type { TranslationKey } from "@/lib/translations"
 import { resolveLocale } from "@/lib/locale"
@@ -38,6 +39,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     // Who is asking, for can(): nobody signed in holds nothing.
     const viewer = (session?.user ?? { role: null }) as any
     const userId = (session?.user as any)?.id
+    // A Team Leader's task numbers are their team's; their links say so.
+    const tasksTeamOnly = grantFor(viewer, 'tasks.view') === 'TEAM'
 
     // Server-side localization
     // Awaited since Next 15: cookies(), headers() and draftMode() are async,
@@ -80,7 +83,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     value: count(status),
                     count: num(count(status)),
                     tone: taskStatusTone(status),
-                    href: `/dashboard/tasks?status=${status}`,
+                    href: tasksListHref({ status, teamOnly: tasksTeamOnly }),
                 }))}
                 total={num(counts.reduce((acc, c) => acc + c._count, 0))}
                 totalLabel={t('total_label')}
@@ -234,12 +237,11 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
         const reviewTasks = taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0
 
-        const teamOnly = grantFor(viewer, 'tasks.view') === 'TEAM'
 
         return (
             <Page>
                 <PageHeader
-                    title={teamOnly ? t('team_performance') : t('admin_overview')}
+                    title={tasksTeamOnly ? t('team_performance') : t('admin_overview')}
                     subtitle={t('dashboard_subtitle' as any)}
                     action={<>
                         <ButtonLink href="/dashboard/tasks/new" variant="primary" icon={PlusIcon}>{t('create_new_task')}</ButtonLink>
@@ -248,14 +250,14 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 />
 
                 <TotalTiles items={[
-                    { label: t('task_completion'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: '/dashboard/tasks' },
+                    { label: t('task_completion'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: tasksListHref({ teamOnly: tasksTeamOnly }) },
                     { label: t('team_bonuses'), value: days(Number(salaryStats._sum.bonusDays || 0)), note: t('total_this_month') },
                     { label: t('team_deductions'), value: days(Number(salaryStats._sum.deductions || 0)), note: t('total_this_month') },
                 ]} />
 
                 <Section title={t('needs_your_review')}>
                     <TotalTiles items={[
-                        { label: t('pending_task_reviews'), value: num(reviewTasks), href: '/dashboard/tasks?status=PENDING_CONFIRMATION' },
+                        { label: t('pending_task_reviews'), value: num(reviewTasks), href: tasksListHref({ status: 'PENDING_CONFIRMATION', teamOnly: tasksTeamOnly }) },
                         ...(can(viewer, 'dayoff.approve') ? [{ label: t('pending_day_off_requests'), value: num(pendingDayOffRequests), href: '/dashboard/day-off-requests?status=PENDING' }] : []),
                         ...(can(viewer, 'profile_requests.review') ? [{ label: t('pending_profile_requests'), value: num(pendingProfileRequests), href: '/dashboard/profile-requests' }] : []),
                     ]} />
@@ -364,7 +366,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 <PageHeader title={t('hello_name').replace('{name}', (session?.user as any)?.firstName ?? '')} subtitle={t('dashboard_subtitle' as any)} />
 
                 <TotalTiles items={[
-                    { label: t('overall_progress'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: '/dashboard/tasks' },
+                    { label: t('overall_progress'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: tasksListHref({ teamOnly: tasksTeamOnly }) },
                     { label: t('bonus'), value: days(Number(salaryRecord?.bonusDays || 0)), note: t('extra_earnings') },
                     { label: t('payroll_deductions'), value: days(Number(salaryRecord?.deductions || 0)), note: t('total_lost_days') },
                 ]} />
