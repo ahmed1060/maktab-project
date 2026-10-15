@@ -29,7 +29,9 @@ describe("the dashboard home", () => {
         // For a Team Leader, to the team's view of them (tasks/list-href.ts).
         expect(page).toContain("href: tasksListHref({ status, teamOnly: tasksTeamOnly })")
         // As donuts, with the words and counts in their legends.
-        expect(page.match(/<DonutChart\b/g)!.length).toBeGreaterThanOrEqual(2)
+        expect(page.match(/<DonutChart\b/g)).toHaveLength(1)
+        // And the day off credit as a donut too (components/DayOffCreditDonut.tsx).
+        expect(page).toContain("<DayOffCreditDonut ")
     })
 
     it("offers each review queue only to someone who can act on it, as before", () => {

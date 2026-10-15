@@ -1089,6 +1089,8 @@ a.ui-row:focus-visible {
   gap: 2px;
   flex: 1;
   min-width: 0;
+  /* On a wide page a count stays near its word. */
+  max-inline-size: 28rem;
   margin: 0;
   padding: 0;
   list-style: none;

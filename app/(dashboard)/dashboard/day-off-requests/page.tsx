@@ -13,9 +13,10 @@ import { useCompany } from '@/context/CompanyContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
+import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
 import {
     Button, Choice, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, SearchInput,
-    Select, StatusBadge, TextArea, TextInput, TotalTiles, visibleRow, type Column, type StatusTone,
+    Section, Select, StatusBadge, TextArea, TextInput, visibleRow, type Column, type StatusTone,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -322,10 +323,9 @@ export default function DayOffRequestsPage() {
             />
 
             {!managesRequests && (
-                <TotalTiles items={[
-                    { label: t('remaining_credit'), value: days(userCredit) },
-                    { label: t('used_credit'), value: days(usedByCredit) },
-                ]} />
+                <Section title={t('credit_overview')}>
+                    <DayOffCreditDonut remaining={userCredit} used={usedByCredit} t={t} locale={locale} loading={!foundUser} />
+                </Section>
             )}
 
             <FilterBar
