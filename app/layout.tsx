@@ -1,13 +1,14 @@
 import './globals.css'
 import { Providers } from './providers'
 import { cookies, headers } from 'next/headers'
-import { Outfit, Inter } from 'next/font/google'
+import { Outfit, Inter, Noto_Sans_Arabic } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { resolveLocale } from '@/lib/locale'
 import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
 import { parseTheme, themeAttribute, THEME_COOKIE } from '@/lib/theme'
+import { brandStyleSheet } from '@/lib/brand-colour'
 import NavigationProgress from '@/components/NavigationProgress'
 import { Suspense } from 'react'
 
@@ -19,6 +20,11 @@ import { Suspense } from 'react'
 // jump when the font arrives.
 const outfit = Outfit({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'], display: 'swap', variable: '--font-outfit' })
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'], display: 'swap', variable: '--font-inter' })
+// Arabic for the building blocks (DESIGN.md §3.1); before it the app loaded
+// none, so Arabic took whatever each device had. Not preloaded: only the
+// building blocks use it so far, and an English page would fetch it for
+// nothing. The browser asks for it the first time Arabic text needs it.
+const notoArabic = Noto_Sans_Arabic({ subsets: ['arabic'], weight: ['400', '500', '600'], display: 'swap', preload: false, variable: '--font-noto-arabic' })
 
 export const metadata = {
   title: 'Nizmo',
@@ -54,7 +60,13 @@ export default async function RootLayout({
   const initialDict = initialLocale === 'ar' ? ar : en
 
   return (
-    <html lang={initialLocale} dir={dir} data-theme={themeAttr} className={`${outfit.variable} ${inter.variable}`}>
+    <html lang={initialLocale} dir={dir} data-theme={themeAttr} className={`${outfit.variable} ${inter.variable} ${notoArabic.variable}`}>
+      <head>
+        {/* The brand colour's shades (DESIGN.md §2.1), in the page before it's
+            sent so it never opens in another colour first. The default
+            indigo until the colour setting arrives (UI_PLAN.md §4.6). */}
+        <style id="brand-colour" dangerouslySetInnerHTML={{ __html: brandStyleSheet(null) }} />
+      </head>
       <body>
         <Providers initialLocale={initialLocale} initialDict={initialDict} initialTheme={theme} themeChosen={cookieStore.has(THEME_COOKIE)}>{children}</Providers>
         {/* useSearchParams needs a Suspense boundary of its own. */}
