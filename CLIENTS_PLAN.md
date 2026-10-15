@@ -204,6 +204,13 @@ needs no data change.
   (`lib/services/template-generator.service.ts`).
 - Add a **Locations** sheet behind a new **Location** column, listing names
   such as "Al Noor - Maadi branch".
+- **Each name in the list is unique.** A shared location could be called
+  "Al Noor - Maadi branch" too, and a name can contain the " - ". So where
+  two would read the same, each gets a number: "Al Noor - Maadi branch (2)".
+- **The sheet keeps each name's location in a hidden column,** and the
+  upload finds the location from that, never by matching the text. A name
+  it can't find exactly once is flagged on the review screen, never
+  guessed.
 - The review screen flags a location that doesn't belong to the row's client
   and isn't shared, as it flags unknown clients today.
 
