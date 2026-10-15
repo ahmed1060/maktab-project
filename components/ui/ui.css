@@ -728,6 +728,12 @@ a.ui-row:focus-visible {
 .ui-list {
   overflow: hidden;
 }
+/* The panel clips to its rounded corners, so a table wider than it, as can
+   happen between phone width and a wide screen with the sidebar, scrolls
+   inside this instead of losing its end columns, the actions among them. */
+.ui-table-scroll {
+  overflow-x: auto;
+}
 .ui-table {
   width: 100%;
   border-collapse: collapse;

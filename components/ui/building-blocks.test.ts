@@ -105,6 +105,12 @@ describe("lists", () => {
         expect(list(rows)).toContain("متأخرة")
     })
 
+    it("scrolls a table wider than its panel inside it, instead of cutting off its end columns", () => {
+        expect(list(rows)).toMatch(/<div class="ui-panel ui-list"><div class="ui-table-scroll"><table class="ui-table">/)
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-table-scroll \{\s*overflow-x: auto;/)
+    })
+
     it("keys each row and card, so a page can scroll to the one showing", () => {
         const html = list(rows)
         expect(html.match(/data-key="a"/g)).toHaveLength(2)
