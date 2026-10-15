@@ -175,7 +175,9 @@ One scale. Every size in the app is one of these.
   Dates and numbers are always formatted with `Intl` for the page's
   language, never built by hand.
 - **Codes, phone numbers and emails stay left to right** inside Arabic
-  text, using `<bdi>` or `unicode-bidi: isolate`.
+  text, using `<bdi>`, or `unicode-bidi: isolate` together with
+  `direction: ltr`. `unicode-bidi: isolate` alone keeps the page's right to
+  left direction, which turns "08:30–17:00" into "17:00–08:30".
 
 ### 3.4 Case and wording
 
