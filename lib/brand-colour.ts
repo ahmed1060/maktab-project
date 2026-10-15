@@ -97,25 +97,36 @@ function light(picked: string): BrandTokens {
     }
 }
 
+/**
+ * Hover and press for white text in dark mode, darker than the fill. Darker
+ * is towards the dark panel, and white text and a 3:1 edge on that panel
+ * leave a narrow band of shades, so these are half light mode's steps.
+ */
+const DARK_HOVER = 0.04
+const DARK_PRESS = 0.08
+
 function dark(lightBrand: string): BrandTokens {
     // A button keeps the light-mode colour while it stands out from the panel.
-    let fill = stepUntil(lightBrand, c => contrast(c, DARK.panel) >= SHAPE, lighter)
-    let on = WHITE
-    if (contrast(WHITE, fill) < TEXT) {
-        // Lightened past where white reads: the text turns dark instead.
-        on = DARK_INK
-        fill = stepUntil(fill, c => contrast(DARK_INK, c) >= TEXT, lighter)
-    }
-    // Hover and press move away from the text colour, so contrast only grows.
-    const away = (by: number) => on === WHITE ? darken(fill, by) : mix(WHITE, fill, by)
+    const base = stepUntil(lightBrand, c => contrast(c, DARK.panel) >= SHAPE, lighter)
+    // With white text, hover and press go darker, so the fill is lightened
+    // until the pressed shade still stands out from the panel too.
+    const forWhite = stepUntil(base, c => contrast(darken(c, DARK_PRESS), DARK.panel) >= SHAPE, lighter)
+    const white = contrast(WHITE, forWhite) >= TEXT
+    // Lightened past where white reads: the text turns dark instead, and
+    // hover and press go towards white, away from both the text and the
+    // panel, so contrast only grows.
+    const fill = white ? forWhite : stepUntil(base, c => contrast(DARK_INK, c) >= TEXT, lighter)
+    const on = white ? WHITE : DARK_INK
+    const hover = white ? darken(fill, DARK_HOVER) : mix(WHITE, fill, 0.08)
+    const press = white ? darken(fill, DARK_PRESS) : mix(WHITE, fill, 0.16)
     const tint = mix(fill, DARK.panel, 0.16)
     const tintStrong = mix(fill, DARK.panel, 0.24)
     const grounds = [DARK.page, DARK.panel, DARK.raised, tint, tintStrong]
     const text = stepUntil(fill, c => grounds.every(g => contrast(c, g) >= TEXT), lighter)
     return {
         '--brand': fill,
-        '--brand-hover': away(0.08),
-        '--brand-press': away(0.16),
+        '--brand-hover': hover,
+        '--brand-press': press,
         '--brand-text': text,
         '--brand-tint': tint,
         '--brand-tint-strong': tintStrong,
