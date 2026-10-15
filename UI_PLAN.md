@@ -232,6 +232,44 @@ Three Arabic names were chosen so that no two things share a name
      mapping.
 5. **Pages move to the building blocks one by one,** each in a small PR,
    after `CLIENTS_PLAN.md`'s steps (§5).
+6. **A brand colour,** set in the settings (§4.6).
+
+### 4.6 Brand colour (Decided)
+
+The colour in style A (§7.2) isn't fixed: it's a setting.
+
+- **The default** is set by the Super Admin in System Settings, next to the
+  "Powered by" branding. It starts as Nizmo's own indigo, `#6366f1`. The
+  default is used:
+  - on the sign-in page and the Super Admin's pages;
+  - for every company that hasn't chosen its own colour.
+- **Each company can choose its own colour** in Company Settings → Branding,
+  next to its logo.
+  - Who can change it follows the logo's rule. The Super Admin always can.
+    The company's Admin can when the Super Admin shows them the Branding tab.
+  - "Use the default" goes back to the system colour.
+  - The phone app shows the company's colour after sign-in.
+- **Choosing a colour:**
+  - pick from a few ready-made colours, or type a colour code;
+  - a preview shows the result before saving.
+- **Every shade is worked out from the one colour.** This covers buttons,
+  links, the selected side bar item, tabs, the pager, counts, focus rings,
+  the logo tile, and the light tint behind a selected item.
+- **Text on the colour stays readable.**
+  - A colour too light for white text is darkened, keeping its hue, until
+    white text reads at 4.5:1 or better.
+  - Nizmo's own indigo is just under that (4.47:1), so it's used as
+    `#5d60e3` (4.95:1), which looks almost the same.
+  - Dark mode uses a lighter version of the colour.
+- **Some colours never change:**
+  - the status colours: Pending, In Progress, Approved, Completed, Rejected
+    and Overdue. "In Progress" uses a fixed blue, not the brand colour;
+  - the warning and error colours.
+
+  A colour close to the error red gets a warning when it's chosen.
+- **The page opens in the right colour.** The server puts the colour into
+  the page before sending it, so it doesn't flash indigo first.
+- **Every change is in the audit log.**
 
 ---
 
@@ -246,12 +284,18 @@ Three Arabic names were chosen so that no two things share a name
      tiles and empty state;
    - the spacing and text-size scale;
    - the Phosphor icon set (§4.4);
+   - the brand colour as one value that every shade is worked out from. It's
+     the default indigo here; the settings come in step 3;
    - the design tools are added to the project (§7.3).
 
    No old page is converted in this PR.
-3. **The 3 pages `CLIENTS_PLAN.md` doesn't touch,** in one small PR: the
-   dashboard home, Employees and Day Off Requests move onto the building
-   blocks (§4.1).
+3. **Two small PRs straight after it,** in either order:
+   - **the 3 pages `CLIENTS_PLAN.md` doesn't touch:** the dashboard home,
+     Employees and Day Off Requests move onto the building blocks (§4.1);
+   - **the brand colour setting (§4.6):** the database fields, the controls in
+     System Settings and Company Settings → Branding, and the server putting
+     the colour into the page. The new fields have defaults, so the preview
+     build's migration of the shared database is safe for `main`'s code.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
    - The side bar groups (§2.1, §2.2) land with step 0.
    - Every screen these steps create or rework uses the building blocks
@@ -323,6 +367,17 @@ The product owner chooses the look from pictures rather than descriptions:
      components, adapted for Arabic and right to left.
    - It keeps Nizmo's own name, logo and brand colour. Nothing of the other
      brand is copied.
+
+**Picked on 2026-10-15: style A, "Polished"** (from Stripe's write-up).
+The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
+"Warm" (Notion).
+
+- **Look:** a soft blue-grey page, white panels with a light shadow, and
+  pill-shaped buttons and status badges.
+- **Fonts:** Inter for English and Noto Sans Arabic for Arabic. Both are
+  free. Today the app loads no Arabic font, so Arabic text uses whatever
+  each device has.
+- **Colour:** the brand colour is a setting (§4.6).
 
 ### 7.3 Rules for the tools
 
@@ -416,3 +471,19 @@ The product owner chooses the look from pictures rather than descriptions:
     Requests move onto the building blocks in a small PR straight after the
     building-blocks PR. The dashboard home is the first page for Impeccable.
     §5 has a new step 3; later steps are renumbered.
+- **2026-10-15:** The look is chosen, and the brand colour is a setting.
+  - **Style A, "Polished"** (from Stripe's write-up) was picked from
+    screenshots of the Tasks page in three styles (§7.2). It uses Inter and
+    Noto Sans Arabic.
+  - **Brand colour (§4.6):**
+    - the Super Admin sets the default in System Settings, starting as
+      Nizmo's own indigo;
+    - each company can choose its own in Company Settings → Branding, under
+      the logo's access rule;
+    - every shade is worked out from the one colour, and a colour too light
+      for white text is darkened;
+    - status, warning and error colours never change;
+    - the colour is in the page before it's sent, and every change is
+      audited.
+  - **§5:** step 2 builds the colour as one value. Step 3 now has two small
+    PRs, in either order: the 3 pages, and the brand colour setting.

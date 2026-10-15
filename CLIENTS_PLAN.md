@@ -534,7 +534,8 @@ balance first, automatically:
        converted in it;
      - move the 3 pages this plan doesn't touch (the dashboard home,
        Employees and Day Off Requests) onto the building blocks, in one
-       small PR.
+       small PR;
+     - add the brand colour setting, in one small PR (`UI_PLAN.md` §4.6).
   2. **Steps 0–7 above.**
      - The new side bar groups land with step 0.
      - Every screen these steps create or rework uses the building blocks:
@@ -701,3 +702,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **My cash advance (§7.5):** in the side bar's Me group.
   - **Order (§8):** the 3 pages this plan doesn't touch move onto the
     building blocks before step 0.
+- **2026-10-15:** The look is chosen (style A, `UI_PLAN.md` §7.2), and the
+  brand colour is a setting (`UI_PLAN.md` §4.6). §8 adds the brand colour PR
+  before step 0, so every screen these steps build already follows a
+  company's colour.
