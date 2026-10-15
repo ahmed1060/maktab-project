@@ -72,7 +72,10 @@ describe("an adjustment is found by where it came from", () => {
         // reason happened to contain the request id, silently matched none
         // after an admin edited it, and in both cases left the salary record
         // holding a figure the request no longer agreed with.
-        const offenders = SOURCES.filter(path => /reason:\s*\{\s*contains:/.test(read(path)))
+        // A day-off list searches the requests' own reasons for the words
+        // someone typed in the search: it reads requests, never adjustments.
+        const NOT_ADJUSTMENTS = ["lib/services/day-off-query.ts"]
+        const offenders = SOURCES.filter(path => !NOT_ADJUSTMENTS.includes(path) && /reason:\s*\{\s*contains:/.test(read(path)))
         expect(offenders, `these match an adjustment by reason text: ${offenders.join(", ")}`).toEqual([])
     })
 

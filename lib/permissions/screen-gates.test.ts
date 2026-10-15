@@ -76,7 +76,7 @@ const GATES: Gate[] = [
     { what: "sidebar: payroll", file: "components/DashboardShell.tsx", uses: "const canSeePayroll = permissions.can('payroll.view')", before: admins, now: p => p.can("payroll.view") },
     { what: "dashboard: overview", file: D + "page.tsx", uses: "if (can(viewer, 'tasks.view'))", before: managers, now: p => p.can("tasks.view") },
     { what: "dashboard: team title", file: D + "page.tsx", uses: "grantFor(viewer, 'tasks.view') === 'TEAM'", before: r => r === "TEAM_LEADER", now: p => p.scope("tasks.view") === "TEAM" },
-    { what: "dashboard: add employee (in the overview)", file: D + "page.tsx", uses: "can(viewer, 'employees.create') && (", before: r => managers(r) && r !== "TEAM_LEADER", now: p => p.can("tasks.view") && p.can("employees.create") },
+    { what: "dashboard: add employee (in the overview)", file: D + "page.tsx", uses: "can(viewer, 'employees.create') && <ButtonLink href=\"/dashboard/employees/new\"", before: r => managers(r) && r !== "TEAM_LEADER", now: p => p.can("tasks.view") && p.can("employees.create") },
 
     // --- Day off and payroll ---------------------------------------------------
     { what: "day off: the company's requests", file: D + "day-off-requests/page.tsx", uses: "const managesRequests = can('dayoff.view')", before: admins, now: p => p.can("dayoff.view") },
