@@ -279,7 +279,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
    §3). These had to come before `CLIENTS_PLAN.md`'s step 0, which renames
    things and changes the side bar.
 2. **The shared building blocks, in one PR** (§4.2–4.4):
-   - first, the look is chosen and written down in `DESIGN.md` (§7.2);
+   - first, the look is chosen and written down in `DESIGN.md` (§7.2).
+     Done on 2026-10-15: `DESIGN.md` is written, and the PR builds from
+     it;
    - page header, filter bar, list or table, card, status badge, tabs, total
      tiles and empty state;
    - the spacing and text-size scale;
@@ -487,3 +489,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
       audited.
   - **§5:** step 2 builds the colour as one value. Step 3 now has two small
     PRs, in either order: the 3 pages, and the brand colour setting.
+- **2026-10-15:** `DESIGN.md` is written from style A, with Frontend Design's
+  review (§7.2, step 4). It covers:
+  - colours for light and dark, with checked contrast;
+  - the brand colour tokens;
+  - text, space, corners and depth;
+  - the building blocks, icons, Arabic, motion, the quality floor, and how
+    it maps to code.
+
+  Its §11 lists what was changed from the Stripe write-up: sentence-case
+  labels, no gradients, a darker helper grey, stronger field edges, a fixed
+  blue for In Progress, and one corner size for each level.
