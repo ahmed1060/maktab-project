@@ -115,6 +115,21 @@ export type Tile = {
     href?: string
 }
 
+/**
+ * When items in a list are picked: how many, what can be done to all of them,
+ * and Clear selection on the end side. The page shows it only while something
+ * is picked.
+ */
+export function SelectionBar({ count, children, clear }: { count: ReactNode; children: ReactNode; clear: ReactNode }) {
+    return (
+        <div className="ui-panel ui-selectionbar">
+            <span className="ui-selectionbar-count" aria-live="polite">{count}</span>
+            {children}
+            <span className="ui-selectionbar-clear">{clear}</span>
+        </div>
+    )
+}
+
 /** Totals above a list: up to four in a row on computers, two on phones. */
 export function TotalTiles({ items }: { items: Tile[] }) {
     return (

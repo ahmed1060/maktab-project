@@ -220,6 +220,15 @@ describe("page layout, sections, rows and tiles", () => {
     })
 })
 
+describe("the selection bar", () => {
+    it("says how many are picked, as it changes, with what can be done and Clear selection at the end", () => {
+        const html = render(h(ui.SelectionBar, { count: "3 selected", clear: h(ui.Button, { variant: "quiet", children: "Clear selection" }), children: h(ui.Button, { variant: "primary", children: "Assign" }) }))
+        expect(html).toContain('<span class="ui-selectionbar-count" aria-live="polite">3 selected</span>')
+        expect(html.indexOf("Assign")).toBeLessThan(html.indexOf("Clear selection"))
+        expect(html).toContain('<span class="ui-selectionbar-clear">')
+    })
+})
+
 describe("the row menu", () => {
     it("is a named button that says it opens a menu, and shows nothing until it's opened", () => {
         const html = render(h(ui.RowMenu, { label: "More actions for Sara Hassan", tooltip: "More actions", items: [
@@ -262,6 +271,11 @@ describe("the stylesheet keeps the rules", () => {
     it("the old top bar hides its title on a page with a page header, so the page is named once", () => {
         expect(css).toMatch(/:root:has\(\.ui-page-header\) \.ui-topbar-title \{\s*display: none;/)
         expect(readFileSync("components/DashboardHeader.tsx", "utf8")).toMatch(/<div className="ui-topbar-title"[^>]*>\s*<h1/)
+    })
+
+    it("a page on the building blocks sits on the page colour, not the old moving gradient", () => {
+        expect(css).toMatch(/:root:has\(\.ui-page\) body \{\s*background: var\(--page\);\s*animation: none;/)
+        expect(css).toMatch(/:root:has\(\.ui-page\) body::before \{\s*display: none;/)
     })
 
     it("is loaded once, by the root layout", () => {

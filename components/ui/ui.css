@@ -17,7 +17,8 @@
 .ui-pager,
 .ui-avatar,
 .ui-page,
-.ui-menu {
+.ui-menu,
+.ui-selectionbar {
   font-family: var(--font-ui);
 }
 
@@ -288,6 +289,15 @@
 :root:has(.ui-page-header) .ui-topbar-title {
   display: none;
 }
+/* And behind a page built from the building blocks, the old moving gradient
+   gives way to the page colour, so text on the page keeps its contrast. */
+:root:has(.ui-page) body {
+  background: var(--page);
+  animation: none;
+}
+:root:has(.ui-page) body::before {
+  display: none;
+}
 
 /* ── Page layout and sections (§5.5) ── */
 .ui-page {
@@ -378,6 +388,68 @@ a.ui-row:focus-visible {
   flex: none;
   max-width: 60%;
   font-variant-numeric: tabular-nums;
+}
+
+/* An item's actions at the end of its row: a button and its row menu. */
+.ui-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+/* An item's name that opens it. */
+.ui-item-link {
+  color: inherit;
+  text-decoration: none;
+}
+.ui-item-link:hover {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+.ui-item-link:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* A row's checkbox, with a target bigger than the box. */
+.ui-check-target {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin-block: -7px;
+  cursor: pointer;
+}
+.ui-check {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.ui-check:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+
+/* ── Selection bar (§5.5) ── */
+.ui-selectionbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+}
+.ui-selectionbar-count {
+  font-weight: 500;
+  color: var(--ink);
+}
+.ui-selectionbar .ui-field {
+  flex: 0 1 260px;
+}
+.ui-selectionbar-clear {
+  margin-inline-start: auto;
 }
 
 /* ── Row menu (§5.5) ── */
@@ -730,7 +802,7 @@ a.ui-row:focus-visible {
 /* ── Total tiles (§5.5) ── */
 .ui-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
   gap: var(--space-3);
   margin: 0;
 }
@@ -841,6 +913,23 @@ html[lang="ar"] .ui-empty-title {
   }
   .ui-menu-button {
     width: 44px;
+  }
+  .ui-check-target {
+    width: 44px;
+    height: 44px;
+    margin-block: -12px;
+  }
+  .ui-list-card .ui-item-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-block: -12px;
+  }
+  .ui-selectionbar .ui-field {
+    flex-basis: 100%;
+  }
+  .ui-selectionbar-clear {
+    margin-inline-start: 0;
   }
   .ui-menu-item {
     min-height: 44px;
