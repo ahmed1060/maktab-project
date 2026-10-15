@@ -312,7 +312,9 @@ These are built once, in the building-blocks PR, and every page uses them
     button beside it. On phones, the buttons go full width below the title.
   - Until the app shell (§5.1) replaces the old top bar, the old top bar
     hides its own title on a page that has a page header, so the page is
-    named once.
+    named once. Behind such a page, the old moving gradient gives way to
+    `--page`, so text that sits on the page, such as the subtitle and
+    section headings, keeps its contrast.
 - **Page layout:** a page's parts are stacked with the "between sections"
   spacing from §4.1.
 - **Section:** a part of a page made of several panels, such as a row of
@@ -510,3 +512,6 @@ changed:
   (8px) and level-2 shadow from §4.2 and §4.3 become tokens now.
 - **2026-10-15:** Added the selection bar, for assigning several employees
   to a team at once.
+- **2026-10-15:** Behind a page built from the building blocks, the old
+  moving gradient gives way to `--page` until the app shell lands. On the
+  gradient, the subtitle in `--muted` couldn't be read.
