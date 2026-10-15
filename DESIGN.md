@@ -81,7 +81,7 @@ below, which are all worked out from the one chosen colour.
 | `--ink-2` | `#273951` | `#b8c4d4` | Secondary text in rows and forms |
 | `--muted` | `#5d6b82` | `#8a9ab0` | Helper text, labels, table headers, empty states |
 | `--rule` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
-| `--field-line` | `#828e9f` | `#5b6b82` | The edge of a field, checkbox or toggle (3:1 or better on the page and on panels) |
+| `--field-line` | `#828e9f` | `#65758d` | The edge of a field, checkbox or toggle (3:1 or better on the page and on panels) |
 
 - Text is navy, never pure black. Dark mode is deep navy, never pure black
   either.
@@ -458,3 +458,5 @@ changed:
 - **2026-10-15:** The field edge is `#828e9f`, not `#8792a2`: the earlier
   value was 2.98:1 on the page, under the 3:1 the table promised. The dark
   overdue row (`#241729`) is now written down too.
+- **2026-10-15:** The dark field edge is `#65758d`, not `#5b6b82`: the earlier
+  value was 2.90:1 on a raised panel, where fields in dialogs sit.
