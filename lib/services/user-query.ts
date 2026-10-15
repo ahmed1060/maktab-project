@@ -132,3 +132,26 @@ export function buildUserWhereClause(
 
 /** Re-exported so the route's enum lists stay the single source. */
 export type { UserRole, UserStatus }
+
+/**
+ * The order for GET /api/users: `sort` is name, role or points, and `order`
+ * is asc or desc. Anything else gets the list's usual order, company then
+ * first name.
+ *
+ * The sort has to be the server's. The Employees screen used to sort the ten
+ * people on the page it had been sent, so "most points first" put the top
+ * scorer of page one first, and the top scorer overall could be on page three.
+ * Role sorts in the order the roles are declared: Admins, then Team Leaders,
+ * then employees. A tie falls back to the name, so pages don't swap people
+ * between requests.
+ */
+export function buildUserOrderBy(searchParams: URLSearchParams): Record<string, any>[] {
+    const order = searchParams.get('order') === 'desc' ? 'desc' : 'asc'
+    const byName = [{ firstName: order }, { lastName: order }, { id: 'asc' }]
+    switch (searchParams.get('sort')) {
+        case 'name': return byName
+        case 'role': return [{ role: order }, { firstName: 'asc' }, { lastName: 'asc' }, { id: 'asc' }]
+        case 'points': return [{ totalDifficultyPoints: order }, { firstName: 'asc' }, { lastName: 'asc' }, { id: 'asc' }]
+        default: return [{ company: { name: 'asc' } }, { firstName: 'asc' }]
+    }
+}

@@ -6,7 +6,7 @@ import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
-import { buildUserWhereClause } from "@/lib/services/user-query"
+import { buildUserWhereClause, buildUserOrderBy } from "@/lib/services/user-query"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
@@ -141,7 +141,7 @@ export const GET = withStandardHandler(async (req, session) => {
                 // — into every line of a list that wants to print a name.
                 teamLeader: { select: { id: true, firstName: true, lastName: true } }
             },
-            orderBy: [{ company: { name: 'asc' } }, { firstName: 'asc' }],
+            orderBy: buildUserOrderBy(searchParams),
             skip,
             take: limit
         }),

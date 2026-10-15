@@ -16,6 +16,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { fetcher } from '@/lib/swr-fetcher'
 import NoticeModal, { Notice } from '@/components/NoticeModal'
 import { useCan } from '@/lib/useCan'
+import { employeesListUrl } from './list-query'
 
 interface Employee {
     id: string
@@ -76,25 +77,18 @@ export default function EmployeesPage() {
     // on this query string, so any change to page/filters/company below
     // automatically triggers a re-fetch — no manual dependency array to
     // keep in sync.
-    const queryKey = (() => {
-        if (!session?.user) return null
-        const queryParams = new URLSearchParams()
-        if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
-        queryParams.set('page', page.toString())
-        queryParams.set('limit', limit.toString())
-        // Someone who sees only a team does not list the company's Admins.
-        queryParams.set('excludeRole', can('employees.view') && !companyWide('employees.view') ? 'ADMIN,SUPER_ADMIN' : 'SUPER_ADMIN')
-        if ((session.user as any).id) queryParams.set('excludeUserId', (session.user as any).id)
-        if (filters.search) queryParams.set('search', filters.search)
-        if (filters.status) queryParams.set('status', filters.status)
-        // Filtering rather than grouping, deliberately. This list is paginated,
-        // and a team's members do not fall on one page — a grouped view would
-        // show the same team heading on page one and page three with different
-        // people under it. Filtering asks the server for one team and pages
-        // through that, which is the question an Admin actually has.
-        if (teamFilter) queryParams.set('teamLeaderId', teamFilter)
-        return `/api/users?${queryParams.toString()}`
-    })()
+    const queryKey = session?.user ? employeesListUrl({
+        page, limit,
+        companyId: selectedCompanyId,
+        teamOnly: can('employees.view') && !companyWide('employees.view'),
+        viewerId: (session.user as any).id,
+        search: filters.search,
+        status: filters.status,
+        role: roleFilter,
+        teamLeaderId: teamFilter,
+        sort: sortBy as 'name' | 'role' | 'points',
+        order: sortOrder,
+    }) : null
 
     const { data: result, isLoading, isValidating, mutate } = useSWR(queryKey, fetcher)
     const employees: Employee[] = result?.data?.data || []
@@ -150,28 +144,8 @@ export default function EmployeesPage() {
         }
     }
 
-    const filteredEmployees = employees
-
-    const sortedEmployees = [...filteredEmployees].sort((a, b) => {
-        let comparison = 0
-        switch (sortBy) {
-            case 'name':
-                comparison = a.firstName.localeCompare(b.firstName)
-                break
-            case 'role':
-                const rolePriority: { [key: string]: number } = {
-                    'EMPLOYEE': 1, 'TEAM_LEADER': 2, 'ADMIN': 3, 'SUPER_ADMIN': 4
-                }
-                comparison = (rolePriority[a.role] || 99) - (rolePriority[b.role] || 99)
-                break
-            case 'points':
-                comparison = (a.totalDifficultyPoints || 0) - (b.totalDifficultyPoints || 0)
-                break
-            default:
-                comparison = 0
-        }
-        return sortOrder === 'asc' ? comparison : -comparison
-    })
+    // Sorted by the server, across every page, not just this one.
+    const sortedEmployees = employees
 
     useEffect(() => {
         setTitle(modules.label('employees'))
@@ -333,13 +307,13 @@ export default function EmployeesPage() {
                 totalCount={totalEmployees}
                 showRoleFilter={true}
                 selectedRole={roleFilter}
-                onRoleChange={setRoleFilter}
+                onRoleChange={(v) => { setRoleFilter(v); setPage(1) }}
                 teamOptions={canAssignTeams ? teamLeaders : []}
                 selectedTeam={teamFilter}
                 onTeamChange={(v) => { setTeamFilter(v); setPage(1) }}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
-                onSortChange={(field, order) => { setSortBy(field); setSortOrder(order) }}
+                onSortChange={(field, order) => { setSortBy(field); setSortOrder(order); setPage(1) }}
                 sortOptions={[
                     { label: t('name_label'), value: 'name' },
                     { label: t('role_label' as any) || 'Role', value: 'role' },

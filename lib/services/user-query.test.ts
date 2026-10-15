@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { buildUserWhereClause } from "./user-query"
+import { buildUserWhereClause, buildUserOrderBy } from "./user-query"
 import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
@@ -118,5 +118,31 @@ describe("filters narrow and never widen", () => {
         // Null, not absent. A bucket that cannot be selected stays invisible,
         // and unassigned people are the ones an Admin most needs to find.
         expect(clause(build(admin, "teamLeaderId=unassigned")).teamLeaderId).toBeNull()
+    })
+})
+
+describe("the list's order is the server's, so it holds across pages", () => {
+    const order = (qs: string) => buildUserOrderBy(new URLSearchParams(qs))
+
+    it("sorts by points, either way, with the name settling ties", () => {
+        expect(order("sort=points&order=desc")[0]).toEqual({ totalDifficultyPoints: "desc" })
+        expect(order("sort=points")[0]).toEqual({ totalDifficultyPoints: "asc" })
+        expect(order("sort=points&order=desc").slice(1)).toEqual([{ firstName: "asc" }, { lastName: "asc" }, { id: "asc" }])
+    })
+
+    it("sorts by name and by role", () => {
+        expect(order("sort=name&order=desc").slice(0, 2)).toEqual([{ firstName: "desc" }, { lastName: "desc" }])
+        expect(order("sort=role")[0]).toEqual({ role: "asc" })
+    })
+
+    it("ends on the id, so two people with the same name can't swap pages between requests", () => {
+        for (const sort of ["name", "role", "points"]) expect(order(`sort=${sort}`).at(-1)).toEqual({ id: "asc" })
+    })
+
+    it("anything else keeps the usual order, and a bad order is ascending", () => {
+        const usual = [{ company: { name: "asc" } }, { firstName: "asc" }]
+        expect(order("")).toEqual(usual)
+        expect(order("sort=salary")).toEqual(usual)
+        expect(order("sort=points&order=sideways")[0]).toEqual({ totalDifficultyPoints: "asc" })
     })
 })
