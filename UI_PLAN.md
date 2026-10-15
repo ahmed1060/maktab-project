@@ -295,7 +295,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
    - **the 3 pages `CLIENTS_PLAN.md` doesn't touch:** the dashboard home,
      Employees and Day Off Requests move onto the building blocks (§4.1).
      Built on 2026-10-15, waiting to be merged. Built with the building
-     blocks alone; question 8 (Impeccable) is still open;
+     blocks alone, then refined with Impeccable's written guidance once
+     question 8 was answered (§6);
    - **the brand colour setting (§4.6):** the database fields, the controls in
      System Settings and Company Settings → Branding, and the server putting
      the colour into the page. The new fields have defaults, so the preview
@@ -317,24 +318,7 @@ Clients pages) are rebuilt in step 0, so they're fixed there.
 
 ## 6. Open questions
 
-8. **Impeccable** (§7): its `SKILL.md` asks for a launcher to be run at the
-   start of every session, and that launcher downloads and runs a compiled
-   program. That program can't be read like the rest of the skill, and isn't
-   pinned, so Impeccable can't meet the rule in §7.3 as it ships. It was left
-   out of the building-blocks PR. Choices:
-   - add only its written guidance (its reference pages, without the
-     launcher), adapted the way `web-design-guidelines` was;
-   - or leave it out, and build with `DESIGN.md`, UI/UX Pro Max and the
-     Vercel audit.
-
-   Suggested: leave it out for now. `DESIGN.md` already covers what it
-   would give, and the dashboard home (§4.1) can be the first page built
-   with the building blocks alone.
-
-   Meanwhile the dashboard home was built with the building blocks alone,
-   in step 3 (§5). Adding Impeccable later wouldn't undo anything.
-
-The seven questions asked on 2026-10-15 were answered the same day:
+None are open. The seven questions asked on 2026-10-15 were answered the same day:
 
 1. **The side bar groups:** agreed, with Check in at the top and empty
    groups hidden (§2.1, §2.2).
@@ -349,6 +333,14 @@ The seven questions asked on 2026-10-15 were answered the same day:
    (§4.4).
 7. **The 3 pages:** fixed straight after the building-blocks PR, using the
    building blocks (§4.1).
+
+Question 8 was answered on 2026-10-15 too:
+
+8. **Impeccable:** add only its written guidance, without the launcher
+   (§7.1, §7.3). Its launcher downloads and runs a compiled program that
+   can't be read or pinned, so it's left out; 19 of its reference pages
+   are copied unchanged into `.claude/skills/impeccable/`, with a
+   `SKILL.md` rewritten for Nizmo (`.claude/skills/SOURCES.md`).
 
 ---
 
@@ -365,7 +357,7 @@ QA Tools for Coding Agents". The other five were turned down (§7.4).
 | Choosing the look, once | **awesome-design-md** (getdesign.md) | Design write-ups of well-known products. Two or three that suit Nizmo are the starting point for its own `DESIGN.md` (§7.2). |
 | Choosing the look, once | **Frontend Design** (Anthropic) | Makes the agent settle on one clear direction before writing code. It's used in that one session and isn't kept. |
 | Building | **`DESIGN.md`** (Nizmo's own) | The rulebook. It sets colours, spacing, text sizes, the building blocks, icons and the glossary (§3.2). Every screen and every agent follows it. |
-| Building | **Impeccable** | Builds the shared building blocks, then redesigns the pages one by one. It's tried on one page first: the dashboard home (§4.1). |
+| Building | **Impeccable** (its written guidance only) | Guides building and refining each screen: the quality floor, layout, type, colour, states, copy and the last polish. Its launcher isn't used (§6, question 8). First used on the dashboard home's donut chart (§4.1). |
 | Building | **UI/UX Pro Max** | Chosen earlier, on the `ui-refactor` branch. It's a library of palettes, font pairings and UX rules to look things up in. |
 | Checking every UI PR | **Vercel Web Design Guidelines** | Audits the changed screens for focus states, forms, accessibility, wording and edge cases. Its findings are fixed in the same PR. |
 | Checking every UI PR | **Playwright** | Opens the app in a real browser and takes screenshots in English and Arabic, at phone and desktop width. Claude's cloud sessions already use it. |
@@ -414,6 +406,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **Skills live in the project** (`.claude/skills/`), as UI/UX Pro Max does
   on `ui-refactor`, so every session has them.
   - They're added in the building-blocks PR.
+  - Impeccable's written guidance is added in step 3a's PR, once question 8
+    was answered (§6).
   - Emil is added in the motion PR.
 - **Playwright's MCP is optional.** It's for having Claude click through the
   app on the product owner's own computer, so nothing is added to the
@@ -587,3 +581,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     3:1 edge on the panel (`DESIGN.md` §2.1).
   - **No change:** a linked total tile was already a link over the whole
     tile; checked in the browser.
+- **2026-10-15:** Question 8 answered: Impeccable comes in as written
+  guidance only (§6, §7). Its 19 reference pages for web app screens are
+  copied unchanged into `.claude/skills/impeccable/`, pinned to its
+  `skill-v4.5.2` release. Its `SKILL.md` is rewritten for Nizmo: no launcher,
+  `DESIGN.md` and this plan as the context, the Vercel audit, Playwright and
+  the guard tests in place of its detector, and where `DESIGN.md` differs
+  (the overdue bar, the total tiles). The 22 pages left out drive the
+  launcher, write files Nizmo already has, or are for native apps.
