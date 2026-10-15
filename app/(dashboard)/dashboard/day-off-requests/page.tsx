@@ -14,7 +14,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import {
-    Button, Choice, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, SearchInput,
+    Button, Choice, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, SearchInput,
     Select, StatusBadge, TextArea, TextInput, TotalTiles, visibleRow, type Column, type StatusTone,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
@@ -26,6 +26,7 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import { countOf } from '@/lib/plural'
 import { usedDayOffCredit } from '@/lib/day-off-credit'
 import { spansDays } from '@/lib/day-off-range'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
 import { dayOffListUrl } from './list-query'
 
@@ -130,6 +131,12 @@ export default function DayOffRequestsPage() {
     const requests: DayOffRequest[] = requestsResult?.data?.data || []
     const total: number = requestsResult?.data?.total || 0
     const totalPages: number = requestsResult?.data?.totalPages || 0
+
+    // Another company: its first page, without an employee from the last
+    // one. Fewer pages, as when the last request on the last page goes: the
+    // last page there is now. An empty page shows no pager to leave it by.
+    useAdjustOnChange([contextCompanyId], () => { setPage(1); setEmployeeId('') })
+    useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
 
     // The people a manager can pick from: the server keeps a Team Leader's
     // list to their team.

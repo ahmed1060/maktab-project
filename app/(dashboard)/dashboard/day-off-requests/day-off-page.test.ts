@@ -6,6 +6,14 @@ import { readFileSync } from "node:fs"
 const page = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
 
 describe("the Day Off Requests page", () => {
+    it("never leaves the list on a page that's gone, where there'd be no pager to leave it by", () => {
+        expect(page).toContain("useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))")
+    })
+
+    it("starts another company on its first page, without the last one's employee", () => {
+        expect(page).toContain("useAdjustOnChange([contextCompanyId], () => { setPage(1); setEmployeeId('') })")
+    })
+
     it("is built from the building blocks, dialogs included", () => {
         for (const block of ["<PageHeader", "<FilterBar", "<DataList", "<ListCard", "<Pager", "<EmptyState", "<Dialog", "<Choice", "<TextArea"]) expect(page).toContain(block)
     })

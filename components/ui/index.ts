@@ -8,7 +8,7 @@ export { Field, TextInput, TextArea, SearchInput, Select, Choice, type FieldCont
 export { Dialog, DialogActions } from './Dialog'
 export { FilterBar } from './FilterBar'
 export { DataList, ItemTitle, DueDate, ListCard, visibleRow, type Column, type RowTone } from './DataList'
-export { Pager, pageWindow } from './Pager'
+export { Pager, pageInRange, pageWindow } from './Pager'
 export { Tabs, TabLinks, type TabItem } from './Tabs'
 export { StatusBadge, taskStatusTone, TASK_STATUS_TONE, type StatusTone } from './StatusBadge'
 export { Avatar, Person, initials } from './Avatar'

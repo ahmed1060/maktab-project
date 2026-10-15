@@ -6,6 +6,14 @@ import { readFileSync } from "node:fs"
 const page = readFileSync("app/(dashboard)/dashboard/employees/page.tsx", "utf8")
 
 describe("the Employees page", () => {
+    it("never leaves the list on a page that's gone, where there'd be no pager to leave it by", () => {
+        expect(page).toContain("useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))")
+    })
+
+    it("starts another company on its first page, without the last one's team or picks", () => {
+        expect(page).toContain("useAdjustOnChange([selectedCompanyId], () => { setPage(1); setTeam(''); setPicked(new Set()) })")
+    })
+
     it("is built from the building blocks: header, filter bar, list with phone cards, pager", () => {
         for (const block of ["<PageHeader", "<FilterBar", "<DataList", "<ListCard", "<Pager", "<EmptyState"]) expect(page).toContain(block)
     })

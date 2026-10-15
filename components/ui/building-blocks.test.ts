@@ -23,6 +23,15 @@ const render = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStati
 beforeEach(() => { locale = "en" })
 
 describe("the pager", () => {
+    it("moves back to the last page there is when its page goes", () => {
+        // The last person on page 4 deleted: three pages left.
+        expect(ui.pageInRange(4, 3)).toBe(3)
+        expect(ui.pageInRange(2, 3)).toBe(2)
+        // Nothing left at all, or nothing loaded yet: page one.
+        expect(ui.pageInRange(3, 0)).toBe(1)
+        expect(ui.pageInRange(1, 0)).toBe(1)
+    })
+
     it("offers every page when there are seven or fewer", () => {
         expect(ui.pageWindow(1, 1)).toEqual([1])
         expect(ui.pageWindow(4, 7)).toEqual([1, 2, 3, 4, 5, 6, 7])

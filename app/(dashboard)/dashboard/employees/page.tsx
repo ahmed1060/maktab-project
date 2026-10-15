@@ -16,13 +16,14 @@ import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import {
-    Avatar, Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager,
+    Avatar, Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
     RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem, type StatusTone,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
 import { employeesListUrl, type EmployeesQuery } from './list-query'
 
@@ -116,6 +117,12 @@ export default function EmployeesPage() {
     const employees: Employee[] = result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
+
+    // Another company: its first page, without a team or picks from the last
+    // one. Fewer pages, as when the last person on the last page is deleted:
+    // the last page there is now. An empty page shows no pager to leave it by.
+    useAdjustOnChange([selectedCompanyId], () => { setPage(1); setTeam(''); setPicked(new Set()) })
+    useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
 
     useEffect(() => {
         if (!canAssignTeams) return
