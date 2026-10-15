@@ -301,6 +301,8 @@ These are built once, in the building-blocks PR, and every page uses them
     secondary line below it in `--muted` and a small icon, such as the
     "Client – Location" line for tasks;
   - the status column and the action column are at the end;
+  - a table wider than its panel scrolls sideways inside it, and the
+    panel keeps its rounded corners, so the end columns are never cut off;
   - the pager is in the panel's footer, with the count on the start side.
 - **Cards on phones:**
   - the title and status badge on the first line;
@@ -546,3 +548,6 @@ changed:
 - **2026-10-15:** Behind a page built from the building blocks, the old
   moving gradient gives way to `--page` until the app shell lands. On the
   gradient, the subtitle in `--muted` couldn't be read.
+- **2026-10-15:** A table wider than its panel scrolls sideways inside it
+  (§5.4), as §8's layout rule already allowed. It was clipped, which cut off
+  the action column between phone width and a wide screen.
