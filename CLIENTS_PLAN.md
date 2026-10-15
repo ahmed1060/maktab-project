@@ -46,11 +46,11 @@ Production has no data in these parts, so now is the right time.
   reminder. These are now called **Records** (Arabic **السجلات**).
 - They're the same businesses as the clients, so records **move onto each
   client's page** and the same business is no longer kept in two places.
-- **Timing** (Open: question 1 in §10). Suggested: now, as part of step 0.
+- **Timing** (Decided): now, as part of step 0.
   Production has no clients, sections or notes in this section, so its own
   list of businesses can simply be removed instead of renamed and merged
   later.
-- **A Records item in the side bar** (Open: question 2 in §10). It would list
+- **A Records item in the side bar** (Decided). It lists
   every record across clients, with search and an "expiring soon" filter.
   Suggested: yes.
 - **Permissions:** today's `clients.*` (see, contribute, rename, delete)
@@ -58,7 +58,7 @@ Production has no data in these parts, so now is the right time.
 - **The daily expiry reminder** (`/api/notes/check-expiry`) moves with the
   records.
 
-### 0.3 Shipping the rename without breaking production (Proposed)
+### 0.3 Shipping the rename without breaking production (Decided)
 
 **Why this needs care.** Every build, previews included, runs
 `prisma migrate deploy` on the one shared database (`package.json`'s build
@@ -80,11 +80,24 @@ Two things make a single big rename unsafe:
 | 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move | Only today's Clients section stops working, and it's empty |
 | 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now | None |
 | 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
-| 0d | The database names are renamed (Open: question 3 in §10) | See question 3 |
+| 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below) | None. The app is closed for about 15 minutes, at a time the product owner chooses |
 
 The app ignores permission names it doesn't know instead of failing
 (`lib/permissions/matrix.ts`), so the short overlaps above can't break
 sign-in.
+
+**PR 0d, the maintenance window:**
+
+- It renames the `Vendor` table and the `vendorId` columns to their new
+  names, and removes the old-name mapping from the code.
+- It's kept small so its review is quick.
+- When its checks pass:
+  1. turn maintenance mode on;
+  2. push the PR's last commit, which carries the migration;
+  3. merge as soon as its checks pass again;
+  4. turn maintenance mode off once production has deployed.
+
+  That's about 15 minutes with the app closed.
 
 ### 0.4 What production holds today
 
@@ -370,11 +383,11 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 - **Mark collected** moves money, so it asks for two-factor sign-in, as
   paying costs does.
 - Admins in existing companies get these automatically through a migration.
-- **The "Not charged to client" tick** (Proposed): covered by **Set service
+- **The "Not charged to client" tick** (Decided): covered by **Set service
   fee**, renamed **Manage charges** (set the fee, and remove a cost from the
   client).
 
-### 6.7 Paid to (Proposed: drop it for now)
+### 6.7 Paid to (Decided: left out for now)
 
 - **Paid to isn't the same as the cost name:**
   - the **cost name** is what the money was for, such as "Spare parts";
@@ -535,34 +548,18 @@ balance first, automatically:
 
 ## 10. Open questions
 
-1. **When do records move onto clients?** Suggested: now, in step 0 (PR 0a).
-   Production has no clients, sections or notes in today's Clients section,
-   so its list of businesses can simply be removed. Doing it later would
-   mean renaming it now and then migrating it again.
-2. **A Records item in the side bar,** listing every record across clients
-   with search and "expiring soon"? Suggested: yes.
-3. **Database names for the client table** (PR 0d). The code is fully
-   renamed either way. The question is the database's own names (the
-   `Vendor` table and `vendorId` columns):
-   - **(a) Keep them, mapped to the new names in code.** Developers only see
-     the new names; Prisma maps them to the old ones. No downtime.
-   - **(b) Rename them too, during a short planned maintenance window.**
-     Turn on maintenance mode, push this small last PR, merge as soon as
-     its checks pass, then turn maintenance mode off. Fully clean, at the
-     cost of about 15 minutes with the app closed, at a time you choose.
-   - Suggested: (b), since you want clean code and nobody depends on the
-     app yet.
-4. **Who may use the "Not charged to client" tick** on the Costs page?
-   Suggested: Manage charges (§6.6), Admin by default.
-5. **Paid to: drop it for now** (§6.7)?
-6. **Names still to settle:**
-   - the statuses To collect and Collected;
-   - Locations, which must read differently from the attendance "work
-     locations";
-   - the permission names in §2.9, §5.7, §6.6 and §7.7;
-   - the English name for عهدة. Suggested: **Cash advance**.
-7. **Shipping the rename as small PRs 0a–0d** (§0.3), so production keeps
-   working while each one waits for review?
+1. **Names, across the whole system.** The product owner finds the system
+   not visually organised, so naming is being discussed for the whole app,
+   not only for these features. That covers:
+   - the side bar and how it's grouped;
+   - page and section names, in English and Arabic;
+   - the names still open here: the statuses To collect and Collected;
+     Locations, which must read differently from the attendance "work
+     locations"; the permission names; and the English name for عهدة
+     (suggested: Cash advance).
+
+   This discussion is in **`UI_PLAN.md`**, with suggestions for each of these
+   names in its §3.3.
 
 ## 11. Turned down
 
@@ -651,3 +648,14 @@ balance first, automatically:
     - cash advances are step 7.
   - **Added to the open questions:** shipping the rename as PRs 0a–0d
     (question 7 in §10).
+- **2026-10-15:** Further answers.
+  - **Decided:**
+    - records move onto clients now, in step 0;
+    - Records gets its own side bar item;
+    - the rename ships as PRs 0a–0d;
+    - the database's own names are renamed too, in PR 0d, during a planned
+      maintenance window of about 15 minutes;
+    - the "Not charged to client" tick is covered by Manage charges;
+    - Paid to is left out for now.
+  - **Moved:** the remaining names go into a discussion of naming and
+    organisation for the whole system (§10).
