@@ -25,6 +25,7 @@ import { apiErrorText } from '@/lib/api-error-text'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { countOf } from '@/lib/plural'
 import { usedDayOffCredit } from '@/lib/day-off-credit'
+import { spansDays } from '@/lib/day-off-range'
 import type { TranslationKey } from '@/lib/translations'
 import { dayOffListUrl } from './list-query'
 
@@ -264,9 +265,9 @@ export default function DayOffRequestsPage() {
     const days = (n: number) => countOf(t, locale, n, 'days')
     const nameOf = (r: DayOffRequest) => r.user ? `${r.user.firstName} ${r.user.lastName}` : ''
     const typeLabel = (r: DayOffRequest) => t(DAY_OFF_TYPE_LABEL[r.type] ?? 'regular_day_off')
-    // A range shows both ends only when it spans more than the one day.
-    const range = (r: DayOffRequest) => r.endDate && new Date(r.endDate).getTime() > new Date(r.date).getTime() + 86400000
-        ? `${day(r.date)} – ${day(r.endDate)}`
+    // A range shows both ends only when it runs past its first day.
+    const range = (r: DayOffRequest) => spansDays(r.date, r.endDate)
+        ? `${day(r.date)} – ${day(r.endDate!)}`
         : day(r.date)
     const requestedOn = (r: DayOffRequest) => t('requested_on_date').replace('{date}', day(r.createdAt))
     const statusBadge = (r: DayOffRequest) => <StatusBadge tone={STATUS_TONE[r.status] ?? 'neutral'}>{t(`status_${r.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
