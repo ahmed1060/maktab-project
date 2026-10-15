@@ -108,6 +108,18 @@ same in every company.
 
 - **Colour is never the only signal.** A status always has its word. Overdue
   always has the warning icon and the word "Overdue" too.
+- **Chart colours** are for the shapes in a chart, such as a donut's parts,
+  never for text. The text colours above are deep, for reading, and look
+  heavy as large shapes, so charts take a mid-tone of each meaning. Each
+  stands out from a panel at 3:1 or better.
+
+  | Meaning | Light | Dark |
+  |---|---|---|
+  | Neutral | `--chart-neutral` `#64748b` (4.8:1) | `#94a3b8` (6.8:1) |
+  | In motion | `--chart-progress` `#2563eb` (5.2:1) | `#60a5fa` (6.9:1) |
+  | Waiting on someone | `--chart-waiting` `#d97706` (3.2:1) | `#fbbf24` (10.5:1) |
+  | Done or good | `--chart-good` `#059669` (3.8:1) | `#34d399` (9.1:1) |
+  | Problem | `--chart-problem` `#e11d48` (4.7:1) | `#fb7185` (6.5:1) |
 - **Danger text** on white is `#b3093c` (6.95:1).
 - **An overdue row** gets a faint red background (`#fff8fa` in light mode,
   `#241729` in dark) and a 3px red bar on its start edge.
@@ -375,18 +387,27 @@ These are built once, in the building-blocks PR, and every page uses them
   - up to 4 in a row on computers, 2 on phones.
 - **Donut chart:** a ring for how a whole splits into a few parts, such as
   tasks by status or day off credit used and left.
-  - Each part takes its meaning's colour: the status text colours from
-    §2.3, which stand out from a panel at 3:1 or better in both themes. A
-    thin gap separates parts, so two parts with the same meaning still
-    show as two.
-  - The total is in the middle, in `--text-2xl`, weight 600, with its label
-    below in `--text-sm` and `--muted`.
-  - Beside the ring (below it on phones), a legend lists each part with
-    its colour dot, its word and its count. Screen readers read the legend,
-    and the ring is hidden from them. A legend row can link to what it
-    counts.
-  - With nothing to count, the ring is grey and the legend says so.
-  - It never animates.
+  - The ring is 160px across and thin, a tenth of that. Its parts have
+    rounded ends and a clear gap between them, with nothing drawn behind,
+    and one part alone fills the ring.
+  - Each part takes its meaning's chart colour (§2.3). A later part with
+    the same meaning as an earlier one, such as Completed after Approved,
+    takes a deeper shade of it (mixed 35% towards `--ink`), so the two read
+    as two.
+  - The total is in the middle in `--text-3xl`, weight 600, with even-width
+    digits, and its label below in `--text-sm` and `--muted`. A total of
+    more than five characters, such as "12 days", is in `--text-xl`, so it
+    stays clear of the ring.
+  - Beside the ring (below it on phones) is the legend. Each row has the
+    part's colour mark (a 10px square with 3px corners), its word, its
+    count, and its share of the total in `--muted`. The counts and shares
+    line up in columns. Screen readers read the legend, and the ring is
+    hidden from them. A legend row can link to what it counts.
+  - Pointing at a legend row, or moving focus to it, fades the ring's other
+    parts, so the row and its part are seen together. The fade takes
+    150ms and nothing moves; with reduced motion it's instant.
+  - With nothing to count, the ring is a faint track, the middle says 0,
+    and the legend says there's nothing yet.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
@@ -561,3 +582,8 @@ changed:
   and 16% darker, towards the panel, so the default indigo's pressed shade
   was 2.82:1 and navy's 2.37:1. With white text they're now 4% and 8%
   darker, and the fill is lightened if needed.
+- **2026-10-15:** The donut chart is redrawn, as the product owner found it
+  old-fashioned. The ring is thinner, with rounded, separated parts in new
+  mid-tone chart colours (§2.3), since the deep text colours looked heavy as
+  shapes. The legend adds each part's share. Pointing at a legend row
+  picks out its part.
