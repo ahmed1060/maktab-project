@@ -331,7 +331,7 @@ export default function DayOffRequestsPage() {
                             options={[{ value: '', label: t('all_employees') }, ...people.map(u => ({ value: u.id, label: `${u.firstName} ${u.lastName}` }))]} />
                     )}</Field>
                 )}
-                <DateRangePicker compact dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1) }} />
+                <DateRangePicker asField hideLabel dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1) }} />
             </FilterBar>
 
             {isLoading && !requestsResult ? <LoadingSpinner message={t('loading_requests')} /> : (
@@ -376,8 +376,8 @@ export default function DayOffRequestsPage() {
                             options={(['REGULAR', 'CASUAL', 'SICK'] as const).map(v => ({ value: v, label: t(DAY_OFF_TYPE_LABEL[v]) }))} />
                     )}</Field>
                     {reqType === 'REGULAR'
-                        ? <DateRangePicker label={t('dates_label')} dateFrom={reqDate} dateTo={reqEndDate} onChange={(from, to) => { setReqDate(from); setReqEndDate(to) }} />
-                        : <DatePickerSingle label={t('select_date')} value={reqDate} onChange={date => { setReqDate(date); setReqEndDate(date) }} />}
+                        ? <DateRangePicker asField label={t('dates_label')} dateFrom={reqDate} dateTo={reqEndDate} onChange={(from, to) => { setReqDate(from); setReqEndDate(to) }} />
+                        : <DatePickerSingle asField label={t('date_label')} value={reqDate} onChange={date => { setReqDate(date); setReqEndDate(date) }} />}
                     <Field label={t('reason_label')} hint={t('ui_characters_used').replace('{used}', num(reqReason.length)).replace('{max}', num(100))}>{p => (
                         <TextArea {...p} placeholder={t('reason_placeholder')} value={reqReason} onChange={e => setReqReason(e.target.value)} maxLength={100} />
                     )}</Field>

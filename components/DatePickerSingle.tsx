@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
 import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
+import { CalendarBlankIcon } from '@phosphor-icons/react/ssr'
+import { Icon } from '@/components/ui/Icon'
 
 interface DatePickerSingleProps {
     value: string
@@ -11,9 +13,11 @@ interface DatePickerSingleProps {
     label?: string
     minDate?: string
     maxDate?: string
+    /** Looks like a building-block field (DESIGN.md §5.3), for pages built from them. */
+    asField?: boolean
 }
 
-export default function DatePickerSingle({ value, onChange, label, minDate, maxDate }: DatePickerSingleProps) {
+export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false }: DatePickerSingleProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const mounted = useHydrated()
@@ -196,6 +200,36 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
         </div>
     )
 
+    const portal = isOpen && mounted && createPortal(
+        <div
+            onClick={() => setIsOpen(false)}
+            style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'var(--scrim)',
+                zIndex: 10000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+            {pickerContent}
+        </div>,
+        document.body
+    )
+
+    if (asField) return (
+        <div ref={containerRef} className="ui-field">
+            {label && <label htmlFor={openerId} className="ui-label">{label}</label>}
+            <span className="ui-control has-start-icon">
+                <Icon icon={CalendarBlankIcon} size={16} />
+                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!value || undefined}>
+                    {value ? formatDate(value) : t('select_date' as any)}
+                </button>
+            </span>
+            {portal}
+        </div>
+    )
+
     return (
         <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
             {label && <label htmlFor={openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{label}</label>}
@@ -231,22 +265,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                 <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
             </button>
 
-            {isOpen && mounted && createPortal(
-                <div
-                    onClick={() => setIsOpen(false)}
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'var(--scrim)',
-                        zIndex: 10000,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                    {pickerContent}
-                </div>,
-                document.body
-            )}
+            {portal}
         </div>
     )
 }

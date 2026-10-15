@@ -233,14 +233,16 @@
 .ui-date-trigger {
   display: inline-flex;
   align-items: center;
-  width: auto;
-  min-width: 200px;
   text-align: start;
   white-space: nowrap;
   cursor: pointer;
 }
 .ui-date-trigger[data-empty] {
   color: var(--muted);
+}
+.ui-filterbar .ui-date-trigger {
+  width: auto;
+  min-width: 200px;
 }
 
 /* More than one line (§5.3). Height follows the content, from 88px. */
@@ -743,6 +745,11 @@ a.ui-row:focus-visible {
 }
 .ui-table .ui-end {
   text-align: end;
+}
+/* A column of checkboxes takes only the checkbox's width. */
+.ui-table td:has(> .ui-check-target) {
+  width: 1%;
+  padding-inline-end: 0;
 }
 .ui-table tr[data-tone="overdue"] td {
   background: var(--overdue-row);

@@ -13,15 +13,17 @@ interface DateRangePickerProps {
     label?: string
     minDate?: string
     maxDate?: string
+    /** Looks like a building-block field (DESIGN.md §5.3), for pages built from them. */
+    asField?: boolean
     /**
-     * Looks like a building-block field, for a filter bar: its label is kept
-     * for screen readers but not shown, since what it shows names it
-     * ("Select date range", or the range picked), as a select does.
+     * With asField, in a filter bar: the label is kept for screen readers but
+     * not shown, since what the picker shows names it ("Select date range",
+     * or the range picked), as a select does.
      */
-    compact?: boolean
+    hideLabel?: boolean
 }
 
-export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate, compact = false }: DateRangePickerProps) {
+export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate, asField = false, hideLabel = false }: DateRangePickerProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const mounted = useHydrated()
@@ -314,11 +316,11 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
             : t('select_date_range' as any)
 
     return (
-        <div ref={containerRef} className={compact ? 'ui-field' : undefined} style={compact ? undefined : { position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-            <label htmlFor={openerId} className={compact ? 'ui-visually-hidden' : undefined} style={compact ? undefined : { display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
+        <div ref={containerRef} className={asField ? 'ui-field' : undefined} style={asField ? undefined : { position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+            <label htmlFor={openerId} className={asField ? (hideLabel ? 'ui-visually-hidden' : 'ui-label') : undefined} style={asField ? undefined : { display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
                 {label || t('filter_by_date_range' as any)}
             </label>
-            {compact ? (
+            {asField ? (
                 <span className="ui-control has-start-icon">
                     <Icon icon={CalendarBlankIcon} size={16} />
                     <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!dateFrom && !dateTo ? true : undefined}>
