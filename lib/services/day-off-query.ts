@@ -33,9 +33,10 @@ export function dayOffListFilters(searchParams: URLSearchParams): Record<string,
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const date: Record<string, Date> = {}
-    if (from && DAY.test(from)) date.gte = new Date(`${from}T00:00:00.000Z`)
-    if (to && DAY.test(to)) {
-        const end = new Date(`${to}T00:00:00.000Z`)
+    const start = from ? calendarDay(from) : null
+    if (start) date.gte = start
+    const end = to ? calendarDay(to) : null
+    if (end) {
         end.setUTCDate(end.getUTCDate() + 1)
         date.lt = end
     }
@@ -45,4 +46,16 @@ export function dayOffListFilters(searchParams: URLSearchParams): Record<string,
     if (search) out.push({ reason: { contains: search, mode: 'insensitive' } })
 
     return out
+}
+
+/**
+ * A YYYY-MM-DD day as midnight UTC, or null when it isn't one. The shape
+ * alone lets through days that don't exist: 2026-02-31 would become 3 March,
+ * and 2026-99-99 an invalid date the database refuses. Like a malformed one,
+ * such a day is left out rather than sent on.
+ */
+function calendarDay(value: string): Date | null {
+    if (!DAY.test(value)) return null
+    const day = new Date(`${value}T00:00:00.000Z`)
+    return !Number.isNaN(day.getTime()) && day.toISOString().slice(0, 10) === value ? day : null
 }

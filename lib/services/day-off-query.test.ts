@@ -30,6 +30,16 @@ describe("a day-off list's filters", () => {
         expect(filters("from=yesterday&to=2026-13-45x")).toEqual([])
     })
 
+    it("leave out a day that doesn't exist, rather than moving it or sending it on", () => {
+        // 31 February would become 3 March.
+        expect(filters("from=2026-02-31")).toEqual([])
+        // An invalid date, which the database refuses with a server error.
+        expect(filters("from=2026-99-99&to=2026-00-10")).toEqual([])
+        expect(filters("from=2026-02-28&to=2026-02-30")).toEqual([{ date: { gte: new Date("2026-02-28T00:00:00.000Z") } }])
+        // 29 February is a day in a leap year.
+        expect(filters("to=2028-02-29")).toEqual([{ date: { lt: new Date("2028-03-01T00:00:00.000Z") } }])
+    })
+
     it("search the reason, whatever the case", () => {
         expect(filters("search=%20doctor%20")).toEqual([{ reason: { contains: "doctor", mode: "insensitive" } }])
         expect(filters("search=%20%20")).toEqual([])
