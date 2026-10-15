@@ -277,9 +277,13 @@ These are built once, in the building-blocks PR, and every page uses them
   - a search field, which takes the spare width;
   - the selects for that page;
   - a quiet "Reset filters" button on the end side.
+
+  The search and the selects are the one exception to visible labels: what
+  they show already names them ("Search tasks", "All statuses"), so their
+  labels are kept for screen readers but not shown.
 - **On phones,** the filter bar becomes the search field plus a
-  "Filters" button showing how many filters are on. The button opens a
-  sheet.
+  "Filters" button showing how many filters are on. The button shows the
+  filters below the search, and hides them again.
 
 ### 5.4 Lists: a table on computers, cards on phones
 
@@ -460,3 +464,8 @@ changed:
   overdue row (`#241729`) is now written down too.
 - **2026-10-15:** The dark field edge is `#65758d`, not `#5b6b82`: the earlier
   value was 2.90:1 on a raised panel, where fields in dialogs sit.
+- **2026-10-15:** In the filter bar, the search's and the selects' labels
+  are kept for screen readers but not shown, as in the approved mock-ups:
+  what they show already names them. On phones, the Filters button shows
+  the filters below the search instead of opening a sheet, so each filter
+  is on the page once.
