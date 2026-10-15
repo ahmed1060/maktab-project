@@ -366,6 +366,20 @@ These are built once, in the building-blocks PR, and every page uses them
   - a tile can be a link to the list it counts. Its label is then in
     `--brand-text`, and the whole tile is the target;
   - up to 4 in a row on computers, 2 on phones.
+- **Donut chart:** a ring for how a whole splits into a few parts, such as
+  tasks by status or day off credit used and left.
+  - Each part takes its meaning's colour: the status text colours from
+    §2.3, which stand out from a panel at 3:1 or better in both themes. A
+    thin gap separates parts, so two parts with the same meaning still
+    show as two.
+  - The total is in the middle, in `--text-2xl`, weight 600, with its label
+    below in `--text-sm` and `--muted`.
+  - Beside the ring (below it on phones), a legend lists each part with
+    its colour dot, its word and its count. Screen readers read the legend,
+    and the ring is hidden from them. A legend row can link to what it
+    counts.
+  - With nothing to count, the ring is grey and the legend says so.
+  - It never animates.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
@@ -526,6 +540,9 @@ changed:
   to a team at once.
 - **2026-10-15:** Added the dialog, the text area and the radio choice,
   for Day Off Requests' request, approve and reject dialogs.
+- **2026-10-15:** Added the donut chart. The product owner prefers the
+  dashboard home's donuts to rows of counts, so they come back, drawn from
+  the meaning colours and with a legend that carries every word and count.
 - **2026-10-15:** Behind a page built from the building blocks, the old
   moving gradient gives way to `--page` until the app shell lands. On the
   gradient, the subtitle in `--muted` couldn't be read.
