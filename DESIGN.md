@@ -273,6 +273,12 @@ These are built once, in the building-blocks PR, and every page uses them
   - a visible label above every field. The placeholder is never the only
     label;
   - when focused, a 2px `--brand-text` ring.
+- **A text area** is a field for more than one line, at least 88px tall,
+  with how many characters are left as its hint when there's a limit.
+- **A choice between a few options,** such as where a deduction comes
+  from, is a set of radio buttons under a visible group label, each 36px
+  tall (44px on phones). An option that can't be picked says why beside
+  the group.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -337,6 +343,12 @@ These are built once, in the building-blocks PR, and every page uses them
     button, and choosing an item closes it.
   - A destructive item, such as Delete, is in the danger text colour and
     is last, after a hairline. It still asks before it acts.
+- **Dialog:** a level-2 panel (§4.3) on `--panel-raised`, with 12px
+  corners and 24px inside (16px on phones), over the dimmed page.
+  - The title is `--text-xl`, weight 500.
+  - The buttons are at the bottom on the end side, the main one last. On
+    phones they stack full width, the main one on top.
+  - Escape closes it, and focus goes back to what opened it.
 - **Selection bar:** when items in a list are picked with their
   checkboxes, a panel above the list says how many are picked and holds
   what can be done to all of them, with a quiet "Clear selection" on the
@@ -512,6 +524,8 @@ changed:
   (8px) and level-2 shadow from §4.2 and §4.3 become tokens now.
 - **2026-10-15:** Added the selection bar, for assigning several employees
   to a team at once.
+- **2026-10-15:** Added the dialog, the text area and the radio choice,
+  for Day Off Requests' request, approve and reject dialogs.
 - **2026-10-15:** Behind a page built from the building blocks, the old
   moving gradient gives way to `--page` until the app shell lands. On the
   gradient, the subtitle in `--muted` couldn't be read.
