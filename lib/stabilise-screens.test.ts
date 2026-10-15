@@ -68,12 +68,15 @@ describe("at phone width", () => {
     it("the dashboard's grids never ask for more than the screen has", () => {
         // Their columns had fixed minimums up to 400px, so the Obligations
         // section on an Employee's dashboard was 400px in a 326px space.
+        // It now lays out with the building blocks, whose grids give way on a
+        // narrow screen: min(Npx, 100%) is the same on a wide screen and the
+        // screen's width on a narrow one.
         const page = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")
-        expect(page).not.toMatch(/minmax\(\d+px, 1fr\)/)
-        expect(page).toContain("repeat(auto-fit, minmax(min(400px, 100%), 1fr))")
-        // and the two small figures stack when two don't fit
-        expect(page).not.toContain("gridTemplateColumns: '1fr 1fr'")
-        expect(page).toContain("repeat(auto-fit, minmax(min(10rem, 100%), 1fr))")
+        expect(page).not.toContain("gridTemplateColumns")
+        expect(page).toContain("<Columns>")
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toContain("grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));")
+        expect(css).toContain("grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));")
     })
 
     it("no grid on any screen asks for a column wider than the screen has", () => {

@@ -50,11 +50,14 @@ describe("the brand colour's shades", () => {
 
     it.each(SPREAD)("%s keeps every promise in dark mode", picked => {
         const t = brandTokens(picked).dark
-        // A button stands out from the dark panel, and its text reads on it.
-        expect(contrast(t["--brand"], DARK.panel)).toBeGreaterThanOrEqual(3)
+        // A button stands out from the dark panel, and its text reads on it,
+        // through hover and press too.
         for (const fill of [t["--brand"], t["--brand-hover"], t["--brand-press"]]) {
+            expect(contrast(fill, DARK.panel)).toBeGreaterThanOrEqual(3)
             expect(contrast(t["--on-brand"], fill)).toBeGreaterThanOrEqual(4.5)
         }
+        // And hover and press still look different from it.
+        expect(new Set([t["--brand"], t["--brand-hover"], t["--brand-press"]]).size).toBe(3)
         for (const ground of [DARK.page, DARK.panel, DARK.raised, t["--brand-tint"], t["--brand-tint-strong"]]) {
             expect(contrast(t["--brand-text"], ground)).toBeGreaterThanOrEqual(4.5)
         }
@@ -64,7 +67,10 @@ describe("the brand colour's shades", () => {
         const navy = brandTokens("#0d253d")
         expect(navy.light["--brand"]).toBe("#0d253d")
         expect(navy.dark["--brand"]).not.toBe("#0d253d")
-        expect(contrast(navy.dark["--brand"], DARK.panel)).toBeGreaterThanOrEqual(3)
+        // Pressed included: it was 2.37:1 when the fill barely reached 3:1.
+        for (const fill of [navy.dark["--brand"], navy.dark["--brand-hover"], navy.dark["--brand-press"]]) {
+            expect(contrast(fill, DARK.panel)).toBeGreaterThanOrEqual(3)
+        }
     })
 
     it("anything that isn't a #rrggbb colour gets the default", () => {

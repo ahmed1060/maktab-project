@@ -329,7 +329,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     the flex chain, so lifting it only on the row above leaves
                     this wrapper refusing to shrink and the title still running
                     under the buttons. */}
-                <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="ui-topbar-title" style={{ minWidth: 0, flex: 1 }}>
                     <h1 style={{
                         fontSize: 'clamp(1rem, 4.5vw, 1.4rem)',
                         fontWeight: '800',

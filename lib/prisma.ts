@@ -44,9 +44,13 @@ import { poolConfigFrom } from './postgres-ssl'
  * a statement when the caller passes `name`, and this adapter never does, so
  * there is nothing to turn off.
  *
- * The global cache is unchanged and still matters for the same reason: in
- * development Next.js reloads this module on every edit, and without it each
- * reload would leak a pool.
+ * The client is built once per process and kept on `global`, in every
+ * environment. In development that also survives Next.js reloading this
+ * module on every edit, which would otherwise leak a pool per edit. It used to
+ * be kept only outside production, and the lazy proxy below asks for the
+ * client on every property access: in production every `prisma.user`,
+ * `prisma.task` and `$transaction` built a new client with a new pool, so
+ * each query opened its own connection and left it idle behind it.
  */
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
@@ -66,7 +70,7 @@ function createClient(): PrismaClient {
         adapter: new PrismaPg(poolConfigFrom(connectionString, { max: 5 })),
     })
 
-    if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = client
+    globalForPrisma.prisma = client
     return client
 }
 

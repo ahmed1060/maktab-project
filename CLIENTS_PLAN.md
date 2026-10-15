@@ -78,7 +78,7 @@ Two things make a single big rename unsafe:
 
 | PR | What it does | Effect on production while it waits for review |
 |---|---|---|
-| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move | Only today's Clients section stops working, and it's empty |
+| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
 | 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now | None |
 | 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
 | 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below) | None. The app is closed for about 15 minutes, at a time the product owner chooses |
@@ -204,6 +204,13 @@ needs no data change.
   (`lib/services/template-generator.service.ts`).
 - Add a **Locations** sheet behind a new **Location** column, listing names
   such as "Al Noor - Maadi branch".
+- **Each name in the list is unique.** A shared location could be called
+  "Al Noor - Maadi branch" too, and a name can contain the " - ". So where
+  two would read the same, each gets a number: "Al Noor - Maadi branch (2)".
+- **The sheet keeps each name's location in a hidden column,** and the
+  upload finds the location from that, never by matching the text. A name
+  it can't find exactly once is flagged on the review screen, never
+  guessed.
 - The review screen flags a location that doesn't belong to the row's client
   and isn't shared, as it flags unknown clients today.
 
@@ -219,8 +226,14 @@ needs no data change.
 
 | Permission | Default |
 |---|---|
+| See locations (the Locations page and the task form's pickers) | Anyone who can create tasks |
 | Add locations | Anyone who can create tasks |
 | Manage locations (edit pin and radius, archive, set HQ) | Admin |
+
+- **Add locations and Manage locations include See locations,** so a role
+  given either can see what it adds or manages.
+- **A task shows its own location** to anyone who can see the task, without
+  See locations.
 
 ### 2.10 Kept separate
 
@@ -255,9 +268,12 @@ separate system. On screen they're renamed **Check-in places** (أماكن
    "Pay 7 costs, 3,450 EGP"; the server pays those 7 and nothing else. If
    anything changed in the meantime, it refuses and asks you to look again.
 2. **A task with paid costs can't be deleted.**
-3. **Archive clients.** A client linked to any task is archived instead of
-   deleted. It's hidden from dropdowns, kept in filters and history, and can
-   be restored.
+3. **Archive clients.** A client linked to any task, or holding any
+   records (§0.2), is archived instead of deleted. It's hidden from
+   dropdowns, kept in filters and history, and can be restored. Records
+   would otherwise go with the client, because sections are deleted with
+   whatever they belong to, and deleting a client would get round the
+   separate permission for deleting records.
 4. **Fix the bug so cost descriptions are saved** (§1), in this step.
 5. **Costs get their own table** (Decided).
    - Today each cost is an entry inside the task's JSON comments, with no id
@@ -505,6 +521,11 @@ balance first, automatically:
 
 - **Giving and settling moves money,** so it asks for two-factor sign-in,
   as paying costs does.
+- **The role editor says everything Give cash advances allows.** It shows
+  only permission names today, and this name alone suggests hand-outs. So
+  under it, in `--muted`, it says "Also records returns and corrections"
+  (يشمل أيضًا تسجيل المبالغ المُعادة والتصحيحات). The name stays as agreed in
+  `UI_PLAN.md` §3.3.
 - Every employee always sees their own balance.
 - **Team Leaders don't give advances by default.** Because it's a
   permission, it can be given to any role.
@@ -532,9 +553,12 @@ balance first, automatically:
        (`UI_PLAN.md` §2, §3);
      - build the shared page building blocks in one PR. No old page is
        converted in it;
-     - move the 3 pages this plan doesn't touch (the dashboard home,
-       Employees and Day Off Requests) onto the building blocks, in one
-       small PR;
+     - move the 3 pages this plan doesn't otherwise touch (the dashboard
+       home, whose client count changes in 0a, Employees and Day Off
+       Requests) onto the building blocks, in one
+       small PR. Built on 2026-10-15, waiting to be merged. It also adds
+       building blocks these steps will use: the row menu, the selection
+       bar, the dialog, the text area and the radio choice;
      - add the brand colour setting, in one small PR (`UI_PLAN.md` §4.6).
   2. **Steps 0–7 above.**
      - The new side bar groups land with step 0.
@@ -706,3 +730,15 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   brand colour is a setting (`UI_PLAN.md` §4.6). §8 adds the brand colour PR
   before step 0, so every screen these steps build already follows a
   company's colour.
+- **2026-10-15:** The 3 pages are built on the building blocks, waiting to
+  be merged (§8). The steps here can use the building blocks that PR added:
+  the row menu, the selection bar, the dialog, the text area and the radio
+  choice.
+- **2026-10-15:** From Codex's review of #73 and #75:
+  - a client holding records is archived, not deleted (§4);
+  - See locations is in the permissions, for anyone who can create tasks,
+    and Add and Manage include it (§2.9);
+  - the bulk upload's location names are unique, and each carries its
+    location in a hidden column (§2.7);
+  - the Super Admin dashboard's client count moves in step 0a (§0.3);
+  - the role editor says what Give cash advances also allows (§7.7).

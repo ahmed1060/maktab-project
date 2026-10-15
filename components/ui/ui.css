@@ -15,7 +15,11 @@
 .ui-tiles,
 .ui-empty,
 .ui-pager,
-.ui-avatar {
+.ui-avatar,
+.ui-page,
+.ui-menu,
+.ui-selectionbar,
+.ui-donut {
   font-family: var(--font-ui);
 }
 
@@ -24,7 +28,12 @@
 .ui-btn,
 .ui-tab,
 .ui-pager-page,
-.ui-select {
+.ui-select,
+.ui-row,
+.ui-menu-item,
+.ui-choice,
+.ui-check-target,
+.ui-date-trigger {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -32,6 +41,7 @@
 /* Headings break into even lines rather than leaving one word on the last. */
 .ui-page-title,
 .ui-card-title,
+.ui-section-title,
 .ui-empty-title {
   text-wrap: balance;
 }
@@ -225,6 +235,127 @@
   border-color: var(--problem-text);
 }
 
+/* A date range picker that looks like a field, in a filter bar. */
+.ui-date-trigger {
+  display: inline-flex;
+  align-items: center;
+  text-align: start;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ui-date-trigger[data-empty] {
+  color: var(--muted);
+}
+.ui-filterbar .ui-date-trigger {
+  width: auto;
+  min-width: 200px;
+}
+
+/* More than one line (§5.3). Height follows the content, from 88px. */
+.ui-input.ui-textarea {
+  height: auto;
+  min-height: 88px;
+  padding-block: var(--space-2);
+  resize: vertical;
+}
+
+/* A choice between a few options (§5.3). */
+.ui-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ui-choices > legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+.ui-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  cursor: pointer;
+}
+.ui-choice[data-disabled] {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.ui-radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: inherit;
+}
+.ui-radio:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+
+/* ── Dialog (§5.5) ── */
+.ui-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+.ui-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(100%, 440px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-6);
+  background: var(--panel-raised);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--elev-2);
+  font-family: var(--font-ui);
+  overscroll-behavior: contain;
+}
+/* Focused itself only when it has nothing to focus inside; no ring for a click. */
+.ui-dialog:focus:not(:focus-visible) {
+  outline: none;
+}
+.ui-dialog-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 500;
+  text-wrap: balance;
+}
+.ui-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+}
+.ui-dialog-body p {
+  margin: 0;
+}
+.ui-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 /* ── Panels and cards (§5.5) ── */
 .ui-panel {
   background: var(--panel);
@@ -272,6 +403,237 @@
   color: var(--muted);
   font-size: var(--text-md);
   line-height: var(--leading-md);
+}
+.ui-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Until the app shell (DESIGN.md §5.1) replaces it, the old top bar steps
+   aside on a page with its own page header, so the page is named once. */
+:root:has(.ui-page-header) .ui-topbar-title {
+  display: none;
+}
+/* And behind a page built from the building blocks, the old moving gradient
+   gives way to the page colour, so text on the page keeps its contrast. */
+:root:has(.ui-page) body {
+  background: var(--page);
+  animation: none;
+}
+:root:has(.ui-page) body::before {
+  display: none;
+}
+
+/* ── Page layout and sections (§5.5) ── */
+.ui-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  color: var(--ink);
+}
+.ui-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.ui-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 30px;
+}
+.ui-section-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 500;
+  color: var(--ink);
+}
+/* Sections side by side on computers, one under the other on phones. */
+.ui-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* ── Rows (§5.5) ── */
+.ui-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.ui-rows > li {
+  border-bottom: 1px solid var(--rule);
+}
+.ui-rows > li:last-child {
+  border-bottom: 0;
+}
+.ui-rows > li[data-tone="overdue"] {
+  background: var(--overdue-row);
+  border-inline-start: 3px solid var(--problem-text);
+}
+.ui-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  text-decoration: none;
+  transition: background-color 150ms ease-out;
+}
+a.ui-row:hover {
+  background: var(--brand-tint);
+}
+a.ui-row:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: -2px;
+}
+.ui-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ui-row-main .ui-item-title {
+  overflow-wrap: anywhere;
+}
+.ui-row-end {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  max-width: 60%;
+  font-variant-numeric: tabular-nums;
+}
+
+/* An item's actions at the end of its row: a button and its row menu. */
+.ui-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+/* An item's name that opens it. */
+.ui-item-link {
+  color: inherit;
+  text-decoration: none;
+}
+.ui-item-link:hover {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+.ui-item-link:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* A row's checkbox, with a target bigger than the box. */
+.ui-check-target {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin-block: -7px;
+  cursor: pointer;
+}
+.ui-check {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.ui-check:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+
+/* ── Selection bar (§5.5) ── */
+.ui-selectionbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+}
+.ui-selectionbar-count {
+  font-weight: 500;
+  color: var(--ink);
+}
+.ui-selectionbar .ui-field {
+  flex: 0 1 260px;
+}
+.ui-selectionbar-clear {
+  margin-inline-start: auto;
+}
+
+/* ── Row menu (§5.5) ── */
+.ui-menu-button {
+  width: 30px;
+  padding-inline: 0;
+  color: var(--ink-2);
+}
+.ui-menu {
+  overscroll-behavior: contain;
+  position: fixed;
+  z-index: 1000;
+  min-width: 200px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: var(--space-1);
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--elev-2);
+}
+.ui-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ui-menu-item:hover,
+.ui-menu-item:focus-visible {
+  background: var(--brand-tint);
+  outline: none;
+}
+.ui-menu-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--brand-text);
+}
+.ui-menu-item[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ui-menu-item-danger {
+  color: var(--problem-text);
+}
+.ui-menu-rule {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--rule);
 }
 
 /* ── Status badge (§5.5) ── */
@@ -366,6 +728,12 @@
 .ui-list {
   overflow: hidden;
 }
+/* The panel clips to its rounded corners, so a table wider than it, as can
+   happen between phone width and a wide screen with the sidebar, scrolls
+   inside this instead of losing its end columns, the actions among them. */
+.ui-table-scroll {
+  overflow-x: auto;
+}
 .ui-table {
   width: 100%;
   border-collapse: collapse;
@@ -393,11 +761,20 @@
 .ui-table .ui-end {
   text-align: end;
 }
+/* A column of checkboxes takes only the checkbox's width. */
+.ui-table td:has(> .ui-check-target) {
+  width: 1%;
+  padding-inline-end: 0;
+}
 .ui-table tr[data-tone="overdue"] td {
   background: var(--overdue-row);
 }
 .ui-table tr[data-tone="overdue"] td:first-child {
   border-inline-start: 3px solid var(--problem-text);
+}
+/* The row you came to see, such as the one a notification opened. */
+.ui-table tr[data-tone="selected"] td {
+  background: var(--brand-tint);
 }
 .ui-cards {
   display: none;
@@ -411,6 +788,7 @@
 }
 .ui-item-detail,
 .ui-meta {
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -442,6 +820,9 @@
 .ui-cards > li[data-tone="overdue"] .ui-list-card {
   background: var(--overdue-row);
   border-inline-start: 3px solid var(--problem-text);
+}
+.ui-cards > li[data-tone="selected"] .ui-list-card {
+  background: var(--brand-tint);
 }
 .ui-list-card-top {
   display: flex;
@@ -561,7 +942,7 @@
 /* ── Total tiles (§5.5) ── */
 .ui-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
   gap: var(--space-3);
   margin: 0;
 }
@@ -579,6 +960,199 @@
   line-height: var(--leading-2xl);
   font-weight: 600;
   color: var(--ink);
+}
+.ui-tiles dd.ui-tile-note {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 400;
+  color: var(--muted);
+}
+/* A tile that links to what it counts: the label is the link, and its
+   target covers the whole tile. */
+.ui-tile {
+  position: relative;
+}
+.ui-tile-link {
+  color: var(--brand-text);
+  text-decoration: none;
+}
+.ui-tile-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-panel);
+}
+.ui-tile:has(.ui-tile-link:hover) {
+  background: var(--brand-tint);
+}
+.ui-tile-link:hover {
+  text-decoration: underline;
+}
+.ui-tile-link:focus-visible {
+  outline: none;
+}
+.ui-tile:has(.ui-tile-link:focus-visible) {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+
+/* ── Donut chart (§5.5) ── */
+.ui-donut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6);
+}
+.ui-donut-ring {
+  position: relative;
+  flex: none;
+  width: 160px;
+  height: 160px;
+}
+.ui-donut-ring svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ui-donut-track,
+.ui-donut-arc {
+  fill: none;
+  stroke-width: 10;
+}
+.ui-donut-track {
+  stroke: var(--status-neutral-bg);
+}
+.ui-donut-arc {
+  stroke: currentColor;
+  stroke-linecap: round;
+  transition: opacity 150ms ease-out;
+}
+.ui-donut-arc[data-empty] {
+  display: none;
+}
+/* Each part in its meaning's chart colour (§2.3); a later part with the same
+   meaning in a deeper shade of it, mixed towards the ink, so further from
+   the panel and never below its 3:1. The ring and the legend's marks both
+   draw in currentColor. */
+.ui-donut [data-tone="neutral"] { color: var(--chart-neutral); }
+.ui-donut [data-tone="neutral"][data-shade="2"] { color: color-mix(in srgb, var(--chart-neutral) 65%, var(--ink)); }
+.ui-donut [data-tone="progress"] { color: var(--chart-progress); }
+.ui-donut [data-tone="progress"][data-shade="2"] { color: color-mix(in srgb, var(--chart-progress) 65%, var(--ink)); }
+.ui-donut [data-tone="waiting"] { color: var(--chart-waiting); }
+.ui-donut [data-tone="waiting"][data-shade="2"] { color: color-mix(in srgb, var(--chart-waiting) 65%, var(--ink)); }
+.ui-donut [data-tone="good"] { color: var(--chart-good); }
+.ui-donut [data-tone="good"][data-shade="2"] { color: color-mix(in srgb, var(--chart-good) 65%, var(--ink)); }
+.ui-donut [data-tone="problem"] { color: var(--chart-problem); }
+.ui-donut [data-tone="problem"][data-shade="2"] { color: color-mix(in srgb, var(--chart-problem) 65%, var(--ink)); }
+/* Pointing at a legend row, or focusing it, fades the ring's other parts:
+   legend row n and arc n are the same part (Blocks.tsx). Eight is more parts
+   than any donut here has. */
+.ui-donut:has(.ui-donut-legend > li:nth-child(1):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(1)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(2):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(2)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(3):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(3)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(4):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(4)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(5):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(5)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(6):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(6)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(7):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(7)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(8):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(8)) {
+  opacity: 0.2;
+}
+.ui-donut-total {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.ui-donut-total strong {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ui-donut-total-long strong {
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+}
+.ui-donut-total span {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+.ui-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ui-donut-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 36px;
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-field);
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: background-color 150ms ease-out;
+}
+a.ui-donut-row:hover {
+  background: var(--brand-tint);
+}
+a.ui-donut-row:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 0;
+}
+.ui-donut-mark {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: currentColor;
+}
+.ui-donut-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* The counts and shares line up in columns, whatever the words' lengths. */
+.ui-donut-count {
+  min-inline-size: 3ch;
+  text-align: end;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.ui-donut-share {
+  min-inline-size: 5ch;
+  text-align: end;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+/* A part with nothing in it stays in the legend, so the counts add up, but
+   steps back. */
+.ui-donut-legend > li[data-empty] .ui-donut-row {
+  color: var(--muted);
+}
+.ui-donut-legend > li[data-empty] .ui-donut-mark {
+  opacity: 0.4;
+}
+.ui-donut-empty {
+  flex: 1;
+  margin: 0;
+  color: var(--muted);
 }
 
 /* ── Empty state (§5.5) ── */
@@ -623,6 +1197,66 @@ html[lang="ar"] .ui-empty-title {
   .ui-page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+  .ui-page-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ui-page,
+  .ui-columns {
+    gap: var(--space-4);
+  }
+  .ui-row {
+    padding: var(--space-3);
+  }
+  .ui-menu-button {
+    width: 44px;
+  }
+  .ui-donut {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-6);
+    padding: var(--space-4);
+  }
+  .ui-donut-ring {
+    align-self: center;
+  }
+  .ui-donut-row {
+    min-height: 44px;
+  }
+  .ui-check-target {
+    width: 44px;
+    height: 44px;
+    margin-block: -12px;
+  }
+  .ui-list-card .ui-item-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-block: -12px;
+  }
+  .ui-selectionbar .ui-field {
+    flex-basis: 100%;
+  }
+  .ui-selectionbar-clear {
+    margin-inline-start: 0;
+  }
+  .ui-choice {
+    min-height: 44px;
+    font-size: var(--text-lg);
+  }
+  .ui-dialog {
+    padding: var(--space-4);
+  }
+  .ui-dialog-actions {
+    flex-direction: column-reverse;
+  }
+  .ui-dialog-actions > * {
+    width: 100%;
+  }
+  .ui-menu-item {
+    min-height: 44px;
+    font-size: var(--text-lg);
   }
   .ui-page-title {
     font-size: var(--text-2xl);
@@ -672,7 +1306,10 @@ html[lang="ar"] .ui-empty-title {
 
 @media (prefers-reduced-motion: reduce) {
   .ui-btn,
-  .ui-tab {
+  .ui-tab,
+  .ui-row,
+  .ui-donut-row,
+  .ui-donut-arc {
     transition: none;
   }
   .ui-btn[aria-busy="true"]::after {
@@ -689,7 +1326,8 @@ html[lang="ar"] .ui-empty-title {
   max-width: 260px;
 }
 @media (max-width: 767px) {
-  .ui-filterbar .ui-filterbar-filters .ui-select {
+  .ui-filterbar .ui-filterbar-filters .ui-select,
+  .ui-filterbar .ui-filterbar-filters .ui-date-trigger {
     width: 100%;
     max-width: none;
   }

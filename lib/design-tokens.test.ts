@@ -38,6 +38,10 @@ const MEANING_TOKEN: Record<string, string> = {
 const STATUSES = [...DOC.matchAll(/^\| ([A-Za-z ]+) \| [^|]+ \| `(#[0-9a-f]{6})` \/ `(#[0-9a-f]{6})` \(([\d.]+):1\) \| `(#[0-9a-f]{6})` \/ `(#[0-9a-f]{6})` \(([\d.]+):1\) \|/gm)]
     .map(m => ({ name: m[1], light: { bg: m[2], fg: m[3], ratio: Number(m[4]) }, dark: { bg: m[5], fg: m[6], ratio: Number(m[7]) } }))
 
+/** DESIGN.md §2.3's chart colours: | Meaning | `--chart-x` `#light` (n:1) | `#dark` (n:1) | */
+const CHARTS = [...DOC.matchAll(/^ {2}\| [A-Za-z ]+ \| `(--chart-[a-z]+)` `(#[0-9a-f]{6})` \(([\d.]+):1\) \| `(#[0-9a-f]{6})` \(([\d.]+):1\) \|/gm)]
+    .map(m => ({ token: m[1], light: { value: m[2], ratio: Number(m[3]) }, dark: { value: m[4], ratio: Number(m[5]) } }))
+
 describe("the stylesheet says what DESIGN.md says", () => {
     it("found the tokens and DESIGN.md's tables", () => {
         expect(START).toBeGreaterThan(0)
@@ -56,6 +60,15 @@ describe("the stylesheet says what DESIGN.md says", () => {
             expect(THEMES[theme][`--status-${key}-fg`]).toBe(s[theme].fg)
             // The ratio DESIGN.md prints is the real one, to its one decimal.
             expect(Math.abs(contrast(s[theme].fg, s[theme].bg) - s[theme].ratio)).toBeLessThan(0.06)
+        }
+    })
+
+    it.each(["light", "dark"] as const)("chart colours, %s", theme => {
+        expect(CHARTS.map(c => c.token)).toEqual(["--chart-neutral", "--chart-progress", "--chart-waiting", "--chart-good", "--chart-problem"])
+        for (const c of CHARTS) {
+            expect([c.token, THEMES[theme][c.token]]).toEqual([c.token, c[theme].value])
+            // The ratio DESIGN.md prints is against a panel, to its one decimal.
+            expect(Math.abs(contrast(c[theme].value, THEMES[theme]["--panel"]) - c[theme].ratio)).toBeLessThan(0.06)
         }
     })
 
@@ -86,6 +99,13 @@ describe("every pair reads", () => {
         // The danger button and its hover are the same in both themes.
         for (const fill of ["--problem-fill", "--problem-fill-hover"]) {
             expect(contrast(THEMES.light["--on-problem"], THEMES.light[fill])).toBeGreaterThanOrEqual(4.5)
+        }
+    })
+
+    it.each(["light", "dark"] as const)("a chart's parts stand out at 3:1 on every ground a chart sits on, %s", theme => {
+        const t = THEMES[theme]
+        for (const c of CHARTS) for (const bg of ["--panel", "--panel-raised"]) {
+            expect([c.token, bg, contrast(t[c.token], t[bg] ?? THEMES.light[bg]) >= 3]).toEqual([c.token, bg, true])
         }
     })
 

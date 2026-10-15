@@ -6,15 +6,18 @@ import { holdersOf } from "@/lib/permissions/holders"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
 
 export class DayOffService {
-    static async getMany(userId: string, skip: number, take: number) {
+    /** One person's own requests, newest first, narrowed by the list's filters (lib/services/day-off-query.ts). */
+    static async getMany(userId: string, skip: number, take: number, filters: Record<string, any>[] = []) {
+        // Their own, whatever the filters say: a userId filter can only narrow it.
+        const where = filters.length > 0 ? { userId, AND: filters } : { userId }
         const [requests, total] = await Promise.all([
             prisma.dayOffRequest.findMany({
-                where: { userId },
+                where,
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take
             }),
-            prisma.dayOffRequest.count({ where: { userId } })
+            prisma.dayOffRequest.count({ where })
         ])
 
         return { requests, total }

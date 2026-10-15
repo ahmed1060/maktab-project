@@ -24,6 +24,16 @@ export function pageWindow(page: number, pageCount: number): (number | null)[] {
 }
 
 /**
+ * The page to show when the pages have changed under it: the same one, or
+ * the last there is now. Deleting the only item on the last page leaves that
+ * page empty, and an empty list shows its empty state without the pager, so
+ * there'd be no way back.
+ */
+export function pageInRange(page: number, pageCount: number): number {
+    return Math.max(1, Math.min(page, pageCount))
+}
+
+/**
  * A list's footer (DESIGN.md §5.4): how many items, on the start side, and the
  * pages on the end side. Previous and next point the reading direction's way.
  * On a phone the numbers give way to "Page 2 of 9" between previous and next,

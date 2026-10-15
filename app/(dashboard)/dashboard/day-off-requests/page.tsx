@@ -1,38 +1,49 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import {
+    CalendarBlankIcon, CalendarCheckIcon, ChatTextIcon, CheckIcon, CircleHalfIcon, TagIcon, UserIcon, WalletIcon, XCircleIcon, XIcon,
+} from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
-import { useModules } from '@/lib/useModules'
-import { useHeader } from '@/context/HeaderContext'
+import { useToast } from '@/context/ToastContext'
+import { useCompany } from '@/context/CompanyContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
-import EmployeeFilter from '@/components/EmployeeFilter'
-import { useCompany } from '@/context/CompanyContext'
-import Pagination from '@/components/Pagination'
+import {
+    Button, Choice, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, SearchInput,
+    Select, StatusBadge, TextArea, TextInput, TotalTiles, visibleRow, type Column, type StatusTone,
+} from '@/components/ui'
+import { useModules } from '@/lib/useModules'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
-import { apiErrorText } from "@/lib/api-error-text"
-import { useDialog } from '@/lib/useDialog'
+import { apiErrorText } from '@/lib/api-error-text'
 import { useBusyAction } from '@/lib/useBusyAction'
+import { countOf } from '@/lib/plural'
+import { usedDayOffCredit } from '@/lib/day-off-credit'
+import { spansDays } from '@/lib/day-off-range'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import type { TranslationKey } from '@/lib/translations'
+import { dayOffListUrl } from './list-query'
 
-// Badge color + translation key per type, keyed once here rather than as a
-// chained ternary — REGULAR/CASUAL/SICK are reachable from the request
-// form below; EMERGENCY/UNPAID are valid DayOffType values with no form
-// entry point yet, kept here so an existing/future row of either still
-// renders correctly instead of silently falling back to "Regular."
-const DAY_OFF_TYPE_STYLE: Record<string, { bg: string; color: string; labelKey: string }> = {
-    REGULAR: { bg: 'var(--info-bg)', color: 'var(--info-fg)', labelKey: 'regular_day_off' },
-    CASUAL: { bg: 'var(--lifetime-bg)', color: 'var(--accent-fg)', labelKey: 'casual_day_off' },
-    SICK: { bg: 'var(--danger-bg)', color: 'var(--danger-fg-strong)', labelKey: 'sick_day_off' },
-    EMERGENCY: { bg: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm-strong)', labelKey: 'emergency_day_off' },
-    UNPAID: { bg: 'var(--surface-sunk)', color: 'var(--text-muted)', labelKey: 'unpaid_day_off' },
+// The label per type, keyed once here rather than as a chained ternary.
+// REGULAR, CASUAL and SICK can be asked for with the form below; EMERGENCY and
+// UNPAID are valid DayOffType values with no form entry yet, kept so an
+// existing row of either still reads correctly instead of as "Regular".
+const DAY_OFF_TYPE_LABEL: Record<string, TranslationKey> = {
+    REGULAR: 'regular_day_off',
+    CASUAL: 'casual_day_off',
+    SICK: 'sick_day_off',
+    EMERGENCY: 'emergency_day_off',
+    UNPAID: 'unpaid_day_off',
 }
+
+const STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
+const STATUS_TONE: Record<string, StatusTone> = { PENDING: 'neutral', APPROVED: 'good', REJECTED: 'problem' }
 
 interface DayOffRequest {
     id: string
@@ -54,9 +65,22 @@ interface DayOffRequest {
     }
 }
 
+/** The work days a request covers: every day but Friday. */
+function workDays(start: string, end?: string | null) {
+    const from = new Date(start)
+    from.setHours(0, 0, 0, 0)
+    const to = end ? new Date(end) : new Date(start)
+    to.setHours(0, 0, 0, 0)
+    let count = 0
+    for (const day = new Date(from); day <= to; day.setDate(day.getDate() + 1)) {
+        if (day.getDay() !== 5) count++
+    }
+    return count
+}
+
 export default function DayOffRequestsPage() {
     const { t, locale } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
+    const { showToast } = useToast()
     const modules = useModules()
     const { data: session, status } = useSession()
     const user = session?.user
@@ -66,66 +90,63 @@ export default function DayOffRequestsPage() {
     const managesRequests = can('dayoff.view')
     const canDecide = can('dayoff.approve')
     const { selectedCompanyId: contextCompanyId } = useCompany()
-
-    const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
-    const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
-    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
-    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
-    const requestDialog = useDialog(isRequestModalOpen, () => setIsRequestModalOpen(false))
-    const approvalDialog = useDialog(isApprovalModalOpen && !!selectedRequest, () => setIsApprovalModalOpen(false))
-    const rejectDialog = useDialog(isRejectModalOpen && !!selectedRequest, () => setIsRejectModalOpen(false))
-    const [daysToDeduct, setDaysToDeduct] = useState('')
-    const [chosenDeduction, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
-    const [rejectionReason, setRejectionReason] = useState('')
-
-    // New Request Form State
-    const [reqDate, setReqDate] = useState('')
-    const [reqEndDate, setReqEndDate] = useState('')
-    const [reqType, setReqType] = useState<'REGULAR' | 'SICK' | 'CASUAL'>('REGULAR')
-    const [reqReason, setReqReason] = useState('')
-    const [submitting, setSubmitting] = useState(false)
-    const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-
-    // Filter State
-    const [filters, setFilters] = useState({
-        employeeId: '',
-        dateFrom: '',
-        dateTo: '',
-        status: '',
-        search: ''
-    })
-
-    const [page, setPage] = useState(1)
-    const action = useBusyAction()
-    const limit = 10
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     // Shown for six seconds after arriving via ?highlight=. See
     // lib/useFadingHighlight.ts for why this is not an effect any more.
     const visualHighlightId = useFadingHighlight(highlightId, 6000)
 
-    // F-25: was two useCallback+useEffect fetch cycles gated on
-    // status === 'authenticated'. SWR's key itself is the gate — null
-    // until authenticated, so no fetch happens before then, matching the
-    // original guard exactly.
-    const requestsQuery = (() => {
-        if (status !== 'authenticated') return null
-        const endpoint = managesRequests ? '/api/admin/day-off-requests' : '/api/day-off-requests'
-        const queryParams = new URLSearchParams()
-        if (managesRequests && contextCompanyId) {
-            queryParams.set('companyId', contextCompanyId)
-        }
-        queryParams.set('page', page.toString())
-        queryParams.set('limit', limit.toString())
-        return `${endpoint}?${queryParams.toString()}`
-    })()
-    const { data: requestsResult, isLoading: loading, mutate: fetchRequests } = useSWR(requestsQuery, fetcher)
-    const requests: DayOffRequest[] = requestsResult?.data?.data || requestsResult?.data || []
-    const total: number = requestsResult?.data?.total || (Array.isArray(requestsResult?.data) ? requestsResult.data.length : 0)
-    const totalPages: number = requestsResult?.data?.totalPages || 1
+    // Filters. A link can open the list on a status, as the dashboard's
+    // "Day off requests" tile opens it on the pending ones.
+    const [query, setQuery] = useState('')
+    const [search, setSearch] = useState('')
+    const [statusFilter, setStatusFilter] = useState(() => {
+        const asked = searchParams.get('status')
+        return asked && (STATUSES as readonly string[]).includes(asked) ? asked : ''
+    })
+    const [employeeId, setEmployeeId] = useState('')
+    const [dateFrom, setDateFrom] = useState('')
+    const [dateTo, setDateTo] = useState('')
+    const [page, setPage] = useState(1)
+    const limit = 10
 
-    // User Credit Info — only ever needed for non-admins viewing their own
-    // request history.
+    // The search is sent once typing pauses, not on every key.
+    useEffect(() => {
+        if (query.trim() === search) return
+        const timer = setTimeout(() => { setSearch(query.trim()); setPage(1) }, 400)
+        return () => clearTimeout(timer)
+    }, [query, search])
+
+    const requestsQuery = status === 'authenticated' ? dayOffListUrl({
+        manages: managesRequests,
+        page, limit,
+        companyId: contextCompanyId,
+        status: statusFilter,
+        employeeId,
+        from: dateFrom,
+        to: dateTo,
+        search,
+    }) : null
+    const { data: requestsResult, isLoading, mutate: fetchRequests } = useSWR(requestsQuery, fetcher, { keepPreviousData: true })
+    const requests: DayOffRequest[] = requestsResult?.data?.data || []
+    const total: number = requestsResult?.data?.total || 0
+    const totalPages: number = requestsResult?.data?.totalPages || 0
+
+    // Another company: its first page, without an employee from the last
+    // one. Fewer pages, as when the last request on the last page goes: the
+    // last page there is now. An empty page shows no pager to leave it by.
+    useAdjustOnChange([contextCompanyId], () => { setPage(1); setEmployeeId('') })
+    useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
+
+    // The people a manager can pick from: the server keeps a Team Leader's
+    // list to their team.
+    const peopleQuery = status === 'authenticated' && managesRequests
+        ? `/api/users?limit=1000${user?.role === 'SUPER_ADMIN' && contextCompanyId ? `&companyId=${contextCompanyId}` : ''}`
+        : null
+    const { data: peopleResult } = useSWR(peopleQuery, fetcher)
+    const people: { id: string; firstName: string; lastName: string }[] = peopleResult?.data?.data || []
+
+    // One's own credit, for someone looking at their own requests.
     const userCreditQuery = status === 'authenticated' && !managesRequests && user?.id ? `/api/users?id=${user.id}` : null
     const { data: userCreditResult } = useSWR(userCreditQuery, fetcher)
     const foundUser = (() => {
@@ -135,29 +156,36 @@ export default function DayOffRequestsPage() {
     })()
     const userCredit: number = foundUser?.dayOffCredit || 0
     const baseCredit: number = (foundUser?.baseDayOffCredit !== undefined && foundUser?.baseDayOffCredit !== null) ? foundUser.baseDayOffCredit : (foundUser?.dayOffCredit || 0)
+    const usedByCredit = usedDayOffCredit(baseCredit, userCredit)
 
+    // Brought into view when the page opens on one (a notification's link),
+    // or when it turns up on a later page: it's when the request is in the
+    // list that counts, not how long the list is, as every full page is ten.
+    // The list has the request twice, as a table row and as a phone card, so
+    // it's the one showing at this width.
+    const highlightShown = !!highlightId && requests.some(r => r.id === highlightId)
     useEffect(() => {
-        setTitle(modules.label('dayOff'))
-        setSubtitle(t('day_off_requests_subtitle' as any))
-        return () => {
-            setTitle(null)
-            setSubtitle(null)
-        }
-    }, [setTitle, setSubtitle, t, modules])
+        if (!highlightId || !highlightShown) return
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        visibleRow(highlightId)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+    }, [highlightId, highlightShown])
 
-    // Scroll to highlighted request. Depends on requests.length rather than
-    // `requests` itself — the derived array below gets a new reference on
-    // every render (a fresh `[]` fallback whenever there's no SWR data
-    // yet), which would otherwise re-fire this effect every render instead
-    // of only when the highlighted request set actually changes.
-    useEffect(() => {
-        if (highlightId && !loading && requests.length > 0) {
-            const element = document.getElementById(`request-${highlightId}`);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    }, [highlightId, loading, requests.length]);
+    // Asking for a day off.
+    const [isRequestOpen, setIsRequestOpen] = useState(false)
+    const [reqDate, setReqDate] = useState('')
+    const [reqEndDate, setReqEndDate] = useState('')
+    const [reqType, setReqType] = useState<'REGULAR' | 'SICK' | 'CASUAL'>('REGULAR')
+    const [reqReason, setReqReason] = useState('')
+    const [submitting, setSubmitting] = useState(false)
+
+    // Deciding one.
+    const [selectedRequest, setSelectedRequest] = useState<DayOffRequest | null>(null)
+    const [isApprovalOpen, setIsApprovalOpen] = useState(false)
+    const [isRejectOpen, setIsRejectOpen] = useState(false)
+    const [daysToDeduct, setDaysToDeduct] = useState('')
+    const [chosenDeduction, setDeductionType] = useState<'CREDIT' | 'SALARY'>('CREDIT')
+    const [rejectionReason, setRejectionReason] = useState('')
+    const action = useBusyAction()
 
     // When the credit can't cover the days being deducted, the deduction comes
     // out of salary whatever was picked. Derived on every render rather than
@@ -165,11 +193,6 @@ export default function DayOffRequestsPage() {
     // could submit) CREDIT for one pass before correcting itself.
     const creditShort = !!selectedRequest && (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0)
     const deductionType: 'CREDIT' | 'SALARY' = creditShort ? 'SALARY' : chosenDeduction
-
-    const showAlert = (type: 'success' | 'error', message: string) => {
-        setAlert({ type, message })
-        setTimeout(() => setAlert(null), 3000)
-    }
 
     const handleSubmitRequest = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -186,683 +209,255 @@ export default function DayOffRequestsPage() {
                     // EMERGENCY/UNPAID requests have no end date at all.
                     endDate: reqType === 'REGULAR' ? reqEndDate : undefined,
                     type: reqType,
-                    reason: reqReason
-                })
+                    reason: reqReason,
+                }),
             })
             if (res.ok) {
-                showAlert('success', t('request_submitted_success' as any))
-                setIsRequestModalOpen(false)
+                showToast(t('request_submitted_success'), 'success')
+                setIsRequestOpen(false)
                 fetchRequests()
-                // Reset form
                 setReqDate('')
                 setReqEndDate('')
                 setReqReason('')
             } else {
                 const err = await res.text()
-                showAlert('error', apiErrorText(err, t('failed_submit_request' as any)))
+                showToast(apiErrorText(err, t('failed_submit_request')), 'error')
             }
         } catch {
-            showAlert('error', t('error_generic'))
+            showToast(t('error_generic'), 'error')
         } finally {
             setSubmitting(false)
         }
     }
 
-    const calculateWorkDays = (start: string, end?: string | null) => {
-        const startDate = new Date(start)
-        startDate.setHours(0, 0, 0, 0)
-        const endDate = end ? new Date(end) : new Date(start)
-        endDate.setHours(0, 0, 0, 0)
-
-        let count = 0
-        const current = new Date(startDate)
-        while (current <= endDate) {
-            if (current.getDay() !== 5) { // 5 is Friday
-                count++
-            }
-            current.setDate(current.getDate() + 1)
-        }
-        return count
-    }
-
-    const handleAction = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
-        const req = requests.find(r => r.id === requestId)
-        setSelectedRequest(req || null)
+    const openDecision = (req: DayOffRequest, decision: 'APPROVED' | 'REJECTED') => {
+        setSelectedRequest(req)
         setDeductionType('CREDIT')
-
-        if (status === 'APPROVED' && req) {
-            const days = calculateWorkDays(req.date, req.endDate)
-            setDaysToDeduct(days.toString())
-            setIsApprovalModalOpen(true)
-        } else if (status === 'REJECTED') {
+        if (decision === 'APPROVED') {
+            setDaysToDeduct(String(workDays(req.date, req.endDate)))
+            setIsApprovalOpen(true)
+        } else {
             setRejectionReason('')
-            setIsRejectModalOpen(true)
+            setIsRejectOpen(true)
         }
     }
 
-    const processAction = async (requestId: string, status: 'APPROVED' | 'REJECTED', deduction?: string, type?: 'CREDIT' | 'SALARY') => {
+    const processAction = async (requestId: string, decision: 'APPROVED' | 'REJECTED', deduction?: string, type?: 'CREDIT' | 'SALARY') => {
         try {
             const res = await fetch(`/api/admin/day-off-requests/${requestId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    status,
+                    status: decision,
                     daysToDeduct: deduction,
                     deductionType: type,
                     // Only sent on a rejection; the schema caps it at 300 chars
                     // and treats an empty string as "no reason given".
-                    ...(status === 'REJECTED' ? { rejectionReason: rejectionReason.trim() } : {})
-                })
+                    ...(decision === 'REJECTED' ? { rejectionReason: rejectionReason.trim() } : {}),
+                }),
             })
             if (res.ok) {
-                showAlert('success', t('request_action_success' as any))
-                setIsApprovalModalOpen(false)
-                setIsRejectModalOpen(false)
+                showToast(t('request_action_success'), 'success')
+                setIsApprovalOpen(false)
+                setIsRejectOpen(false)
                 fetchRequests()
             } else {
-                showAlert('error', t('error_generic'))
+                showToast(t('error_generic'), 'error')
             }
         } catch {
-            showAlert('error', t('error_generic'))
+            showToast(t('error_generic'), 'error')
         }
     }
 
-    // Pie Chart Data
-    const usedByCredit = Math.max(0, baseCredit - userCredit)
+    const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const num = (n: number) => n.toLocaleString(dateLocale)
+    const day = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })
+    const days = (n: number) => countOf(t, locale, n, 'days')
+    const nameOf = (r: DayOffRequest) => r.user ? `${r.user.firstName} ${r.user.lastName}` : ''
+    const typeLabel = (r: DayOffRequest) => t(DAY_OFF_TYPE_LABEL[r.type] ?? 'regular_day_off')
+    // A range shows both ends only when it runs past its first day.
+    const range = (r: DayOffRequest) => spansDays(r.date, r.endDate)
+        ? `${day(r.date)} – ${day(r.endDate!)}`
+        : day(r.date)
+    const requestedOn = (r: DayOffRequest) => t('requested_on_date').replace('{date}', day(r.createdAt))
+    const statusBadge = (r: DayOffRequest) => <StatusBadge tone={STATUS_TONE[r.status] ?? 'neutral'}>{t(`status_${r.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
+    // What came of it: the days taken and where from, or why it was refused.
+    const outcome = (r: DayOffRequest) => r.status === 'APPROVED'
+        ? t(r.deductionType === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', days(r.daysDeducted || 0))
+        : r.status === 'REJECTED' && r.rejectionReason ? `${t('rejected_reason_prefix')}: ${r.rejectionReason}` : null
+    const decidable = (r: DayOffRequest) => canDecide && r.status === 'PENDING' && canFor('dayoff.approve', r.userId, r.user?.teamLeaderId)
+    const decisions = (r: DayOffRequest) => decidable(r) && (
+        <span className="ui-row-actions">
+            <Button size="sm" icon={CheckIcon} onClick={() => openDecision(r, 'APPROVED')}>{t('approve_button')}</Button>
+            <Button size="sm" icon={XIcon} onClick={() => openDecision(r, 'REJECTED')}>{t('reject_button')}</Button>
+        </span>
+    )
 
-    const formatDays = (days: number) => {
-        if (locale === 'ar') {
-            if (days === 1) return t('day_singular' as any)
-            if (days === 2) return t('day_dual')
-            return `${days} ${t('days_label')}`
-        }
-        return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
-    }
-
-    // Filter Logic
-    const filteredRequests = requests.filter(req => {
-        const matchesEmployee = !filters.employeeId || req.userId === filters.employeeId
-        const matchesStatus = !filters.status || req.status === filters.status
-        const matchesSearch = !filters.search ||
-            (req.reason || '').toLowerCase().includes(filters.search.toLowerCase())
-
-        let matchesDate = true
-        if (filters.dateFrom || filters.dateTo) {
-            const rDate = new Date(req.date)
-            rDate.setHours(0, 0, 0, 0)
-            if (filters.dateFrom) {
-                const fDate = new Date(filters.dateFrom)
-                fDate.setHours(0, 0, 0, 0)
-                if (rDate < fDate) matchesDate = false
-            }
-            if (filters.dateTo) {
-                const tDate = new Date(filters.dateTo)
-                tDate.setHours(0, 0, 0, 0)
-                if (rDate > tDate) matchesDate = false
-            }
-        }
-
-        return matchesEmployee && matchesStatus && matchesSearch && matchesDate
-    })
-
-
-
-    const pieData = [
-        { name: t('remaining_credit' as any), value: userCredit },
-        { name: t('used_credit' as any), value: usedByCredit }
+    const columns: Column<DayOffRequest>[] = [
+        ...(managesRequests ? [{ key: 'who', header: t('employee'), cell: (r: DayOffRequest) => <ItemTitle title={nameOf(r)} detail={requestedOn(r)} /> }] : []),
+        { key: 'type', header: t('type_label'), cell: r => <ItemTitle title={typeLabel(r)} detail={r.reason || t('no_reason_provided')} /> },
+        { key: 'dates', header: t('date_label'), cell: r => <ItemTitle title={range(r)} detail={days(workDays(r.date, r.endDate))} /> },
+        {
+            key: 'status', header: t('status_label'), cell: r => (
+                <>
+                    {statusBadge(r)}
+                    {(outcome(r) || !managesRequests) && <div className="ui-item-detail">{outcome(r) ?? requestedOn(r)}</div>}
+                </>
+            ),
+        },
+        ...(canDecide ? [{ key: 'decide', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: (r: DayOffRequest) => decisions(r) || null }] : []),
     ]
-    const COLORS = ['var(--ok-solid)', 'var(--danger-solid)']
+
+    const filtersOn = [statusFilter, employeeId, dateFrom || dateTo].filter(Boolean).length
+    const resetFilters = () => {
+        setQuery(''); setSearch(''); setStatusFilter(''); setEmployeeId(''); setDateFrom(''); setDateTo(''); setPage(1)
+    }
 
     return (
-        <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            {alert && (
-                <div style={{
-                    position: 'fixed',
-                    top: '2rem',
-                    right: locale === 'ar' ? 'auto' : '2rem',
-                    left: locale === 'ar' ? '2rem' : 'auto',
-                    padding: '0.75rem 1.25rem',
-                    borderRadius: '0.5rem',
-                    background: alert.type === 'success' ? 'var(--ok-bg)' : 'var(--danger-bg)',
-                    color: alert.type === 'success' ? 'var(--ok-fg)' : 'var(--danger-fg)',
-                    border: `1px solid ${alert.type === 'success' ? 'var(--ok-border)' : 'var(--danger-border-firm)'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    boxShadow: '0 4px 6px -1px var(--shadow-weak), 0 2px 4px -1px var(--shadow-faint)',
-                    zIndex: 1000,
-                    width: 'calc(100vw - 3rem)',
-                    minWidth: '200px',
-                    maxWidth: '350px',
-                    animation: 'slideInRight 0.3s ease-out'
-                }}>
-                    <span aria-hidden="true" style={{ fontSize: '1rem' }}>
-                        {alert.type === 'success' ? '✓' : '✕'}
-                    </span>
-                    {alert.message}
-                </div>
-            )}
-            <EmployeeFilter
-                onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))}
-                selectedEmployeeId={filters.employeeId}
-                dateFrom={filters.dateFrom}
-                dateTo={filters.dateTo}
-                selectedStatus={filters.status}
-                searchQuery={filters.search}
-                isEmployee={!managesRequests}
-                hideSearch={false}
-                placeholder={locale === 'ar' ? 'بحث في السبب' : 'Search Reason'}
-                totalCount={total}
-                allowedStatuses={['PENDING', 'APPROVED', 'REJECTED']}
-                primaryAction={
-                    !managesRequests ? (
-                        <button onClick={() => setIsRequestModalOpen(true)} className="btn btn-primary" style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}>
-                            {t('request_day_off' as any)}
-                        </button>
-                    ) : null
-                }
+        <Page>
+            <PageHeader
+                title={modules.label('dayOff')}
+                subtitle={t('day_off_requests_subtitle')}
+                action={!managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>}
             />
 
-            <div className={managesRequests ? "" : "responsive-sidebar-grid"} style={{ display: managesRequests ? 'grid' : undefined, gridTemplateColumns: managesRequests ? '1fr' : undefined, gap: '1.5rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {/* User Credit Stats - Mobile only */}
-                    {!managesRequests && (
-                        <div className="show-on-mobile" style={{ display: 'none', width: '100%', marginBottom: '0.5rem', marginTop: '-0.75rem' }}>
-                            <div style={{ display: 'flex', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end', width: '100%' }}>
-                                {(() => {
-                                    const totalCredit = baseCredit;
-                                    const percentage = totalCredit > 0 ? userCredit / totalCredit : 1;
+            {!managesRequests && (
+                <TotalTiles items={[
+                    { label: t('remaining_credit'), value: days(userCredit) },
+                    { label: t('used_credit'), value: days(usedByCredit) },
+                ]} />
+            )}
 
-                                    let colors = { bg: 'var(--ok-bg)', text: 'var(--ok-fg)', border: 'var(--ok-bg-strong)' }; // Green
-                                    if (percentage < 0.3) {
-                                        colors = { bg: 'var(--danger-bg-subtle)', text: 'var(--danger-fg)', border: 'var(--danger-border)' }; // Red
-                                    } else if (percentage < 0.6) {
-                                        colors = { bg: 'var(--warn-bg-warm-subtle)', text: 'var(--warn-fg-warm)', border: 'var(--warn-border-warm)' }; // Orange
-                                    }
-
-                                    return (
-                                        <div style={{
-                                            background: colors.bg,
-                                            border: `1.5px solid ${colors.border}`,
-                                            borderRadius: '1rem',
-                                            padding: '0.6rem 0.875rem',
-                                            textAlign: 'center',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '0.1rem',
-                                            boxShadow: '0 2px 4px -1px var(--shadow-faint)',
-                                            width: 'fit-content'
-                                        }}>
-                                            <span style={{ fontSize: '0.6rem', fontWeight: '800', color: colors.text, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                {t('remaining_day_off_credit' as any)}
-                                            </span>
-                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
-                                                <span style={{ fontSize: '1.5rem', fontWeight: '900', color: colors.text, lineHeight: 1 }}>
-                                                    {userCredit}
-                                                </span>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: colors.text, opacity: 0.8 }}>
-                                                    {t('days_label')}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        </div>
-                    )}
-
-                    {loading ? (
-                        <LoadingSpinner message={t('loading_requests')} />
-                    ) : filteredRequests.length === 0 ? (
-                        <div className="glass-card flex flex-col items-center justify-center py-16 text-center text-slate-500">
-                            <span className="text-5xl mb-4">{modules.icon('dayOff')}</span>
-                            <h3 className="text-xl font-bold text-slate-800">{t('no_records_found')}</h3>
-                            <p className="max-w-xs mx-auto mt-2 text-slate-500">
-                                {(filters.search || filters.status || filters.employeeId) ? (t('no_search_results' as any) || 'No results match your filters') : ''}
-                            </p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(350px, 100%), 1fr))', gap: '1rem' }}>
-                            {filteredRequests.map((req, index) => (
-                                <div
-                                    key={req.id}
-                                    id={`request-${req.id}`}
-                                    className={`glass-card hover:bg-white/60 transition-all duration-300 p-5 border border-white/40 shadow-sm relative overflow-hidden flex flex-col gap-4 ${visualHighlightId === req.id ? 'highlight-pulse' : ''}`}
-                                    style={{
-                                        animation: visualHighlightId === req.id ? 'none' : 'fadeIn 0.4s ease-out forwards',
-                                        animationDelay: `${index * 50}ms`,
-                                        borderInlineStart: visualHighlightId === req.id ? '4px solid var(--accent-solid)' : '',
-                                        background: visualHighlightId === req.id ? 'var(--highlight-tint)' : ''
-                                    }}
-                                >
-                                    {/* Card Header */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            {managesRequests && (
-                                                <h3 className="text-lg font-bold text-slate-800 leading-tight">
-                                                    {req.user?.firstName} {req.user?.lastName}
-                                                </h3>
-                                            )}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-soft)', fontSize: '0.85rem', fontWeight: '600' }}>
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                                </svg>
-                                                {new Date(req.date).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                {req.endDate && new Date(req.endDate).getTime() > new Date(req.date).getTime() + 86400000 && (
-                                                    <> - {new Date(req.endDate).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}</>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <span style={{
-                                            padding: '0.375rem 0.875rem',
-                                            borderRadius: '1rem',
-                                            fontSize: '0.8rem',
-                                            fontWeight: '800',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.025em',
-                                            background: req.status === 'APPROVED' ? 'var(--ok-bg)' : req.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--warn-bg-yellow)',
-                                            color: req.status === 'APPROVED' ? 'var(--ok-fg)' : req.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--warn-fg-yellow)',
-                                            boxShadow: '0 2px 4px var(--shadow-faint)'
-                                        }}>
-                                            {t(`status_${req.status.toLowerCase()}` as any)}
-                                        </span>
-                                    </div>
-
-                                    {/* Card Content */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                            <span style={{
-                                                padding: '0.25rem 0.625rem',
-                                                borderRadius: '0.5rem',
-                                                fontSize: '0.75rem',
-                                                fontWeight: '700',
-                                                background: (DAY_OFF_TYPE_STYLE[req.type] || DAY_OFF_TYPE_STYLE.REGULAR).bg,
-                                                color: (DAY_OFF_TYPE_STYLE[req.type] || DAY_OFF_TYPE_STYLE.REGULAR).color
-                                            }}>
-                                                {t((DAY_OFF_TYPE_STYLE[req.type] || DAY_OFF_TYPE_STYLE.REGULAR).labelKey as any)}
-                                            </span>
-                                            {/* Applied Days Badge - Always Visible */}
-                                            <span style={{
-                                                padding: '0.25rem 0.625rem',
-                                                borderRadius: '0.5rem',
-                                                fontSize: '0.75rem',
-                                                fontWeight: '700',
-                                                background: 'var(--surface-subtle)',
-                                                color: 'var(--text-soft)',
-                                                border: '1px solid var(--border)'
-                                            }}>
-                                                {formatDays(calculateWorkDays(req.date, req.endDate))}
-                                            </span>
-                                            {req.status === 'APPROVED' && (
-                                                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                                    <span style={{
-                                                        fontSize: '0.75rem',
-                                                        padding: '0.25rem 0.625rem',
-                                                        borderRadius: '0.5rem',
-                                                        background: req.deductionType === 'SALARY' ? 'var(--danger-bg)' : 'var(--ok-bg)',
-                                                        color: req.deductionType === 'SALARY' ? 'var(--danger-fg)' : 'var(--ok-fg)',
-                                                        fontWeight: '700',
-                                                        border: `1px solid ${req.deductionType === 'SALARY' ? 'var(--danger-border-firm)' : 'var(--ok-border)'}`
-                                                    }}>
-                                                        {formatDays(req.daysDeducted || 0)} {t('deduct_from_label' as any)} {req.deductionType === 'SALARY' ? t('deduct_from_salary' as any) : t('deduct_from_credit' as any)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {req.reason ? (
-                                            <div style={{
-                                                margin: 0,
-                                                fontSize: '0.9rem',
-                                                color: 'var(--text-muted)',
-                                                lineHeight: '1.5',
-                                                background: 'var(--hairline)',
-                                                padding: '0.75rem',
-                                                borderRadius: '0.75rem',
-                                                fontStyle: 'italic',
-                                                maxHeight: '80px', // Lower threshold
-                                                overflowY: 'auto',
-                                                overflowWrap: 'anywhere', // Better for long strings while keeping words whole
-                                                scrollbarWidth: 'thin',
-                                                display: 'block'
-                                            }}>
-                                                &quot;{req.reason}&quot;
-                                            </div>
-                                        ) : (
-                                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>
-                                                {t('no_reason_provided')}
-                                            </p>
-                                        )}
-                                        {req.status === 'REJECTED' && req.rejectionReason && (
-                                            <div style={{
-                                                fontSize: '0.85rem',
-                                                color: 'var(--danger-fg)',
-                                                lineHeight: '1.5',
-                                                background: 'var(--danger-bg-subtle)',
-                                                border: '1px solid var(--danger-border)',
-                                                padding: '0.75rem',
-                                                borderRadius: '0.75rem',
-                                                maxHeight: '80px',
-                                                overflowY: 'auto',
-                                                overflowWrap: 'anywhere',
-                                                scrollbarWidth: 'thin'
-                                            }}>
-                                                <strong>{t('rejected_reason_prefix' as any)}:</strong> {req.rejectionReason}
-                                            </div>
-                                        )}
-                                        <div style={{
-                                            fontSize: '0.75rem',
-                                            color: 'var(--text-faint)',
-                                            fontStyle: 'italic',
-                                            display: 'flex',
-                                            gap: '0.35rem',
-                                            marginTop: '0.25rem',
-                                            justifyContent: 'flex-start'
-                                        }}>
-                                            <span>{locale === 'ar' ? 'تم الطلب في:' : 'Requested on:'}</span>
-                                            <span>
-                                                {new Date(req.createdAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: true })}, {new Date(req.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Card Actions (Admin only) */}
-                                    {canDecide && req.status === 'PENDING' && canFor('dayoff.approve', req.userId, req.user?.teamLeaderId) && (
-                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px dashed var(--border)' }}>
-                                            <button
-                                                onClick={() => handleAction(req.id, 'APPROVED')}
-                                                className="btn"
-                                                style={{
-                                                    flex: 1,
-                                                    background: 'var(--ok-fill)',
-                                                    color: 'var(--text-on-accent)',
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: '700',
-                                                    height: '40px',
-                                                    borderRadius: '0.75rem'
-                                                }}
-                                            >
-                                                {t('approve_button')}
-                                            </button>
-                                            <button
-                                                onClick={() => handleAction(req.id, 'REJECTED')}
-                                                className="btn"
-                                                style={{
-                                                    flex: 1,
-                                                    background: 'var(--danger-fill)',
-                                                    color: 'var(--text-on-accent)',
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: '700',
-                                                    height: '40px',
-                                                    borderRadius: '0.75rem'
-                                                }}
-                                            >
-                                                {t('reject_button')}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <Pagination
-                        currentPage={page}
-                        totalPages={totalPages}
-                        onPageChange={(p) => setPage(p)}
-                    />
-                </div>
-
-                {!managesRequests && (
-                    <div className="hide-on-mobile" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <div className="card" style={{ height: 'fit-content' }}>
-                            <h2 className="text-xl font-semibold mb-4">{t('credit_overview' as any)}</h2>
-                            <div style={{ height: '250px' }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={pieData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {pieData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                                <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--ok-fg-strong)' }}>{formatDays(userCredit)}</p>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('remaining_credit' as any)}</p>
-                            </div>
-                        </div>
-                    </div>
+            <FilterBar
+                search={<Field label={t('dayoff_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('dayoff_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
+                activeCount={filtersOn}
+                onReset={filtersOn > 0 || query ? resetFilters : undefined}
+            >
+                <Field label={t('status_label')} hideLabel>{p => (
+                    <Select {...p} icon={CircleHalfIcon} value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+                        options={[{ value: '', label: t('all_statuses') }, ...STATUSES.map(s => ({ value: s, label: t(`status_${s.toLowerCase()}` as TranslationKey) }))]} />
+                )}</Field>
+                {managesRequests && (
+                    <Field label={t('employee')} hideLabel>{p => (
+                        <Select {...p} icon={UserIcon} value={employeeId} onChange={e => { setEmployeeId(e.target.value); setPage(1) }}
+                            options={[{ value: '', label: t('all_employees') }, ...people.map(u => ({ value: u.id, label: `${u.firstName} ${u.lastName}` }))]} />
+                    )}</Field>
                 )}
-            </div>
+                <DateRangePicker asField hideLabel dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1) }} />
+            </FilterBar>
 
-            {/* Request Modal */}
-            {isRequestModalOpen && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div {...requestDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 id={requestDialog.titleId} className="text-xl font-bold mb-4">{t('request_day_off' as any)}</h2>
-                        <form onSubmit={handleSubmitRequest}>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('day_off_type' as any)}</label>
-                                <select aria-label={t('day_off_type' as any)} className="input" value={reqType} onChange={e => {
-                                    setReqType(e.target.value as any);
-                                    setReqDate('');
-                                    setReqEndDate('');
-                                }}>
-                                    <option value="REGULAR">{t('regular_day_off' as any)}</option>
-                                    <option value="CASUAL">{t('casual_day_off' as any)}</option>
-                                    <option value="SICK">{t('sick_day_off' as any)}</option>
-                                </select>
-                            </div>
-                            {reqType === 'REGULAR' ? (
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <DateRangePicker
-                                        label={locale === 'ar' ? 'تاريخ الإجازة' : 'Date Range'}
-                                        dateFrom={reqDate}
-                                        dateTo={reqEndDate}
-                                        onChange={(from, to) => {
-                                            setReqDate(from);
-                                            setReqEndDate(to);
-                                        }}
-                                    />
-                                </div>
-                            ) : (
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <DatePickerSingle
-                                        label={t('select_date' as any)}
-                                        value={reqDate}
-                                        onChange={date => {
-                                            setReqDate(date);
-                                            setReqEndDate(date);
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('reason_label' as any)}</label>
-                                <textarea aria-label={t('reason_label' as any)}
-                                    className="input"
-                                    style={{ height: '80px', resize: 'none' }}
-                                    placeholder={t('reason_placeholder' as any)}
-                                    value={reqReason}
-                                    onChange={e => setReqReason(e.target.value)}
-                                    maxLength={100}
-                                />
-                                <div style={{
-                                    fontSize: '0.75rem',
-                                    color: reqReason.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)',
-                                    textAlign: locale === 'ar' ? 'left' : 'right',
-                                    marginTop: '0.25rem'
-                                }}>
-                                    {reqReason.length}/100
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                                    {submitting ? t('creating') : t('confirm')}
-                                </button>
-                                <button type="button" onClick={() => setIsRequestModalOpen(false)} className="btn">
-                                    {t('cancel')}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+            {isLoading && !requestsResult ? <LoadingSpinner message={t('loading_requests')} /> : (
+                <DataList
+                    caption={modules.label('dayOff')}
+                    columns={columns}
+                    rows={requests}
+                    rowKey={r => r.id}
+                    tone={r => visualHighlightId === r.id ? 'selected' : undefined}
+                    card={r => (
+                        <ListCard
+                            title={managesRequests ? nameOf(r) : typeLabel(r)}
+                            status={statusBadge(r)}
+                            details={[
+                                { icon: CalendarBlankIcon, text: `${range(r)} (${days(workDays(r.date, r.endDate))})` },
+                                ...(managesRequests ? [{ icon: TagIcon, text: typeLabel(r) }] : []),
+                                { icon: ChatTextIcon, text: r.reason || t('no_reason_provided') },
+                                ...(outcome(r) ? [{ icon: r.status === 'APPROVED' ? WalletIcon : XCircleIcon, text: outcome(r) }] : []),
+                            ]}
+                            foot={<><span className="ui-meta">{requestedOn(r)}</span>{decisions(r)}</>}
+                        />
+                    )}
+                    footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'requests')} />}
+                    empty={<EmptyState icon={CalendarBlankIcon} title={filtersOn > 0 || search ? t('no_search_results') : t('no_day_off_requests_yet')} action={filtersOn > 0 || search
+                        ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
+                        : !managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>} />}
+                />
             )}
 
-            {/* Approval Modal (Deduction Popup) */}
-            {isApprovalModalOpen && selectedRequest && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div {...approvalDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 id={approvalDialog.titleId} className="text-xl font-bold mb-4">{t('approve_deduction_title' as any)}</h2>
-                        <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-soft)' }}>
-                            {selectedRequest.user?.firstName} {selectedRequest.user?.lastName} - {t('day_off_credit')}: {selectedRequest.user?.dayOffCredit}
-                        </p>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('days_to_deduct_label' as any)}</label>
-                            <input aria-label={t('days_to_deduct_label' as any)}
-                                type="number"
-                                className="input"
-                                value={daysToDeduct}
-                                onChange={e => setDaysToDeduct(e.target.value)}
-                                min="0"
-                                step="0.5"
-                            />
-                        </div>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-soft)' }}>{t('deduct_from_label' as any)}</label>
-                                {(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) && (
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--danger-fg-strong)', fontWeight: 'bold', background: 'var(--danger-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.25rem' }}>
-                                        <span aria-hidden="true">⚠️</span> {t('insufficient_credit' as any) || 'Insufficient Credit'}
-                                    </span>
-                                )}
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button
-                                    onClick={() => setDeductionType('CREDIT')}
-                                    disabled={(parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.625rem',
-                                        borderRadius: '0.75rem',
-                                        border: '1px solid var(--border)',
-                                        background: deductionType === 'CREDIT' ? 'var(--info-fill)' : 'var(--surface)',
-                                        color: deductionType === 'CREDIT' ? 'var(--text-on-accent)' : 'var(--text-soft)',
-                                        cursor: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 'not-allowed' : 'pointer',
-                                        fontWeight: '700',
-                                        fontSize: '0.875rem',
-                                        transition: 'all 0.2s',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem',
-                                        opacity: (parseFloat(daysToDeduct) || 0) > (selectedRequest.user?.dayOffCredit || 0) ? 0.5 : 1
-                                    }}
-                                >
-                                    <span aria-hidden="true">📅</span> {t('deduct_from_credit' as any)}
-                                </button>
-                                <button
-                                    onClick={() => setDeductionType('SALARY')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.625rem',
-                                        borderRadius: '0.75rem',
-                                        border: '1px solid var(--border)',
-                                        background: deductionType === 'SALARY' ? 'var(--info-fill)' : 'var(--surface)',
-                                        color: deductionType === 'SALARY' ? 'var(--text-on-accent)' : 'var(--text-soft)',
-                                        cursor: 'pointer',
-                                        fontWeight: '700',
-                                        fontSize: '0.875rem',
-                                        transition: 'all 0.2s',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '0.5rem'
-                                    }}
-                                >
-                                    <span aria-hidden="true">💵</span> {t('deduct_from_salary' as any)}
-                                </button>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button
-                                onClick={() => action.run('approve', () => processAction(selectedRequest.id, 'APPROVED', daysToDeduct, deductionType))}
-                                disabled={action.running}
-                                aria-busy={action.is('approve')}
-                                className="btn btn-primary"
-                            >
-                                {t('approve_button')}
-                            </button>
-                            <button type="button" onClick={() => setIsApprovalModalOpen(false)} className="btn">
-                                {t('cancel')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* Rejection Confirmation Modal */}
-            {isRejectModalOpen && selectedRequest && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div {...rejectDialog.panelProps} className="card" style={{ width: 'min(calc(100vw - 3rem), 400px)' }}>
-                        <h2 id={rejectDialog.titleId} className="text-xl font-bold mb-4">{t('confirm_rejection_title' as any)}</h2>
-                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>
-                            {t('are_you_sure_msg' as any)} {t('reject_button')} {selectedRequest.user?.firstName} {selectedRequest.user?.lastName}?
-                        </p>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label htmlFor="rejectionReason" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>
-                                {t('rejection_reason_label' as any)}
-                            </label>
-                            <textarea
-                                id="rejectionReason"
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                                maxLength={300}
-                                placeholder={t('rejection_reason_placeholder' as any)}
-                                className="input"
-                                // .input pins height to 42px, which clips a
-                                // multi-line textarea and makes `rows` a no-op
-                                // — the request form's textarea overrides it
-                                // the same way.
-                                style={{ height: '90px', resize: 'none', lineHeight: '1.4' }}
-                            />
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
-                                {rejectionReason.length}/300
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button
-                                onClick={() => action.run('reject', () => processAction(selectedRequest.id, 'REJECTED'))}
-                                disabled={action.running}
-                                aria-busy={action.is('reject')}
-                                className="btn"
-                                style={{ background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
-                            >
-                                {t('reject_button')}
-                            </button>
-                            <button type="button" onClick={() => setIsRejectModalOpen(false)} className="btn">
-                                {t('cancel')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+            <Dialog
+                open={isRequestOpen}
+                onClose={() => setIsRequestOpen(false)}
+                title={t('request_day_off')}
+                actions={<>
+                    <Button onClick={() => setIsRequestOpen(false)}>{t('cancel')}</Button>
+                    <Button variant="primary" type="submit" form="day-off-request" busy={submitting}>{t('send_request')}</Button>
+                </>}
+            >
+                <form id="day-off-request" onSubmit={handleSubmitRequest} className="ui-dialog-body">
+                    <Field label={t('day_off_type')}>{p => (
+                        <Select {...p} value={reqType} onChange={e => { setReqType(e.target.value as typeof reqType); setReqDate(''); setReqEndDate('') }}
+                            options={(['REGULAR', 'CASUAL', 'SICK'] as const).map(v => ({ value: v, label: t(DAY_OFF_TYPE_LABEL[v]) }))} />
+                    )}</Field>
+                    {reqType === 'REGULAR'
+                        ? <DateRangePicker asField label={t('dates_label')} dateFrom={reqDate} dateTo={reqEndDate} onChange={(from, to) => { setReqDate(from); setReqEndDate(to) }} />
+                        : <DatePickerSingle asField label={t('date_label')} value={reqDate} onChange={date => { setReqDate(date); setReqEndDate(date) }} />}
+                    <Field label={t('reason_label')} hint={t('ui_characters_used').replace('{used}', num(reqReason.length)).replace('{max}', num(100))}>{p => (
+                        <TextArea {...p} placeholder={t('reason_placeholder')} value={reqReason} onChange={e => setReqReason(e.target.value)} maxLength={100} />
+                    )}</Field>
+                </form>
+            </Dialog>
+
+            <Dialog
+                open={isApprovalOpen && !!selectedRequest}
+                onClose={() => setIsApprovalOpen(false)}
+                title={t('approve_deduction_title')}
+                actions={<>
+                    <Button onClick={() => setIsApprovalOpen(false)}>{t('cancel')}</Button>
+                    <Button
+                        variant="primary"
+                        onClick={() => selectedRequest && action.run('approve', () => processAction(selectedRequest.id, 'APPROVED', daysToDeduct, deductionType))}
+                        disabled={action.running}
+                        busy={action.is('approve')}
+                    >
+                        {t('approve_button')}
+                    </Button>
+                </>}
+            >
+                {selectedRequest && (
+                    <>
+                        <p>{t('approve_dayoff_balance').replace('{name}', nameOf(selectedRequest)).replace('{days}', days(selectedRequest.user?.dayOffCredit || 0))}</p>
+                        <Field label={t('days_to_deduct_label')}>{p => (
+                            <TextInput {...p} type="number" autoComplete="off" inputMode="decimal" min="0" step="0.5" value={daysToDeduct} onChange={e => setDaysToDeduct(e.target.value)} />
+                        )}</Field>
+                        <Choice
+                            legend={t('deduct_from_label')}
+                            name="deduct-from"
+                            value={deductionType}
+                            onChange={setDeductionType}
+                            options={[
+                                { value: 'CREDIT', label: t('deduct_from_credit'), disabled: creditShort },
+                                { value: 'SALARY', label: t('deduct_from_salary') },
+                            ]}
+                            warning={creditShort ? t('insufficient_credit') : undefined}
+                        />
+                    </>
+                )}
+            </Dialog>
+
+            <Dialog
+                open={isRejectOpen && !!selectedRequest}
+                onClose={() => setIsRejectOpen(false)}
+                title={t('confirm_rejection_title')}
+                actions={<>
+                    <Button onClick={() => setIsRejectOpen(false)}>{t('cancel')}</Button>
+                    <Button
+                        variant="danger"
+                        onClick={() => selectedRequest && action.run('reject', () => processAction(selectedRequest.id, 'REJECTED'))}
+                        disabled={action.running}
+                        busy={action.is('reject')}
+                    >
+                        {t('reject_button')}
+                    </Button>
+                </>}
+            >
+                {selectedRequest && (
+                    <>
+                        <p>{t('reject_dayoff_question').replace('{name}', nameOf(selectedRequest))}</p>
+                        <Field label={t('rejection_reason_label')} hint={t('ui_characters_used').replace('{used}', num(rejectionReason.length)).replace('{max}', num(300))}>{p => (
+                            <TextArea {...p} placeholder={t('rejection_reason_placeholder')} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} maxLength={300} />
+                        )}</Field>
+                    </>
+                )}
+            </Dialog>
+        </Page>
     )
 }

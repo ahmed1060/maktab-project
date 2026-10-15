@@ -101,7 +101,8 @@ permissions allow, as today.
   advances.
 - **One Requests page** (§2.3) replaces the separate request pages, later.
   Until then, the existing ones sit together under People: Requests, Day off
-  requests and Role requests.
+  requests, Role requests and Profile requests (name changes, today linked
+  only from the top bar).
 
 ### 2.2 The Super Admin
 
@@ -227,9 +228,13 @@ Three Arabic names were chosen so that no two things share a name
    - Icons are imported one at a time, so only the ones used are shipped.
    - Arrows and other icons that point a direction are flipped in Arabic.
    - Companies can rename modules and pick an emoji for each today. Instead,
-     they'll pick from a short list of about 50 business icons. No company
-     has changed an icon or label in production, so only the defaults need
-     mapping.
+     they'll pick from a short list of about 50 business icons.
+   - The setting stays live until the icons PR deploys, so a company can
+     still pick any emoji, a pasted one included, before then. The PR maps
+     every stored choice, not only the defaults: each default emoji to its
+     icon, and anything else to the module's default icon. A company's
+     renamed labels are kept. Production is checked again, read only, just
+     before the PR is merged.
 5. **Pages move to the building blocks one by one,** each in a small PR,
    after `CLIENTS_PLAN.md`'s steps (§5).
 6. **A brand colour,** set in the settings (§4.6).
@@ -293,7 +298,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
    No old page is converted in this PR.
 3. **Two small PRs straight after it,** in either order:
    - **the 3 pages `CLIENTS_PLAN.md` doesn't touch:** the dashboard home,
-     Employees and Day Off Requests move onto the building blocks (§4.1);
+     Employees and Day Off Requests move onto the building blocks (§4.1).
+     Built on 2026-10-15, waiting to be merged. Built with the building
+     blocks alone, then refined with Impeccable's written guidance once
+     question 8 was answered (§6);
    - **the brand colour setting (§4.6):** the database fields, the controls in
      System Settings and Company Settings → Branding, and the server putting
      the colour into the page. The new fields have defaults, so the preview
@@ -315,21 +323,7 @@ Clients pages) are rebuilt in step 0, so they're fixed there.
 
 ## 6. Open questions
 
-8. **Impeccable** (§7): its `SKILL.md` asks for a launcher to be run at the
-   start of every session, and that launcher downloads and runs a compiled
-   program. That program can't be read like the rest of the skill, and isn't
-   pinned, so Impeccable can't meet the rule in §7.3 as it ships. It was left
-   out of the building-blocks PR. Choices:
-   - add only its written guidance (its reference pages, without the
-     launcher), adapted the way `web-design-guidelines` was;
-   - or leave it out, and build with `DESIGN.md`, UI/UX Pro Max and the
-     Vercel audit.
-
-   Suggested: leave it out for now. `DESIGN.md` already covers what it
-   would give, and the dashboard home (§4.1) can be the first page built
-   with the building blocks alone.
-
-The seven questions asked on 2026-10-15 were answered the same day:
+None are open. The seven questions asked on 2026-10-15 were answered the same day:
 
 1. **The side bar groups:** agreed, with Check in at the top and empty
    groups hidden (§2.1, §2.2).
@@ -344,6 +338,14 @@ The seven questions asked on 2026-10-15 were answered the same day:
    (§4.4).
 7. **The 3 pages:** fixed straight after the building-blocks PR, using the
    building blocks (§4.1).
+
+Question 8 was answered on 2026-10-15 too:
+
+8. **Impeccable:** add only its written guidance, without the launcher
+   (§7.1, §7.3). Its launcher downloads and runs a compiled program that
+   can't be read or pinned, so it's left out; 19 of its reference pages
+   are copied unchanged into `.claude/skills/impeccable/`, with a
+   `SKILL.md` rewritten for Nizmo (`.claude/skills/SOURCES.md`).
 
 ---
 
@@ -360,7 +362,7 @@ QA Tools for Coding Agents". The other five were turned down (§7.4).
 | Choosing the look, once | **awesome-design-md** (getdesign.md) | Design write-ups of well-known products. Two or three that suit Nizmo are the starting point for its own `DESIGN.md` (§7.2). |
 | Choosing the look, once | **Frontend Design** (Anthropic) | Makes the agent settle on one clear direction before writing code. It's used in that one session and isn't kept. |
 | Building | **`DESIGN.md`** (Nizmo's own) | The rulebook. It sets colours, spacing, text sizes, the building blocks, icons and the glossary (§3.2). Every screen and every agent follows it. |
-| Building | **Impeccable** | Builds the shared building blocks, then redesigns the pages one by one. It's tried on one page first: the dashboard home (§4.1). |
+| Building | **Impeccable** (its written guidance only) | Guides building and refining each screen: the quality floor, layout, type, colour, states, copy and the last polish. Its launcher isn't used (§6, question 8). First used on the dashboard home's donut chart (§4.1). |
 | Building | **UI/UX Pro Max** | Chosen earlier, on the `ui-refactor` branch. It's a library of palettes, font pairings and UX rules to look things up in. |
 | Checking every UI PR | **Vercel Web Design Guidelines** | Audits the changed screens for focus states, forms, accessibility, wording and edge cases. Its findings are fixed in the same PR. |
 | Checking every UI PR | **Playwright** | Opens the app in a real browser and takes screenshots in English and Arabic, at phone and desktop width. Claude's cloud sessions already use it. |
@@ -409,6 +411,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **Skills live in the project** (`.claude/skills/`), as UI/UX Pro Max does
   on `ui-refactor`, so every session has them.
   - They're added in the building-blocks PR.
+  - Impeccable's written guidance is added in step 3a's PR, once question 8
+    was answered (§6).
   - Emil is added in the motion PR.
 - **Playwright's MCP is optional.** It's for having Claude click through the
   app on the product owner's own computer, so nothing is added to the
@@ -522,3 +526,87 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   than fetched on every run. Impeccable is left out: it downloads and runs a
   program that can't be read or pinned (§7.3). Whether to add its written
   guidance alone is question 8 in §6.
+- **2026-10-15:** The 3 pages are moved onto the building blocks (§4.1,
+  §5 step 3), waiting to be merged.
+  - **What they needed that the building blocks didn't have,** added to
+    `DESIGN.md` first and then built:
+    - page layout, sections, rows, tile links and notes;
+    - the row menu, the selection bar and the dialog;
+    - the text area and the radio choice.
+  - **Until the app shell lands** (step 0), a page built from the building
+    blocks hides the old top bar's title, so it's named once, and sits on
+    `--page` rather than the old moving gradient.
+  - **The dashboard home:**
+    - its donut charts become a row per task status, each with its word
+      and count and linking to those tasks;
+    - its tiles link to the queues they count.
+  - **Employees:**
+    - Edit stays in each row, and the other actions are in a More actions
+      menu;
+    - the Super Admin's suspend toggle was a dot no keyboard could reach;
+      it's now in that menu;
+    - Reset points asks first.
+  - **Day Off Requests:** the pie chart becomes two tiles, remaining and
+    used credit. The request, approve and reject dialogs are the dialog
+    building block.
+  - **Fixed on the way, each with its own test:**
+    - Employees' role filter was never sent, and its sort only reordered
+      the page in view;
+    - Day Off Requests' filters only filtered the page in view;
+    - the dashboard's "Used credit" counted days taken from salary and
+      past years;
+    - in production, every database query built a new Prisma client and
+      pool (`lib/prisma.ts`).
+  - **Counts follow each language's plural forms** (`lib/plural.ts`), and
+    the strings these pages use are in sentence case.
+  - **Not done here:** the lists' filters and pages aren't kept in the
+    URL yet, as they weren't before.
+- **2026-10-15:** The dashboard home's donut charts come back, at the
+  product owner's request: they preferred them to the rows of counts. They
+  are a building block now (`DESIGN.md` §5.5): each part in its meaning's
+  colour, the total in the middle, and a legend with every word and count
+  that links to the tasks it counts. The employee's dashboard has its two
+  again, tasks by status and day off credit.
+- **2026-10-15:** Fixed from Codex's reviews of step 3a (#78) and of the
+  building blocks (#77), each with its own test:
+  - a two-day day-off request shows both its days;
+  - a negative count keeps its sign ("-1 pts", not "1 pt");
+  - the Day Off filters leave out a day that doesn't exist, such as
+    31 February, instead of moving it or failing with a server error;
+  - a notification's request is scrolled to on whichever page it turns up;
+  - a Team Leader's task links on the dashboard open the Tasks page's new
+    team view (`?view=team`): their team's tasks with their own among
+    them, which is what the numbers count. It has no tab of its own yet;
+    step 3b's Tasks page decides whether it gets one;
+  - a list whose page empties, after a delete or a switch to another
+    company, moves to the last page there is, and another company starts
+    on page one without the last one's team, picks or employee;
+  - a table wider than its panel scrolls inside it (`DESIGN.md` §5.4);
+  - in dark mode, a primary button's hover and pressed shades keep its
+    3:1 edge on the panel (`DESIGN.md` §2.1).
+  - **No change:** a linked total tile was already a link over the whole
+    tile; checked in the browser.
+- **2026-10-15:** Question 8 answered: Impeccable comes in as written
+  guidance only (§6, §7). Its 19 reference pages for web app screens are
+  copied unchanged into `.claude/skills/impeccable/`, pinned to its
+  `skill-v4.5.2` release. Its `SKILL.md` is rewritten for Nizmo: no launcher,
+  `DESIGN.md` and this plan as the context, the Vercel audit, Playwright and
+  the guard tests in place of its detector, and where `DESIGN.md` differs
+  (the overdue bar, the total tiles). The 22 pages left out drive the
+  launcher, write files Nizmo already has, or are for native apps.
+- **2026-10-15:** The donut chart is redrawn: the product owner found it
+  old-fashioned and left the choice between improving it and going back to
+  rows to Claude. Improved, with Impeccable's guidance (craft floor, Operate
+  mode, colour) and `DESIGN.md` changed first (§2.3, §5.5): a thin ring of
+  rounded, separated parts; new mid-tone chart colours, since the deep
+  status text colours looked heavy as shapes; a deeper shade for a part
+  repeating an earlier part's meaning; each part's share in the legend;
+  and pointing at a legend row picks out its part. No motion beyond that
+  150ms fade, which reduced motion turns off.
+- **2026-10-15:** From Codex's review of #74 and #75:
+  - Profile requests sit with the other request pages under People until
+    the one Requests page (§2.1);
+  - the icons PR maps every stored icon choice, not only the defaults
+    (§4.4).
+  - Its two findings on #74 were already settled: Impeccable comes in as
+    written guidance only, and the Vercel audit's rules are a pinned copy.

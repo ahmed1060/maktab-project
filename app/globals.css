@@ -106,7 +106,6 @@
      badge sat on an unusual ground, and each of those needs its own dark
      counterpart rather than being collapsed into the nearest neighbour. */
   --ok-bg-strong: #bbf7d0;
-  --ok-bg-subtle: #f0fdf4;
   --ok-bg-faint: #d1fae5;
   --ok-fg-strong: #15803d;
   --ok-fg-deep: #065f46;
@@ -124,7 +123,6 @@
   --warn-border-warm: #fed7aa;
   --warn-border-warm-firm: #fdba74;
   --warn-fg-warm: #9a3412;
-  --warn-fg-warm-strong: #c2410c;
   --warn-solid-warm: #fb923c;
 
   --warn-bg-yellow: #fef9c3;
@@ -159,7 +157,6 @@
      2.1 to 3.8:1. Each fill is the same hue darkened until white on it is at
      least 4.5:1 (lib/contrast.test.ts). */
   --ok-fill: #0b7b56;
-  --ok-fill-alt: #157c3b;
   --ok-fill-hover: #0e672f;
   --info-fill: #0b61ef;
   --info-fill-hover: #134dce;
@@ -178,7 +175,6 @@
   /* The brand marks. Aliases rather than new values, so there is still exactly
      one place each brand colour is defined. */
   --brand-primary: var(--primary);
-  --brand-primary-hover: var(--primary-hover);
   --brand-accent: var(--accent);
   /* The brand colour as text. A shade darker than --primary in the light
      theme: --primary itself is 4.47:1 on white and 3.95:1 on its own 10% tint,
@@ -1193,7 +1189,6 @@ input::-webkit-credentials-auto-fill-button {
     --ok-fg: #6fdc9b;
     --ok-solid: #2ebd77;
     --ok-bg-strong: #12402a;
-    --ok-bg-subtle: #0a2416;
     --ok-bg-faint: #0d3320;
     --ok-fg-strong: #7ee3a6;
     --ok-fg-deep: #9beec0;
@@ -1220,7 +1215,6 @@ input::-webkit-credentials-auto-fill-button {
     --warn-border-warm: #6b3d1c;
     --warn-border-warm-firm: #8a4f24;
     --warn-fg-warm: #f5b183;
-    --warn-fg-warm-strong: #ffc59e;
     --warn-solid-warm: #e08a4e;
     --warn-bg-yellow: #35300d;
     --warn-bg-yellow-subtle: #262208;
@@ -1265,7 +1259,6 @@ input::-webkit-credentials-auto-fill-button {
        at least 3:1 against the dark surfaces, so a badge doesn't sink into
        the card it sits on. */
     --ok-fill: #1f8051;
-    --ok-fill-alt: #228051;
     --ok-fill-hover: #1d7348;
     --info-fill: #1f76b2;
     --info-fill-hover: #2d6994;
@@ -1543,6 +1536,12 @@ input::-webkit-credentials-auto-fill-button {
   --status-good-fg: #05690d;
   --status-problem-bg: #ffe7f2;
   --status-problem-fg: #b3093c;
+
+  --chart-neutral: #64748b;
+  --chart-progress: #2563eb;
+  --chart-waiting: #d97706;
+  --chart-good: #059669;
+  --chart-problem: #e11d48;
   /* The danger button, the same in both themes: white reads on it at 6.95:1. */
   --problem-fill: #b3093c;
   --problem-fill-hover: #9e0835;
@@ -1585,10 +1584,12 @@ input::-webkit-credentials-auto-fill-button {
   --radius-pill: 999px;
   --radius-panel: 12px;
   --radius-field: 6px;
+  /* Menus, pop-ups and toasts (DESIGN.md §4.2). */
+  --radius-menu: 8px;
 
-  /* Menus, pop-ups and dialogs (8px corners, depth level 2: DESIGN.md §4.2-4.3)
-     get their tokens with the first building block that uses them. */
   --elev-1: 0 1px 3px rgba(13, 37, 61, 0.08);
+  /* Level 2: menus, pop-ups, dialogs and toasts (DESIGN.md §4.3). */
+  --elev-2: 0 8px 24px rgba(13, 37, 61, 0.12), 0 2px 6px rgba(13, 37, 61, 0.06);
 }
 
 :root[data-theme="dark"] {
@@ -1611,12 +1612,18 @@ input::-webkit-credentials-auto-fill-button {
   --status-good-fg: #93e3a0;
   --status-problem-bg: #4a1226;
   --status-problem-fg: #ffa3bd;
+
+  --chart-neutral: #94a3b8;
+  --chart-progress: #60a5fa;
+  --chart-waiting: #fbbf24;
+  --chart-good: #34d399;
+  --chart-problem: #fb7185;
   --problem-text: #ffa3bd;
   --overdue-row: #241729;
 
   --brand: #6063ea;
-  --brand-hover: #585bd7;
-  --brand-press: #5153c5;
+  --brand-hover: #5c5fe1;
+  --brand-press: #585bd7;
   --brand-text: #8c8ff2;
   --brand-tint: #1c264a;
   --brand-tint-strong: #222c59;
@@ -1624,4 +1631,5 @@ input::-webkit-credentials-auto-fill-button {
 
   /* Shadows don't show on dark: depth comes from --panel-raised and the rule. */
   --elev-1: none;
+  --elev-2: none;
 }

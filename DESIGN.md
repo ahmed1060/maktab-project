@@ -52,9 +52,9 @@ below, which are all worked out from the one chosen colour.
 | Token | What it is | Used for |
 |---|---|---|
 | `--brand` | The chosen colour, darkened if needed until white text on it reads at 4.5:1 or better | Primary button fill, the active page in the pager, counts in the side bar, the logo tile |
-| `--brand-hover` | `--brand` 8% darker | Primary button on hover |
-| `--brand-press` | `--brand` 16% darker | Primary button while pressed |
-| `--brand-text` | The brand as text: 4.5:1 or better on the page and on panels, in each theme | Links, the selected side bar item, selected tabs, focus rings |
+| `--brand-hover` | `--brand` 8% darker (in dark mode, see below) | Primary button on hover |
+| `--brand-press` | `--brand` 16% darker (in dark mode, see below) | Primary button while pressed |
+| `--brand-text` | The brand as text: 4.5:1 or better on the page, on panels and on both brand tints, in each theme | Links, the selected side bar item, selected tabs, focus rings |
 | `--brand-tint` | 9% brand on the panel colour | Behind the selected side bar item and selected rows |
 | `--brand-tint-strong` | 14% brand on the panel colour | Avatars with initials |
 
@@ -66,7 +66,12 @@ below, which are all worked out from the one chosen colour.
   - `--brand` stays the same for buttons while it stands out from a dark
     panel at 3:1 or better. The default indigo does. A very dark choice,
     such as navy, is lightened until it does, and if white text then
-    reads under 4.5:1 on it, the button text switches to dark ink.
+    reads under 4.5:1 on it, the button text switches to dark ink;
+  - with white text, hover and press are 4% and 8% darker, half the
+    light-mode steps, and `--brand` is lightened if needed until the
+    pressed shade stands out from the panel at 3:1 too. Darker is towards
+    the panel, and white text and a 3:1 edge leave a narrow band of shades.
+    With dark ink, hover and press are 8% and 16% towards white.
 - **One filled brand button per area.** A page has one primary action. Other
   actions are secondary or quiet buttons (§5.2).
 
@@ -103,6 +108,18 @@ same in every company.
 
 - **Colour is never the only signal.** A status always has its word. Overdue
   always has the warning icon and the word "Overdue" too.
+- **Chart colours** are for the shapes in a chart, such as a donut's parts,
+  never for text. The text colours above are deep, for reading, and look
+  heavy as large shapes, so charts take a mid-tone of each meaning. Each
+  stands out from a panel at 3:1 or better.
+
+  | Meaning | Light | Dark |
+  |---|---|---|
+  | Neutral | `--chart-neutral` `#64748b` (4.8:1) | `#94a3b8` (6.8:1) |
+  | In motion | `--chart-progress` `#2563eb` (5.2:1) | `#60a5fa` (6.9:1) |
+  | Waiting on someone | `--chart-waiting` `#d97706` (3.2:1) | `#fbbf24` (10.5:1) |
+  | Done or good | `--chart-good` `#059669` (3.8:1) | `#34d399` (9.1:1) |
+  | Problem | `--chart-problem` `#e11d48` (4.7:1) | `#fb7185` (6.5:1) |
 - **Danger text** on white is `#b3093c` (6.95:1).
 - **An overdue row** gets a faint red background (`#fff8fa` in light mode,
   `#241729` in dark) and a 3px red bar on its start edge.
@@ -158,7 +175,9 @@ One scale. Every size in the app is one of these.
   Dates and numbers are always formatted with `Intl` for the page's
   language, never built by hand.
 - **Codes, phone numbers and emails stay left to right** inside Arabic
-  text, using `<bdi>` or `unicode-bidi: isolate`.
+  text, using `<bdi>`, or `unicode-bidi: isolate` together with
+  `direction: ltr`. `unicode-bidi: isolate` alone keeps the page's right to
+  left direction, which turns "08:30–17:00" into "17:00–08:30".
 
 ### 3.4 Case and wording
 
@@ -273,6 +292,12 @@ These are built once, in the building-blocks PR, and every page uses them
   - a visible label above every field. The placeholder is never the only
     label;
   - when focused, a 2px `--brand-text` ring.
+- **A text area** is a field for more than one line, at least 88px tall,
+  with how many characters are left as its hint when there's a limit.
+- **A choice between a few options,** such as where a deduction comes
+  from, is a set of radio buttons under a visible group label, each 36px
+  tall (44px on phones). An option that can't be picked says why beside
+  the group.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -295,6 +320,8 @@ These are built once, in the building-blocks PR, and every page uses them
     secondary line below it in `--muted` and a small icon, such as the
     "Client – Location" line for tasks;
   - the status column and the action column are at the end;
+  - a table wider than its panel scrolls sideways inside it, and the
+    panel keeps its rounded corners, so the end columns are never cut off;
   - the pager is in the panel's footer, with the count on the start side.
 - **Cards on phones:**
   - the title and status badge on the first line;
@@ -308,8 +335,45 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Page header:**
   - the title (`--text-3xl`, or `--text-2xl` on phones);
   - an optional one-line subtitle in `--muted`;
-  - the page's primary button on the end side. On phones, the button goes
-    full width below the title.
+  - the page's primary button on the end side, with at most one secondary
+    button beside it. On phones, the buttons go full width below the title.
+  - Until the app shell (§5.1) replaces the old top bar, the old top bar
+    hides its own title on a page that has a page header, so the page is
+    named once. Behind such a page, the old moving gradient gives way to
+    `--page`, so text that sits on the page, such as the subtitle and
+    section headings, keeps its contrast.
+- **Page layout:** a page's parts are stacked with the "between sections"
+  spacing from §4.1.
+- **Section:** a part of a page made of several panels, such as a row of
+  tiles. Its heading is `--text-xl`, weight 500, above the panels, with an
+  optional quiet link on the end side, such as "View all". A part made of
+  one panel uses a card's title instead.
+- **Rows:** a short list inside a panel, such as the five most overdue tasks
+  on the dashboard.
+  - Rows are split by hairlines. Each row is a link, with the title (and an
+    optional detail line in `--muted`) on the start side, and its status,
+    date or count on the end side.
+  - An overdue row gets the red start-edge bar and the faint red background,
+    as in a table.
+  - A full list, with filters and pages, uses the table (§5.4) instead.
+- **Row menu:** the actions on one item that don't fit in its row, behind a
+  quiet "More actions" button.
+  - The pop-up is level 2 (§4.3) with 8px corners, on the end side of the
+    button.
+  - The arrow keys move through it, Escape closes it and returns to the
+    button, and choosing an item closes it.
+  - A destructive item, such as Delete, is in the danger text colour and
+    is last, after a hairline. It still asks before it acts.
+- **Dialog:** a level-2 panel (§4.3) on `--panel-raised`, with 12px
+  corners and 24px inside (16px on phones), over the dimmed page.
+  - The title is `--text-xl`, weight 500.
+  - The buttons are at the bottom on the end side, the main one last. On
+    phones they stack full width, the main one on top.
+  - Escape closes it, and focus goes back to what opened it.
+- **Selection bar:** when items in a list are picked with their
+  checkboxes, a panel above the list says how many are picked and holds
+  what can be done to all of them, with a quiet "Clear selection" on the
+  end side. It's gone when nothing is picked.
 - **Status badge:** a pill, `--text-xs`, weight 500, with the background and
   text colours from §2.3.
 - **Tabs:** text tabs with a 2px `--brand` line under the selected one, and
@@ -318,7 +382,34 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Total tiles:**
   - a label in `--text-sm` and `--muted`, above the value in `--text-2xl`
     and weight 600 with even-width digits;
+  - an optional note under the value, in `--text-sm` and `--muted`, such
+    as "This month" or "40% completed";
+  - a tile can be a link to the list it counts. Its label is then in
+    `--brand-text`, and the whole tile is the target;
   - up to 4 in a row on computers, 2 on phones.
+- **Donut chart:** a ring for how a whole splits into a few parts, such as
+  tasks by status or day off credit used and left.
+  - The ring is 160px across and thin, a tenth of that. Its parts have
+    rounded ends and a clear gap between them, with nothing drawn behind,
+    and one part alone fills the ring.
+  - Each part takes its meaning's chart colour (§2.3). A later part with
+    the same meaning as an earlier one, such as Completed after Approved,
+    takes a deeper shade of it (mixed 35% towards `--ink`), so the two read
+    as two.
+  - The total is in the middle in `--text-3xl`, weight 600, with even-width
+    digits, and its label below in `--text-sm` and `--muted`. A total of
+    more than five characters, such as "12 days", is in `--text-xl`, so it
+    stays clear of the ring.
+  - Beside the ring (below it on phones) is the legend. Each row has the
+    part's colour mark (a 10px square with 3px corners), its word, its
+    count, and its share of the total in `--muted`. The counts and shares
+    line up in columns. Screen readers read the legend, and the ring is
+    hidden from them. A legend row can link to what it counts.
+  - Pointing at a legend row, or moving focus to it, fades the ring's other
+    parts, so the row and its part are seen together. The fade takes
+    150ms and nothing moves; with reduced motion it's instant.
+  - With nothing to count, the ring is a faint track, the middle says 0,
+    and the legend says there's nothing yet.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
@@ -469,3 +560,38 @@ changed:
   what they show already names them. On phones, the Filters button shows
   the filters below the search instead of opening a sheet, so each filter
   is on the page once.
+- **2026-10-15:** Added, for the dashboard home, Employees and Day Off
+  Requests (`UI_PLAN.md` §4.1): the page layout, sections, rows, the row
+  menu, tile notes and tile links, and a second button in the page header.
+  The old top bar hides its title on a page with a page header until the
+  app shell replaces it. The row menu is the first menu, so the menu corner
+  (8px) and level-2 shadow from §4.2 and §4.3 become tokens now.
+- **2026-10-15:** Added the selection bar, for assigning several employees
+  to a team at once.
+- **2026-10-15:** Added the dialog, the text area and the radio choice,
+  for Day Off Requests' request, approve and reject dialogs.
+- **2026-10-15:** Added the donut chart. The product owner prefers the
+  dashboard home's donuts to rows of counts, so they come back, drawn from
+  the meaning colours and with a legend that carries every word and count.
+- **2026-10-15:** Behind a page built from the building blocks, the old
+  moving gradient gives way to `--page` until the app shell lands. On the
+  gradient, the subtitle in `--muted` couldn't be read.
+- **2026-10-15:** A table wider than its panel scrolls sideways inside it
+  (§5.4), as §8's layout rule already allowed. It was clipped, which cut off
+  the action column between phone width and a wide screen.
+- **2026-10-15:** In dark mode, a primary button's hover and pressed shades
+  stand out from the panel at 3:1, as the button does (§2.1). They were 8%
+  and 16% darker, towards the panel, so the default indigo's pressed shade
+  was 2.82:1 and navy's 2.37:1. With white text they're now 4% and 8%
+  darker, and the fill is lightened if needed.
+- **2026-10-15:** The donut chart is redrawn, as the product owner found it
+  old-fashioned. The ring is thinner, with rounded, separated parts in new
+  mid-tone chart colours (§2.3), since the deep text colours looked heavy as
+  shapes. The legend adds each part's share. Pointing at a legend row
+  picks out its part.
+- **2026-10-15:** From Codex's review of #76: `--brand-text` reads at
+  4.5:1 on both brand tints too, which the derivation already checked
+  (§2.1); and `unicode-bidi: isolate` needs `direction: ltr` for an
+  identifier, or a time range reads backwards in Arabic (§3.3). Its other
+  two findings, the field edge and the dark-mode hover and press, were
+  already fixed.

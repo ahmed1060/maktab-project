@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
 import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
+import { CalendarBlankIcon } from '@phosphor-icons/react/ssr'
+import { Icon } from '@/components/ui/Icon'
 
 interface DateRangePickerProps {
     dateFrom: string
@@ -11,9 +13,17 @@ interface DateRangePickerProps {
     label?: string
     minDate?: string
     maxDate?: string
+    /** Looks like a building-block field (DESIGN.md §5.3), for pages built from them. */
+    asField?: boolean
+    /**
+     * With asField, in a filter bar: the label is kept for screen readers but
+     * not shown, since what the picker shows names it ("Select date range",
+     * or the range picked), as a select does.
+     */
+    hideLabel?: boolean
 }
 
-export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate }: DateRangePickerProps) {
+export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate, asField = false, hideLabel = false }: DateRangePickerProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const mounted = useHydrated()
@@ -297,11 +307,27 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
         </div>
     )
 
+    const rangeText = dateFrom && dateTo
+        ? (dateFrom === dateTo
+            ? formatDate(dateFrom)
+            : (locale === 'ar' ? `${formatDate(dateFrom)} ← ${formatDate(dateTo)}` : `${formatDate(dateFrom)} → ${formatDate(dateTo)}`))
+        : dateFrom
+            ? `${formatDate(dateFrom)} → ...`
+            : t('select_date_range' as any)
+
     return (
-        <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-            <label htmlFor={openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
+        <div ref={containerRef} className={asField ? 'ui-field' : undefined} style={asField ? undefined : { position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+            <label htmlFor={openerId} className={asField ? (hideLabel ? 'ui-visually-hidden' : 'ui-label') : undefined} style={asField ? undefined : { display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>
                 {label || t('filter_by_date_range' as any)}
             </label>
+            {asField ? (
+                <span className="ui-control has-start-icon">
+                    <Icon icon={CalendarBlankIcon} size={16} />
+                    <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!dateFrom && !dateTo ? true : undefined}>
+                        {rangeText}
+                    </button>
+                </span>
+            ) : (
             <button
                 type="button"
                 id={openerId}
@@ -331,17 +357,12 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                     <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>📅</span>
                     <span style={{ color: dateFrom || dateTo ? 'var(--text-main)' : 'var(--text-faint)' }}>
-                        {dateFrom && dateTo
-                            ? (dateFrom === dateTo
-                                ? formatDate(dateFrom)
-                                : (locale === 'ar' ? `${formatDate(dateFrom)} ← ${formatDate(dateTo)}` : `${formatDate(dateFrom)} → ${formatDate(dateTo)}`))
-                            : dateFrom
-                                ? `${formatDate(dateFrom)} → ...`
-                                : t('select_date_range' as any)}
+                        {rangeText}
                     </span>
                 </span>
                 <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
             </button>
+            )}
 
             {isOpen && mounted && createPortal(
                 <div

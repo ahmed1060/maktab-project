@@ -11,7 +11,16 @@ import { cx } from './cx'
  * phones, both in one panel, with the pager in its footer. Both views are in
  * the page and the stylesheet shows one, so nothing waits on measuring the
  * screen and the server's page is the one the browser keeps.
+ *
+ * Each row and card carries `data-key`, its row key, for a page that scrolls
+ * to one (`visibleRow`): an id would be on the page twice.
  */
+
+/** The row or card for this key that's showing at this width, to scroll to. */
+export function visibleRow(key: string): HTMLElement | null {
+    const all = document.querySelectorAll<HTMLElement>(`.ui-list [data-key="${CSS.escape(key)}"]`)
+    return [...all].find(el => el.offsetParent !== null) ?? null
+}
 
 export type Column<T> = {
     key: string
@@ -23,8 +32,8 @@ export type Column<T> = {
     hideHeader?: boolean
 }
 
-/** How a row stands out. Only overdue, for now. */
-export type RowTone = 'overdue'
+/** How a row stands out: overdue, or selected, such as the one a notification opened. */
+export type RowTone = 'overdue' | 'selected'
 
 export function DataList<T>({ caption, columns, rows, rowKey, card, tone, footer, empty }: {
     /** What the list is, for screen readers ("Tasks"). */
@@ -43,27 +52,29 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, footer
     if (rows.length === 0 && empty) return <div className="ui-panel">{empty}</div>
     return (
         <div className="ui-panel ui-list">
-            <table className="ui-table">
-                <caption className="ui-visually-hidden">{caption}</caption>
-                <thead>
-                    <tr>
-                        {columns.map(c => (
-                            <th key={c.key} scope="col" className={c.align === 'end' ? 'ui-end' : undefined}>
-                                {c.hideHeader ? <span className="ui-visually-hidden">{c.header}</span> : c.header}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map(row => (
-                        <tr key={rowKey(row)} data-tone={tone?.(row)}>
-                            {columns.map(c => <td key={c.key} className={c.align === 'end' ? 'ui-end' : undefined}>{c.cell(row)}</td>)}
+            <div className="ui-table-scroll">
+                <table className="ui-table">
+                    <caption className="ui-visually-hidden">{caption}</caption>
+                    <thead>
+                        <tr>
+                            {columns.map(c => (
+                                <th key={c.key} scope="col" className={c.align === 'end' ? 'ui-end' : undefined}>
+                                    {c.hideHeader ? <span className="ui-visually-hidden">{c.header}</span> : c.header}
+                                </th>
+                            ))}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {rows.map(row => (
+                            <tr key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)}>
+                                {columns.map(c => <td key={c.key} className={c.align === 'end' ? 'ui-end' : undefined}>{c.cell(row)}</td>)}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
             <ul className="ui-cards" aria-label={caption}>
-                {rows.map(row => <li key={rowKey(row)} data-tone={tone?.(row)}>{card(row)}</li>)}
+                {rows.map(row => <li key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)}>{card(row)}</li>)}
             </ul>
             {footer}
         </div>
