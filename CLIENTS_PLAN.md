@@ -43,7 +43,8 @@ Production has no data in these parts, so now is the right time.
 
 - Today's Clients section keeps, for each business, **sections** of
   **notes**. A note can have an attached file, an expiry date and a
-  reminder. These are now called **Records** (Arabic **السجلات**).
+  reminder. These are now called **Records** (Arabic **السجلات**, and
+  **سجلات العملاء** in the side bar).
 - They're the same businesses as the clients, so records **move onto each
   client's page** and the same business is no longer kept in two places.
 - **Timing** (Decided): now, as part of step 0.
@@ -224,7 +225,8 @@ needs no data change.
 ### 2.10 Kept separate
 
 The attendance check-in places (Company Settings → work locations) are a
-separate system. The two need clearly different names on screen (§10).
+separate system. On screen they're renamed **Check-in places** (أماكن
+الحضور), and task locations stay **Locations** (`UI_PLAN.md` §3.3).
 
 ---
 
@@ -291,8 +293,8 @@ separate system. The two need clearly different names on screen (§10).
 
    | Permission | Default |
    |---|---|
-   | Add names to the lists | Everyone |
-   | Manage the lists (rename, merge, archive) | Admin |
+   | Add list names | Everyone |
+   | Manage lists (rename, merge, archive) | Admin |
 
 8. **Where the field appears:**
    - task titles: creating a task, editing a task, and the bulk import
@@ -330,7 +332,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 - **Exceptions are handled on the Costs page.** On the Charged to Clients
   tab, a **"Not charged to client"** tick removes a cost from the client. It
   can be used until the charge is collected, and unticking it charges the
-  cost again. Who may use it is open (question 4 in §10).
+  cost again. It's covered by the **Manage charges** permission (§6.6).
 
 ### 6.3 Service fee (Decided)
 
@@ -348,10 +350,10 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 
 - **Costs page tabs: Employee costs | Charged to Clients.**
   - Charged to Clients filters by client, date, status and search.
-  - It shows three totals: **Paid out**, **Service fees** and **Total to
-    collect**.
+  - It shows three totals: **Paid out**, **Service fees** and **Total due**.
+  - A charge's status is **Due** or **Collected** (غير محصّل / محصّل).
 - **Each client's page:**
-  - **Owes us** and **Collected**;
+  - **Due** and **Collected** totals;
   - each charge: what was bought, on which task, with the receipt;
   - **Mark collected** for exactly the charges shown, for example "Collect 7
     charges, 3,450 EGP from Al Noor".
@@ -372,20 +374,19 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   instead.
 - Audit log entries, and English and Arabic labels, throughout.
 
-### 6.6 Permissions (Decided, apart from the "Not charged" tick)
+### 6.6 Permissions (Decided)
 
 | Permission | Admin | Team Leader | Employee |
 |---|---|---|---|
-| View client charges | Company | Their team's tasks | No |
-| Set service fee | Company | No | No |
-| Mark collected | Company | No | No |
+| See charges | Company | Their team's tasks | No |
+| Manage charges (set the service fee, and the "Not charged to client" tick) | Company | No | No |
+| Mark charges collected | Company | No | No |
 
-- **Mark collected** moves money, so it asks for two-factor sign-in, as
-  paying costs does.
+- **Mark charges collected** moves money, so it asks for two-factor
+  sign-in, as paying costs does.
 - Admins in existing companies get these automatically through a migration.
-- **The "Not charged to client" tick** (Decided): covered by **Set service
-  fee**, renamed **Manage charges** (set the fee, and remove a cost from the
-  client).
+- The names follow `UI_PLAN.md` §3.1, principle 6: See, Add, Manage, plus a
+  verb for anything that moves money.
 
 ### 6.7 Paid to (Decided: left out for now)
 
@@ -482,8 +483,9 @@ balance first, automatically:
   - the total held by employees.
 - **On each cost**, in the Employee costs tab and on the task: **From
   advance** and **To pay back**.
-- **The employee's own page:** My advance, with the balance and its history
-  (given, spent on which task, returned).
+- **The employee's own page:** My cash advance, in the side bar's Me group
+  (`UI_PLAN.md` §2.1), with the balance and its history (given, spent on
+  which task, returned).
 
 ### 7.6 Turning it on (Decided)
 
@@ -498,8 +500,8 @@ balance first, automatically:
 
 | Permission | Admin | Team Leader | Employee |
 |---|---|---|---|
-| View cash advances | Company | Their team | Their own only |
-| Give and settle cash advances (give, record returns, corrections) | Company | No | No |
+| See cash advances | Company | Their team | Their own only |
+| Give cash advances (give, record returns, corrections) | Company | No | No |
 
 - **Giving and settling moves money,** so it asks for two-factor sign-in,
   as paying costs does.
@@ -526,10 +528,13 @@ balance first, automatically:
   and merged only on the product owner's word.
 - **Order with `UI_PLAN.md`** (Decided; full detail in `UI_PLAN.md` §5):
   1. **Before step 0:**
-     - settle the names and the side bar groups (`UI_PLAN.md` §6, questions
-       1–5);
+     - settle the names and the side bar groups. Done on 2026-10-15
+       (`UI_PLAN.md` §2, §3);
      - build the shared page building blocks in one PR. No old page is
-       converted in it.
+       converted in it;
+     - move the 3 pages this plan doesn't touch (the dashboard home,
+       Employees and Day Off Requests) onto the building blocks, in one
+       small PR.
   2. **Steps 0–7 above.**
      - The new side bar groups land with step 0.
      - Every screen these steps create or rework uses the building blocks:
@@ -561,18 +566,15 @@ balance first, automatically:
 
 ## 10. Open questions
 
-1. **Names, across the whole system.** The product owner finds the system
-   not visually organised, so naming is being discussed for the whole app,
-   not only for these features. That covers:
-   - the side bar and how it's grouped;
-   - page and section names, in English and Arabic;
-   - the names still open here: the statuses To collect and Collected;
-     Locations, which must read differently from the attendance "work
-     locations"; the permission names; and the English name for عهدة
-     (suggested: Cash advance).
+None right now. The last one, names across the whole system, was settled
+on 2026-10-15 in `UI_PLAN.md` §2–§3:
 
-   This discussion is in **`UI_PLAN.md`**, with suggestions for each of these
-   names in its §3.3.
+- the statuses are **Due / Collected** (غير محصّل / محصّل);
+- task locations stay **Locations**, and the attendance "work locations"
+  become **Check-in places**;
+- the permission names follow See, Add, Manage, plus a verb for anything
+  that moves money;
+- عهدة is **Cash advance** in English.
 
 ## 11. Turned down
 
@@ -681,3 +683,21 @@ balance first, automatically:
 - **2026-10-15:** The design tools are decided, in `UI_PLAN.md` §7. The
   note on how the UI work starts (§8) now points there, instead of to the
   single design skill.
+- **2026-10-15:** The names are settled in `UI_PLAN.md` §2–§3, so the last
+  open question here (§10) is closed. This file now uses them:
+  - **Statuses (§6.4):** Due / Collected (غير محصّل / محصّل). "Total to
+    collect" becomes Total due, and the client page's "Owes us" becomes
+    Due.
+  - **Check-in places (§2.10):** the on-screen name for the attendance work
+    locations, apart from task Locations.
+  - **Records (§0.2):** سجلات العملاء in the side bar.
+  - **Permission names:**
+    - charges (§6.6): See charges, Manage charges, Mark charges collected;
+    - cash advances (§7.7): See cash advances, Give cash advances;
+    - saved lists (§5): Add list names, Manage lists.
+
+    §6.2 had still called who may use the "Not charged to client" tick
+    open. It now points to Manage charges, as already decided.
+  - **My cash advance (§7.5):** in the side bar's Me group.
+  - **Order (§8):** the 3 pages this plan doesn't touch move onto the
+    building blocks before step 0.
