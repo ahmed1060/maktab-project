@@ -568,4 +568,22 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   colour, the total in the middle, and a legend with every word and count
   that links to the tasks it counts. The employee's dashboard has its two
   again, tasks by status and day off credit.
-
+- **2026-10-15:** Fixed from Codex's reviews of step 3a (#78) and of the
+  building blocks (#77), each with its own test:
+  - a two-day day-off request shows both its days;
+  - a negative count keeps its sign ("-1 pts", not "1 pt");
+  - the Day Off filters leave out a day that doesn't exist, such as
+    31 February, instead of moving it or failing with a server error;
+  - a notification's request is scrolled to on whichever page it turns up;
+  - a Team Leader's task links on the dashboard open the Tasks page's new
+    team view (`?view=team`): their team's tasks with their own among
+    them, which is what the numbers count. It has no tab of its own yet;
+    step 3b's Tasks page decides whether it gets one;
+  - a list whose page empties, after a delete or a switch to another
+    company, moves to the last page there is, and another company starts
+    on page one without the last one's team, picks or employee;
+  - a table wider than its panel scrolls inside it (`DESIGN.md` §5.4);
+  - in dark mode, a primary button's hover and pressed shades keep its
+    3:1 edge on the panel (`DESIGN.md` §2.1).
+  - **No change:** a linked total tile was already a link over the whole
+    tile; checked in the browser.
