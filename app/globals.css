@@ -1511,3 +1511,117 @@ input::-webkit-credentials-auto-fill-button {
 .face-cam-tick { animation: face-cam-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
 @keyframes face-cam-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .face-cam-tick { animation: none; } }
+
+/* ── Design tokens (DESIGN.md) ─────────────────────────────────────────────
+   The values for the building blocks in components/ui, from DESIGN.md §2–§4.
+   Only the building blocks use these; the variables above stay for the pages
+   not yet moved, and each goes once the last page using it has moved.
+   lib/design-tokens.test.ts holds these to DESIGN.md's tables and to their
+   contrast pairs.
+
+   The brand tokens below are the default indigo's (lib/brand-colour.ts). The
+   page's head carries the same tokens for the colour in force, at a higher
+   specificity, so these are only what a page without that sheet falls back
+   on. */
+:root {
+  --page: #f6f9fc;
+  --panel: #ffffff;
+  --panel-raised: #ffffff;
+  --ink: #0d253d;
+  --ink-2: #273951;
+  --muted: #5d6b82;
+  --rule: #e3e8ee;
+  --field-line: #828e9f;
+
+  --status-neutral-bg: #ebeef1;
+  --status-neutral-fg: #3c4257;
+  --status-progress-bg: #e0ecff;
+  --status-progress-fg: #0b4bb3;
+  --status-waiting-bg: #fcedb9;
+  --status-waiting-fg: #7a4b0a;
+  --status-good-bg: #d7f7c2;
+  --status-good-fg: #05690d;
+  --status-problem-bg: #ffe7f2;
+  --status-problem-fg: #b3093c;
+  /* The danger button, the same in both themes: white reads on it at 6.95:1. */
+  --problem-fill: #b3093c;
+  --problem-fill-hover: #9e0835;
+  --on-problem: #ffffff;
+  --problem-text: #b3093c;
+  --overdue-row: #fff8fa;
+
+  --brand: #6063ea;
+  --brand-hover: #585bd7;
+  --brand-press: #5153c5;
+  --brand-text: #575ad5;
+  --brand-tint: #f1f1fd;
+  --brand-tint-strong: #e9e9fc;
+  --on-brand: #ffffff;
+
+  --font-ui: var(--font-inter), var(--font-noto-arabic), system-ui, sans-serif;
+  --text-xs: 12px;
+  --leading-xs: 16px;
+  --text-sm: 13px;
+  --leading-sm: 18px;
+  --text-md: 14px;
+  --leading-md: 20px;
+  --text-lg: 16px;
+  --leading-lg: 24px;
+  --text-xl: 18px;
+  --leading-xl: 26px;
+  --text-2xl: 22px;
+  --leading-2xl: 28px;
+  --text-3xl: 28px;
+  --leading-3xl: 34px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-pill: 999px;
+  --radius-panel: 12px;
+  --radius-field: 6px;
+
+  /* Menus, pop-ups and dialogs (8px corners, depth level 2: DESIGN.md §4.2-4.3)
+     get their tokens with the first building block that uses them. */
+  --elev-1: 0 1px 3px rgba(13, 37, 61, 0.08);
+}
+
+:root[data-theme="dark"] {
+  --page: #0a1220;
+  --panel: #0f1a2b;
+  --panel-raised: #16233a;
+  --ink: #e6edf5;
+  --ink-2: #b8c4d4;
+  --muted: #8a9ab0;
+  --rule: #24324a;
+  --field-line: #65758d;
+
+  --status-neutral-bg: #26324a;
+  --status-neutral-fg: #d0d8e4;
+  --status-progress-bg: #16305e;
+  --status-progress-fg: #a9c7ff;
+  --status-waiting-bg: #3d2c08;
+  --status-waiting-fg: #f5cf7a;
+  --status-good-bg: #123d1c;
+  --status-good-fg: #93e3a0;
+  --status-problem-bg: #4a1226;
+  --status-problem-fg: #ffa3bd;
+  --problem-text: #ffa3bd;
+  --overdue-row: #241729;
+
+  --brand: #6063ea;
+  --brand-hover: #585bd7;
+  --brand-press: #5153c5;
+  --brand-text: #8c8ff2;
+  --brand-tint: #1c264a;
+  --brand-tint-strong: #222c59;
+  --on-brand: #ffffff;
+
+  /* Shadows don't show on dark: depth comes from --panel-raised and the rule. */
+  --elev-1: none;
+}

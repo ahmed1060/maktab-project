@@ -2903,5 +2903,9 @@ export const ar = {
         audit_value_EMAIL_VERIFY: "تأكيد البريد الإلكتروني",
         audit_value_EMAIL_CHANGE: "تغيير البريد الإلكتروني",
         audit_value_MFA_RECOVERY: "استرداد المصادقة الثنائية",
-        audit_value_PASSWORD_RESET: "إعادة تعيين كلمة المرور"
+        audit_value_PASSWORD_RESET: "إعادة تعيين كلمة المرور",
+        // The building blocks (components/ui, DESIGN.md §5).
+        ui_overdue: "متأخرة",
+        ui_reset_filters: "إعادة تعيين",
+        ui_page_of: "صفحة {page} من {pages}"
 };

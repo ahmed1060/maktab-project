@@ -59,7 +59,7 @@ below, which are all worked out from the one chosen colour.
 | `--brand-tint-strong` | 14% brand on the panel colour | Avatars with initials |
 
 - **The default is Nizmo's own indigo, `#6366f1`.** White text on it is
-  4.47:1, just under the rule, so it's used as `#5d60e3` (4.95:1).
+  4.47:1, just under the rule, so it's used as `#6063ea` (4.70:1).
 - **In dark mode:**
   - `--brand-text` is lightened until it reads at 4.5:1 or better on dark
     panels;
@@ -80,8 +80,8 @@ below, which are all worked out from the one chosen colour.
 | `--ink` | `#0d253d` | `#e6edf5` | Main text: titles and row content |
 | `--ink-2` | `#273951` | `#b8c4d4` | Secondary text in rows and forms |
 | `--muted` | `#5d6b82` | `#8a9ab0` | Helper text, labels, table headers, empty states |
-| `--hairline` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
-| `--field-line` | `#8792a2` | `#5b6b82` | The edge of a field, checkbox or toggle (3:1 or better) |
+| `--rule` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
+| `--field-line` | `#828e9f` | `#65758d` | The edge of a field, checkbox or toggle (3:1 or better on the page and on panels) |
 
 - Text is navy, never pure black. Dark mode is deep navy, never pure black
   either.
@@ -104,8 +104,8 @@ same in every company.
 - **Colour is never the only signal.** A status always has its word. Overdue
   always has the warning icon and the word "Overdue" too.
 - **Danger text** on white is `#b3093c` (6.95:1).
-- **An overdue row** gets a faint red background (`#fff8fa` in light mode)
-  and a 3px red bar on its start edge.
+- **An overdue row** gets a faint red background (`#fff8fa` in light mode,
+  `#241729` in dark) and a 3px red bar on its start edge.
 - **A brand colour close to the problem red** gets a warning when it's
   chosen (`UI_PLAN.md` §4.6).
 
@@ -214,7 +214,7 @@ One corner size for each level, so the level shows at a glance:
 | Level | Light | Used for |
 |---|---|---|
 | 0 | Flat | The page, rows inside a table |
-| 1 | `0 1px 3px rgba(13,37,61,.08)` and a `--hairline` edge | Panels and cards resting on the page |
+| 1 | `0 1px 3px rgba(13,37,61,.08)` and a `--rule` edge | Panels and cards resting on the page |
 | 2 | `0 8px 24px rgba(13,37,61,.12), 0 2px 6px rgba(13,37,61,.06)` | Menus, pop-ups, dialogs, toasts |
 
 - **In dark mode,** shadows don't show. Depth comes from `--panel-raised` and
@@ -277,9 +277,13 @@ These are built once, in the building-blocks PR, and every page uses them
   - a search field, which takes the spare width;
   - the selects for that page;
   - a quiet "Reset filters" button on the end side.
+
+  The search and the selects are the one exception to visible labels: what
+  they show already names them ("Search tasks", "All statuses"), so their
+  labels are kept for screen readers but not shown.
 - **On phones,** the filter bar becomes the search field plus a
-  "Filters" button showing how many filters are on. The button opens a
-  sheet.
+  "Filters" button showing how many filters are on. The button shows the
+  filters below the search, and hides them again.
 
 ### 5.4 Lists: a table on computers, cards on phones
 
@@ -398,6 +402,8 @@ Every UI PR meets all of these, and its screenshots show it:
 
 - **Tokens are CSS variables,** defined once in `app/globals.css` for light
   and for `:root[data-theme="dark"]`. Pages use tokens, never hex values.
+  The line colour is `--rule`, because `--hairline` already exists with an
+  older value that the pages not yet moved still use.
 - **The brand tokens** (§2.1) are written into the page by the server from
   the company's or the system's colour, so the page never flashes the
   default first (`UI_PLAN.md` §4.6). Until the setting exists, they hold
@@ -427,8 +433,8 @@ changed:
   long sessions, and Noto Sans Arabic has no 300 to match.
 - **The helper-text grey is darker** (`#5d6b82`), so it passes 4.5:1 on the
   page.
-- **Field edges are `#8792a2`** instead of a pale blue, so fields stand out
-  at 3:1.
+- **Field edges are `#828e9f`** instead of a pale blue, so fields stand out
+  at 3:1 on the page and on panels.
 - **"In Progress" uses a fixed blue,** not the brand colour, so statuses mean
   the same in every company.
 - **No "A · B" strings.** Overdue shows as its own word with an icon.
@@ -447,3 +453,19 @@ changed:
   - the building blocks, icons, Arabic, motion and the quality floor;
   - how it maps to code;
   - what was changed from the Stripe write-up.
+- **2026-10-15:** The line token is renamed from `--hairline` to `--rule`.
+  `--hairline` already exists with a different value (a faint 5% black)
+  that 12 places in the old pages use.
+- **2026-10-15:** Nizmo's indigo is used as `#6063ea` (4.70:1), not
+  `#5d60e3`. The code darkens a colour in finer steps than the mock-ups did,
+  so less of the chosen colour is lost.
+- **2026-10-15:** The field edge is `#828e9f`, not `#8792a2`: the earlier
+  value was 2.98:1 on the page, under the 3:1 the table promised. The dark
+  overdue row (`#241729`) is now written down too.
+- **2026-10-15:** The dark field edge is `#65758d`, not `#5b6b82`: the earlier
+  value was 2.90:1 on a raised panel, where fields in dialogs sit.
+- **2026-10-15:** In the filter bar, the search's and the selects' labels
+  are kept for screen readers but not shown, as in the approved mock-ups:
+  what they show already names them. On phones, the Filters button shows
+  the filters below the search instead of opening a sheet, so each filter
+  is on the page once.

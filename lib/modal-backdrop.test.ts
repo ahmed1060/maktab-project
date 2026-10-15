@@ -13,7 +13,9 @@ import { join } from "node:path"
 const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
     e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
 const SCREENS = [...files("app"), ...files("components")]
-const DEFINED = new Set([...readFileSync("app/globals.css", "utf8").matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1]))
+// globals.css, and the building blocks' stylesheet that the root layout loads beside it.
+const DEFINED = new Set(["app/globals.css", "components/ui/ui.css"]
+    .flatMap(f => [...readFileSync(f, "utf8").matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1])))
 
 /**
  * Button colour variants with no CSS of their own: the button still has its
