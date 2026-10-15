@@ -80,7 +80,7 @@ below, which are all worked out from the one chosen colour.
 | `--ink` | `#0d253d` | `#e6edf5` | Main text: titles and row content |
 | `--ink-2` | `#273951` | `#b8c4d4` | Secondary text in rows and forms |
 | `--muted` | `#5d6b82` | `#8a9ab0` | Helper text, labels, table headers, empty states |
-| `--hairline` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
+| `--rule` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
 | `--field-line` | `#8792a2` | `#5b6b82` | The edge of a field, checkbox or toggle (3:1 or better) |
 
 - Text is navy, never pure black. Dark mode is deep navy, never pure black
@@ -214,7 +214,7 @@ One corner size for each level, so the level shows at a glance:
 | Level | Light | Used for |
 |---|---|---|
 | 0 | Flat | The page, rows inside a table |
-| 1 | `0 1px 3px rgba(13,37,61,.08)` and a `--hairline` edge | Panels and cards resting on the page |
+| 1 | `0 1px 3px rgba(13,37,61,.08)` and a `--rule` edge | Panels and cards resting on the page |
 | 2 | `0 8px 24px rgba(13,37,61,.12), 0 2px 6px rgba(13,37,61,.06)` | Menus, pop-ups, dialogs, toasts |
 
 - **In dark mode,** shadows don't show. Depth comes from `--panel-raised` and
@@ -398,6 +398,8 @@ Every UI PR meets all of these, and its screenshots show it:
 
 - **Tokens are CSS variables,** defined once in `app/globals.css` for light
   and for `:root[data-theme="dark"]`. Pages use tokens, never hex values.
+  The line colour is `--rule`, because `--hairline` already exists with an
+  older value that the pages not yet moved still use.
 - **The brand tokens** (§2.1) are written into the page by the server from
   the company's or the system's colour, so the page never flashes the
   default first (`UI_PLAN.md` §4.6). Until the setting exists, they hold
@@ -447,3 +449,6 @@ changed:
   - the building blocks, icons, Arabic, motion and the quality floor;
   - how it maps to code;
   - what was changed from the Stripe write-up.
+- **2026-10-15:** The line token is renamed from `--hairline` to `--rule`.
+  `--hairline` already exists with a different value (a faint 5% black)
+  that 12 places in the old pages use.
