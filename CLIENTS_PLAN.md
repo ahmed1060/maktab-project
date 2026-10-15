@@ -78,7 +78,7 @@ Two things make a single big rename unsafe:
 
 | PR | What it does | Effect on production while it waits for review |
 |---|---|---|
-| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move | Only today's Clients section stops working, and it's empty |
+| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
 | 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now | None |
 | 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
 | 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below) | None. The app is closed for about 15 minutes, at a time the product owner chooses |
@@ -532,8 +532,9 @@ balance first, automatically:
        (`UI_PLAN.md` §2, §3);
      - build the shared page building blocks in one PR. No old page is
        converted in it;
-     - move the 3 pages this plan doesn't touch (the dashboard home,
-       Employees and Day Off Requests) onto the building blocks, in one
+     - move the 3 pages this plan doesn't otherwise touch (the dashboard
+       home, whose client count changes in 0a, Employees and Day Off
+       Requests) onto the building blocks, in one
        small PR. Built on 2026-10-15, waiting to be merged. It also adds
        building blocks these steps will use: the row menu, the selection
        bar, the dialog, the text area and the radio choice;
