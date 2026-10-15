@@ -18,7 +18,8 @@
 .ui-avatar,
 .ui-page,
 .ui-menu,
-.ui-selectionbar {
+.ui-selectionbar,
+.ui-donut {
   font-family: var(--font-ui);
 }
 
@@ -990,6 +991,115 @@ a.ui-row:focus-visible {
   outline-offset: 2px;
 }
 
+/* ── Donut chart (§5.5) ── */
+.ui-donut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4);
+}
+.ui-donut-ring {
+  position: relative;
+  flex: none;
+  width: 144px;
+  height: 144px;
+}
+.ui-donut-ring svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ui-donut-track,
+.ui-donut-arc {
+  fill: none;
+  stroke-width: 12;
+}
+.ui-donut-track {
+  stroke: var(--status-neutral-bg);
+}
+.ui-donut-arc[data-tone="neutral"],
+.ui-donut-dot[data-tone="neutral"] { stroke: var(--status-neutral-fg); background: var(--status-neutral-fg); }
+.ui-donut-arc[data-tone="progress"],
+.ui-donut-dot[data-tone="progress"] { stroke: var(--status-progress-fg); background: var(--status-progress-fg); }
+.ui-donut-arc[data-tone="waiting"],
+.ui-donut-dot[data-tone="waiting"] { stroke: var(--status-waiting-fg); background: var(--status-waiting-fg); }
+.ui-donut-arc[data-tone="good"],
+.ui-donut-dot[data-tone="good"] { stroke: var(--status-good-fg); background: var(--status-good-fg); }
+.ui-donut-arc[data-tone="problem"],
+.ui-donut-dot[data-tone="problem"] { stroke: var(--status-problem-fg); background: var(--status-problem-fg); }
+.ui-donut-total {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.ui-donut-total strong {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ui-donut-total span {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+.ui-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ui-donut-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-field);
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: background-color 150ms ease-out;
+}
+a.ui-donut-row:hover {
+  background: var(--brand-tint);
+}
+a.ui-donut-row:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 0;
+}
+.ui-donut-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.ui-donut-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ui-donut-count {
+  margin-inline-start: auto;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.ui-donut-empty {
+  flex: 1;
+  margin: 0;
+  color: var(--muted);
+}
+
 /* ── Empty state (§5.5) ── */
 .ui-empty {
   display: flex;
@@ -1046,6 +1156,16 @@ html[lang="ar"] .ui-empty-title {
   }
   .ui-menu-button {
     width: 44px;
+  }
+  .ui-donut {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ui-donut-ring {
+    align-self: center;
+  }
+  .ui-donut-row {
+    min-height: 44px;
   }
   .ui-check-target {
     width: 44px;
@@ -1130,7 +1250,8 @@ html[lang="ar"] .ui-empty-title {
 @media (prefers-reduced-motion: reduce) {
   .ui-btn,
   .ui-tab,
-  .ui-row {
+  .ui-row,
+  .ui-donut-row {
     transition: none;
   }
   .ui-btn[aria-busy="true"]::after {

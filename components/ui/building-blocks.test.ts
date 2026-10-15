@@ -258,6 +258,51 @@ describe("page layout, sections, rows and tiles", () => {
     })
 })
 
+describe("the donut chart", () => {
+    const parts = [
+        { key: "done", label: "Completed", value: 3, tone: "good" as const, href: "/t?status=COMPLETED" },
+        { key: "ok", label: "Approved", value: 1, tone: "good" as const },
+        { key: "late", label: "Rejected", value: 0, tone: "problem" as const },
+    ]
+    const chart = (p = parts) => render(h(ui.DonutChart, { label: "Tasks by status", parts: p, total: "4", totalLabel: "Total", emptyLabel: "No data available" }))
+
+    it("is a picture of its legend: the ring is hidden, the legend says every word and count", () => {
+        const html = chart()
+        expect(html).toContain('<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">')
+        expect(html).toContain('<ul class="ui-donut-legend" aria-label="Tasks by status">')
+        // Every part is in the legend, an empty one too, so the counts add up.
+        for (const word of ["Completed", "Approved", "Rejected"]) expect(html).toContain(`<span class="ui-donut-label">${word}</span>`)
+        expect(html).toContain('<strong>4</strong><span>Total</span>')
+    })
+
+    it("draws a part only when it has something, with a gap between two of the same meaning", () => {
+        const html = chart()
+        expect(html.match(/class="ui-donut-arc"/g)).toHaveLength(2)
+        expect(html.match(/data-tone="good"/g)!.length).toBeGreaterThanOrEqual(2)
+        const lengths = [...html.matchAll(/stroke-dasharray="([\d.]+) /g)].map(m => Number(m[1]))
+        const ring = 2 * Math.PI * 40
+        expect(lengths[0]).toBeCloseTo(ring * 3 / 4 - 1.5, 3)
+        expect(lengths[1]).toBeCloseTo(ring / 4 - 1.5, 3)
+    })
+
+    it("links a legend row to what it counts", () => {
+        expect(chart()).toMatch(/<a class="ui-donut-row" href="\/t\?status=COMPLETED">/)
+    })
+
+    it("says when there's nothing to count, over a grey ring", () => {
+        const html = chart(parts.map(p => ({ ...p, value: 0 })))
+        expect(html).toContain('class="ui-donut-track"')
+        expect(html).not.toContain("ui-donut-arc")
+        expect(html).toContain('<p class="ui-donut-empty">No data available</p>')
+    })
+
+    it("never moves", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rules = css.match(/\.ui-donut[^{]*\{[^}]*\}/g)!.join("\n")
+        expect(rules).not.toMatch(/animation|transition: (stroke|all)/)
+    })
+})
+
 describe("the selection bar", () => {
     it("says how many are picked, as it changes, with what can be done and Clear selection at the end", () => {
         const html = render(h(ui.SelectionBar, { count: "3 selected", clear: h(ui.Button, { variant: "quiet", children: "Clear selection" }), children: h(ui.Button, { variant: "primary", children: "Assign" }) }))

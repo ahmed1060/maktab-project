@@ -26,7 +26,9 @@ describe("the dashboard home", () => {
         const statuses = schema.match(/enum TaskStatus \{([^}]*)\}/)![1].split(/\s+/).filter(Boolean)
         const listed = page.match(/const TASK_STATUSES = \[([^\]]*)\]/)![1].match(/'([A-Z_]+)'/g)!.map(s => s.slice(1, -1))
         expect([...listed].sort()).toEqual([...statuses].sort())
-        expect(page).toContain("href={`/dashboard/tasks?status=${status}`}")
+        expect(page).toContain("href: `/dashboard/tasks?status=${status}`")
+        // As donuts, with the words and counts in their legends.
+        expect(page.match(/<DonutChart\b/g)!.length).toBeGreaterThanOrEqual(2)
     })
 
     it("offers each review queue only to someone who can act on it, as before", () => {

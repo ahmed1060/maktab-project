@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Icon, type PhosphorIcon } from './Icon'
+import type { StatusTone } from './StatusBadge'
 import { cx } from './cx'
 
 /**
@@ -129,6 +130,87 @@ export function SelectionBar({ count, children, clear }: { count: ReactNode; chi
         </div>
     )
 }
+
+export type DonutPart = {
+    key: string
+    label: ReactNode
+    value: number
+    /** The part's meaning, which decides its colour (DESIGN.md §2.3). */
+    tone: StatusTone
+    /** The value as the page writes it, such as "٣" or "2 days". */
+    count?: ReactNode
+    /** What the part counts: its legend row goes there. */
+    href?: string
+}
+
+/**
+ * How a whole splits into a few parts (DESIGN.md §5.5): a ring in the parts'
+ * meaning colours with the total in its middle, and a legend that says each
+ * part's word and count. The legend is what screen readers read; the ring is
+ * a picture of it. Nothing about it moves.
+ */
+export function DonutChart({ label, parts, total, totalLabel, emptyLabel }: {
+    /** What the chart shows, naming the legend for screen readers. */
+    label: string
+    parts: DonutPart[]
+    /** The total, as the page writes it. */
+    total: ReactNode
+    totalLabel: ReactNode
+    /** Said in place of the legend when there's nothing to count. */
+    emptyLabel: ReactNode
+}) {
+    const sum = parts.reduce((acc, p) => acc + Math.max(0, p.value), 0)
+    const shown = parts.filter(p => p.value > 0)
+    // Where each arc starts, worked out before drawing rather than added up
+    // while drawing, so a cached piece of a render can't land at the wrong angle.
+    const lengths = shown.map(p => (p.value / sum) * RING)
+    const starts = lengths.map((_, i) => lengths.slice(0, i).reduce((a, b) => a + b, 0))
+    // A thin gap between parts, so two with the same meaning still show as two.
+    const gap = shown.length > 1 ? 1.5 : 0
+    return (
+        <div className="ui-panel ui-donut">
+            <div className="ui-donut-ring">
+                <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+                    <g transform="rotate(-90 50 50)">
+                        {sum === 0
+                            ? <circle className="ui-donut-track" cx="50" cy="50" r={RADIUS} />
+                            : shown.map((p, i) => (
+                                <circle
+                                    key={p.key}
+                                    className="ui-donut-arc"
+                                    data-tone={p.tone}
+                                    cx="50" cy="50" r={RADIUS}
+                                    strokeDasharray={`${Math.max(0, lengths[i] - gap)} ${RING}`}
+                                    strokeDashoffset={-starts[i]}
+                                />
+                            ))}
+                    </g>
+                </svg>
+                <div className="ui-donut-total">
+                    <strong>{total}</strong>
+                    <span>{totalLabel}</span>
+                </div>
+            </div>
+            {sum === 0 ? <p className="ui-donut-empty">{emptyLabel}</p> : (
+                <ul className="ui-donut-legend" aria-label={label}>
+                    {parts.map(p => {
+                        const inside = (
+                            <>
+                                <span className="ui-donut-dot" data-tone={p.tone} aria-hidden="true" />
+                                <span className="ui-donut-label">{p.label}</span>
+                                <span className="ui-donut-count">{p.count ?? p.value}</span>
+                            </>
+                        )
+                        return <li key={p.key}>{p.href ? <Link href={p.href} className="ui-donut-row">{inside}</Link> : <div className="ui-donut-row">{inside}</div>}</li>
+                    })}
+                </ul>
+            )}
+        </div>
+    )
+}
+
+const RADIUS = 40
+const RING = 2 * Math.PI * RADIUS
 
 /** Totals above a list: up to four in a row on computers, two on phones. */
 export function TotalTiles({ items }: { items: Tile[] }) {

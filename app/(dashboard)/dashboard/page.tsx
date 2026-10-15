@@ -5,7 +5,7 @@ import {
     BuildingsIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, PlusIcon, UserPlusIcon, UsersIcon,
 } from "@phosphor-icons/react/ssr"
 import {
-    ButtonLink, Columns, DueDate, EmptyState, Page, PageHeader, Panel, Row, Rows, Section, SectionLink, StatusBadge,
+    ButtonLink, Columns, DonutChart, DueDate, EmptyState, Page, PageHeader, Panel, Row, Rows, Section, SectionLink, StatusBadge,
     TotalTiles, taskStatusTone,
 } from "@/components/ui"
 import { countOf } from "@/lib/plural"
@@ -67,20 +67,27 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         t('ui_completed_share').replace('{share}', new Intl.NumberFormat(numLocale, { style: 'percent' }).format(whole > 0 ? part / whole : 0))
     const statusWord = (status: string) => t(`status_${status.toLowerCase()}` as TranslationKey)
     const badge = (status: string) => <StatusBadge tone={taskStatusTone(status)}>{statusWord(status)}</StatusBadge>
-    // Every status, in the order a task moves through them, with how many
-    // are in each: a row per status links to the task list showing them.
-    const byStatus = (counts: { status: string; _count: number }[], label: string) => (
-        <Rows label={label}>
-            {TASK_STATUSES.map(status => (
-                <Row
-                    key={status}
-                    href={`/dashboard/tasks?status=${status}`}
-                    title={badge(status)}
-                    end={<span className="ui-num">{num(counts.find(c => c.status === status)?._count ?? 0)}</span>}
-                />
-            ))}
-        </Rows>
-    )
+    // Tasks by status as a donut: every status, in the order a task moves
+    // through them, each with its word and count, linking to those tasks.
+    const byStatus = (counts: { status: string; _count: number }[], label: string) => {
+        const count = (status: string) => counts.find(c => c.status === status)?._count ?? 0
+        return (
+            <DonutChart
+                label={label}
+                parts={TASK_STATUSES.map(status => ({
+                    key: status,
+                    label: statusWord(status),
+                    value: count(status),
+                    count: num(count(status)),
+                    tone: taskStatusTone(status),
+                    href: `/dashboard/tasks?status=${status}`,
+                }))}
+                total={num(counts.reduce((acc, c) => acc + c._count, 0))}
+                totalLabel={t('total_label')}
+                emptyLabel={t('no_data_available')}
+            />
+        )
+    }
 
     let companyId: string | undefined = undefined
     if (searchParams.company) {
@@ -347,6 +354,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
+        const remainingCredit = currentUser?.dayOffCredit || 0
         const usedCredits = usedDayOffCredit(currentUser?.baseDayOffCredit, currentUser?.dayOffCredit)
         const dayOffWord = (type: string) => t(`${type.toLowerCase()}_day_off` as TranslationKey)
         const dayOffTone = (status: string) => status === 'APPROVED' ? 'good' : status === 'REJECTED' ? 'problem' : 'neutral'
@@ -359,8 +367,25 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     { label: t('overall_progress'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: '/dashboard/tasks' },
                     { label: t('bonus'), value: days(Number(salaryRecord?.bonusDays || 0)), note: t('extra_earnings') },
                     { label: t('payroll_deductions'), value: days(Number(salaryRecord?.deductions || 0)), note: t('total_lost_days') },
-                    { label: t('remaining_credit' as any), value: days(currentUser?.dayOffCredit || 0), note: `${t('used_credit' as any)}: ${days(usedCredits)}`, href: '/dashboard/day-off-requests' },
                 ]} />
+
+                <Columns>
+                    <Section title={t('task_distribution')}>
+                        {byStatus(taskStats as any, t('task_distribution'))}
+                    </Section>
+                    <Section title={t('credit_overview')}>
+                        <DonutChart
+                            label={t('credit_overview')}
+                            parts={[
+                                { key: 'left', label: t('remaining_credit'), value: remainingCredit, count: days(remainingCredit), tone: 'good', href: '/dashboard/day-off-requests' },
+                                { key: 'used', label: t('used_credit'), value: usedCredits, count: days(usedCredits), tone: 'neutral', href: '/dashboard/day-off-requests' },
+                            ]}
+                            total={days(remainingCredit + usedCredits)}
+                            totalLabel={t('total_label')}
+                            emptyLabel={t('no_data_available')}
+                        />
+                    </Section>
+                </Columns>
 
                 <Section title={t('due_this_week')} action={<SectionLink href="/dashboard/tasks">{t('view_all')}</SectionLink>}>
                     {upcomingTasks.length === 0 ? (
