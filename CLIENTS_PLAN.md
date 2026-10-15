@@ -538,8 +538,9 @@ balance first, automatically:
   3. **Then the rest of `UI_PLAN.md`:** the remaining old pages, one by one,
      and the one Requests page.
 - **When the UI work starts,** it's done page by page in small PRs merged
-  into `main`, on a fresh branch from `main` with the design skill copied
-  across.
+  into `main`, on a fresh branch from `main`. It uses `DESIGN.md` and the
+  design tools in `UI_PLAN.md` §7, with UI/UX Pro Max copied across from
+  `ui-refactor`.
 
 ---
 
@@ -677,3 +678,6 @@ balance first, automatically:
   - steps 0–7 follow, with the side bar groups in step 0 and every new
     screen on the building blocks;
   - then the rest of the UI plan.
+- **2026-10-15:** The design tools are decided, in `UI_PLAN.md` §7. The
+  note on how the UI work starts (§8) now points there, instead of to the
+  single design skill.
