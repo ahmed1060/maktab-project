@@ -83,8 +83,10 @@ describe("every pair reads", () => {
         for (const [fg, bg] of pairs) {
             expect([theme, fg, bg, contrast(t[fg], ground(bg)) >= 4.5]).toEqual([theme, fg, bg, true])
         }
-        // White on the danger button, which is the same in both themes.
-        expect(contrast("#ffffff", THEMES.light["--problem-fill"])).toBeGreaterThanOrEqual(4.5)
+        // The danger button and its hover are the same in both themes.
+        for (const fill of ["--problem-fill", "--problem-fill-hover"]) {
+            expect(contrast(THEMES.light["--on-problem"], THEMES.light[fill])).toBeGreaterThanOrEqual(4.5)
+        }
     })
 
     it.each(["light", "dark"] as const)("a field's edge stands out at 3:1, %s", theme => {

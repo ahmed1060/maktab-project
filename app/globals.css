@@ -1543,8 +1543,10 @@ input::-webkit-credentials-auto-fill-button {
   --status-good-fg: #05690d;
   --status-problem-bg: #ffe7f2;
   --status-problem-fg: #b3093c;
-  /* The danger button's fill, the same in both themes: white reads on it at 6.95:1. */
+  /* The danger button, the same in both themes: white reads on it at 6.95:1. */
   --problem-fill: #b3093c;
+  --problem-fill-hover: #9e0835;
+  --on-problem: #ffffff;
   --problem-text: #b3093c;
   --overdue-row: #fff8fa;
 
@@ -1582,11 +1584,11 @@ input::-webkit-credentials-auto-fill-button {
 
   --radius-pill: 999px;
   --radius-panel: 12px;
-  --radius-menu: 8px;
   --radius-field: 6px;
 
+  /* Menus, pop-ups and dialogs (8px corners, depth level 2: DESIGN.md §4.2-4.3)
+     get their tokens with the first building block that uses them. */
   --elev-1: 0 1px 3px rgba(13, 37, 61, 0.08);
-  --elev-2: 0 8px 24px rgba(13, 37, 61, 0.12), 0 2px 6px rgba(13, 37, 61, 0.06);
 }
 
 :root[data-theme="dark"] {
@@ -1622,5 +1624,4 @@ input::-webkit-credentials-auto-fill-button {
 
   /* Shadows don't show on dark: depth comes from --panel-raised and the rule. */
   --elev-1: none;
-  --elev-2: none;
 }

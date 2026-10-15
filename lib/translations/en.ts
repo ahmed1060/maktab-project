@@ -2908,5 +2908,9 @@ export const en = {
         audit_value_EMAIL_VERIFY: "Email confirmation",
         audit_value_EMAIL_CHANGE: "Email change",
         audit_value_MFA_RECOVERY: "Two-factor recovery",
-        audit_value_PASSWORD_RESET: "Password reset"
+        audit_value_PASSWORD_RESET: "Password reset",
+        // The building blocks (components/ui, DESIGN.md §5).
+        ui_overdue: "Overdue",
+        ui_reset_filters: "Reset filters",
+        ui_page_of: "Page {page} of {pages}"
 };

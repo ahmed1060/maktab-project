@@ -1,4 +1,5 @@
 import './globals.css'
+import '@/components/ui/ui.css'
 import { Providers } from './providers'
 import { cookies, headers } from 'next/headers'
 import { Outfit, Inter, Noto_Sans_Arabic } from 'next/font/google'

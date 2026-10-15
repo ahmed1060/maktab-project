@@ -17,10 +17,17 @@ describe("fonts", () => {
     })
 
     it("come from next/font, as CSS variables on <html>", () => {
-        expect(layout).toContain("import { Outfit, Inter } from 'next/font/google'")
+        expect(layout).toContain("import { Outfit, Inter, Noto_Sans_Arabic } from 'next/font/google'")
         expect(layout).toMatch(/variable: '--font-outfit'/)
         expect(layout).toMatch(/variable: '--font-inter'/)
-        expect(layout).toContain("className={`${outfit.variable} ${inter.variable}`}")
+        expect(layout).toMatch(/variable: '--font-noto-arabic'/)
+        expect(layout).toContain("className={`${outfit.variable} ${inter.variable} ${notoArabic.variable}`}")
+    })
+
+    it("the Arabic one isn't preloaded, as only the building blocks use it so far", () => {
+        // Preloaded, every English page would fetch it for nothing.
+        expect(layout).toMatch(/Noto_Sans_Arabic\(\{[^}]*subsets: \['arabic'\][^}]*preload: false/)
+        expect(css).toContain("--font-ui: var(--font-inter), var(--font-noto-arabic), system-ui, sans-serif;")
     })
 
     it("are used through those variables", () => {
