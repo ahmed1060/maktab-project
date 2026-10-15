@@ -151,14 +151,17 @@ export default function DayOffRequestsPage() {
     const baseCredit: number = (foundUser?.baseDayOffCredit !== undefined && foundUser?.baseDayOffCredit !== null) ? foundUser.baseDayOffCredit : (foundUser?.dayOffCredit || 0)
     const usedByCredit = usedDayOffCredit(baseCredit, userCredit)
 
-    // Brought into view when the page opens on one (a notification's link).
+    // Brought into view when the page opens on one (a notification's link),
+    // or when it turns up on a later page: it's when the request is in the
+    // list that counts, not how long the list is, as every full page is ten.
     // The list has the request twice, as a table row and as a phone card, so
     // it's the one showing at this width.
+    const highlightShown = !!highlightId && requests.some(r => r.id === highlightId)
     useEffect(() => {
-        if (!highlightId || requests.length === 0) return
+        if (!highlightId || !highlightShown) return
         const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         visibleRow(highlightId)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
-    }, [highlightId, requests.length])
+    }, [highlightId, highlightShown])
 
     // Asking for a day off.
     const [isRequestOpen, setIsRequestOpen] = useState(false)

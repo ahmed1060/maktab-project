@@ -28,6 +28,11 @@ describe("the Day Off Requests page", () => {
 
     it("brings the request a notification opened into view, in whichever layout is showing", () => {
         expect(page).toContain("visibleRow(highlightId)?.scrollIntoView(")
+        // On whichever page it turns up: every full page has ten requests, so
+        // the list's length doesn't change from one to the next.
+        expect(page).toContain("const highlightShown = !!highlightId && requests.some(r => r.id === highlightId)")
+        expect(page).toContain("}, [highlightId, highlightShown])")
+        expect(page).not.toContain("[highlightId, requests.length]")
         expect(page).toContain("tone={r => visualHighlightId === r.id ? 'selected' : undefined}")
     })
 
