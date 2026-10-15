@@ -20,6 +20,7 @@ import { useCan } from '@/lib/useCan'
 import { apiErrorText } from "@/lib/api-error-text"
 import { useDialog } from '@/lib/useDialog'
 import { useBusyAction } from '@/lib/useBusyAction'
+import { dayOffListUrl } from './list-query'
 
 // Badge color + translation key per type, keyed once here rather than as a
 // chained ternary — REGULAR/CASUAL/SICK are reachable from the request
@@ -108,17 +109,16 @@ export default function DayOffRequestsPage() {
     // status === 'authenticated'. SWR's key itself is the gate — null
     // until authenticated, so no fetch happens before then, matching the
     // original guard exactly.
-    const requestsQuery = (() => {
-        if (status !== 'authenticated') return null
-        const endpoint = managesRequests ? '/api/admin/day-off-requests' : '/api/day-off-requests'
-        const queryParams = new URLSearchParams()
-        if (managesRequests && contextCompanyId) {
-            queryParams.set('companyId', contextCompanyId)
-        }
-        queryParams.set('page', page.toString())
-        queryParams.set('limit', limit.toString())
-        return `${endpoint}?${queryParams.toString()}`
-    })()
+    const requestsQuery = status === 'authenticated' ? dayOffListUrl({
+        manages: managesRequests,
+        page, limit,
+        companyId: contextCompanyId,
+        status: filters.status,
+        employeeId: filters.employeeId,
+        from: filters.dateFrom,
+        to: filters.dateTo,
+        search: filters.search,
+    }) : null
     const { data: requestsResult, isLoading: loading, mutate: fetchRequests } = useSWR(requestsQuery, fetcher)
     const requests: DayOffRequest[] = requestsResult?.data?.data || requestsResult?.data || []
     const total: number = requestsResult?.data?.total || (Array.isArray(requestsResult?.data) ? requestsResult.data.length : 0)
@@ -279,33 +279,8 @@ export default function DayOffRequestsPage() {
         return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
     }
 
-    // Filter Logic
-    const filteredRequests = requests.filter(req => {
-        const matchesEmployee = !filters.employeeId || req.userId === filters.employeeId
-        const matchesStatus = !filters.status || req.status === filters.status
-        const matchesSearch = !filters.search ||
-            (req.reason || '').toLowerCase().includes(filters.search.toLowerCase())
-
-        let matchesDate = true
-        if (filters.dateFrom || filters.dateTo) {
-            const rDate = new Date(req.date)
-            rDate.setHours(0, 0, 0, 0)
-            if (filters.dateFrom) {
-                const fDate = new Date(filters.dateFrom)
-                fDate.setHours(0, 0, 0, 0)
-                if (rDate < fDate) matchesDate = false
-            }
-            if (filters.dateTo) {
-                const tDate = new Date(filters.dateTo)
-                tDate.setHours(0, 0, 0, 0)
-                if (rDate > tDate) matchesDate = false
-            }
-        }
-
-        return matchesEmployee && matchesStatus && matchesSearch && matchesDate
-    })
-
-
+    // Filtered by the server, across every page, not just this one.
+    const filteredRequests = requests
 
     const pieData = [
         { name: t('remaining_credit' as any), value: userCredit },
@@ -345,7 +320,7 @@ export default function DayOffRequestsPage() {
                 </div>
             )}
             <EmployeeFilter
-                onFilterChange={(newFilters) => setFilters(prev => ({ ...prev, ...newFilters }))}
+                onFilterChange={(newFilters) => { setFilters(prev => ({ ...prev, ...newFilters })); setPage(1) }}
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
 import { scopesToTeam, teamMemberWhere } from "@/lib/team-scope"
 import { parsePaging } from "@/lib/pagination"
+import { dayOffListFilters } from "@/lib/services/day-off-query"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -28,6 +29,10 @@ export const GET = withStandardHandler(async (req, session) => {
     } else {
         where.user = { companyId: session.user.companyId }
     }
+
+    // The filters narrow inside the scope above, never past it.
+    const filters = dayOffListFilters(searchParams)
+    if (filters.length > 0) where.AND = filters
 
     const { page, limit, skip } = parsePaging(searchParams, 10)
 
