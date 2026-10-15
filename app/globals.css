@@ -1536,6 +1536,12 @@ input::-webkit-credentials-auto-fill-button {
   --status-good-fg: #05690d;
   --status-problem-bg: #ffe7f2;
   --status-problem-fg: #b3093c;
+
+  --chart-neutral: #64748b;
+  --chart-progress: #2563eb;
+  --chart-waiting: #d97706;
+  --chart-good: #059669;
+  --chart-problem: #e11d48;
   /* The danger button, the same in both themes: white reads on it at 6.95:1. */
   --problem-fill: #b3093c;
   --problem-fill-hover: #9e0835;
@@ -1606,6 +1612,12 @@ input::-webkit-credentials-auto-fill-button {
   --status-good-fg: #93e3a0;
   --status-problem-bg: #4a1226;
   --status-problem-fg: #ffa3bd;
+
+  --chart-neutral: #94a3b8;
+  --chart-progress: #60a5fa;
+  --chart-waiting: #fbbf24;
+  --chart-good: #34d399;
+  --chart-problem: #fb7185;
   --problem-text: #ffa3bd;
   --overdue-row: #241729;
 

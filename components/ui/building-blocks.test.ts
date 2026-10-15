@@ -275,46 +275,90 @@ describe("page layout, sections, rows and tiles", () => {
 
 describe("the donut chart", () => {
     const parts = [
-        { key: "done", label: "Completed", value: 3, tone: "good" as const, href: "/t?status=COMPLETED" },
-        { key: "ok", label: "Approved", value: 1, tone: "good" as const },
-        { key: "late", label: "Rejected", value: 0, tone: "problem" as const },
+        { key: "done", label: "Completed", value: 3, tone: "good" as const, share: "75%", href: "/t?status=COMPLETED" },
+        { key: "ok", label: "Approved", value: 1, tone: "good" as const, share: "25%" },
+        { key: "late", label: "Rejected", value: 0, tone: "problem" as const, share: "0%" },
     ]
     const chart = (p = parts) => render(h(ui.DonutChart, { label: "Tasks by status", parts: p, total: "4", totalLabel: "Total", emptyLabel: "No data available" }))
+    const css = readFileSync("components/ui/ui.css", "utf8")
+    const ring = 2 * Math.PI * 44
 
-    it("is a picture of its legend: the ring is hidden, the legend says every word and count", () => {
+    it("is a picture of its legend: the ring is hidden, the legend says every word, count and share", () => {
         const html = chart()
         expect(html).toContain('<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">')
         expect(html).toContain('<ul class="ui-donut-legend" aria-label="Tasks by status">')
         // Every part is in the legend, an empty one too, so the counts add up.
         for (const word of ["Completed", "Approved", "Rejected"]) expect(html).toContain(`<span class="ui-donut-label">${word}</span>`)
+        expect(html).toContain('<span class="ui-donut-label">Completed</span> <span class="ui-donut-count">3</span> <span class="ui-donut-share">75%</span>')
         expect(html).toContain('<strong>4</strong><span>Total</span>')
     })
 
-    it("draws a part only when it has something, with a gap between two of the same meaning", () => {
+    it("has an arc for every part in the legend's order, so a row can pick out its own", () => {
         const html = chart()
-        expect(html.match(/class="ui-donut-arc"/g)).toHaveLength(2)
-        expect(html.match(/data-tone="good"/g)!.length).toBeGreaterThanOrEqual(2)
-        const lengths = [...html.matchAll(/stroke-dasharray="([\d.]+) /g)].map(m => Number(m[1]))
-        const ring = 2 * Math.PI * 40
-        expect(lengths[0]).toBeCloseTo(ring * 3 / 4 - 1.5, 3)
-        expect(lengths[1]).toBeCloseTo(ring / 4 - 1.5, 3)
+        expect(html.match(/class="ui-donut-arc"/g)).toHaveLength(3)
+        // The empty part's arc is there but not drawn, and its row steps back.
+        expect(html).toMatch(/class="ui-donut-arc" data-tone="problem" data-empty="true"/)
+        expect(html).toContain('<li data-empty="true">')
+        for (let n = 1; n <= 8; n++) {
+            expect(css).toContain(`.ui-donut:has(.ui-donut-legend > li:nth-child(${n}):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(${n}))`)
+        }
+    })
+
+    it("rounds each part's ends and leaves a clear gap between parts", () => {
+        expect(ui.donutArcs([3, 1, 0])).toEqual([
+            { dash: `${(ring * 3 / 4 - 13).toFixed(3).replace(/0+$/, "")} ${Number(ring.toFixed(3))}`, offset: -6.5 },
+            { dash: `${Number((ring / 4 - 13).toFixed(3))} ${Number(ring.toFixed(3))}`, offset: -Number((ring * 3 / 4 + 6.5).toFixed(3)) },
+            undefined,
+        ])
+        expect(css).toMatch(/\.ui-donut-arc \{\s*stroke: currentColor;\s*stroke-linecap: round;/)
+        // A part too small for its ends is a dot, not a negative dash.
+        expect(ui.donutArcs([1000, 1])[1]!.dash).toMatch(/^0 /)
+    })
+
+    it("fills the whole ring with one part alone", () => {
+        expect(ui.donutArcs([0, 5, 0])).toEqual([undefined, {}, undefined])
+        expect(chart([parts[0]])).not.toContain("stroke-dasharray")
+    })
+
+    it("gives a part repeating an earlier one's meaning a deeper shade, in the ring and the legend", () => {
+        const html = chart()
+        expect(html).toMatch(/class="ui-donut-arc" data-tone="good" cx=/)
+        expect(html).toMatch(/class="ui-donut-arc" data-tone="good" data-shade="2"/)
+        expect(html).toContain('<span class="ui-donut-mark" data-tone="good" data-shade="2" aria-hidden="true">')
+    })
+
+    it("draws in the chart colours, never the status text colours", () => {
+        for (const tone of ["neutral", "progress", "waiting", "good", "problem"]) {
+            expect(css).toContain(`.ui-donut [data-tone="${tone}"] { color: var(--chart-${tone}); }`)
+            expect(css).toContain(`.ui-donut [data-tone="${tone}"][data-shade="2"] { color: color-mix(in srgb, var(--chart-${tone}) 65%, var(--ink)); }`)
+        }
+        expect(css.slice(css.indexOf("Donut chart (§5.5)"), css.indexOf("Empty state (§5.5)"))).not.toMatch(/--status-[a-z]+-fg/)
+    })
+
+    it("steps a long total down a size, so it stays clear of the ring", () => {
+        expect(chart()).toContain('<div class="ui-donut-total"><strong>4</strong>')
+        const days = render(h(ui.DonutChart, { label: "Credit", parts, total: "12 days", totalLabel: "Total", emptyLabel: "None" }))
+        expect(days).toContain('<div class="ui-donut-total ui-donut-total-long"><strong>12 days</strong>')
+        expect(css).toMatch(/\.ui-donut-total-long strong \{\s*font-size: var\(--text-xl\);/)
     })
 
     it("links a legend row to what it counts", () => {
         expect(chart()).toMatch(/<a class="ui-donut-row" href="\/t\?status=COMPLETED">/)
     })
 
-    it("says when there's nothing to count, over a grey ring", () => {
+    it("says when there's nothing to count, over a faint ring", () => {
         const html = chart(parts.map(p => ({ ...p, value: 0 })))
         expect(html).toContain('class="ui-donut-track"')
         expect(html).not.toContain("ui-donut-arc")
         expect(html).toContain('<p class="ui-donut-empty">No data available</p>')
     })
 
-    it("never moves", () => {
-        const css = readFileSync("components/ui/ui.css", "utf8")
-        const rules = css.match(/\.ui-donut[^{]*\{[^}]*\}/g)!.join("\n")
-        expect(rules).not.toMatch(/animation|transition: (stroke|all)/)
+    it("only fades, quickly, and not at all with reduced motion", () => {
+        const rules = css.slice(css.indexOf("Donut chart (§5.5)"), css.indexOf("Empty state (§5.5)"))
+        expect(rules).not.toMatch(/animation|transform|transition: (stroke|all)/)
+        expect(rules).toContain("transition: opacity 150ms ease-out;")
+        const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"))
+        expect(reduced.slice(0, reduced.indexOf("transition: none"))).toContain(".ui-donut-arc")
     })
 })
 

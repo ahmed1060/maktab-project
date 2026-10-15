@@ -66,14 +66,16 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     const day = (d: Date | string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }) =>
         new Date(d).toLocaleDateString(numLocale, opts)
     const days = (n: number) => countOf(t, locale, n, 'days')
-    const share = (part: number, whole: number) =>
-        t('ui_completed_share').replace('{share}', new Intl.NumberFormat(numLocale, { style: 'percent' }).format(whole > 0 ? part / whole : 0))
+    const percent = (part: number, whole: number) =>
+        new Intl.NumberFormat(numLocale, { style: 'percent' }).format(whole > 0 ? part / whole : 0)
+    const share = (part: number, whole: number) => t('ui_completed_share').replace('{share}', percent(part, whole))
     const statusWord = (status: string) => t(`status_${status.toLowerCase()}` as TranslationKey)
     const badge = (status: string) => <StatusBadge tone={taskStatusTone(status)}>{statusWord(status)}</StatusBadge>
     // Tasks by status as a donut: every status, in the order a task moves
-    // through them, each with its word and count, linking to those tasks.
+    // through them, each with its word, count and share, linking to those tasks.
     const byStatus = (counts: { status: string; _count: number }[], label: string) => {
         const count = (status: string) => counts.find(c => c.status === status)?._count ?? 0
+        const all = counts.reduce((acc, c) => acc + c._count, 0)
         return (
             <DonutChart
                 label={label}
@@ -82,10 +84,11 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     label: statusWord(status),
                     value: count(status),
                     count: num(count(status)),
+                    share: percent(count(status), all),
                     tone: taskStatusTone(status),
                     href: tasksListHref({ status, teamOnly: tasksTeamOnly }),
                 }))}
-                total={num(counts.reduce((acc, c) => acc + c._count, 0))}
+                total={num(all)}
                 totalLabel={t('total_label')}
                 emptyLabel={t('no_data_available')}
             />
@@ -379,8 +382,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         <DonutChart
                             label={t('credit_overview')}
                             parts={[
-                                { key: 'left', label: t('remaining_credit'), value: remainingCredit, count: days(remainingCredit), tone: 'good', href: '/dashboard/day-off-requests' },
-                                { key: 'used', label: t('used_credit'), value: usedCredits, count: days(usedCredits), tone: 'neutral', href: '/dashboard/day-off-requests' },
+                                { key: 'left', label: t('remaining_credit'), value: remainingCredit, count: days(remainingCredit), share: percent(remainingCredit, remainingCredit + usedCredits), tone: 'good', href: '/dashboard/day-off-requests' },
+                                { key: 'used', label: t('used_credit'), value: usedCredits, count: days(usedCredits), share: percent(usedCredits, remainingCredit + usedCredits), tone: 'neutral', href: '/dashboard/day-off-requests' },
                             ]}
                             total={days(remainingCredit + usedCredits)}
                             totalLabel={t('total_label')}

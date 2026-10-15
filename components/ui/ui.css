@@ -1001,14 +1001,14 @@ a.ui-row:focus-visible {
 .ui-donut {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
-  padding: var(--space-4);
+  gap: var(--space-8);
+  padding: var(--space-6);
 }
 .ui-donut-ring {
   position: relative;
   flex: none;
-  width: 144px;
-  height: 144px;
+  width: 160px;
+  height: 160px;
 }
 .ui-donut-ring svg {
   display: block;
@@ -1018,21 +1018,46 @@ a.ui-row:focus-visible {
 .ui-donut-track,
 .ui-donut-arc {
   fill: none;
-  stroke-width: 12;
+  stroke-width: 10;
 }
 .ui-donut-track {
   stroke: var(--status-neutral-bg);
 }
-.ui-donut-arc[data-tone="neutral"],
-.ui-donut-dot[data-tone="neutral"] { stroke: var(--status-neutral-fg); background: var(--status-neutral-fg); }
-.ui-donut-arc[data-tone="progress"],
-.ui-donut-dot[data-tone="progress"] { stroke: var(--status-progress-fg); background: var(--status-progress-fg); }
-.ui-donut-arc[data-tone="waiting"],
-.ui-donut-dot[data-tone="waiting"] { stroke: var(--status-waiting-fg); background: var(--status-waiting-fg); }
-.ui-donut-arc[data-tone="good"],
-.ui-donut-dot[data-tone="good"] { stroke: var(--status-good-fg); background: var(--status-good-fg); }
-.ui-donut-arc[data-tone="problem"],
-.ui-donut-dot[data-tone="problem"] { stroke: var(--status-problem-fg); background: var(--status-problem-fg); }
+.ui-donut-arc {
+  stroke: currentColor;
+  stroke-linecap: round;
+  transition: opacity 150ms ease-out;
+}
+.ui-donut-arc[data-empty] {
+  display: none;
+}
+/* Each part in its meaning's chart colour (§2.3); a later part with the same
+   meaning in a deeper shade of it, mixed towards the ink, so further from
+   the panel and never below its 3:1. The ring and the legend's marks both
+   draw in currentColor. */
+.ui-donut [data-tone="neutral"] { color: var(--chart-neutral); }
+.ui-donut [data-tone="neutral"][data-shade="2"] { color: color-mix(in srgb, var(--chart-neutral) 65%, var(--ink)); }
+.ui-donut [data-tone="progress"] { color: var(--chart-progress); }
+.ui-donut [data-tone="progress"][data-shade="2"] { color: color-mix(in srgb, var(--chart-progress) 65%, var(--ink)); }
+.ui-donut [data-tone="waiting"] { color: var(--chart-waiting); }
+.ui-donut [data-tone="waiting"][data-shade="2"] { color: color-mix(in srgb, var(--chart-waiting) 65%, var(--ink)); }
+.ui-donut [data-tone="good"] { color: var(--chart-good); }
+.ui-donut [data-tone="good"][data-shade="2"] { color: color-mix(in srgb, var(--chart-good) 65%, var(--ink)); }
+.ui-donut [data-tone="problem"] { color: var(--chart-problem); }
+.ui-donut [data-tone="problem"][data-shade="2"] { color: color-mix(in srgb, var(--chart-problem) 65%, var(--ink)); }
+/* Pointing at a legend row, or focusing it, fades the ring's other parts:
+   legend row n and arc n are the same part (Blocks.tsx). Eight is more parts
+   than any donut here has. */
+.ui-donut:has(.ui-donut-legend > li:nth-child(1):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(1)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(2):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(2)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(3):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(3)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(4):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(4)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(5):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(5)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(6):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(6)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(7):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(7)),
+.ui-donut:has(.ui-donut-legend > li:nth-child(8):is(:hover, :focus-within)) .ui-donut-arc:not(:nth-child(8)) {
+  opacity: 0.2;
+}
 .ui-donut-total {
   position: absolute;
   inset: 0;
@@ -1043,11 +1068,15 @@ a.ui-row:focus-visible {
   text-align: center;
 }
 .ui-donut-total strong {
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-3xl);
   font-weight: 600;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+.ui-donut-total-long strong {
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
 }
 .ui-donut-total span {
   font-size: var(--text-sm);
@@ -1057,7 +1086,7 @@ a.ui-row:focus-visible {
 .ui-donut-legend {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -1067,8 +1096,8 @@ a.ui-row:focus-visible {
 .ui-donut-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: 32px;
+  gap: var(--space-3);
+  min-height: 36px;
   padding-inline: var(--space-2);
   border-radius: var(--radius-field);
   color: var(--ink);
@@ -1085,20 +1114,40 @@ a.ui-donut-row:focus-visible {
   outline: 2px solid var(--brand-text);
   outline-offset: 0;
 }
-.ui-donut-dot {
+.ui-donut-mark {
   flex: none;
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 3px;
+  background: currentColor;
 }
 .ui-donut-label {
+  flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* The counts and shares line up in columns, whatever the words' lengths. */
 .ui-donut-count {
-  margin-inline-start: auto;
-  color: var(--ink-2);
+  min-inline-size: 3ch;
+  text-align: end;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+.ui-donut-share {
+  min-inline-size: 5ch;
+  text-align: end;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+/* A part with nothing in it stays in the legend, so the counts add up, but
+   steps back. */
+.ui-donut-legend > li[data-empty] .ui-donut-row {
+  color: var(--muted);
+}
+.ui-donut-legend > li[data-empty] .ui-donut-mark {
+  opacity: 0.4;
 }
 .ui-donut-empty {
   flex: 1;
@@ -1166,6 +1215,8 @@ html[lang="ar"] .ui-empty-title {
   .ui-donut {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--space-6);
+    padding: var(--space-4);
   }
   .ui-donut-ring {
     align-self: center;
@@ -1257,7 +1308,8 @@ html[lang="ar"] .ui-empty-title {
   .ui-btn,
   .ui-tab,
   .ui-row,
-  .ui-donut-row {
+  .ui-donut-row,
+  .ui-donut-arc {
     transition: none;
   }
   .ui-btn[aria-busy="true"]::after {
