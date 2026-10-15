@@ -335,6 +335,10 @@ These are built once, in the building-blocks PR, and every page uses them
     button, and choosing an item closes it.
   - A destructive item, such as Delete, is in the danger text colour and
     is last, after a hairline. It still asks before it acts.
+- **Selection bar:** when items in a list are picked with their
+  checkboxes, a panel above the list says how many are picked and holds
+  what can be done to all of them, with a quiet "Clear selection" on the
+  end side. It's gone when nothing is picked.
 - **Status badge:** a pill, `--text-xs`, weight 500, with the background and
   text colours from §2.3.
 - **Tabs:** text tabs with a 2px `--brand` line under the selected one, and
@@ -504,3 +508,5 @@ changed:
   The old top bar hides its title on a page with a page header until the
   app shell replaces it. The row menu is the first menu, so the menu corner
   (8px) and level-2 shadow from §4.2 and §4.3 become tokens now.
+- **2026-10-15:** Added the selection bar, for assigning several employees
+  to a team at once.
