@@ -219,8 +219,14 @@ needs no data change.
 
 | Permission | Default |
 |---|---|
+| See locations (the Locations page and the task form's pickers) | Anyone who can create tasks |
 | Add locations | Anyone who can create tasks |
 | Manage locations (edit pin and radius, archive, set HQ) | Admin |
+
+- **Add locations and Manage locations include See locations,** so a role
+  given either can see what it adds or manages.
+- **A task shows its own location** to anyone who can see the task, without
+  See locations.
 
 ### 2.10 Kept separate
 
