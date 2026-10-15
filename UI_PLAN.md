@@ -610,3 +610,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     (§4.4).
   - Its two findings on #74 were already settled: Impeccable comes in as
     written guidance only, and the Vercel audit's rules are a pinned copy.
+- **2026-10-15:** The Day Off page shows the day off credit as the
+  dashboard's donut, at the product owner's request, in place of its two
+  credit tiles. Both pages use one component, so they can't disagree.
