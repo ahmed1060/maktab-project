@@ -361,7 +361,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
         return (
             <Page>
-                <PageHeader title={`${t('hello')}, ${(session?.user as any)?.firstName}`} subtitle={t('dashboard_subtitle' as any)} />
+                <PageHeader title={t('hello_name').replace('{name}', (session?.user as any)?.firstName ?? '')} subtitle={t('dashboard_subtitle' as any)} />
 
                 <TotalTiles items={[
                     { label: t('overall_progress'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: '/dashboard/tasks' },

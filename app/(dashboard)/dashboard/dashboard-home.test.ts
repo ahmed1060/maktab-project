@@ -42,6 +42,12 @@ describe("the dashboard home", () => {
         expect(page).toContain("<DueDate overdue>")
     })
 
+    it("greets in the page's language, with its own comma", () => {
+        // «مرحباً، سارة», not «مرحباً, سارة» put together from two strings.
+        expect(page).toContain("t('hello_name').replace('{name}'")
+        expect(page).not.toContain("`${t('hello')}, ")
+    })
+
     it("writes numbers, dates and counts in the page's language", () => {
         expect(page).toContain("const numLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'")
         expect(page).toContain("countOf(t, locale, n, 'days')")

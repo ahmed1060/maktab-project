@@ -2968,4 +2968,5 @@ export const en = {
         ui_characters_used: "{used} of {max} characters",
         send_request: "Send request",
         reset_points_question: "Reset {name}'s points to zero?",
+        hello_name: "Hello, {name}",
 };

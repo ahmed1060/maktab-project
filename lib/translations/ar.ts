@@ -2959,4 +2959,5 @@ export const ar = {
         ui_characters_used: "{used} من {max} حرف",
         send_request: "إرسال الطلب",
         reset_points_question: "تصفير نقاط {name}؟",
+        hello_name: "مرحباً، {name}",
 };
