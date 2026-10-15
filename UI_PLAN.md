@@ -228,9 +228,13 @@ Three Arabic names were chosen so that no two things share a name
    - Icons are imported one at a time, so only the ones used are shipped.
    - Arrows and other icons that point a direction are flipped in Arabic.
    - Companies can rename modules and pick an emoji for each today. Instead,
-     they'll pick from a short list of about 50 business icons. No company
-     has changed an icon or label in production, so only the defaults need
-     mapping.
+     they'll pick from a short list of about 50 business icons.
+   - The setting stays live until the icons PR deploys, so a company can
+     still pick any emoji, a pasted one included, before then. The PR maps
+     every stored choice, not only the defaults: each default emoji to its
+     icon, and anything else to the module's default icon. A company's
+     renamed labels are kept. Production is checked again, read only, just
+     before the PR is merged.
 5. **Pages move to the building blocks one by one,** each in a small PR,
    after `CLIENTS_PLAN.md`'s steps (§5).
 6. **A brand colour,** set in the settings (§4.6).
