@@ -54,7 +54,7 @@ below, which are all worked out from the one chosen colour.
 | `--brand` | The chosen colour, darkened if needed until white text on it reads at 4.5:1 or better | Primary button fill, the active page in the pager, counts in the side bar, the logo tile |
 | `--brand-hover` | `--brand` 8% darker (in dark mode, see below) | Primary button on hover |
 | `--brand-press` | `--brand` 16% darker (in dark mode, see below) | Primary button while pressed |
-| `--brand-text` | The brand as text: 4.5:1 or better on the page and on panels, in each theme | Links, the selected side bar item, selected tabs, focus rings |
+| `--brand-text` | The brand as text: 4.5:1 or better on the page, on panels and on both brand tints, in each theme | Links, the selected side bar item, selected tabs, focus rings |
 | `--brand-tint` | 9% brand on the panel colour | Behind the selected side bar item and selected rows |
 | `--brand-tint-strong` | 14% brand on the panel colour | Avatars with initials |
 
