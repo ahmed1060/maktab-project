@@ -9,6 +9,7 @@ import {
     TotalTiles, taskStatusTone,
 } from "@/components/ui"
 import { countOf } from "@/lib/plural"
+import { usedDayOffCredit } from "@/lib/day-off-credit"
 import { cookies, headers } from "next/headers"
 import type { TranslationKey } from "@/lib/translations"
 import { resolveLocale } from "@/lib/locale"
@@ -286,11 +287,11 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         weekFromNow.setDate(weekFromNow.getDate() + 7)
 
         // Optimized Employee View: Use groupBy for stats and targeted fetch
-        // for today's focus. All 7 of these are independent of each other —
-        // previously fired as 7 sequential awaits, so this page paid for 7
-        // separate round trips to Postgres before it could render anything.
+        // for today's focus. All of these are independent of each other —
+        // previously fired as sequential awaits, so this page paid for a
+        // separate round trip to Postgres for each before it could render.
         // Running them together costs one round trip's worth of latency.
-        const [taskStats, currentUser, approvedRequests, salaryRecord, myObligations, myLatestDayOffRequest, upcomingTasks] = await Promise.all([
+        const [taskStats, currentUser, salaryRecord, myObligations, myLatestDayOffRequest, upcomingTasks] = await Promise.all([
             prisma.task.groupBy({
                 where: {
                     assignees: { some: { id: userId } }
@@ -298,18 +299,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 by: ['status'],
                 _count: true
             }),
-            // Current user details for dayOffCredit
+            // The credit left and the year's allowance, for "used".
             prisma.user.findUnique({
                 where: { id: userId },
-                select: { dayOffCredit: true }
-            }),
-            // Approved day off requests for "used" credit
-            prisma.dayOffRequest.findMany({
-                where: {
-                    userId: userId,
-                    status: 'APPROVED'
-                },
-                select: { daysDeducted: true }
+                select: { dayOffCredit: true, baseDayOffCredit: true }
             }),
             // Salary record for current month
             prisma.salaryRecord.findUnique({
@@ -354,7 +347,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
-        const usedCredits = approvedRequests.reduce((acc, req) => acc + (req.daysDeducted || 0), 0)
+        const usedCredits = usedDayOffCredit(currentUser?.baseDayOffCredit, currentUser?.dayOffCredit)
         const dayOffWord = (type: string) => t(`${type.toLowerCase()}_day_off` as TranslationKey)
         const dayOffTone = (status: string) => status === 'APPROVED' ? 'good' : status === 'REJECTED' ? 'problem' : 'neutral'
 

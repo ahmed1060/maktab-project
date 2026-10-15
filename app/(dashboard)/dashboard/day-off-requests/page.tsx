@@ -24,6 +24,7 @@ import { useCan } from '@/lib/useCan'
 import { apiErrorText } from '@/lib/api-error-text'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { countOf } from '@/lib/plural'
+import { usedDayOffCredit } from '@/lib/day-off-credit'
 import type { TranslationKey } from '@/lib/translations'
 import { dayOffListUrl } from './list-query'
 
@@ -147,7 +148,7 @@ export default function DayOffRequestsPage() {
     })()
     const userCredit: number = foundUser?.dayOffCredit || 0
     const baseCredit: number = (foundUser?.baseDayOffCredit !== undefined && foundUser?.baseDayOffCredit !== null) ? foundUser.baseDayOffCredit : (foundUser?.dayOffCredit || 0)
-    const usedByCredit = Math.max(0, baseCredit - userCredit)
+    const usedByCredit = usedDayOffCredit(baseCredit, userCredit)
 
     // Brought into view when the page opens on one (a notification's link).
     // The list has the request twice, as a table row and as a phone card, so
