@@ -1,9 +1,14 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import Link from "next/link"
-import { DonutChart, StatMetric } from "@/components/DashboardCharts"
-import HeaderSetter from "@/components/HeaderSetter"
+import {
+    BuildingsIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, PlusIcon, UserPlusIcon, UsersIcon,
+} from "@phosphor-icons/react/ssr"
+import {
+    ButtonLink, Columns, DueDate, EmptyState, Page, PageHeader, Panel, Row, Rows, Section, SectionLink, StatusBadge,
+    TotalTiles, taskStatusTone,
+} from "@/components/ui"
+import { countOf } from "@/lib/plural"
 import { cookies, headers } from "next/headers"
 import type { TranslationKey } from "@/lib/translations"
 import { resolveLocale } from "@/lib/locale"
@@ -17,6 +22,9 @@ import { scopesToTeam, assignedToTeamWhere, teamMemberWhere, and } from '@/lib/t
 import { can, grantFor } from '@/lib/permissions/can'
 
 export const dynamic = 'force-dynamic'
+
+/** Every task status, in the order a task moves through them. */
+const TASK_STATUSES = ['PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'] as const
 
 export default async function DashboardPage(props: { searchParams: Promise<{ company?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -48,14 +56,30 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     const scopedBranding = scopeId ? await CompanyService.getBranding(scopeId) : null
     const modules = modulesFrom(scopedBranding ?? session?.user, t)
 
-    const formatDays = (days: number) => {
-        if (locale === 'ar') {
-            if (days === 1) return ar.day_singular
-            if (days === 2) return ar.day_dual
-            return `${days} ${ar.days_label}`
-        }
-        return `${days} ${days === 1 ? en.day_singular : en.days_label}`
-    }
+    // Numbers, dates and counts in the page's language (DESIGN.md §3.3, §7).
+    const numLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const num = (n: number) => n.toLocaleString(numLocale)
+    const day = (d: Date | string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }) =>
+        new Date(d).toLocaleDateString(numLocale, opts)
+    const days = (n: number) => countOf(t, locale, n, 'days')
+    const share = (part: number, whole: number) =>
+        t('ui_completed_share').replace('{share}', new Intl.NumberFormat(numLocale, { style: 'percent' }).format(whole > 0 ? part / whole : 0))
+    const statusWord = (status: string) => t(`status_${status.toLowerCase()}` as TranslationKey)
+    const badge = (status: string) => <StatusBadge tone={taskStatusTone(status)}>{statusWord(status)}</StatusBadge>
+    // Every status, in the order a task moves through them, with how many
+    // are in each: a row per status links to the task list showing them.
+    const byStatus = (counts: { status: string; _count: number }[], label: string) => (
+        <Rows label={label}>
+            {TASK_STATUSES.map(status => (
+                <Row
+                    key={status}
+                    href={`/dashboard/tasks?status=${status}`}
+                    title={badge(status)}
+                    end={<span className="ui-num">{num(counts.find(c => c.status === status)?._count ?? 0)}</span>}
+                />
+            ))}
+        </Rows>
+    )
 
     let companyId: string | undefined = undefined
     if (searchParams.company) {
@@ -91,59 +115,37 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             // lib/services/dashboard-stats.service.ts for why.
             const { totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies } = await getSuperAdminOverviewStats()
 
-            const chartData = [
-                { label: t('status_completed'), value: taskStats.find(s => s.status === 'COMPLETED')?._count || 0, color: 'var(--ok-fg-strong)' },
-                { label: t('status_pending'), value: (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0), color: 'var(--info-fg)' },
-                { label: t('status_review'), value: taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0, color: 'var(--warn-fg-mid)' },
-                { label: t('status_others' as any), value: taskStats.filter((s: any) => !['COMPLETED', 'PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION'].includes(s.status)).reduce((acc: any, s: any) => acc + s._count, 0), color: 'var(--text-faint)' }
-            ]
-
             return (
-                <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                    <HeaderSetter title={t('system_overview')} subtitle={t('dashboard_subtitle' as any)} />
+                <Page>
+                    <PageHeader
+                        title={t('system_overview')}
+                        subtitle={t('dashboard_subtitle' as any)}
+                        action={<>
+                            <ButtonLink href="/dashboard/companies" variant="primary" icon={BuildingsIcon}>{t('manage_companies')}</ButtonLink>
+                            <ButtonLink href="/dashboard/all-users" icon={UsersIcon}>{t('view_all_users')}</ButtonLink>
+                        </>}
+                    />
 
-                    <div className="dashboard-stats-grid">
-                        <div className="dashboard-stats-block">
-                            <StatMetric label={t('total_companies')} value={totalCompanies} icon="🏢" color="var(--brand-primary)" />
-                            <StatMetric label={t('total_users')} value={totalUsers} icon="👥" color="var(--brand-accent)" />
-                            <StatMetric label={t('total_tasks')} value={totalTasks} icon="✅" color="var(--ok-solid)" />
-                            <StatMetric label={t('business_clients')} value={totalClients} icon="🤝" color="var(--info-solid)" />
-                        </div>
-                        <div className="glass-card">
-                            <DonutChart title={t('global_task_status')} data={chartData} />
-                        </div>
-                    </div>
+                    <TotalTiles items={[
+                        { label: t('total_companies'), value: num(totalCompanies), href: '/dashboard/companies' },
+                        { label: t('total_users'), value: num(totalUsers), href: '/dashboard/all-users' },
+                        { label: t('total_tasks'), value: num(totalTasks) },
+                        { label: t('business_clients'), value: num(totalClients) },
+                    ]} />
 
-                    {/* Quick Actions */}
-                    <div className="glass-card animate-delay-300">
-                        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '700' }}>{t('quick_actions')}</h3>
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                            <Link href="/dashboard/companies" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem', minWidth: '200px' }}>
-                                {t('manage_companies')}
-                            </Link>
-                            <Link href="/dashboard/all-users" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'var(--veil-40)', color: 'var(--text-body)', height: '3rem', border: '1px solid var(--veil-50)', minWidth: '200px' }}>
-                                {t('view_all_users')}
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Needs Attention */}
-                    <section>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">⚠️</span> {t('needs_attention')}</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: '1.5rem' }}>
-                            <Link href={`/dashboard/audit-logs?action=SYSTEM_API_ERROR&startDate=${encodeURIComponent(oneDayAgo.toISOString())}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('system_errors_24h')} value={systemErrors24h} icon="🚨" color="var(--danger-solid)" />
-                            </Link>
-                            <Link href="/dashboard/companies" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('expiring_subscriptions')} value={expiringSubscriptions} icon="⏳" color="var(--warn-solid)" />
-                            </Link>
-                            <Link href="/dashboard/companies" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('banned_companies')} value={bannedCompanies} icon="🚫" color="var(--text-faint)" />
-                            </Link>
-                        </div>
-                    </section>
-
-                </div>
+                    <Columns>
+                        <Section title={t('needs_attention')}>
+                            <TotalTiles items={[
+                                { label: t('system_errors_24h'), value: num(systemErrors24h), href: `/dashboard/audit-logs?action=SYSTEM_API_ERROR&startDate=${encodeURIComponent(oneDayAgo.toISOString())}` },
+                                { label: t('expiring_subscriptions'), value: num(expiringSubscriptions), href: '/dashboard/companies' },
+                                { label: t('banned_companies'), value: num(bannedCompanies), href: '/dashboard/companies' },
+                            ]} />
+                        </Section>
+                        <Section title={t('global_task_status')}>
+                            {byStatus(taskStats as any, t('global_task_status'))}
+                        </Section>
+                    </Columns>
+                </Page>
             )
         }
 
@@ -157,10 +159,12 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         if (userRole !== 'SUPER_ADMIN' && !userCompanyId) {
             // Return early or show empty dashboard
             return (
-                <div className="flex flex-col items-center justify-center py-20">
-                    <h1 className="text-2xl font-bold text-slate-800">{t('unauthorized')}</h1>
-                    <p className="text-slate-500">{t('no_company_assigned')}</p>
-                </div>
+                <Page>
+                    <PageHeader title={t('unauthorized')} />
+                    <Panel>
+                        <EmptyState icon={BuildingsIcon} title={t('no_company_assigned')} />
+                    </Panel>
+                </Page>
             )
         }
 
@@ -220,96 +224,58 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
-        const pendingTasks = taskStats.find(s => s.status === 'PENDING')?._count || 0
         const reviewTasks = taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0
-        const rejectedTasks = taskStats.find(s => s.status === 'REJECTED')?._count || 0
 
-        const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-
-        const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-fg-strong)' },
-            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-fg)' },
-            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-fg-mid)' },
-            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-fg-strong)' }
-        ]
+        const teamOnly = grantFor(viewer, 'tasks.view') === 'TEAM'
 
         return (
-            <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                <HeaderSetter
-                    title={grantFor(viewer, 'tasks.view') === 'TEAM' ? t('team_performance') : t('admin_overview')}
+            <Page>
+                <PageHeader
+                    title={teamOnly ? t('team_performance') : t('admin_overview')}
                     subtitle={t('dashboard_subtitle' as any)}
+                    action={<>
+                        <ButtonLink href="/dashboard/tasks/new" variant="primary" icon={PlusIcon}>{t('create_new_task')}</ButtonLink>
+                        {can(viewer, 'employees.create') && <ButtonLink href="/dashboard/employees/new" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>}
+                    </>}
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                    <div className="glass-card">
-                        <DonutChart title={t('team_workload')} data={chartData} />
-                    </div>
-                    <div style={{ display: 'grid', gap: '1.5rem' }}>
-                        <StatMetric label={t('task_completion')} value={`${completedTasks}/${totalTasks}`} icon={modules.icon('tasks')} color="var(--ok-solid)" percentage={completionRate} subLabel={t('completion_rate')} />
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(10rem, 100%), 1fr))', gap: '1rem' }}>
-                            <StatMetric label={t('team_bonuses')} value={formatDays(Number(salaryStats._sum.bonusDays || 0))} icon="⭐" color="var(--warn-solid)" subLabel={t('total_this_month')} />
-                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryStats._sum.deductions || 0))} icon="📉" color="var(--danger-solid)" subLabel={t('total_this_month')} />
-                        </div>
-                    </div>
-                </div>
+                <TotalTiles items={[
+                    { label: t('task_completion'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: '/dashboard/tasks' },
+                    { label: t('team_bonuses'), value: days(Number(salaryStats._sum.bonusDays || 0)), note: t('total_this_month') },
+                    { label: t('team_deductions'), value: days(Number(salaryStats._sum.deductions || 0)), note: t('total_this_month') },
+                ]} />
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '2rem' }}>
-                    <div className="glass-card" style={{ height: 'fit-content' }}>
-                        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '700' }}>{t('quick_actions')}</h3>
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                            <Link href="/dashboard/tasks/new" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center', height: '3rem' }}>
-                                + {t('create_new_task')}
-                            </Link>
-                            {can(viewer, 'employees.create') && (
-                                <Link href="/dashboard/employees/new" className="btn" style={{ flex: 1, justifyContent: 'center', background: 'var(--veil-40)', color: 'var(--text-body)', height: '3rem', border: '1px solid var(--veil-50)' }}>
-                                    + {t('add_employee')}
-                                </Link>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <Section title={t('needs_your_review')}>
+                    <TotalTiles items={[
+                        { label: t('pending_task_reviews'), value: num(reviewTasks), href: '/dashboard/tasks?status=PENDING_CONFIRMATION' },
+                        ...(can(viewer, 'dayoff.approve') ? [{ label: t('pending_day_off_requests'), value: num(pendingDayOffRequests), href: '/dashboard/day-off-requests?status=PENDING' }] : []),
+                        ...(can(viewer, 'profile_requests.review') ? [{ label: t('pending_profile_requests'), value: num(pendingProfileRequests), href: '/dashboard/profile-requests' }] : []),
+                    ]} />
+                </Section>
 
-                {/* Needs Your Review */}
-                <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">📋</span> {t('needs_your_review')}</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1.5rem' }}>
-                        <Link href="/dashboard/tasks" style={{ textDecoration: 'none', color: 'inherit' }}>
-                            <StatMetric label={t('pending_task_reviews')} value={reviewTasks} icon="🔎" color="var(--warn-solid)" />
-                        </Link>
-                        {can(viewer, 'dayoff.approve') && (
-                            <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('pending_day_off_requests')} value={pendingDayOffRequests} icon={modules.icon('dayOff')} color="var(--info-solid-sky)" />
-                            </Link>
+                <Columns>
+                    <Section title={t('overdue_tasks')}>
+                        {overdueTasks.length === 0 ? (
+                            <Panel><EmptyState icon={CheckCircleIcon} title={t('no_overdue_tasks')} /></Panel>
+                        ) : (
+                            <Rows label={t('overdue_tasks')}>
+                                {overdueTasks.map(task => (
+                                    <Row
+                                        key={task.id}
+                                        href={`/dashboard/tasks/${task.id}`}
+                                        title={task.title}
+                                        tone="overdue"
+                                        end={<DueDate overdue>{day(task.deadline)}</DueDate>}
+                                    />
+                                ))}
+                            </Rows>
                         )}
-                        {can(viewer, 'profile_requests.review') && (
-                            <Link href="/dashboard/profile-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <StatMetric label={t('pending_profile_requests')} value={pendingProfileRequests} icon="🪪" color="var(--brand-accent)" />
-                            </Link>
-                        )}
-                    </div>
-                </section>
-
-                {/* Overdue Tasks */}
-                <section style={{ marginTop: '2.5rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)', marginBottom: '1.25rem' }}><span aria-hidden="true">⏰</span> {t('overdue_tasks')}</h2>
-                    {overdueTasks.length === 0 ? (
-                        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
-                            <p style={{ margin: 0, color: 'var(--text-faint)' }}>{t('no_overdue_tasks')}</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {overdueTasks.map(task => (
-                                <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid var(--danger-solid)' }}>
-                                        <span style={{ fontWeight: '600' }}>{task.title}</span>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--danger-fg-strong)' }}>{new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</span>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </section>
-            </div>
+                    </Section>
+                    <Section title={t('team_workload')}>
+                        {byStatus(taskStats as any, t('team_workload'))}
+                    </Section>
+                </Columns>
+            </Page>
         )
     } else {
         const today = new Date()
@@ -388,181 +354,81 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
-        const pendingTasks = (taskStats.find(s => s.status === 'PENDING')?._count || 0) + (taskStats.find(s => s.status === 'IN_PROGRESS')?._count || 0)
-        const reviewTasks = taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0
-        const rejectedTasks = taskStats.find(s => s.status === 'REJECTED')?._count || 0
-
-        const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
         const usedCredits = approvedRequests.reduce((acc, req) => acc + (req.daysDeducted || 0), 0)
-
-        const chartData = [
-            { label: t('status_completed'), value: completedTasks, color: 'var(--ok-fg-strong)' },
-            { label: t('status_pending'), value: pendingTasks, color: 'var(--info-fg)' },
-            { label: t('status_review'), value: reviewTasks, color: 'var(--warn-fg-mid)' },
-            { label: t('status_rejected'), value: rejectedTasks, color: 'var(--danger-fg-strong)' }
-        ]
-
+        const dayOffWord = (type: string) => t(`${type.toLowerCase()}_day_off` as TranslationKey)
+        const dayOffTone = (status: string) => status === 'APPROVED' ? 'good' : status === 'REJECTED' ? 'problem' : 'neutral'
 
         return (
-            <div className="animate-fade-in">
-                <HeaderSetter
-                    title={`${t('hello')}, ${(session?.user as any)?.firstName}! 👋`}
-                    subtitle={t('dashboard_subtitle' as any)}
-                />
+            <Page>
+                <PageHeader title={`${t('hello')}, ${(session?.user as any)?.firstName}`} subtitle={t('dashboard_subtitle' as any)} />
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-                    <div className="glass-card dashboard-chart-grid" style={{ display: 'grid', gap: '1.5rem' }}>
-                        <DonutChart title={t('task_distribution')} data={chartData} />
-                        <DonutChart
-                            title={t('credit_overview' as any)}
-                            data={[
-                                { label: t('remaining_credit' as any), value: currentUser?.dayOffCredit || 0, color: 'var(--ok-fg-strong)' },
-                                { label: t('used_credit' as any), value: usedCredits, color: 'var(--danger-fg-strong)' }
-                            ]}
-                        />
-                    </div>
-                    <div style={{ display: 'grid', gap: '1.5rem' }}>
-                        <StatMetric label={t('overall_progress')} value={`${completedTasks}/${totalTasks}`} icon="🎯" color="var(--brand-primary)" percentage={completionRate} subLabel={t('completion_rate')} />
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(10rem, 100%), 1fr))', gap: '1rem' }}>
-                            <StatMetric label={t('bonus')} value={formatDays(Number(salaryRecord?.bonusDays || 0))} icon="🎁" color="var(--warn-solid)" subLabel={t('extra_earnings')} />
-                            <StatMetric label={t('team_deductions')} value={formatDays(Number(salaryRecord?.deductions || 0))} icon="📉" color="var(--danger-solid)" subLabel={t('total_lost_days')} />
-                        </div>
-                    </div>
-                </div>
+                <TotalTiles items={[
+                    { label: t('overall_progress'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: '/dashboard/tasks' },
+                    { label: t('bonus'), value: days(Number(salaryRecord?.bonusDays || 0)), note: t('extra_earnings') },
+                    { label: t('payroll_deductions'), value: days(Number(salaryRecord?.deductions || 0)), note: t('total_lost_days') },
+                    { label: t('remaining_credit' as any), value: days(currentUser?.dayOffCredit || 0), note: `${t('used_credit' as any)}: ${days(usedCredits)}`, href: '/dashboard/day-off-requests' },
+                ]} />
 
-                {/* This Week's Focus */}
-                <section style={{ marginBottom: '3rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}><span aria-hidden="true">🔥</span> {t('due_this_week')}</h2>
-                    </div>
+                <Section title={t('due_this_week')} action={<SectionLink href="/dashboard/tasks">{t('view_all')}</SectionLink>}>
+                    {upcomingTasks.length === 0 ? (
+                        <Panel><EmptyState icon={CheckCircleIcon} title={t('no_pending_tasks_week')} /></Panel>
+                    ) : (
+                        <Rows label={t('due_this_week')}>
+                            {upcomingTasks.map((task: any) => (
+                                <Row
+                                    key={task.id}
+                                    href={`/dashboard/tasks/${task.id}`}
+                                    title={task.title}
+                                    detail={countOf(t, locale, task.difficulty ?? 0, 'pts')}
+                                    end={<>
+                                        {badge(task.status)}
+                                        <DueDate>{new Date(task.deadline) < tomorrow ? t('today') : day(task.deadline, { weekday: 'short', day: 'numeric', month: 'short' })}</DueDate>
+                                    </>}
+                                />
+                            ))}
+                        </Rows>
+                    )}
+                </Section>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }}>
-                        {upcomingTasks.length === 0 ? (
-                            <div className="glass-card glass-success animate-delay-100" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '2rem' }}>
-                                <div aria-hidden="true" style={{ fontSize: '3rem', background: 'var(--panel-80)', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px var(--shadow-faint)' }}>🎉</div>
-                                <div>
-                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', fontWeight: '700', color: 'var(--ok-fg)' }}>{t('all_caught_up')}</h3>
-                                    <p style={{ margin: 0, color: 'var(--ok-fg-strong)' }}>{t('no_pending_tasks_week')}</p>
-                                </div>
-                            </div>
+                <Columns>
+                    {myLatestDayOffRequest && (
+                        <Section title={t('my_day_off_request')} action={<SectionLink href="/dashboard/day-off-requests">{t('view_all')}</SectionLink>}>
+                            <Rows label={t('my_day_off_request')}>
+                                <Row
+                                    href="/dashboard/day-off-requests"
+                                    title={dayOffWord(myLatestDayOffRequest.type)}
+                                    detail={myLatestDayOffRequest.endDate && day(myLatestDayOffRequest.endDate) !== day(myLatestDayOffRequest.date)
+                                        ? `${day(myLatestDayOffRequest.date)} – ${day(myLatestDayOffRequest.endDate)}`
+                                        : day(myLatestDayOffRequest.date)}
+                                    detailIcon={CalendarBlankIcon}
+                                    end={<StatusBadge tone={dayOffTone(myLatestDayOffRequest.status)}>{statusWord(myLatestDayOffRequest.status)}</StatusBadge>}
+                                />
+                            </Rows>
+                        </Section>
+                    )}
+                    <Section title={modules.label('obligations')} action={<SectionLink href="/dashboard/obligations">{t('view_all')}</SectionLink>}>
+                        {myObligations.length === 0 ? (
+                            <Panel><EmptyState icon={ClipboardTextIcon} title={t('no_obligations_assigned')} /></Panel>
                         ) : (
-                            upcomingTasks.map((task: any) => {
-                                const isDueToday = new Date(task.deadline) < tomorrow
-                                return (
-                                    <Link key={task.id} href={`/dashboard/tasks/${task.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                                        <div className="glass-card" style={{ height: '100%', boxSizing: 'border-box', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `6px solid ${isDueToday ? 'var(--danger-solid)' : 'var(--warn-solid)'}`, padding: '1.75rem' }}>
-                                            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                    <h3 style={{ fontSize: '1.25rem', fontWeight: '700', lineHeight: '1.3', color: 'var(--text-main)' }}>{task.title}</h3>
-                                                    <span style={{
-                                                        padding: '0.15rem 0.5rem',
-                                                        borderRadius: '0.5rem',
-                                                        background: 'var(--info-fill)',
-                                                        color: 'var(--text-on-accent)',
-                                                        fontWeight: 'bold',
-                                                        fontSize: '0.7rem'
-                                                    }}>
-                                                        {task.difficulty} {t('pts')}
-                                                    </span>
-                                                </div>
-                                                <span className="badge" style={{ background: isDueToday ? 'var(--danger-bg)' : 'var(--warn-bg-warm)', color: isDueToday ? 'var(--danger-fg-strong)' : 'var(--warn-fg-warm-strong)' }}>
-                                                    {isDueToday ? t('today') : new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
-                                                </span>
-                                            </div>
-                                            <p style={{ color: 'var(--text-soft)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                                {task.description}
-                                            </p>
-                                            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--veil-20)', paddingTop: '1rem' }}>
-                                                <span className="badge" style={{ background: 'var(--surface-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{t(`status_${task.status.toLowerCase()}` as any)}</span>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--brand-primary-hover)' }}>{t('view_all')} →</span>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                )
-                            })
+                            <Rows label={modules.label('obligations')}>
+                                {myObligations.map(ob => (
+                                    <Row
+                                        key={ob.id}
+                                        href={`/dashboard/obligations/${ob.id}`}
+                                        title={ob.title}
+                                        detail={`${t('due_by')} ${day(ob.deadline)}`}
+                                        detailIcon={CalendarBlankIcon}
+                                        end={<>
+                                            <span className="ui-chip">{countOf(t, locale, ob.difficulty ?? 0, 'pts')}</span>
+                                            {badge(ob.status)}
+                                        </>}
+                                    />
+                                ))}
+                            </Rows>
                         )}
-                    </div>
-                </section>
-
-                {/* My Latest Day-Off Request */}
-                {myLatestDayOffRequest && (
-                    <section style={{ marginBottom: '3rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>{modules.icon('dayOff')} {t('my_day_off_request')}</h2>
-                            <Link href="/dashboard/day-off-requests" style={{ fontSize: '0.9rem', fontWeight: '500' }}>{t('view_all')}</Link>
-                        </div>
-                        <Link href="/dashboard/day-off-requests" style={{ textDecoration: 'none', color: 'inherit' }}>
-                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', [locale === 'ar' ? 'borderRight' : 'borderLeft']: `4px solid ${myLatestDayOffRequest.status === 'APPROVED' ? 'var(--ok-solid)' : myLatestDayOffRequest.status === 'REJECTED' ? 'var(--danger-solid)' : 'var(--info-solid-sky)'}` }}>
-                                <div>
-                                    <div style={{ fontWeight: '600' }}>{t(`${myLatestDayOffRequest.type.toLowerCase()}_day_off` as any)}</div>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)', marginTop: '0.25rem' }}>
-                                        {new Date(myLatestDayOffRequest.date).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}
-                                        {myLatestDayOffRequest.endDate ? ` – ${new Date(myLatestDayOffRequest.endDate).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}` : ''}
-                                    </div>
-                                </div>
-                                <span className="badge" style={{
-                                    background: myLatestDayOffRequest.status === 'APPROVED' ? 'var(--ok-bg)' : myLatestDayOffRequest.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--info-bg-sky)',
-                                    color: myLatestDayOffRequest.status === 'APPROVED' ? 'var(--ok-fg)' : myLatestDayOffRequest.status === 'REJECTED' ? 'var(--danger-fg-strong)' : 'var(--info-fg)'
-                                }}>
-                                    {t(`status_${myLatestDayOffRequest.status.toLowerCase()}` as any)}
-                                </span>
-                            </div>
-                        </Link>
-                    </section>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: '2.5rem', alignItems: 'start' }}>
-                    {/* Obligations */}
-                    <section>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-body)' }}>{modules.icon('obligations')} {modules.label('obligations')}</h2>
-                            <Link href="/dashboard/obligations" style={{ fontSize: '0.9rem', fontWeight: '500' }}>{t('view_all')}</Link>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {myObligations.length === 0 ? (
-                                <div className="glass-card" style={{ padding: '2rem', textAlign: 'center' }}>
-                                    <p style={{ margin: 0, color: 'var(--text-faint)' }}>{t('no_obligations_assigned')}</p>
-                                </div>
-                            ) : (
-                                myObligations.slice(0, 5).map(ob => (
-                                    <Link key={ob.id} href={`/dashboard/obligations/${ob.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <div className="glass-card" style={{ padding: '1.25rem', [locale === 'ar' ? 'borderRight' : 'borderLeft']: '4px solid var(--info-solid-sky)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <h3 style={{ fontSize: '1rem', fontWeight: '600', margin: 0 }}>{ob.title}</h3>
-                                                    <span style={{
-                                                        padding: '0.1rem 0.4rem',
-                                                        borderRadius: '0.4rem',
-                                                        background: 'var(--info-fill)',
-                                                        color: 'var(--text-on-accent)',
-                                                        fontWeight: 'bold',
-                                                        fontSize: '0.65rem'
-                                                    }}>
-                                                        {ob.difficulty} {t('pts')}
-                                                    </span>
-                                                </div>
-                                                <span className="badge" style={{
-                                                    background: ob.status === 'COMPLETED' ? 'var(--ok-bg)' : 'var(--info-bg-sky)',
-                                                    color: ob.status === 'COMPLETED' ? 'var(--ok-fg)' : 'var(--info-fg)',
-                                                    fontSize: '0.7rem'
-                                                }}>
-                                                    {t(`status_${ob.status.toLowerCase()}` as any)}
-                                                    {(ob as any).lastStatusUpdateBy && (['COMPLETED', 'APPROVED', 'REJECTED'].includes(ob.status)) && (
-                                                        <span style={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 'normal' }}>
-                                                            • {(ob as any).lastStatusUpdateBy}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </div>
-                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('due_by')} {new Date(ob.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}</div>
-                                        </div>
-                                    </Link>
-                                ))
-                            )}
-                        </div>
-                    </section>
-                </div>
-            </div>
+                    </Section>
+                </Columns>
+            </Page>
         )
     }
 }

@@ -56,9 +56,6 @@ describe("decorative emoji", () => {
     })
 
     it("are hidden where icons passed as data are drawn", () => {
-        const charts = readFileSync("components/DashboardCharts.tsx", "utf8")
-        const statIcon = charts.slice(charts.lastIndexOf("<div", charts.indexOf("{icon}")), charts.indexOf("{icon}"))
-        expect(statIcon).toContain('aria-hidden="true"')
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
         expect(shell.match(/<span (?!aria-hidden)[^>]*>\{link\.icon\}<\/span>/g) ?? []).toEqual([])
         expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain('<span aria-hidden="true" style={{ fontSize: \'1.2rem\' }}>{entry.icon}</span>')
