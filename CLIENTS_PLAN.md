@@ -734,4 +734,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   be merged (§8). The steps here can use the building blocks that PR added:
   the row menu, the selection bar, the dialog, the text area and the radio
   choice.
-
+- **2026-10-15:** From Codex's review of #73 and #75:
+  - a client holding records is archived, not deleted (§4);
+  - See locations is in the permissions, for anyone who can create tasks,
+    and Add and Manage include it (§2.9);
+  - the bulk upload's location names are unique, and each carries its
+    location in a hidden column (§2.7);
+  - the Super Admin dashboard's client count moves in step 0a (§0.3);
+  - the role editor says what Give cash advances also allows (§7.7).

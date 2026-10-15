@@ -603,3 +603,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   repeating an earlier part's meaning; each part's share in the legend;
   and pointing at a legend row picks out its part. No motion beyond that
   150ms fade, which reduced motion turns off.
+- **2026-10-15:** From Codex's review of #74 and #75:
+  - Profile requests sit with the other request pages under People until
+    the one Requests page (§2.1);
+  - the icons PR maps every stored icon choice, not only the defaults
+    (§4.4).
+  - Its two findings on #74 were already settled: Impeccable comes in as
+    written guidance only, and the Vercel audit's rules are a pinned copy.

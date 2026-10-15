@@ -589,3 +589,9 @@ changed:
   mid-tone chart colours (§2.3), since the deep text colours looked heavy as
   shapes. The legend adds each part's share. Pointing at a legend row
   picks out its part.
+- **2026-10-15:** From Codex's review of #76: `--brand-text` reads at
+  4.5:1 on both brand tints too, which the derivation already checked
+  (§2.1); and `unicode-bidi: isolate` needs `direction: ltr` for an
+  identifier, or a time range reads backwards in Arabic (§3.3). Its other
+  two findings, the field edge and the dark-mode hover and press, were
+  already fixed.
