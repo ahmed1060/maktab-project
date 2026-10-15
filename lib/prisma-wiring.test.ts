@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { readFileSync } from "node:fs"
 
 /**
@@ -49,6 +49,41 @@ describe("importing the client does not need a database", () => {
         // Deferred, not discarded: the error still has to arrive, and still has
         // to name the variable that is missing.
         expect(() => (prisma as any).user).toThrow(/POSTGRES_PRISMA_URL/)
+    })
+})
+
+describe("there is one client, and one pool, per process", () => {
+    it("builds the client once in production, however often it's used", async () => {
+        // The proxy asks for the client on every property access. When the
+        // client was only kept outside production, every prisma.user,
+        // prisma.task and $transaction in production built a new client with
+        // a new pool of up to five connections, and each one stayed open idle.
+        // Seven sign-ins in a row filled a local Postgres's hundred
+        // connections; on Vercel each query opened a connection to the pooler.
+        vi.resetModules()
+        const built = vi.fn()
+        vi.doMock("@prisma/client", () => ({
+            PrismaClient: class { constructor() { built() } user = {}; task = {}; $transaction = () => {} },
+        }))
+        vi.doMock("@prisma/adapter-pg", () => ({ PrismaPg: class {} }))
+        vi.stubEnv("NODE_ENV", "production")
+        vi.stubEnv("POSTGRES_PRISMA_URL", "postgresql://u:p@localhost:5432/db")
+        const g = global as unknown as { prisma?: unknown }
+        const saved = g.prisma
+        delete g.prisma
+        try {
+            const { prisma } = await import("./prisma")
+            void (prisma as any).user
+            void (prisma as any).task
+            void (prisma as any).$transaction
+            expect(built).toHaveBeenCalledTimes(1)
+        } finally {
+            g.prisma = saved
+            vi.unstubAllEnvs()
+            vi.doUnmock("@prisma/client")
+            vi.doUnmock("@prisma/adapter-pg")
+            vi.resetModules()
+        }
     })
 })
 
