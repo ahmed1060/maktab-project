@@ -255,9 +255,12 @@ separate system. On screen they're renamed **Check-in places** (أماكن
    "Pay 7 costs, 3,450 EGP"; the server pays those 7 and nothing else. If
    anything changed in the meantime, it refuses and asks you to look again.
 2. **A task with paid costs can't be deleted.**
-3. **Archive clients.** A client linked to any task is archived instead of
-   deleted. It's hidden from dropdowns, kept in filters and history, and can
-   be restored.
+3. **Archive clients.** A client linked to any task, or holding any
+   records (§0.2), is archived instead of deleted. It's hidden from
+   dropdowns, kept in filters and history, and can be restored. Records
+   would otherwise go with the client, because sections are deleted with
+   whatever they belong to, and deleting a client would get round the
+   separate permission for deleting records.
 4. **Fix the bug so cost descriptions are saved** (§1), in this step.
 5. **Costs get their own table** (Decided).
    - Today each cost is an entry inside the task's JSON comments, with no id
