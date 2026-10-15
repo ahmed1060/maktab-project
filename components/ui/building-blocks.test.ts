@@ -96,6 +96,12 @@ describe("lists", () => {
         expect(list(rows)).toContain("متأخرة")
     })
 
+    it("keys each row and card, so a page can scroll to the one showing", () => {
+        const html = list(rows)
+        expect(html.match(/data-key="a"/g)).toHaveLength(2)
+        expect(html).not.toMatch(/ id="a"/)
+    })
+
     it("shows the empty state, and no table, when there's nothing", () => {
         const html = list([])
         expect(html).toContain("No tasks yet")
@@ -175,6 +181,65 @@ describe("statuses and people", () => {
     })
 })
 
+describe("page layout, sections, rows and tiles", () => {
+    it("the page header holds its buttons together on the end side", () => {
+        const html = render(h(ui.PageHeader, { title: "Employees", action: h(ui.ButtonLink, { href: "/new", variant: "primary", children: "Add employee" }) }))
+        expect(html).toContain('<h1 class="ui-page-title">Employees</h1>')
+        expect(html).toMatch(/<div class="ui-page-actions"><a class="ui-btn ui-btn-primary" href="\/new">Add employee<\/a><\/div>/)
+        expect(render(h(ui.PageHeader, { title: "Employees" }))).not.toContain("ui-page-actions")
+    })
+
+    it("a section is a heading over its panels", () => {
+        const html = render(h(ui.Section, { title: "Needs your review", action: h(ui.SectionLink, { href: "/all", children: "View all" }), children: "x" }))
+        expect(html).toContain('<section class="ui-section">')
+        expect(html).toContain('<h2 class="ui-section-title">Needs your review</h2>')
+        expect(html).toContain('<a class="ui-btn ui-btn-quiet ui-btn-sm" href="/all">View all</a>')
+    })
+
+    it("a row links to its item, with its detail and its end, and an overdue row says so", () => {
+        const html = render(h(ui.Rows, { label: "Overdue tasks", children: [
+            h(ui.Row, { key: "a", href: "/tasks/a", title: "Renew register", detail: "HQ", detailIcon: MapPinIcon, end: h(ui.DueDate, { overdue: true, children: "12 Oct" }), tone: "overdue" }),
+            h(ui.Row, { key: "b", title: "Completed", end: "4" }),
+        ] }))
+        expect(html).toContain('<ul class="ui-panel ui-rows" aria-label="Overdue tasks">')
+        expect(html).toMatch(/<li data-tone="overdue"><a class="ui-row" href="\/tasks\/a">/)
+        expect(html).toContain('<span class="ui-item-title">Renew register</span>')
+        expect(html).toContain("Overdue")
+        // Without a link it's a plain row, not a link to nowhere.
+        expect(html).toContain('<li><div class="ui-row">')
+    })
+
+    it("a tile can link to what it counts and carry a note", () => {
+        const html = render(h(ui.TotalTiles, { items: [
+            { label: "Task reviews", value: 3, href: "/dashboard/tasks?status=PENDING_CONFIRMATION" },
+            { label: "Team bonuses", value: "2 days", note: "This month" },
+        ] }))
+        expect(html).toContain('<dt><a class="ui-tile-link" href="/dashboard/tasks?status=PENDING_CONFIRMATION">Task reviews</a></dt>')
+        expect(html).toContain('<dd class="ui-tile-note">This month</dd>')
+        expect(html.match(/ui-tile-link/g)).toHaveLength(1)
+    })
+})
+
+describe("the row menu", () => {
+    it("is a named button that says it opens a menu, and shows nothing until it's opened", () => {
+        const html = render(h(ui.RowMenu, { label: "More actions for Sara Hassan", tooltip: "More actions", items: [
+            { key: "edit", label: "Edit", href: "/e" },
+            { key: "delete", label: "Delete", danger: true, onSelect: () => {} },
+        ] }))
+        expect(html).toContain('aria-label="More actions for Sara Hassan"')
+        expect(html).toContain('title="More actions"')
+        expect(html).toContain('aria-haspopup="menu"')
+        expect(html).toContain('aria-expanded="false"')
+        expect(html).not.toContain('role="menu"')
+    })
+
+    it("puts destructive items last, after a hairline", () => {
+        const src = readFileSync("components/ui/Menu.tsx", "utf8")
+        expect(src).toContain("const ordered = [...items.filter(i => !i.danger), ...items.filter(i => i.danger)]")
+        expect(src).toMatch(/i === firstDanger && i > 0 && <div role="separator"/)
+    })
+})
+
 describe("the stylesheet keeps the rules", () => {
     const css = readFileSync("components/ui/ui.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "")
 
@@ -188,6 +253,15 @@ describe("the stylesheet keeps the rules", () => {
         expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/)
         const tsx = readdirSync("components/ui").filter(f => f.endsWith(".tsx"))
         for (const f of tsx) expect([f, /#[0-9a-fA-F]{6}\b/.test(readFileSync(`components/ui/${f}`, "utf8"))]).toEqual([f, false])
+    })
+
+    it("the menu is level 2 with menu corners, from their tokens", () => {
+        expect(css).toMatch(/\.ui-menu \{[^}]*border-radius: var\(--radius-menu\);[^}]*box-shadow: var\(--elev-2\);/)
+    })
+
+    it("the old top bar hides its title on a page with a page header, so the page is named once", () => {
+        expect(css).toMatch(/:root:has\(\.ui-page-header\) \.ui-topbar-title \{\s*display: none;/)
+        expect(readFileSync("components/DashboardHeader.tsx", "utf8")).toMatch(/<div className="ui-topbar-title"[^>]*>\s*<h1/)
     })
 
     it("is loaded once, by the root layout", () => {

@@ -15,7 +15,9 @@
 .ui-tiles,
 .ui-empty,
 .ui-pager,
-.ui-avatar {
+.ui-avatar,
+.ui-page,
+.ui-menu {
   font-family: var(--font-ui);
 }
 
@@ -32,6 +34,7 @@
 /* Headings break into even lines rather than leaving one word on the last. */
 .ui-page-title,
 .ui-card-title,
+.ui-section-title,
 .ui-empty-title {
   text-wrap: balance;
 }
@@ -273,6 +276,165 @@
   font-size: var(--text-md);
   line-height: var(--leading-md);
 }
+.ui-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Until the app shell (DESIGN.md §5.1) replaces it, the old top bar steps
+   aside on a page with its own page header, so the page is named once. */
+:root:has(.ui-page-header) .ui-topbar-title {
+  display: none;
+}
+
+/* ── Page layout and sections (§5.5) ── */
+.ui-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  color: var(--ink);
+}
+.ui-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.ui-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 30px;
+}
+.ui-section-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 500;
+  color: var(--ink);
+}
+/* Sections side by side on computers, one under the other on phones. */
+.ui-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* ── Rows (§5.5) ── */
+.ui-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.ui-rows > li {
+  border-bottom: 1px solid var(--rule);
+}
+.ui-rows > li:last-child {
+  border-bottom: 0;
+}
+.ui-rows > li[data-tone="overdue"] {
+  background: var(--overdue-row);
+  border-inline-start: 3px solid var(--problem-text);
+}
+.ui-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  text-decoration: none;
+  transition: background-color 150ms ease-out;
+}
+a.ui-row:hover {
+  background: var(--brand-tint);
+}
+a.ui-row:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: -2px;
+}
+.ui-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ui-row-main .ui-item-title {
+  overflow-wrap: anywhere;
+}
+.ui-row-end {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  max-width: 60%;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Row menu (§5.5) ── */
+.ui-menu-button {
+  width: 30px;
+  padding-inline: 0;
+  color: var(--ink-2);
+}
+.ui-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 200px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: var(--space-1);
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--elev-2);
+}
+.ui-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ui-menu-item:hover,
+.ui-menu-item:focus-visible {
+  background: var(--brand-tint);
+  outline: none;
+}
+.ui-menu-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--brand-text);
+}
+.ui-menu-item[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ui-menu-item-danger {
+  color: var(--problem-text);
+}
+.ui-menu-rule {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--rule);
+}
 
 /* ── Status badge (§5.5) ── */
 .ui-badge {
@@ -399,6 +561,10 @@
 .ui-table tr[data-tone="overdue"] td:first-child {
   border-inline-start: 3px solid var(--problem-text);
 }
+/* The row you came to see, such as the one a notification opened. */
+.ui-table tr[data-tone="selected"] td {
+  background: var(--brand-tint);
+}
 .ui-cards {
   display: none;
   list-style: none;
@@ -442,6 +608,9 @@
 .ui-cards > li[data-tone="overdue"] .ui-list-card {
   background: var(--overdue-row);
   border-inline-start: 3px solid var(--problem-text);
+}
+.ui-cards > li[data-tone="selected"] .ui-list-card {
+  background: var(--brand-tint);
 }
 .ui-list-card-top {
   display: flex;
@@ -580,6 +749,41 @@
   font-weight: 600;
   color: var(--ink);
 }
+.ui-tiles dd.ui-tile-note {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 400;
+  color: var(--muted);
+}
+/* A tile that links to what it counts: the label is the link, and its
+   target covers the whole tile. */
+.ui-tile {
+  position: relative;
+}
+.ui-tile-link {
+  color: var(--brand-text);
+  text-decoration: none;
+}
+.ui-tile-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-panel);
+}
+.ui-tile:has(.ui-tile-link:hover) {
+  background: var(--brand-tint);
+}
+.ui-tile-link:hover {
+  text-decoration: underline;
+}
+.ui-tile-link:focus-visible {
+  outline: none;
+}
+.ui-tile:has(.ui-tile-link:focus-visible) {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
 
 /* ── Empty state (§5.5) ── */
 .ui-empty {
@@ -623,6 +827,24 @@ html[lang="ar"] .ui-empty-title {
   .ui-page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+  .ui-page-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ui-page,
+  .ui-columns {
+    gap: var(--space-4);
+  }
+  .ui-row {
+    padding: var(--space-3);
+  }
+  .ui-menu-button {
+    width: 44px;
+  }
+  .ui-menu-item {
+    min-height: 44px;
+    font-size: var(--text-lg);
   }
   .ui-page-title {
     font-size: var(--text-2xl);
@@ -672,7 +894,8 @@ html[lang="ar"] .ui-empty-title {
 
 @media (prefers-reduced-motion: reduce) {
   .ui-btn,
-  .ui-tab {
+  .ui-tab,
+  .ui-row {
     transition: none;
   }
   .ui-btn[aria-busy="true"]::after {

@@ -1585,10 +1585,12 @@ input::-webkit-credentials-auto-fill-button {
   --radius-pill: 999px;
   --radius-panel: 12px;
   --radius-field: 6px;
+  /* Menus, pop-ups and toasts (DESIGN.md §4.2). */
+  --radius-menu: 8px;
 
-  /* Menus, pop-ups and dialogs (8px corners, depth level 2: DESIGN.md §4.2-4.3)
-     get their tokens with the first building block that uses them. */
   --elev-1: 0 1px 3px rgba(13, 37, 61, 0.08);
+  /* Level 2: menus, pop-ups, dialogs and toasts (DESIGN.md §4.3). */
+  --elev-2: 0 8px 24px rgba(13, 37, 61, 0.12), 0 2px 6px rgba(13, 37, 61, 0.06);
 }
 
 :root[data-theme="dark"] {
@@ -1624,4 +1626,5 @@ input::-webkit-credentials-auto-fill-button {
 
   /* Shadows don't show on dark: depth comes from --panel-raised and the rule. */
   --elev-1: none;
+  --elev-2: none;
 }

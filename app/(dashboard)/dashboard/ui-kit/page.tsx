@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-    CalendarBlankIcon, CircleHalfIcon, ClipboardTextIcon, MapPinIcon, PlusIcon, SortAscendingIcon, TrashIcon, UserIcon,
+    CalendarBlankIcon, CircleHalfIcon, ClipboardTextIcon, ClockCounterClockwiseIcon, MapPinIcon, PencilSimpleIcon, PlusIcon, SortAscendingIcon, TrashIcon, UserIcon,
 } from '@phosphor-icons/react/ssr'
 import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
@@ -10,7 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import {
     Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, PageHeader, Pager, Person,
-    SearchInput, Select, StatusBadge, Tabs, TextInput, TotalTiles, taskStatusTone, type Column,
+    Row, RowMenu, Rows, SearchInput, Section, SectionLink, Select, StatusBadge, Tabs, TextInput, TotalTiles, taskStatusTone, type Column,
 } from '@/components/ui'
 
 /**
@@ -40,6 +40,8 @@ const TEXT = {
         buttons: 'Buttons', primary: 'Primary', secondary: 'Secondary', quiet: 'Quiet', danger: 'Delete client', small: 'In a row', busy: 'Saving…', disabled: 'Not allowed',
         form: 'A form', name: 'Client name', nameHint: 'As it appears on their commercial register.', code: 'Tax number', codeError: 'Enter the 9 digits on the tax card.',
         badges: 'Status badges', empty: 'No tasks yet', emptyAction: 'Create a task', pts: (n: number) => n === 1 ? '1 pt' : `${n} pts`,
+        rows: 'Needs attention', viewAll: 'View all', more: 'More actions', moreFor: (name: string) => `More actions for ${name}`,
+        edit: 'Edit', history: 'History', remove: 'Delete', note: 'This week',
     },
     ar: {
         page: 'مكونات الواجهة', title: 'المهام', subtitle: 'إدارة مهام الفريق والمواعيد النهائية وتقدم المشروع', create: 'إنشاء مهمة جديدة',
@@ -51,6 +53,8 @@ const TEXT = {
         buttons: 'الأزرار', primary: 'أساسي', secondary: 'ثانوي', quiet: 'هادئ', danger: 'حذف العميل', small: 'داخل صف', busy: 'جارٍ الحفظ…', disabled: 'غير مسموح',
         form: 'نموذج', name: 'اسم العميل', nameHint: 'كما يظهر في السجل التجاري.', code: 'الرقم الضريبي', codeError: 'أدخل الأرقام التسعة الموجودة على البطاقة الضريبية.',
         badges: 'حالات', empty: 'لا توجد مهام بعد', emptyAction: 'إنشاء مهمة', pts: (n: number) => n === 1 ? 'نقطة واحدة' : n === 2 ? 'نقطتان' : `${n.toLocaleString('ar-EG')} نقاط`,
+        rows: 'تحتاج إلى متابعة', viewAll: 'عرض الكل', more: 'إجراءات أخرى', moreFor: (name: string) => `إجراءات أخرى لـ ${name}`,
+        edit: 'تعديل', history: 'السجل', remove: 'حذف', note: 'هذا الأسبوع',
     },
 }
 
@@ -83,6 +87,13 @@ export default function UiKitPage() {
         : <Button size="sm">{s.view}</Button>
     const people = (t: Sample) => <Person names={t.people.map(pick)} moreLabel={n => `+${n.toLocaleString(ar ? 'ar-EG' : 'en-GB')}`} />
     const pts = (n: number) => <span className="ui-chip">{s.pts(n)}</span>
+    const menu = (t: Sample) => (
+        <RowMenu label={s.moreFor(pick(t.title))} tooltip={s.more} items={[
+            { key: 'edit', label: s.edit, icon: PencilSimpleIcon, href: '#' },
+            { key: 'history', label: s.history, icon: ClockCounterClockwiseIcon, href: '#' },
+            { key: 'delete', label: s.remove, icon: TrashIcon, danger: true, onSelect: () => {} },
+        ]} />
+    )
 
     const columns: Column<Sample>[] = [
         { key: 'task', header: s.task, cell: t => <ItemTitle title={pick(t.title)} detail={pick(t.place)} detailIcon={MapPinIcon} /> },
@@ -90,14 +101,19 @@ export default function UiKitPage() {
         { key: 'due', header: s.deadline, cell: t => <DueDate overdue={t.overdue}>{day(t.due)}</DueDate> },
         { key: 'pts', header: s.difficulty, cell: t => pts(t.pts) },
         { key: 'status', header: s.status, cell: t => <StatusBadge tone={taskStatusTone(t.status)}>{statusWord[t.status]}</StatusBadge> },
-        { key: 'action', header: s.actions, hideHeader: true, align: 'end', cell: action },
+        { key: 'action', header: s.actions, hideHeader: true, align: 'end', cell: t => <>{action(t)} {menu(t)}</> },
     ]
 
     return (
         <div style={{ background: 'var(--page)', padding: 'clamp(var(--space-4), 4vw, var(--space-8))', borderRadius: 'var(--radius-panel)', display: 'grid', gap: 'var(--space-6)' }}>
             <PageHeader title={s.title} subtitle={s.subtitle} action={<ButtonLink href="#" variant="primary" icon={PlusIcon}>{s.create}</ButtonLink>} />
 
-            <TotalTiles items={s.tiles.map((label, i) => ({ label, value: [6, 4, 2, 1][i].toLocaleString(ar ? 'ar-EG' : 'en-GB') }))} />
+            <TotalTiles items={s.tiles.map((label, i) => ({
+                label,
+                value: [6, 4, 2, 1][i].toLocaleString(ar ? 'ar-EG' : 'en-GB'),
+                note: i === 0 ? s.note : undefined,
+                href: i === 3 ? '#' : undefined,
+            }))} />
 
             <Tabs label={s.tabs} value={tab} onChange={setTab} idPrefix="kit-tab" items={[{ value: 'all', label: s.all }, { value: 'mine', label: s.mine }]} />
 
@@ -130,6 +146,16 @@ export default function UiKitPage() {
                 )}
                 footer={<Pager page={page} pageCount={3} onPage={setPage} summary={s.results} />}
             />
+
+            <Section title={s.rows} action={<SectionLink href="#">{s.viewAll}</SectionLink>}>
+                <Rows label={s.rows}>
+                    {TASKS.filter(t => t.overdue || t.status === 'PENDING_CONFIRMATION').map(t => (
+                        <Row key={t.id} href="#" title={pick(t.title)} detail={pick(t.place)} detailIcon={MapPinIcon}
+                            tone={t.overdue ? 'overdue' : undefined}
+                            end={t.overdue ? <DueDate overdue>{day(t.due)}</DueDate> : <StatusBadge tone={taskStatusTone(t.status)}>{statusWord[t.status]}</StatusBadge>} />
+                    ))}
+                </Rows>
+            </Section>
 
             <Card title={s.buttons}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' }}>
