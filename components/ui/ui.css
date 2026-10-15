@@ -27,7 +27,12 @@
 .ui-btn,
 .ui-tab,
 .ui-pager-page,
-.ui-select {
+.ui-select,
+.ui-row,
+.ui-menu-item,
+.ui-choice,
+.ui-check-target,
+.ui-date-trigger {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -319,8 +324,10 @@
   border-radius: var(--radius-panel);
   box-shadow: var(--elev-2);
   font-family: var(--font-ui);
+  overscroll-behavior: contain;
 }
-.ui-dialog:focus {
+/* Focused itself only when it has nothing to focus inside; no ring for a click. */
+.ui-dialog:focus:not(:focus-visible) {
   outline: none;
 }
 .ui-dialog-title {
@@ -578,6 +585,7 @@ a.ui-row:focus-visible {
   color: var(--ink-2);
 }
 .ui-menu {
+  overscroll-behavior: contain;
   position: fixed;
   z-index: 1000;
   min-width: 200px;
@@ -773,6 +781,7 @@ a.ui-row:focus-visible {
 }
 .ui-item-detail,
 .ui-meta {
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   gap: var(--space-1);

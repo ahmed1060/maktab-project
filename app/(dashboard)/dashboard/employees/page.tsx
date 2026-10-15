@@ -91,6 +91,8 @@ export default function EmployeesPage() {
     const [bulkSaving, setBulkSaving] = useState(false)
     const [teamLeaders, setTeamLeaders] = useState<Leader[]>([])
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+    // Resetting points can't be undone, so it asks first, as Delete does.
+    const [resetConfirm, setResetConfirm] = useState<{ id: string; name: string } | null>(null)
     const [resettingPoints, setResettingPoints] = useState<string | null>(null)
 
     // The search is sent once typing pauses, not on every key.
@@ -201,6 +203,7 @@ export default function EmployeesPage() {
             showToast(t('error_generic'), 'error')
         } finally {
             setResettingPoints(null)
+            setResetConfirm(null)
         }
     }
 
@@ -237,7 +240,7 @@ export default function EmployeesPage() {
             items.push({ key: 'deduction', label: t('add_deduction'), icon: MinusCircleIcon, href: `/dashboard/employees/${e.id}/deduction` })
         }
         if (can('requests.reset_points') && notAdmin) {
-            items.push({ key: 'reset', label: resettingPoints === e.id ? t('resetting') : t('reset_points'), icon: ArrowCounterClockwiseIcon, disabled: resettingPoints === e.id, onSelect: () => resetPoints(e.id) })
+            items.push({ key: 'reset', label: resettingPoints === e.id ? t('resetting') : t('reset_points'), icon: ArrowCounterClockwiseIcon, disabled: resettingPoints === e.id, onSelect: () => setResetConfirm({ id: e.id, name: nameOf(e) }) })
         }
         if (isSuperAdmin && e.status !== 'ARCHIVED') {
             items.push(e.status === 'SUSPENDED'
@@ -318,7 +321,7 @@ export default function EmployeesPage() {
             />
 
             <FilterBar
-                search={<Field label={t('employees_search')} hideLabel>{p => <SearchInput {...p} placeholder={t('employees_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
+                search={<Field label={t('employees_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('employees_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
                 activeCount={filtersOn}
                 onReset={filtersOn > 0 || query ? resetFilters : undefined}
             >
@@ -375,6 +378,16 @@ export default function EmployeesPage() {
                     : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
             />
 
+            <ConfirmModal
+                isOpen={!!resetConfirm}
+                title={t('reset_points')}
+                message={`${t('reset_points_question').replace('{name}', resetConfirm?.name ?? '')} ${t('undone_warning_plain')}`}
+                confirmText={t('reset_points')}
+                cancelText={t('cancel')}
+                onConfirm={() => resetConfirm && resetPoints(resetConfirm.id)}
+                onCancel={() => setResetConfirm(null)}
+                variant="warning"
+            />
             <ConfirmModal
                 isOpen={!!deleteConfirm}
                 title={t('delete_employee')}

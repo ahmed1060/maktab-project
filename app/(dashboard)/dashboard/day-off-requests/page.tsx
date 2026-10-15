@@ -317,7 +317,7 @@ export default function DayOffRequestsPage() {
             )}
 
             <FilterBar
-                search={<Field label={t('dayoff_search')} hideLabel>{p => <SearchInput {...p} placeholder={t('dayoff_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
+                search={<Field label={t('dayoff_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('dayoff_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
                 activeCount={filtersOn}
                 onReset={filtersOn > 0 || query ? resetFilters : undefined}
             >
@@ -404,7 +404,7 @@ export default function DayOffRequestsPage() {
                     <>
                         <p>{t('approve_dayoff_balance').replace('{name}', nameOf(selectedRequest)).replace('{days}', days(selectedRequest.user?.dayOffCredit || 0))}</p>
                         <Field label={t('days_to_deduct_label')}>{p => (
-                            <TextInput {...p} type="number" inputMode="decimal" min="0" step="0.5" value={daysToDeduct} onChange={e => setDaysToDeduct(e.target.value)} />
+                            <TextInput {...p} type="number" autoComplete="off" inputMode="decimal" min="0" step="0.5" value={daysToDeduct} onChange={e => setDaysToDeduct(e.target.value)} />
                         )}</Field>
                         <Choice
                             legend={t('deduct_from_label')}

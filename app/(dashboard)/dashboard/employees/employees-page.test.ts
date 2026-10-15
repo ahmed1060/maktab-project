@@ -35,6 +35,12 @@ describe("the Employees page", () => {
         expect(page).toContain("showToast(t('employee_deleted'), 'success')")
     })
 
+    it("asks before resetting points, which can't be undone", () => {
+        expect(page).toContain("onSelect: () => setResetConfirm({ id: e.id, name: nameOf(e) }) })")
+        expect(page).not.toContain("onSelect: () => resetPoints(e.id)")
+        expect(page).toContain("onConfirm={() => resetConfirm && resetPoints(resetConfirm.id)}")
+    })
+
     it("says a status in words, with its meaning's colour", () => {
         expect(page).toContain("<StatusBadge tone={STATUS_TONE[e.status] ?? 'neutral'}>")
         expect(page).toContain("<StatusBadge tone=\"waiting\">{t('team_unassigned')}</StatusBadge>")
