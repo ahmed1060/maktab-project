@@ -172,9 +172,12 @@ This is the largest change here, so it's a candidate for later (§5).
 
 ## 4. Look (Proposed)
 
-1. **Fix the 7 pages using missing Tailwind classes** (§1.3.7). They'd use
-   the app's own styles, so they match the rest. This is small, and can go
-   first.
+1. **Fix the 7 pages using missing Tailwind classes** (§1.3.7), so they use
+   the app's own styles and match the rest.
+   - The dashboard home, Employees and Day Off Requests: a small PR, any time
+     (§5).
+   - Vendors and the three Clients pages: rebuilt in `CLIENTS_PLAN.md`'s step
+     0.
 2. **A few shared building blocks,** used by every page:
    - a page header (title, subtitle, main button);
    - a filter bar;
@@ -191,20 +194,37 @@ This is the largest change here, so it's a candidate for later (§5).
    icons, the same on every device. Companies can rename modules today and
    also pick an emoji for each; they would pick from the icon set instead.
    No company has changed an icon or label in production yet.
-5. **Pages move to the building blocks one by one,** each in a small PR, as
-   agreed for the UI refactor in `CLIENTS_PLAN.md` §8.
+5. **Pages move to the building blocks one by one,** each in a small PR,
+   after `CLIENTS_PLAN.md`'s steps (§5).
 
 ---
 
-## 5. When (Proposed)
+## 5. Order of work, across both plans (Decided)
 
-| Part | When |
-|---|---|
-| Names (§3) | Now. Step 0 of `CLIENTS_PLAN.md` renames things anyway, and later steps need the new names |
-| The side bar groups (§2.1, §2.2) | With step 0, which already changes the side bar |
-| Fixing the 7 pages (§4.1) | A small PR, whenever you like |
-| One Requests page (§2.3) | Later, as part of the UI refactor |
-| Building blocks, spacing, icons (§4.2–4.5) | The UI refactor, after `CLIENTS_PLAN.md`'s steps, page by page |
+1. **Settle the names and the side bar groups** (§6, questions 1–5). These
+   are decisions, not code, and they come before `CLIENTS_PLAN.md`'s step 0,
+   which renames things and changes the side bar.
+2. **The shared building blocks, in one PR** (§4.2–4.4):
+   - page header, filter bar, list or table, card, status badge, tabs, total
+     tiles and empty state;
+   - the spacing and text-size scale;
+   - the icon set, if chosen (question 6).
+
+   No old page is converted in this PR.
+3. **`CLIENTS_PLAN.md`, steps 0–7.**
+   - The side bar groups (§2.1, §2.2) land with step 0.
+   - Every screen these steps create or rework uses the building blocks
+     from the start: Clients, Locations, Records, the Costs tabs, Cash
+     advances, and the task form's pickers.
+4. **The rest of this plan:**
+   - the remaining old pages move to the building blocks one by one, each
+     in a small PR (§4.5);
+   - the one Requests page (§2.3).
+
+**Any time:** a small PR fixing the 3 pages with missing Tailwind classes
+that `CLIENTS_PLAN.md` doesn't touch: the dashboard home, Employees and Day
+Off Requests. The other 4 (Vendors and the three Clients pages) are rebuilt
+in step 0, so they're fixed there.
 
 ---
 
@@ -219,10 +239,9 @@ This is the largest change here, so it's a candidate for later (§5).
    Arabic wording especially.
 5. **Due / Collected, Check-in places, Cash advance** (§3.3)?
 6. **Icons:** move from emoji to one icon set, with companies picking from
-   it (§4.4)?
-7. **Fix the 7 pages** with missing Tailwind classes now, as a small PR
-   (§4.1)?
-8. **The timing** in §5?
+   it (§4.4)? This is needed before the building blocks PR.
+7. **When to fix the 3 pages** not touched by `CLIENTS_PLAN.md` (§4.1): now,
+   or later?
 
 ---
 
@@ -236,3 +255,12 @@ This is the largest change here, so it's a candidate for later (§5).
   - fixes and shared building blocks for the look (§4);
   - timing (§5);
   - open questions (§6).
+- **2026-10-15:** The order of work across both plans is decided (§5):
+  1. settle the names and the side bar groups;
+  2. one PR with the shared building blocks;
+  3. `CLIENTS_PLAN.md`'s steps, with the side bar groups landing in step 0
+     and every new screen built on the building blocks;
+  4. the remaining old pages and the one Requests page.
+
+  The 7 pages with missing Tailwind classes are split: 3 can be fixed any
+  time, and 4 are rebuilt in step 0. The questions in §6 are updated.

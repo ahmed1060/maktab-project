@@ -524,10 +524,22 @@ balance first, automatically:
 
 - Each step is its own PR (or several, for step 0), opened against `main`
   and merged only on the product owner's word.
-- **This work comes before the UI refactor.** When the refactor starts:
-  - write its plan first;
-  - do it page by page, in small PRs merged into `main`;
-  - start a fresh branch from `main` and copy the design skill across.
+- **Order with `UI_PLAN.md`** (Decided; full detail in `UI_PLAN.md` §5):
+  1. **Before step 0:**
+     - settle the names and the side bar groups (`UI_PLAN.md` §6, questions
+       1–5);
+     - build the shared page building blocks in one PR. No old page is
+       converted in it.
+  2. **Steps 0–7 above.**
+     - The new side bar groups land with step 0.
+     - Every screen these steps create or rework uses the building blocks:
+       Clients, Locations, Records, the Costs tabs, Cash advances, and the
+       task form's pickers.
+  3. **Then the rest of `UI_PLAN.md`:** the remaining old pages, one by one,
+     and the one Requests page.
+- **When the UI work starts,** it's done page by page in small PRs merged
+  into `main`, on a fresh branch from `main` with the design skill copied
+  across.
 
 ---
 
@@ -659,3 +671,9 @@ balance first, automatically:
     - Paid to is left out for now.
   - **Moved:** the remaining names go into a discussion of naming and
     organisation for the whole system (§10).
+- **2026-10-15:** The order with `UI_PLAN.md` is decided (§8):
+  - before step 0, the names and side bar groups are settled and the
+    shared page building blocks are built;
+  - steps 0–7 follow, with the side bar groups in step 0 and every new
+    screen on the building blocks;
+  - then the rest of the UI plan.
