@@ -178,7 +178,6 @@
   /* The brand marks. Aliases rather than new values, so there is still exactly
      one place each brand colour is defined. */
   --brand-primary: var(--primary);
-  --brand-primary-hover: var(--primary-hover);
   --brand-accent: var(--accent);
   /* The brand colour as text. A shade darker than --primary in the light
      theme: --primary itself is 4.47:1 on white and 3.95:1 on its own 10% tint,
