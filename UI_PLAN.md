@@ -1,9 +1,9 @@
 # Organising the system: names, navigation and look
 
 This file holds the plan for making the whole app feel organised: how the
-side bar is grouped, what things are called (in English and Arabic), and
-how pages look. It's updated with every decision; the change log at the
-end records each update.
+side bar is grouped, what things are called (in English and Arabic), how
+pages look, and the tools used to build and check them. It's updated with
+every decision; the change log at the end records each update.
 
 Each part is marked **Decided**, **Proposed** or **Open**, as in
 `CLIENTS_PLAN.md`. Everything here starts as **Proposed**.
@@ -205,10 +205,12 @@ This is the largest change here, so it's a candidate for later (§5).
    are decisions, not code, and they come before `CLIENTS_PLAN.md`'s step 0,
    which renames things and changes the side bar.
 2. **The shared building blocks, in one PR** (§4.2–4.4):
+   - first, the look is chosen and written down in `DESIGN.md` (§7.2);
    - page header, filter bar, list or table, card, status badge, tabs, total
      tiles and empty state;
    - the spacing and text-size scale;
-   - the icon set, if chosen (question 6).
+   - the icon set, if chosen (question 6);
+   - the design tools are added to the project (§7.3).
 
    No old page is converted in this PR.
 3. **`CLIENTS_PLAN.md`, steps 0–7.**
@@ -245,6 +247,77 @@ in step 0, so they're fixed there.
 
 ---
 
+## 7. Design tools (Decided)
+
+These tools help build the screens and check them. They were chosen from 11
+reviewed on 2026-10-15, which are listed in the reference PDF "AI Design and
+QA Tools for Coding Agents". The other five were turned down (§7.4).
+
+### 7.1 The tools, and when each is used
+
+| When | Tool | What it does here |
+|---|---|---|
+| Choosing the look, once | **awesome-design-md** (getdesign.md) | Design write-ups of well-known products. Two or three that suit Nizmo are the starting point for its own `DESIGN.md` (§7.2). |
+| Choosing the look, once | **Frontend Design** (Anthropic) | Makes the agent settle on one clear direction before writing code. It's used in that one session and isn't kept. |
+| Building | **`DESIGN.md`** (Nizmo's own) | The rulebook. It sets colours, spacing, text sizes, the building blocks, icons and the glossary (§3.2). Every screen and every agent follows it. |
+| Building | **Impeccable** | Builds the shared building blocks, then redesigns the pages one by one. It's tried on one page first. |
+| Building | **UI/UX Pro Max** | Chosen earlier, on the `ui-refactor` branch. It's a library of palettes, font pairings and UX rules to look things up in. |
+| Checking every UI PR | **Vercel Web Design Guidelines** | Audits the changed screens for focus states, forms, accessibility, wording and edge cases. Its findings are fixed in the same PR. |
+| Checking every UI PR | **Playwright** | Opens the app in a real browser and takes screenshots in English and Arabic, at phone and desktop width. Claude's cloud sessions already use it. |
+| Polish, later | **Emil Design Engineering** | Adds motion to toasts, dialogs, drawers and menus, once the building blocks exist. It respects the device's "reduce motion" setting. |
+
+### 7.2 Choosing the look
+
+The product owner chooses the look from pictures rather than descriptions:
+
+1. Claude picks two or three write-ups from awesome-design-md. Each must
+   suit a calm, dense business app used in English and Arabic, on phones
+   and computers.
+2. One Nizmo page, such as Tasks, is drawn in each style, in both languages,
+   and shown as screenshots.
+3. The product owner picks one.
+4. Claude writes `DESIGN.md` from that style, with Frontend Design keeping
+   the direction clear.
+   - It follows the reference's approach to spacing, text, colour and
+     components, adapted for Arabic and right to left.
+   - It keeps Nizmo's own name, logo and brand colour. Nothing of the other
+     brand is copied.
+
+### 7.3 Rules for the tools
+
+- **`DESIGN.md` wins.** If a tool's advice disagrees with it, `DESIGN.md` is
+  followed. If the tool turns out to be right, `DESIGN.md` is changed first,
+  in its own commit.
+- **No more than two design skills at once,** because their rules can
+  contradict each other:
+  - Impeccable and UI/UX Pro Max while building;
+  - Frontend Design only while choosing the look;
+  - Emil only for the motion work.
+- **Each skill is read in full before it's added,** scripts included, and
+  pinned to a fixed version.
+- **Skills live in the project** (`.claude/skills/`), as UI/UX Pro Max does
+  on `ui-refactor`, so every session has them.
+  - They're added in the building-blocks PR.
+  - Emil is added in the motion PR.
+- **Playwright's MCP is optional.** It's for having Claude click through the
+  app on the product owner's own computer, so nothing is added to the
+  project.
+
+### 7.4 Turned down
+
+- **Taste Skill:** its expressive styles would fight a consistent business
+  app.
+- **Image To Code:** it writes one-off code, which works against shared
+  building blocks.
+- **Anti UI Slop (uizze):** its idea is already the plan, through
+  `DESIGN.md` and the building blocks. It's also paid.
+- **Agent Skills (Addy Osmani):** the project already follows a stricter
+  way of working.
+- **Figma connector:** not needed unless designs start being reviewed in
+  Figma.
+
+---
+
 ## Change log
 
 - **2026-10-15:** File created. It covers:
@@ -264,3 +337,18 @@ in step 0, so they're fixed there.
 
   The 7 pages with missing Tailwind classes are split: 3 can be fixed any
   time, and 4 are rebuilt in step 0. The questions in §6 are updated.
+- **2026-10-15:** The design tools are decided (§7).
+  - **Choosing the look:** awesome-design-md and Frontend Design are used
+    once. The product owner picks from screenshots of one page drawn in two
+    or three styles, and Claude writes Nizmo's own `DESIGN.md` from the
+    pick.
+  - **Building:** Impeccable, with UI/UX Pro Max as the reference library.
+  - **Checking every UI PR:** Vercel Web Design Guidelines and Playwright.
+  - **Polish, later:** Emil Design Engineering.
+  - **Rules:** `DESIGN.md` wins over any tool, no more than two design
+    skills are used at once, and each skill is read in full and pinned.
+    Skills are added to the project in the building-blocks PR, and Emil in
+    the motion PR.
+  - **Turned down:** five tools (§7.4).
+  - **§5 updated:** the building-blocks PR starts by choosing the look and
+    writing `DESIGN.md`, and adds the tools.
