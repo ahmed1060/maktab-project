@@ -403,7 +403,8 @@ These are built once, in the building-blocks PR, and every page uses them
   - Beside the ring (below it on phones) is the legend. Each row has the
     part's colour mark (a 10px square with 3px corners), its word, its
     count, and its share of the total in `--muted`. The counts and shares
-    line up in columns. Screen readers read the legend, and the ring is
+    line up in columns. The legend is at most 28rem wide, so on a wide page
+    a count stays near its word. Screen readers read the legend, and the ring is
     hidden from them. A legend row can link to what it counts.
   - Pointing at a legend row, or moving focus to it, fades the ring's other
     parts, so the row and its part are seen together. The fade takes
@@ -595,3 +596,5 @@ changed:
   identifier, or a time range reads backwards in Arabic (§3.3). Its other
   two findings, the field edge and the dark-mode hover and press, were
   already fixed.
+- **2026-10-15:** The donut's legend is at most 28rem wide (§5.5), for the
+  Day Off page's credit donut, which spans the page.
