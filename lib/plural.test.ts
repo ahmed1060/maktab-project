@@ -20,6 +20,12 @@ describe("a count with its word", () => {
         expect(countOf(tAr as any, "ar", 0.5, "days")).toBe("٠٫٥ يوم")
     })
 
+    it("keeps a negative count's sign, in both languages", () => {
+        // -1 and -2 take the one and two forms, which write 1 and 2 out.
+        expect([-1, -2, -5].map(n => countOf(tEn as any, "en", n, "pts"))).toEqual(["-1 pts", "-2 pts", "-5 pts"])
+        expect([-1, -2, -3, -11].map(n => countOf(tAr as any, "ar", n, "pts"))).toEqual(["\u061c-١ نقطة", "\u061c-٢ نقطة", "\u061c-٣ نقاط", "\u061c-١١ نقطة"])
+    })
+
     it("has every form in both languages, so none falls back to its key", () => {
         for (const word of ["days", "pts", "employees", "requests"]) for (const form of ["zero", "one", "two", "few", "many", "other"]) {
             expect(en).toHaveProperty(`count_${word}_${form}`)
