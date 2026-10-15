@@ -589,3 +589,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the guard tests in place of its detector, and where `DESIGN.md` differs
   (the overdue bar, the total tiles). The 22 pages left out drive the
   launcher, write files Nizmo already has, or are for native apps.
+- **2026-10-15:** The donut chart is redrawn: the product owner found it
+  old-fashioned and left the choice between improving it and going back to
+  rows to Claude. Improved, with Impeccable's guidance (craft floor, Operate
+  mode, colour) and `DESIGN.md` changed first (§2.3, §5.5): a thin ring of
+  rounded, separated parts; new mid-tone chart colours, since the deep
+  status text colours looked heavy as shapes; a deeper shade for a part
+  repeating an earlier part's meaning; each part's share in the legend;
+  and pointing at a legend row picks out its part. No motion beyond that
+  150ms fade, which reduced motion turns off.
