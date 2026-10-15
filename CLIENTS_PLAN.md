@@ -534,7 +534,9 @@ balance first, automatically:
        converted in it;
      - move the 3 pages this plan doesn't touch (the dashboard home,
        Employees and Day Off Requests) onto the building blocks, in one
-       small PR;
+       small PR. Built on 2026-10-15, waiting to be merged. It also adds
+       building blocks these steps will use: the row menu, the selection
+       bar, the dialog, the text area and the radio choice;
      - add the brand colour setting, in one small PR (`UI_PLAN.md` §4.6).
   2. **Steps 0–7 above.**
      - The new side bar groups land with step 0.
@@ -706,3 +708,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   brand colour is a setting (`UI_PLAN.md` §4.6). §8 adds the brand colour PR
   before step 0, so every screen these steps build already follows a
   company's colour.
+- **2026-10-15:** The 3 pages are built on the building blocks, waiting to
+  be merged (§8). The steps here can use the building blocks that PR added:
+  the row menu, the selection bar, the dialog, the text area and the radio
+  choice.
+

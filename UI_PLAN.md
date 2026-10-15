@@ -293,7 +293,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
    No old page is converted in this PR.
 3. **Two small PRs straight after it,** in either order:
    - **the 3 pages `CLIENTS_PLAN.md` doesn't touch:** the dashboard home,
-     Employees and Day Off Requests move onto the building blocks (§4.1);
+     Employees and Day Off Requests move onto the building blocks (§4.1).
+     Built on 2026-10-15, waiting to be merged. Built with the building
+     blocks alone; question 8 (Impeccable) is still open;
    - **the brand colour setting (§4.6):** the database fields, the controls in
      System Settings and Company Settings → Branding, and the server putting
      the colour into the page. The new fields have defaults, so the preview
@@ -328,6 +330,9 @@ Clients pages) are rebuilt in step 0, so they're fixed there.
    Suggested: leave it out for now. `DESIGN.md` already covers what it
    would give, and the dashboard home (§4.1) can be the first page built
    with the building blocks alone.
+
+   Meanwhile the dashboard home was built with the building blocks alone,
+   in step 3 (§5). Adding Impeccable later wouldn't undo anything.
 
 The seven questions asked on 2026-10-15 were answered the same day:
 
@@ -522,3 +527,39 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   than fetched on every run. Impeccable is left out: it downloads and runs a
   program that can't be read or pinned (§7.3). Whether to add its written
   guidance alone is question 8 in §6.
+- **2026-10-15:** The 3 pages are moved onto the building blocks (§4.1,
+  §5 step 3), waiting to be merged.
+  - **What they needed that the building blocks didn't have,** added to
+    `DESIGN.md` first and then built:
+    - page layout, sections, rows, tile links and notes;
+    - the row menu, the selection bar and the dialog;
+    - the text area and the radio choice.
+  - **Until the app shell lands** (step 0), a page built from the building
+    blocks hides the old top bar's title, so it's named once, and sits on
+    `--page` rather than the old moving gradient.
+  - **The dashboard home:**
+    - its donut charts become a row per task status, each with its word
+      and count and linking to those tasks;
+    - its tiles link to the queues they count.
+  - **Employees:**
+    - Edit stays in each row, and the other actions are in a More actions
+      menu;
+    - the Super Admin's suspend toggle was a dot no keyboard could reach;
+      it's now in that menu;
+    - Reset points asks first.
+  - **Day Off Requests:** the pie chart becomes two tiles, remaining and
+    used credit. The request, approve and reject dialogs are the dialog
+    building block.
+  - **Fixed on the way, each with its own test:**
+    - Employees' role filter was never sent, and its sort only reordered
+      the page in view;
+    - Day Off Requests' filters only filtered the page in view;
+    - the dashboard's "Used credit" counted days taken from salary and
+      past years;
+    - in production, every database query built a new Prisma client and
+      pool (`lib/prisma.ts`).
+  - **Counts follow each language's plural forms** (`lib/plural.ts`), and
+    the strings these pages use are in sentence case.
+  - **Not done here:** the lists' filters and pages aren't kept in the
+    URL yet, as they weren't before.
+
