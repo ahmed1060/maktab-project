@@ -101,7 +101,8 @@ permissions allow, as today.
   advances.
 - **One Requests page** (§2.3) replaces the separate request pages, later.
   Until then, the existing ones sit together under People: Requests, Day off
-  requests and Role requests.
+  requests, Role requests and Profile requests (name changes, today linked
+  only from the top bar).
 
 ### 2.2 The Super Admin
 
