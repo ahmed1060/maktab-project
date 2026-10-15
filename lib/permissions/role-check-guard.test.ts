@@ -54,15 +54,12 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["app/(dashboard)/dashboard/employees/new/page.tsx", "{role === 'EMPLOYEE' && canAssignTeam && (", THE_PERSON],
 
     // app/(dashboard)/dashboard/employees/page.tsx
-    ["app/(dashboard)/dashboard/employees/page.tsx", "case 'ADMIN':", LABEL],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "case 'TEAM_LEADER':", LABEL],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "case 'EMPLOYEE':", LABEL],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "{canAssignTeams && emp.role === 'EMPLOYEE' && (", THE_PERSON],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "{emp.role !== 'ADMIN' && (", THE_PERSON],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "{emp.role === 'EMPLOYEE' && (", THE_PERSON],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "{can('employees.edit') && (emp.role !== 'ADMIN' || userRole === 'SUPER_ADMIN') && (", THE_PERSON],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "{can('salary.view') && emp.role !== 'ADMIN' && (", THE_PERSON],
-    ["app/(dashboard)/dashboard/employees/page.tsx", "{emp.role !== 'ADMIN' && (", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/page.tsx", "const canEdit = (e: Employee) => can('employees.edit') && (e.role !== 'ADMIN' || isSuperAdmin)", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/page.tsx", "const notAdmin = e.role !== 'ADMIN'", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/page.tsx", "const checkbox = (e: Employee) => canAssignTeams && e.role === 'EMPLOYEE'", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/page.tsx", "const teamOf = (e: Employee) => e.role !== 'EMPLOYEE'", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/page.tsx", "const points = (e: Employee) => e.role === 'ADMIN' ? null : <span className=\"ui-chip\">{countOf(t, locale, e.totalDifficultyPoints || 0, 'pts')}</span>", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/page.tsx", "...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),", THE_PERSON],
 
     // app/(dashboard)/dashboard/all-users/page.tsx
     ["app/(dashboard)/dashboard/all-users/page.tsx", "case 'EMPLOYEE': return 'role_employee'", LABEL],

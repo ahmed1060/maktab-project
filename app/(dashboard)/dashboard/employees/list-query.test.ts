@@ -40,7 +40,7 @@ describe("the Employees page", () => {
     const page = readFileSync("app/(dashboard)/dashboard/employees/page.tsx", "utf8")
 
     it("builds its request here, and doesn't re-sort in the browser", () => {
-        expect(page).toContain("employeesListUrl({")
+        expect(page).toContain("employeesListUrl(listQuery)")
         expect(page).not.toMatch(/\.sort\(\(a, b\)/)
     })
 })

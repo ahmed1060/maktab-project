@@ -106,7 +106,6 @@
      badge sat on an unusual ground, and each of those needs its own dark
      counterpart rather than being collapsed into the nearest neighbour. */
   --ok-bg-strong: #bbf7d0;
-  --ok-bg-subtle: #f0fdf4;
   --ok-bg-faint: #d1fae5;
   --ok-fg-strong: #15803d;
   --ok-fg-deep: #065f46;
@@ -159,7 +158,6 @@
      2.1 to 3.8:1. Each fill is the same hue darkened until white on it is at
      least 4.5:1 (lib/contrast.test.ts). */
   --ok-fill: #0b7b56;
-  --ok-fill-alt: #157c3b;
   --ok-fill-hover: #0e672f;
   --info-fill: #0b61ef;
   --info-fill-hover: #134dce;
@@ -1192,7 +1190,6 @@ input::-webkit-credentials-auto-fill-button {
     --ok-fg: #6fdc9b;
     --ok-solid: #2ebd77;
     --ok-bg-strong: #12402a;
-    --ok-bg-subtle: #0a2416;
     --ok-bg-faint: #0d3320;
     --ok-fg-strong: #7ee3a6;
     --ok-fg-deep: #9beec0;
@@ -1264,7 +1261,6 @@ input::-webkit-credentials-auto-fill-button {
        at least 3:1 against the dark surfaces, so a badge doesn't sink into
        the card it sits on. */
     --ok-fill: #1f8051;
-    --ok-fill-alt: #228051;
     --ok-fill-hover: #1d7348;
     --info-fill: #1f76b2;
     --info-fill-hover: #2d6994;
