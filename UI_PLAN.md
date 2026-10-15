@@ -562,4 +562,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the strings these pages use are in sentence case.
   - **Not done here:** the lists' filters and pages aren't kept in the
     URL yet, as they weren't before.
+- **2026-10-15:** The dashboard home's donut charts come back, at the
+  product owner's request: they preferred them to the rows of counts. They
+  are a building block now (`DESIGN.md` §5.5): each part in its meaning's
+  colour, the total in the middle, and a legend with every word and count
+  that links to the tasks it counts. The employee's dashboard has its two
+  again, tasks by status and day off credit.
 
