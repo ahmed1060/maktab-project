@@ -144,8 +144,8 @@ existing request pages sit together under People (§2.1).
 5. **Personal pages start with "My",** such as "My payslips" and "My cash
    advance".
 6. **Permissions follow one pattern:** **See** X, **Add** X, **Manage** X,
-   plus a verb for anything that moves money ("Mark collected", "Give cash
-   advances"). In Arabic: عرض، إضافة، إدارة.
+   plus a verb for anything that moves money ("Mark collected", "Give and
+   settle cash advances"). In Arabic: عرض، إضافة، إدارة.
 7. **No two things share a name.** Task locations and attendance check-in
    places are different things, so they get different names.
 
@@ -190,7 +190,7 @@ Three Arabic names were chosen so that no two things share a name
 - **The permission names** follow §3.1(6), for example:
   - See locations, Add locations, Manage locations;
   - See charges, Manage charges, Mark charges collected;
-  - See cash advances, Give cash advances;
+  - See cash advances, Give and settle cash advances;
   - Add list names, Manage lists.
 
 ---
@@ -613,3 +613,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-15:** The Day Off page shows the day off credit as the
   dashboard's donut, at the product owner's request, in place of its two
   credit tiles. Both pages use one component, so they can't disagree.
+- **2026-10-15:** The cash advance permission is renamed **Give and settle
+  cash advances** (§3.1, §3.3), at the product owner's choice, so its name
+  says it also records returns and corrections.
