@@ -52,8 +52,8 @@ below, which are all worked out from the one chosen colour.
 | Token | What it is | Used for |
 |---|---|---|
 | `--brand` | The chosen colour, darkened if needed until white text on it reads at 4.5:1 or better | Primary button fill, the active page in the pager, counts in the side bar, the logo tile |
-| `--brand-hover` | `--brand` 8% darker | Primary button on hover |
-| `--brand-press` | `--brand` 16% darker | Primary button while pressed |
+| `--brand-hover` | `--brand` 8% darker (in dark mode, see below) | Primary button on hover |
+| `--brand-press` | `--brand` 16% darker (in dark mode, see below) | Primary button while pressed |
 | `--brand-text` | The brand as text: 4.5:1 or better on the page and on panels, in each theme | Links, the selected side bar item, selected tabs, focus rings |
 | `--brand-tint` | 9% brand on the panel colour | Behind the selected side bar item and selected rows |
 | `--brand-tint-strong` | 14% brand on the panel colour | Avatars with initials |
@@ -66,7 +66,12 @@ below, which are all worked out from the one chosen colour.
   - `--brand` stays the same for buttons while it stands out from a dark
     panel at 3:1 or better. The default indigo does. A very dark choice,
     such as navy, is lightened until it does, and if white text then
-    reads under 4.5:1 on it, the button text switches to dark ink.
+    reads under 4.5:1 on it, the button text switches to dark ink;
+  - with white text, hover and press are 4% and 8% darker, half the
+    light-mode steps, and `--brand` is lightened if needed until the
+    pressed shade stands out from the panel at 3:1 too. Darker is towards
+    the panel, and white text and a 3:1 edge leave a narrow band of shades.
+    With dark ink, hover and press are 8% and 16% towards white.
 - **One filled brand button per area.** A page has one primary action. Other
   actions are secondary or quiet buttons (§5.2).
 
@@ -551,3 +556,8 @@ changed:
 - **2026-10-15:** A table wider than its panel scrolls sideways inside it
   (§5.4), as §8's layout rule already allowed. It was clipped, which cut off
   the action column between phone width and a wide screen.
+- **2026-10-15:** In dark mode, a primary button's hover and pressed shades
+  stand out from the panel at 3:1, as the button does (§2.1). They were 8%
+  and 16% darker, towards the panel, so the default indigo's pressed shade
+  was 2.82:1 and navy's 2.37:1. With white text they're now 4% and 8%
+  darker, and the fill is lightened if needed.
