@@ -81,7 +81,7 @@ below, which are all worked out from the one chosen colour.
 | `--ink-2` | `#273951` | `#b8c4d4` | Secondary text in rows and forms |
 | `--muted` | `#5d6b82` | `#8a9ab0` | Helper text, labels, table headers, empty states |
 | `--rule` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
-| `--field-line` | `#8792a2` | `#5b6b82` | The edge of a field, checkbox or toggle (3:1 or better) |
+| `--field-line` | `#828e9f` | `#5b6b82` | The edge of a field, checkbox or toggle (3:1 or better on the page and on panels) |
 
 - Text is navy, never pure black. Dark mode is deep navy, never pure black
   either.
@@ -104,8 +104,8 @@ same in every company.
 - **Colour is never the only signal.** A status always has its word. Overdue
   always has the warning icon and the word "Overdue" too.
 - **Danger text** on white is `#b3093c` (6.95:1).
-- **An overdue row** gets a faint red background (`#fff8fa` in light mode)
-  and a 3px red bar on its start edge.
+- **An overdue row** gets a faint red background (`#fff8fa` in light mode,
+  `#241729` in dark) and a 3px red bar on its start edge.
 - **A brand colour close to the problem red** gets a warning when it's
   chosen (`UI_PLAN.md` §4.6).
 
@@ -429,8 +429,8 @@ changed:
   long sessions, and Noto Sans Arabic has no 300 to match.
 - **The helper-text grey is darker** (`#5d6b82`), so it passes 4.5:1 on the
   page.
-- **Field edges are `#8792a2`** instead of a pale blue, so fields stand out
-  at 3:1.
+- **Field edges are `#828e9f`** instead of a pale blue, so fields stand out
+  at 3:1 on the page and on panels.
 - **"In Progress" uses a fixed blue,** not the brand colour, so statuses mean
   the same in every company.
 - **No "A · B" strings.** Overdue shows as its own word with an icon.
@@ -455,3 +455,6 @@ changed:
 - **2026-10-15:** Nizmo's indigo is used as `#6063ea` (4.70:1), not
   `#5d60e3`. The code darkens a colour in finer steps than the mock-ups did,
   so less of the chosen colour is lost.
+- **2026-10-15:** The field edge is `#828e9f`, not `#8792a2`: the earlier
+  value was 2.98:1 on the page, under the 3:1 the table promised. The dark
+  overdue row (`#241729`) is now written down too.
