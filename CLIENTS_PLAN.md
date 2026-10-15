@@ -505,6 +505,11 @@ balance first, automatically:
 
 - **Giving and settling moves money,** so it asks for two-factor sign-in,
   as paying costs does.
+- **The role editor says everything Give cash advances allows.** It shows
+  only permission names today, and this name alone suggests hand-outs. So
+  under it, in `--muted`, it says "Also records returns and corrections"
+  (يشمل أيضًا تسجيل المبالغ المُعادة والتصحيحات). The name stays as agreed in
+  `UI_PLAN.md` §3.3.
 - Every employee always sees their own balance.
 - **Team Leaders don't give advances by default.** Because it's a
   permission, it can be given to any role.
