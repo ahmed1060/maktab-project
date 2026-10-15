@@ -229,6 +229,123 @@
   border-color: var(--problem-text);
 }
 
+/* A date range picker that looks like a field, in a filter bar. */
+.ui-date-trigger {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-width: 200px;
+  text-align: start;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ui-date-trigger[data-empty] {
+  color: var(--muted);
+}
+
+/* More than one line (§5.3). Height follows the content, from 88px. */
+.ui-input.ui-textarea {
+  height: auto;
+  min-height: 88px;
+  padding-block: var(--space-2);
+  resize: vertical;
+}
+
+/* A choice between a few options (§5.3). */
+.ui-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ui-choices > legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+.ui-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  cursor: pointer;
+}
+.ui-choice[data-disabled] {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.ui-radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: inherit;
+}
+.ui-radio:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+
+/* ── Dialog (§5.5) ── */
+.ui-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+.ui-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(100%, 440px);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-6);
+  background: var(--panel-raised);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--elev-2);
+  font-family: var(--font-ui);
+}
+.ui-dialog:focus {
+  outline: none;
+}
+.ui-dialog-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 500;
+  text-wrap: balance;
+}
+.ui-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+}
+.ui-dialog-body p {
+  margin: 0;
+}
+.ui-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 /* ── Panels and cards (§5.5) ── */
 .ui-panel {
   background: var(--panel);
@@ -931,6 +1048,19 @@ html[lang="ar"] .ui-empty-title {
   .ui-selectionbar-clear {
     margin-inline-start: 0;
   }
+  .ui-choice {
+    min-height: 44px;
+    font-size: var(--text-lg);
+  }
+  .ui-dialog {
+    padding: var(--space-4);
+  }
+  .ui-dialog-actions {
+    flex-direction: column-reverse;
+  }
+  .ui-dialog-actions > * {
+    width: 100%;
+  }
   .ui-menu-item {
     min-height: 44px;
     font-size: var(--text-lg);
@@ -1001,7 +1131,8 @@ html[lang="ar"] .ui-empty-title {
   max-width: 260px;
 }
 @media (max-width: 767px) {
-  .ui-filterbar .ui-filterbar-filters .ui-select {
+  .ui-filterbar .ui-filterbar-filters .ui-select,
+  .ui-filterbar .ui-filterbar-filters .ui-date-trigger {
     width: 100%;
     max-width: none;
   }

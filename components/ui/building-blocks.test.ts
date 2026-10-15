@@ -131,6 +131,44 @@ describe("fields", () => {
     })
 })
 
+describe("text areas and choices", () => {
+    it("a text area is a field, tied to its label like the others", () => {
+        const html = render(h(ui.Field, { label: "Reason", hint: "100 characters left", children: p => h(ui.TextArea, { ...p, maxLength: 100 }) }))
+        const id = html.match(/<label for="([^"]+)"/)![1]
+        expect(html).toContain(`<textarea class="ui-input ui-textarea" id="${id}" aria-describedby="${id}-hint" maxLength="100">`)
+    })
+
+    it("a choice is radio buttons under a visible group label, and says why one can't be picked", () => {
+        const html = render(h(ui.Choice<"CREDIT" | "SALARY">, {
+            legend: "Deduct from", name: "from", value: "SALARY", onChange: () => {},
+            options: [{ value: "CREDIT", label: "Day off credit", disabled: true }, { value: "SALARY", label: "Salary" }],
+            warning: "Not enough credit",
+        }))
+        expect(html).toContain('<legend class="ui-label">Deduct from</legend>')
+        expect(html.match(/type="radio"/g)).toHaveLength(2)
+        expect(html).toContain('<label class="ui-choice" data-disabled="true"><input type="radio" class="ui-radio" disabled="" name="from" value="CREDIT"/>Day off credit</label>')
+        expect(html).toContain('checked="" value="SALARY"')
+        const warning = html.match(/<span id="([^"]+)" class="ui-error">Not enough credit<\/span>/)!
+        expect(html).toContain(`<fieldset class="ui-choices" aria-describedby="${warning[1]}">`)
+    })
+})
+
+describe("dialogs", () => {
+    it("are nothing until opened", () => {
+        expect(render(h(ui.Dialog, { open: false, onClose: () => {}, title: "Reject request", children: "x" }))).toBe("")
+    })
+
+    it("are labelled by their title, keep focus, and put the main button last", () => {
+        const src = readFileSync("components/ui/Dialog.tsx", "utf8")
+        expect(src).toContain("const dialog = useDialog(open, onClose)")
+        expect(src).toContain('<h2 id={dialog.titleId} className="ui-dialog-title">{title}</h2>')
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-dialog \{[^}]*background: var\(--panel-raised\);[^}]*border-radius: var\(--radius-panel\);[^}]*box-shadow: var\(--elev-2\);/)
+        // On a phone the buttons stack, the main (last) one on top.
+        expect(css).toMatch(/\.ui-dialog-actions \{\s*flex-direction: column-reverse;/)
+    })
+})
+
 describe("buttons and icons", () => {
     it("a busy button says so and can't be pressed twice", () => {
         const html = render(h(ui.Button, { variant: "primary", busy: true, children: "Saving" }))

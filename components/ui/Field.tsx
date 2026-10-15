@@ -41,6 +41,39 @@ export function TextInput({ icon, className, ...rest }: { icon?: PhosphorIcon } 
     )
 }
 
+/** A field for more than one line. */
+export function TextArea({ className, ...rest }: ComponentPropsWithoutRef<'textarea'>) {
+    return <textarea className={cx('ui-input ui-textarea', className)} {...rest} />
+}
+
+/**
+ * A choice between a few options, as radio buttons under a visible group
+ * label. `warning` says why an option can't be picked, or what picking one
+ * means, beside the group.
+ */
+export function Choice<V extends string>({ legend, name, value, onChange, options, warning }: {
+    legend: ReactNode
+    name: string
+    value: V
+    onChange: (value: V) => void
+    options: { value: V; label: ReactNode; disabled?: boolean }[]
+    warning?: ReactNode
+}) {
+    const id = useId()
+    return (
+        <fieldset className="ui-choices" aria-describedby={warning ? `${id}-warning` : undefined}>
+            <legend className="ui-label">{legend}</legend>
+            {options.map(o => (
+                <label key={o.value} className="ui-choice" data-disabled={o.disabled || undefined}>
+                    <input type="radio" className="ui-radio" name={name} value={o.value} checked={value === o.value} disabled={o.disabled} onChange={() => onChange(o.value)} />
+                    {o.label}
+                </label>
+            ))}
+            {warning && <span id={`${id}-warning`} className="ui-error">{warning}</span>}
+        </fieldset>
+    )
+}
+
 export function SearchInput(props: Omit<ComponentPropsWithoutRef<'input'>, 'type'>) {
     return <TextInput icon={MagnifyingGlassIcon} type="search" {...props} />
 }
