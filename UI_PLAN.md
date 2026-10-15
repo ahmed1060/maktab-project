@@ -6,7 +6,7 @@ pages look, and the tools used to build and check them. It's updated with
 every decision; the change log at the end records each update.
 
 Each part is marked **Decided**, **Proposed** or **Open**, as in
-`CLIENTS_PLAN.md`. Everything here starts as **Proposed**.
+`CLIENTS_PLAN.md`.
 
 ---
 
@@ -69,7 +69,7 @@ Settings.
 
 ---
 
-## 2. Navigation (Proposed)
+## 2. Navigation (Decided)
 
 ### 2.1 Company users
 
@@ -78,17 +78,30 @@ permissions allow, as today.
 
 | Group | Items |
 |---|---|
-| *(top)* | Dashboard |
-| **Work** (العمل) | Tasks · Obligations · Check in (phone app only) |
+| *(top)* | Dashboard · Check in (phone app only) |
+| **Work** (العمل) | Tasks · Obligations |
 | **Clients** (العملاء) | Clients · Locations · Records |
 | **People** (الموظفون) | Employees · Attendance · Requests |
 | **Money** (المالية) | Costs · Payroll |
-| **Me** (حسابي) | My payslips · My cash advance (when the company uses it) |
+| **Me** (حسابي) | My payslips · My attendance · My cash advance |
 | *(bottom)* | Company Settings |
 
+- **Check in sits at the top,** beside Dashboard. It's what people use most
+  on the phone, every day.
+- **A group is hidden when the person can't see anything in it.** For
+  example, an ordinary employee doesn't see an empty Money heading.
+- **Me holds what people often check about themselves:**
+  - My payslips;
+  - My attendance, for someone who can only see their own. Someone who can
+    see more uses Attendance under People;
+  - My cash advance, when the company uses cash advances.
+- **The account menu at the top** keeps the account settings: My profile,
+  Security settings, History and Sign out.
 - **Costs** holds its tabs: Employee costs, Charged to clients, and Cash
   advances.
-- **One Requests page** (§2.3) replaces the separate request pages.
+- **One Requests page** (§2.3) replaces the separate request pages, later.
+  Until then, the existing ones sit together under People: Requests, Day off
+  requests and Role requests.
 
 ### 2.2 The Super Admin
 
@@ -111,11 +124,12 @@ permissions allow, as today.
 - **Every request reads the same way:** who asked, what for, when, its
   status, and the decision buttons.
 
-This is the largest change here, so it's a candidate for later (§5).
+It's the largest change here, so it comes later (§5). Until then, the
+existing request pages sit together under People (§2.1).
 
 ---
 
-## 3. Names (Proposed)
+## 3. Names (Decided)
 
 ### 3.1 Principles
 
@@ -142,23 +156,33 @@ This is the largest change here, so it's a candidate for later (§5).
 | Location / Locations | موقع / المواقع | Where a task is done: a client's HQ or branch, or a shared place |
 | HQ | المقر الرئيسي | A client's main location |
 | Check-in place / Check-in places | مكان الحضور / أماكن الحضور | Where employees check in for attendance (today's "work locations") |
-| Record / Records | سجل / السجلات | Notes and files kept for a client, with expiry reminders |
+| Record / Records | سجل / السجلات; in the side bar, سجلات العملاء | Notes and files kept for a client, with expiry reminders |
 | Task / Tasks | مهمة / المهام | |
 | Obligation / Obligations | التزام / الالتزامات | |
 | Cost / Costs | تكلفة / التكاليف | Money spent on a task |
-| Employee cost | تكلفة الموظف | A cost the company pays back to the employee |
+| Employee cost / Employee costs | تكلفة دفعها الموظف / تكاليف دفعها الموظف | A cost the company pays back to the employee |
 | Charge / Charged to clients | مستحق / مستحقات على العملاء | What a client owes the company for a cost |
 | Service fee | رسوم الخدمة | Added on top of a charge |
-| Due / Collected | مستحق / تم التحصيل | A charge's statuses (replacing "To collect") |
+| Due / Collected | غير محصّل / محصّل | A charge's statuses (replacing "To collect") |
 | Cash advance | عهدة | Money given to an employee up front, to pay costs from |
 | Request / Requests | طلب / الطلبات | |
 | Day off | إجازة | |
 | Payslip / Payslips | قسيمة راتب / قسائم الرواتب | |
 | Payroll | الرواتب | |
 
+Three Arabic names were chosen so that no two things share a name
+(principle 7):
+
+- **Records** is **سجلات العملاء** in the side bar, to keep it apart from
+  Audit logs (سجلات المراجعة).
+- **Employee costs** is **تكاليف دفعها الموظف**, because تكلفة الموظف can
+  read as what the employee costs the company.
+- **The Due status** is **غير محصّل**, because مستحق already means a Charge.
+
 ### 3.3 The names left open in `CLIENTS_PLAN.md`
 
-- **To collect / Collected** become **Due / Collected**.
+- **To collect / Collected** become **Due / Collected** (غير محصّل / محصّل).
+  The total "Total to collect" becomes **Total due**.
 - **Locations** stays for task locations. The attendance "work locations"
   are renamed **Check-in places**.
 - **Cash advance** is the English for عهدة.
@@ -170,14 +194,19 @@ This is the largest change here, so it's a candidate for later (§5).
 
 ---
 
-## 4. Look (Proposed)
+## 4. Look (Decided)
 
-1. **Fix the 7 pages using missing Tailwind classes** (§1.3.7), so they use
-   the app's own styles and match the rest.
-   - The dashboard home, Employees and Day Off Requests: a small PR, any time
+1. **Fix the 7 pages using missing Tailwind classes** (§1.3.7), so they
+   match the rest.
+   - **The dashboard home, Employees and Day Off Requests** move onto the
+     building blocks in a small PR, straight after the building-blocks PR
      (§5).
-   - Vendors and the three Clients pages: rebuilt in `CLIENTS_PLAN.md`'s step
-     0.
+     - Fixing them sooner with one-off styles would mean doing them twice.
+     - Leaving them until later would keep the dashboard home, the first
+       page everyone sees, broken for a long time.
+     - The dashboard home is the page Impeccable is tried on first (§7.1).
+   - **Vendors and the three Clients pages** are rebuilt in
+     `CLIENTS_PLAN.md`'s step 0.
 2. **A few shared building blocks,** used by every page:
    - a page header (title, subtitle, main button);
    - a filter bar;
@@ -185,15 +214,22 @@ This is the largest change here, so it's a candidate for later (§5).
    - a card;
    - a status badge (Due, Paid, Pending…);
    - tabs;
-   - total tiles (such as Paid out, Service fees, Total to collect);
+   - total tiles (such as Paid out, Service fees, Total due);
    - an empty state ("No clients yet", with the button to add one).
 3. **One scale for spacing and text sizes,** set once in `app/globals.css`
    and used through the building blocks, instead of numbers typed on each
    page.
-4. **One icon set instead of emoji.** For example, a set of simple line
-   icons, the same on every device. Companies can rename modules today and
-   also pick an emoji for each; they would pick from the icon set instead.
-   No company has changed an icon or label in production yet.
+4. **Phosphor Icons instead of emoji.**
+   - The set is free (MIT licence), drawn in a clean line style, and looks
+     the same on every phone and computer.
+   - It's the set UI/UX Pro Max uses (§7.1), so the design library and the
+     app match.
+   - Icons are imported one at a time, so only the ones used are shipped.
+   - Arrows and other icons that point a direction are flipped in Arabic.
+   - Companies can rename modules and pick an emoji for each today. Instead,
+     they'll pick from a short list of about 50 business icons. No company
+     has changed an icon or label in production, so only the defaults need
+     mapping.
 5. **Pages move to the building blocks one by one,** each in a small PR,
    after `CLIENTS_PLAN.md`'s steps (§5).
 
@@ -201,49 +237,54 @@ This is the largest change here, so it's a candidate for later (§5).
 
 ## 5. Order of work, across both plans (Decided)
 
-1. **Settle the names and the side bar groups** (§6, questions 1–5). These
-   are decisions, not code, and they come before `CLIENTS_PLAN.md`'s step 0,
-   which renames things and changes the side bar.
+1. **Settle the names and the side bar groups.** Done on 2026-10-15 (§2,
+   §3). These had to come before `CLIENTS_PLAN.md`'s step 0, which renames
+   things and changes the side bar.
 2. **The shared building blocks, in one PR** (§4.2–4.4):
    - first, the look is chosen and written down in `DESIGN.md` (§7.2);
    - page header, filter bar, list or table, card, status badge, tabs, total
      tiles and empty state;
    - the spacing and text-size scale;
-   - the icon set, if chosen (question 6);
+   - the Phosphor icon set (§4.4);
    - the design tools are added to the project (§7.3).
 
    No old page is converted in this PR.
-3. **`CLIENTS_PLAN.md`, steps 0–7.**
+3. **The 3 pages `CLIENTS_PLAN.md` doesn't touch,** in one small PR: the
+   dashboard home, Employees and Day Off Requests move onto the building
+   blocks (§4.1).
+4. **`CLIENTS_PLAN.md`, steps 0–7.**
    - The side bar groups (§2.1, §2.2) land with step 0.
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
-4. **The rest of this plan:**
+5. **The rest of this plan:**
    - the remaining old pages move to the building blocks one by one, each
      in a small PR (§4.5);
    - the one Requests page (§2.3).
 
-**Any time:** a small PR fixing the 3 pages with missing Tailwind classes
-that `CLIENTS_PLAN.md` doesn't touch: the dashboard home, Employees and Day
-Off Requests. The other 4 (Vendors and the three Clients pages) are rebuilt
-in step 0, so they're fixed there.
+The other 4 pages with missing Tailwind classes (Vendors and the three
+Clients pages) are rebuilt in step 0, so they're fixed there.
 
 ---
 
 ## 6. Open questions
 
-1. **The side bar groups** for company users (§2.1) and for the Super Admin
-   (§2.2): agreed, or changes?
-2. **A "Me" group** in the side bar for personal pages, or put them in the
-   menu under the user's name at the top?
-3. **One Requests page** (§2.3): agreed? Later, or sooner?
-4. **The naming principles and glossary** (§3.1, §3.2): agreed, or changes?
-   Arabic wording especially.
-5. **Due / Collected, Check-in places, Cash advance** (§3.3)?
-6. **Icons:** move from emoji to one icon set, with companies picking from
-   it (§4.4)? This is needed before the building blocks PR.
-7. **When to fix the 3 pages** not touched by `CLIENTS_PLAN.md` (§4.1): now,
-   or later?
+None right now. The seven questions asked on 2026-10-15 were answered the
+same day:
+
+1. **The side bar groups:** agreed, with Check in at the top and empty
+   groups hidden (§2.1, §2.2).
+2. **Personal pages:** a Me group in the side bar, while the account menu
+   keeps the account settings (§2.1).
+3. **One Requests page:** agreed, and it comes later. Until then, the request
+   pages sit together under People (§2.3).
+4. **The naming principles and glossary:** agreed, with three Arabic changes
+   (§3.2).
+5. **Due / Collected, Check-in places, Cash advance:** agreed (§3.3).
+6. **Icons:** Phosphor Icons, with companies picking from a short list
+   (§4.4).
+7. **The 3 pages:** fixed straight after the building-blocks PR, using the
+   building blocks (§4.1).
 
 ---
 
@@ -260,7 +301,7 @@ QA Tools for Coding Agents". The other five were turned down (§7.4).
 | Choosing the look, once | **awesome-design-md** (getdesign.md) | Design write-ups of well-known products. Two or three that suit Nizmo are the starting point for its own `DESIGN.md` (§7.2). |
 | Choosing the look, once | **Frontend Design** (Anthropic) | Makes the agent settle on one clear direction before writing code. It's used in that one session and isn't kept. |
 | Building | **`DESIGN.md`** (Nizmo's own) | The rulebook. It sets colours, spacing, text sizes, the building blocks, icons and the glossary (§3.2). Every screen and every agent follows it. |
-| Building | **Impeccable** | Builds the shared building blocks, then redesigns the pages one by one. It's tried on one page first. |
+| Building | **Impeccable** | Builds the shared building blocks, then redesigns the pages one by one. It's tried on one page first: the dashboard home (§4.1). |
 | Building | **UI/UX Pro Max** | Chosen earlier, on the `ui-refactor` branch. It's a library of palettes, font pairings and UX rules to look things up in. |
 | Checking every UI PR | **Vercel Web Design Guidelines** | Audits the changed screens for focus states, forms, accessibility, wording and edge cases. Its findings are fixed in the same PR. |
 | Checking every UI PR | **Playwright** | Opens the app in a real browser and takes screenshots in English and Arabic, at phone and desktop width. Claude's cloud sessions already use it. |
@@ -352,3 +393,26 @@ The product owner chooses the look from pictures rather than descriptions:
   - **Turned down:** five tools (§7.4).
   - **§5 updated:** the building-blocks PR starts by choosing the look and
     writing `DESIGN.md`, and adds the tools.
+- **2026-10-15:** The seven open questions are answered (§6), so navigation,
+  names and look are now **Decided** (§2–§4).
+  - **Side bar (§2.1):**
+    - Check in moves to the top, beside Dashboard;
+    - a group is hidden when the person can't see anything in it;
+    - Me holds My payslips, My attendance (for someone who sees only their
+      own) and My cash advance;
+    - the account menu keeps My profile, Security settings, History and
+      Sign out.
+  - **Requests (§2.3):** the one Requests page comes later. Until then, the
+    request pages sit together under People.
+  - **Names (§3):** the principles and glossary are agreed, with three
+    Arabic changes:
+    - Records is سجلات العملاء in the side bar;
+    - Employee costs is تكاليف دفعها الموظف;
+    - the statuses Due / Collected are غير محصّل / محصّل, and Total to
+      collect becomes Total due.
+  - **Icons (§4.4):** Phosphor Icons replace emoji. Companies pick from a
+    short list of about 50.
+  - **The 3 pages (§4.1, §5):** the dashboard home, Employees and Day Off
+    Requests move onto the building blocks in a small PR straight after the
+    building-blocks PR. The dashboard home is the first page for Impeccable.
+    §5 has a new step 3; later steps are renumbered.
