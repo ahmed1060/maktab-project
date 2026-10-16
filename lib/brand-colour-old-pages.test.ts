@@ -252,6 +252,20 @@ describe("the side bar and the glows go through them", () => {
         expect(shell).not.toContain("--info-border-indigo")
     })
 
+    // Codex on #81: the check-in place picker can show satellite imagery,
+    // where a dark brand's radius ring (--map-pin, black for #000000)
+    // disappeared: unlike the pin, it had no white halo.
+    it("draws the map's radius ring over a wider white one, as the pin has a white border", () => {
+        const picker = readFileSync("components/PointPicker.tsx", "utf8")
+        const halo = picker.indexOf("lf.L.circle(at, { radius, className: 'map-ring-halo', weight: 4, fill: false, interactive: false }).addTo(lf.map)")
+        const ring = picker.indexOf("lf.L.circle(at, { radius, className: 'map-ring', weight: 2, fillOpacity: 0.12, interactive: false }).addTo(lf.map)")
+        expect(halo).toBeGreaterThan(-1)
+        // Added first, so it lies underneath.
+        expect(ring).toBeGreaterThan(halo)
+        expect(stripComments(globals)).toMatch(/\.map-ring-halo \{\s*stroke: var\(--map-halo\);\s*fill: none;/)
+        expect(valueIn(lightRoot, "--map-halo")).toBe("#ffffff")
+    })
+
     it("draws the indigo glows from --primary rather than a fixed indigo", () => {
         const css = stripComments(globals)
         for (const glow of [

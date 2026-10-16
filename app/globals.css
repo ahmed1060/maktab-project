@@ -850,10 +850,17 @@ html[dir="rtl"] select.input {
   border-radius: 50%;
   box-shadow: 0 1px 4px var(--map-shadow);
 }
-/* The radius circle: SVG, coloured here rather than in Leaflet's options. */
+/* The radius circle: SVG, coloured here rather than in Leaflet's options.
+   Drawn over a wider white circle, as the pin has a white border, so it
+   shows on satellite imagery too, whatever the brand colour (DESIGN.md
+   §2.1). */
 .map-ring {
   stroke: var(--map-pin);
   fill: var(--map-pin);
+}
+.map-ring-halo {
+  stroke: var(--map-halo);
+  fill: none;
 }
 .map-cross {
   position: absolute;
