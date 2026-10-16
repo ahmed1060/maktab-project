@@ -20,6 +20,7 @@ import {
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { fetcher } from '@/lib/swr-fetcher'
+import { forScope, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from '@/lib/api-error-text'
@@ -128,7 +129,9 @@ export default function DayOffRequestsPage() {
         to: dateTo,
         search,
     }) : null
-    const { data: requestsResult, isLoading, mutate: fetchRequests } = useSWR(requestsQuery, fetcher, { keepPreviousData: true })
+    // Only this company's requests, while the next page or filter loads.
+    const { data: scopedRequests, isLoading, mutate: fetchRequests } = useSWR(scopedKey(requestsQuery, contextCompanyId), scopedFetcher, { keepPreviousData: true })
+    const requestsResult = forScope(scopedRequests, contextCompanyId)
     const requests: DayOffRequest[] = requestsResult?.data?.data || []
     const total: number = requestsResult?.data?.total || 0
     const totalPages: number = requestsResult?.data?.totalPages || 0

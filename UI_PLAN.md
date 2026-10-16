@@ -619,3 +619,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-16:** From Codex's review of #79: when someone's day off credit
   doesn't load, the Day Off page's donut says so, with Try again, and no
   total (`DESIGN.md` §5.5). It said "Loading…" for good, over 0 days.
+- **2026-10-16:** From Codex's review of #78: when a Super Admin picks
+  another company, the Employees and Day Off lists drop the last company's
+  rows and show the spinner until the new rows come. They kept them up,
+  with Edit, Delete, Approve and Reject, until then, or for good if the
+  request failed. Within one company, a list still keeps its rows while the
+  next page or filter loads (`lib/swr-scoped.ts`).

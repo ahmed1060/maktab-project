@@ -20,7 +20,7 @@ import {
     RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem, type StatusTone,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
-import { fetcher } from '@/lib/swr-fetcher'
+import { forScope, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -113,7 +113,9 @@ export default function EmployeesPage() {
         teamLeaderId: team,
         sort: sort.sort, order: sort.order,
     } : null
-    const { data: result, isLoading, mutate } = useSWR(listQuery ? employeesListUrl(listQuery) : null, fetcher, { keepPreviousData: true })
+    // Only this company's rows, while the next page or filter loads.
+    const { data: scoped, isLoading, mutate } = useSWR(scopedKey(listQuery ? employeesListUrl(listQuery) : null, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
+    const result = forScope(scoped, selectedCompanyId)
     const employees: Employee[] = result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
