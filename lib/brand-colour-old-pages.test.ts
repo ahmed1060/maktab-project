@@ -52,13 +52,23 @@ function grounds(shade: Shade, theme: "light" | "dark", page: string): string[] 
 }
 // `.btn-primary:hover` brightens a fill 10% (app/globals.css).
 const hovered = (c: string) => "#" + [1, 3, 5].map(i => Math.min(255, Math.round(parseInt(c.slice(i, i + 2), 16) * 1.1)).toString(16).padStart(2, "0")).join("")
-/** Each contrast a shade is held to: white text on a fill at rest and on hover, or the shade on each ground. */
-function checks(shade: Shade, theme: "light" | "dark", page: string): ((c: string) => number)[] {
-    if (shade.role === "fill") return [c => contrast("#ffffff", c), c => contrast("#ffffff", hovered(c))]
-    if (shade.role === "text" || shade.role === "edge") return grounds(shade, theme, page).map(g => (c: string) => contrast(c, g))
+/**
+ * Each contrast a shade is held to, with WCAG's aim for it: white text on a
+ * fill at rest and on hover, and in dark mode the fill against the dark
+ * page; text or an edge against each ground.
+ */
+function checks(shade: Shade, theme: "light" | "dark", page: string): { of: (c: string) => number; aim: number }[] {
+    if (shade.role === "fill") return [
+        { of: c => contrast("#ffffff", c), aim: 4.5 },
+        { of: c => contrast("#ffffff", hovered(c)), aim: 4.5 },
+        ...(theme === "dark" ? DARK_GROUNDS.map(g => ({ of: (c: string) => contrast(c, g), aim: 3 })) : []),
+    ]
+    if (shade.role === "text" || shade.role === "edge") {
+        const aim = shade.role === "text" ? 4.5 : 3
+        return grounds(shade, theme, page).map(g => ({ of: (c: string) => contrast(c, g), aim }))
+    }
     return []
 }
-const AIM = { fill: 4.5, text: 4.5, edge: 3, ground: 0, decor: 0 } as const
 
 describe("the older pages' shades", () => {
     it("are exactly today's with Nizmo's indigo, in both themes", () => {
@@ -70,8 +80,10 @@ describe("the older pages' shades", () => {
                 expect(valueIn(darkRoot, shade.token), `${shade.token} dark`).toBe(shade.dark)
                 expect(today.dark[shade.token], `${shade.token} dark`).toBe(shade.dark)
             } else if (!("lightOnly" in shade)) {
-                // The same in both themes: dark mode doesn't set its own.
+                // The same in both themes: dark mode doesn't set its own, and
+                // a fill held in dark mode too is still today's light value.
                 expect(valueIn(darkRoot, shade.token), `${shade.token} dark`).toBeUndefined()
+                if (shade.role === "fill") expect(today.dark[shade.token], `${shade.token} dark`).toBe(shade.light)
             }
         }
     })
@@ -100,12 +112,13 @@ describe("the older pages' shades", () => {
             for (const shade of OLD_PAGE_SHADES) {
                 const themes: ["light" | "dark", string, string | undefined][] = [["light", shade.light, shades.light[shade.token]]]
                 if ("dark" in shade) themes.push(["dark", shade.dark, shades.dark[shade.token]])
+                else if (shade.role === "fill") themes.push(["dark", shade.light, shades.dark[shade.token]])
                 for (const [theme, today, now] of themes) {
                     expect(now, `${picked} ${shade.token} ${theme}`).toMatch(/^#[0-9a-f]{6}$/)
                     const todays = checks(shade, theme, defaultPage), nows = checks(shade, theme, page)
                     todays.forEach((check, i) => {
-                        const need = Math.min(AIM[shade.role], check(today))
-                        expect(nows[i](now!), `${picked} ${shade.token} ${theme} check ${i}`).toBeGreaterThanOrEqual(need - 0.005)
+                        const need = Math.min(check.aim, check.of(today))
+                        expect(nows[i].of(now!), `${picked} ${shade.token} ${theme} check ${i}`).toBeGreaterThanOrEqual(need - 0.005)
                     })
                 }
             }
@@ -121,6 +134,24 @@ describe("the older pages' shades", () => {
                 const today = OLD_PAGE_SHADES.find(s => s.token === token)!.light
                 const need = Math.min(4.5, contrast("#ffffff", hovered(today)))
                 expect(contrast("#ffffff", hovered(shades[token])), `${picked} ${token}`).toBeGreaterThanOrEqual(need)
+            }
+        }
+    })
+
+    // Codex on #81: navy's sign-in button fill, #091f7b, was about 1.2:1
+    // against the dark page, where Nizmo's indigo is 2.1:1 or better.
+    it("stand out from the dark page in dark mode as well as Nizmo's indigo does", () => {
+        for (const picked of ["#1e3a8a", "#475569", "#000000"]) {
+            const shades = oldPageShades(picked)
+            for (const token of ["--primary", "--button-from", "--button-to", "--hero-from", "--hero-to", "--accent"] as const) {
+                const today = OLD_PAGE_SHADES.find(s => s.token === token)!.light
+                const now = shades.dark[token]
+                expect(now, `${picked} ${token}`).toMatch(/^#[0-9a-f]{6}$/)
+                for (const g of DARK_GROUNDS) {
+                    expect(contrast(now!, g), `${picked} ${token} on ${g}`).toBeGreaterThanOrEqual(Math.min(3, contrast(today, g)))
+                }
+                // And white text still reads on it.
+                expect(contrast("#ffffff", now!), `${picked} ${token} white`).toBeGreaterThanOrEqual(Math.min(4.5, contrast("#ffffff", today)))
             }
         }
     })

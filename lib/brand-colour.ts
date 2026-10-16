@@ -377,12 +377,15 @@ const brightened = (c: string) => hex(rgb(c).map(v => v * HOVER_BRIGHTNESS) as R
 
 /**
  * What a shade is held to, in its role: white text on a fill, at rest and
- * brightened on hover; text or an edge against each ground it's drawn on.
+ * brightened on hover, and in dark mode the fill against the dark page;
+ * text or an edge against each ground it's drawn on.
  */
-function checksFor(role: Role, grounds: string[]): Check[] {
+function checksFor(role: Role, grounds: string[], theme: 'light' | 'dark' = 'light'): Check[] {
     if (role === 'fill') return [
         { of: c => contrast(WHITE, c), aim: TEXT },
         { of: c => contrast(WHITE, brightened(c)), aim: TEXT },
+        // In dark mode a fill also has to stand out from the dark page.
+        ...(theme === 'dark' ? grounds.map(g => ({ of: (c: string) => contrast(c, g), aim: SHAPE })) : []),
     ]
     if (role === 'text' || role === 'edge') {
         const aim = role === 'text' ? TEXT : SHAPE
@@ -408,16 +411,37 @@ export function oldPageShades(picked: string | null | undefined): { light: Recor
     const light = {} as Record<OldPageToken, string>
     const dark: Partial<Record<OldPageToken, string>> = {}
     for (const shade of OLD_PAGE_SHADES) {
+        const role: Role = shade.role
         const themes: ['light' | 'dark', string][] = [['light', shade.light]]
         if ('dark' in shade) themes.push(['dark', shade.dark])
+        // A fill with no dark value of its own is today's light one on the
+        // dark page, and is held there too.
+        else if (role === 'fill') themes.push(['dark', shade.light])
         for (const [theme, value] of themes) {
-            const role: Role = shade.role
             const behind = 'behind' in shade ? shade.behind : undefined
             // Held to what it has with Nizmo's indigo, up to WCAG's aim.
-            const ok = holds(value, checksFor(role, groundsFor(behind, theme, defaultPage)), checksFor(role, groundsFor(behind, theme, page)))
-            // Darker on a light ground or under white text; lighter on a dark one.
-            const towardsLight = role !== 'fill' && (theme === 'dark' || behind === 'sidebar')
-            const c = stepUntil(follow(value, base), ok, towardsLight ? lighter : darker)
+            const todays = checksFor(role, groundsFor(behind, theme, defaultPage), theme)
+            const checks = checksFor(role, groundsFor(behind, theme, page), theme)
+            const ok = holds(value, todays, checks)
+            let c: string
+            if (role === 'fill' && theme === 'dark') {
+                // Darker until white text reads on it, then lighter until it
+                // stands out from the dark page, while white text still reads.
+                // Fine steps, each from the same start: the shades that do both
+                // can be a narrow band, which coarser steps jump over.
+                const white = holds(value, todays.slice(0, 2), checks.slice(0, 2))
+                const start = stepUntil('dark' in shade ? follow(value, base) : light[shade.token], white, darker)
+                c = start
+                for (let t = 0.005; t <= 1 && !ok(c); t += 0.005) {
+                    const next = mix(WHITE, start, t)
+                    if (!white(next)) break
+                    c = next
+                }
+            } else {
+                // Darker on a light ground or under white text; lighter on a dark one.
+                const towardsLight = role !== 'fill' && (theme === 'dark' || behind === 'sidebar')
+                c = stepUntil(follow(value, base), ok, towardsLight ? lighter : darker)
+            }
             if (theme === 'light') light[shade.token] = c
             else dark[shade.token] = c
         }
