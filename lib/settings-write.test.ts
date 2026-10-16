@@ -155,8 +155,17 @@ describe("G3: a Super Admin can reach a register", () => {
     it("reloads when the company changes", () => {
         // The company is part of the SWR key, so choosing another one is a
         // different request rather than a cached answer for the last.
-        expect(REGISTER).toMatch(/useSWR\(registerKey,/)
+        expect(REGISTER).toMatch(/useSWR\(registerKey, fetcher,/)
         expect(REGISTER).toContain("`/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`")
+    })
+
+    // At the product owner's choice: Save draft, Approve and Mark as paid
+    // name the company, month and year picked, so no other register is on
+    // screen while that one loads, not even last month's. The pickers stay.
+    it("shows no other register while the one asked for loads", () => {
+        expect(REGISTER).not.toContain("keepPreviousData")
+        expect(REGISTER).toContain("if (!session) return <LoadingSpinner />")
+        expect(REGISTER).toContain("{isLoading && !view && <LoadingSpinner />}")
     })
 
     it("reads the company list at the level the envelope actually puts it", () => {

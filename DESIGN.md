@@ -403,15 +403,23 @@ These are built once, in the building-blocks PR, and every page uses them
   - Beside the ring (below it on phones) is the legend. Each row has the
     part's colour mark (a 10px square with 3px corners), its word, its
     count, and its share of the total in `--muted`. The counts and shares
-    line up in columns. Screen readers read the legend, and the ring is
+    line up in columns. The legend is at most 28rem wide, so on a wide page
+    a count stays near its word. Screen readers read the legend, and the ring is
     hidden from them. A legend row can link to what it counts.
   - Pointing at a legend row, or moving focus to it, fades the ring's other
     parts, so the row and its part are seen together. The fade takes
     150ms and nothing moves; with reduced motion it's instant.
   - With nothing to count, the ring is a faint track, the middle says 0,
     and the legend says there's nothing yet.
+  - While the numbers load, the legend says so. If they don't load, it
+    says that instead, with a Try again button below. Either way the middle
+    is blank, since a 0 there would read as the answer.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
+- **A list that didn't load** says so in the same block: a warning icon,
+  one line saying what didn't load, and Try again, which shows it's busy
+  while it tries. It never says there's nothing, or offers to add one, when
+  it doesn't know.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
 
@@ -595,3 +603,12 @@ changed:
   identifier, or a time range reads backwards in Arabic (§3.3). Its other
   two findings, the field edge and the dark-mode hover and press, were
   already fixed.
+- **2026-10-15:** The donut's legend is at most 28rem wide (§5.5), for the
+  Day Off page's credit donut, which spans the page.
+- **2026-10-16:** From Codex's review of #79: a donut whose numbers don't
+  load says so and offers Try again (§5.5), with nothing in the middle. The
+  Day Off page's credit donut said "Loading…" for good when its request
+  failed, over a total of 0 days.
+- **2026-10-16:** A list that didn't load says so, with Try again (§5.5),
+  at the product owner's request. Employees said "No employees found" and
+  offered to add one.

@@ -335,6 +335,10 @@ describe("the donut chart", () => {
         expect(css.slice(css.indexOf("Donut chart (§5.5)"), css.indexOf("Empty state (§5.5)"))).not.toMatch(/--status-[a-z]+-fg/)
     })
 
+    it("keeps its legend at most 28rem wide, so a count stays near its word on a wide page", () => {
+        expect(css).toMatch(/\.ui-donut-legend \{[^}]*max-inline-size: 28rem;/)
+    })
+
     it("steps a long total down a size, so it stays clear of the ring", () => {
         expect(chart()).toContain('<div class="ui-donut-total"><strong>4</strong>')
         const days = render(h(ui.DonutChart, { label: "Credit", parts, total: "12 days", totalLabel: "Total", emptyLabel: "None" }))

@@ -144,8 +144,8 @@ existing request pages sit together under People (§2.1).
 5. **Personal pages start with "My",** such as "My payslips" and "My cash
    advance".
 6. **Permissions follow one pattern:** **See** X, **Add** X, **Manage** X,
-   plus a verb for anything that moves money ("Mark collected", "Give cash
-   advances"). In Arabic: عرض، إضافة، إدارة.
+   plus a verb for anything that moves money ("Mark collected", "Give and
+   settle cash advances"). In Arabic: عرض، إضافة، إدارة.
 7. **No two things share a name.** Task locations and attendance check-in
    places are different things, so they get different names.
 
@@ -190,7 +190,7 @@ Three Arabic names were chosen so that no two things share a name
 - **The permission names** follow §3.1(6), for example:
   - See locations, Add locations, Manage locations;
   - See charges, Manage charges, Mark charges collected;
-  - See cash advances, Give cash advances;
+  - See cash advances, Give and settle cash advances;
   - Add list names, Manage lists.
 
 ---
@@ -610,3 +610,37 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     (§4.4).
   - Its two findings on #74 were already settled: Impeccable comes in as
     written guidance only, and the Vercel audit's rules are a pinned copy.
+- **2026-10-15:** The Day Off page shows the day off credit as the
+  dashboard's donut, at the product owner's request, in place of its two
+  credit tiles. Both pages use one component, so they can't disagree.
+- **2026-10-15:** The cash advance permission is renamed **Give and settle
+  cash advances** (§3.1, §3.3), at the product owner's choice, so its name
+  says it also records returns and corrections.
+- **2026-10-16:** From Codex's review of #79: when someone's day off credit
+  doesn't load, the Day Off page's donut says so, with Try again, and no
+  total (`DESIGN.md` §5.5). It said "Loading…" for good, over 0 days.
+- **2026-10-16:** From Codex's review of #78: when a Super Admin picks
+  another company, the Employees and Day Off lists drop the last company's
+  rows and show the spinner until the new rows come. They kept them up,
+  with Edit, Delete, Approve and Reject, until then, or for good if the
+  request failed. Within one company, a list still keeps its rows while the
+  next page or filter loads (`lib/swr-scoped.ts`).
+- **2026-10-16:** From Codex's review of #79: when an allowance is lowered
+  below what's already used this year, the credit donut shows 0 days left
+  and every day used as 100%. The stored credit is below 0 then, and the
+  donut showed "−5 days" at −100% beside 200%.
+- **2026-10-16:** At the product owner's request, Requests, Requests
+  history and Payroll drop the last company's data when a Super Admin
+  picks another, as Employees and Day Off Requests do. Payroll showed the
+  last company's register while the next loaded, with Approve and Mark as
+  paid naming the company just picked.
+- **2026-10-16:** At the product owner's request, a list that didn't load
+  says so, with Try again (`DESIGN.md` §5.5): Employees, Day Off Requests,
+  Requests and Requests history. They said there was nothing, and offered
+  to add something. Requests' total is left out until there's a count.
+- **2026-10-16:** At the product owner's choice, Payroll shows no other
+  register while the one picked loads, not even last month's, since Save
+  draft, Approve and Mark as paid name the company, month and year picked.
+  The pickers stay, over a spinner. Last month's register used to stay up
+  until the next arrived, so the page didn't drop to a spinner at each
+  step of the picker.

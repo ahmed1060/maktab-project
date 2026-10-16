@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
-    CalendarBlankIcon, CalendarCheckIcon, ChatTextIcon, CheckIcon, CircleHalfIcon, TagIcon, UserIcon, WalletIcon, XCircleIcon, XIcon,
+    CalendarBlankIcon, CalendarCheckIcon, ChatTextIcon, CheckIcon, CircleHalfIcon, TagIcon, UserIcon, WalletIcon, WarningCircleIcon, XCircleIcon, XIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -13,12 +13,14 @@ import { useCompany } from '@/context/CompanyContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
+import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
 import {
     Button, Choice, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, SearchInput,
-    Select, StatusBadge, TextArea, TextInput, TotalTiles, visibleRow, type Column, type StatusTone,
+    Section, Select, StatusBadge, TextArea, TextInput, visibleRow, type Column, type StatusTone,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { fetcher } from '@/lib/swr-fetcher'
+import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from '@/lib/api-error-text'
@@ -127,8 +129,12 @@ export default function DayOffRequestsPage() {
         to: dateTo,
         search,
     }) : null
-    const { data: requestsResult, isLoading, mutate: fetchRequests } = useSWR(requestsQuery, fetcher, { keepPreviousData: true })
-    const requests: DayOffRequest[] = requestsResult?.data?.data || []
+    // Only this company's requests, while the next page or filter loads. If
+    // they didn't load, the list says so rather than that there are none.
+    const { data: scopedRequests, error: requestsError, isLoading, isValidating: requestsRetrying, mutate: fetchRequests } = useSWR(scopedKey(requestsQuery, contextCompanyId), scopedFetcher, { keepPreviousData: true })
+    const requestsResult = forScope(scopedRequests, contextCompanyId)
+    const requestsFailed = loadFailed(scopedRequests, requestsError, requestsQuery)
+    const requests: DayOffRequest[] = requestsFailed ? [] : requestsResult?.data?.data || []
     const total: number = requestsResult?.data?.total || 0
     const totalPages: number = requestsResult?.data?.totalPages || 0
 
@@ -148,7 +154,7 @@ export default function DayOffRequestsPage() {
 
     // One's own credit, for someone looking at their own requests.
     const userCreditQuery = status === 'authenticated' && !managesRequests && user?.id ? `/api/users?id=${user.id}` : null
-    const { data: userCreditResult } = useSWR(userCreditQuery, fetcher)
+    const { data: userCreditResult, error: userCreditError, isLoading: userCreditLoading, isValidating: userCreditRetrying, mutate: reloadUserCredit } = useSWR(userCreditQuery, fetcher)
     const foundUser = (() => {
         const data = userCreditResult?.data
         if (!data) return null
@@ -322,10 +328,11 @@ export default function DayOffRequestsPage() {
             />
 
             {!managesRequests && (
-                <TotalTiles items={[
-                    { label: t('remaining_credit'), value: days(userCredit) },
-                    { label: t('used_credit'), value: days(usedByCredit) },
-                ]} />
+                <Section title={t('credit_overview')}>
+                    <DayOffCreditDonut remaining={userCredit} used={usedByCredit} t={t} locale={locale}
+                        loading={status === 'loading' || userCreditLoading}
+                        failed={!foundUser && !!userCreditError} onRetry={() => { void reloadUserCredit() }} retrying={userCreditRetrying} />
+                </Section>
             )}
 
             <FilterBar
@@ -346,7 +353,7 @@ export default function DayOffRequestsPage() {
                 <DateRangePicker asField hideLabel dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1) }} />
             </FilterBar>
 
-            {isLoading && !requestsResult ? <LoadingSpinner message={t('loading_requests')} /> : (
+            {isLoading && !requestsResult && !requestsFailed ? <LoadingSpinner message={t('loading_requests')} /> : (
                 <DataList
                     caption={modules.label('dayOff')}
                     columns={columns}
@@ -367,9 +374,11 @@ export default function DayOffRequestsPage() {
                         />
                     )}
                     footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'requests')} />}
-                    empty={<EmptyState icon={CalendarBlankIcon} title={filtersOn > 0 || search ? t('no_search_results') : t('no_day_off_requests_yet')} action={filtersOn > 0 || search
-                        ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
-                        : !managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>} />}
+                    empty={requestsFailed
+                        ? <EmptyState icon={WarningCircleIcon} title={t('day_off_requests_load_failed')} action={<Button busy={requestsRetrying} onClick={() => { void fetchRequests() }}>{t('try_again')}</Button>} />
+                        : <EmptyState icon={CalendarBlankIcon} title={filtersOn > 0 || search ? t('no_search_results') : t('no_day_off_requests_yet')} action={filtersOn > 0 || search
+                            ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
+                            : !managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>} />}
                 />
             )}
 

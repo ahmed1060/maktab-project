@@ -159,7 +159,7 @@ export function DonutChart({ label, parts, total, totalLabel, emptyLabel }: {
     /** What the chart shows, naming the legend for screen readers. */
     label: string
     parts: DonutPart[]
-    /** The total, as the page writes it. */
+    /** The total, as the page writes it; null while it isn't known (§5.5). */
     total: ReactNode
     totalLabel: ReactNode
     /** Said in place of the legend when there's nothing to count. */
@@ -203,10 +203,12 @@ export function DonutChart({ label, parts, total, totalLabel, emptyLabel }: {
                             </g>
                         )}
                 </svg>
-                <div className={cx('ui-donut-total', longTotal && 'ui-donut-total-long')}>
-                    <strong>{total}</strong>
-                    <span>{totalLabel}</span>
-                </div>
+                {total != null && (
+                    <div className={cx('ui-donut-total', longTotal && 'ui-donut-total-long')}>
+                        <strong>{total}</strong>
+                        <span>{totalLabel}</span>
+                    </div>
+                )}
             </div>
             {sum === 0 ? <p className="ui-donut-empty">{emptyLabel}</p> : (
                 <ul className="ui-donut-legend" aria-label={label}>

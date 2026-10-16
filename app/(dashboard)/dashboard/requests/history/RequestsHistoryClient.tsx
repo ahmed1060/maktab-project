@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { fetcher } from '@/lib/swr-fetcher'
+import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useLanguage } from '@/context/LanguageContext'
 import RequestCard from '@/components/requests/RequestCard'
 import ViewRequestModal from '@/components/requests/ViewRequestModal'
@@ -47,9 +47,13 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     if (selectedCompanyId) historyUrl += `&companyId=${selectedCompanyId}`
     // Keyed by the whole query, so an answer for filters that have since
     // changed can never land on top of the current ones. The previous page
-    // stays up while the next loads, as it did before.
-    const { data: result, isLoading: loading, mutate: fetchHistory } = useSWR(historyUrl, fetcher, { keepPreviousData: true })
-    const requests: any[] = result?.data?.data || NO_REQUESTS
+    // stays up while the next loads, as it did before, but not another
+    // company's (lib/swr-scoped.ts). If they didn't load, it says so rather
+    // than that there are none.
+    const { data: scoped, error, isLoading: loading, isValidating: retrying, mutate: fetchHistory } = useSWR(scopedKey(historyUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
+    const result = forScope(scoped, selectedCompanyId)
+    const failed = loadFailed(scoped, error, historyUrl)
+    const requests: any[] = failed ? NO_REQUESTS : result?.data?.data || NO_REQUESTS
     const total: number = result?.data?.total || 0
     const totalPages: number = result?.data?.totalPages || 0
 
@@ -156,7 +160,7 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 selectedEmployeeId={filters.employeeId}
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
-                totalCount={total}
+                totalCount={!failed && result ? total : undefined}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
                 placeholder={t('search_by_title')}
@@ -175,7 +179,12 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
                 hideDateFilter={true}
             />
 
-            {loading ? (
+            {failed ? (
+                <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
+                    <p style={{ margin: '0 0 1rem' }}>{t('requests_load_failed')}</p>
+                    <button className="btn" onClick={() => { void fetchHistory() }} disabled={retrying} aria-busy={retrying || undefined}>{t('try_again')}</button>
+                </div>
+            ) : loading || !result ? (
                 <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
                     {t('loading_data')}
                 </div>

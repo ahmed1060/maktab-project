@@ -20,7 +20,8 @@ interface EmployeeFilterProps {
     selectedEmployeeId: string
     dateFrom: string
     dateTo: string
-    totalCount: number
+    /** Left out while there's no count to give: still loading, or it didn't load. */
+    totalCount?: number
     totalCost?: number
     selectedStatus?: string
     searchQuery?: string
@@ -738,7 +739,7 @@ export default function EmployeeFilter({
 
 
                 {/* Statistics Box */}
-                <div style={{
+                {totalCount !== undefined && <div style={{
                     height: '48px',
                     padding: '0 1.25rem',
                     // Was var(--text-strong): the darkest ink, which reads as a
@@ -758,7 +759,7 @@ export default function EmployeeFilter({
                         not also need to be faint to read as secondary. */}
                     <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('total_label')}</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: '900' }}>{totalCount}</span>
-                </div>
+                </div>}
 
                 {/* Primary Action Integration */}
                 {primaryAction && (

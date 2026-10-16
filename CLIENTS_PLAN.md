@@ -517,15 +517,13 @@ balance first, automatically:
 | Permission | Admin | Team Leader | Employee |
 |---|---|---|---|
 | See cash advances | Company | Their team | Their own only |
-| Give cash advances (give, record returns, corrections) | Company | No | No |
+| Give and settle cash advances (give, record returns, corrections) | Company | No | No |
 
 - **Giving and settling moves money,** so it asks for two-factor sign-in,
   as paying costs does.
-- **The role editor says everything Give cash advances allows.** It shows
-  only permission names today, and this name alone suggests hand-outs. So
-  under it, in `--muted`, it says "Also records returns and corrections"
-  (يشمل أيضًا تسجيل المبالغ المُعادة والتصحيحات). The name stays as agreed in
-  `UI_PLAN.md` §3.3.
+- **The name says everything it allows,** because the role editor shows
+  only permission names: giving an advance, and settling it with returns
+  and corrections. In Arabic: صرف العُهد وتسويتها.
 - Every employee always sees their own balance.
 - **Team Leaders don't give advances by default.** Because it's a
   permission, it can be given to any role.
@@ -718,7 +716,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **Records (§0.2):** سجلات العملاء in the side bar.
   - **Permission names:**
     - charges (§6.6): See charges, Manage charges, Mark charges collected;
-    - cash advances (§7.7): See cash advances, Give cash advances;
+    - cash advances (§7.7): See cash advances, Give and settle cash advances;
     - saved lists (§5): Add list names, Manage lists.
 
     §6.2 had still called who may use the "Not charged to client" tick
@@ -742,3 +740,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     location in a hidden column (§2.7);
   - the Super Admin dashboard's client count moves in step 0a (§0.3);
   - the role editor says what Give cash advances also allows (§7.7).
+- **2026-10-15:** The product owner renamed the cash advance permission
+  **Give and settle cash advances** (صرف العُهد وتسويتها), so its name says
+  that it also records returns and corrections (§7.7). The line under it in
+  the role editor is no longer needed.

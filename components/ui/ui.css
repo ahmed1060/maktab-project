@@ -1089,6 +1089,8 @@ a.ui-row:focus-visible {
   gap: 2px;
   flex: 1;
   min-width: 0;
+  /* On a wide page a count stays near its word. */
+  max-inline-size: 28rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1153,6 +1155,12 @@ a.ui-donut-row:focus-visible {
   flex: 1;
   margin: 0;
   color: var(--muted);
+}
+/* Try again, under what didn't load. */
+.ui-donut-empty .ui-btn {
+  display: flex;
+  width: fit-content;
+  margin-block-start: var(--space-3);
 }
 
 /* ── Empty state (§5.5) ── */

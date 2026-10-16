@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react'
 import {
     ArrowCounterClockwiseIcon, ClockCounterClockwiseIcon, EnvelopeSimpleIcon, IdentificationBadgeIcon, MinusCircleIcon,
     PauseCircleIcon, PencilSimpleIcon, PlayCircleIcon, PlusCircleIcon, ShieldIcon, SortAscendingIcon, TrashIcon,
-    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon,
+    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -20,7 +20,7 @@ import {
     RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem, type StatusTone,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
-import { fetcher } from '@/lib/swr-fetcher'
+import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -113,8 +113,13 @@ export default function EmployeesPage() {
         teamLeaderId: team,
         sort: sort.sort, order: sort.order,
     } : null
-    const { data: result, isLoading, mutate } = useSWR(listQuery ? employeesListUrl(listQuery) : null, fetcher, { keepPreviousData: true })
-    const employees: Employee[] = result?.data?.data || []
+    // Only this company's rows, while the next page or filter loads. If they
+    // didn't load, the list says so rather than that there's nobody.
+    const listUrl = listQuery ? employeesListUrl(listQuery) : null
+    const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(scopedKey(listUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
+    const result = forScope(scoped, selectedCompanyId)
+    const failed = loadFailed(scoped, error, listUrl)
+    const employees: Employee[] = failed ? [] : result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
 
@@ -231,7 +236,7 @@ export default function EmployeesPage() {
         }
     }
 
-    if (isLoading && !result) return <LoadingSpinner message={t('loading_users')} />
+    if (isLoading && !result && !failed) return <LoadingSpinner message={t('loading_users')} />
 
     // Once the session is known: before it loads nobody holds anything, and
     // this would flash "access denied" at everyone on the way in.
@@ -380,9 +385,11 @@ export default function EmployeesPage() {
                     />
                 )}
                 footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'employees')} />}
-                empty={<EmptyState icon={UsersIcon} title={t('no_employees_found')} action={filtersOn > 0 || search
-                    ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
-                    : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
+                empty={failed
+                    ? <EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+                    : <EmptyState icon={UsersIcon} title={t('no_employees_found')} action={filtersOn > 0 || search
+                        ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
+                        : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
             />
 
             <ConfirmModal

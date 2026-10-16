@@ -11,6 +11,7 @@ import {
 import { countOf } from "@/lib/plural"
 import { usedDayOffCredit } from "@/lib/day-off-credit"
 import { tasksListHref } from "./tasks/list-href"
+import { DayOffCreditDonut } from "@/components/DayOffCreditDonut"
 import { cookies, headers } from "next/headers"
 import type { TranslationKey } from "@/lib/translations"
 import { resolveLocale } from "@/lib/locale"
@@ -379,16 +380,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         {byStatus(taskStats as any, t('task_distribution'))}
                     </Section>
                     <Section title={t('credit_overview')}>
-                        <DonutChart
-                            label={t('credit_overview')}
-                            parts={[
-                                { key: 'left', label: t('remaining_credit'), value: remainingCredit, count: days(remainingCredit), share: percent(remainingCredit, remainingCredit + usedCredits), tone: 'good', href: '/dashboard/day-off-requests' },
-                                { key: 'used', label: t('used_credit'), value: usedCredits, count: days(usedCredits), share: percent(usedCredits, remainingCredit + usedCredits), tone: 'neutral', href: '/dashboard/day-off-requests' },
-                            ]}
-                            total={days(remainingCredit + usedCredits)}
-                            totalLabel={t('total_label')}
-                            emptyLabel={t('no_data_available')}
-                        />
+                        <DayOffCreditDonut remaining={remainingCredit} used={usedCredits} t={t} locale={locale} href="/dashboard/day-off-requests" />
                     </Section>
                 </Columns>
 
