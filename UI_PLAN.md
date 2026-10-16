@@ -758,3 +758,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-16:** From Codex's fourth review of #82: a record's form
   closed while it saves no longer removes the files that save is storing
   (`CLIENTS_PLAN.md` change log).
+- **2026-10-16:** From Codex's fifth review of #82: a client's page says
+  when its records didn't load, with Try again; saving a record from a
+  form opened before someone else changed its files says so, and asks to
+  open it again (`CLIENTS_PLAN.md` change log).
