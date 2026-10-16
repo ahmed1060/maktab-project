@@ -44,11 +44,18 @@ function oklch(value: string) {
 }
 
 type Shade = (typeof OLD_PAGE_SHADES)[number]
-function grounds(shade: Shade, theme: "light" | "dark", page: string): string[] {
+/** `share` of `a` over `b`, as color-mix in srgb draws a tint over a panel. */
+function tint(a: string, b: string, share: number) {
+    const [x, y] = [a, b].map(c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)))
+    return "#" + x.map((v, i) => Math.round(v * share + y[i] * (1 - share)).toString(16).padStart(2, "0")).join("")
+}
+/** What a shade is drawn on. Text is also drawn on --primary at 10% and 20% (the payments history link, the pager). */
+function grounds(shade: Shade, theme: "light" | "dark", page: string, primary: string): string[] {
     const behind = "behind" in shade ? shade.behind : undefined
     if (behind === "map") return ["#ffffff"]
     if (behind === "sidebar") return [theme === "light" ? sidebar(lightRoot, page) : sidebar(darkRoot, valueIn(darkRoot, "--page-bg")!)]
-    return theme === "light" ? [...LIGHT_GROUNDS, page] : DARK_GROUNDS
+    const base = theme === "light" ? [...LIGHT_GROUNDS, page] : DARK_GROUNDS
+    return shade.role === "text" ? [...base, tint(primary, base[0], 0.1), tint(primary, base[0], 0.2)] : base
 }
 // `.btn-primary:hover` brightens a fill 10% (app/globals.css).
 const hovered = (c: string) => "#" + [1, 3, 5].map(i => Math.min(255, Math.round(parseInt(c.slice(i, i + 2), 16) * 1.1)).toString(16).padStart(2, "0")).join("")
@@ -57,7 +64,7 @@ const hovered = (c: string) => "#" + [1, 3, 5].map(i => Math.min(255, Math.round
  * fill at rest and on hover, and in dark mode the fill against the dark
  * page; text or an edge against each ground.
  */
-function checks(shade: Shade, theme: "light" | "dark", page: string): { of: (c: string) => number; aim: number }[] {
+function checks(shade: Shade, theme: "light" | "dark", page: string, primary: string): { of: (c: string) => number; aim: number }[] {
     if (shade.role === "fill") return [
         { of: c => contrast("#ffffff", c), aim: 4.5 },
         { of: c => contrast("#ffffff", hovered(c)), aim: 4.5 },
@@ -65,7 +72,7 @@ function checks(shade: Shade, theme: "light" | "dark", page: string): { of: (c: 
     ]
     if (shade.role === "text" || shade.role === "edge") {
         const aim = shade.role === "text" ? 4.5 : 3
-        return grounds(shade, theme, page).map(g => ({ of: (c: string) => contrast(c, g), aim }))
+        return grounds(shade, theme, page, primary).map(g => ({ of: (c: string) => contrast(c, g), aim }))
     }
     return []
 }
@@ -115,7 +122,8 @@ describe("the older pages' shades", () => {
                 else if (shade.role === "fill") themes.push(["dark", shade.light, shades.dark[shade.token]])
                 for (const [theme, today, now] of themes) {
                     expect(now, `${picked} ${shade.token} ${theme}`).toMatch(/^#[0-9a-f]{6}$/)
-                    const todays = checks(shade, theme, defaultPage), nows = checks(shade, theme, page)
+                    const todays = checks(shade, theme, defaultPage, "#6366f1")
+                    const nows = checks(shade, theme, page, (theme === "light" ? shades.light : shades.dark)["--primary"]!)
                     todays.forEach((check, i) => {
                         const need = Math.min(check.aim, check.of(today))
                         expect(nows[i].of(now!), `${picked} ${shade.token} ${theme} check ${i}`).toBeGreaterThanOrEqual(need - 0.005)
@@ -182,6 +190,21 @@ describe("the older pages' shades", () => {
             const now = oldPageShades(picked).dark["--accent-solid"]!
             for (const g of DARK_GROUNDS) {
                 expect(contrast(now, g), `${picked} on ${g}`).toBeGreaterThanOrEqual(Math.min(4.5, contrast(shade.dark, g)))
+            }
+        }
+    })
+
+    // Codex on #81: the payments history link is --brand-primary-text on a
+    // 10% --primary tint; cyan's cleared 4.5:1 on white but was about
+    // 4.4:1 on the tint, where Nizmo's indigo is about 5.6:1.
+    it("keep text readable on the brand tints drawn behind it", () => {
+        const companies = readFileSync("app/(dashboard)/dashboard/companies/page.tsx", "utf8")
+        expect(companies).toMatch(/background: 'color-mix\(in srgb, var\(--primary\) 10%, transparent\)',\s*color: 'var\(--brand-primary-text\)'/)
+        for (const picked of ["#0891b2", "#0d9488", "#16a34a", "#facc15"]) {
+            const shades = oldPageShades(picked)
+            for (const share of [0.1, 0.2]) {
+                const need = Math.min(4.5, contrast("#4f46e5", tint("#6366f1", "#ffffff", share)))
+                expect(contrast(shades.light["--brand-primary-text"], tint(shades.light["--primary"], "#ffffff", share)), `${picked} ${share}`).toBeGreaterThanOrEqual(need)
             }
         }
     })

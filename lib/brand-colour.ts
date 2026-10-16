@@ -326,6 +326,7 @@ type Behind = 'pages' | 'sidebar' | 'map'
  * colours, they mean something, or are only background.
  */
 export const OLD_PAGE_SHADES = [
+    // First: text on the pages is held on its tints, so it's worked out before them.
     { token: '--primary', light: '#6366f1', role: 'fill' },
     { token: '--primary-hover', light: '#4f46e5', role: 'fill' },
     { token: '--accent', light: '#8b5cf6', role: 'fill' },
@@ -351,6 +352,9 @@ export const OLD_PAGE_SHADES = [
 
 export type OldPageToken = (typeof OLD_PAGE_SHADES)[number]['token']
 
+/** Nizmo's indigo's --primary, the same in both themes. */
+const DEFAULT_PRIMARY = OLD_PAGE_SHADES[0].light
+
 /** The same distance from `picked` as `shade` is from Nizmo's indigo. */
 function follow(shade: string, picked: string): string {
     const from = toLch(DEFAULT_BRAND), to = toLch(picked), s = toLch(shade)
@@ -361,13 +365,24 @@ function follow(shade: string, picked: string): string {
     })
 }
 
-/** What a shade sits on, in a theme, with this brand's page colour. */
-function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: string): string[] {
+/**
+ * The light brand tints text is drawn on: --primary at 10% and 20% over a
+ * panel (the payments history link, the pager's current page).
+ */
+const TEXT_TINTS = [0.10, 0.20]
+
+/**
+ * What a shade sits on, in a theme, with this brand's page colour. Text on
+ * the pages sits on the brand tints of this theme's --primary too.
+ */
+function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: string, primary?: string): string[] {
     if (behind === 'map') return MAP
     if (behind === 'sidebar') return theme === 'light'
         ? [over(SIDEBAR_LIGHT, SIDEBAR_LIGHT_ALPHA, page)]
         : [over(SIDEBAR_DARK, SIDEBAR_DARK_ALPHA, OLD_DARK_PAGE)]
-    return theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
+    const grounds = theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
+    const panel = grounds[0]
+    return primary ? [...grounds, ...TEXT_TINTS.map(share => mix(primary, panel, share))] : grounds
 }
 
 /** One contrast a shade is held to, and the most it's asked for there. */
@@ -422,8 +437,10 @@ export function oldPageShades(picked: string | null | undefined): { light: Recor
         for (const [theme, value] of themes) {
             const behind = 'behind' in shade ? shade.behind : undefined
             // Held to what it has with Nizmo's indigo, up to WCAG's aim.
-            const todays = checksFor(role, groundsFor(behind, theme, defaultPage), theme)
-            const checks = checksFor(role, groundsFor(behind, theme, page), theme)
+            // --primary comes first, so text can be held on its tints.
+            const tinted = role === 'text'
+            const todays = checksFor(role, groundsFor(behind, theme, defaultPage, tinted ? DEFAULT_PRIMARY : undefined), theme)
+            const checks = checksFor(role, groundsFor(behind, theme, page, tinted ? (theme === 'light' ? light : dark)['--primary'] : undefined), theme)
             const ok = holds(value, todays, checks)
             let c: string
             if (role === 'fill' && theme === 'dark') {
