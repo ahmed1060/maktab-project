@@ -133,9 +133,16 @@ describe("a record's form", () => {
 
     it("removes what it uploaded again if it closes without saving it, or saves without it", () => {
         expect(FORM).toContain("unsaved.current.push(done.url)")
-        expect(FORM).toContain("return () => discard(list.splice(0))")
+        expect(FORM).toContain("if (!inFlight.current) discard(list.splice(0))")
         expect(FORM).toContain("discard(unsaved.current.splice(0).filter(url => !saved.has(url)))")
         expect(FORM).toContain("fetch('/api/records/uploads', {")
+    })
+
+    it("closed while a save is on its way, leaves that save's files to it: kept if it saves, removed if not", () => {
+        // Removing them as the form closes would take the files out from under a save that then stores them.
+        expect(FORM).not.toContain("return () => discard(list.splice(0))")
+        expect(FORM).toContain("inFlight.current = true")
+        expect(FORM).toMatch(/finally \{\s*inFlight\.current = false\s*\/\/[^\n]*\n\s*if \(closed\.current\) discard\(unsaved\.current\.splice\(0\)\)/)
     })
 })
 

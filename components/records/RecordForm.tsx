@@ -70,9 +70,17 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
     const [saving, setSaving] = useState(false)
     // What this form uploaded that no saved record has yet.
     const unsaved = useRef<string[]>([])
+    // A save on its way, and whether the form has closed since it began.
+    const inFlight = useRef(false)
+    const closed = useRef(false)
     useEffect(() => {
         const list = unsaved.current
-        return () => discard(list.splice(0))
+        closed.current = false
+        return () => {
+            closed.current = true
+            // A save still on its way may yet keep them: it decides once it hears back.
+            if (!inFlight.current) discard(list.splice(0))
+        }
     }, [])
 
     const newSection = sectionId === NEW_SECTION
@@ -126,6 +134,7 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
             return
         }
         setSaving(true)
+        inFlight.current = true
         try {
             // Each upload joins the kept files at once, so a failed save isn't uploaded again.
             let files = kept
@@ -165,6 +174,9 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
         } catch (error) {
             showToast(error instanceof Error && error.message ? error.message : t('error_generic'), 'error')
         } finally {
+            inFlight.current = false
+            // Closed while it saved: what it uploaded and didn't save goes now (none, if it saved).
+            if (closed.current) discard(unsaved.current.splice(0))
             setSaving(false)
         }
     }
