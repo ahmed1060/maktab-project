@@ -306,6 +306,10 @@ export class RecordService {
             const { AuditLogService } = await import("./audit-log.service")
             let sectionId = section?.id
             if (!sectionId) {
+                // One at a time per client, so two people naming the same new
+                // section at once start it once: the second finds the first's.
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.vendorId!} FOR NO KEY UPDATE`
+                if (!locked.length) throw new Error("VENDOR_NOT_FOUND")
                 // A section of that name already there is the one meant.
                 const existing = await tx.recordSection.findUnique({ where: { vendorId_title: { vendorId: input.vendorId!, title: input.sectionTitle! } }, select: { id: true } })
                 if (existing) sectionId = existing.id

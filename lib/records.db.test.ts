@@ -234,5 +234,22 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await Records.delete(admin, second)
             expect(removed).toEqual(["c1/records/own.pdf", "c1/records/shared.pdf"])
         })
+
+        it("starts one section when two people name the same new one at once", async () => {
+            // Each first write of a section named Permits takes a moment, so the second starts while the first is still writing.
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE INSERT ON "ClientSection" FOR EACH ROW WHEN (NEW.title = 'Permits') EXECUTE FUNCTION test_slow()`)
+            try {
+                const add = (content: string) => Records.create(admin, { content, files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Permits" })
+                const first = add("Signage permit")
+                await new Promise(r => setTimeout(r, 150))
+                const made = await Promise.all([first, add("Parking permit")])
+                const { rows } = await db.query(`SELECT DISTINCT "sectionId" FROM "ClientNote" WHERE id = ANY($1)`, [made.map(r => r.id)])
+                expect(rows).toHaveLength(1)
+                expect((await Records.sectionsOf(admin, "v1")).sections.find(s => s.title === "Permits")).toMatchObject({ records: 2 })
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientSection"; DROP FUNCTION test_slow()`)
+            }
+        })
     })
 })
