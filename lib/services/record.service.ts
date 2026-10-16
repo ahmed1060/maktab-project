@@ -426,15 +426,21 @@ export class RecordService {
         const record = await recordWithCompany(id)
         allow(session, "records.delete", record.companyId, "RECORD_NOT_FOUND")
         const who = actor(session)
-        await prisma.$transaction(async tx => {
+        const files = await prisma.$transaction(async tx => {
+            // The record as it's deleted: an edit just before may have added files.
+            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientNote" WHERE id = ${id} FOR UPDATE`
+            if (!locked.length) throw new Error("RECORD_NOT_FOUND")
+            const gone = await tx.clientRecord.findUniqueOrThrow({ where: { id }, select: { content: true, sectionId: true, attachment: true } })
             await tx.clientRecord.delete({ where: { id } })
+            const files = parseRecordFiles(gone.attachment)
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log("DELETE_NOTE", "NOTE", id, {
                 tx, ...who.audit,
-                details: { sectionId: record.sectionId, contentPreview: snippet(record.content), files: parseRecordFiles(record.attachment).length },
+                details: { sectionId: gone.sectionId, contentPreview: snippet(gone.content), files: files.length },
             })
+            return files
         })
-        await removeFiles(parseRecordFiles(record.attachment), record.companyId)
+        await removeFiles(files, record.companyId)
         return { id }
     }
 
