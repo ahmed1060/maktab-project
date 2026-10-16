@@ -33,7 +33,8 @@
 .ui-menu-item,
 .ui-choice,
 .ui-check-target,
-.ui-date-trigger {
+.ui-date-trigger,
+.ui-swatch-option {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -381,6 +382,153 @@
   font-size: var(--text-xl);
   line-height: var(--leading-xl);
   font-weight: 500;
+}
+/* What a settings card is for, under its title. */
+.ui-card-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+/* A settings card's button, on its end side. */
+.ui-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ── Colour choice (§5.3) ── */
+.ui-colour-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ui-swatches {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.ui-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+.ui-swatch-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 36px;
+  min-inline-size: 36px;
+  justify-content: center;
+  cursor: pointer;
+}
+.ui-swatch-default {
+  padding-inline-end: var(--space-2);
+}
+.ui-swatches:disabled .ui-swatch-option {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.ui-swatch {
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 50%;
+  background: var(--swatch);
+  /* A faint edge, so a pale colour still reads as a circle on the panel. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+/* Pointed at: a faint ring where the chosen one's goes. No motion. */
+.ui-swatch-option:hover:not(:has(input:checked)) .ui-swatch {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent), 0 0 0 2px var(--panel), 0 0 0 4px var(--rule);
+}
+/* The chosen one: a 2px ring in ink, clear of the swatch, whatever its colour. */
+.ui-swatch-option:has(input:checked) .ui-swatch {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent), 0 0 0 2px var(--panel), 0 0 0 4px var(--ink);
+}
+.ui-swatch-option:has(input:focus-visible) .ui-swatch {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 5px;
+}
+.ui-colour-code {
+  max-inline-size: 12rem;
+  font-variant-numeric: tabular-nums;
+}
+/* A colour close to the error red: a warning, not an error (DESIGN.md §2.1). */
+.ui-colour-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-field);
+  background: var(--status-waiting-bg);
+  color: var(--status-waiting-fg);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-colour-warning svg {
+  flex: none;
+  margin-block-start: 2px;
+}
+/* The preview: a primary button, a link and a selected tab in the colour,
+   on the light and the dark panel whatever the page's theme, from each
+   theme's own neutrals (app/globals.css --light-*, --dark-*). */
+.ui-colour-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+.ui-colour-preview-theme {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid;
+  border-radius: var(--radius-panel);
+}
+.ui-colour-preview-theme[data-preview="light"] {
+  --panel: var(--light-panel);
+  --ink: var(--light-ink);
+  --rule: var(--light-rule);
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.ui-colour-preview-theme[data-preview="dark"] {
+  --panel: var(--dark-panel);
+  --ink: var(--dark-ink);
+  --rule: var(--dark-rule);
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.ui-colour-preview-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.ui-colour-preview .ui-btn {
+  pointer-events: none;
+}
+.ui-colour-preview-link {
+  color: var(--brand-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ui-colour-preview-tab {
+  padding-block-end: var(--space-1);
+  border-block-end: 2px solid var(--brand);
+  color: var(--brand-text);
+  font-weight: 500;
+}
+@media (max-width: 767px) {
+  .ui-swatch-option {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+  }
 }
 
 /* ── Page header (§5.5) ── */

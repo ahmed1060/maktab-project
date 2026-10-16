@@ -172,6 +172,10 @@ model Company {
   // let a Super Admin be talked into pointing every page load of a company's
   // dashboard at somebody else's server.
   logoUrl              String?
+  /// The company's own brand colour (UI_PLAN.md §4.6), as #rrggbb in lower
+  /// case. Null uses the system's default, SystemSettings.brandColour. Every
+  /// shade on its pages is worked out from it (lib/brand-colour.ts).
+  brandColour          String?
   // Null means grandfathered: every feature on, no gating. Every company that
   // existed before packages shipped is untouched, and stays that way until
   // somebody deliberately assigns one.
@@ -347,6 +351,10 @@ model SystemSettings {
   // own name on it. Defaults to SHSD, which is what it read before it moved
   // out of the component.
   poweredByName              String   @default("SHSD")
+  /// The default brand colour (UI_PLAN.md §4.6): the sign-in page's, the
+  /// Super Admin's pages', and every company's that hasn't chosen its own.
+  /// #rrggbb in lower case, starting as Nizmo's own indigo.
+  brandColour                String   @default("#6366f1")
   /// The calendar zone for anybody with no company — a Super Admin, or a user
   /// whose companyId is null. Resolution is company, then this, then the
   /// constant in lib/time.ts, so the fallback is never re-improvised at a call

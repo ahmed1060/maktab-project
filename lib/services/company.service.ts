@@ -231,7 +231,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs } = input
+        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -262,7 +262,9 @@ export class CompanyService {
                 ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent }),
                 // Which of its settings the company's own people see (§5.2).
                 ...(adminSettingsEnabled !== undefined && { adminSettingsEnabled }),
-                ...(adminSettingsTabs !== undefined && { adminSettingsTabs })
+                ...(adminSettingsTabs !== undefined && { adminSettingsTabs }),
+                // Null goes back to the system's default (UI_PLAN.md §4.6).
+                ...(brandColour !== undefined && { brandColour })
             }
         })
 
@@ -303,6 +305,9 @@ export class CompanyService {
         if (adminSettingsTabs !== undefined && [...adminSettingsTabs].sort().join() !== [...existing.adminSettingsTabs].sort().join()) {
             changes.adminSettingsTabs = { old: existing.adminSettingsTabs, new: adminSettingsTabs }
         }
+        if (brandColour !== undefined && brandColour !== existing.brandColour) {
+            changes.brandColour = { old: existing.brandColour, new: brandColour }
+        }
 
         if (Object.keys(changes).length > 0) {
             const { AuditLogService } = await import("./audit-log.service")
@@ -337,6 +342,9 @@ export class CompanyService {
             where: { id: companyId },
             select: {
                 id: true, adminSettingsEnabled: true, adminSettingsTabs: true,
+                // The company's own brand colour, for the dashboard layout,
+                // which reads this row on every page anyway (UI_PLAN.md §4.6).
+                brandColour: true,
                 // A tab tied to a module exists only for a company holding it.
                 package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
             },

@@ -8,6 +8,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import FaceSystemSwitch from '@/components/FaceSystemSwitch'
+import BrandColourCard from '@/components/BrandColourCard'
+import { DEFAULT_BRAND } from '@/lib/brand-colour'
 
 type SystemSettings = {
     id: string
@@ -16,6 +18,7 @@ type SystemSettings = {
     poweredByName: string
     defaultTimezone: string
     stepUpMinutes: number
+    brandColour: string
     updatedAt: string
 }
 
@@ -330,6 +333,25 @@ export default function SystemSettingsPage() {
                             </button>
                         </div>
                     </form>
+
+                    {/* The default brand colour (UI_PLAN.md §4.6), beside the
+                        "Powered by" branding. */}
+                    <BrandColourCard
+                        saved={settings?.brandColour ?? DEFAULT_BRAND}
+                        hint={t('brand_colour_system_hint')}
+                        onSave={async brandColour => {
+                            if (!brandColour) return false
+                            const res = await fetch('/api/system-settings', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ brandColour }),
+                            }).catch(() => null)
+                            if (!res?.ok) return false
+                            const result = await res.json().catch(() => null)
+                            if (result?.data) applySettings(result.data)
+                            return true
+                        }}
+                    />
                 </div>
             )}
         </div>

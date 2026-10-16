@@ -31,6 +31,67 @@ export function isBrandHex(value: unknown): value is string {
     return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 }
 
+/**
+ * A colour code as somebody types it — with or without #, three digits or
+ * six, any case — as the #rrggbb in lower case that's stored. Null when it
+ * isn't a colour code.
+ */
+export function readBrandHex(value: unknown): string | null {
+    if (typeof value !== 'string') return null
+    const code = value.trim().replace(/^#/, '').toLowerCase()
+    if (/^[0-9a-f]{6}$/.test(code)) return `#${code}`
+    if (/^[0-9a-f]{3}$/.test(code)) return `#${[...code].map(c => c + c).join('')}`
+    return null
+}
+
+/** The colour code a form shows as an example. */
+export const EXAMPLE_BRAND_CODE = '#2563eb'
+
+/**
+ * The ready-made colours (UI_PLAN.md §4.6), Nizmo's indigo first. Each key
+ * names it on screen (brand_preset_<key>). None is close to the error red.
+ */
+export const BRAND_PRESETS = [
+    { key: 'indigo', hex: DEFAULT_BRAND },
+    { key: 'blue', hex: '#2563eb' },
+    { key: 'cyan', hex: '#0891b2' },
+    { key: 'teal', hex: '#0d9488' },
+    { key: 'green', hex: '#16a34a' },
+    { key: 'orange', hex: '#ea580c' },
+    { key: 'purple', hex: '#9333ea' },
+    { key: 'navy', hex: '#1e3a8a' },
+    { key: 'slate', hex: '#475569' },
+] as const
+
+/** The error red the warning compares against: the chart and badge red (app/globals.css --chart-problem). */
+const ERROR_RED = '#e11d48'
+
+function hueAndSaturation(c: string): { hue: number; saturation: number } {
+    const [r, g, b] = rgb(c).map(v => v / 255)
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min
+    const l = (max + min) / 2
+    const saturation = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
+    let hue = 0
+    if (d !== 0) {
+        if (max === r) hue = ((g - b) / d) % 6
+        else if (max === g) hue = (b - r) / d + 2
+        else hue = (r - g) / d + 4
+    }
+    return { hue: (hue * 60 + 360) % 360, saturation }
+}
+
+/**
+ * Close enough to the error red to be mistaken for an error (DESIGN.md
+ * §2.1): a hue within 20° of its, and not greyish (35% saturation or more).
+ */
+export function nearErrorRed(picked: string): boolean {
+    if (!isBrandHex(picked)) return false
+    const c = hueAndSaturation(picked)
+    const red = hueAndSaturation(ERROR_RED)
+    const apart = Math.abs(c.hue - red.hue)
+    return Math.min(apart, 360 - apart) <= 20 && c.saturation >= 0.35
+}
+
 function rgb(hex: string): Rgb {
     return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)) as Rgb
 }
@@ -142,12 +203,26 @@ export function brandTokens(picked: string | null | undefined): { light: BrandTo
 }
 
 /**
+ * Each colour's stylesheet, worked out once and kept: every page asks for
+ * the default's, and a company's people for their company's. A few hundred
+ * at most, a kilobyte each; past that the store starts again.
+ */
+const sheets = new Map<string, string>()
+const MAX_SHEETS = 256
+
+/**
  * The tokens as a stylesheet for the page's head, so it opens in the right
  * colour. `html:root` outranks the default in app/globals.css's `:root`
  * whichever of the two the browser reads last.
  */
 export function brandStyleSheet(picked: string | null | undefined): string {
-    const { light: l, dark: d } = brandTokens(picked)
+    const key = isBrandHex(picked) ? picked.toLowerCase() : DEFAULT_BRAND
+    const kept = sheets.get(key)
+    if (kept !== undefined) return kept
+    const { light: l, dark: d } = brandTokens(key)
     const decls = (t: BrandTokens) => Object.entries(t).map(([k, v]) => `${k}:${v}`).join(';')
-    return `html:root{${decls(l)}}html:root[data-theme="dark"]{${decls(d)}}`
+    const sheet = `html:root{${decls(l)}}html:root[data-theme="dark"]{${decls(d)}}`
+    if (sheets.size >= MAX_SHEETS) sheets.clear()
+    sheets.set(key, sheet)
+    return sheet
 }

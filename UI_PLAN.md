@@ -299,13 +299,16 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
 3. **Two small PRs straight after it,** in either order:
    - **the 3 pages `CLIENTS_PLAN.md` doesn't touch:** the dashboard home,
      Employees and Day Off Requests move onto the building blocks (§4.1).
-     Built on 2026-10-15, waiting to be merged. Built with the building
+     Merged in #78 on 2026-10-15. Built with the building
      blocks alone, then refined with Impeccable's written guidance once
      question 8 was answered (§6);
    - **the brand colour setting (§4.6):** the database fields, the controls in
      System Settings and Company Settings → Branding, and the server putting
      the colour into the page. The new fields have defaults, so the preview
      build's migration of the shared database is safe for `main`'s code.
+     Built on 2026-10-16, waiting to be merged. The colour reaches what's
+     built from the building blocks; the side bar and the old pages keep
+     Nizmo's indigo until they move onto them (§4.5, `DESIGN.md` §5.1).
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
    - The side bar groups (§2.1, §2.2) land with step 0.
    - Every screen these steps create or rework uses the building blocks
@@ -644,3 +647,41 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   The pickers stay, over a spinner. Last month's register used to stay up
   until the next arrived, so the page didn't drop to a spinner at each
   step of the picker.
+- **2026-10-16:** The brand colour setting is built (§4.6, §5 step 3):
+  - the default in System Settings, beside the "Powered by" branding, and
+    a company's own in Company Settings → Branding, under its logo, with
+    "Use the default";
+  - nine ready-made colours or a typed code, a preview in light and dark,
+    and a warning for a colour close to the error red (`DESIGN.md` §2.1,
+    §5.3);
+  - the server puts the viewer's colour in the page: a company's for its
+    people, the default for the sign-in page and the Super Admin. The phone
+    app shows the site, so its pages in the new design take the company's
+    colour after sign-in;
+  - every change is in the audit log.
+
+  Until the side bar and the old pages move onto the building blocks, they
+  keep Nizmo's indigo. The 3 pages' PR (§5 step 3) was merged in #78.
+- **2026-10-16:** Fixes from Codex's review of the brand colour PR (#80):
+  - signing out from the account menu left the company's colour on the
+    sign-in page. Next.js doesn't draw the root layout again when the app
+    moves to another page, so the root layout now draws the default, which
+    is the same for everyone, and the dashboard layout draws a company's own
+    over it. Signing in or out draws the dashboard layout afresh, so the
+    colour changes with it;
+  - a saved colour shows at once for whoever saved it. Everyone else sees
+    it the next time they open or reload a page, or sign in: moving to
+    another page inside the app doesn't pick it up;
+  - the settings' hints said the colour reaches the sign-in page, the side
+    bar and the phone app. So far it reaches only the pages in the new
+    design, and the hints now say so.
+- **2026-10-16:** The brand colour costs a page no database reads of its
+  own (§4.6). Counted on the scratch database, a company user's page read
+  the system settings twice and its company row twice. It now reads each
+  once:
+  - the root layout and the dashboard layout share one read of the system
+    settings;
+  - a company's colour comes with the company row the dashboard layout
+    already reads for its settings;
+  - each colour's stylesheet is worked out once and kept. It took about
+    0.15 ms a page.

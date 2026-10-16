@@ -74,6 +74,13 @@ below, which are all worked out from the one chosen colour.
     With dark ink, hover and press are 8% and 16% towards white.
 - **One filled brand button per area.** A page has one primary action. Other
   actions are secondary or quiet buttons (§5.2).
+- **A colour close to the error red gets a warning when it's chosen:** one
+  whose hue is within 20° of the error red's and that isn't greyish (35%
+  saturation or more). It can still be saved. The status, warning and error
+  colours (§2.3) never take the brand colour.
+- **Who sees which colour:** a company's people see its colour, or the
+  default if it hasn't chosen one. The sign-in page and the Super Admin's
+  pages use the default.
 
 ### 2.2 Neutrals
 
@@ -298,6 +305,15 @@ These are built once, in the building-blocks PR, and every page uses them
   from, is a set of radio buttons under a visible group label, each 36px
   tall (44px on phones). An option that can't be picked says why beside
   the group.
+- **A colour choice,** such as the brand colour (§2.1):
+  - a row of round swatches, 32px across (44px to tap on phones), each a
+    radio button named by its colour for screen readers, with a 2px ring
+    around the chosen one;
+  - where there's a default to go back to, "Use the default" comes first;
+  - below the swatches, a field for a colour code (`#rrggbb`), which says
+    what's wrong with one that isn't a colour;
+  - a preview of a primary button, a link and a selected tab in the
+    colour, in light and dark, before it's saved.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -612,3 +628,6 @@ changed:
 - **2026-10-16:** A list that didn't load says so, with Try again (§5.5),
   at the product owner's request. Employees said "No employees found" and
   offered to add one.
+- **2026-10-16:** The brand colour setting (§2.1, `UI_PLAN.md` §4.6): the
+  colour choice field (§5.3), the warning for a colour close to the error
+  red, and who sees which colour.

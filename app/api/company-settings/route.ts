@@ -6,6 +6,7 @@ import { CompanyService } from "@/lib/services/company.service"
 import { settingsTab } from "@/lib/company-settings-tabs"
 import { maySetField, maySettings, visibleSettingsTabs } from "@/lib/company-settings-access"
 import { can } from "@/lib/permissions/can"
+import { SystemSettingsService } from "@/lib/services/system-settings.service"
 
 /**
  * A company's settings, tab by tab (ATTENDANCE_PLAN.md §5), for the Super
@@ -29,7 +30,7 @@ export const GET = withStandardHandler(async (req, session) => {
         select: {
             id: true, name: true, adminSettingsEnabled: true, adminSettingsTabs: true,
             package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
-            autoVerifyLocation: true, logoUrl: true,
+            autoVerifyLocation: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
         },
     })
@@ -41,7 +42,11 @@ export const GET = withStandardHandler(async (req, session) => {
     // Only what the shown tabs hold: a hidden tab's values stay hidden too.
     const shown: Record<string, unknown> = { id: company.id, name: company.name }
     for (const key of tabs) for (const field of settingsTab(key)!.fields) shown[field] = (company as Record<string, unknown>)[field]
-    if (tabs.includes("branding")) shown.logoUrl = company.logoUrl
+    if (tabs.includes("branding")) {
+        shown.logoUrl = company.logoUrl
+        // What "Use the default" goes back to (UI_PLAN.md §4.6).
+        shown.defaultBrandColour = (await SystemSettingsService.get()).brandColour
+    }
 
     return ApiResponse.success({
         company: shown,
