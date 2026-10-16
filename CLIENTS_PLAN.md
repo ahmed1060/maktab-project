@@ -78,6 +78,13 @@ Production has no data in these parts, so now is the right time.
 - the reminder job is `/api/records/check-expiry`, and a reminder links to
   the record's own address, `/dashboard/records/[id]`, which opens it on its
   client's page. That address doesn't change when vendors become clients.
+- a record carries only files uploaded for records in its own company. A
+  file is removed from storage once no record has it, and files a record's
+  form uploaded but didn't save, because the form was closed or a save
+  failed, are removed again (`DELETE /api/records/uploads`). A failed save
+  keeps what it uploaded for the next try;
+- two people adding records into the same new section at once get one
+  section, and a client isn't deleted while a record is being added to it.
 
 **Proposed** (built this way in 0a, for the product owner to confirm or
 change):
@@ -835,3 +842,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   waits, and what 0b must therefore do, is in §0.3. Three choices it made
   are marked Proposed in §0.2: when a record "expires soon", who is
   reminded and when, and that a client with records can't be deleted.
+- **2026-10-16:** PR 0a (#82) has Codex's review findings fixed (§0.2): a
+  record can neither carry nor delete the company's other files, such as a
+  photo or its logo; a form's unsaved uploads are removed again; a new
+  section named by two people at once is started once; a client isn't
+  deleted while a record is being added; and a reminder's record opens only
+  on its own client's page. Still waiting to be merged.

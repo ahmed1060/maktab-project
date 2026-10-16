@@ -740,3 +740,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   `DESIGN.md` gained a back link, details, files, a record's expiry and
   opening an item from a list (§5.5), and a rule that typed text keeps its
   own direction (§7). Proposed: the side bar's groups come with 0b.
+- **2026-10-16:** From Codex's review of #82: a record's form keeps files
+  it uploaded when a save fails, so trying again doesn't upload them twice,
+  and removes them again if it closes without saving them; a client's page
+  opens a reminder's record only if it's that client's (`CLIENTS_PLAN.md`
+  change log).
