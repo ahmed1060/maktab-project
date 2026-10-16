@@ -319,6 +319,31 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("sends no notice for a deadline changed while the reminders were going out", async () => {
+            const due = (await Records.create(admin, { content: "Fire certificate", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const soon = (await Records.create(admin, { content: "Insurance", files: [], expiryDate: "2026-10-20", reminderDays: 7, vendorId: "v1", sectionTitle: "Contracts" })).id
+            // Someone renews both as the job finds them: the edit is written, not yet committed.
+            const edit = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await edit.connect()
+            try {
+                await edit.query("BEGIN")
+                await edit.query(`UPDATE "ClientNote" SET "expiryDate" = '2027-10-16', "notifiedOnExpiry" = false WHERE id = $1`, [due])
+                await edit.query(`UPDATE "ClientNote" SET "reminderDays" = 2, "notifiedDaysBefore" = false WHERE id = $1`, [soon])
+                const checking = Records.checkExpiries()
+                await new Promise(r => setTimeout(r, 300))
+                await edit.query("COMMIT")
+                await checking
+            } finally {
+                await edit.end()
+            }
+            const { rows } = await db.query(`SELECT id, "notifiedOnExpiry", "notifiedDaysBefore" FROM "ClientNote" WHERE id = ANY($1) ORDER BY content`, [[due, soon]])
+            expect(rows).toEqual([
+                { id: due, notifiedOnExpiry: false, notifiedDaysBefore: false },
+                { id: soon, notifiedOnExpiry: false, notifiedDaysBefore: false },
+            ])
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "relatedId" = ANY($1)`, [[due, soon].map(id => `/dashboard/records/${id}`)])).rows[0].n).toBe(0)
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id

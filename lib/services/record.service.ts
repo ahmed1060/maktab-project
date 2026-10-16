@@ -469,8 +469,13 @@ export class RecordService {
             where: { expiryDate: { gte: start, lt: tomorrow }, notifiedOnExpiry: false, section },
             include,
         })
+        let expiring = 0
         for (const record of expiringToday) {
             await prisma.$transaction(async tx => {
+                // Claimed on the deadline it was found for: an edit since then owes its own notice instead.
+                const claimed = await tx.clientRecord.updateMany({ where: { id: record.id, expiryDate: record.expiryDate, notifiedOnExpiry: false }, data: { notifiedOnExpiry: true } })
+                if (!claimed.count) return
+                expiring++
                 if (record.createdById) {
                     await tx.notification.create({
                         data: {
@@ -481,7 +486,6 @@ export class RecordService {
                         },
                     })
                 }
-                await tx.clientRecord.update({ where: { id: record.id }, data: { notifiedOnExpiry: true } })
             })
         }
 
@@ -494,6 +498,12 @@ export class RecordService {
             const expires = expiryDay(record.expiryDate!)
             if (today < addDays(expires, -record.reminderDays!)) continue
             await prisma.$transaction(async tx => {
+                const claimed = await tx.clientRecord.updateMany({
+                    where: { id: record.id, expiryDate: record.expiryDate, reminderDays: record.reminderDays, notifiedDaysBefore: false },
+                    data: { notifiedDaysBefore: true },
+                })
+                if (!claimed.count) return
+                reminded++
                 if (record.createdById) {
                     await tx.notification.create({
                         data: {
@@ -504,11 +514,9 @@ export class RecordService {
                         },
                     })
                 }
-                await tx.clientRecord.update({ where: { id: record.id }, data: { notifiedDaysBefore: true } })
             })
-            reminded++
         }
 
-        return { expiringToday: expiringToday.length, reminded }
+        return { expiringToday: expiring, reminded }
     }
 }
