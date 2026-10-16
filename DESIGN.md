@@ -149,9 +149,9 @@ same in every company.
 |---|---|---|---|
 | Neutral | Pending, Draft | `#ebeef1` / `#3c4257` (8.6:1) | `#26324a` / `#d0d8e4` (8.9:1) |
 | In motion | In Progress | `#e0ecff` / `#0b4bb3` (6.6:1) | `#16305e` / `#a9c7ff` (7.6:1) |
-| Waiting on someone | Pending Confirmation, Due | `#fcedb9` / `#7a4b0a` (6.3:1) | `#3d2c08` / `#f5cf7a` (9.0:1) |
+| Waiting on someone | Pending Confirmation, Due, Expires soon | `#fcedb9` / `#7a4b0a` (6.3:1) | `#3d2c08` / `#f5cf7a` (9.0:1) |
 | Done or good | Approved, Completed, Paid, Collected | `#d7f7c2` / `#05690d` (5.9:1) | `#123d1c` / `#93e3a0` (8.0:1) |
-| Problem | Rejected, Overdue, errors | `#ffe7f2` / `#b3093c` (6.0:1) | `#4a1226` / `#ffa3bd` (8.0:1) |
+| Problem | Rejected, Overdue, Expired, errors | `#ffe7f2` / `#b3093c` (6.0:1) | `#4a1226` / `#ffa3bd` (8.0:1) |
 
 - **Colour is never the only signal.** A status always has its word. Overdue
   always has the warning icon and the word "Overdue" too.
@@ -393,6 +393,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - an optional one-line subtitle in `--muted`;
   - the page's primary button on the end side, with at most one secondary
     button beside it. On phones, the buttons go full width below the title.
+  - On a page that belongs to another, such as a client's page under
+    Clients, a quiet back link sits above the title: a back arrow, flipped
+    in Arabic, and the other page's name.
   - Until the app shell (§5.1) replaces the old top bar, the old top bar
     hides its own title on a page that has a page header, so the page is
     named once. Behind such a page, the old moving gradient gives way to
@@ -470,6 +473,30 @@ These are built once, in the building-blocks PR, and every page uses them
   - While the numbers load, the legend says so. If they don't load, it
     says that instead, with a Try again button below. Either way the middle
     is blank, since a 0 there would read as the answer.
+- **Details:** an item's facts on its own page, such as a client's owner
+  and phone, in a card. Each is a label in `--text-sm` and `--muted` above
+  its value, up to 3 in a row on computers and 1 on phones. A phone number
+  is a link that calls it. A link that opens a new tab, such as a map, says
+  so to screen readers.
+- **Files:**
+  - adding files is a secondary "Attach files" button that opens the file
+    picker. On computers, files can also be dropped on it. The hint says
+    which kinds and how large they may be;
+  - each file, picked or saved, is a chip with a file icon, its name and
+    its size. A saved file's chip opens it in a new tab, and says so to
+    screen readers. A chip's remove button is named for its file.
+- **Expiry:** an item with an expiry date, such as a record, shows the date
+  with a badge beside it:
+  - "Expired" (Problem, with the warning icon) once the day has passed;
+  - "Expires soon" (Waiting on someone) from 30 days before, up to and
+    including the day itself;
+  - nothing when it's further off, or has no date.
+
+  An "Expiring soon" filter finds exactly the items with that badge.
+- **An item opened from a list:** where a list cuts an item's text short,
+  such as a record's text cut to 2 lines, the item's title opens it in a
+  dialog. The dialog shows all of it, with the actions the person may take
+  on it.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
 - **A list that didn't load** says so in the same block: a warning icon,
@@ -688,3 +715,7 @@ changed:
 - **2026-10-16:** From Codex's review of #81: the check-in place's radius
   ring on the map has a thin white outline, as its pin does (§2.1). The map
   can show satellite imagery, where a dark colour's ring disappeared.
+- **2026-10-16:** For records moving onto each client's page
+  (`CLIENTS_PLAN.md` §0.2): a back link above a page's title, details,
+  files, a record's expiry with its two statuses, and opening an item from
+  a list (§5.5, §2.3).
