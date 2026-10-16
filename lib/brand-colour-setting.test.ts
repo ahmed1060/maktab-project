@@ -180,3 +180,34 @@ describe("the colour settings on screen", () => {
         }
     })
 })
+
+describe("the colour settings' hints (Codex on #80)", () => {
+    // Drawn in the colour: DESIGN.md §2.1's tokens, or the building blocks,
+    // which use them. The old pages' --brand-primary is a fixed indigo.
+    const takesBrand = (file: string) => {
+        const src = stripComments(readFileSync(file, "utf8"))
+        return /var\(--brand(-hover|-press|-text|-tint|-tint-strong)?\)/.test(src) || /from ["']@\/components\/ui["']/.test(src)
+    }
+    const places = [
+        { file: "app/(auth)/login/page.tsx", en: "the sign-in page", ar: "صفحة تسجيل الدخول", hints: ["brand_colour_system_hint"] },
+        { file: "components/DashboardShell.tsx", en: "the side bar", ar: "الشريط الجانبي", hints: ["brand_colour_company_hint", "brand_colour_system_hint"] },
+    ]
+    const languages = [
+        { dict: en as Record<string, string>, lang: "en" as const, keeps: /take it: (.*) keep Nizmo's indigo/ },
+        { dict: ar as Record<string, string>, lang: "ar" as const, keeps: /فقط: (.*) باللون النيلي/ },
+    ]
+
+    for (const place of places) {
+        it(`name ${place.en} as taking the colour only once it does, and as keeping the indigo while it doesn't`, () => {
+            const takes = takesBrand(place.file)
+            for (const { dict, lang, keeps } of languages) {
+                for (const key of place.hints) {
+                    const hint = dict[key]
+                    const [first] = hint.split(". ")
+                    if (!takes) expect(first, `${lang} ${key}`).not.toContain(place[lang])
+                    expect(hint.match(keeps)?.[1].includes(place[lang]) ?? false, `${lang} ${key}`).toBe(!takes)
+                }
+            }
+        })
+    }
+})
