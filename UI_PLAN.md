@@ -317,7 +317,14 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      colour too (§4.6),** in a small PR straight after the brand colour
      setting's. Merged in #81 on 2026-10-16.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
-   - The side bar groups (§2.1, §2.2) land with step 0.
+   - Step 0's first PR, 0a, is open for review. It builds each client's
+     page and the Records page on the building blocks, with five new ones
+     written into `DESIGN.md` first: a back link above a page's title,
+     details, files, a record's expiry, and opening an item from a list
+     (§5.5). It also adds that text people type keeps its own direction in
+     either language (§7).
+   - The side bar groups (§2.1, §2.2) land with step 0. Proposed: with 0b,
+     when Vendors become Clients (`CLIENTS_PLAN.md` §8).
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
@@ -728,3 +735,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-16:** The older pages, the side bar and the sign-in page follow
   the brand colour, merged in #81 (§4.6, §5 step 3). Next is
   `CLIENTS_PLAN.md`'s step 0.
+- **2026-10-16:** `CLIENTS_PLAN.md` step 0's first PR, 0a, is open: each
+  client's page and the Records page, on the building blocks (§5 step 4).
+  `DESIGN.md` gained a back link, details, files, a record's expiry and
+  opening an item from a list (§5.5), and a rule that typed text keeps its
+  own direction (§7). Proposed: the side bar's groups come with 0b.

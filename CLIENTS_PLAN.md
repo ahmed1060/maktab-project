@@ -59,6 +59,40 @@ Production has no data in these parts, so now is the right time.
 - **The daily expiry reminder** (`/api/notes/check-expiry`) moves with the
   records.
 
+**Built in PR 0a** (open for review):
+
+- each client's page (`/dashboard/vendors/[id]` until 0b) shows its details
+  and its records, with a filter by section, and its sections, which can be
+  added, renamed and deleted. A client's first record names its first
+  section;
+- a record has its text, up to 10 files of up to 4 MB each, and an optional
+  expiry date with a reminder some days before it. A record's text that a
+  list cuts short opens whole in a dialog (`DESIGN.md` §5.5);
+- the Records item in the side bar, in the Menu group where the old Clients
+  item was, until the side bar's new groups come (below). Its page lists
+  every client's records, with search (by a record's text, its section's
+  name or its client's name) and the expiry filter;
+- the permissions are `records.view`, `records.contribute`, `records.edit`
+  and `records.delete`, with the same codes, meaning and holders as the old
+  `clients.*`;
+- the reminder job is `/api/records/check-expiry`, and a reminder links to
+  the record's own address, `/dashboard/records/[id]`, which opens it on its
+  client's page. That address doesn't change when vendors become clients.
+
+**Proposed** (built this way in 0a, for the product owner to confirm or
+change):
+
+- **"Expires soon"** shows from 30 days before a record's expiry date, up to
+  and including the day, and "Expired" after it. The filter has both, with
+  "Expired" beside the decided "Expiring soon".
+- **A reminder** goes to whoever added the record, as it did in the old
+  section: the chosen number of days before, and on the day. It says how
+  many days are actually left. Changing the date or the reminder sends them
+  again for the new date; the old section never did, so a renewed licence
+  was never reminded about again.
+- **A client with records can't be deleted** until its records are. Deleting
+  it would otherwise delete its licences and contracts with it, unasked.
+
 ### 0.3 Shipping the rename without breaking production (Decided)
 
 **Why this needs care.** Every build, previews included, runs
@@ -78,14 +112,34 @@ Two things make a single big rename unsafe:
 
 | PR | What it does | Effect on production while it waits for review |
 |---|---|---|
-| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
-| 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now | None |
+| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table is no longer used; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
+| 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now. Today's clients table goes (see below) | None |
 | 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
 | 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below) | None. The app is closed for about 15 minutes, at a time the product owner chooses |
 
 The app ignores permission names it doesn't know instead of failing
 (`lib/permissions/matrix.ts`), so the short overlaps above can't break
 sign-in.
+
+**How 0a keeps to this** (built):
+
+- **Today's clients table stays until 0b.** Main's code counts it on the
+  Super Admin's dashboard, so dropping it in 0a would break that page while
+  0a waits for review. 0a only stops using it: a section gets a client
+  column, the old column is no longer required, and a check says a section
+  has exactly one of the two.
+- **The database renames old names on the way in.** Main's code still
+  writes `clients.*` while 0a waits for review, for a company created then,
+  and a company's own name for the old section's side bar item. Triggers
+  rename them to `records.*` and to Records as they're written, so nothing
+  written meanwhile is lost to 0a's code.
+- **0b therefore also:**
+  1. deletes the old section's own rows, if any (production has none), and
+     drops today's clients table and its column;
+  2. drops 0a's triggers and their functions, before "clients" takes its new
+     meaning;
+  3. sends the old `/dashboard/vendors/...` addresses on to
+     `/dashboard/clients/...`, for links already sent.
 
 **PR 0d, the maintenance window:**
 
@@ -105,8 +159,10 @@ sign-in.
 - 0 vendors, 0 clients, 0 sections and 0 notes;
 - 0 audit entries for either, and no company has changed their labels or
   icons;
-- **36 role permission rows** use the `vendors.*` and `clients.*` names.
-  These are rewritten by 0a and 0c.
+- **36 role permission rows** use the `vendors.*` and `clients.*` names:
+  27 `clients.*` (rewritten by 0a) and 9 `vendors.*` (rewritten by 0c);
+- 0 custom roles, 0 role templates, and 0 reminders sent for notes
+  (checked again on 2026-10-16, before 0a).
 
 Packages store bundle names, not module names, so renaming the modules
 needs no data change.
@@ -563,7 +619,11 @@ balance first, automatically:
        the brand colour, in one small PR after it (`UI_PLAN.md` §4.6).
        Merged in #81 on 2026-10-16.
   2. **Steps 0–7 above.**
-     - The new side bar groups land with step 0.
+     - Step 0's first PR, 0a, is open for review (§0.2, §0.3).
+     - The new side bar groups land with step 0. 0a puts the Records item
+       where the old Clients item was. Proposed: the groups come with 0b,
+       when Vendors become Clients and the Clients group (§2.1 of
+       `UI_PLAN.md`) can hold Clients and Records.
      - Every screen these steps create or rework uses the building blocks:
        Clients, Locations, Records, the Costs tabs, Cash advances, and the
        task form's pickers.
@@ -769,3 +829,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   white outline, from Codex's review (§8, `UI_PLAN.md` change log).
 - **2026-10-16:** The older pages' brand colour PR was merged in #81, so
   step 0 is next (§8).
+- **2026-10-16:** Step 0's first PR, 0a, is built and open for review:
+  records on each client's page, the Records page, `records.*` permissions
+  and the reminder job (§0.2). How it keeps production working while it
+  waits, and what 0b must therefore do, is in §0.3. Three choices it made
+  are marked Proposed in §0.2: when a record "expires soon", who is
+  reminded and when, and that a client with records can't be deleted.
