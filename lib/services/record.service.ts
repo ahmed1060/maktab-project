@@ -296,11 +296,16 @@ export class RecordService {
         const section = await sectionWithCompany(id)
         allow(session, "records.delete", section.companyId, "RECORD_SECTION_NOT_FOUND")
         const who = actor(session)
-        const records = await prisma.clientRecord.findMany({ where: { sectionId: id }, select: { attachment: true } })
-        await prisma.$transaction(async tx => {
+        const records = await prisma.$transaction(async tx => {
+            // Held first, so a record being added meanwhile (create) is among
+            // those deleted here, with its files, or finds the section gone.
+            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${id} FOR UPDATE`
+            if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+            const records = await tx.clientRecord.findMany({ where: { sectionId: id }, select: { attachment: true } })
             await tx.recordSection.delete({ where: { id } })
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log("DELETE_SECTION", "SECTION", id, { tx, ...who.audit, details: { title: section.title, vendorId: section.vendorId, records: records.length } })
+            return records
         })
         await removeFiles(records.flatMap(r => parseRecordFiles(r.attachment)), section.companyId)
         return { id }
@@ -332,14 +337,17 @@ export class RecordService {
                 // deleted meanwhile with the record in it (VendorService.delete).
                 const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR SHARE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+                // And the section, which isn't deleted meanwhile either (deleteSection).
+                const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${section.id} FOR SHARE`
+                if (!held.length) throw new Error("RECORD_SECTION_NOT_FOUND")
             } else {
                 // One at a time per client, so two people naming the same new
                 // section at once start it once: the second finds the first's.
                 // It holds the client from being deleted meanwhile too.
                 const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.vendorId!} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("VENDOR_NOT_FOUND")
-                // A section of that name already there is the one meant.
-                const existing = await tx.recordSection.findUnique({ where: { vendorId_title: { vendorId: input.vendorId!, title: input.sectionTitle! } }, select: { id: true } })
+                // A section of that name already there is the one meant, held as above.
+                const [existing] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE "vendorId" = ${input.vendorId!} AND title = ${input.sectionTitle!} FOR SHARE`
                 if (existing) sectionId = existing.id
                 else {
                     const made = await tx.recordSection.create({ data: { title: input.sectionTitle!, vendorId: input.vendorId!, createdById: who.byUser }, select: { id: true } })

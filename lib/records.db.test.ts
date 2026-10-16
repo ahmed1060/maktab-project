@@ -344,6 +344,39 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "relatedId" = ANY($1)`, [[due, soon].map(id => `/dashboard/records/${id}`)])).rows[0].n).toBe(0)
         })
 
+        it("deletes a section with a record added as it goes, and that record's files", async () => {
+            const section = (await Records.createSection(admin, { vendorId: "v1", title: "Old papers" })).id
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow AFTER INSERT ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Late arrival') EXECUTE FUNCTION test_slow()`)
+            try {
+                removed.length = 0
+                const adding = Records.create(admin, { content: "Late arrival", files: [file("c1", "late.pdf")], expiryDate: null, reminderDays: null, sectionId: section })
+                await new Promise(r => setTimeout(r, 150))
+                const [added, deleted] = await Promise.allSettled([adding, Records.deleteSection(admin, section)])
+                expect([added.status, deleted.status]).toEqual(["fulfilled", "fulfilled"])
+                expect(removed).toEqual(["c1/records/late.pdf"])
+                const { rows: [audit] } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'DELETE_SECTION' AND "entityId" = $1`, [section])
+                expect(audit.details.records).toBe(1)
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
+            }
+        })
+
+        it("won't add a record to a section being deleted", async () => {
+            const section = (await Records.createSection(admin, { vendorId: "v1", title: "Doomed" })).id
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN OLD; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE DELETE ON "ClientSection" FOR EACH ROW WHEN (OLD.title = 'Doomed') EXECUTE FUNCTION test_slow()`)
+            try {
+                const deleting = Records.deleteSection(admin, section)
+                await new Promise(r => setTimeout(r, 150))
+                const [deleted, added] = await Promise.allSettled([deleting, Records.create(admin, { content: "Too late", files: [], expiryDate: null, reminderDays: null, sectionId: section })])
+                expect(deleted.status).toBe("fulfilled")
+                expect(added).toMatchObject({ status: "rejected", reason: { message: "RECORD_SECTION_NOT_FOUND" } })
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientSection"; DROP FUNCTION test_slow()`)
+            }
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id
