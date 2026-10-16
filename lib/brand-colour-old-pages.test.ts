@@ -171,6 +171,21 @@ describe("the older pages' shades", () => {
         }
     })
 
+    // Codex on #81: --accent-solid is a highlight bar but also the
+    // settlement links' colour on an employee's history, so 3:1 wasn't
+    // enough: navy's was about 3.5:1 on the dark surface, Nizmo's indigo 5:1.
+    it("hold the highlight colour as text, since it's a link's colour too", () => {
+        const history = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+        expect(history).toContain("style={{ color: 'var(--accent-solid)', textDecoration: 'underline' }}")
+        const shade = OLD_PAGE_SHADES.find(s => s.token === "--accent-solid")!
+        for (const picked of ["#1e3a8a", "#475569", "#000000"]) {
+            const now = oldPageShades(picked).dark["--accent-solid"]!
+            for (const g of DARK_GROUNDS) {
+                expect(contrast(now, g), `${picked} on ${g}`).toBeGreaterThanOrEqual(Math.min(4.5, contrast(shade.dark, g)))
+            }
+        }
+    })
+
     it("take the chosen colour's hue: the brand stands in for Nizmo's indigo", () => {
         // Blue reads white text at 5.2:1, so it's used as it is.
         expect(oldPageShades("#2563eb").light["--primary"]).toBe("#2563eb")

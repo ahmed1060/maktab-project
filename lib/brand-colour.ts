@@ -340,7 +340,8 @@ export const OLD_PAGE_SHADES = [
     { token: '--accent-deep', light: '#4338ca', dark: '#7c6ae0', role: 'text' },
     { token: '--accent-deepest', light: '#3730a3', dark: '#b3a6f2', role: 'text' },
     { token: '--focus-ring', light: '#4338ca', dark: '#a5b4fc', role: 'edge' },
-    { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'edge' },
+    // A highlight bar, and a link's colour too (an employee's history), so held as text.
+    { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'text' },
     { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
     { token: '--sidebar-ring', light: '#c7d2fe', role: 'edge', behind: 'sidebar' },
     // The end of the company name's gradient: text on the side bar.
