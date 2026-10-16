@@ -765,3 +765,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-16:** The older pages' PR (#81) also makes the side bar's
   company name readable in dark mode, at the product owner's choice
   (§8, `UI_PLAN.md` change log).
+- **2026-10-16:** The older pages' PR (#81): the map's radius ring has a
+  white outline, from Codex's review (§8, `UI_PLAN.md` change log).

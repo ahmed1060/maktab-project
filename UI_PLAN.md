@@ -722,3 +722,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   top of the side bar is light in both themes, in the older pages' PR
   (#81). In dark mode it was barely readable even with Nizmo's indigo, as
   it started from the dark panel colour (`DESIGN.md` §2.1).
+- **2026-10-16:** From Codex's review of #81, the check-in place's radius
+  ring on the map has a thin white outline, as its pin does, so it shows on
+  satellite imagery whatever the brand colour (`DESIGN.md` §2.1).
