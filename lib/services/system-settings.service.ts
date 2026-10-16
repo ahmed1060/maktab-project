@@ -1,3 +1,4 @@
+import { cache } from "react"
 import { prisma } from "@/lib/prisma"
 import { DEFAULT_TIME_ZONE } from "@/lib/time"
 import { DEFAULT_BRAND } from "@/lib/brand-colour"
@@ -33,3 +34,12 @@ export class SystemSettingsService {
         })
     }
 }
+
+/**
+ * The settings for the page being drawn, read once however many layouts ask
+ * for them: React keeps the answer for the rest of that request. The root
+ * layout wants the default brand colour and the dashboard layout the
+ * "Powered by" mark, so a page reads the row once, not twice. Anywhere else
+ * (an API route, a job) it reads each time, as get() does.
+ */
+export const pageSystemSettings = cache(() => SystemSettingsService.get())

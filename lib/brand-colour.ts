@@ -203,12 +203,26 @@ export function brandTokens(picked: string | null | undefined): { light: BrandTo
 }
 
 /**
+ * Each colour's stylesheet, worked out once and kept: every page asks for
+ * the default's, and a company's people for their company's. A few hundred
+ * at most, a kilobyte each; past that the store starts again.
+ */
+const sheets = new Map<string, string>()
+const MAX_SHEETS = 256
+
+/**
  * The tokens as a stylesheet for the page's head, so it opens in the right
  * colour. `html:root` outranks the default in app/globals.css's `:root`
  * whichever of the two the browser reads last.
  */
 export function brandStyleSheet(picked: string | null | undefined): string {
-    const { light: l, dark: d } = brandTokens(picked)
+    const key = isBrandHex(picked) ? picked.toLowerCase() : DEFAULT_BRAND
+    const kept = sheets.get(key)
+    if (kept !== undefined) return kept
+    const { light: l, dark: d } = brandTokens(key)
     const decls = (t: BrandTokens) => Object.entries(t).map(([k, v]) => `${k}:${v}`).join(';')
-    return `html:root{${decls(l)}}html:root[data-theme="dark"]{${decls(d)}}`
+    const sheet = `html:root{${decls(l)}}html:root[data-theme="dark"]{${decls(d)}}`
+    if (sheets.size >= MAX_SHEETS) sheets.clear()
+    sheets.set(key, sheet)
+    return sheet
 }

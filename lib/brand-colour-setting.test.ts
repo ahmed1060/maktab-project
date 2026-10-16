@@ -6,7 +6,7 @@ import { updateSystemSettingsSchema } from "./validations/system-settings.schema
 import { settingsTab } from "./company-settings-tabs"
 import { maySetField } from "./company-settings-access"
 import { ownColour, usableDefault } from "./page-brand-colour"
-import { BRAND_PRESETS, DEFAULT_BRAND } from "./brand-colour"
+import { BRAND_PRESETS, DEFAULT_BRAND, brandStyleSheet } from "./brand-colour"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { ColourChoice } from "@/components/ui/ColourChoice"
@@ -92,7 +92,7 @@ describe("the colour a page opens in", () => {
 
     it("puts a company's own over it from the dashboard layout, drawn afresh on signing in or out", () => {
         const layout = stripComments(readFileSync("app/(dashboard)/layout.tsx", "utf8"))
-        expect(layout).toContain("const ownBrand = await companyBrandColour(user)")
+        expect(layout).toContain("const ownBrand = ownColour(user, exposure?.brandColour)")
         const style = layout.indexOf('{ownBrand && <style id="company-brand-colour" dangerouslySetInnerHTML={{ __html: brandStyleSheet(ownBrand) }} />}')
         expect(style).toBeGreaterThan(-1)
         // Before the shell, so the shell opens in it.
@@ -210,4 +210,42 @@ describe("the colour settings' hints (Codex on #80)", () => {
             }
         })
     }
+})
+
+describe("the colour costs a page no reads of its own", () => {
+    // Measured on the scratch database before this: a company user's page
+    // read the system settings twice (the root layout's default, the
+    // dashboard layout's "Powered by") and its company row twice (its
+    // settings, then its colour).
+    const strip = (f: string) => stripComments(readFileSync(f, "utf8"))
+
+    it("reads the system settings once, however many layouts ask", () => {
+        expect(strip("lib/services/system-settings.service.ts")).toContain("export const pageSystemSettings = cache(() => SystemSettingsService.get())")
+        expect(strip("lib/page-brand-colour.ts")).toContain("usableDefault((await pageSystemSettings()).brandColour)")
+        const dashboard = strip("app/(dashboard)/layout.tsx")
+        expect(dashboard).toContain("const { showPoweredBy, poweredByName } = await pageSystemSettings()")
+        for (const f of ["app/layout.tsx", "app/(dashboard)/layout.tsx", "lib/page-brand-colour.ts"]) {
+            expect(strip(f), f).not.toContain("SystemSettingsService.get()")
+        }
+    })
+
+    it("takes the company's colour from the company row the dashboard layout reads anyway", () => {
+        const exposure = strip("lib/services/company.service.ts")
+        const select = exposure.slice(exposure.indexOf("static async settingsExposure"), exposure.indexOf("static async getBranding"))
+        expect(select).toContain("brandColour: true")
+        for (const f of ["app/(dashboard)/layout.tsx", "lib/page-brand-colour.ts"]) {
+            expect(strip(f), f).not.toMatch(/prisma\.company|companyBrandColour/)
+        }
+    })
+
+    it("works each colour's stylesheet out once", () => {
+        // Worked out afresh, 2,000 sheets take about 300ms here.
+        brandStyleSheet("#0e7490")
+        const started = performance.now()
+        for (let i = 0; i < 2000; i++) brandStyleSheet("#0e7490")
+        expect(performance.now() - started).toBeLessThan(50)
+        // The same colour typed either way is the same sheet; junk is the default's.
+        expect(brandStyleSheet("#0E7490")).toBe(brandStyleSheet("#0e7490"))
+        expect(brandStyleSheet("not a colour")).toBe(brandStyleSheet(DEFAULT_BRAND))
+    })
 })

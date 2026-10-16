@@ -1,5 +1,4 @@
-import { prisma } from "@/lib/prisma"
-import { SystemSettingsService } from "@/lib/services/system-settings.service"
+import { pageSystemSettings } from "@/lib/services/system-settings.service"
 import { DEFAULT_BRAND, isBrandHex } from "@/lib/brand-colour"
 
 /**
@@ -16,6 +15,11 @@ import { DEFAULT_BRAND, isBrandHex } from "@/lib/brand-colour"
  * - the dashboard layout draws a company's own colour over it. Moving
  *   between the sign-in page and the dashboard draws that layout afresh, so
  *   signing out leaves the company's colour behind and signing in brings it.
+ *
+ * Neither costs a read of its own. The default comes with the settings the
+ * dashboard layout reads anyway (pageSystemSettings, once per page), and a
+ * company's colour with the company row it reads for its settings
+ * (CompanyService.settingsExposure).
  *
  * Both are read when the page is drawn. Whoever saves a colour sees it at
  * once (the settings card asks for the page again); everyone else sees it
@@ -41,23 +45,8 @@ export function usableDefault(systemColour: string | null | undefined): string {
  */
 export async function defaultBrandColour(): Promise<string> {
     try {
-        return usableDefault((await SystemSettingsService.get()).brandColour)
+        return usableDefault((await pageSystemSettings()).brandColour)
     } catch {
         return DEFAULT_BRAND
-    }
-}
-
-/**
- * The viewer's company's own colour, for the dashboard layout, or null when
- * the default applies. Never throws: null leaves the page in the default.
- */
-export async function companyBrandColour(viewer: Viewer | null | undefined): Promise<string | null> {
-    const companyId = viewer && viewer.role !== "SUPER_ADMIN" ? viewer.companyId : null
-    if (!companyId) return null
-    try {
-        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { brandColour: true } })
-        return ownColour(viewer, company?.brandColour)
-    } catch {
-        return null
     }
 }
