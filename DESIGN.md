@@ -416,6 +416,10 @@ These are built once, in the building-blocks PR, and every page uses them
     is blank, since a 0 there would read as the answer.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
+- **A list that didn't load** says so in the same block: a warning icon,
+  one line saying what didn't load, and Try again, which shows it's busy
+  while it tries. It never says there's nothing, or offers to add one, when
+  it doesn't know.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
 
@@ -605,3 +609,6 @@ changed:
   load says so and offers Try again (§5.5), with nothing in the middle. The
   Day Off page's credit donut said "Loading…" for good when its request
   failed, over a total of 0 days.
+- **2026-10-16:** A list that didn't load says so, with Try again (§5.5),
+  at the product owner's request. Employees said "No employees found" and
+  offered to add one.
