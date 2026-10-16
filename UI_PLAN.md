@@ -170,6 +170,7 @@ existing request pages sit together under People (§2.1).
 | Day off | إجازة | |
 | Payslip / Payslips | قسيمة راتب / قسائم الرواتب | |
 | Payroll | الرواتب | |
+| Brand colour | لون الهوية | The colour a company's pages are drawn in (§4.6) |
 
 Three Arabic names were chosen so that no two things share a name
 (principle 7):
@@ -272,6 +273,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
   - the warning and error colours.
 
   A colour close to the error red gets a warning when it's chosen.
+- **The older pages, the side bar and the sign-in page follow it too,**
+  in a small PR after the setting's (decided on 2026-10-16). They keep
+  their own look until they move onto the building blocks, with their
+  indigo and violet worked out from the chosen colour (`DESIGN.md` §2.1).
 - **The page opens in the right colour.** The server puts the colour into
   the page before sending it, so it doesn't flash indigo first.
 - **Every change is in the audit log.**
@@ -307,8 +312,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the colour into the page. The new fields have defaults, so the preview
      build's migration of the shared database is safe for `main`'s code.
      Built on 2026-10-16, waiting to be merged. The colour reaches what's
-     built from the building blocks; the side bar and the old pages keep
-     Nizmo's indigo until they move onto them (§4.5, `DESIGN.md` §5.1).
+     built from the building blocks;
+   - **the older pages, the side bar and the sign-in page follow the
+     colour too (§4.6),** in a small PR straight after the brand colour
+     setting's. Built on 2026-10-16, to be opened once that PR is merged.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
    - The side bar groups (§2.1, §2.2) land with step 0.
    - Every screen these steps create or rework uses the building blocks
@@ -341,6 +348,13 @@ None are open. The seven questions asked on 2026-10-15 were answered the same da
    (§4.4).
 7. **The 3 pages:** fixed straight after the building-blocks PR, using the
    building blocks (§4.1).
+
+Questions 9 and 10 were answered on 2026-10-16:
+
+9. **The older pages and the side bar:** they follow the brand colour
+   now, in a small PR of their own, rather than when they move onto the
+   building blocks (§4.6, §5 step 3).
+10. **"Brand colour" in Arabic:** لون الهوية (§3.2).
 
 Question 8 was answered on 2026-10-15 too:
 
@@ -685,3 +699,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     already reads for its settings;
   - each colour's stylesheet is worked out once and kept. It took about
     0.15 ms a page.
+- **2026-10-16:** The product owner answered two questions (§6):
+  - the older pages, the side bar and the sign-in page follow the brand
+    colour now, in a small PR after the setting's (§4.6, §5 step 3). It's
+    built: their indigo and violet are worked out from the chosen colour,
+    and Nizmo's indigo gives exactly the colours they have today
+    (`DESIGN.md` §2.1). The settings' hints say the colour reaches them
+    again;
+  - لون الهوية is the Arabic for "brand colour" (§3.2).
