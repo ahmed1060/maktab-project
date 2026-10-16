@@ -108,6 +108,10 @@ below, which are all worked out from the one chosen colour.
 
     A shade that falls short is darkened (on a dark ground, lightened)
     until it doesn't, keeping its hue;
+  - the company name at the top of the side bar runs from white to a pale
+    shade of the brand, in both themes, since the side bar is dark in
+    both. It used to start from the page's panel colour, so in dark mode
+    it began dark on the dark side bar and was barely readable;
   - the info colours, the role badges' colours, the pink glow and the
     dark mesh behind the page don't follow. Like the status
     colours (§2.3), they mean something, or are only background.
@@ -674,3 +678,7 @@ changed:
   white text on a button brightened on hover, a fill against the dark page,
   text on the light brand tints, a highlight colour that is also a link,
   and the company name's gradient in the side bar.
+- **2026-10-16:** At the product owner's choice, the company name at the
+  top of the side bar runs from white to a pale shade of the brand in both
+  themes (§2.1). In dark mode it used to run from the dark panel colour to
+  a dark indigo, on the dark side bar, and was barely readable.
