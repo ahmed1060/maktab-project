@@ -297,7 +297,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
                                     const nameLength = cleanName.length;
                                     const textStyle: React.CSSProperties = {
-                                        background: 'linear-gradient(to right, var(--surface), var(--info-border-indigo))',
+                                        // White to a pale shade of the brand: the side bar is dark in both
+                                        // themes, so --surface would start it dark in dark mode (DESIGN.md §2.1).
+                                        background: 'linear-gradient(to right, var(--sidebar-fg-strong), var(--sidebar-accent))',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
                                         fontSize: nameLength > 20

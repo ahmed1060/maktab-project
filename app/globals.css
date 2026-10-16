@@ -237,6 +237,12 @@
      they sit on. A background token read as a foreground one. */
   --sidebar-fg: rgba(255, 255, 255, 0.8);
   --sidebar-fg-strong: #ffffff;
+  /* The side bar's touches of the brand colour, which follow it (DESIGN.md
+     §2.1, lib/brand-colour.ts). Both are light, on its dark ground, in both
+     themes: its focus ring, and the end of the company name's gradient,
+     which starts from --sidebar-fg-strong. */
+  --sidebar-ring: #c7d2fe;
+  --sidebar-accent: #a5b4fc;
 
   /* The raised half of a segmented toggle, and the shadow under it.
      Not --surface: the toggle's track is a percentage of the text colour, so
@@ -322,7 +328,7 @@
 
   /* The page ground itself. */
   --page-bg: #eef2ff;
-  --page-veil-a: rgba(99, 102, 241, 0.15);
+  --page-veil-a: color-mix(in srgb, var(--primary) 15%, transparent);
   --page-veil-b: rgba(236, 72, 153, 0.15);
 
   /* Tells the browser to render its own chrome — form controls, scrollbars,
@@ -667,7 +673,7 @@ body::before {
   /* The sidebar is dark in both themes, so its ring is light in both, and
      lighter than the dark theme's: in the light theme the sidebar is slate 900
      at 65% over the pale page, a ground the dark ring only reaches 2.97:1 on. */
-  --focus-ring: #c7d2fe;
+  --focus-ring: var(--sidebar-ring);
   background: var(--sidebar-bg);
   /* Slate 900 at 65% */
   backdrop-filter: blur(20px);
@@ -780,7 +786,7 @@ html[dir="rtl"] select.input {
 .input:focus {
   background: var(--panel-90);
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 /* The click-outside area behind a dialog's panel: it fills the overlay, and
@@ -844,10 +850,17 @@ html[dir="rtl"] select.input {
   border-radius: 50%;
   box-shadow: 0 1px 4px var(--map-shadow);
 }
-/* The radius circle: SVG, coloured here rather than in Leaflet's options. */
+/* The radius circle: SVG, coloured here rather than in Leaflet's options.
+   Drawn over a wider white circle, as the pin has a white border, so it
+   shows on satellite imagery too, whatever the brand colour (DESIGN.md
+   §2.1). */
 .map-ring {
   stroke: var(--map-pin);
   fill: var(--map-pin);
+}
+.map-ring-halo {
+  stroke: var(--map-halo);
+  fill: none;
 }
 .map-cross {
   position: absolute;
@@ -900,12 +913,12 @@ html[dir="rtl"] select.input {
 .btn-primary {
   background: linear-gradient(135deg, var(--button-from) 0%, var(--button-to) 100%);
   color: white;
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 8px 25px color-mix(in srgb, var(--primary) 45%, transparent);
   filter: brightness(1.1);
 }
 
@@ -1013,14 +1026,14 @@ button[aria-busy="true"]::after {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
+  background: color-mix(in srgb, var(--primary) 30%, transparent);
   border-radius: 5px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(99, 102, 241, 0.6);
+  background-color: color-mix(in srgb, var(--primary) 60%, transparent);
 }
 
 /* Modern Modal System (Pop-up Page Effect) */
@@ -1317,7 +1330,7 @@ input::-webkit-credentials-auto-fill-button {
     --hairline-firm: rgba(255, 255, 255, 0.1);
 
     --page-bg: #0b0f14;
-    --page-veil-a: rgba(99, 102, 241, 0.1);
+    --page-veil-a: color-mix(in srgb, var(--primary) 10%, transparent);
     --page-veil-b: rgba(236, 72, 153, 0.08);
 }
 

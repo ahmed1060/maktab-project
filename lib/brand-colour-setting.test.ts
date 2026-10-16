@@ -6,7 +6,7 @@ import { updateSystemSettingsSchema } from "./validations/system-settings.schema
 import { settingsTab } from "./company-settings-tabs"
 import { maySetField } from "./company-settings-access"
 import { ownColour, usableDefault } from "./page-brand-colour"
-import { BRAND_PRESETS, DEFAULT_BRAND, brandStyleSheet } from "./brand-colour"
+import { BRAND_PRESETS, DEFAULT_BRAND, OLD_PAGE_SHADES, brandStyleSheet } from "./brand-colour"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { ColourChoice } from "@/components/ui/ColourChoice"
@@ -181,12 +181,13 @@ describe("the colour settings on screen", () => {
     })
 })
 
-describe("the colour settings' hints (Codex on #80)", () => {
-    // Drawn in the colour: DESIGN.md §2.1's tokens, or the building blocks,
-    // which use them. The old pages' --brand-primary is a fixed indigo.
+describe("the colour settings' hints", () => {
+    // Drawn in the colour: DESIGN.md §2.1's tokens, the building blocks,
+    // which use them, or the older pages' shades that follow it.
+    const following = OLD_PAGE_SHADES.map(s => s.token.slice(2)).join("|")
     const takesBrand = (file: string) => {
         const src = stripComments(readFileSync(file, "utf8"))
-        return /var\(--brand(-hover|-press|-text|-tint|-tint-strong)?\)/.test(src) || /from ["']@\/components\/ui["']/.test(src)
+        return new RegExp(`var\\(--(brand(-hover|-press|-text|-tint|-tint-strong)?|${following})\\)`).test(src) || /from ["']@\/components\/ui["']/.test(src)
     }
     const places = [
         { file: "app/(auth)/login/page.tsx", en: "the sign-in page", ar: "صفحة تسجيل الدخول", hints: ["brand_colour_system_hint"] },

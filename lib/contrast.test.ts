@@ -136,7 +136,11 @@ describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
     }
 
     it("on the sidebar, dark in both themes, it is the light ring", () => {
-        const ring = CSS.match(/\.glass-dark \{[^}]*--focus-ring: (#[0-9a-fA-F]{6})/)?.[1]
+        // The side bar's own ring, which follows the brand colour (DESIGN.md
+        // §2.1). Nizmo's indigo gives this one; lib/brand-colour-old-pages.test.ts
+        // holds every other colour's to the same 3:1.
+        expect(CSS).toMatch(/\.glass-dark \{[^}]*--focus-ring: var\(--sidebar-ring\);/)
+        const ring = CSS.match(/^\s*--sidebar-ring: (#[0-9a-fA-F]{6});/m)?.[1]
         expect(ring).toBeDefined()
         // Against the sidebar's darkest ground (slate 900) and its lightest:
         // slate 900 at 65% over the light page (#eef2ff), which is #5d6475.
@@ -217,7 +221,8 @@ describe("the two themes are actually different", () => {
         // — the failure it exists to prevent.
         //
         // --sidebar-fg/-strong are invariant for exactly that reason: same
-        // sidebar, other end of the contrast. They exist because the nav links
+        // sidebar, other end of the contrast. So are --sidebar-ring, the focus
+        // ring on it, and --sidebar-accent, the end of the company name. They exist because the nav links
         // used --panel-* — a surface token — as their text colour, so the dark
         // palette dutifully gave the labels the sidebar's own colour and they
         // disappeared. A dark value here would restore that bug under a name
@@ -239,7 +244,7 @@ describe("the two themes are actually different", () => {
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
-            "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong",
+            "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong", "--sidebar-ring", "--sidebar-accent",
             "--paper", "--ink-on-paper",
             "--button-from", "--button-to",
             "--map-pin", "--map-ink", "--map-halo", "--map-shadow",

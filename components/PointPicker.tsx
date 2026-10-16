@@ -34,7 +34,10 @@ export default function PointPicker({ value, radius, onChange }: { value: string
     const box = useRef<HTMLDivElement>(null)
     const leaflet = useRef<{ L: typeof Leaflet; map: Leaflet.Map } | null>(null)
     const pin = useRef<Leaflet.Marker | null>(null)
-    const ring = useRef<Leaflet.Circle | null>(null)
+    // The radius ring, over a wider white one as the pin has a white border,
+    // so it shows on satellite imagery as well as the street map, whatever the
+    // brand colour (DESIGN.md §2.1). The white one first, so it lies underneath.
+    const rings = useRef<Leaflet.Circle[]>([])
     const latest = useRef({ value, onChange })
     useEffect(() => { latest.current = { value, onChange } })
     const alive = useRef(true)
@@ -120,7 +123,7 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             map?.remove()
             leaflet.current = null
             pin.current = null
-            ring.current = null
+            rings.current = []
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- drawn once per opening, in the language it opened in
     }, [mapOpen])
@@ -132,7 +135,7 @@ export default function PointPicker({ value, radius, onChange }: { value: string
         const p = parsePoint(value)
         if (!p) {
             pin.current?.remove(); pin.current = null
-            ring.current?.remove(); ring.current = null
+            rings.current.forEach(r => r.remove()); rings.current = []
             return
         }
         const at: [number, number] = [p.latitude, p.longitude]
@@ -147,9 +150,12 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             pin.current.on('dragend', () => { const ll = pin.current!.getLatLng(); put(ll.lat, ll.lng) })
         }
         if (radius > 0) {
-            if (ring.current) ring.current.setLatLng(at).setRadius(radius)
-            else ring.current = lf.L.circle(at, { radius, className: 'map-ring', weight: 2, fillOpacity: 0.12, interactive: false }).addTo(lf.map)
-        } else { ring.current?.remove(); ring.current = null }
+            if (rings.current.length) rings.current.forEach(r => r.setLatLng(at).setRadius(radius))
+            else rings.current = [
+                lf.L.circle(at, { radius, className: 'map-ring-halo', weight: 4, fill: false, interactive: false }).addTo(lf.map),
+                lf.L.circle(at, { radius, className: 'map-ring', weight: 2, fillOpacity: 0.12, interactive: false }).addTo(lf.map),
+            ]
+        } else { rings.current.forEach(r => r.remove()); rings.current = [] }
         // Typed or found somewhere off screen: bring it into view.
         if (!lf.map.getBounds().contains(at)) lf.map.setView(at, Math.max(lf.map.getZoom(), 16))
     }, [value, radius, drawn, t])

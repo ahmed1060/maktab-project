@@ -220,9 +220,251 @@ export function brandStyleSheet(picked: string | null | undefined): string {
     const kept = sheets.get(key)
     if (kept !== undefined) return kept
     const { light: l, dark: d } = brandTokens(key)
-    const decls = (t: BrandTokens) => Object.entries(t).map(([k, v]) => `${k}:${v}`).join(';')
-    const sheet = `html:root{${decls(l)}}html:root[data-theme="dark"]{${decls(d)}}`
+    // The older pages' shades too (DESIGN.md §2.1), which follow the colour
+    // until those pages move onto the building blocks.
+    const old = oldPageShades(key)
+    const decls = (t: Partial<Record<string, string>>) => Object.entries(t).map(([k, v]) => `${k}:${v}`).join(';')
+    const sheet = `html:root{${decls({ ...l, ...old.light })}}html:root[data-theme="dark"]{${decls({ ...d, ...old.dark })}}`
     if (sheets.size >= MAX_SHEETS) sheets.clear()
     sheets.set(key, sheet)
     return sheet
+}
+
+/* ── The older pages (DESIGN.md §2.1) ─────────────────────────────────────
+   The pages not yet on the building blocks, the side bar and the sign-in
+   page have their own look, drawn in Nizmo's indigo and a violet beside it.
+   Each of those shades follows the chosen colour: it keeps the distance it
+   has from Nizmo's indigo (the same turn of hue, the same share of
+   colourfulness, the same step lighter or darker, as the eye sees them),
+   measured from the chosen colour instead. Pale shades keep their own
+   lightness, so a ground stays a ground. Nizmo's indigo gives exactly the
+   shades in app/globals.css.
+
+   Then each keeps the readability it has today: never less than it has with
+   Nizmo's indigo, and never asked for more than WCAG's 4.5:1 for text or 3:1
+   for a ring or an edge. One that falls short is darkened (on a dark ground,
+   lightened) until it doesn't, keeping its hue. */
+
+/* Lightness, colourfulness and hue as the eye sees them (OKLCH), so a step
+   lighter is the same step for every hue. */
+type Lch = { l: number; c: number; h: number }
+
+const toLinear = (v: number) => { const s = v / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 }
+const fromLinear = (v: number) => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055)
+
+function toLch(c: string): Lch {
+    const [r, g, b] = rgb(c).map(toLinear)
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+    const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
+    const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
+    const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+    return { l: L, c: Math.hypot(A, B), h: (Math.atan2(B, A) * 180 / Math.PI + 360) % 360 }
+}
+
+/** Linear sRGB for a colour, which may be outside what a screen shows. */
+function linearOf({ l: L, c, h }: Lch): [number, number, number] {
+    const A = c * Math.cos(h * Math.PI / 180), B = c * Math.sin(h * Math.PI / 180)
+    const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3
+    const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3
+    const s = (L - 0.0894841775 * A - 1.2914855480 * B) ** 3
+    return [
+        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+    ]
+}
+
+/** Back to #rrggbb. A colour too vivid for a screen loses colourfulness, not hue. */
+function fromLch(lch: Lch): string {
+    const fits = (x: Lch) => linearOf(x).every(v => v >= -1e-6 && v <= 1 + 1e-6)
+    let c = lch.c
+    if (!fits(lch)) {
+        let lo = 0, hi = lch.c
+        for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (fits({ ...lch, c: mid })) lo = mid; else hi = mid }
+        c = lo
+    }
+    return hex(linearOf({ ...lch, c }).map(v => fromLinear(Math.min(1, Math.max(0, v)))) as Rgb)
+}
+
+/** `top` at `alpha` over `under`: what a see-through ground looks like. */
+function over(top: Rgb, alpha: number, under: string): string {
+    const u = rgb(under)
+    return hex([0, 1, 2].map(i => top[i] * alpha + u[i] * (1 - alpha)) as Rgb)
+}
+
+/** A shade at least this light keeps its lightness (a ground, a pale tint, light text on dark). */
+const PALE = 0.75
+
+/** The older pages' grounds (app/globals.css --surface, --surface-subtle, --surface-sunk). */
+const OLD_LIGHT = ['#ffffff', '#f8fafc', '#f1f5f9']
+const OLD_DARK = ['#161b22', '#1c2128', '#21262d', '#0b0f14']
+/** The side bar, dark in both themes (--sidebar-bg), over the page. */
+const SIDEBAR_LIGHT: Rgb = [15, 23, 42], SIDEBAR_LIGHT_ALPHA = 0.65
+const SIDEBAR_DARK: Rgb = [9, 12, 17], SIDEBAR_DARK_ALPHA = 0.78
+const OLD_DARK_PAGE = '#0b0f14'
+/** The map's tiles are light in both themes (components/PointPicker.tsx). */
+const MAP = ['#ffffff']
+
+/**
+ * What a shade is for, which sets what it's held to:
+ * - fill: white text sits on it, 4.5:1, at rest and on hover;
+ * - text: it's text on the grounds, 4.5:1;
+ * - edge: a focus ring, a highlight bar or a map pin, 3:1 against what's behind;
+ * - ground: the page's own colour, pale, held to nothing;
+ * - decor: a tint in a gradient, held to nothing.
+ */
+type Role = 'fill' | 'text' | 'edge' | 'ground' | 'decor'
+type Behind = 'pages' | 'sidebar' | 'map'
+
+/**
+ * The older pages' shades that follow the brand colour, with their values
+ * for Nizmo's indigo, as in app/globals.css. A shade with no dark value is
+ * the same in both themes. The info colours, the role badges' colours, the
+ * pink glow and the dark mesh behind the page don't follow: like the status
+ * colours, they mean something, or are only background.
+ */
+export const OLD_PAGE_SHADES = [
+    // First: text on the pages is held on its tints, so it's worked out before them.
+    { token: '--primary', light: '#6366f1', role: 'fill' },
+    { token: '--primary-hover', light: '#4f46e5', role: 'fill' },
+    { token: '--accent', light: '#8b5cf6', role: 'fill' },
+    { token: '--button-from', light: '#4f46e5', role: 'fill' },
+    { token: '--button-to', light: '#7c3aed', role: 'fill' },
+    { token: '--hero-from', light: '#4f46e5', role: 'fill' },
+    { token: '--hero-to', light: '#764ba2', role: 'fill' },
+    { token: '--accent-fill', light: '#942ff5', dark: '#9047ec', role: 'fill' },
+    { token: '--brand-primary-text', light: '#4f46e5', dark: '#a5b4fc', role: 'text' },
+    { token: '--link', light: '#4f46e5', dark: '#a5b4fc', role: 'text' },
+    { token: '--accent-solid-deep', light: '#7c3aed', dark: '#9457e0', role: 'text' },
+    { token: '--accent-deep', light: '#4338ca', dark: '#7c6ae0', role: 'text' },
+    { token: '--accent-deepest', light: '#3730a3', dark: '#b3a6f2', role: 'text' },
+    { token: '--focus-ring', light: '#4338ca', dark: '#a5b4fc', role: 'edge' },
+    // A highlight bar, and a link's colour too (an employee's history), so held as text.
+    { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'text' },
+    { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
+    { token: '--sidebar-ring', light: '#c7d2fe', role: 'edge', behind: 'sidebar' },
+    // The end of the company name's gradient, which starts from white: text on
+    // the side bar, the same in both themes.
+    { token: '--sidebar-accent', light: '#a5b4fc', role: 'text', behind: 'sidebar' },
+    { token: '--page-bg', light: '#eef2ff', lightOnly: true, role: 'ground' },
+] as const satisfies readonly { token: string; light: string; dark?: string; role: Role; behind?: Behind; lightOnly?: boolean }[]
+
+export type OldPageToken = (typeof OLD_PAGE_SHADES)[number]['token']
+
+/** Nizmo's indigo's --primary, the same in both themes. */
+const DEFAULT_PRIMARY = OLD_PAGE_SHADES[0].light
+
+/** The same distance from `picked` as `shade` is from Nizmo's indigo. */
+function follow(shade: string, picked: string): string {
+    const from = toLch(DEFAULT_BRAND), to = toLch(picked), s = toLch(shade)
+    return fromLch({
+        l: s.l >= PALE ? s.l : Math.min(1, Math.max(0, s.l + to.l - from.l)),
+        c: s.c * (to.c / from.c),
+        h: (s.h + to.h - from.h + 360) % 360,
+    })
+}
+
+/**
+ * The light brand tints text is drawn on: --primary at 10% and 20% over a
+ * panel (the payments history link, the pager's current page).
+ */
+const TEXT_TINTS = [0.10, 0.20]
+
+/**
+ * What a shade sits on, in a theme, with this brand's page colour. Text on
+ * the pages sits on the brand tints of this theme's --primary too.
+ */
+function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: string, primary?: string): string[] {
+    if (behind === 'map') return MAP
+    // The side bar's shades are the same in both themes, so each is held on
+    // the side bar as each theme draws it.
+    if (behind === 'sidebar') return [over(SIDEBAR_LIGHT, SIDEBAR_LIGHT_ALPHA, page), over(SIDEBAR_DARK, SIDEBAR_DARK_ALPHA, OLD_DARK_PAGE)]
+    const grounds = theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
+    const panel = grounds[0]
+    return primary ? [...grounds, ...TEXT_TINTS.map(share => mix(primary, panel, share))] : grounds
+}
+
+/** One contrast a shade is held to, and the most it's asked for there. */
+type Check = { of: (c: string) => number; aim: number }
+
+/** A filled button on hover: `.btn-primary:hover` brightens it 10% (app/globals.css). */
+const HOVER_BRIGHTNESS = 1.1
+const brightened = (c: string) => hex(rgb(c).map(v => v * HOVER_BRIGHTNESS) as Rgb)
+
+/**
+ * What a shade is held to, in its role: white text on a fill, at rest and
+ * brightened on hover, and in dark mode the fill against the dark page;
+ * text or an edge against each ground it's drawn on.
+ */
+function checksFor(role: Role, grounds: string[], theme: 'light' | 'dark' = 'light'): Check[] {
+    if (role === 'fill') return [
+        { of: c => contrast(WHITE, c), aim: TEXT },
+        { of: c => contrast(WHITE, brightened(c)), aim: TEXT },
+        // In dark mode a fill also has to stand out from the dark page.
+        ...(theme === 'dark' ? grounds.map(g => ({ of: (c: string) => contrast(c, g), aim: SHAPE })) : []),
+    ]
+    if (role === 'text' || role === 'edge') {
+        const aim = role === 'text' ? TEXT : SHAPE
+        return grounds.map(g => ({ of: c => contrast(c, g), aim }))
+    }
+    return []
+}
+
+/**
+ * Passes when `c` is, on each check, as readable as Nizmo's indigo's shade
+ * is today on the same check, or WCAG's aim, whichever is less.
+ */
+function holds(today: string, todays: Check[], checks: Check[]): (c: string) => boolean {
+    const need = todays.map(ch => Math.min(ch.aim, ch.of(today)))
+    return c => checks.every((ch, i) => ch.of(c) >= need[i])
+}
+
+/** Every older-page shade for `picked`, in each theme. */
+export function oldPageShades(picked: string | null | undefined): { light: Record<OldPageToken, string>; dark: Partial<Record<OldPageToken, string>> } {
+    const base = isBrandHex(picked) ? picked.toLowerCase() : DEFAULT_BRAND
+    const defaultPage = OLD_PAGE_SHADES.find(s => s.token === '--page-bg')!.light
+    const page = follow(defaultPage, base)
+    const light = {} as Record<OldPageToken, string>
+    const dark: Partial<Record<OldPageToken, string>> = {}
+    for (const shade of OLD_PAGE_SHADES) {
+        const role: Role = shade.role
+        const themes: ['light' | 'dark', string][] = [['light', shade.light]]
+        if ('dark' in shade) themes.push(['dark', shade.dark])
+        // A fill with no dark value of its own is today's light one on the
+        // dark page, and is held there too.
+        else if (role === 'fill') themes.push(['dark', shade.light])
+        for (const [theme, value] of themes) {
+            const behind = 'behind' in shade ? shade.behind : undefined
+            // Held to what it has with Nizmo's indigo, up to WCAG's aim.
+            // --primary comes first, so text can be held on its tints.
+            const tinted = role === 'text'
+            const todays = checksFor(role, groundsFor(behind, theme, defaultPage, tinted ? DEFAULT_PRIMARY : undefined), theme)
+            const checks = checksFor(role, groundsFor(behind, theme, page, tinted ? (theme === 'light' ? light : dark)['--primary'] : undefined), theme)
+            const ok = holds(value, todays, checks)
+            let c: string
+            if (role === 'fill' && theme === 'dark') {
+                // Darker until white text reads on it, then lighter until it
+                // stands out from the dark page, while white text still reads.
+                // Fine steps, each from the same start: the shades that do both
+                // can be a narrow band, which coarser steps jump over.
+                const white = holds(value, todays.slice(0, 2), checks.slice(0, 2))
+                const start = stepUntil('dark' in shade ? follow(value, base) : light[shade.token], white, darker)
+                c = start
+                for (let t = 0.005; t <= 1 && !ok(c); t += 0.005) {
+                    const next = mix(WHITE, start, t)
+                    if (!white(next)) break
+                    c = next
+                }
+            } else {
+                // Darker on a light ground or under white text; lighter on a dark one.
+                const towardsLight = role !== 'fill' && (theme === 'dark' || behind === 'sidebar')
+                c = stepUntil(follow(value, base), ok, towardsLight ? lighter : darker)
+            }
+            if (theme === 'light') light[shade.token] = c
+            else dark[shade.token] = c
+        }
+    }
+    return { light, dark }
 }

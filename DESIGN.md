@@ -81,6 +81,46 @@ below, which are all worked out from the one chosen colour.
 - **Who sees which colour:** a company's people see its colour, or the
   default if it hasn't chosen one. The sign-in page and the Super Admin's
   pages use the default.
+- **The pages not yet in this design follow the colour too:** the older
+  pages, the side bar and the sign-in page (`UI_PLAN.md` §4.6). They keep
+  their own look, which is drawn in Nizmo's indigo with a violet beside it:
+  - each of those shades keeps the distance it has from Nizmo's indigo,
+    measured from the chosen colour instead. That's the same turn of hue,
+    the same share of colourfulness and the same step lighter or darker,
+    as the eye sees them (OKLCH). Pale shades keep their own lightness, so
+    the page's ground stays pale and light text on dark stays light;
+  - so Nizmo's indigo gives exactly the colours these pages have today,
+    and another colour gives the same family in its own hue: teal beside a
+    blue-teal, orange beside amber;
+  - each shade then keeps the readability it has today against each thing
+    it's drawn on or under. It's never asked for more than WCAG's 4.5:1
+    for text or 3:1 for a shape:
+    - white text on a fill reads as well as it does with Nizmo's indigo,
+      at rest and when a button brightens on hover;
+    - in dark mode, a fill stands out from the dark page as well as it
+      does now;
+    - text reads as well on each ground it's drawn on as it does now,
+      including the light brand tints behind it. A highlight colour that
+      is also a link's colour is held as text;
+    - a focus ring, a highlight bar or the map pin stands out as well as
+      it does now, and so does the end of the company name's gradient in
+      the side bar.
+
+    A shade that falls short is darkened (on a dark ground, lightened)
+    until it doesn't, keeping its hue;
+  - the check-in place's radius ring on the map has a thin white outline,
+    as its pin does, so it shows over satellite imagery as well as the
+    light street map, whatever the colour;
+  - the company name at the top of the side bar runs from white to a pale
+    shade of the brand, in both themes, since the side bar is dark in
+    both. It used to start from the page's panel colour, so in dark mode
+    it began dark on the dark side bar and was barely readable;
+  - the info colours, the role badges' colours, the pink glow and the
+    dark mesh behind the page don't follow. Like the status
+    colours (§2.3), they mean something, or are only background.
+
+  This lasts until each page moves onto the building blocks, which use the
+  tokens above.
 
 ### 2.2 Neutrals
 
@@ -631,3 +671,20 @@ changed:
 - **2026-10-16:** The brand colour setting (§2.1, `UI_PLAN.md` §4.6): the
   colour choice field (§5.3), the warning for a colour close to the error
   red, and who sees which colour.
+- **2026-10-16:** At the product owner's choice, the older pages, the side
+  bar and the sign-in page follow the brand colour too (§2.1): each of
+  their indigo and violet shades keeps its distance from Nizmo's indigo,
+  measured from the chosen colour, and keeps the readability it has today.
+  Nizmo's indigo gives exactly the colours they have now.
+- **2026-10-16:** From Codex's review of #81 (§2.1): the older pages'
+  shades are held to today's readability in five more places. These are
+  white text on a button brightened on hover, a fill against the dark page,
+  text on the light brand tints, a highlight colour that is also a link,
+  and the company name's gradient in the side bar.
+- **2026-10-16:** At the product owner's choice, the company name at the
+  top of the side bar runs from white to a pale shade of the brand in both
+  themes (§2.1). In dark mode it used to run from the dark panel colour to
+  a dark indigo, on the dark side bar, and was barely readable.
+- **2026-10-16:** From Codex's review of #81: the check-in place's radius
+  ring on the map has a thin white outline, as its pin does (§2.1). The map
+  can show satellite imagery, where a dark colour's ring disappeared.
