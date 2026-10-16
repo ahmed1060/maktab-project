@@ -7,34 +7,57 @@ import { DEFAULT_BRAND, isBrandHex } from "@/lib/brand-colour"
  *
  * A company's people see its colour, or the system's default if it has none.
  * The sign-in page, which has nobody signed in, and the Super Admin's pages
- * use the default. Read for each request, like the "Powered by" mark, so a
- * change shows on the next page anybody opens.
+ * use the default.
+ *
+ * Drawn in two places, because Next.js doesn't draw the root layout again
+ * when the app moves to another page without a reload:
+ * - the root layout draws the default, which is the same for everyone, so
+ *   it's right whoever is signed in by then;
+ * - the dashboard layout draws a company's own colour over it. Moving
+ *   between the sign-in page and the dashboard draws that layout afresh, so
+ *   signing out leaves the company's colour behind and signing in brings it.
+ *
+ * Both are read when the page is drawn. Whoever saves a colour sees it at
+ * once (the settings card asks for the page again); everyone else sees it
+ * the next time they open or reload a page, or sign in.
  */
 
 type Viewer = { role?: string | null; companyId?: string | null }
 
-/** Which stored colour this viewer sees. Nizmo's indigo if neither is usable. */
-export function colourFor(viewer: Viewer | null | undefined, companyColour: string | null | undefined, systemColour: string | null | undefined): string {
+/** The company's own colour this viewer sees, or null for the default. */
+export function ownColour(viewer: Viewer | null | undefined, companyColour: string | null | undefined): string | null {
     const own = viewer && viewer.role !== "SUPER_ADMIN" && viewer.companyId ? companyColour : null
-    if (isBrandHex(own)) return own
+    return isBrandHex(own) ? own : null
+}
+
+/** The stored default, or Nizmo's indigo if it isn't usable. */
+export function usableDefault(systemColour: string | null | undefined): string {
     return isBrandHex(systemColour) ? systemColour : DEFAULT_BRAND
 }
 
 /**
- * The colour for the page being rendered. Never throws: a page that can't
- * read the setting opens in Nizmo's indigo rather than not at all.
+ * The default, for the root layout. Never throws: a page that can't read the
+ * setting opens in Nizmo's indigo rather than not at all.
  */
-export async function pageBrandColour(viewer: Viewer | null | undefined): Promise<string> {
+export async function defaultBrandColour(): Promise<string> {
     try {
-        const companyId = viewer && viewer.role !== "SUPER_ADMIN" ? viewer.companyId : null
-        const company = companyId
-            ? await prisma.company.findUnique({ where: { id: companyId }, select: { brandColour: true } })
-            : null
-        // The default is only needed when the company hasn't chosen one.
-        if (isBrandHex(company?.brandColour)) return colourFor(viewer, company.brandColour, null)
-        const { brandColour } = await SystemSettingsService.get()
-        return colourFor(viewer, null, brandColour)
+        return usableDefault((await SystemSettingsService.get()).brandColour)
     } catch {
         return DEFAULT_BRAND
+    }
+}
+
+/**
+ * The viewer's company's own colour, for the dashboard layout, or null when
+ * the default applies. Never throws: null leaves the page in the default.
+ */
+export async function companyBrandColour(viewer: Viewer | null | undefined): Promise<string | null> {
+    const companyId = viewer && viewer.role !== "SUPER_ADMIN" ? viewer.companyId : null
+    if (!companyId) return null
+    try {
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { brandColour: true } })
+        return ownColour(viewer, company?.brandColour)
+    } catch {
+        return null
     }
 }

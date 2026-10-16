@@ -10,6 +10,8 @@ import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
 import { CompanyBrandingProvider } from "@/context/CompanyBrandingContext"
 import { visibleSettingsTabs } from "@/lib/company-settings-access"
 import { cookies } from "next/headers"
+import { brandStyleSheet } from "@/lib/brand-colour"
+import { companyBrandColour } from "@/lib/page-brand-colour"
 
 import { Suspense } from "react"
 import DashboardErrorBoundary from "@/components/DashboardErrorBoundary"
@@ -62,7 +64,18 @@ export default async function DashboardLayout({
     const exposure = user.role !== 'SUPER_ADMIN' && user.companyId ? await CompanyService.settingsExposure(user.companyId) : null
     const showCompanySettings = !!exposure && visibleSettingsTabs(user, exposure).length > 0
 
+    // The company's own brand colour, for its people (UI_PLAN.md §4.6). Drawn
+    // here rather than in the root layout, which isn't drawn again when the
+    // app moves to another page: moving between the sign-in page and the
+    // dashboard draws this layout afresh, so signing out leaves the colour
+    // behind and signing in brings it. Null leaves the root layout's default.
+    const ownBrand = await companyBrandColour(user)
+
     return (
+        <>
+        {/* After the root layout's default in the page, so it wins; and before
+            the shell, so the shell opens in it. */}
+        {ownBrand && <style id="company-brand-colour" dangerouslySetInnerHTML={{ __html: brandStyleSheet(ownBrand) }} />}
         <CompanyBrandingProvider value={scopedBranding}>
         {/* Who is looking, grants included, for every screen's useCan() on
             its first paint — before the session hook has loaded. */}
@@ -77,5 +90,6 @@ export default async function DashboardLayout({
         </DashboardShell>
         </ViewerProvider>
         </CompanyBrandingProvider>
+        </>
     )
 }

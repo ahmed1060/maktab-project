@@ -19,7 +19,9 @@ import type { TranslationKey } from '@/lib/translations'
  * (DESIGN.md §2.1, §5.3).
  *
  * After a save the page is fetched again, so it takes the colour at once for
- * whoever sees it here; everyone else sees it on the next page they open.
+ * whoever sees it here. Everyone else sees it the next time they open or
+ * reload a page, or sign in: moving to another page inside the app doesn't
+ * draw the layouts that hold it again (lib/page-brand-colour.ts).
  */
 export default function BrandColourCard({ saved, defaultColour, hint, onSave, readOnly = false }: {
     /** What's stored: a company's colour or null for the default, or the default itself. */

@@ -5,7 +5,7 @@ import { updateCompanySchema } from "./validations/company.schema"
 import { updateSystemSettingsSchema } from "./validations/system-settings.schema"
 import { settingsTab } from "./company-settings-tabs"
 import { maySetField } from "./company-settings-access"
-import { colourFor } from "./page-brand-colour"
+import { ownColour, usableDefault } from "./page-brand-colour"
 import { BRAND_PRESETS, DEFAULT_BRAND } from "./brand-colour"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
@@ -61,25 +61,44 @@ describe("the colour a page opens in", () => {
     const system = "#0d9488"
 
     it("is the company's own for its people, or the default if it has none", () => {
-        expect(colourFor({ role: "EMPLOYEE", companyId: "c1" }, "#2563eb", system)).toBe("#2563eb")
-        expect(colourFor({ role: "ADMIN", companyId: "c1" }, null, system)).toBe(system)
+        expect(ownColour({ role: "EMPLOYEE", companyId: "c1" }, "#2563eb")).toBe("#2563eb")
+        expect(ownColour({ role: "ADMIN", companyId: "c1" }, null)).toBeNull()
+        expect(usableDefault(system)).toBe(system)
     })
 
     it("is the default on the sign-in page and the Super Admin's pages", () => {
-        expect(colourFor(null, "#2563eb", system)).toBe(system)
-        expect(colourFor({ role: "SUPER_ADMIN", companyId: null }, "#2563eb", system)).toBe(system)
+        expect(ownColour(null, "#2563eb")).toBeNull()
+        expect(ownColour({ role: "SUPER_ADMIN", companyId: null }, "#2563eb")).toBeNull()
+        expect(ownColour({ role: "SUPER_ADMIN", companyId: "c1" }, "#2563eb")).toBeNull()
     })
 
     it("is Nizmo's indigo if nothing usable is stored", () => {
-        expect(colourFor(null, null, null)).toBe(DEFAULT_BRAND)
-        expect(colourFor({ role: "EMPLOYEE", companyId: "c1" }, "not a colour", "nor this")).toBe(DEFAULT_BRAND)
+        expect(usableDefault(null)).toBe(DEFAULT_BRAND)
+        expect(usableDefault("nor this")).toBe(DEFAULT_BRAND)
+        expect(ownColour({ role: "EMPLOYEE", companyId: "c1" }, "not a colour")).toBeNull()
     })
 
-    it("is put in the page by the root layout, read for each request", () => {
+    // Next.js doesn't draw the root layout again when the app moves to
+    // another page without a reload. Signing out from the account menu moves
+    // to the sign-in page that way, so a viewer's colour drawn there stayed
+    // on the sign-in page after they'd gone.
+    it("puts the default in every page from the root layout, the same whoever is signed in", () => {
         const layout = stripComments(readFileSync("app/layout.tsx", "utf8"))
-        expect(layout).toContain("const brand = await pageBrandColour(session?.user)")
-        expect(layout).toContain("brandStyleSheet(brand)")
-        expect(layout).not.toContain("brandStyleSheet(null)")
+        expect(layout).toContain("const brand = await defaultBrandColour()")
+        expect(layout).toContain('<style id="brand-colour" dangerouslySetInnerHTML={{ __html: brandStyleSheet(brand) }} />')
+        expect(layout).not.toContain("getServerSession")
+        expect(layout).not.toContain("companyBrandColour")
+    })
+
+    it("puts a company's own over it from the dashboard layout, drawn afresh on signing in or out", () => {
+        const layout = stripComments(readFileSync("app/(dashboard)/layout.tsx", "utf8"))
+        expect(layout).toContain("const ownBrand = await companyBrandColour(user)")
+        const style = layout.indexOf('{ownBrand && <style id="company-brand-colour" dangerouslySetInnerHTML={{ __html: brandStyleSheet(ownBrand) }} />}')
+        expect(style).toBeGreaterThan(-1)
+        // Before the shell, so the shell opens in it.
+        expect(style).toBeLessThan(layout.indexOf("<DashboardShell"))
+        // The sign-in pages draw none, so the default shows once the dashboard's is gone.
+        expect(readFileSync("app/(auth)/layout.tsx", "utf8")).not.toContain("brandStyleSheet")
     })
 })
 
