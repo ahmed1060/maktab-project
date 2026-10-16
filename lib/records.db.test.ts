@@ -21,7 +21,11 @@ const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.
 
 const BUCKET = "https://abc.supabase.co/storage/v1/object/public/app-assets"
 const removed: string[] = []
-vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ remove: async (paths: string[]) => { removed.push(...paths); return {} } }) } } }))
+// Storage answers a refused removal with an error, rather than throwing.
+let refuseRemoval = false
+vi.mock("@/lib/storage", () => ({
+    supabase: { storage: { from: () => ({ remove: async (paths: string[]) => (refuseRemoval ? { data: null, error: { message: "Forbidden" } } : (removed.push(...paths), { data: [], error: null })) }) } },
+}))
 
 const PEOPLE = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -408,6 +412,19 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 expect(audit.details).toMatchObject({ files: 1, contentPreview: "Permit, scanned" })
             } finally {
                 await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
+            }
+        })
+
+        it("says so when storage refuses to remove a record's files", async () => {
+            const id = (await Records.create(admin, { content: "Stamp", files: [file("c1", "stamp.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+            refuseRemoval = true
+            try {
+                await Records.delete(admin, id)
+                expect(logged).toHaveBeenCalledWith("Failed to delete record files from storage:", { message: "Forbidden" })
+            } finally {
+                refuseRemoval = false
+                logged.mockRestore()
             }
         })
 

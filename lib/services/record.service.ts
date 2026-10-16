@@ -130,7 +130,10 @@ async function removeFiles(files: readonly RecordFile[], companyId: string) {
         const others = await prisma.clientRecord.findMany({ where: { OR: names.map(name => ({ attachment: { contains: name } })) }, select: { attachment: true } })
         const stillUsed = new Set(others.flatMap(r => parseRecordFiles(r.attachment).map(f => ownFilePath(f.url, companyId))))
         const paths = unique.filter(p => !stillUsed.has(p))
-        if (paths.length) await supabase.storage.from("app-assets").remove(paths)
+        if (!paths.length) return
+        // A refused removal comes back as an error, not thrown.
+        const { error } = await supabase.storage.from("app-assets").remove(paths)
+        if (error) throw error
     } catch (error) {
         console.error("Failed to delete record files from storage:", error)
     }
