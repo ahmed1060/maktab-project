@@ -304,10 +304,17 @@ export class RecordService {
 
         return prisma.$transaction(async tx => {
             const { AuditLogService } = await import("./audit-log.service")
-            let sectionId = section?.id
-            if (!sectionId) {
+            let sectionId: string
+            if (section) {
+                sectionId = section.id
+                // Holds the client while the record is written, so it isn't
+                // deleted meanwhile with the record in it (VendorService.delete).
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR SHARE`
+                if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+            } else {
                 // One at a time per client, so two people naming the same new
                 // section at once start it once: the second finds the first's.
+                // It holds the client from being deleted meanwhile too.
                 const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.vendorId!} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("VENDOR_NOT_FOUND")
                 // A section of that name already there is the one meant.

@@ -251,5 +251,32 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 await db.query(`DROP TRIGGER test_slow ON "ClientSection"; DROP FUNCTION test_slow()`)
             }
         })
+
+        it("won't delete a client while a record is being added to it", async () => {
+            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v4', 'c1', 'Delta', 'Nour', '0103', 'Suez', now())`)
+            const section = (await Records.createSection(admin, { vendorId: "v4", title: "Licences" })).id
+            // The record is written and its transaction takes a moment to finish, as someone deletes the client.
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow AFTER INSERT ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Trade licence') EXECUTE FUNCTION test_slow()`)
+            try {
+                const adding = Records.create(admin, { content: "Trade licence", files: [], expiryDate: null, reminderDays: null, sectionId: section })
+                await new Promise(r => setTimeout(r, 150))
+                const deleting = Vendors.delete("v4", admin)
+                const [added, deleted] = await Promise.allSettled([adding, deleting])
+                expect(added.status).toBe("fulfilled")
+                expect(deleted).toMatchObject({ status: "rejected", reason: { message: "VENDOR_HAS_RECORDS" } })
+                expect((await db.query(`SELECT count(*)::int AS n FROM "ClientNote" WHERE "sectionId" = $1`, [section])).rows[0].n).toBe(1)
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
+            }
+        })
+
+        it("won't add a record to a client deleted meanwhile", async () => {
+            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
+            const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id
+            await db.query(`DELETE FROM "Vendor" WHERE id = 'v5'`)
+            await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, sectionId: section })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
+            await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, vendorId: "v5", sectionTitle: "New" })).rejects.toThrow("VENDOR_NOT_FOUND")
+        })
     })
 })

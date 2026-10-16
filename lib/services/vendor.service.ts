@@ -85,24 +85,31 @@ export class VendorService {
             throw new Error("FORBIDDEN")
         }
 
-        // Its records would go with it (CLIENTS_PLAN.md §0.2): licences,
-        // contracts and their files. Nobody loses those by deleting the
-        // business; they're deleted on its page first, one by one.
-        const records = await prisma.clientRecord.count({ where: { section: { vendorId: id } } })
-        if (records > 0) throw new Error("VENDOR_HAS_RECORDS")
-
-        // Tasks that used this vendor keep their copied location text —
-        // Task.vendorId just SetNulls (see the migration comment), no
-        // historical data loss.
-        const result = await prisma.vendor.delete({ where: { id } })
-
         const { AuditLogService } = await import("./audit-log.service")
-        await AuditLogService.log('DELETE_VENDOR', 'VENDOR', id, {
-            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-            details: { name: vendor.name }
-        })
+        return prisma.$transaction(async tx => {
+            // Its records would go with it (CLIENTS_PLAN.md §0.2): licences,
+            // contracts and their files. Nobody loses those by deleting the
+            // business; they're deleted on its page first, one by one. Its
+            // row is held first, so a record being added meanwhile
+            // (RecordService.create) is counted, or finds the client gone.
+            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${id} FOR UPDATE`
+            if (!locked.length) throw new Error("VENDOR_NOT_FOUND")
+            const records = await tx.clientRecord.count({ where: { section: { vendorId: id } } })
+            if (records > 0) throw new Error("VENDOR_HAS_RECORDS")
 
-        return result
+            // Tasks that used this vendor keep their copied location text —
+            // Task.vendorId just SetNulls (see the migration comment), no
+            // historical data loss.
+            const result = await tx.vendor.delete({ where: { id } })
+
+            await AuditLogService.log('DELETE_VENDOR', 'VENDOR', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: { name: vendor.name }
+            })
+
+            return result
+        })
     }
 }
