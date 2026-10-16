@@ -25,6 +25,7 @@ const removed: string[] = []
 let refuseRemoval = false
 vi.mock("@/lib/storage", () => ({
     supabase: { storage: { from: () => ({ remove: async (paths: string[]) => (refuseRemoval ? { data: null, error: { message: "Forbidden" } } : (removed.push(...paths), { data: [], error: null })) }) } },
+    uploadToCloud: async () => { throw new Error("no uploads here") },
 }))
 
 const PEOPLE = `
@@ -426,6 +427,17 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 refuseRemoval = false
                 logged.mockRestore()
             }
+        })
+
+        it("removes a deleted company's records' files", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c3', 'Three', now())`)
+            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v6', 'c3', 'Zeta', 'Rana', '0105', 'Aswan', now())`)
+            await Records.create(superAdmin, { content: "Zeta licence", files: [file("c3", "zeta.pdf")], expiryDate: null, reminderDays: null, vendorId: "v6", sectionTitle: "Licences" })
+            removed.length = 0
+            const { CompanyService } = await import("@/lib/services/company.service")
+            await CompanyService.delete("c3", { user: { ...superAdmin.user, mfaEnabled: true, stepUpAt: Date.now() } })
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Company" WHERE id = 'c3'`)).rows[0].n).toBe(0)
+            expect(removed).toEqual(["c3/records/zeta.pdf"])
         })
 
         it("won't add a record to a client deleted meanwhile", async () => {

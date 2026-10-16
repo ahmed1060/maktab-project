@@ -448,6 +448,21 @@ export class RecordService {
     }
 
     /**
+     * Every file of a company's records, read inside the transaction that
+     * deletes the company with them (CompanyService.delete), to remove once
+     * it's done.
+     */
+    static async filesOfCompany(tx: Prisma.TransactionClient, companyId: string) {
+        const rows = await tx.clientRecord.findMany({ where: { attachment: { not: null }, section: { vendor: { companyId } } }, select: { attachment: true } })
+        return rows.flatMap(r => parseRecordFiles(r.attachment))
+    }
+
+    /** Removes files no record has any more, as once their company is deleted. Best effort, like every removal here. */
+    static async removeUnused(files: readonly RecordFile[], companyId: string) {
+        await removeFiles(files, companyId)
+    }
+
+    /**
      * Files the person uploaded for a record that was never saved with them,
      * as when its form is closed or a save fails and they give up: removed
      * again. Only records' files in their own company's folder, or a Super
