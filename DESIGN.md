@@ -92,12 +92,22 @@ below, which are all worked out from the one chosen colour.
   - so Nizmo's indigo gives exactly the colours these pages have today,
     and another colour gives the same family in its own hue: teal beside a
     blue-teal, orange beside amber;
-  - each shade then keeps the readability it has today. White text on a
-    fill, and text on the page, read as well as they do with Nizmo's
-    indigo, up to 4.5:1; a focus ring, a highlight bar or a map pin stands
-    out as well as it does now, up to 3:1. A shade that falls short is
-    darkened (on a dark ground, lightened) until it doesn't, keeping its
-    hue;
+  - each shade then keeps the readability it has today against each thing
+    it's drawn on or under. It's never asked for more than WCAG's 4.5:1
+    for text or 3:1 for a shape:
+    - white text on a fill reads as well as it does with Nizmo's indigo,
+      at rest and when a button brightens on hover;
+    - in dark mode, a fill stands out from the dark page as well as it
+      does now;
+    - text reads as well on each ground it's drawn on as it does now,
+      including the light brand tints behind it. A highlight colour that
+      is also a link's colour is held as text;
+    - a focus ring, a highlight bar or the map pin stands out as well as
+      it does now, and so does the end of the company name's gradient in
+      the side bar.
+
+    A shade that falls short is darkened (on a dark ground, lightened)
+    until it doesn't, keeping its hue;
   - the info colours, the role badges' colours, the pink glow and the
     dark mesh behind the page don't follow. Like the status
     colours (§2.3), they mean something, or are only background.
@@ -659,3 +669,8 @@ changed:
   their indigo and violet shades keeps its distance from Nizmo's indigo,
   measured from the chosen colour, and keeps the readability it has today.
   Nizmo's indigo gives exactly the colours they have now.
+- **2026-10-16:** From Codex's review of #81 (§2.1): the older pages'
+  shades are held to today's readability in five more places. These are
+  white text on a button brightened on hover, a fill against the dark page,
+  text on the light brand tints, a highlight colour that is also a link,
+  and the company name's gradient in the side bar.
