@@ -10,6 +10,9 @@ import { en } from '@/lib/translations/en'
 import { ar } from '@/lib/translations/ar'
 import { parseTheme, themeAttribute, THEME_COOKIE } from '@/lib/theme'
 import { brandStyleSheet } from '@/lib/brand-colour'
+import { pageBrandColour } from '@/lib/page-brand-colour'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import NavigationProgress from '@/components/NavigationProgress'
 import { Suspense } from 'react'
 
@@ -60,13 +63,19 @@ export default async function RootLayout({
   // the server/client boundary as serialized data.
   const initialDict = initialLocale === 'ar' ? ar : en
 
+  // The brand colour this viewer sees (UI_PLAN.md §4.6): their company's, or
+  // the default for the sign-in page and the Super Admin. Here, server-side,
+  // for the same reason as the theme: so the page never opens in another
+  // colour first.
+  const session = await getServerSession(authOptions).catch(() => null)
+  const brand = await pageBrandColour(session?.user)
+
   return (
     <html lang={initialLocale} dir={dir} data-theme={themeAttr} className={`${outfit.variable} ${inter.variable} ${notoArabic.variable}`}>
       <head>
         {/* The brand colour's shades (DESIGN.md §2.1), in the page before it's
-            sent so it never opens in another colour first. The default
-            indigo until the colour setting arrives (UI_PLAN.md §4.6). */}
-        <style id="brand-colour" dangerouslySetInnerHTML={{ __html: brandStyleSheet(null) }} />
+            sent so it never opens in another colour first. */}
+        <style id="brand-colour" dangerouslySetInnerHTML={{ __html: brandStyleSheet(brand) }} />
       </head>
       <body>
         <Providers initialLocale={initialLocale} initialDict={initialDict} initialTheme={theme} themeChosen={cookieStore.has(THEME_COOKIE)}>{children}</Providers>

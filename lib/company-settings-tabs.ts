@@ -29,8 +29,9 @@ export type CompanySettingsTab = {
 export const COMPANY_SETTINGS_TABS = [
     { key: "general", labelKey: "settings_tab_general", adminEligible: true, fields: ["autoVerifyLocation"] },
     // The logo has its own endpoint (app/api/companies/logo), which asks the
-    // same question of this entry.
-    { key: "branding", labelKey: "settings_tab_branding", adminEligible: true, fields: [] },
+    // same question of this entry. The brand colour is saved here
+    // (UI_PLAN.md §4.6), so it follows the logo's rule.
+    { key: "branding", labelKey: "settings_tab_branding", adminEligible: true, fields: ["brandColour"] },
     {
         key: "payroll", labelKey: "settings_tab_payroll", adminEligible: true,
         fields: ["payrollDay", "payslipsVisible", "timezone", "debtRecoveryPercent"],

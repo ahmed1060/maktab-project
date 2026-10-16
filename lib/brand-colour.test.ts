@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { brandStyleSheet, brandTokens, contrast, DEFAULT_BRAND, isBrandHex, type BrandTokens } from "@/lib/brand-colour"
+import { BRAND_PRESETS, brandStyleSheet, brandTokens, contrast, DEFAULT_BRAND, isBrandHex, nearErrorRed, readBrandHex, type BrandTokens } from "@/lib/brand-colour"
 
 /**
  * The brand colour is a setting (UI_PLAN.md §4.6), so it can be any colour
@@ -121,5 +121,33 @@ describe("the stylesheet's default", () => {
     it.each([["light", ":root {"], ["dark", ':root[data-theme="dark"] {']] as const)("%s matches the default indigo's shades", (theme, selector) => {
         expect(start).toBeGreaterThan(0)
         expect(read(selector)).toEqual(expected[theme] as BrandTokens)
+    })
+})
+
+// The setting itself (UI_PLAN.md §4.6, DESIGN.md §2.1 and §5.3).
+describe("choosing a brand colour", () => {
+    it("reads a typed code, with or without #, short or long, in any case", () => {
+        expect(readBrandHex("#2563EB")).toBe("#2563eb")
+        expect(readBrandHex("2563eb")).toBe("#2563eb")
+        expect(readBrandHex(" #abc ")).toBe("#aabbcc")
+        for (const bad of ["", "#12345", "#1234567", "blue", "#gg0000", "rgb(0,0,0)", null, undefined, 42]) expect(readBrandHex(bad as any)).toBeNull()
+    })
+
+    it("offers a few ready-made colours, the default first, none close to the error red", () => {
+        expect(BRAND_PRESETS[0]).toEqual({ key: "indigo", hex: DEFAULT_BRAND })
+        expect(BRAND_PRESETS.length).toBeGreaterThanOrEqual(6)
+        for (const p of BRAND_PRESETS) {
+            expect(isBrandHex(p.hex)).toBe(true)
+            expect(p.hex).toBe(p.hex.toLowerCase())
+            expect(nearErrorRed(p.hex)).toBe(false)
+        }
+        expect(new Set(BRAND_PRESETS.map(p => p.key)).size).toBe(BRAND_PRESETS.length)
+    })
+
+    it("warns of a colour close to the error red, not of one merely warm or greyish", () => {
+        // The error red itself, and reds and pinks within 20° of its hue.
+        for (const red of ["#e11d48", "#b3093c", "#dc2626", "#ef4444", "#be123c", "#f43f5e"]) expect(nearErrorRed(red)).toBe(true)
+        // Orange, purple, brown-grey and a grey with a red cast are not.
+        for (const other of ["#ea580c", "#9333ea", "#78716c", "#8a7f80", DEFAULT_BRAND, "#2563eb"]) expect(nearErrorRed(other)).toBe(false)
     })
 })

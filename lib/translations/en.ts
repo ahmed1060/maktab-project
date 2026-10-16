@@ -2659,6 +2659,7 @@ export const en = {
         audit_field_locationLink: "Location link",
         audit_field_locationName: "Location name",
         audit_field_locationVerifyRadiusMeters: "Location check radius (m)",
+        audit_field_brandColour: "Brand colour",
         audit_field_logoUrl: "Logo",
         audit_field_maintenanceMessage: "Maintenance message",
         audit_field_maintenanceMode: "Maintenance mode",

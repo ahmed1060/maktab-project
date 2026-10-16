@@ -3,6 +3,7 @@ import { MAX_MODULE_LABEL_LENGTH, isModuleKey, isValidModuleIcon } from "@/lib/m
 import { MAX_PAYROLL_DAY } from "@/lib/payday"
 import { checkTimeZone } from "@/lib/timezone"
 import { ELIGIBLE_SETTINGS_TABS } from "@/lib/company-settings-access"
+import { brandColourSchema } from "./brand-colour.schema"
 
 // Mirrors the TrialPreset database enum. Declared here rather than imported
 // from @prisma/client so this module stays usable anywhere, including the
@@ -93,6 +94,10 @@ export const updateCompanySchema = z.object({
             }
         })
         .optional(),
+
+    // The company's own brand colour (UI_PLAN.md §4.6); null goes back to
+    // the system's default.
+    brandColour: brandColourSchema.nullable().optional(),
 
     // Which of its settings the company's own people see (ATTENDANCE_PLAN.md
     // §5.2). Only tabs that may ever be shown: the rest are the Super Admin's.

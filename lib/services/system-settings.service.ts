@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { DEFAULT_TIME_ZONE } from "@/lib/time"
+import { DEFAULT_BRAND } from "@/lib/brand-colour"
 
 // Single-row table (see prisma/schema.prisma's SystemSettings model) —
 // this service is the one place that ever reads or writes it, so the
@@ -21,10 +22,10 @@ export class SystemSettingsService {
      */
     static async get() {
         const settings = await prisma.systemSettings.findUnique({ where: { id: SETTINGS_ID } })
-        return settings || { id: SETTINGS_ID, locationVerifyRadiusMeters: 70, maintenanceMode: false, maintenanceMessage: null, showPoweredBy: true, poweredByName: DEFAULT_POWERED_BY_NAME, defaultTimezone: DEFAULT_TIME_ZONE, stepUpMinutes: 60, updatedAt: new Date() }
+        return settings || { id: SETTINGS_ID, locationVerifyRadiusMeters: 70, maintenanceMode: false, maintenanceMessage: null, showPoweredBy: true, poweredByName: DEFAULT_POWERED_BY_NAME, defaultTimezone: DEFAULT_TIME_ZONE, stepUpMinutes: 60, brandColour: DEFAULT_BRAND, updatedAt: new Date() }
     }
 
-    static async update(data: { locationVerifyRadiusMeters?: number, maintenanceMode?: boolean, maintenanceMessage?: string | null, showPoweredBy?: boolean, poweredByName?: string, defaultTimezone?: string, stepUpMinutes?: number }) {
+    static async update(data: { locationVerifyRadiusMeters?: number, maintenanceMode?: boolean, maintenanceMessage?: string | null, showPoweredBy?: boolean, poweredByName?: string, defaultTimezone?: string, stepUpMinutes?: number, brandColour?: string }) {
         return prisma.systemSettings.upsert({
             where: { id: SETTINGS_ID },
             update: data,

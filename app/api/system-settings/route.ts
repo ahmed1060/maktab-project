@@ -1,34 +1,10 @@
-import { z } from "zod"
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
-import { checkTimeZone } from "@/lib/timezone"
+import { updateSystemSettingsSchema } from "@/lib/validations/system-settings.schema"
 import { RealtimeBroadcastService } from "@/lib/services/realtime-broadcast.service"
 
-const updateSystemSettingsSchema = z.object({
-    locationVerifyRadiusMeters: z.number().int().min(1).max(10000).optional(),
-    maintenanceMode: z.boolean().optional(),
-    maintenanceMessage: z.string().max(500).nullable().optional(),
-    showPoweredBy: z.boolean().optional(),
-    poweredByName: z.string().max(40).optional(),
-    // The calendar zone for anybody with no company — a Super Admin, mostly.
-    // Same validation as a company's own zone, and for the same reason: the
-    // crons are global, so a zone far behind UTC cannot be served correctly and
-    // should be refused where somebody can read why.
-    defaultTimezone: z
-        .string()
-        .min(1)
-        .superRefine((zone, ctx) => {
-            const verdict = checkTimeZone(zone)
-            if (!verdict.ok) {
-                ctx.addIssue({ code: z.ZodIssueCode.custom, message: verdict.reason ?? "Unsupported time zone" })
-            }
-        })
-        .optional(),
-    // How long a step-up MFA confirmation lasts (ROLES_PLAN.md §6.15). The
-    // database holds the same bounds.
-    stepUpMinutes: z.number().int().min(5).max(480).optional(),
-}).refine(data => Object.keys(data).length > 0, { message: "No fields to update" })
+
 
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
@@ -69,6 +45,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
     if (before.stepUpMinutes !== updated.stepUpMinutes) {
         changes.stepUpMinutes = { old: before.stepUpMinutes, new: updated.stepUpMinutes }
+    }
+    if (before.brandColour !== updated.brandColour) {
+        changes.brandColour = { old: before.brandColour, new: updated.brandColour }
     }
 
     if (Object.keys(changes).length > 0) {

@@ -2654,6 +2654,7 @@ export const ar = {
         audit_field_locationLink: "رابط الموقع",
         audit_field_locationName: "اسم الموقع",
         audit_field_locationVerifyRadiusMeters: "نطاق التحقق من الموقع (م)",
+        audit_field_brandColour: "لون الهوية",
         audit_field_logoUrl: "الشعار",
         audit_field_maintenanceMessage: "رسالة الصيانة",
         audit_field_maintenanceMode: "وضع الصيانة",

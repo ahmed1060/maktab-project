@@ -18,6 +18,8 @@ import { ar } from "@/lib/translations/ar"
 const COMPANY_SERVICE = stripComments(readFileSync("lib/services/company.service.ts", "utf8"))
 const COMPANY_ROUTE = stripComments(readFileSync("app/api/companies/route.ts", "utf8"))
 const SYSTEM_ROUTE = stripComments(readFileSync("app/api/system-settings/route.ts", "utf8"))
+// Its schema, in its own file so it can be tested directly.
+const SYSTEM_SCHEMA = stripComments(readFileSync("lib/validations/system-settings.schema.ts", "utf8"))
 const CARD = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
 // The company settings page shows its cards through its tabs.
 const SETTINGS_TABS = readFileSync("components/CompanySettingsTabs.tsx", "utf8")
@@ -84,8 +86,9 @@ describe("G2: the payroll settings can actually be set", () => {
         // toContain("defaultTimezone") is satisfied by "defaultTimezoneX", and
         // by the change-tracking block further down that mentions the name
         // without validating anything.
-        expect(SYSTEM_ROUTE).toMatch(/defaultTimezone:\s*z$/m)
-        expect(SYSTEM_ROUTE).toContain("checkTimeZone")
+        expect(SYSTEM_SCHEMA).toMatch(/defaultTimezone:\s*z$/m)
+        expect(SYSTEM_SCHEMA).toContain("checkTimeZone")
+        expect(SYSTEM_ROUTE).toContain("updateSystemSettingsSchema.safeParse(json)")
         // And it is actually persisted, not merely accepted.
         expect(stripComments(readFileSync("lib/services/system-settings.service.ts", "utf8")))
             .toContain("defaultTimezone?: string")
