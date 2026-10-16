@@ -755,3 +755,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   form (Proposed, `CLIENTS_PLAN.md` §0.2); the date picker can be turned
   off, and is while a record saves; a record by a user since deleted says
   "Deleted user" rather than Super Admin.
+- **2026-10-16:** From Codex's fourth review of #82: a record's form
+  closed while it saves no longer removes the files that save is storing
+  (`CLIENTS_PLAN.md` change log).

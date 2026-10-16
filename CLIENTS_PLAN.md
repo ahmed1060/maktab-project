@@ -876,3 +876,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   user's record no longer reads as a Super Admin's. Proposed: the Records
   page's Add record, which asks which client first, so an employee can add
   a client's first record. Still waiting to be merged.
+- **2026-10-16:** PR 0a (#82): Codex's fourth review is fixed too (§0.2):
+  deleting a section or a company holds its records while it lists their
+  files, so an edit saved at that moment doesn't leave a file behind, and
+  a record's form closed while it saves leaves that save's files to it.
+  Still waiting to be merged.
