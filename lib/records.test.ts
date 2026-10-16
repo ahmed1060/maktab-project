@@ -135,3 +135,12 @@ describe("a record's form", () => {
         expect(FORM).toContain("fetch('/api/records/uploads', {")
     })
 })
+
+describe("a record a reminder links to", () => {
+    const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
+
+    it("opens on its own client's page only, not over another client's records", () => {
+        expect(LIST).toContain("if (body?.data && (!vendorId || body.data.client.id === vendorId)) setViewing(body.data)")
+        expect(LIST).not.toContain("if (body?.data) setViewing(body.data)")
+    })
+})

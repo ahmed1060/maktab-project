@@ -89,16 +89,17 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     // A section that's gone from the client's list can't stay picked.
     useAdjustOnChange([sections.map(s => s.id).join(',')], () => setSectionId(id => (id && !sections.some(s => s.id === id) ? '' : id)))
 
-    // The record a reminder links to, opened once it's fetched.
+    // The record a reminder links to, opened once it's fetched: on its own
+    // client's page only, never over another client's records.
     const opened = useRef<string | null>(null)
     useEffect(() => {
         if (!openRecordId || opened.current === openRecordId) return
         opened.current = openRecordId
         fetch(`/api/records?id=${encodeURIComponent(openRecordId)}`)
             .then(r => (r.ok ? r.json() : null))
-            .then(body => { if (body?.data) setViewing(body.data) })
+            .then((body: { data?: RecordItem } | null) => { if (body?.data && (!vendorId || body.data.client.id === vendorId)) setViewing(body.data) })
             .catch(() => { /* the list is still there to find it in */ })
-    }, [openRecordId])
+    }, [openRecordId, vendorId])
 
     // Editing from the Records page: the record can move to another of its
     // client's sections, so they're fetched for the form.
