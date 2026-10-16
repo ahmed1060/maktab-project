@@ -629,3 +629,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   below what's already used this year, the credit donut shows 0 days left
   and every day used as 100%. The stored credit is below 0 then, and the
   donut showed "−5 days" at −100% beside 200%.
+- **2026-10-16:** At the product owner's request, Requests, Requests
+  history and Payroll drop the last company's data when a Super Admin
+  picks another, as Employees and Day Off Requests do. Payroll showed the
+  last company's register while the next loaded, with Approve and Mark as
+  paid naming the company just picked.
+- **2026-10-16:** At the product owner's request, a list that didn't load
+  says so, with Try again (`DESIGN.md` §5.5): Employees, Day Off Requests,
+  Requests and Requests history. They said there was nothing, and offered
+  to add something. Requests' total is left out until there's a count.

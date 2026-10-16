@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
-    CalendarBlankIcon, CalendarCheckIcon, ChatTextIcon, CheckIcon, CircleHalfIcon, TagIcon, UserIcon, WalletIcon, XCircleIcon, XIcon,
+    CalendarBlankIcon, CalendarCheckIcon, ChatTextIcon, CheckIcon, CircleHalfIcon, TagIcon, UserIcon, WalletIcon, WarningCircleIcon, XCircleIcon, XIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { fetcher } from '@/lib/swr-fetcher'
-import { forScope, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
+import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from '@/lib/api-error-text'
@@ -129,10 +129,12 @@ export default function DayOffRequestsPage() {
         to: dateTo,
         search,
     }) : null
-    // Only this company's requests, while the next page or filter loads.
-    const { data: scopedRequests, isLoading, mutate: fetchRequests } = useSWR(scopedKey(requestsQuery, contextCompanyId), scopedFetcher, { keepPreviousData: true })
+    // Only this company's requests, while the next page or filter loads. If
+    // they didn't load, the list says so rather than that there are none.
+    const { data: scopedRequests, error: requestsError, isLoading, isValidating: requestsRetrying, mutate: fetchRequests } = useSWR(scopedKey(requestsQuery, contextCompanyId), scopedFetcher, { keepPreviousData: true })
     const requestsResult = forScope(scopedRequests, contextCompanyId)
-    const requests: DayOffRequest[] = requestsResult?.data?.data || []
+    const requestsFailed = loadFailed(scopedRequests, requestsError, requestsQuery)
+    const requests: DayOffRequest[] = requestsFailed ? [] : requestsResult?.data?.data || []
     const total: number = requestsResult?.data?.total || 0
     const totalPages: number = requestsResult?.data?.totalPages || 0
 
@@ -351,7 +353,7 @@ export default function DayOffRequestsPage() {
                 <DateRangePicker asField hideLabel dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1) }} />
             </FilterBar>
 
-            {isLoading && !requestsResult ? <LoadingSpinner message={t('loading_requests')} /> : (
+            {isLoading && !requestsResult && !requestsFailed ? <LoadingSpinner message={t('loading_requests')} /> : (
                 <DataList
                     caption={modules.label('dayOff')}
                     columns={columns}
@@ -372,9 +374,11 @@ export default function DayOffRequestsPage() {
                         />
                     )}
                     footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'requests')} />}
-                    empty={<EmptyState icon={CalendarBlankIcon} title={filtersOn > 0 || search ? t('no_search_results') : t('no_day_off_requests_yet')} action={filtersOn > 0 || search
-                        ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
-                        : !managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>} />}
+                    empty={requestsFailed
+                        ? <EmptyState icon={WarningCircleIcon} title={t('day_off_requests_load_failed')} action={<Button busy={requestsRetrying} onClick={() => { void fetchRequests() }}>{t('try_again')}</Button>} />
+                        : <EmptyState icon={CalendarBlankIcon} title={filtersOn > 0 || search ? t('no_search_results') : t('no_day_off_requests_yet')} action={filtersOn > 0 || search
+                            ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
+                            : !managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>} />}
                 />
             )}
 
