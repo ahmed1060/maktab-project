@@ -91,6 +91,10 @@ Production has no data in these parts, so now is the right time.
   by the day where its company is, in the company's own time zone. A
   reminder goes out only for the date it was found for, so a date changed
   as the job runs gets its own reminder.
+- edits and deletes read a record's files as they write, so a file added
+  by an edit just before isn't left in storage; deleting a company removes
+  its records' files too. A record a Super Admin added or edited says so
+  (two new columns), and one by a user since deleted reads "Deleted user".
 
 **Proposed** (built this way in 0a, for the product owner to confirm or
 change):
@@ -105,6 +109,11 @@ change):
   was never reminded about again.
 - **A client with records can't be deleted** until its records are. Deleting
   it would otherwise delete its licences and contracts with it, unasked.
+- **Adding a record from the Records page:** Add record asks which client
+  it's for, from the company's clients by name, then opens that client's
+  page with the form. Without it, someone who may add records but not see
+  the vendors list, as an ordinary employee, could never add a client's
+  first record (from Codex's review of #82).
 
 ### 0.3 Shipping the rename without breaking production (Decided)
 
@@ -860,3 +869,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   record being added to it, with its files; the date picker shows a picked
   day as that day in every time zone; and a file dropped on a full file
   picker no longer leaves the page. Still waiting to be merged.
+- **2026-10-16:** PR 0a (#82): Codex's third review is fixed too (§0.2):
+  edits and deletes remove the files of the record as they find it, a
+  refused removal is logged, deleting a company removes its records'
+  files, the expiry date can't change while a record saves, and a deleted
+  user's record no longer reads as a Super Admin's. Proposed: the Records
+  page's Add record, which asks which client first, so an employee can add
+  a client's first record. Still waiting to be merged.

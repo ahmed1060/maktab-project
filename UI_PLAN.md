@@ -750,3 +750,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   west of UTC, on the Day Off page too), and a file dropped on a file
   picker that's full, or otherwise turned off, no longer opens in place of
   the page (`CLIENTS_PLAN.md` change log).
+- **2026-10-16:** From Codex's third review of #82: the Records page has
+  Add record, which asks which client it's for and opens its page with the
+  form (Proposed, `CLIENTS_PLAN.md` §0.2); the date picker can be turned
+  off, and is while a record saves; a record by a user since deleted says
+  "Deleted user" rather than Super Admin.
