@@ -81,6 +81,29 @@ below, which are all worked out from the one chosen colour.
 - **Who sees which colour:** a company's people see its colour, or the
   default if it hasn't chosen one. The sign-in page and the Super Admin's
   pages use the default.
+- **The pages not yet in this design follow the colour too:** the older
+  pages, the side bar and the sign-in page (`UI_PLAN.md` §4.6). They keep
+  their own look, which is drawn in Nizmo's indigo with a violet beside it:
+  - each of those shades keeps the distance it has from Nizmo's indigo,
+    measured from the chosen colour instead. That's the same turn of hue,
+    the same share of colourfulness and the same step lighter or darker,
+    as the eye sees them (OKLCH). Pale shades keep their own lightness, so
+    the page's ground stays pale and light text on dark stays light;
+  - so Nizmo's indigo gives exactly the colours these pages have today,
+    and another colour gives the same family in its own hue: teal beside a
+    blue-teal, orange beside amber;
+  - each shade then keeps the readability it has today. White text on a
+    fill, and text on the page, read as well as they do with Nizmo's
+    indigo, up to 4.5:1; a focus ring, a highlight bar or a map pin stands
+    out as well as it does now, up to 3:1. A shade that falls short is
+    darkened (on a dark ground, lightened) until it doesn't, keeping its
+    hue;
+  - the info colours, the role badges' colours, the pink glow and the
+    dark mesh behind the page don't follow. Like the status
+    colours (§2.3), they mean something, or are only background.
+
+  This lasts until each page moves onto the building blocks, which use the
+  tokens above.
 
 ### 2.2 Neutrals
 
@@ -631,3 +654,8 @@ changed:
 - **2026-10-16:** The brand colour setting (§2.1, `UI_PLAN.md` §4.6): the
   colour choice field (§5.3), the warning for a colour close to the error
   red, and who sees which colour.
+- **2026-10-16:** At the product owner's choice, the older pages, the side
+  bar and the sign-in page follow the brand colour too (§2.1): each of
+  their indigo and violet shades keeps its distance from Nizmo's indigo,
+  measured from the chosen colour, and keeps the readability it has today.
+  Nizmo's indigo gives exactly the colours they have now.
