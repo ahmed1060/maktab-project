@@ -554,10 +554,11 @@ balance first, automatically:
      - move the 3 pages this plan doesn't otherwise touch (the dashboard
        home, whose client count changes in 0a, Employees and Day Off
        Requests) onto the building blocks, in one
-       small PR. Built on 2026-10-15, waiting to be merged. It also adds
+       small PR. Merged in #78 on 2026-10-15. It also adds
        building blocks these steps will use: the row menu, the selection
        bar, the dialog, the text area and the radio choice;
      - add the brand colour setting, in one small PR (`UI_PLAN.md` §4.6).
+       Built on 2026-10-16, waiting to be merged.
   2. **Steps 0–7 above.**
      - The new side bar groups land with step 0.
      - Every screen these steps create or rework uses the building blocks:
@@ -744,3 +745,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   **Give and settle cash advances** (صرف العُهد وتسويتها), so its name says
   that it also records returns and corrections (§7.7). The line under it in
   the role editor is no longer needed.
+- **2026-10-16:** Before step 0: the 3 pages' PR was merged in #78, and
+  the brand colour setting is built, waiting to be merged (§8).
