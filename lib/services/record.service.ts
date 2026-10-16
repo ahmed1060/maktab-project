@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { noticeRow } from "@/lib/notice-row"
 import { supabase } from "@/lib/storage"
 import { calendarDateStr } from "@/lib/time"
+import { resolveTimeZone } from "@/lib/timezone"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
 import { addDays, daysBetween, expiryDay, expiryRange, expiryState, parseExpiryDay, type ExpiryState } from "@/lib/record-expiry"
@@ -25,8 +26,19 @@ import type { CreateRecordInput, CreateSectionInput, RenameSectionInput, UpdateR
 
 type Session = { user: { id: string; role: string; companyId?: string | null; [key: string]: unknown } }
 
-/** The page's "today", where the company is: what a record's expiry is measured against. */
-export const recordsToday = () => calendarDateStr(new Date())
+/** "Today" in a company's own time zone: what its records' expiry is measured against. */
+export const recordsToday = (timeZone?: string | null) => calendarDateStr(new Date(), resolveTimeZone(timeZone))
+
+/** Each time zone companies are in, as stored, with its "today". */
+async function companyDays() {
+    const zones = await prisma.company.findMany({ distinct: ["timezone"], select: { timezone: true } })
+    return zones.map(z => ({ timezone: z.timezone, today: recordsToday(z.timezone) }))
+}
+
+async function companyToday(companyId: string) {
+    const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
+    return recordsToday(company?.timezone)
+}
 
 const PERSON = { select: { firstName: true, lastName: true } } as const
 
@@ -37,7 +49,7 @@ const ROW = (withCompany: boolean) => ({
     section: {
         select: {
             id: true, title: true,
-            vendor: { select: { id: true, name: true, ...(withCompany ? { company: { select: { name: true } } } : {}) } },
+            vendor: { select: { id: true, name: true, ...(withCompany ? { company: { select: { name: true, timezone: true } } } : {}) } },
         },
     },
 }) satisfies Prisma.ClientRecordSelect
@@ -173,7 +185,9 @@ export class RecordService {
         if (!sa && !companyId) return { data: [] as RecordRow[], total: 0, today: recordsToday() }
         if (!sa && !can(session.user as any, "records.view", { companyId: companyId! })) throw new Error("RECORD_FORBIDDEN")
 
-        const today = recordsToday()
+        // Every company's records by its own day, for a Super Admin looking at them all.
+        const days = companyId ? null : await companyDays()
+        const today = companyId ? await companyToday(companyId) : recordsToday()
         const search = query.search?.trim()
         const where: Prisma.ClientRecordWhereInput = {
             section: {
@@ -181,7 +195,10 @@ export class RecordService {
                 ...(query.sectionId ? { id: query.sectionId } : {}),
                 ...(companyId ? { vendor: { companyId } } : {}),
             },
-            ...(query.expiry ? { expiryDate: expiryRange(query.expiry, today) } : {}),
+            ...(query.expiry && !days ? { expiryDate: expiryRange(query.expiry, today) } : {}),
+            ...(query.expiry && days ? {
+                AND: [{ OR: days.map(d => ({ expiryDate: expiryRange(query.expiry!, d.today), section: { vendor: { company: { timezone: d.timezone } } } })) }],
+            } : {}),
             ...(search ? {
                 OR: [
                     { content: { contains: search, mode: "insensitive" } },
@@ -201,7 +218,11 @@ export class RecordService {
             }),
             prisma.clientRecord.count({ where }),
         ])
-        return { data: rows.map(r => shape(r, today)), total, today }
+        const dayOf = (r: Row) => {
+            const zone = (r.section.vendor as { company?: { timezone: string } } | null)?.company?.timezone
+            return days?.find(d => d.timezone === zone)?.today ?? today
+        }
+        return { data: rows.map(r => shape(r, dayOf(r))), total, today }
     }
 
     /** One record, for the link in its reminder. */
@@ -209,7 +230,7 @@ export class RecordService {
         const found = await recordWithCompany(id)
         allow(session, "records.view", found.companyId, "RECORD_NOT_FOUND")
         const row = await prisma.clientRecord.findUniqueOrThrow({ where: { id }, select: ROW(false) })
-        return shape(row, recordsToday())
+        return shape(row, await companyToday(found.companyId))
     }
 
     /** A client's sections, with how many records each holds, and the client's name for the page. */
@@ -421,18 +442,31 @@ export class RecordService {
 
     /**
      * The daily reminder (vercel.json): whoever added a record hears about
-     * it the day it expires, and the chosen number of days before. Each is
-     * sent once per deadline; changing the date owes them again.
+     * it the day it expires, and the chosen number of days before, each day
+     * counted where the record's company is. Each is sent once per deadline;
+     * changing the date owes them again.
      */
     static async checkExpiries() {
-        const today = recordsToday()
+        let expiringToday = 0
+        let reminded = 0
+        // Each company's records on its own day.
+        for (const { timezone, today } of await companyDays()) {
+            const done = await RecordService.checkExpiriesOn(today, { vendorId: { not: null }, vendor: { company: { timezone } } })
+            expiringToday += done.expiringToday
+            reminded += done.reminded
+        }
+        return { success: true, checkedAt: new Date().toISOString(), expiringToday, reminded }
+    }
+
+    /** The reminders owed today for the records in these sections: the companies whose day it is. */
+    private static async checkExpiriesOn(today: string, section: Prisma.RecordSectionWhereInput) {
         const start = parseExpiryDay(today)!
         const tomorrow = parseExpiryDay(addDays(today, 1))!
         const include = { section: { select: { vendorId: true, vendor: { select: { name: true } } } } } as const
         const link = (id: string) => `/dashboard/records/${id}`
 
         const expiringToday = await prisma.clientRecord.findMany({
-            where: { expiryDate: { gte: start, lt: tomorrow }, notifiedOnExpiry: false, section: { vendorId: { not: null } } },
+            where: { expiryDate: { gte: start, lt: tomorrow }, notifiedOnExpiry: false, section },
             include,
         })
         for (const record of expiringToday) {
@@ -452,7 +486,7 @@ export class RecordService {
         }
 
         const pending = await prisma.clientRecord.findMany({
-            where: { expiryDate: { gte: tomorrow }, reminderDays: { gt: 0 }, notifiedDaysBefore: false, section: { vendorId: { not: null } } },
+            where: { expiryDate: { gte: tomorrow }, reminderDays: { gt: 0 }, notifiedDaysBefore: false, section },
             include,
         })
         let reminded = 0
@@ -475,6 +509,6 @@ export class RecordService {
             reminded++
         }
 
-        return { success: true, checkedAt: new Date().toISOString(), expiringToday: expiringToday.length, reminded }
+        return { expiringToday: expiringToday.length, reminded }
     }
 }

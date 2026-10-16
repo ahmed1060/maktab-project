@@ -291,6 +291,34 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("measures expiry by the day where the client's company is", async () => {
+            // At 09:00 UTC on the 16th it's 12:00 on the 16th in Cairo and still 23:00 on the 15th in Honolulu.
+            await db.query(`UPDATE "Company" SET timezone = 'Pacific/Honolulu' WHERE id = 'c2'`)
+            try {
+                const there = (await Records.create(otherAdmin, { content: "Harbour permit", files: [], expiryDate: "2026-10-15", reminderDays: null, vendorId: "v3", sectionTitle: "Licences" })).id
+                const here = (await Records.create(admin, { content: "Shop permit", files: [], expiryDate: "2026-10-15", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+                const ids = async (session: any, expiry: "soon" | "expired") => (await Records.list(session, { expiry, page: 1, limit: 50 })).data.map(r => r.id)
+                expect(await ids(otherAdmin, "soon")).toContain(there)
+                expect(await ids(otherAdmin, "expired")).not.toContain(there)
+                expect((await Records.get(otherAdmin, there)).expiry).toBe("soon")
+                expect((await Records.get(admin, here)).expiry).toBe("expired")
+                // A Super Admin looking at every company sees each record by its own company's day.
+                expect(await ids(superAdmin, "soon")).toContain(there)
+                expect(await ids(superAdmin, "soon")).not.toContain(here)
+                expect(await ids(superAdmin, "expired")).toContain(here)
+                expect(await ids(superAdmin, "expired")).not.toContain(there)
+                const all = (await Records.list(superAdmin, { page: 1, limit: 50 })).data
+                expect([all.find(r => r.id === there)!.expiry, all.find(r => r.id === here)!.expiry]).toEqual(["soon", "expired"])
+                // Its expiry day is today where it is, so its reminder goes today.
+                await Records.checkExpiries()
+                const { rows } = await db.query(`SELECT "userId", type FROM "Notification" WHERE "relatedId" = $1`, [`/dashboard/records/${there}`])
+                expect(rows).toEqual([{ userId: "a2", type: "NOTE_EXPIRING" }])
+                expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "relatedId" = $1`, [`/dashboard/records/${here}`])).rows[0].n).toBe(0)
+            } finally {
+                await db.query(`UPDATE "Company" SET timezone = 'Africa/Cairo' WHERE id = 'c2'`)
+            }
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id
