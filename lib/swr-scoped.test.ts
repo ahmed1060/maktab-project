@@ -81,19 +81,15 @@ describe("a list's rows, kept within one company", () => {
         for (const page of [employees, dayOff]) expect(page).not.toMatch(/useSWR\([^)]*, fetcher, \{ keepPreviousData: true \}\)/)
     })
 
-    // The same on the other pages a Super Admin switches company on. Payroll's
-    // Approve and Mark as paid name the company picked, so the last company's
-    // register must not be on screen when they're pressed.
-    it("is how Requests, Requests history and Payroll keep theirs", () => {
+    // The same on the other pages a Super Admin switches company on. Payroll
+    // keeps no other register at all (lib/settings-write.test.ts).
+    it("is how Requests and Requests history keep theirs", () => {
         const requests = readFileSync("components/requests/RequestsSection.tsx", "utf8")
         expect(requests).toContain("useSWR(scopedKey(requestsUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })")
         expect(requests).toContain("const result = forScope(scoped, selectedCompanyId)")
         const history = readFileSync("app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx", "utf8")
         expect(history).toContain("useSWR(scopedKey(historyUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })")
         expect(history).toContain("const result = forScope(scoped, selectedCompanyId)")
-        const payroll = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
-        expect(payroll).toContain("useSWR(scopedKey(registerKey, companyId), scopedFetcher, {")
-        expect(payroll).toContain("const data = forScope(scoped, companyId)")
-        for (const page of [requests, history, payroll]) expect(page).not.toMatch(/useSWR\((requestsUrl|historyUrl|registerKey), fetcher/)
+        for (const page of [requests, history]) expect(page).not.toMatch(/useSWR\((requestsUrl|historyUrl), fetcher/)
     })
 })

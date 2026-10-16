@@ -638,3 +638,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   says so, with Try again (`DESIGN.md` §5.5): Employees, Day Off Requests,
   Requests and Requests history. They said there was nothing, and offered
   to add something. Requests' total is left out until there's a count.
+- **2026-10-16:** At the product owner's choice, Payroll shows no other
+  register while the one picked loads, not even last month's, since Save
+  draft, Approve and Mark as paid name the company, month and year picked.
+  The pickers stay, over a spinner. Last month's register used to stay up
+  until the next arrived, so the page didn't drop to a spinner at each
+  step of the picker.

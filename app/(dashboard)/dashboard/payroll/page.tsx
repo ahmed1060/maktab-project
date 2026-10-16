@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
-import { forScope, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -142,17 +141,13 @@ export default function PayrollRegisterPage() {
     const registerKey = !session || (isSuper && !companyId)
         ? null
         : `/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`
-    const { data: scoped, error, isLoading, mutate: load } = useSWR(scopedKey(registerKey, companyId), scopedFetcher, {
-        // The last month's register stays up while the next one loads, rather
-        // than the screen dropping to a spinner at every step of the picker.
-        // Not another company's: Approve and Mark as paid name the company
-        // picked, not the one on screen (lib/swr-scoped.ts).
-        keepPreviousData: true,
+    // No other register stays up while this one loads, not even last month's:
+    // Save draft, Approve and Mark as paid name the company, month and year
+    // picked, not the ones on screen. The pickers stay, over a spinner.
+    const { data, error, isLoading, mutate: load } = useSWR(registerKey, fetcher, {
         onError: (err: SWRError) => showToast(err.info?.error || t('error_generic'), 'error'),
     })
-    const data = forScope(scoped, companyId)
     const view: View | null = registerKey && !error ? (data?.data ?? null) : null
-    const loading = !session || isLoading
     // Attendance changed after a payroll was approved (§12.3): whenever any is
     // open, whatever the switch says now.
     // A page at a time: every open one is money owed, so none is cut off.
@@ -303,7 +298,7 @@ export default function PayrollRegisterPage() {
         () => new Date(2000, month - 1).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' }),
         [month, isRtl])
 
-    if (loading && !view) return <LoadingSpinner />
+    if (!session) return <LoadingSpinner />
 
     const register = view?.register
     const isDraft = view?.status === 'DRAFT'
@@ -404,6 +399,8 @@ export default function PayrollRegisterPage() {
             {isSuper && !companyId && card(
                 <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('payroll_pick_company_hint')}</p>
             )}
+
+            {isLoading && !view && <LoadingSpinner />}
 
             {view && !isDraft && card(
                 <p style={{ margin: 0, fontSize: '0.9rem' }}>{t('payroll_approved_locked')}</p>
