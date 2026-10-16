@@ -35,6 +35,16 @@ describe("the day off credit donut", () => {
         expect(html).toContain("<strong>٣ أيام</strong>")
     })
 
+    // Codex on #79: an allowance lowered below what's already used this year
+    // leaves the credit below 0 (user.service.ts), which gave −100% and 200%.
+    it("has none left, not less than none, when more was used than the allowance now gives", () => {
+        const html = donut({ remaining: -5, used: 10 })
+        expect(html).toContain('<span class="ui-donut-label">Remaining credit</span> <span class="ui-donut-count">0 days</span> <span class="ui-donut-share">0%</span>')
+        expect(html).toContain('<span class="ui-donut-label">Used credit</span> <span class="ui-donut-count">10 days</span> <span class="ui-donut-share">100%</span>')
+        expect(html).toContain("<strong>10 days</strong>")
+        expect(html).not.toMatch(/(ui-donut-count|ui-donut-share)">[-−]|<strong>[-−]/)
+    })
+
     it("links its rows only where it's asked to", () => {
         expect(donut()).not.toContain("<a ")
         expect(donut({ href: "/dashboard/day-off-requests" })).toContain('<a class="ui-donut-row" href="/dashboard/day-off-requests">')

@@ -625,3 +625,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   with Edit, Delete, Approve and Reject, until then, or for good if the
   request failed. Within one company, a list still keeps its rows while the
   next page or filter loads (`lib/swr-scoped.ts`).
+- **2026-10-16:** From Codex's review of #79: when an allowance is lowered
+  below what's already used this year, the credit donut shows 0 days left
+  and every day used as 100%. The stored credit is below 0 then, and the
+  donut showed "−5 days" at −100% beside 200%.

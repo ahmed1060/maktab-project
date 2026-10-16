@@ -29,15 +29,19 @@ export function DayOffCreditDonut({ remaining, used, t, locale, href, loading = 
     retrying?: boolean
 }) {
     const days = (n: number) => countOf(t, locale, n, 'days')
-    const whole = remaining + used
+    // The credit can be below 0, when an allowance is lowered below what was
+    // already used this year (lib/services/user.service.ts): none is left.
+    const left = Math.max(0, remaining)
+    const usedDays = Math.max(0, used)
+    const whole = left + usedDays
     const percent = (n: number) =>
         new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { style: 'percent' }).format(whole > 0 ? n / whole : 0)
     return (
         <DonutChart
             label={t('credit_overview')}
             parts={[
-                { key: 'left', label: t('remaining_credit'), value: remaining, count: days(remaining), share: percent(remaining), tone: 'good', href },
-                { key: 'used', label: t('used_credit'), value: used, count: days(used), share: percent(used), tone: 'neutral', href },
+                { key: 'left', label: t('remaining_credit'), value: left, count: days(left), share: percent(left), tone: 'good', href },
+                { key: 'used', label: t('used_credit'), value: usedDays, count: days(usedDays), share: percent(usedDays), tone: 'neutral', href },
             ]}
             total={loading || failed ? null : days(whole)}
             totalLabel={t('total_label')}
