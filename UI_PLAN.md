@@ -616,3 +616,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-15:** The cash advance permission is renamed **Give and settle
   cash advances** (§3.1, §3.3), at the product owner's choice, so its name
   says it also records returns and corrections.
+- **2026-10-16:** From Codex's review of #79: when someone's day off credit
+  doesn't load, the Day Off page's donut says so, with Try again, and no
+  total (`DESIGN.md` §5.5). It said "Loading…" for good, over 0 days.

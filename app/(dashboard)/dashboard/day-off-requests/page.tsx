@@ -149,7 +149,7 @@ export default function DayOffRequestsPage() {
 
     // One's own credit, for someone looking at their own requests.
     const userCreditQuery = status === 'authenticated' && !managesRequests && user?.id ? `/api/users?id=${user.id}` : null
-    const { data: userCreditResult } = useSWR(userCreditQuery, fetcher)
+    const { data: userCreditResult, error: userCreditError, isLoading: userCreditLoading, isValidating: userCreditRetrying, mutate: reloadUserCredit } = useSWR(userCreditQuery, fetcher)
     const foundUser = (() => {
         const data = userCreditResult?.data
         if (!data) return null
@@ -324,7 +324,9 @@ export default function DayOffRequestsPage() {
 
             {!managesRequests && (
                 <Section title={t('credit_overview')}>
-                    <DayOffCreditDonut remaining={userCredit} used={usedByCredit} t={t} locale={locale} loading={!foundUser} />
+                    <DayOffCreditDonut remaining={userCredit} used={usedByCredit} t={t} locale={locale}
+                        loading={status === 'loading' || userCreditLoading}
+                        failed={!foundUser && !!userCreditError} onRetry={() => { void reloadUserCredit() }} retrying={userCreditRetrying} />
                 </Section>
             )}
 

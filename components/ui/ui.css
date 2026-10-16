@@ -1156,6 +1156,12 @@ a.ui-donut-row:focus-visible {
   margin: 0;
   color: var(--muted);
 }
+/* Try again, under what didn't load. */
+.ui-donut-empty .ui-btn {
+  display: flex;
+  width: fit-content;
+  margin-block-start: var(--space-3);
+}
 
 /* ── Empty state (§5.5) ── */
 .ui-empty {

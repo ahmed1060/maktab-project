@@ -1084,6 +1084,8 @@ export const en = {
         remaining_credit: "Remaining credit",
         used_credit: "Used credit",
         credit_overview: "Day off credit",
+        credit_load_failed: "Your day off credit didn't load.",
+        try_again: "Try again",
         select_date: "Select date",
         calendar_prev_month: "Previous month",
         calendar_next_month: "Next month",

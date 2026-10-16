@@ -1,4 +1,4 @@
-import { DonutChart } from '@/components/ui'
+import { Button, DonutChart } from '@/components/ui'
 import { countOf } from '@/lib/plural'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -9,9 +9,10 @@ import type { TranslationKey } from '@/lib/translations'
  *
  * Holds no state, so a server page and a client page can both use it, each
  * with its own `t`. Until the credit has loaded, the empty ring says so
- * instead of "No data available".
+ * instead of "No data available"; if it didn't load, it says that, with Try
+ * again. Either way there's no total, which would say 0 (DESIGN.md §5.5).
  */
-export function DayOffCreditDonut({ remaining, used, t, locale, href, loading = false }: {
+export function DayOffCreditDonut({ remaining, used, t, locale, href, loading = false, failed = false, onRetry, retrying = false }: {
     /** Days left this year. */
     remaining: number
     /** Days used this year (lib/day-off-credit.ts). */
@@ -21,6 +22,11 @@ export function DayOffCreditDonut({ remaining, used, t, locale, href, loading = 
     /** Where each legend row goes, if anywhere. */
     href?: string
     loading?: boolean
+    /** The credit didn't load. Ahead of `loading`, which is on again while SWR retries. */
+    failed?: boolean
+    onRetry?: () => void
+    /** Trying again now. */
+    retrying?: boolean
 }) {
     const days = (n: number) => countOf(t, locale, n, 'days')
     const whole = remaining + used
@@ -33,9 +39,11 @@ export function DayOffCreditDonut({ remaining, used, t, locale, href, loading = 
                 { key: 'left', label: t('remaining_credit'), value: remaining, count: days(remaining), share: percent(remaining), tone: 'good', href },
                 { key: 'used', label: t('used_credit'), value: used, count: days(used), share: percent(used), tone: 'neutral', href },
             ]}
-            total={days(whole)}
+            total={loading || failed ? null : days(whole)}
             totalLabel={t('total_label')}
-            emptyLabel={t(loading ? 'loading' : 'no_data_available')}
+            emptyLabel={failed
+                ? <>{t('credit_load_failed')} <Button size="sm" busy={retrying} onClick={onRetry}>{t('try_again')}</Button></>
+                : t(loading ? 'loading' : 'no_data_available')}
         />
     )
 }

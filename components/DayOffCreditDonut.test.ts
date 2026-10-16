@@ -43,13 +43,38 @@ describe("the day off credit donut", () => {
     it("says it's loading, not that there's nothing, until the credit arrives", () => {
         expect(donut({ remaining: 0, used: 0, loading: true })).toContain('<p class="ui-donut-empty">Loading…</p>')
         expect(donut({ remaining: 0, used: 0 })).toContain('<p class="ui-donut-empty">No data available</p>')
+        // Nothing in the middle until then: a 0 there would read as the answer.
+        expect(donut({ remaining: 0, used: 0, loading: true })).not.toContain("ui-donut-total")
+        expect(donut({ remaining: 0, used: 0 })).toContain("<strong>0 days</strong>")
+    })
+
+    // Codex on #79: when the request failed, it said "Loading…" for good.
+    it("says the credit didn't load, with Try again, rather than loading for good", () => {
+        // SWR is loading again while it retries, but the request has failed.
+        const html = donut({ remaining: 0, used: 0, loading: true, failed: true, onRetry: () => {} })
+        expect(html).not.toContain("Loading…")
+        expect(html).not.toContain("ui-donut-total")
+        expect(html).toContain('<p class="ui-donut-empty">Your day off credit didn&#x27;t load. <button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Try again</button></p>')
+        // While it tries again, the button says so.
+        expect(donut({ remaining: 0, used: 0, failed: true, onRetry: () => {}, retrying: true })).toContain('aria-busy="true">Try again</button>')
+        expect(donut({ t: tAr as any, locale: "ar", remaining: 0, used: 0, failed: true, onRetry: () => {} }))
+            .toContain("تعذّر تحميل رصيد إجازاتك. <button")
+    })
+
+    it("on the Day Off page, fails, loads and tries again with the credit request itself", () => {
+        const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
+        expect(dayOff).toContain("const { data: userCreditResult, error: userCreditError, isLoading: userCreditLoading, isValidating: userCreditRetrying, mutate: reloadUserCredit } = useSWR(userCreditQuery, fetcher)")
+        // Earlier numbers stay up if only a later refresh fails.
+        expect(dayOff).toContain("failed={!foundUser && !!userCreditError}")
+        expect(dayOff).toContain("loading={status === 'loading' || userCreditLoading}")
+        expect(dayOff).not.toContain("loading={!foundUser}")
     })
 
     it("is the one the dashboard home and the Day Off page both show", () => {
         const dashboard = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")
         const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
         expect(dashboard).toContain('<DayOffCreditDonut remaining={remainingCredit} used={usedCredits} t={t} locale={locale} href="/dashboard/day-off-requests" />')
-        expect(dayOff).toContain("<DayOffCreditDonut remaining={userCredit} used={usedByCredit} t={t} locale={locale} loading={!foundUser} />")
+        expect(dayOff).toContain("<DayOffCreditDonut remaining={userCredit} used={usedByCredit} t={t} locale={locale}")
         // The Day Off page's two tiles are gone: the donut says the same.
         expect(dayOff).not.toContain("TotalTiles")
     })

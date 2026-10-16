@@ -1047,6 +1047,8 @@ export const ar = {
         remaining_credit: "الرصيد المتبقي",
         used_credit: "الرصيد المستخدم",
         credit_overview: "رصيد الإجازات",
+        credit_load_failed: "تعذّر تحميل رصيد إجازاتك.",
+        try_again: "حاول مرة أخرى",
         select_date: "اختر التاريخ",
         calendar_prev_month: "الشهر السابق",
         calendar_next_month: "الشهر التالي",
