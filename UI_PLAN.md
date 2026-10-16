@@ -311,11 +311,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      System Settings and Company Settings → Branding, and the server putting
      the colour into the page. The new fields have defaults, so the preview
      build's migration of the shared database is safe for `main`'s code.
-     Built on 2026-10-16, waiting to be merged. The colour reaches what's
+     Merged in #80 on 2026-10-16. The colour reaches what's
      built from the building blocks;
    - **the older pages, the side bar and the sign-in page follow the
      colour too (§4.6),** in a small PR straight after the brand colour
-     setting's. Built on 2026-10-16, to be opened once that PR is merged.
+     setting's. Built on 2026-10-16, waiting to be merged.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
    - The side bar groups (§2.1, §2.2) land with step 0.
    - Every screen these steps create or rework uses the building blocks
@@ -707,3 +707,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     (`DESIGN.md` §2.1). The settings' hints say the colour reaches them
     again;
   - لون الهوية is the Arabic for "brand colour" (§3.2).
+- **2026-10-16:** The brand colour setting was merged in #80 (§5 step
+  3). The older pages' PR (§4.6) is open, waiting to be merged.

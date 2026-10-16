@@ -558,10 +558,10 @@ balance first, automatically:
        building blocks these steps will use: the row menu, the selection
        bar, the dialog, the text area and the radio choice;
      - add the brand colour setting, in one small PR (`UI_PLAN.md` §4.6).
-       Built on 2026-10-16, waiting to be merged.
+       Merged in #80 on 2026-10-16.
      - make the older pages, the side bar and the sign-in page follow
        the brand colour, in one small PR after it (`UI_PLAN.md` §4.6).
-       Built on 2026-10-16, to be opened once the setting's PR is merged.
+       Built on 2026-10-16, waiting to be merged.
   2. **Steps 0–7 above.**
      - The new side bar groups land with step 0.
      - Every screen these steps create or rework uses the building blocks:
@@ -758,3 +758,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-16:** At the product owner's choice, the older pages, the side
   bar and the sign-in page follow the brand colour now, in a small PR
   after the setting's, before step 0 (§8, `UI_PLAN.md` §4.6).
+- **2026-10-16:** The brand colour setting was merged in #80. The older
+  pages' PR is open, waiting to be merged (§8).
