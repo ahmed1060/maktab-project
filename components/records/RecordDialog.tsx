@@ -21,7 +21,6 @@ export default function RecordDialog({ record, onClose, showClient, onEdit, onDe
 }) {
     const { t, locale } = useLanguage()
     if (!record) return null
-    const someone = t('role_super_admin')
     const details = [
         ...(showClient ? [{ label: t('records_col_vendor'), value: <Link href={`/dashboard/vendors/${record.client.id}`} prefetch={false}><bdi>{record.client.name}</bdi></Link> }] : []),
         { label: t('records_section'), value: <bdi>{record.section.title}</bdi> },
@@ -33,10 +32,10 @@ export default function RecordDialog({ record, onClose, showClient, onEdit, onDe
             label: t('records_reminder_label'),
             value: record.reminderDays ? t('records_reminder_before').replace('{days}', countOf(t, locale, record.reminderDays, 'days')) : t('records_reminder_none'),
         }] : []),
-        { label: t('records_col_added'), value: <>{personName(record.createdBy, someone)}<div className="ui-item-detail">{formatMoment(record.createdAt, locale)}</div></> },
+        { label: t('records_col_added'), value: <>{personName(record.createdBy, record.createdBySuperAdmin, t)}<div className="ui-item-detail">{formatMoment(record.createdAt, locale)}</div></> },
         ...(record.lastEditedAt ? [{
             label: t('records_edited_by'),
-            value: <>{personName(record.lastEditedBy, someone)}<div className="ui-item-detail">{formatMoment(record.lastEditedAt, locale)}</div></>,
+            value: <>{personName(record.lastEditedBy, record.lastEditedBySuperAdmin, t)}<div className="ui-item-detail">{formatMoment(record.lastEditedAt, locale)}</div></>,
         }] : []),
     ]
     return (

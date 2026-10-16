@@ -3005,6 +3005,7 @@ export const ar = {
         records_col_added: "أضافه",
         records_no_expiry: "بلا تاريخ انتهاء",
         records_none: "لا توجد سجلات بعد",
+        records_deleted_user: "مستخدم محذوف",
         records_none_found: "لا توجد سجلات مطابقة",
         records_load_failed: "لم يتم تحميل السجلات",
         records_loading: "جارٍ تحميل السجلات…",

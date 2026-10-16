@@ -116,7 +116,6 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
 
     const canEdit = can('records.contribute')
     const canDelete = can('records.delete')
-    const someone = t('role_super_admin')
 
     const confirmDelete = async () => {
         if (!deleting) return
@@ -162,7 +161,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     )
     const files = (r: RecordItem) => r.files.length ? <span className="ui-chip">{countOf(t, locale, r.files.length, 'files')}</span> : null
     // A name and a date, each on one line, beside a record's longer text.
-    const added = (r: RecordItem) => <div className="ui-nowrap"><ItemTitle title={personName(r.createdBy, someone)} detail={formatMoment(r.createdAt, locale)} /></div>
+    const added = (r: RecordItem) => <div className="ui-nowrap"><ItemTitle title={personName(r.createdBy, r.createdBySuperAdmin, t)} detail={formatMoment(r.createdAt, locale)} /></div>
 
     const columns: Column<RecordItem>[] = [
         { key: 'record', header: t('records_col_record'), cell: r => <ItemTitle title={title(r)} detail={<bdi>{r.section.title}</bdi>} detailIcon={FolderIcon} /> },
@@ -225,7 +224,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
                                     { icon: r.expiryDate ? CalendarXIcon : HourglassIcon, text: r.expiryDate ? formatDay(r.expiryDate, locale) : t('records_no_expiry') },
                                     ...(r.files.length ? [{ icon: FileIcon, text: countOf(t, locale, r.files.length, 'files') }] : []),
                                 ]}
-                                foot={<><span className="ui-item-detail">{personName(r.createdBy, someone)}</span>{actions(r)}</>}
+                                foot={<><span className="ui-item-detail">{personName(r.createdBy, r.createdBySuperAdmin, t)}</span>{actions(r)}</>}
                             />
                         )}
                         footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'records')} />}

@@ -966,6 +966,10 @@ model ClientRecord {
   reminderDays       Int?
   lastEditedAt       DateTime?
   lastEditedById     String?
+  /// A Super Admin added it, or last edited it: they have no User row, so
+  /// the person's id alone is null then, as it is for a user since deleted.
+  createdBySuperAdmin    Boolean   @default(false)
+  lastEditedBySuperAdmin Boolean   @default(false)
   createdBy          User?         @relation("CreatedNotes", fields: [createdById], references: [id], onDelete: SetNull)
   lastEditedBy       User?         @relation("EditedNotes", fields: [lastEditedById], references: [id], onDelete: SetNull)
   section            RecordSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)

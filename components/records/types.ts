@@ -15,6 +15,9 @@ export type RecordItem = {
     lastEditedAt: string | null
     createdBy: { firstName: string; lastName: string } | null
     lastEditedBy: { firstName: string; lastName: string } | null
+    /** Whoever's missing above was a Super Admin; otherwise a user since deleted. */
+    createdBySuperAdmin: boolean
+    lastEditedBySuperAdmin: boolean
     section: { id: string; title: string }
     /** The vendor it's kept for, and its company in a Super Admin's view of every company. */
     client: { id: string; name: string; company?: string }
@@ -35,5 +38,12 @@ export function formatMoment(iso: string, locale: string): string {
     return new Date(iso).toLocaleDateString(lang(locale), { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export const personName = (p: { firstName: string; lastName: string } | null | undefined, fallback: string) =>
-    p ? `${p.firstName} ${p.lastName}` : fallback
+/**
+ * Who added or edited a record: their name, or, with none, a Super Admin
+ * (who has no user row) or a user who has since been deleted.
+ */
+export const personName = (
+    p: { firstName: string; lastName: string } | null | undefined,
+    bySuperAdmin: boolean,
+    t: (key: 'role_super_admin' | 'records_deleted_user') => string,
+) => (p ? `${p.firstName} ${p.lastName}` : t(bySuperAdmin ? 'role_super_admin' : 'records_deleted_user'))

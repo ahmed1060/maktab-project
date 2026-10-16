@@ -3014,6 +3014,7 @@ export const en = {
         records_col_added: "Added by",
         records_no_expiry: "No expiry date",
         records_none: "No records yet",
+        records_deleted_user: "Deleted user",
         records_none_found: "No records match",
         records_load_failed: "Records didn't load",
         records_loading: "Loading records…",

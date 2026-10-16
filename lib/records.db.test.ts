@@ -440,6 +440,20 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(removed).toEqual(["c3/records/zeta.pdf"])
         })
 
+        it("tells a Super Admin's record from one by a user since deleted", async () => {
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e9', 'e9@x', 'p', 'Lina', 'Gone', 'EMPLOYEE', 2026, 'e9', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+            const leaver = { user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any
+            const theirs = (await Records.create(leaver, { content: "Left behind", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const support = (await Records.create(superAdmin, { content: "Added by support", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            await Records.update(superAdmin, { id: theirs, content: "Left behind, checked", files: [], expiryDate: null, reminderDays: null })
+            await db.query(`DELETE FROM "User" WHERE id = 'e9'`)
+            expect(await Records.get(admin, theirs)).toMatchObject({ createdBy: null, createdBySuperAdmin: false, lastEditedBy: null, lastEditedBySuperAdmin: true })
+            expect(await Records.get(admin, support)).toMatchObject({ createdBy: null, createdBySuperAdmin: true })
+            // An Admin's edit after it is the Admin's.
+            await Records.update(admin, { id: support, content: "Added by support, seen", files: [], expiryDate: null, reminderDays: null })
+            expect(await Records.get(admin, support)).toMatchObject({ lastEditedBy: { firstName: "Amal" }, lastEditedBySuperAdmin: false })
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id

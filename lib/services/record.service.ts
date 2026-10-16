@@ -45,7 +45,7 @@ const PERSON = { select: { firstName: true, lastName: true } } as const
 const ROW = (withCompany: boolean) => ({
     id: true, content: true, attachment: true, expiryDate: true, reminderDays: true,
     createdAt: true, lastEditedAt: true,
-    createdBy: PERSON, lastEditedBy: PERSON,
+    createdBy: PERSON, lastEditedBy: PERSON, createdBySuperAdmin: true, lastEditedBySuperAdmin: true,
     section: {
         select: {
             id: true, title: true,
@@ -67,6 +67,9 @@ export type RecordRow = {
     lastEditedAt: Date | null
     createdBy: { firstName: string; lastName: string } | null
     lastEditedBy: { firstName: string; lastName: string } | null
+    /** Whoever's missing above was a Super Admin; otherwise a user since deleted. */
+    createdBySuperAdmin: boolean
+    lastEditedBySuperAdmin: boolean
     section: { id: string; title: string }
     client: { id: string; name: string; company?: string }
 }
@@ -84,6 +87,8 @@ function shape(r: Row, today: string): RecordRow {
         lastEditedAt: r.lastEditedAt,
         createdBy: r.createdBy,
         lastEditedBy: r.lastEditedBy,
+        createdBySuperAdmin: r.createdBySuperAdmin,
+        lastEditedBySuperAdmin: r.lastEditedBySuperAdmin,
         section: { id: r.section.id, title: r.section.title },
         client: { id: vendor.id, name: vendor.name, ...("company" in vendor && vendor.company ? { company: (vendor.company as { name: string }).name } : {}) },
     }
@@ -363,6 +368,7 @@ export class RecordService {
                     content: input.content,
                     sectionId,
                     createdById: who.byUser,
+                    createdBySuperAdmin: isSuperAdmin(session),
                     attachment: storeRecordFiles(input.files),
                     expiryDate: input.expiryDate ? parseExpiryDay(input.expiryDate) : null,
                     reminderDays: input.expiryDate ? input.reminderDays : null,
@@ -409,6 +415,7 @@ export class RecordService {
                     reminderDays,
                     ...(datesChanged ? { notifiedOnExpiry: false, notifiedDaysBefore: false } : {}),
                     lastEditedById: who.byUser,
+                    lastEditedBySuperAdmin: isSuperAdmin(session),
                     lastEditedAt: new Date(),
                 },
                 select: { id: true, sectionId: true },
