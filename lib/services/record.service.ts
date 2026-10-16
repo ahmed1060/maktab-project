@@ -333,6 +333,9 @@ export class RecordService {
             // those deleted here, with its files, or finds the section gone.
             const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${id} FOR UPDATE`
             if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+            // Its records too, so an edit of one's files (update) is listed
+            // here as it's saved, rather than read from before it.
+            await tx.$queryRaw`SELECT id FROM "ClientNote" WHERE "sectionId" = ${id} ORDER BY id FOR UPDATE`
             const records = await tx.clientRecord.findMany({ where: { sectionId: id }, select: { attachment: true } })
             await tx.recordSection.delete({ where: { id } })
             const { AuditLogService } = await import("./audit-log.service")

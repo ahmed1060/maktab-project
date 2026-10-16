@@ -57,6 +57,7 @@ export const prismaMock: any = new Proxy({}, {
             if (text.includes('FROM "ClientSection" WHERE id')) return sectionRow(values[0]) ? [{ id: values[0] }] : []
             if (text.includes('FROM "ClientSection"')) return []
             if (text.includes('FROM "ClientNote" WHERE id')) return recordRow(values[0]) ? [{ id: values[0] }] : []
+            if (text.includes('FROM "ClientNote"')) return []
             return basePrisma.$queryRaw(sql, ...values)
         }
         return basePrisma[prop]
