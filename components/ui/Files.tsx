@@ -61,13 +61,18 @@ export function FilePicker({ label, hint, accept, onFiles, disabled = false }: {
         <div
             className="ui-file-drop"
             data-over={over || undefined}
-            onDragOver={e => { if (disabled) return; e.preventDefault(); setOver(true) }}
+            // A drop is always taken here, so a file dropped while it's
+            // disabled isn't opened by the browser in place of the page.
+            onDragOver={e => {
+                e.preventDefault()
+                if (disabled) e.dataTransfer.dropEffect = 'none'
+                else setOver(true)
+            }}
             onDragLeave={() => setOver(false)}
             onDrop={e => {
-                if (disabled) return
                 e.preventDefault()
                 setOver(false)
-                onFiles([...e.dataTransfer.files])
+                if (!disabled) onFiles([...e.dataTransfer.files])
             }}
         >
             <button type="button" className="ui-btn ui-btn-secondary" onClick={() => input.current?.click()} disabled={disabled}>
