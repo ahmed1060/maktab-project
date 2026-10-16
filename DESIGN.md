@@ -534,6 +534,11 @@ These are built once, in the building-blocks PR, and every page uses them
   left or right.
 - **Text rules** are in §3: never letter-spaced, a little more line height,
   Arabic-Indic digits, and codes kept left to right.
+- **Text people type** keeps its own direction, whichever language the
+  page is in: a record's text, a section's or a client's name. It's set
+  with `dir="auto"` or `<bdi>`, so an English sentence in an Arabic page
+  keeps its full stop at its end, and an Arabic name in an English page
+  reads right to left.
 - **Plurals** use `Intl.PluralRules` for both languages, so the app writes
   "1 pt" and "2 pts" in English, and نقطة واحدة, نقطتان and ٣ نقاط in
   Arabic.
@@ -719,3 +724,6 @@ changed:
   (`CLIENTS_PLAN.md` §0.2): a back link above a page's title, details,
   files, a record's expiry with its two statuses, and opening an item from
   a list (§5.5, §2.3).
+- **2026-10-16:** Text people type keeps its own direction in either
+  language (§7). In the first Arabic check of records, an English record's
+  full stop moved to its start.
