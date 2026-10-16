@@ -345,8 +345,9 @@ export const OLD_PAGE_SHADES = [
     { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'text' },
     { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
     { token: '--sidebar-ring', light: '#c7d2fe', role: 'edge', behind: 'sidebar' },
-    // The end of the company name's gradient: text on the side bar.
-    { token: '--sidebar-accent', light: '#a5b4fc', dark: '#3d4b7a', role: 'text', behind: 'sidebar' },
+    // The end of the company name's gradient, which starts from white: text on
+    // the side bar, the same in both themes.
+    { token: '--sidebar-accent', light: '#a5b4fc', role: 'text', behind: 'sidebar' },
     { token: '--page-bg', light: '#eef2ff', lightOnly: true, role: 'ground' },
 ] as const satisfies readonly { token: string; light: string; dark?: string; role: Role; behind?: Behind; lightOnly?: boolean }[]
 
@@ -377,9 +378,9 @@ const TEXT_TINTS = [0.10, 0.20]
  */
 function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: string, primary?: string): string[] {
     if (behind === 'map') return MAP
-    if (behind === 'sidebar') return theme === 'light'
-        ? [over(SIDEBAR_LIGHT, SIDEBAR_LIGHT_ALPHA, page)]
-        : [over(SIDEBAR_DARK, SIDEBAR_DARK_ALPHA, OLD_DARK_PAGE)]
+    // The side bar's shades are the same in both themes, so each is held on
+    // the side bar as each theme draws it.
+    if (behind === 'sidebar') return [over(SIDEBAR_LIGHT, SIDEBAR_LIGHT_ALPHA, page), over(SIDEBAR_DARK, SIDEBAR_DARK_ALPHA, OLD_DARK_PAGE)]
     const grounds = theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
     const panel = grounds[0]
     return primary ? [...grounds, ...TEXT_TINTS.map(share => mix(primary, panel, share))] : grounds

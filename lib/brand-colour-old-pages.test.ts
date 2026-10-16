@@ -53,7 +53,8 @@ function tint(a: string, b: string, share: number) {
 function grounds(shade: Shade, theme: "light" | "dark", page: string, primary: string): string[] {
     const behind = "behind" in shade ? shade.behind : undefined
     if (behind === "map") return ["#ffffff"]
-    if (behind === "sidebar") return [theme === "light" ? sidebar(lightRoot, page) : sidebar(darkRoot, valueIn(darkRoot, "--page-bg")!)]
+    // The same in both themes, so held on the side bar as each theme draws it.
+    if (behind === "sidebar") return [sidebar(lightRoot, page), sidebar(darkRoot, valueIn(darkRoot, "--page-bg")!)]
     const base = theme === "light" ? [...LIGHT_GROUNDS, page] : DARK_GROUNDS
     return shade.role === "text" ? [...base, tint(primary, base[0], 0.1), tint(primary, base[0], 0.2)] : base
 }
@@ -166,16 +167,21 @@ describe("the older pages' shades", () => {
 
     // Codex on #81: as a gradient's end with nothing to hold it, navy's
     // company name ended in #091933 in dark mode, about 1.1:1 on the side
-    // bar, where Nizmo's indigo is about 2.3:1.
-    it("keep the company name in the side bar as readable as Nizmo's indigo does", () => {
-        const shade = OLD_PAGE_SHADES.find(s => s.token === "--sidebar-accent")!
+    // bar. And the name began from --surface, dark in dark mode, so even
+    // Nizmo's indigo left it barely readable there (DESIGN.md §2.1).
+    it("draw the company name in the side bar light, from white, in both themes", () => {
+        const shell = stripComments(readFileSync("components/DashboardShell.tsx", "utf8"))
+        expect(shell).toContain("linear-gradient(to right, var(--sidebar-fg-strong), var(--sidebar-accent))")
+        expect(valueIn(darkRoot, "--sidebar-accent")).toBeUndefined()
         const defaultPage = OLD_PAGE_SHADES.find(s => s.token === "--page-bg")!.light
-        for (const picked of ["#1e3a8a", "#475569", "#000000", "#0d9488"]) {
+        const darkBar = sidebar(darkRoot, valueIn(darkRoot, "--page-bg")!)
+        for (const picked of [DEFAULT_BRAND, ...BRAND_PRESETS.map(p => p.hex), "#000000", "#ffffff"]) {
             const shades = oldPageShades(picked)
-            const darkBar = sidebar(darkRoot, valueIn(darkRoot, "--page-bg")!)
-            expect(contrast(shades.dark["--sidebar-accent"]!, darkBar), `${picked} dark`).toBeGreaterThanOrEqual(Math.min(4.5, contrast(shade.dark, darkBar)))
-            const lightBar = sidebar(lightRoot, shades.light["--page-bg"])
-            expect(contrast(shades.light["--sidebar-accent"], lightBar), `${picked} light`).toBeGreaterThanOrEqual(Math.min(4.5, contrast(shade.light, sidebar(lightRoot, defaultPage))))
+            expect(shades.dark["--sidebar-accent"], picked).toBeUndefined()
+            const end = shades.light["--sidebar-accent"]
+            // Readable on the dark side bar, and as readable on the light theme's as Nizmo's indigo.
+            expect(contrast(end, darkBar), `${picked} dark`).toBeGreaterThanOrEqual(4.5)
+            expect(contrast(end, sidebar(lightRoot, shades.light["--page-bg"])), `${picked} light`).toBeGreaterThanOrEqual(contrast("#a5b4fc", sidebar(lightRoot, defaultPage)) - 0.005)
         }
     })
 
@@ -242,7 +248,7 @@ describe("the side bar and the glows go through them", () => {
     it("draws the side bar's ring and the company name's gradient from the shades", () => {
         expect(stripComments(globals)).toMatch(/\.glass-dark \{\s*--focus-ring: var\(--sidebar-ring\);/)
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        expect(shell).toContain("linear-gradient(to right, var(--surface), var(--sidebar-accent))")
+        expect(shell).toContain("linear-gradient(to right, var(--sidebar-fg-strong), var(--sidebar-accent))")
         expect(shell).not.toContain("--info-border-indigo")
     })
 

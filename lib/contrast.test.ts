@@ -221,8 +221,8 @@ describe("the two themes are actually different", () => {
         // — the failure it exists to prevent.
         //
         // --sidebar-fg/-strong are invariant for exactly that reason: same
-        // sidebar, other end of the contrast. So is --sidebar-ring, the focus
-        // ring on it. They exist because the nav links
+        // sidebar, other end of the contrast. So are --sidebar-ring, the focus
+        // ring on it, and --sidebar-accent, the end of the company name. They exist because the nav links
         // used --panel-* — a surface token — as their text colour, so the dark
         // palette dutifully gave the labels the sidebar's own colour and they
         // disappeared. A dark value here would restore that bug under a name
@@ -244,7 +244,7 @@ describe("the two themes are actually different", () => {
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent", "--hero-from", "--hero-to",
-            "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong", "--sidebar-ring",
+            "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong", "--sidebar-ring", "--sidebar-accent",
             "--paper", "--ink-on-paper",
             "--button-from", "--button-to",
             "--map-pin", "--map-ink", "--map-halo", "--map-shadow",

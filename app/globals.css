@@ -238,8 +238,9 @@
   --sidebar-fg: rgba(255, 255, 255, 0.8);
   --sidebar-fg-strong: #ffffff;
   /* The side bar's touches of the brand colour, which follow it (DESIGN.md
-     §2.1, lib/brand-colour.ts): its focus ring, light on its dark ground in
-     both themes, and the end of the company name's gradient. */
+     §2.1, lib/brand-colour.ts). Both are light, on its dark ground, in both
+     themes: its focus ring, and the end of the company name's gradient,
+     which starts from --sidebar-fg-strong. */
   --sidebar-ring: #c7d2fe;
   --sidebar-accent: #a5b4fc;
 
@@ -1240,7 +1241,6 @@ input::-webkit-credentials-auto-fill-button {
     --info-bg-indigo-subtle: #131b30;
     --info-bg-indigo-faint: #1a2547;
     --info-border-indigo: #3d4b7a;
-    --sidebar-accent: #3d4b7a;
     --info-fg-deep: #96d4f5;
     --info-fg-deepest: #b3e2fa;
     --info-fg-indigo: #9db4f0;
