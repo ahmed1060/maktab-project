@@ -213,7 +213,7 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
                     <FilePicker label={t('records_attach')} hint={t('records_files_hint')} accept={RECORD_FILE_ACCEPT} onFiles={addFiles} disabled={saving || kept.length + picked.length >= RECORD_FILES_MAX} />
                     {errors.files && <span className="ui-error" role="alert">{errors.files}</span>}
                 </div>
-                <DatePickerSingle asField label={t('records_expiry_date')} value={expiryDate} onChange={setExpiryDate} />
+                <DatePickerSingle asField label={t('records_expiry_date')} value={expiryDate} onChange={setExpiryDate} disabled={saving} />
                 <Field label={t('records_reminder')} hint={t('records_reminder_hint')} error={errors.reminder}>{p => (
                     <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={REMINDER_DAYS_MAX} value={reminderDays} onChange={e => setReminderDays(e.target.value)} disabled={saving || !expiryDate} />
                 )}</Field>

@@ -1,6 +1,10 @@
-import { describe, it, expect, afterEach } from "vitest"
+import { describe, it, expect, afterEach, vi } from "vitest"
 import { readFileSync } from "node:fs"
+import { createElement as h } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import { calendarDay } from "./calendar-day"
+
+vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 
 /**
  * A day picked in a form, such as a record's expiry date, shows as that day
@@ -23,5 +27,15 @@ describe("a picked calendar day", () => {
         const picker = readFileSync("components/DatePickerSingle.tsx", "utf8")
         expect(picker).toContain("return calendarDay(dateStr).toLocaleDateString(")
         expect(picker).not.toContain("const date = new Date(dateStr)")
+    })
+})
+
+describe("the date picker while its form saves", () => {
+    it("can't be opened, so the day shown is the day saved", async () => {
+        const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
+        const html = (disabled: boolean) => renderToStaticMarkup(h(DatePickerSingle, { value: "2026-10-20", onChange: () => {}, label: "Expiry date", asField: true, disabled }))
+        expect(html(true)).toMatch(/<button type="button"[^>]*class="ui-input ui-date-trigger"[^>]*disabled="">/)
+        expect(html(false)).not.toContain('disabled=""')
+        expect(readFileSync("components/records/RecordForm.tsx", "utf8")).toContain("onChange={setExpiryDate} disabled={saving} />")
     })
 })

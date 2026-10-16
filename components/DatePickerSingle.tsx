@@ -16,9 +16,11 @@ interface DatePickerSingleProps {
     maxDate?: string
     /** Looks like a building-block field (DESIGN.md §5.3), for pages built from them. */
     asField?: boolean
+    /** Can't be changed, as while the form it's in is saving. */
+    disabled?: boolean
 }
 
-export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false }: DatePickerSingleProps) {
+export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false, disabled = false }: DatePickerSingleProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const mounted = useHydrated()
@@ -31,6 +33,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
     const keys = usePickerKeyboard({ isOpen, close: () => setIsOpen(false), currentMonth, setCurrentMonth, isDisabled: isDayDisabled, rtl: locale === 'ar', popupRef: portalRef })
     const toggleOpen = () => {
         if (isOpen) return setIsOpen(false)
+        if (disabled) return
         keys.opened(startDay(value || null, minDate ?? null, maxDate ?? null))
         setIsOpen(true)
     }
@@ -222,7 +225,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
             {label && <label htmlFor={openerId} className="ui-label">{label}</label>}
             <span className="ui-control has-start-icon">
                 <Icon icon={CalendarBlankIcon} size={16} />
-                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!value || undefined}>
+                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!value || undefined} disabled={disabled}>
                     {value ? formatDate(value) : t('select_date' as any)}
                 </button>
             </span>
@@ -239,6 +242,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
                 aria-haspopup="dialog"
                 aria-expanded={isOpen}
                 onClick={toggleOpen}
+                disabled={disabled}
                 style={{
                     width: '100%',
                     font: 'inherit',
