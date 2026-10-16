@@ -454,6 +454,18 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(await Records.get(admin, support)).toMatchObject({ lastEditedBy: { firstName: "Amal" }, lastEditedBySuperAdmin: false })
         })
 
+        it("offers the company's clients to add a record to, by name, to whoever may add one", async () => {
+            const names = (list: { name: string }[]) => list.map(c => c.name)
+            expect(names(await Records.clients(employee))).toEqual(["Acme", "Delta"])
+            expect(names(await Records.clients(otherAdmin))).toEqual(["Gamma"])
+            // A Super Admin's chosen company, or every company's, each named with its company.
+            expect(names(await Records.clients(superAdmin, "c2"))).toEqual(["Gamma"])
+            expect((await Records.clients(superAdmin)).map(c => `${c.name} ${c.company}`)).toEqual(["Acme One", "Delta One", "Gamma Two"])
+            // Someone on a role without records.contribute.
+            const without = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: "" } } as any
+            await expect(Records.clients(without)).rejects.toThrow("RECORD_FORBIDDEN")
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id

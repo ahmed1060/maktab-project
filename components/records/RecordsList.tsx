@@ -39,6 +39,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     sections?: SectionItem[]
     /** Whether the add form is open, for a page whose header has the button. */
     adding?: boolean
+    /** Opens the page's way to add a record: a client's form, or the Records page's choice of client. */
     onAddingChange?: (open: boolean) => void
     /** After a record is added, changed or deleted: a section's count may have moved. */
     onChanged?: () => void
@@ -185,7 +186,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
             : <EmptyState
                 icon={ArticleIcon}
                 title={t('records_none')}
-                action={vendorId && canEdit && onAddingChange ? <Button variant="primary" onClick={() => onAddingChange(true)}>{t('records_add')}</Button> : undefined}
+                action={canEdit && onAddingChange ? <Button variant="primary" onClick={() => onAddingChange(true)}>{t('records_add')}</Button> : undefined}
             />
 
     return (

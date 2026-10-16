@@ -35,12 +35,14 @@ export default function VendorPage() {
     const { t } = useLanguage()
     const modules = useModules()
     const { id } = useParams<{ id: string }>()
-    const openRecordId = useSearchParams().get('record')
+    const params = useSearchParams()
+    const openRecordId = params.get('record')
     const { data: session } = useSession()
     const { can } = useCan()
     const seesVendor = can('vendors.view')
     const seesRecords = can('records.view')
-    const [adding, setAdding] = useState(false)
+    // Arriving from the Records page's Add record (?add=1), with the form open.
+    const [adding, setAdding] = useState(params.get('add') === '1')
     const { mutate } = useSWRConfig()
 
     const { data: vendorBody, error: vendorError, isLoading: vendorLoading, mutate: reloadVendor } = useSWR<{ data: Vendor }>(seesVendor ? `/api/vendors?id=${encodeURIComponent(id)}` : null, fetcher)
@@ -100,7 +102,7 @@ export default function VendorPage() {
                         <RecordsList
                             vendorId={id}
                             sections={sections}
-                            adding={adding}
+                            adding={adding && can('records.contribute')}
                             onAddingChange={setAdding}
                             onChanged={() => { void reloadSections() }}
                             openRecordId={openRecordId}

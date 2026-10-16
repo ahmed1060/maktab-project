@@ -33,6 +33,7 @@ const ORDER: ActorName[] = ["superAdmin", "admin", "otherAdmin", "leader", "empl
 const records = () => import("@/app/api/records/route")
 const sections = () => import("@/app/api/records/sections/route")
 const uploads = () => import("@/app/api/records/uploads/route")
+const clients = () => import("@/app/api/records/clients/route")
 const vendors = () => import("@/app/api/vendors/route")
 const costs = () => import("@/app/api/users/[id]/costs-history/route")
 const P = (params: Record<string, string>) => ({ params })
@@ -103,6 +104,8 @@ const OTHER: [string, () => Promise<Response>, Row][] = [
     // Lists are scoped to the caller's company in the query.
     ["listing every record", async () => (await records()).GET(new Request(url("/api/records")), P({})), [200, 200, 200, 200, 200]],
     ["listing expiring records", async () => (await records()).GET(new Request(url("/api/records?expiry=soon")), P({})), [200, 200, 200, 200, 200]],
+    // Every holder of records.contribute may pick a client to add a record to, from their own company's.
+    ["listing clients to add a record to", async () => (await clients()).GET(new Request(url("/api/records/clients")), P({})), [200, 200, 200, 200, 200]],
     // Every holder of records.contribute may discard what they uploaded; RecordService picks which files may go.
     ["discarding files uploaded for an unsaved record", async () => (await uploads()).DELETE(withBody("DELETE", "/api/records/uploads", { urls: ["https://abc.supabase.co/storage/v1/object/public/app-assets/c1/records/1-a.pdf"] }), P({})), [200, 200, 200, 200, 200]],
     ["listing vendors",  async () => (await vendors()).GET(new Request(url("/api/vendors")), P({})), [200, 200, 200, 200, 403]],

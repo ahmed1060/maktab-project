@@ -74,6 +74,16 @@ describe("record screens offer only what the server allows", () => {
     const SECTIONS = source("components/records/SectionsCard.tsx")
     const VIEW = source("components/records/RecordDialog.tsx")
 
+    it("offers adding a record from the Records page, by choosing its client, only with records.contribute", () => {
+        const PAGE = source("app/(dashboard)/dashboard/records/page.tsx")
+        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        expect(PAGE).toContain("action={can('records.contribute') && <Button")
+        expect(PAGE).toContain("<ClientPicker open={picking}")
+        expect(LIST).toContain("action={canEdit && onAddingChange ? <Button")
+        expect(source("components/records/ClientPicker.tsx")).toContain("router.push(`/dashboard/vendors/${encodeURIComponent(clientId)}?add=1`)")
+        expect(CLIENT).toContain("useState(params.get('add') === '1')")
+        expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
+    })
     it("offers editing a record only with records.contribute", () => {
         expect(LIST).toContain("const canEdit = can('records.contribute')")
         expect(LIST).toContain("...(canEdit ? [{ key: 'edit'")

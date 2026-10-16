@@ -40,6 +40,9 @@ async function companyToday(companyId: string) {
     return recordsToday(company?.timezone)
 }
 
+/** The most clients the Records page offers to add a record to. */
+export const CLIENTS_MAX = 1000
+
 const PERSON = { select: { firstName: true, lastName: true } } as const
 
 const ROW = (withCompany: boolean) => ({
@@ -239,6 +242,27 @@ export class RecordService {
         allow(session, "records.view", found.companyId, "RECORD_NOT_FOUND")
         const row = await prisma.clientRecord.findUniqueOrThrow({ where: { id }, select: ROW(false) })
         return shape(row, await companyToday(found.companyId))
+    }
+
+    /**
+     * The clients a record can be added to, by name, for adding one from the
+     * Records page: someone who may add records but not see the vendors
+     * list, as an ordinary employee, otherwise has no way to reach a client
+     * without records yet. A Super Admin's chosen company's, or every
+     * company's, each named with its company.
+     */
+    static async clients(session: Session, companyId?: string | null) {
+        const sa = isSuperAdmin(session)
+        const company = sa ? companyId || null : session.user.companyId
+        if (!sa && !company) return []
+        if (!sa && !can(session.user as any, "records.contribute", { companyId: company! })) throw new Error("RECORD_FORBIDDEN")
+        const vendors = await prisma.vendor.findMany({
+            where: company ? { companyId: company } : {},
+            select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true } } }) },
+            orderBy: [{ name: "asc" }, { id: "asc" }],
+            take: CLIENTS_MAX,
+        })
+        return vendors.map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name } : {}) }))
     }
 
     /** A client's sections, with how many records each holds, and the client's name for the page. */
