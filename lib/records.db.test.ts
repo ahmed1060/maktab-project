@@ -377,6 +377,23 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("removes a file a second edit drops, though it was added by an edit just before", async () => {
+            const id = (await Records.create(admin, { content: "Lease", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'First edit') EXECUTE FUNCTION test_slow()`)
+            try {
+                removed.length = 0
+                // Two people edit it at once: the first adds a.pdf, the second, from the form as it was, saves b.pdf instead.
+                const first = Records.update(admin, { id, content: "First edit", files: [file("c1", "a.pdf")], expiryDate: null, reminderDays: null })
+                await new Promise(r => setTimeout(r, 150))
+                await Promise.all([first, Records.update(employee, { id, content: "Second edit", files: [file("c1", "b.pdf")], expiryDate: null, reminderDays: null })])
+                expect((await Records.get(admin, id)).files.map(f => f.name)).toEqual(["b.pdf"])
+                expect(removed).toEqual(["c1/records/a.pdf"])
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
+            }
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id

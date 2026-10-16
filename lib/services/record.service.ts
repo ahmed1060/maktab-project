@@ -386,11 +386,16 @@ export class RecordService {
         const who = actor(session)
         const expiryDate = input.expiryDate ? parseExpiryDay(input.expiryDate) : null
         const reminderDays = input.expiryDate ? input.reminderDays : null
-        // A new date or reminder is a new deadline: its reminders are owed again.
-        const datesChanged = (record.expiryDate?.getTime() ?? null) !== (expiryDate?.getTime() ?? null) || record.reminderDays !== reminderDays
-        const before = parseRecordFiles(record.attachment)
 
-        const updated = await prisma.$transaction(async tx => {
+        const { row: updated, before } = await prisma.$transaction(async tx => {
+            // The record as it is now, held until this edit is written: another
+            // edit just before may have added files this one replaces, or
+            // changed the date it's compared with.
+            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientNote" WHERE id = ${input.id} FOR UPDATE`
+            if (!locked.length) throw new Error("RECORD_NOT_FOUND")
+            const current = await tx.clientRecord.findUniqueOrThrow({ where: { id: input.id }, select: { attachment: true, expiryDate: true, reminderDays: true } })
+            // A new date or reminder is a new deadline: its reminders are owed again.
+            const datesChanged = (current.expiryDate?.getTime() ?? null) !== (expiryDate?.getTime() ?? null) || current.reminderDays !== reminderDays
             const row = await tx.clientRecord.update({
                 where: { id: input.id },
                 data: {
@@ -410,7 +415,7 @@ export class RecordService {
                 tx, ...who.audit,
                 details: { files: input.files.length, expiryDate: input.expiryDate, contentPreview: snippet(input.content) },
             })
-            return row
+            return { row, before: parseRecordFiles(current.attachment) }
         })
         const kept = new Set(input.files.map(f => f.url))
         await removeFiles(before.filter(f => !kept.has(f.url)), record.companyId)

@@ -49,13 +49,14 @@ export const prismaMock: any = new Proxy({}, {
     get(_t, prop: string) {
         if (prop in models) return models[prop]
         if (prop === "$transaction") return async (fn: any) => typeof fn === "function" ? fn(prismaMock) : Promise.all(fn)
-        // The row locks a record takes on its client and section (RecordService): the row, if it's there.
+        // The row locks RecordService takes on a client, a section or a record: the row, if it's there.
         if (prop === "$queryRaw") return async (sql: TemplateStringsArray, ...values: any[]) => {
             const text = sql.join("?")
             if (text.includes('FROM "Vendor"')) return vendorRow(values[0]) ? [{ id: values[0] }] : []
             // The section's: by its id, or a client's section by name, which none of the fixtures is.
             if (text.includes('FROM "ClientSection" WHERE id')) return sectionRow(values[0]) ? [{ id: values[0] }] : []
             if (text.includes('FROM "ClientSection"')) return []
+            if (text.includes('FROM "ClientNote" WHERE id')) return recordRow(values[0]) ? [{ id: values[0] }] : []
             return basePrisma.$queryRaw(sql, ...values)
         }
         return basePrisma[prop]
