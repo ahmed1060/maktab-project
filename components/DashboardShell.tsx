@@ -297,7 +297,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
                                     const nameLength = cleanName.length;
                                     const textStyle: React.CSSProperties = {
-                                        background: 'linear-gradient(to right, var(--surface), var(--info-border-indigo))',
+                                        background: 'linear-gradient(to right, var(--surface), var(--sidebar-accent))',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
                                         fontSize: nameLength > 20
