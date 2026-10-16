@@ -4,6 +4,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { createCompanySchema, updateCompanySchema } from "@/lib/validations/company.schema"
 import { CompanyService } from "@/lib/services/company.service"
 import { parsePaging } from "@/lib/pagination"
+import { SystemSettingsService } from "@/lib/services/system-settings.service"
 
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
@@ -16,7 +17,7 @@ export const GET = withStandardHandler(async (req, session) => {
             where: { id },
             select: {
                 id: true, name: true, isBanned: true, autoVerifyLocation: true,
-                moduleLabels: true, moduleIcons: true, logoUrl: true,
+                moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
                 packageId: true, trialPreset: true, trialExtensionDays: true, createdAt: true,
@@ -24,7 +25,8 @@ export const GET = withStandardHandler(async (req, session) => {
             }
         })
         if (!company) return ApiResponse.notFound("Company not found")
-        return ApiResponse.success(company)
+        // What the Branding tab's "Use the default" goes back to (UI_PLAN.md §4.6).
+        return ApiResponse.success({ ...company, defaultBrandColour: (await SystemSettingsService.get()).brandColour })
     }
 
     const { page, limit } = parsePaging(searchParams, 10, 1000)

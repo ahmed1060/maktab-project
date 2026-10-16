@@ -1548,6 +1548,15 @@ input::-webkit-credentials-auto-fill-button {
   --on-problem: #ffffff;
   --problem-text: #b3093c;
   --overdue-row: #fff8fa;
+  /* Each theme's panel, ink and line whichever theme is showing, for a
+     preview of both side by side: the brand colour's (DESIGN.md §5.3). The
+     same as the light --panel, --ink and --rule above and the dark ones below. */
+  --light-panel: #ffffff;
+  --light-ink: #0d253d;
+  --light-rule: #e3e8ee;
+  --dark-panel: #0f1a2b;
+  --dark-ink: #e6edf5;
+  --dark-rule: #24324a;
 
   --brand: #6063ea;
   --brand-hover: #585bd7;

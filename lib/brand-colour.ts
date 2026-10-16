@@ -44,6 +44,9 @@ export function readBrandHex(value: unknown): string | null {
     return null
 }
 
+/** The colour code a form shows as an example. */
+export const EXAMPLE_BRAND_CODE = '#2563eb'
+
 /**
  * The ready-made colours (UI_PLAN.md §4.6), Nizmo's indigo first. Each key
  * names it on screen (brand_preset_<key>). None is close to the error red.

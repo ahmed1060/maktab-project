@@ -6,6 +6,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import SegmentedToggle from '@/components/SegmentedToggle'
 import CompanyGeneralCard from '@/components/CompanyGeneralCard'
 import CompanyLogoCard from '@/components/CompanyLogoCard'
+import BrandColourCard from '@/components/BrandColourCard'
 import CompanyPayrollCard from '@/components/CompanyPayrollCard'
 import CompanyAttendanceCard from '@/components/CompanyAttendanceCard'
 import CompanyRolesCard from '@/components/CompanyRolesCard'
@@ -34,6 +35,10 @@ export type CompanySettings = {
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
+    /** The company's own brand colour, null for the default (UI_PLAN.md §4.6). */
+    brandColour?: string | null
+    /** The system's default, which "Use the default" goes back to. */
+    defaultBrandColour?: string
     payrollDay: number
     payslipsVisible: boolean
     timezone: string
@@ -93,13 +98,31 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                 )}
 
                 {tab === 'branding' && (
-                    <CompanyLogoCard
-                        companyId={companyId}
-                        companyName={company.name}
-                        logoUrl={company.logoUrl}
-                        onChanged={(logoUrl: string | null) => onSaved({ logoUrl })}
-                        readOnly={readOnly}
-                    />
+                    <>
+                        <CompanyLogoCard
+                            companyId={companyId}
+                            companyName={company.name}
+                            logoUrl={company.logoUrl}
+                            onChanged={(logoUrl: string | null) => onSaved({ logoUrl })}
+                            readOnly={readOnly}
+                        />
+                        <BrandColourCard
+                            saved={company.brandColour ?? null}
+                            defaultColour={company.defaultBrandColour}
+                            hint={t('brand_colour_company_hint')}
+                            readOnly={readOnly}
+                            onSave={async brandColour => {
+                                const res = await fetch('/api/company-settings', {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ companyId, tab: 'branding', brandColour }),
+                                }).catch(() => null)
+                                if (!res?.ok) return false
+                                onSaved({ brandColour })
+                                return true
+                            }}
+                        />
+                    </>
                 )}
 
                 {tab === 'payroll' && (
