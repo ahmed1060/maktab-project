@@ -154,8 +154,9 @@ describe("G3: a Super Admin can reach a register", () => {
 
     it("reloads when the company changes", () => {
         // The company is part of the SWR key, so choosing another one is a
-        // different request rather than a cached answer for the last.
-        expect(REGISTER).toMatch(/useSWR\(registerKey,/)
+        // different request rather than a cached answer for the last, and
+        // the last company's register isn't kept up meanwhile.
+        expect(REGISTER).toMatch(/useSWR\(scopedKey\(registerKey, companyId\),/)
         expect(REGISTER).toContain("`/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`")
     })
 

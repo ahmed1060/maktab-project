@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { fetcher } from '@/lib/swr-fetcher'
+import { forScope, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useLanguage } from '@/context/LanguageContext'
 import RequestCard from '@/components/requests/RequestCard'
 import ViewRequestModal from '@/components/requests/ViewRequestModal'
@@ -47,8 +47,10 @@ export default function RequestsHistoryClient({ userRole }: { userRole: string }
     if (selectedCompanyId) historyUrl += `&companyId=${selectedCompanyId}`
     // Keyed by the whole query, so an answer for filters that have since
     // changed can never land on top of the current ones. The previous page
-    // stays up while the next loads, as it did before.
-    const { data: result, isLoading: loading, mutate: fetchHistory } = useSWR(historyUrl, fetcher, { keepPreviousData: true })
+    // stays up while the next loads, as it did before, but not another
+    // company's (lib/swr-scoped.ts).
+    const { data: scoped, isLoading: loading, mutate: fetchHistory } = useSWR(scopedKey(historyUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
+    const result = forScope(scoped, selectedCompanyId)
     const requests: any[] = result?.data?.data || NO_REQUESTS
     const total: number = result?.data?.total || 0
     const totalPages: number = result?.data?.totalPages || 0

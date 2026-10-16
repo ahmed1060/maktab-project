@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
+import { forScope, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -141,12 +142,15 @@ export default function PayrollRegisterPage() {
     const registerKey = !session || (isSuper && !companyId)
         ? null
         : `/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`
-    const { data, error, isLoading, mutate: load } = useSWR(registerKey, fetcher, {
+    const { data: scoped, error, isLoading, mutate: load } = useSWR(scopedKey(registerKey, companyId), scopedFetcher, {
         // The last month's register stays up while the next one loads, rather
         // than the screen dropping to a spinner at every step of the picker.
+        // Not another company's: Approve and Mark as paid name the company
+        // picked, not the one on screen (lib/swr-scoped.ts).
         keepPreviousData: true,
         onError: (err: SWRError) => showToast(err.info?.error || t('error_generic'), 'error'),
     })
+    const data = forScope(scoped, companyId)
     const view: View | null = registerKey && !error ? (data?.data ?? null) : null
     const loading = !session || isLoading
     // Attendance changed after a payroll was approved (§12.3): whenever any is
