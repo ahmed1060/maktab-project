@@ -745,3 +745,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and removes them again if it closes without saving them; a client's page
   opens a reminder's record only if it's that client's (`CLIENTS_PLAN.md`
   change log).
+- **2026-10-16:** From Codex's second review of #82: the date picker shows
+  a picked day as that day in every time zone (it showed the day before
+  west of UTC, on the Day Off page too), and a file dropped on a file
+  picker that's full, or otherwise turned off, no longer opens in place of
+  the page (`CLIENTS_PLAN.md` change log).

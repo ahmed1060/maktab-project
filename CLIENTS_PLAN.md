@@ -85,6 +85,12 @@ Production has no data in these parts, so now is the right time.
   keeps what it uploaded for the next try;
 - two people adding records into the same new section at once get one
   section, and a client isn't deleted while a record is being added to it.
+  A section deleted as a record is added to it takes that record's files
+  with it;
+- a record's expiry, its badges, the filter and the reminders are counted
+  by the day where its company is, in the company's own time zone. A
+  reminder goes out only for the date it was found for, so a date changed
+  as the job runs gets its own reminder.
 
 **Proposed** (built this way in 0a, for the product owner to confirm or
 change):
@@ -848,3 +854,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   section named by two people at once is started once; a client isn't
   deleted while a record is being added; and a reminder's record opens only
   on its own client's page. Still waiting to be merged.
+- **2026-10-16:** PR 0a (#82): Codex's second review is fixed too (§0.2):
+  expiry is counted in each company's own time zone; a reminder is sent
+  only for the date it was found for; deleting a section takes along a
+  record being added to it, with its files; the date picker shows a picked
+  day as that day in every time zone; and a file dropped on a full file
+  picker no longer leaves the page. Still waiting to be merged.
