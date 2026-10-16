@@ -654,11 +654,24 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - nine ready-made colours or a typed code, a preview in light and dark,
     and a warning for a colour close to the error red (`DESIGN.md` §2.1,
     §5.3);
-  - the server puts the viewer's colour in the page for each request: a
-    company's for its people, the default for the sign-in page and the
-    Super Admin. The phone app shows the site, so it shows the company's
+  - the server puts the viewer's colour in the page: a company's for its
+    people, the default for the sign-in page and the Super Admin. The phone
+    app shows the site, so its pages in the new design take the company's
     colour after sign-in;
   - every change is in the audit log.
 
   Until the side bar and the old pages move onto the building blocks, they
   keep Nizmo's indigo. The 3 pages' PR (§5 step 3) was merged in #78.
+- **2026-10-16:** Fixes from Codex's review of the brand colour PR (#80):
+  - signing out from the account menu left the company's colour on the
+    sign-in page. Next.js doesn't draw the root layout again when the app
+    moves to another page, so the root layout now draws the default, which
+    is the same for everyone, and the dashboard layout draws a company's own
+    over it. Signing in or out draws the dashboard layout afresh, so the
+    colour changes with it;
+  - a saved colour shows at once for whoever saved it. Everyone else sees
+    it the next time they open or reload a page, or sign in: moving to
+    another page inside the app doesn't pick it up;
+  - the settings' hints said the colour reaches the sign-in page, the side
+    bar and the phone app. So far it reaches only the pages in the new
+    design, and the hints now say so.
