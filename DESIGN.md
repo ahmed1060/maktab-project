@@ -108,6 +108,9 @@ below, which are all worked out from the one chosen colour.
 
     A shade that falls short is darkened (on a dark ground, lightened)
     until it doesn't, keeping its hue;
+  - the check-in place's radius ring on the map has a thin white outline,
+    as its pin does, so it shows over satellite imagery as well as the
+    light street map, whatever the colour;
   - the company name at the top of the side bar runs from white to a pale
     shade of the brand, in both themes, since the side bar is dark in
     both. It used to start from the page's panel colour, so in dark mode
@@ -682,3 +685,6 @@ changed:
   top of the side bar runs from white to a pale shade of the brand in both
   themes (§2.1). In dark mode it used to run from the dark panel colour to
   a dark indigo, on the dark side bar, and was barely readable.
+- **2026-10-16:** From Codex's review of #81: the check-in place's radius
+  ring on the map has a thin white outline, as its pin does (§2.1). The map
+  can show satellite imagery, where a dark colour's ring disappeared.
