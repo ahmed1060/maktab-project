@@ -482,6 +482,24 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("removes the files an edit just gave a record of a company being deleted", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
+            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Eta', 'Huda', '0106', 'Tanta', now())`)
+            const id = (await Records.create(superAdmin, { content: "Eta permit", files: [], expiryDate: null, reminderDays: null, vendorId: "v7", sectionTitle: "Licences" })).id
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Eta permit, scanned') EXECUTE FUNCTION test_slow()`)
+            try {
+                removed.length = 0
+                const editing = Records.update(superAdmin, { id, content: "Eta permit, scanned", files: [file("c4", "eta.pdf")], expiryDate: null, reminderDays: null })
+                await new Promise(r => setTimeout(r, 150))
+                const { CompanyService } = await import("@/lib/services/company.service")
+                await Promise.all([editing, CompanyService.delete("c4", { user: { ...superAdmin.user, mfaEnabled: true, stepUpAt: Date.now() } })])
+                expect(removed).toEqual(["c4/records/eta.pdf"])
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
+            }
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id

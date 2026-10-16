@@ -487,6 +487,11 @@ export class RecordService {
      * it's done.
      */
     static async filesOfCompany(tx: Prisma.TransactionClient, companyId: string) {
+        // Held first, as their own deletions hold them: its clients, so no
+        // record is added meanwhile (create), then their records, so an edit
+        // of one's files (update) is listed as it's saved.
+        await tx.$queryRaw`SELECT id FROM "Vendor" WHERE "companyId" = ${companyId} ORDER BY id FOR UPDATE`
+        await tx.$queryRaw`SELECT n.id FROM "ClientNote" n JOIN "ClientSection" s ON s.id = n."sectionId" JOIN "Vendor" v ON v.id = s."vendorId" WHERE v."companyId" = ${companyId} ORDER BY n.id FOR UPDATE OF n`
         const rows = await tx.clientRecord.findMany({ where: { attachment: { not: null }, section: { vendor: { companyId } } }, select: { attachment: true } })
         return rows.flatMap(r => parseRecordFiles(r.attachment))
     }
