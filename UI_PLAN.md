@@ -709,3 +709,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - لون الهوية is the Arabic for "brand colour" (§3.2).
 - **2026-10-16:** The brand colour setting was merged in #80 (§5 step
   3). The older pages' PR (§4.6) is open, waiting to be merged.
+- **2026-10-16:** From Codex's review of the older pages' PR (#81), their
+  shades are held to today's readability in five more places
+  (`DESIGN.md` §2.1):
+  - white text on a button that brightens on hover;
+  - in dark mode, a fill against the dark page, so a dark colour's
+    sign-in button doesn't vanish;
+  - text on the light brand tints behind it;
+  - the highlight colour, which is also a link's colour;
+  - the company name's gradient in the side bar.

@@ -760,3 +760,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   after the setting's, before step 0 (§8, `UI_PLAN.md` §4.6).
 - **2026-10-16:** The brand colour setting was merged in #80. The older
   pages' PR is open, waiting to be merged (§8).
+- **2026-10-16:** The older pages' PR (#81) has Codex's review findings
+  fixed, still waiting to be merged (§8, `UI_PLAN.md` change log).
