@@ -561,7 +561,7 @@ balance first, automatically:
        Merged in #80 on 2026-10-16.
      - make the older pages, the side bar and the sign-in page follow
        the brand colour, in one small PR after it (`UI_PLAN.md` §4.6).
-       Built on 2026-10-16, waiting to be merged.
+       Merged in #81 on 2026-10-16.
   2. **Steps 0–7 above.**
      - The new side bar groups land with step 0.
      - Every screen these steps create or rework uses the building blocks:
@@ -767,3 +767,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   (§8, `UI_PLAN.md` change log).
 - **2026-10-16:** The older pages' PR (#81): the map's radius ring has a
   white outline, from Codex's review (§8, `UI_PLAN.md` change log).
+- **2026-10-16:** The older pages' brand colour PR was merged in #81, so
+  step 0 is next (§8).

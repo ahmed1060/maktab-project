@@ -315,7 +315,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      built from the building blocks;
    - **the older pages, the side bar and the sign-in page follow the
      colour too (§4.6),** in a small PR straight after the brand colour
-     setting's. Built on 2026-10-16, waiting to be merged.
+     setting's. Merged in #81 on 2026-10-16.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
    - The side bar groups (§2.1, §2.2) land with step 0.
    - Every screen these steps create or rework uses the building blocks
@@ -725,3 +725,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-16:** From Codex's review of #81, the check-in place's radius
   ring on the map has a thin white outline, as its pin does, so it shows on
   satellite imagery whatever the brand colour (`DESIGN.md` §2.1).
+- **2026-10-16:** The older pages, the side bar and the sign-in page follow
+  the brand colour, merged in #81 (§4.6, §5 step 3). Next is
+  `CLIENTS_PLAN.md`'s step 0.
