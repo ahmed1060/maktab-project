@@ -411,6 +411,9 @@ These are built once, in the building-blocks PR, and every page uses them
     150ms and nothing moves; with reduced motion it's instant.
   - With nothing to count, the ring is a faint track, the middle says 0,
     and the legend says there's nothing yet.
+  - While the numbers load, the legend says so. If they don't load, it
+    says that instead, with a Try again button below. Either way the middle
+    is blank, since a 0 there would read as the answer.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
@@ -598,3 +601,7 @@ changed:
   already fixed.
 - **2026-10-15:** The donut's legend is at most 28rem wide (§5.5), for the
   Day Off page's credit donut, which spans the page.
+- **2026-10-16:** From Codex's review of #79: a donut whose numbers don't
+  load says so and offers Try again (§5.5), with nothing in the middle. The
+  Day Off page's credit donut said "Loading…" for good when its request
+  failed, over a total of 0 days.
