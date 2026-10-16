@@ -153,7 +153,8 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
                 reminderDays: expiryDate && days ? Number(days) : null,
             }
             const where = editing
-                ? { id: record!.id, sectionId }
+                // Its files as it opened, so an edit someone made since isn't undone.
+                ? { id: record!.id, sectionId, filesBefore: record!.files.map(f => f.url) }
                 : newSection ? { vendorId, sectionTitle: sectionTitle.trim() } : { sectionId }
             const res = await fetch('/api/records', {
                 method: editing ? 'PUT' : 'POST',

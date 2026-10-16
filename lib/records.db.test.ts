@@ -178,7 +178,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("hides another company's record, and refuses one's own company's without the permission", async () => {
             await expect(Records.get(otherAdmin, licence)).rejects.toThrow("RECORD_NOT_FOUND")
             await expect(Records.delete(employee, licence)).rejects.toThrow("RECORD_FORBIDDEN")
-            await expect(Records.update(admin, { id: licence, content: "x", files: [], expiryDate: null, reminderDays: null, sectionId: (await Records.sectionsOf(otherAdmin, "v3")).sections[0].id })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
+            await expect(Records.update(admin, { id: licence, content: "x", files: [], filesBefore: [file("c1", "reg.pdf").url], expiryDate: null, reminderDays: null, sectionId: (await Records.sectionsOf(otherAdmin, "v3")).sections[0].id })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
             await expect(Records.create(admin, { content: "x", files: [file("c2", "theirs.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })).rejects.toThrow("RECORD_FILE_INVALID")
         })
 
@@ -197,13 +197,13 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("owes the reminders again when the date changes, and removes a file taken off", async () => {
             const section = (await Records.sectionsOf(admin, "v1")).sections[0].id
-            await Records.update(admin, { id: licence, content: "Commercial register, renewed", files: [], expiryDate: "2027-10-20", reminderDays: 7, sectionId: section })
+            await Records.update(admin, { id: licence, content: "Commercial register, renewed", files: [], filesBefore: [file("c1", "reg.pdf").url], expiryDate: "2027-10-20", reminderDays: 7, sectionId: section })
             const { rows: [row] } = await db.query(`SELECT "notifiedDaysBefore", "notifiedOnExpiry", "lastEditedById" FROM "ClientNote" WHERE id = $1`, [licence])
             expect(row).toEqual({ notifiedDaysBefore: false, notifiedOnExpiry: false, lastEditedById: "a1" })
             expect(removed).toEqual(["c1/records/reg.pdf"])
             // An edit that leaves the dates alone leaves what was sent alone.
             await db.query(`UPDATE "ClientNote" SET "notifiedDaysBefore" = true WHERE id = $1`, [licence])
-            await Records.update(admin, { id: licence, content: "Commercial register, renewed.", files: [], expiryDate: "2027-10-20", reminderDays: 7 })
+            await Records.update(admin, { id: licence, content: "Commercial register, renewed.", files: [], filesBefore: [], expiryDate: "2027-10-20", reminderDays: 7 })
             expect((await db.query(`SELECT "notifiedDaysBefore" FROM "ClientNote" WHERE id = $1`, [licence])).rows[0].notifiedDaysBefore).toBe(true)
         })
 
@@ -216,7 +216,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("deletes a section with every record in it, and their files", async () => {
             removed.length = 0
-            await Records.update(admin, { id: contract, content: "Supply contract", files: [file("c1", "contract.pdf")], expiryDate: null, reminderDays: null })
+            await Records.update(admin, { id: contract, content: "Supply contract", files: [file("c1", "contract.pdf")], filesBefore: [], expiryDate: null, reminderDays: null })
             const section = (await Records.sectionsOf(admin, "v1")).sections[0].id
             await expect(Records.deleteSection(employee, section)).rejects.toThrow("RECORD_FORBIDDEN")
             await Records.deleteSection(admin, section)
@@ -234,7 +234,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             const first = (await Records.create(admin, { content: "Lease", files: [shared], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
             const second = (await Records.create(admin, { content: "Lease, copy", files: [shared, file("c1", "own.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
             await Records.delete(admin, first)
-            await Records.update(admin, { id: second, content: "Lease, copy", files: [shared], expiryDate: null, reminderDays: null })
+            await Records.update(admin, { id: second, content: "Lease, copy", files: [shared], filesBefore: [shared.url, file("c1", "own.pdf").url], expiryDate: null, reminderDays: null })
             expect(removed).toEqual(["c1/records/own.pdf"])
             await Records.delete(admin, second)
             expect(removed).toEqual(["c1/records/own.pdf", "c1/records/shared.pdf"])
@@ -382,18 +382,39 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
-        it("removes a file a second edit drops, though it was added by an edit just before", async () => {
+        it("refuses an edit from a form opened before someone else changed the record's files", async () => {
             const id = (await Records.create(admin, { content: "Lease", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'First edit') EXECUTE FUNCTION test_slow()`)
             try {
                 removed.length = 0
-                // Two people edit it at once: the first adds a.pdf, the second, from the form as it was, saves b.pdf instead.
-                const first = Records.update(admin, { id, content: "First edit", files: [file("c1", "a.pdf")], expiryDate: null, reminderDays: null })
+                // Two people edit it at once from the same form: the first adds a.pdf; the second, not seeing it, saves b.pdf.
+                const first = Records.update(admin, { id, content: "First edit", files: [file("c1", "a.pdf")], filesBefore: [], expiryDate: null, reminderDays: null })
                 await new Promise(r => setTimeout(r, 150))
-                await Promise.all([first, Records.update(employee, { id, content: "Second edit", files: [file("c1", "b.pdf")], expiryDate: null, reminderDays: null })])
-                expect((await Records.get(admin, id)).files.map(f => f.name)).toEqual(["b.pdf"])
-                expect(removed).toEqual(["c1/records/a.pdf"])
+                const [, second] = await Promise.allSettled([first, Records.update(employee, { id, content: "Second edit", files: [file("c1", "b.pdf")], filesBefore: [], expiryDate: null, reminderDays: null })])
+                expect(second).toMatchObject({ status: "rejected", reason: { message: "RECORD_CHANGED" } })
+                expect((await Records.get(admin, id)).files.map(f => f.name)).toEqual(["a.pdf"])
+                expect(removed).toEqual([])
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
+            }
+        })
+
+        it("never brings back a file another edit removed, from a form that still had it", async () => {
+            const kept = file("c1", "deed.pdf")
+            const id = (await Records.create(admin, { content: "Deed", files: [kept], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Deed, file taken off') EXECUTE FUNCTION test_slow()`)
+            try {
+                removed.length = 0
+                // One person takes deed.pdf off; another, from a form opened before that, only fixes the text and keeps it.
+                const taking = Records.update(admin, { id, content: "Deed, file taken off", files: [], filesBefore: [kept.url], expiryDate: null, reminderDays: null })
+                await new Promise(r => setTimeout(r, 150))
+                const [, keeping] = await Promise.allSettled([taking, Records.update(employee, { id, content: "Deed, text fixed", files: [kept], filesBefore: [kept.url], expiryDate: null, reminderDays: null })])
+                expect(keeping).toMatchObject({ status: "rejected", reason: { message: "RECORD_CHANGED" } })
+                // Removed from storage, and from the record, which never refers to it again.
+                expect(removed).toEqual(["c1/records/deed.pdf"])
+                expect((await Records.get(admin, id)).files).toEqual([])
             } finally {
                 await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
             }
@@ -405,7 +426,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Permit, scanned') EXECUTE FUNCTION test_slow()`)
             try {
                 removed.length = 0
-                const editing = Records.update(admin, { id, content: "Permit, scanned", files: [file("c1", "scan.pdf")], expiryDate: null, reminderDays: null })
+                const editing = Records.update(admin, { id, content: "Permit, scanned", files: [file("c1", "scan.pdf")], filesBefore: [], expiryDate: null, reminderDays: null })
                 await new Promise(r => setTimeout(r, 150))
                 await Promise.all([editing, Records.delete(admin, id)])
                 expect(removed).toEqual(["c1/records/scan.pdf"])
@@ -445,12 +466,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             const leaver = { user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any
             const theirs = (await Records.create(leaver, { content: "Left behind", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
             const support = (await Records.create(superAdmin, { content: "Added by support", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
-            await Records.update(superAdmin, { id: theirs, content: "Left behind, checked", files: [], expiryDate: null, reminderDays: null })
+            await Records.update(superAdmin, { id: theirs, content: "Left behind, checked", files: [], filesBefore: [], expiryDate: null, reminderDays: null })
             await db.query(`DELETE FROM "User" WHERE id = 'e9'`)
             expect(await Records.get(admin, theirs)).toMatchObject({ createdBy: null, createdBySuperAdmin: false, lastEditedBy: null, lastEditedBySuperAdmin: true })
             expect(await Records.get(admin, support)).toMatchObject({ createdBy: null, createdBySuperAdmin: true })
             // An Admin's edit after it is the Admin's.
-            await Records.update(admin, { id: support, content: "Added by support, seen", files: [], expiryDate: null, reminderDays: null })
+            await Records.update(admin, { id: support, content: "Added by support, seen", files: [], filesBefore: [], expiryDate: null, reminderDays: null })
             expect(await Records.get(admin, support)).toMatchObject({ lastEditedBy: { firstName: "Amal" }, lastEditedBySuperAdmin: false })
         })
 
@@ -473,7 +494,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Map, scanned') EXECUTE FUNCTION test_slow()`)
             try {
                 removed.length = 0
-                const editing = Records.update(admin, { id, content: "Map, scanned", files: [file("c1", "map.pdf")], expiryDate: null, reminderDays: null })
+                const editing = Records.update(admin, { id, content: "Map, scanned", files: [file("c1", "map.pdf")], filesBefore: [], expiryDate: null, reminderDays: null })
                 await new Promise(r => setTimeout(r, 150))
                 await Promise.all([editing, Records.deleteSection(admin, section)])
                 expect(removed).toEqual(["c1/records/map.pdf"])
@@ -490,7 +511,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Eta permit, scanned') EXECUTE FUNCTION test_slow()`)
             try {
                 removed.length = 0
-                const editing = Records.update(superAdmin, { id, content: "Eta permit, scanned", files: [file("c4", "eta.pdf")], expiryDate: null, reminderDays: null })
+                const editing = Records.update(superAdmin, { id, content: "Eta permit, scanned", files: [file("c4", "eta.pdf")], filesBefore: [], expiryDate: null, reminderDays: null })
                 await new Promise(r => setTimeout(r, 150))
                 const { CompanyService } = await import("@/lib/services/company.service")
                 await Promise.all([editing, CompanyService.delete("c4", { user: { ...superAdmin.user, mfaEnabled: true, stepUpAt: Date.now() } })])

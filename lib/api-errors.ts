@@ -24,6 +24,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     RECORD_SECTION_NOT_FOUND: { status: 404, message: "Section not found." },
     RECORD_SECTION_TAKEN: { status: 409, message: "This client already has a section with that name." },
     RECORD_FILE_INVALID: { status: 400, message: "Attach files by uploading them here." },
+    RECORD_CHANGED: { status: 409, message: "Someone changed this record's files since you opened it. Close it and open it again to see them." },
     RECORD_FORBIDDEN: { status: 403, message: "You don't have permission to do that." },
     VENDOR_NOT_FOUND: { status: 404, message: "Vendor not found." },
     VENDOR_HAS_RECORDS: { status: 409, message: "This vendor has records. Delete them on its page first." },

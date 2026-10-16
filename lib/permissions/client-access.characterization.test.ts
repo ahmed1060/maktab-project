@@ -55,7 +55,7 @@ const ON_RECORD: [string, (f: Fixture) => Promise<Response>][] = [
     ["open a record",             async f => (await records()).GET(new Request(url(`/api/records?id=${f.record}`)), P({}))],
     ["add a record",              async f => (await records()).POST(withBody("POST", "/api/records", { sectionId: f.section, content: "Hello" }), P({}))],
     ["add a record, new section", async f => (await records()).POST(withBody("POST", "/api/records", { vendorId: f.vendor, sectionTitle: "Licences", content: "Hello" }), P({}))],
-    ["edit a record",             async f => (await records()).PUT(withBody("PUT", "/api/records", { id: f.record, content: "Edited" }), P({}))],
+    ["edit a record",             async f => (await records()).PUT(withBody("PUT", "/api/records", { id: f.record, content: "Edited", filesBefore: [] }), P({}))],
     ["delete a record",           async f => (await records()).DELETE(DEL(`/api/records?id=${f.record}`), P({}))],
     ["view a vendor",             async f => (await vendors()).GET(new Request(url(`/api/vendors?id=${f.vendor}`)), P({}))],
     ["edit a vendor",             async f => (await vendors()).PUT(withBody("PUT", "/api/vendors", { id: f.vendor, name: "Renamed" }), P({}))],

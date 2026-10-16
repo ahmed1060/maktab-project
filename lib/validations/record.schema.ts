@@ -46,8 +46,12 @@ export const createRecordSchema = z.object({
     .refine(r => (r.sectionId !== undefined) !== (r.vendorId !== undefined && r.sectionTitle !== undefined), { message: "Choose a section, or name a new one.", path: ["sectionId"] })
     .refine(remindsOnlyWithExpiry, REMINDER_NEEDS_DATE)
 
-/** An edit replaces the record's text, files and dates; it may move it to another of the client's sections. */
-export const updateRecordSchema = z.object({ id, ...content, sectionId: id.optional() })
+/**
+ * An edit replaces the record's text, files and dates; it may move it to
+ * another of the client's sections. It says which files the record had
+ * when its form opened, and is refused if someone has changed them since.
+ */
+export const updateRecordSchema = z.object({ id, ...content, sectionId: id.optional(), filesBefore: z.array(z.string().max(2000)).max(RECORD_FILES_MAX) })
     .refine(remindsOnlyWithExpiry, REMINDER_NEEDS_DATE)
 
 export const createSectionSchema = z.object({ vendorId: id, title })

@@ -125,6 +125,12 @@ describe("a new or edited record", () => {
 describe("a record's form", () => {
     const FORM = readFileSync("components/records/RecordForm.tsx", "utf8")
 
+    it("says which files the record had when it opened, so the server can refuse it if someone changed them since", () => {
+        expect(FORM).toContain("filesBefore: record!.files.map(f => f.url)")
+        expect(updateRecordSchema.safeParse({ id: "r1", content: "x", files: [] }).success).toBe(false)
+        expect(updateRecordSchema.safeParse({ id: "r1", content: "x", files: [], filesBefore: [] }).success).toBe(true)
+    })
+
     it("keeps each file it uploads, so a failed save doesn't upload it again", () => {
         expect(FORM).toContain("const done = await upload(file)")
         expect(FORM).toContain("setKept(files)")

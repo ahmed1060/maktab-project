@@ -430,6 +430,12 @@ export class RecordService {
             const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientNote" WHERE id = ${input.id} FOR UPDATE`
             if (!locked.length) throw new Error("RECORD_NOT_FOUND")
             const current = await tx.clientRecord.findUniqueOrThrow({ where: { id: input.id }, select: { attachment: true, expiryDate: true, reminderDays: true } })
+            // Made from the record as it was before someone else changed its
+            // files: refused, or a file they took off, and that's removed from
+            // storage, could come back on the record from this older form.
+            const now = new Set(parseRecordFiles(current.attachment).map(f => f.url))
+            const seen = new Set(input.filesBefore)
+            if (now.size !== seen.size || [...now].some(url => !seen.has(url))) throw new Error("RECORD_CHANGED")
             // A new date or reminder is a new deadline: its reminders are owed again.
             const datesChanged = (current.expiryDate?.getTime() ?? null) !== (expiryDate?.getTime() ?? null) || current.reminderDays !== reminderDays
             const row = await tx.clientRecord.update({
