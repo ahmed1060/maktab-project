@@ -718,3 +718,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - text on the light brand tints behind it;
   - the highlight colour, which is also a link's colour;
   - the company name's gradient in the side bar.
+- **2026-10-16:** At the product owner's choice, the company name at the
+  top of the side bar is light in both themes, in the older pages' PR
+  (#81). In dark mode it was barely readable even with Nizmo's indigo, as
+  it started from the dark panel colour (`DESIGN.md` §2.1).
