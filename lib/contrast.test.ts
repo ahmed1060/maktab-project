@@ -62,8 +62,6 @@ const TEXT_PAIRS: [string, string][] = [
     ["--info-fg", "--info-bg"],
     ["--info-fg-deep", "--info-bg-sky"],
     ["--info-fg-indigo", "--info-bg-indigo"],
-    ["--lifetime-fg", "--lifetime-bg"],
-    ["--accent-fg", "--lifetime-bg"],
 ]
 
 /** Body text against the surfaces it actually sits on. */

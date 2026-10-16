@@ -35,7 +35,7 @@ describe("the module table", () => {
     })
 
     it("puts operations in Company Management", () => {
-        for (const m of ['TASKS', 'OBLIGATIONS', 'CLIENTS', 'VENDORS', 'COSTS'] as const) {
+        for (const m of ['TASKS', 'OBLIGATIONS', 'RECORDS', 'VENDORS', 'COSTS'] as const) {
             expect(bundlesFor(m), m).toEqual(['COMPANY_MANAGEMENT'])
         }
     })

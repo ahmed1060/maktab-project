@@ -149,7 +149,7 @@ export class MaintenanceService {
         }
 
         for (let skip = 0; ; skip += BATCH) {
-            const rows = await prisma.businessClientNote.findMany({
+            const rows = await prisma.clientRecord.findMany({
                 where: { attachment: { not: null } },
                 select: { attachment: true },
                 skip, take: BATCH,

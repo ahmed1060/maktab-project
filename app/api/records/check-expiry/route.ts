@@ -1,5 +1,5 @@
 import { ApiResponse } from "@/lib/api-response"
-import { NoteService } from "@/lib/services/note.service"
+import { RecordService } from "@/lib/services/record.service"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { isValidCronRequest } from "@/lib/cron-auth"
@@ -9,7 +9,7 @@ import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 
 // GET, not POST: Vercel Cron always dispatches with GET. A Super Admin can
 // still trigger it by hand (via session auth) at the same URL. Not a company
-// Admin: the job runs over every company's notes, which is not one company's
+// Admin: the job runs over every company's records, which is not one company's
 // call to make.
 export async function GET(req: Request) {
     let superAdminId: string | null = null
@@ -26,12 +26,12 @@ export async function GET(req: Request) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 
-        const result = await JobHeartbeatService.run("check-expiry", () => NoteService.checkExpiries())
+        const result = await JobHeartbeatService.run("check-expiry", () => RecordService.checkExpiries())
         return ApiResponse.success(result)
     } catch (error: any) {
         if (isNextInternalError(error)) throw error
         console.error('Check expiry failed:', error)
-        const ref = await AuditLogService.logSystemError({ error, route: '/api/notes/check-expiry', method: 'GET', userId: null, superAdminId })
+        const ref = await AuditLogService.logSystemError({ error, route: '/api/records/check-expiry', method: 'GET', userId: null, superAdminId })
         return ApiResponse.error(AuditLogService.friendlyErrorMessage(ref), 500)
     }
 }

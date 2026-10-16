@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { ArrowLeftIcon } from '@phosphor-icons/react/ssr'
 import { Icon, type PhosphorIcon } from './Icon'
 import type { StatusTone } from './StatusBadge'
 import { cx } from './cx'
@@ -12,17 +13,47 @@ import { cx } from './cx'
 
 /**
  * The page's title, an optional one-line subtitle, and its primary action on
- * the end side, with at most one secondary action beside it.
+ * the end side, with at most one secondary action beside it. A page that
+ * belongs to another, such as a client's page under Clients, has a back link
+ * to it above the title.
  */
-export function PageHeader({ title, subtitle, action }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode }) {
+export function PageHeader({ title, subtitle, action, back }: {
+    title: ReactNode
+    subtitle?: ReactNode
+    action?: ReactNode
+    back?: { href: string; label: ReactNode }
+}) {
     return (
         <header className="ui-page-header">
-            <div>
+            <div className="ui-page-heading">
+                {back && (
+                    <Link href={back.href} className="ui-back-link" prefetch={false}>
+                        <Icon icon={ArrowLeftIcon} size={16} directional />
+                        {back.label}
+                    </Link>
+                )}
                 <h1 className="ui-page-title">{title}</h1>
                 {subtitle && <p className="ui-page-subtitle">{subtitle}</p>}
             </div>
             {action && <div className="ui-page-actions">{action}</div>}
         </header>
+    )
+}
+
+/**
+ * An item's facts on its own page, such as a client's owner and phone: each
+ * a label above its value, up to three in a row on computers.
+ */
+export function Details({ items }: { items: { label: ReactNode; value: ReactNode }[] }) {
+    return (
+        <dl className="ui-details">
+            {items.map((item, i) => (
+                <div key={i} className="ui-detail">
+                    <dt>{item.label}</dt>
+                    <dd>{item.value}</dd>
+                </div>
+            ))}
+        </dl>
     )
 }
 

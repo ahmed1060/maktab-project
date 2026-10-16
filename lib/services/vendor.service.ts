@@ -85,6 +85,12 @@ export class VendorService {
             throw new Error("FORBIDDEN")
         }
 
+        // Its records would go with it (CLIENTS_PLAN.md §0.2): licences,
+        // contracts and their files. Nobody loses those by deleting the
+        // business; they're deleted on its page first, one by one.
+        const records = await prisma.clientRecord.count({ where: { section: { vendorId: id } } })
+        if (records > 0) throw new Error("VENDOR_HAS_RECORDS")
+
         // Tasks that used this vendor keep their copied location text —
         // Task.vendorId just SetNulls (see the migration comment), no
         // historical data loss.

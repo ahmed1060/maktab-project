@@ -449,7 +449,6 @@ export class CompanyService {
             where: { id },
             include: {
                 users: { select: { id: true } },
-                businessClients: { select: { id: true } }
             }
         })
 
@@ -460,7 +459,7 @@ export class CompanyService {
             // Prisma cascades (onDelete: Cascade) in schema.prisma will handle:
             // - Tasks, Obligations, Requests, Payments
             // - Users and their personal data (Notifications, Salary, etc.)
-            // - Clients, Sections, and Notes
+            // - Vendors, and their record sections and records
 
             const deleted = await tx.company.delete({ where: { id } })
 

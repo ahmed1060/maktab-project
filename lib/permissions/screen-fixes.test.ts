@@ -7,7 +7,8 @@ import { withGrants } from "./test-actors"
  * Four places a screen disagreed with what its routes allow, fixed.
  *
  * - The client and section lists offered Edit and Delete to everyone, and the
- *   server refused anyone without clients.edit or clients.delete.
+ *   server refused anyone without clients.edit or clients.delete. Those are a
+ *   client's records now (records.*), and their screens ask the same.
  * - The Costs page listed every pending payment in the company to a Team
  *   Leader, who pays only their team's tasks.
  * - The obligations page listed the whole company's obligations to a Team
@@ -68,29 +69,30 @@ describe("the Costs page shows what its viewer may pay", () => {
 
 const source = (path: string) => stripComments(readFileSync(path, "utf8"))
 
-/** The JSX from a gate up to the handler it guards — the gate must come first. */
-function gateBefore(path: string, handler: string): string {
-    const s = source(path)
-    const at = s.indexOf(handler)
-    expect(at, `${handler} is in ${path}`).toBeGreaterThan(-1)
-    return s.slice(s.lastIndexOf("<button", at) - 80, at)
-}
+describe("record screens offer only what the server allows", () => {
+    const LIST = source("components/records/RecordsList.tsx")
+    const SECTIONS = source("components/records/SectionsCard.tsx")
+    const VIEW = source("components/records/RecordDialog.tsx")
 
-describe("client screens offer only what the server allows", () => {
-    const LIST = "app/(dashboard)/dashboard/clients/page.tsx"
-    const DETAIL = "app/(dashboard)/dashboard/clients/[id]/page.tsx"
-
-    it("offers renaming a client only with clients.edit", () => {
-        expect(gateBefore(LIST, "setEditingClientId(client.id)")).toContain("can('clients.edit') && (")
+    it("offers editing a record only with records.contribute", () => {
+        expect(LIST).toContain("const canEdit = can('records.contribute')")
+        expect(LIST).toContain("...(canEdit ? [{ key: 'edit'")
+        expect(LIST).toContain("onEdit={canEdit && viewing ?")
+        expect(VIEW).toContain("{onEdit && <Button")
     })
-    it("offers deleting a client only with clients.delete", () => {
-        expect(gateBefore(LIST, "setDeleteConfirm({ isOpen: true, client })")).toContain("can('clients.delete') && (")
+    it("offers deleting a record only with records.delete", () => {
+        expect(LIST).toContain("const canDelete = can('records.delete')")
+        expect(LIST).toContain("...(canDelete ? [{ key: 'delete'")
+        expect(LIST).toContain("onDelete={canDelete && viewing ?")
+        expect(VIEW).toContain("{onDelete && <Button")
     })
-    it("offers renaming a section only with clients.edit", () => {
-        expect(gateBefore(DETAIL, "setEditingSectionId(section.id)")).toContain("can('clients.edit') && (")
+    it("offers renaming a section only with records.edit", () => {
+        expect(SECTIONS).toContain("const canRename = can('records.edit')")
+        expect(SECTIONS).toContain("...(canRename ? [{ key: 'rename'")
     })
-    it("offers deleting a section only with clients.delete", () => {
-        expect(gateBefore(DETAIL, "setDeleteConfirm({ isOpen: true, section })")).toContain("can('clients.delete') && (")
+    it("offers deleting a section only with records.delete", () => {
+        expect(SECTIONS).toContain("const canDelete = can('records.delete')")
+        expect(SECTIONS).toContain("...(canDelete ? [{ key: 'delete'")
     })
 })
 

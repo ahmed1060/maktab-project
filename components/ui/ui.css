@@ -574,6 +574,160 @@
   display: none;
 }
 
+/* A page that belongs to another: the way back to it, above the title (§5.5). */
+.ui-page-heading {
+  min-width: 0;
+}
+.ui-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  color: var(--brand-text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+.ui-back-link:hover {
+  text-decoration: underline;
+}
+.ui-back-link:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── Details (§5.5) ── */
+.ui-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+.ui-detail {
+  min-width: 0;
+}
+.ui-detail dt {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-detail dd {
+  margin: var(--space-1) 0 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  overflow-wrap: anywhere;
+}
+.ui-detail a {
+  color: var(--brand-text);
+}
+.ui-detail a:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── Files (§5.5) ── */
+.ui-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ui-file {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-file-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 30px;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-pill);
+  color: inherit;
+  text-decoration: none;
+}
+a.ui-file-open:hover .ui-file-name {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+a.ui-file-open:focus-visible,
+.ui-file-remove:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+.ui-file-name {
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-file-size {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ui-file-remove {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-inline-start: calc(-1 * var(--space-2));
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ui-file-remove:hover {
+  color: var(--problem-text);
+}
+.ui-file-drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px dashed var(--field-line);
+  border-radius: var(--radius-field);
+  transition: background-color 150ms ease-out;
+}
+.ui-file-drop[data-over] {
+  border-color: var(--brand-text);
+  background: var(--brand-tint);
+}
+
+/* Rows that are the whole of a card, edge to edge under its title. */
+.ui-card > .ui-rows-flush {
+  margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+  border-top: 1px solid var(--rule);
+}
+/* A dialog is narrower than a page: two facts to a row. */
+.ui-dialog .ui-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* ── Expiry (§5.5) ── */
+.ui-expiry {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Page layout and sections (§5.5) ── */
 .ui-page {
   display: flex;
@@ -686,6 +840,48 @@ a.ui-row:focus-visible {
   outline-offset: 2px;
   border-radius: 2px;
 }
+/* An item whose text a list cuts short: its title opens it whole (§5.5). */
+.ui-item-button {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.ui-item-button:hover {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+.ui-item-button:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* Kept on one line, such as a name and a date beside a long text. */
+.ui-nowrap {
+  white-space: nowrap;
+}
+/* Cut to two lines in a list. */
+.ui-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+/* Text kept as it was written, line breaks too, such as a record's. */
+.ui-prose {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  color: var(--ink);
+}
 /* A row's checkbox, with a target bigger than the box. */
 .ui-check-target {
   display: inline-grid;
@@ -788,6 +984,7 @@ a.ui-row:focus-visible {
 .ui-badge {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   padding: 3px 10px;
   border-radius: var(--radius-pill);
   font-size: var(--text-xs);
@@ -1417,6 +1614,24 @@ html[lang="ar"] .ui-empty-title {
   .ui-page-title {
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);
+  }
+  .ui-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ui-back-link {
+    min-height: 44px;
+    margin-bottom: 0;
+  }
+  .ui-file-open {
+    min-height: 44px;
+  }
+  .ui-file-remove {
+    width: 44px;
+    height: 44px;
+  }
+  .ui-file-drop {
+    padding: 0;
+    border: 0;
   }
   .ui-filterbar {
     padding: var(--space-2);

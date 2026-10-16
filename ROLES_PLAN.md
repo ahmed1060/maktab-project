@@ -234,10 +234,10 @@ them, as today.
 | | `tasks.penalize` | Apply a task penalty — **deducts pay**; its own permission, labelled "affects pay" in the role editor (decided) | `tasks/[id]/penalty` |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
 | | `obligations.manage` | Create, edit, delete, revert | `obligations/*` |
-| **Clients** | `clients.view` | See clients, sections, notes | `GET /clients/*` |
-| | `clients.contribute` | Add a client, a section or a note, and edit any note (built as its own right: clients are a shared notebook as much as a register) | `POST /clients`, `clients/[id]/sections`, `…/notes` |
-| | `clients.edit` | Rename a client or a section | `PUT /clients`, `PUT clients/[id]/sections` |
-| | `clients.delete` | Delete a client, a section or a note — **cannot be undone**, high-risk (§6.15) | `DELETE /clients`, `…/sections`, `…/notes` |
+| **Records** | `records.view` | See a client's sections and records (today's vendors; `CLIENTS_PLAN.md` §0.2) | `GET /records`, `GET /records/sections` |
+| | `records.contribute` | Add a section or a record, and edit any record (built as its own right: records are a shared notebook as much as a register) | `POST /records`, `PUT /records`, `POST /records/sections` |
+| | `records.edit` | Rename a section | `PUT /records/sections` |
+| | `records.delete` | Delete a section or a record — **cannot be undone**, high-risk (§6.15) | `DELETE /records`, `DELETE /records/sections` |
 | **Vendors** | `vendors.view` / `vendors.manage` | See vendors; create, edit and delete them | `vendors` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
@@ -714,7 +714,7 @@ the Super Admin. Clients with an auditor will be asked for exactly this record.
 ### 6.15 High-risk permissions and step-up confirmation — adopted
 
 A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
-`tasks.penalize`, `tasks.delete`, `clients.delete`, `salary.edit`,
+`tasks.penalize`, `tasks.delete`, `records.delete`, `salary.edit`,
 `salary_adjustments.manage`, `payroll.approve`, `payroll.mark_paid`,
 `debts.waive`, `employees.delete`, `employees.end_contract`. The catalogue
 (`lib/permissions/catalogue.ts`, `highRisk`) is the list the code checks.

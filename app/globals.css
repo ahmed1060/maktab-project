@@ -98,7 +98,6 @@
 
   /* Subscription and bundle badges, so lib/subscription-display.ts and
      lib/recurrence.ts stop carrying literals of their own. */
-  --lifetime-bg: #ede9fe;
   --lifetime-fg: #6d28d9;
 
   /* Second wave: the long tail the first pass left. Same families, more
@@ -142,10 +141,8 @@
   --info-fg-deep: #075985;
   --info-fg-deepest: #0c4a6e;
   --info-fg-indigo: #1e40af;
-  --info-solid-sky: #0ea5e9;
   --info-solid-sky-light: #38bdf8;
 
-  --accent-fg: #5b21b6;
   --accent-solid: #a855f7;
   --accent-solid-deep: #7c3aed;
   --accent-deep: #4338ca;
@@ -1251,12 +1248,9 @@ input::-webkit-credentials-auto-fill-button {
     --info-fg-deep: #96d4f5;
     --info-fg-deepest: #b3e2fa;
     --info-fg-indigo: #9db4f0;
-    --info-solid-sky: #38a8dd;
     --info-solid-sky-light: #5ec0ed;
 
-    --lifetime-bg: #251b3d;
     --lifetime-fg: #c4a8f5;
-    --accent-fg: #c4a8f5;
     --accent-solid: #a86ef0;
     --accent-solid-deep: #9457e0;
     --accent-deep: #7c6ae0;

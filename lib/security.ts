@@ -16,11 +16,9 @@ import type { Permission } from "./permissions/catalogue";
  * SUPER_ADMIN is exempt entirely. An ADMIN is bounded by their company. A
  * TEAM_LEADER is bounded by their company and then by their team.
  *
- * Three of the resource types below are people or people's work, so the team
- * rule applies to them. Clients, sections and notes are company resources that
- * belong to nobody in particular — narrowing those to a team would not protect
- * a person, it would just stop leaders doing the job they are given a Clients
- * screen for.
+ * The resource types below are people or people's work, so the team rule
+ * applies to them. A client's records are the company's and belong to nobody
+ * in particular, so RecordService checks them by company alone.
  *
  * `acting` is the permission the caller is about to use on it, when it is more
  * than looking. Its own scope counts too: a role may see every task yet pay
@@ -29,7 +27,7 @@ import type { Permission } from "./permissions/catalogue";
 export async function verifyResourceAccess(
     session: any,
     resourceId: string,
-    resourceType: 'USER' | 'TASK' | 'OBLIGATION' | 'CLIENT' | 'SECTION' | 'NOTE',
+    resourceType: 'USER' | 'TASK' | 'OBLIGATION',
     acting?: Permission,
 ) {
     if (!session || !session.user) return false;
@@ -88,27 +86,6 @@ export async function verifyResourceAccess(
             if (!obligation || obligation.companyId !== userCompanyId) return false;
             if (teamOnly("obligations.view")) return isTeamWork(obligation.assignees, session.user.id);
             return true;
-        }
-        case 'CLIENT': {
-            const client = await prisma.businessClient.findUnique({
-                where: { id: resourceId },
-                select: { companyId: true }
-            });
-            return client?.companyId === userCompanyId;
-        }
-        case 'SECTION': {
-            const section = await prisma.businessClientSection.findUnique({
-                where: { id: resourceId },
-                include: { client: { select: { companyId: true } } }
-            });
-            return section?.client.companyId === userCompanyId;
-        }
-        case 'NOTE': {
-            const note = await prisma.businessClientNote.findUnique({
-                where: { id: resourceId },
-                include: { section: { include: { client: { select: { companyId: true } } } } }
-            });
-            return note?.section.client.companyId === userCompanyId;
         }
         default:
             return false;

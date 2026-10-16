@@ -70,7 +70,7 @@ describe("setting somebody else's password", () => {
     it("is allowed with it", async () => {
         // With the Employee role's own grants too: setting a password takes the
         // account over, so it needs everything the person's role holds (below).
-        onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "clients.view": "COMPANY", "clients.contribute": "COMPANY" })
+        onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "records.view": "COMPANY", "records.contribute": "COMPANY" })
         expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
         expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
     })
@@ -118,7 +118,7 @@ describe("taking over somebody else's account", () => {
     // their passwords company-wide. Whoever controls an account holds its
     // role's access, so they may do it only to someone whose role they could
     // have given: never an Admin, and nobody whose role holds more than theirs.
-    const hr = { "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "clients.view": "COMPANY", "clients.contribute": "COMPANY" } as const
+    const hr = { "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "records.view": "COMPANY", "records.contribute": "COMPANY" } as const
     const asHr = () => onRole(hr, { id: "hr", role: "EMPLOYEE", companyId: "c1" })
 
     it("is not an HR Officer's to do to the Admin: password or email", async () => {

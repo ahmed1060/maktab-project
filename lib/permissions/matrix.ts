@@ -15,8 +15,8 @@ export const PERMISSION_GROUPS: { key: string; permissions: Permission[] }[] = [
     { key: "requests", permissions: [] },
     { key: "tasks", permissions: [] },
     { key: "obligations", permissions: [] },
-    { key: "clients", permissions: [] },
     { key: "vendors", permissions: [] },
+    { key: "records", permissions: [] },
     { key: "costs", permissions: [] },
     { key: "dayoff", permissions: [] },
     { key: "salaries", permissions: [] },
@@ -28,7 +28,7 @@ export const PERMISSION_GROUPS: { key: string; permissions: Permission[] }[] = [
 /** The group of a permission, by the area its key names. */
 const GROUP_OF_AREA: Record<string, string> = {
     employees: "employees", profile_requests: "requests", requests: "requests",
-    tasks: "tasks", obligations: "obligations", clients: "clients", vendors: "vendors", costs: "costs",
+    tasks: "tasks", obligations: "obligations", records: "records", vendors: "vendors", costs: "costs",
     dayoff: "dayoff", salary: "salaries", salary_adjustments: "salaries",
     payroll: "payroll", settlements: "payroll", debts: "payroll",
     settings: "settings", audit: "settings", attendance: "attendance",

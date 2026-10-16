@@ -71,10 +71,6 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["app/(dashboard)/dashboard/profile-requests/page.tsx", "case 'TEAM_LEADER': return 'role_team_leader'", LABEL],
     ["app/(dashboard)/dashboard/profile-requests/page.tsx", "case 'ADMIN': return 'role_admin'", LABEL],
 
-    // app/(dashboard)/dashboard/clients/[id]/sections/[sectionId]/page.tsx
-    ["app/(dashboard)/dashboard/clients/[id]/sections/[sectionId]/page.tsx", "case 'ADMIN':", LABEL],
-    ["app/(dashboard)/dashboard/clients/[id]/sections/[sectionId]/page.tsx", "case 'TEAM_LEADER':", LABEL],
-
     // app/(dashboard)/dashboard/obligations/new/page.tsx
     ["app/(dashboard)/dashboard/obligations/new/page.tsx", "? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))", THE_PERSON],
 

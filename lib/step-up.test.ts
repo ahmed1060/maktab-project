@@ -13,8 +13,8 @@ describe("step-up confirmation (ROLES_PLAN.md §6.15)", () => {
 
     it("covers every permission the catalogue marks high-risk, and nothing else", () => {
         expect(HIGH_RISK.sort()).toEqual([
-            "clients.delete", "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
-            "payroll.mark_paid", "salary.edit", "salary_adjustments.manage", "tasks.delete", "tasks.pay", "tasks.penalize",
+            "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
+            "payroll.mark_paid", "records.delete", "salary.edit", "salary_adjustments.manage", "tasks.delete", "tasks.pay", "tasks.penalize",
         ])
         expect(stepUpRefusal({ mfaEnabled: false }, "tasks.view", 60)).toBeNull()
     })
@@ -55,9 +55,7 @@ describe("every high-risk action asks", () => {
         // Which tasks a team-scoped payer may see in the payment list.
         "lib/services/task.service.ts": "tasks.pay scope for a list; the delete path is the route's, which asks",
         // Same checks as the routes that call them, after the route asked.
-        "lib/services/client.service.ts": "called by DELETE /api/clients, which asks",
-        "lib/services/section.service.ts": "called by DELETE /api/clients/[id]/sections, which asks",
-        "lib/services/note.service.ts": "called by DELETE …/notes, which asks",
+        "lib/services/record.service.ts": "called by DELETE /api/records and /api/records/sections, which ask",
         // Names them as what a review lists, not to let anybody act.
         "lib/services/access-review.service.ts": "the permissions an access review lists",
     }
