@@ -70,11 +70,16 @@ function sameOrigin(url: URL, storage: string | undefined): boolean {
     }
 }
 
+/** The upload route's folder for records' files (RecordForm). */
+export const RECORD_FILES_FOLDER = "records"
+
 /**
- * The file's path in the bucket, if it's a file uploaded here for this
- * company: the upload route puts a company's files under its own folder,
- * and a Super Admin's under "platform". Anything else, such as a link to
- * another site, or another company's file, isn't a record's file.
+ * The file's path in the bucket, if it's a record's file uploaded here for
+ * this company: the upload route puts a company's files under its own
+ * folder, and a Super Admin's under "platform", in the folder the form
+ * names. Anything else, such as a link to another site, another company's
+ * file, or one of the company's other files like a photo or its logo, isn't
+ * a record's file, so a record can neither carry it nor delete it.
  */
 export function ownFilePath(url: string, companyId: string): string | null {
     let parsed: URL
@@ -92,9 +97,9 @@ export function ownFilePath(url: string, companyId: string): string | null {
     } catch {
         return null
     }
-    const [folder, ...rest] = path.split("/")
-    if (!rest.length || path.includes("..")) return null
-    return folder === companyId || folder === "platform" ? path : null
+    const [owner, folder, name, ...more] = path.split("/")
+    if (folder !== RECORD_FILES_FOLDER || !name || more.length || path.includes("..")) return null
+    return owner === companyId || owner === "platform" ? path : null
 }
 
 /** "2.4 MB", in the page's language. */

@@ -104,12 +104,21 @@ function checkFiles(files: readonly RecordFile[], companyId: string) {
     for (const f of files) if (!ownFilePath(f.url, companyId)) throw new Error("RECORD_FILE_INVALID")
 }
 
-/** Removes files from storage once nothing refers to them. Best effort: the orphan sweep catches a miss. */
+/**
+ * Removes files from storage once no record refers to them: a file can be
+ * on two records, when someone attached one record's file to another. Called
+ * once the record no longer refers to them itself. Best effort: the orphan
+ * sweep catches a miss.
+ */
 async function removeFiles(files: readonly RecordFile[], companyId: string) {
-    const paths = files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p)
-    if (!paths.length || !supabase) return
+    const unique = [...new Set(files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p))]
+    if (!unique.length || !supabase) return
     try {
-        await supabase.storage.from("app-assets").remove(paths)
+        const names = unique.map(p => p.slice(p.lastIndexOf("/") + 1))
+        const others = await prisma.clientRecord.findMany({ where: { OR: names.map(name => ({ attachment: { contains: name } })) }, select: { attachment: true } })
+        const stillUsed = new Set(others.flatMap(r => parseRecordFiles(r.attachment).map(f => ownFilePath(f.url, companyId))))
+        const paths = unique.filter(p => !stillUsed.has(p))
+        if (paths.length) await supabase.storage.from("app-assets").remove(paths)
     } catch (error) {
         console.error("Failed to delete record files from storage:", error)
     }

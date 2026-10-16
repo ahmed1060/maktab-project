@@ -5,7 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, Field, FileChip, FileChips, FilePicker, Select, TextArea, TextInput } from '@/components/ui'
-import { RECORD_FILES_MAX, RECORD_FILE_ACCEPT, RECORD_FILE_MAX_BYTES, type RecordFile } from '@/lib/record-files'
+import { RECORD_FILES_FOLDER, RECORD_FILES_MAX, RECORD_FILE_ACCEPT, RECORD_FILE_MAX_BYTES, type RecordFile } from '@/lib/record-files'
 import { RECORD_TEXT_MAX, REMINDER_DAYS_MAX, SECTION_TITLE_MAX } from '@/lib/validations/record.schema'
 import type { RecordItem, SectionItem } from './types'
 
@@ -90,7 +90,7 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
     const upload = async (file: File): Promise<RecordFile> => {
         const form = new FormData()
         form.append('file', file)
-        form.append('folder', 'records')
+        form.append('folder', RECORD_FILES_FOLDER)
         const res = await fetch('/api/upload', { method: 'POST', body: form })
         const body = await res.json().catch(() => null)
         if (!res.ok || !body?.data?.url) throw new Error(body?.error || t('records_upload_failed').replace('{name}', file.name))

@@ -65,12 +65,17 @@ describe("a record's files", () => {
         expect(storeRecordFiles([])).toBeNull()
     })
 
-    it("are only ones uploaded here, for the record's company or by a Super Admin", () => {
+    it("are only records' files uploaded here, for the record's company or by a Super Admin", () => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co"
         expect(ownFilePath(`${BUCKET}/c1/records/1-a.pdf`, "c1")).toBe("c1/records/1-a.pdf")
         expect(ownFilePath(`${BUCKET}/platform/records/1-a.pdf`, "c1")).toBe("platform/records/1-a.pdf")
         for (const url of [
             `${BUCKET}/c2/records/1-a.pdf`,                              // another company's
+            `${BUCKET}/c1/avatars/1-a.png`,                              // the company's other files
+            `${BUCKET}/c1/misc/logo.png`,
+            `${BUCKET}/c1/1-a.pdf`,
+            `${BUCKET}/c1/records/old/1-a.pdf`,
+            `${BUCKET}/c1/records/`,
             "https://evil.example/storage/v1/object/public/app-assets/c1/a.pdf", // another host
             `${BUCKET}/c1/records/a.pdf?download=1`,
             `${BUCKET}/c1/../c2/a.pdf`,

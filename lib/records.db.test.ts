@@ -220,5 +220,19 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             const { rows: [audit] } = await db.query(`SELECT "userId", details FROM "AuditLog" WHERE action = 'DELETE_SECTION'`)
             expect(audit).toEqual({ userId: "a1", details: { title: "Licences", vendorId: "v1", records: 2 } })
         })
+
+        it("carries only records' files, and removes one only once no record has it", async () => {
+            const avatar = { url: `${BUCKET}/c1/avatars/1-face.png`, name: "face.png", size: 100 }
+            await expect(Records.create(admin, { content: "x", files: [avatar], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).rejects.toThrow("RECORD_FILE_INVALID")
+            removed.length = 0
+            const shared = file("c1", "shared.pdf")
+            const first = (await Records.create(admin, { content: "Lease", files: [shared], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const second = (await Records.create(admin, { content: "Lease, copy", files: [shared, file("c1", "own.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            await Records.delete(admin, first)
+            await Records.update(admin, { id: second, content: "Lease, copy", files: [shared], expiryDate: null, reminderDays: null })
+            expect(removed).toEqual(["c1/records/own.pdf"])
+            await Records.delete(admin, second)
+            expect(removed).toEqual(["c1/records/own.pdf", "c1/records/shared.pdf"])
+        })
     })
 })
