@@ -749,3 +749,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   the brand colour setting is built, waiting to be merged (§8).
 - **2026-10-16:** The brand colour PR (#80) has Codex's review findings
   fixed, still waiting to be merged (§8, `UI_PLAN.md` change log).
+- **2026-10-16:** The brand colour PR (#80) costs a page no database
+  reads of its own, still waiting to be merged (§8, `UI_PLAN.md` change
+  log).

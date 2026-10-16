@@ -675,3 +675,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the settings' hints said the colour reaches the sign-in page, the side
     bar and the phone app. So far it reaches only the pages in the new
     design, and the hints now say so.
+- **2026-10-16:** The brand colour costs a page no database reads of its
+  own (§4.6). Counted on the scratch database, a company user's page read
+  the system settings twice and its company row twice. It now reads each
+  once:
+  - the root layout and the dashboard layout share one read of the system
+    settings;
+  - a company's colour comes with the company row the dashboard layout
+    already reads for its settings;
+  - each colour's stylesheet is worked out once and kept. It took about
+    0.15 ms a page.
