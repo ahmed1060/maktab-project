@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DatePickerSingle from '@/components/DatePickerSingle'
@@ -14,11 +14,24 @@ const KINDS = RECORD_FILE_ACCEPT.split(',')
 
 type Errors = Partial<Record<'section' | 'content' | 'files' | 'reminder', string>>
 
+/** Files uploaded for a record that isn't saved with them: removed again, without waiting. */
+function discard(urls: string[]) {
+    if (!urls.length) return
+    void fetch('/api/records/uploads', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls }),
+        keepalive: true,
+    }).catch(() => {})
+}
+
 /**
  * Adding a record to a client, or editing one (CLIENTS_PLAN.md §0.2): its
  * section, its text, its files and its expiry date with a reminder. A
  * client's first record names its first section. New files upload when it's
- * saved, so a cancelled form leaves nothing behind.
+ * saved, so a cancelled form leaves nothing behind: once uploaded, a file
+ * is kept for another try if the save fails, and removed again if the form
+ * closes without saving it.
  */
 export default function RecordForm({ open, onClose, vendorId, sections, record, onSaved }: {
     open: boolean
@@ -55,6 +68,12 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
     const [reminderDays, setReminderDays] = useState(record?.reminderDays ? String(record.reminderDays) : '')
     const [errors, setErrors] = useState<Errors>({})
     const [saving, setSaving] = useState(false)
+    // What this form uploaded that no saved record has yet.
+    const unsaved = useRef<string[]>([])
+    useEffect(() => {
+        const list = unsaved.current
+        return () => discard(list.splice(0))
+    }, [])
 
     const newSection = sectionId === NEW_SECTION
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
@@ -108,12 +127,19 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
         }
         setSaving(true)
         try {
-            const uploaded: RecordFile[] = []
-            for (const file of picked) uploaded.push(await upload(file))
+            // Each upload joins the kept files at once, so a failed save isn't uploaded again.
+            let files = kept
+            for (const file of picked) {
+                const done = await upload(file)
+                unsaved.current.push(done.url)
+                files = [...files, done]
+                setKept(files)
+                setPicked(p => p.filter(f => f !== file))
+            }
             const days = reminderDays.trim()
             const fields = {
                 content: content.trim(),
-                files: [...kept, ...uploaded],
+                files,
                 expiryDate: expiryDate || null,
                 reminderDays: expiryDate && days ? Number(days) : null,
             }
@@ -130,6 +156,9 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
                 showToast(body?.error || t('error_generic'), 'error')
                 return
             }
+            // Saved with the record now, but for any taken off again before this save.
+            const saved = new Set(files.map(f => f.url))
+            discard(unsaved.current.splice(0).filter(url => !saved.has(url)))
             showToast(t(editing ? 'records_saved' : 'records_added'), 'success')
             onSaved()
             onClose()

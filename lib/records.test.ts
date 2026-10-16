@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest"
+import { readFileSync } from "node:fs"
 import { addDays, daysBetween, EXPIRES_SOON_DAYS, expiryDay, expiryRange, expiryState, parseExpiryDay } from "./record-expiry"
 import { ownFilePath, parseRecordFiles, storeRecordFiles } from "./record-files"
 import { createRecordSchema, updateRecordSchema, RECORD_TEXT_MAX } from "./validations/record.schema"
@@ -115,5 +116,22 @@ describe("a new or edited record", () => {
         expect(createRecordSchema.safeParse({ ...base, files: Array.from({ length: 10 }, (_, i) => file(i)) }).success).toBe(true)
         expect(createRecordSchema.safeParse({ ...base, files: Array.from({ length: 11 }, (_, i) => file(i)) }).success).toBe(false)
         expect(createRecordSchema.safeParse({ ...base, files: [{ ...file(1), size: 4 * 1024 * 1024 + 1 }] }).success).toBe(false)
+    })
+})
+
+describe("a record's form", () => {
+    const FORM = readFileSync("components/records/RecordForm.tsx", "utf8")
+
+    it("keeps each file it uploads, so a failed save doesn't upload it again", () => {
+        expect(FORM).toContain("const done = await upload(file)")
+        expect(FORM).toContain("setKept(files)")
+        expect(FORM).toContain("setPicked(p => p.filter(f => f !== file))")
+    })
+
+    it("removes what it uploaded again if it closes without saving it, or saves without it", () => {
+        expect(FORM).toContain("unsaved.current.push(done.url)")
+        expect(FORM).toContain("return () => discard(list.splice(0))")
+        expect(FORM).toContain("discard(unsaved.current.splice(0).filter(url => !saved.has(url)))")
+        expect(FORM).toContain("fetch('/api/records/uploads', {")
     })
 })

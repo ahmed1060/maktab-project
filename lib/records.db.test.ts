@@ -235,6 +235,26 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(removed).toEqual(["c1/records/own.pdf", "c1/records/shared.pdf"])
         })
 
+        it("discards files uploaded for a record never saved, but none a record has or that aren't the person's", async () => {
+            removed.length = 0
+            const kept = file("c1", "on-a-record.pdf")
+            await Records.create(admin, { content: "Deed", files: [kept], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })
+            const urls = [
+                file("c1", "abandoned.pdf").url,
+                kept.url,
+                file("c2", "theirs.pdf").url,
+                file("platform", "super-admins.pdf").url,
+                `${BUCKET}/c1/avatars/1-face.png`,
+                "https://evil.example/c1/records/x.pdf",
+            ]
+            expect(await Records.discardUploads(employee, urls)).toEqual({ files: 2 })
+            expect(removed).toEqual(["c1/records/abandoned.pdf"])
+            // A Super Admin's own uploads are in the platform's folder.
+            removed.length = 0
+            await Records.discardUploads(superAdmin, urls)
+            expect(removed).toEqual(["platform/records/super-admins.pdf"])
+        })
+
         it("starts one section when two people name the same new one at once", async () => {
             // Each first write of a section named Permits takes a moment, so the second starts while the first is still writing.
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)

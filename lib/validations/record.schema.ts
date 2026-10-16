@@ -53,6 +53,9 @@ export const updateRecordSchema = z.object({ id, ...content, sectionId: id.optio
 export const createSectionSchema = z.object({ vendorId: id, title })
 export const renameSectionSchema = z.object({ id, title })
 
+/** Files uploaded for a record that was never saved with them (RecordForm). */
+export const discardUploadsSchema = z.object({ urls: z.array(z.string().max(2000)).min(1).max(RECORD_FILES_MAX) })
+
 export type CreateRecordInput = z.infer<typeof createRecordSchema>
 export type UpdateRecordInput = z.infer<typeof updateRecordSchema>
 export type CreateSectionInput = z.infer<typeof createSectionSchema>

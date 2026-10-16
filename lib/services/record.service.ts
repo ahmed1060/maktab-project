@@ -405,6 +405,21 @@ export class RecordService {
     }
 
     /**
+     * Files the person uploaded for a record that was never saved with them,
+     * as when its form is closed or a save fails and they give up: removed
+     * again. Only records' files in their own company's folder, or a Super
+     * Admin's own, that no record has.
+     */
+    static async discardUploads(session: Session, urls: readonly string[]) {
+        const folder = isSuperAdmin(session) ? "platform" : session.user.companyId
+        if (!folder) throw new Error("RECORD_FORBIDDEN")
+        if (!isSuperAdmin(session) && !can(session.user as any, "records.contribute", { companyId: folder })) throw new Error("RECORD_FORBIDDEN")
+        const files = urls.filter(url => ownFilePath(url, folder)?.startsWith(`${folder}/`)).map(url => ({ url, name: "", size: 0 }))
+        await removeFiles(files, folder)
+        return { files: files.length }
+    }
+
+    /**
      * The daily reminder (vercel.json): whoever added a record hears about
      * it the day it expires, and the chosen number of days before. Each is
      * sent once per deadline; changing the date owes them again.
