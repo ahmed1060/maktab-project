@@ -84,6 +84,14 @@ describe("record screens offer only what the server allows", () => {
         expect(CLIENT).toContain("useState(params.get('add') === '1')")
         expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
     })
+    it("on a client's page, says when its sections didn't load, rather than showing none and starting a first one", () => {
+        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        expect(CLIENT).toContain("const sectionsFailed = seesRecords && !sectionsBody")
+        expect(CLIENT).toContain("action={seesRecords && !sectionsFailed && can('records.contribute') && <Button")
+        expect(CLIENT).toContain("{sectionsFailed && (")
+        expect(CLIENT).toContain("title={t('records_load_failed')} action={<Button onClick={() => { void reloadSections() }}>{t('try_again')}</Button>}")
+        expect(CLIENT).toContain("{seesRecords && !sectionsFailed && (")
+    })
     it("offers editing a record only with records.contribute", () => {
         expect(LIST).toContain("const canEdit = can('records.contribute')")
         expect(LIST).toContain("...(canEdit ? [{ key: 'edit'")

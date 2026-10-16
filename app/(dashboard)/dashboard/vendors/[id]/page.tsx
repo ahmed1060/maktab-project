@@ -57,6 +57,8 @@ export default function VendorPage() {
     const vendor = vendorBody?.data
     const name = vendor?.name ?? sectionsBody?.data.client.name
     const sections = sectionsBody?.data.sections ?? []
+    // Its sections didn't load: not "none", which would have the form start a first one.
+    const sectionsFailed = seesRecords && !sectionsBody
     const back = seesVendor ? { href: '/dashboard/vendors', label: modules.label('vendors') } : { href: '/dashboard/records', label: modules.label('records') }
 
     if (!name) {
@@ -78,7 +80,7 @@ export default function VendorPage() {
             <PageHeader
                 title={<bdi>{name}</bdi>}
                 back={back}
-                action={seesRecords && can('records.contribute') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('records_add')}</Button>}
+                action={seesRecords && !sectionsFailed && can('records.contribute') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('records_add')}</Button>}
             />
 
             {vendor && (
@@ -96,7 +98,14 @@ export default function VendorPage() {
                 </Card>
             )}
 
-            {seesRecords && (
+            {sectionsFailed && (
+                <Section title={modules.label('records')}>
+                    <div className="ui-panel">
+                        <EmptyState icon={WarningCircleIcon} title={t('records_load_failed')} action={<Button onClick={() => { void reloadSections() }}>{t('try_again')}</Button>} />
+                    </div>
+                </Section>
+            )}
+            {seesRecords && !sectionsFailed && (
                 <>
                     <Section title={modules.label('records')}>
                         <RecordsList
