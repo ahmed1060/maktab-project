@@ -50,9 +50,13 @@ function grounds(shade: Shade, theme: "light" | "dark", page: string): string[] 
     if (behind === "sidebar") return [theme === "light" ? sidebar(lightRoot, page) : sidebar(darkRoot, valueIn(darkRoot, "--page-bg")!)]
     return theme === "light" ? [...LIGHT_GROUNDS, page] : DARK_GROUNDS
 }
-function readability(c: string, shade: Shade, theme: "light" | "dark", page: string) {
-    if (shade.role === "fill") return contrast("#ffffff", c)
-    return Math.min(...grounds(shade, theme, page).map(g => contrast(c, g)))
+// `.btn-primary:hover` brightens a fill 10% (app/globals.css).
+const hovered = (c: string) => "#" + [1, 3, 5].map(i => Math.min(255, Math.round(parseInt(c.slice(i, i + 2), 16) * 1.1)).toString(16).padStart(2, "0")).join("")
+/** Each contrast a shade is held to: white text on a fill at rest and on hover, or the shade on each ground. */
+function checks(shade: Shade, theme: "light" | "dark", page: string): ((c: string) => number)[] {
+    if (shade.role === "fill") return [c => contrast("#ffffff", c), c => contrast("#ffffff", hovered(c))]
+    if (shade.role === "text" || shade.role === "edge") return grounds(shade, theme, page).map(g => (c: string) => contrast(c, g))
+    return []
 }
 const AIM = { fill: 4.5, text: 4.5, edge: 3, ground: 0, decor: 0 } as const
 
@@ -98,9 +102,25 @@ describe("the older pages' shades", () => {
                 if ("dark" in shade) themes.push(["dark", shade.dark, shades.dark[shade.token]])
                 for (const [theme, today, now] of themes) {
                     expect(now, `${picked} ${shade.token} ${theme}`).toMatch(/^#[0-9a-f]{6}$/)
-                    const need = Math.min(AIM[shade.role], readability(today, shade, theme, defaultPage))
-                    expect(readability(now!, shade, theme, page), `${picked} ${shade.token} ${theme}`).toBeGreaterThanOrEqual(need - 0.005)
+                    const todays = checks(shade, theme, defaultPage), nows = checks(shade, theme, page)
+                    todays.forEach((check, i) => {
+                        const need = Math.min(AIM[shade.role], check(today))
+                        expect(nows[i](now!), `${picked} ${shade.token} ${theme} check ${i}`).toBeGreaterThanOrEqual(need - 0.005)
+                    })
                 }
+            }
+        }
+    })
+
+    // Codex on #81: cyan's button fills cleared 4.5:1 at rest but fell to
+    // about 4.3 and 4.0:1 when the hover brightened them.
+    it("keep white text readable on a button brightened on hover", () => {
+        for (const picked of ["#0891b2", "#16a34a", "#ea580c", "#0d9488"]) {
+            const shades = oldPageShades(picked).light
+            for (const token of ["--button-from", "--button-to", "--hero-from", "--hero-to"] as const) {
+                const today = OLD_PAGE_SHADES.find(s => s.token === token)!.light
+                const need = Math.min(4.5, contrast("#ffffff", hovered(today)))
+                expect(contrast("#ffffff", hovered(shades[token])), `${picked} ${token}`).toBeGreaterThanOrEqual(need)
             }
         }
     })

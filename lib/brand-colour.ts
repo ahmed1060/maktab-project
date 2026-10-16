@@ -309,7 +309,7 @@ const MAP = ['#ffffff']
 
 /**
  * What a shade is for, which sets what it's held to:
- * - fill: white text sits on it, 4.5:1;
+ * - fill: white text sits on it, 4.5:1, at rest and on hover;
  * - text: it's text on the grounds, 4.5:1;
  * - edge: a focus ring, a highlight bar or a map pin, 3:1 against what's behind;
  * - ground: the page's own colour, pale, held to nothing;
@@ -368,12 +368,37 @@ function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: s
     return theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
 }
 
-/** How readable a shade is, in its role: the weakest contrast that matters. */
-function readability(c: string, role: Role, grounds: string[]): number {
-    if (role === 'fill') return contrast(WHITE, c)
-    return Math.min(...grounds.map(g => contrast(c, g)))
+/** One contrast a shade is held to, and the most it's asked for there. */
+type Check = { of: (c: string) => number; aim: number }
+
+/** A filled button on hover: `.btn-primary:hover` brightens it 10% (app/globals.css). */
+const HOVER_BRIGHTNESS = 1.1
+const brightened = (c: string) => hex(rgb(c).map(v => v * HOVER_BRIGHTNESS) as Rgb)
+
+/**
+ * What a shade is held to, in its role: white text on a fill, at rest and
+ * brightened on hover; text or an edge against each ground it's drawn on.
+ */
+function checksFor(role: Role, grounds: string[]): Check[] {
+    if (role === 'fill') return [
+        { of: c => contrast(WHITE, c), aim: TEXT },
+        { of: c => contrast(WHITE, brightened(c)), aim: TEXT },
+    ]
+    if (role === 'text' || role === 'edge') {
+        const aim = role === 'text' ? TEXT : SHAPE
+        return grounds.map(g => ({ of: c => contrast(c, g), aim }))
+    }
+    return []
 }
-const AIM: Record<Role, number> = { fill: TEXT, text: TEXT, edge: SHAPE, ground: 0, decor: 0 }
+
+/**
+ * Passes when `c` is, on each check, as readable as Nizmo's indigo's shade
+ * is today on the same check, or WCAG's aim, whichever is less.
+ */
+function holds(today: string, todays: Check[], checks: Check[]): (c: string) => boolean {
+    const need = todays.map(ch => Math.min(ch.aim, ch.of(today)))
+    return c => checks.every((ch, i) => ch.of(c) >= need[i])
+}
 
 /** Every older-page shade for `picked`, in each theme. */
 export function oldPageShades(picked: string | null | undefined): { light: Record<OldPageToken, string>; dark: Partial<Record<OldPageToken, string>> } {
@@ -389,11 +414,10 @@ export function oldPageShades(picked: string | null | undefined): { light: Recor
             const role: Role = shade.role
             const behind = 'behind' in shade ? shade.behind : undefined
             // Held to what it has with Nizmo's indigo, up to WCAG's aim.
-            const need = Math.min(AIM[role], readability(value, role, groundsFor(behind, theme, defaultPage)))
-            const grounds = groundsFor(behind, theme, page)
+            const ok = holds(value, checksFor(role, groundsFor(behind, theme, defaultPage)), checksFor(role, groundsFor(behind, theme, page)))
             // Darker on a light ground or under white text; lighter on a dark one.
             const towardsLight = role !== 'fill' && (theme === 'dark' || behind === 'sidebar')
-            const c = stepUntil(follow(value, base), x => readability(x, role, grounds) >= need, towardsLight ? lighter : darker)
+            const c = stepUntil(follow(value, base), ok, towardsLight ? lighter : darker)
             if (theme === 'light') light[shade.token] = c
             else dark[shade.token] = c
         }
