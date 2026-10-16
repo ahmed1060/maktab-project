@@ -156,6 +156,21 @@ describe("the older pages' shades", () => {
         }
     })
 
+    // Codex on #81: as a gradient's end with nothing to hold it, navy's
+    // company name ended in #091933 in dark mode, about 1.1:1 on the side
+    // bar, where Nizmo's indigo is about 2.3:1.
+    it("keep the company name in the side bar as readable as Nizmo's indigo does", () => {
+        const shade = OLD_PAGE_SHADES.find(s => s.token === "--sidebar-accent")!
+        const defaultPage = OLD_PAGE_SHADES.find(s => s.token === "--page-bg")!.light
+        for (const picked of ["#1e3a8a", "#475569", "#000000", "#0d9488"]) {
+            const shades = oldPageShades(picked)
+            const darkBar = sidebar(darkRoot, valueIn(darkRoot, "--page-bg")!)
+            expect(contrast(shades.dark["--sidebar-accent"]!, darkBar), `${picked} dark`).toBeGreaterThanOrEqual(Math.min(4.5, contrast(shade.dark, darkBar)))
+            const lightBar = sidebar(lightRoot, shades.light["--page-bg"])
+            expect(contrast(shades.light["--sidebar-accent"], lightBar), `${picked} light`).toBeGreaterThanOrEqual(Math.min(4.5, contrast(shade.light, sidebar(lightRoot, defaultPage))))
+        }
+    })
+
     it("take the chosen colour's hue: the brand stands in for Nizmo's indigo", () => {
         // Blue reads white text at 5.2:1, so it's used as it is.
         expect(oldPageShades("#2563eb").light["--primary"]).toBe("#2563eb")

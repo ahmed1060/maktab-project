@@ -343,7 +343,8 @@ export const OLD_PAGE_SHADES = [
     { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'edge' },
     { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
     { token: '--sidebar-ring', light: '#c7d2fe', role: 'edge', behind: 'sidebar' },
-    { token: '--sidebar-accent', light: '#a5b4fc', dark: '#3d4b7a', role: 'decor' },
+    // The end of the company name's gradient: text on the side bar.
+    { token: '--sidebar-accent', light: '#a5b4fc', dark: '#3d4b7a', role: 'text', behind: 'sidebar' },
     { token: '--page-bg', light: '#eef2ff', lightOnly: true, role: 'ground' },
 ] as const satisfies readonly { token: string; light: string; dark?: string; role: Role; behind?: Behind; lightOnly?: boolean }[]
 
