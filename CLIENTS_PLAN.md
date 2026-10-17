@@ -72,6 +72,12 @@ Production has no data in these parts, so now is the right time.
   item was, until the side bar's new groups come (below). Its page lists
   every client's records, with search (by a record's text, its section's
   name or its client's name) and the expiry filter;
+- **Decided:** the Records page's Add record opens the whole form there:
+  which client (a search by name appears once a company has more than the
+  first 50), that client's section or a new one, then the text, files and
+  expiry. The record is added without leaving the page. This is how someone
+  who may add records but not see the vendors list, as an ordinary
+  employee, adds a client's first record;
 - the permissions are `records.view`, `records.contribute`, `records.edit`
   and `records.delete`, with the same codes, meaning and holders as the old
   `clients.*`;
@@ -114,12 +120,6 @@ change):
   was never reminded about again.
 - **A client with records can't be deleted** until its records are. Deleting
   it would otherwise delete its licences and contracts with it, unasked.
-- **Adding a record from the Records page:** Add record asks which client
-  it's for, from the company's clients by name, then opens that client's
-  page with the form. Without it, someone who may add records but not see
-  the vendors list, as an ordinary employee, could never add a client's
-  first record (from Codex's review of #82). It lists the first 50 by name
-  and says when there are more; a search by name finds any of the others.
 
 ### 0.3 Shipping the rename without breaking production (Decided)
 
@@ -917,3 +917,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   as that day west of UTC, as the date picker now does (`UI_PLAN.md`). And
   deleting a company removes everything it stored under its own folder,
   such as its logo and its people's photos, not only its records' files.
+- **2026-10-17:** Decided (§0.2): the Records page's Add record opens the
+  whole form there, choosing the client in it, rather than taking you to
+  the client's page: a button there that leaves the page had no meaning.
+  The client's sections load once it's chosen, and nothing can be added
+  until they have.
