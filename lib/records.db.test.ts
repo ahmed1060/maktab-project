@@ -294,6 +294,29 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("adds a client's first record to a section of that name started, or renamed to it, at the same moment", async () => {
+            // The record's new section takes a moment to write, so the other starts or renames one meanwhile.
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE INSERT ON "ClientSection" FOR EACH ROW WHEN (NEW.title IN ('Stamps', 'Seals') AND NEW."createdById" = 'a1') EXECUTE FUNCTION test_slow()`)
+            try {
+                const add = (sectionTitle: string) => Records.create(admin, { content: `${sectionTitle} record`, files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle })
+                const adding = add("Stamps")
+                await new Promise(r => setTimeout(r, 150))
+                const [added, started] = await Promise.allSettled([adding, Records.createSection(employee, { vendorId: "v1", title: "Stamps" })])
+                expect(added.status).toBe("fulfilled")
+                expect(started).toMatchObject({ status: "rejected", reason: new Error("RECORD_SECTION_TAKEN") })
+
+                const other = (await Records.createSection(employee, { vendorId: "v1", title: "Old seals" })).id
+                const addingSeal = add("Seals")
+                await new Promise(r => setTimeout(r, 150))
+                const [sealed, renamed] = await Promise.allSettled([addingSeal, Records.renameSection(admin, { id: other, title: "Seals" })])
+                expect(sealed.status).toBe("fulfilled")
+                expect(renamed).toMatchObject({ status: "rejected", reason: new Error("RECORD_SECTION_TAKEN") })
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientSection"; DROP FUNCTION test_slow()`)
+            }
+        })
+
         it("won't delete a client while a record is being added to it", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v4', 'c1', 'Delta', 'Nour', '0103', 'Suez', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v4", title: "Licences" })).id

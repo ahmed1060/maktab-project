@@ -339,6 +339,10 @@ export class RecordService {
         const who = actor(session)
         try {
             return await prisma.$transaction(async tx => {
+                // The client's lock a first record takes to start a section by
+                // name (create), so the two don't both start one of a name.
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.vendorId} FOR NO KEY UPDATE`
+                if (!locked.length) throw new Error("VENDOR_NOT_FOUND")
                 const section = await tx.recordSection.create({
                     data: { title: input.title, vendorId: input.vendorId, createdById: who.byUser },
                     select: { id: true, title: true },
@@ -359,6 +363,9 @@ export class RecordService {
         const who = actor(session)
         try {
             return await prisma.$transaction(async tx => {
+                // As createSection: no first record starts a section of the new name meanwhile.
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR NO KEY UPDATE`
+                if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
                 const renamed = await tx.recordSection.update({
                     where: { id: input.id },
                     data: { title: input.title, lastEditedById: who.byUser },
