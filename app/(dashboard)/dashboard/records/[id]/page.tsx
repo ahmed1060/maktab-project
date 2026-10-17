@@ -9,6 +9,8 @@ import { RecordService } from '@/lib/services/record.service'
  * vendors become clients (CLIENTS_PLAN.md §0.1), so a reminder sent before
  * then still opens.
  */
+const NOT_THEIRS = new Set(["RECORD_NOT_FOUND", "RECORD_FORBIDDEN"])
+
 export default async function RecordLink({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
     const session = await getServerSession(authOptions)
@@ -16,9 +18,11 @@ export default async function RecordLink({ params }: { params: Promise<{ id: str
     let vendorId: string
     try {
         vendorId = (await RecordService.get(session as any, id)).client.id
-    } catch {
+    } catch (error) {
         // Gone, another company's, or not theirs to see: the same answer.
-        notFound()
+        // Anything else, such as the database being down, is a real error.
+        if (error instanceof Error && NOT_THEIRS.has(error.message)) notFound()
+        throw error
     }
     redirect(`/dashboard/vendors/${vendorId}?record=${encodeURIComponent(id)}`)
 }
