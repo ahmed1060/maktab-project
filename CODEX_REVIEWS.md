@@ -39,9 +39,9 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #82 Records move onto clients (step 0, PR 0a) | Open | `767ca72` (2026-10-17 07:41 UTC) | 8 commits, up to `b4d42a5` (below) |
+| #82 Records move onto clients (step 0, PR 0a) | Open | `767ca72` (2026-10-17 07:41 UTC) | Every commit after `767ca72` (below) |
 
-#82's commits Codex hasn't seen:
+#82's commits Codex hasn't seen, besides this file's own:
 
 - `b57ca88` A search for records matches % and _ as the letters typed
 - `8676560` A client's first record and a new section of its name don't collide
