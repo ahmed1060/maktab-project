@@ -40,7 +40,6 @@ async function companyToday(companyId: string) {
     return recordsToday(company?.timezone)
 }
 
-/** The most clients the Records page offers to add a record to. */
 /** How many clients the Add record picker lists at once; a search by name finds the rest. */
 export const CLIENTS_SHOWN = 50
 
