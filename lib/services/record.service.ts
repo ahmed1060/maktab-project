@@ -169,6 +169,17 @@ async function removeFiles(files: readonly RecordFile[], companyId: string) {
     }
 }
 
+/**
+ * Whoever a record's notice goes to, held so they can't be deleted while it's
+ * sent; null once they're gone. Taken before the record's claim, in the order a
+ * user's deletion takes the two, so neither waits on the other.
+ */
+async function recipient(tx: Prisma.TransactionClient, userId: string | null) {
+    if (!userId) return null
+    const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR KEY SHARE`
+    return held.length ? userId : null
+}
+
 const snippet = (text: string) => text.length > 50 ? `${text.slice(0, 50)}...` : text
 
 /** A section, with the client and company it belongs to. A section of the old Clients section has no client and isn't found. */
@@ -580,14 +591,15 @@ export class RecordService {
         let expiring = 0
         for (const record of expiringToday) {
             await prisma.$transaction(async tx => {
+                const to = await recipient(tx, record.createdById)
                 // Claimed on the deadline it was found for: an edit since then owes its own notice instead.
                 const claimed = await tx.clientRecord.updateMany({ where: { id: record.id, expiryDate: record.expiryDate, notifiedOnExpiry: false }, data: { notifiedOnExpiry: true } })
                 if (!claimed.count) return
                 expiring++
-                if (record.createdById) {
+                if (to) {
                     await tx.notification.create({
                         data: {
-                            userId: record.createdById,
+                            userId: to,
                             type: "NOTE_EXPIRING",
                             ...noticeRow({ key: "notice_note_expiring_today", params: { snippet: record.content.slice(0, 20), client: record.section.vendor!.name } }),
                             relatedId: link(record.id),
@@ -606,16 +618,17 @@ export class RecordService {
             const expires = expiryDay(record.expiryDate!)
             if (today < addDays(expires, -record.reminderDays!)) continue
             await prisma.$transaction(async tx => {
+                const to = await recipient(tx, record.createdById)
                 const claimed = await tx.clientRecord.updateMany({
                     where: { id: record.id, expiryDate: record.expiryDate, reminderDays: record.reminderDays, notifiedDaysBefore: false },
                     data: { notifiedDaysBefore: true },
                 })
                 if (!claimed.count) return
                 reminded++
-                if (record.createdById) {
+                if (to) {
                     await tx.notification.create({
                         data: {
-                            userId: record.createdById,
+                            userId: to,
                             type: "NOTE_REMINDER",
                             ...noticeRow({ key: "notice_note_expiring", params: { snippet: record.content.slice(0, 20), client: record.section.vendor!.name, days: daysBetween(today, expires) } }),
                             relatedId: link(record.id),

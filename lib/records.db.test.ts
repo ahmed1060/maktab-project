@@ -585,5 +585,38 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, sectionId: section })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
             await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, vendorId: "v5", sectionTitle: "New" })).rejects.toThrow("VENDOR_NOT_FOUND")
         })
+
+        it("sends the reminders on when whoever added a record is deleted as they go out", async () => {
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e8', 'e8@x', 'p', 'Nour', 'Gone', 'EMPLOYEE', 2026, 'e8', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+            const leaver = { user: withGrants({ id: "e8", role: "EMPLOYEE", companyId: "c1" }) } as any
+            const theirs = (await Records.create(leaver, { content: "Trade licence", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const soon = (await Records.create(leaver, { content: "Tax card", files: [], expiryDate: "2026-10-20", reminderDays: 7, vendorId: "v1", sectionTitle: "Contracts" })).id
+            // Someone is editing the record as the job finds it, and the person who added it is deleted meanwhile.
+            const edit = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            const leave = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await edit.connect()
+            await leave.connect()
+            try {
+                await edit.query("BEGIN")
+                await edit.query(`SELECT id FROM "ClientNote" WHERE id = ANY($1) FOR UPDATE`, [[theirs, soon]])
+                const checking = Records.checkExpiries()
+                await new Promise(r => setTimeout(r, 300))
+                const leaving = leave.query(`DELETE FROM "User" WHERE id = 'e8'`)
+                await new Promise(r => setTimeout(r, 300))
+                await edit.query("COMMIT")
+                const [checked, left] = await Promise.allSettled([checking, leaving])
+                expect(checked.status).toBe("fulfilled")
+                expect(left.status).toBe("fulfilled")
+            } finally {
+                await edit.end()
+                await leave.end()
+            }
+            const { rows } = await db.query(`SELECT "notifiedOnExpiry", "notifiedDaysBefore", "createdById" FROM "ClientNote" WHERE id = ANY($1) ORDER BY content`, [[theirs, soon]])
+            expect(rows).toEqual([
+                { notifiedOnExpiry: false, notifiedDaysBefore: true, createdById: null },
+                { notifiedOnExpiry: true, notifiedDaysBefore: false, createdById: null },
+            ])
+            expect((await db.query(`SELECT count(*)::int AS n FROM "User" WHERE id = 'e8'`)).rows[0].n).toBe(0)
+        })
     })
 })
