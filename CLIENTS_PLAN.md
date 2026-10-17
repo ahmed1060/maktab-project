@@ -97,6 +97,9 @@ Production has no data in these parts, so now is the right time.
   (two new columns), and one by a user since deleted reads "Deleted user".
 - an edit says which files the record had when its form opened, and is
   refused if someone changed them since: the person opens the record again.
+- removing a file from storage and giving a record a file each hold the
+  file, and a removed file is noted (`RemovedRecordFile`), so no record is
+  given a file that's gone.
 
 **Proposed** (built this way in 0a, for the product owner to confirm or
 change):
@@ -888,3 +891,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   than showing none; and an edit is refused if someone changed the
   record's files since its form opened, so a file taken off can't come
   back on it. Still waiting to be merged.
+- **2026-10-17:** PR 0a (#82): Codex's sixth review is fixed too (§0.2,
+  `ROLES_PLAN.md` §4.4): sessions refreshed by the older release after the
+  migration reload their grants once this one is live, so nobody is left
+  without Records until they sign in again; deleting a company holds the
+  company too; and a record can't be given a file as it's removed from
+  storage (a new table, `RemovedRecordFile`). Still waiting to be merged.
