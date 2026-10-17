@@ -178,6 +178,10 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(await find("supply")).toEqual([contract])
             expect(await find("LICENCES")).toEqual([licence, contract].sort())
             expect(await find("beta")).toEqual([note])
+            // A % or _ in what's typed is that letter, not any.
+            expect(await find("%")).toEqual([])
+            expect(await find("_")).toEqual([])
+            expect(await find("supp_y")).toEqual([])
         })
 
         it("filters exactly what the badges say, soonest first", async () => {

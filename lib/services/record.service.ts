@@ -188,6 +188,9 @@ async function recipient(tx: Prisma.TransactionClient, userId: string | null) {
     return held.length ? userId : null
 }
 
+/** Typed text as Prisma's contains matches it: its letters as they are, LIKE's own %, _ and backslash escaped. */
+const likeText = (text: string) => text.replace(/[\\%_]/g, c => `\\${c}`)
+
 const snippet = (text: string) => text.length > 50 ? `${text.slice(0, 50)}...` : text
 
 /** A section, with the client and company it belongs to. A section of the old Clients section has no client and isn't found. */
@@ -240,7 +243,8 @@ export class RecordService {
         // Every company's records by its own day, for a Super Admin looking at them all.
         const days = companyId ? null : await companyDays()
         const today = companyId ? await companyToday(companyId) : recordsToday()
-        const search = query.search?.trim()
+        const trimmed = query.search?.trim()
+        const search = trimmed ? likeText(trimmed) : ""
         const where: Prisma.ClientRecordWhereInput = {
             section: {
                 vendorId: query.vendorId ? query.vendorId : { not: null },
@@ -297,8 +301,8 @@ export class RecordService {
         const company = sa ? companyId || null : session.user.companyId
         if (!sa && !company) return { clients: [], more: false }
         if (!sa && !can(session.user as any, "records.contribute", { companyId: company! })) throw new Error("RECORD_FORBIDDEN")
-        // Its letters as they are: LIKE's own % and _ escaped.
-        const name = search?.trim().replace(/[\\%_]/g, c => `\\${c}`)
+        const trimmed = search?.trim()
+        const name = trimmed ? likeText(trimmed) : ""
         const vendors = await prisma.vendor.findMany({
             where: { ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
             select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true } } }) },
