@@ -772,4 +772,4 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-17:** Decided: the Records page's Add record is one dialog on
   that page: which vendor (with a search once there are more than 50), its
   section, then the record (`CLIENTS_PLAN.md` §0.2). It no longer opens the
-  vendor's page.
+  vendor's page. A vendor's own page keeps its Add record, for that vendor.

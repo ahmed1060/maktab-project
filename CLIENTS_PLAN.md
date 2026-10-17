@@ -77,7 +77,9 @@ Production has no data in these parts, so now is the right time.
   first 50), that client's section or a new one, then the text, files and
   expiry. The record is added without leaving the page. This is how someone
   who may add records but not see the vendors list, as an ordinary
-  employee, adds a client's first record;
+  employee, adds a client's first record. A client's own page keeps its Add
+  record, which opens the same form for that client, with no client to
+  choose;
 - the permissions are `records.view`, `records.contribute`, `records.edit`
   and `records.delete`, with the same codes, meaning and holders as the old
   `clients.*`;
