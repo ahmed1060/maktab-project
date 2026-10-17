@@ -124,24 +124,46 @@ function checkFiles(files: readonly RecordFile[], companyId: string) {
     for (const f of files) if (!ownFilePath(f.url, companyId)) throw new Error("RECORD_FILE_INVALID")
 }
 
+/** The lock on one file, between its removal and a record being given it. */
+const fileLock = (path: string) => `record-file:${path}`
+
+/**
+ * Files a record is being given, inside the transaction that writes it:
+ * held against their removal (removeFiles) until it's saved, and refused if
+ * one has been removed, as its object is gone.
+ */
+async function claimFiles(tx: Prisma.TransactionClient, files: readonly RecordFile[], companyId: string) {
+    const paths = [...new Set(files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p))].sort()
+    if (!paths.length) return
+    for (const path of paths) await tx.$queryRaw`SELECT pg_advisory_xact_lock_shared(hashtextextended(${fileLock(path)}, 0))::text`
+    if (await tx.removedRecordFile.count({ where: { path: { in: paths } } })) throw new Error("RECORD_FILE_INVALID")
+}
+
 /**
  * Removes files from storage once no record refers to them: a file can be
  * on two records, when someone attached one record's file to another. Called
- * once the record no longer refers to them itself. Best effort: the orphan
- * sweep catches a miss.
+ * once the record no longer refers to them itself. Each file is held while
+ * it's checked and removed, and noted as removed, so no record is given it
+ * meanwhile or afterwards (claimFiles). Best effort: the orphan sweep
+ * catches a miss.
  */
 async function removeFiles(files: readonly RecordFile[], companyId: string) {
-    const unique = [...new Set(files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p))]
+    const unique = [...new Set(files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p))].sort()
     if (!unique.length || !supabase) return
+    const storage = supabase
     try {
-        const names = unique.map(p => p.slice(p.lastIndexOf("/") + 1))
-        const others = await prisma.clientRecord.findMany({ where: { OR: names.map(name => ({ attachment: { contains: name } })) }, select: { attachment: true } })
-        const stillUsed = new Set(others.flatMap(r => parseRecordFiles(r.attachment).map(f => ownFilePath(f.url, companyId))))
-        const paths = unique.filter(p => !stillUsed.has(p))
-        if (!paths.length) return
-        // A refused removal comes back as an error, not thrown.
-        const { error } = await supabase.storage.from("app-assets").remove(paths)
-        if (error) throw error
+        await prisma.$transaction(async tx => {
+            for (const path of unique) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${fileLock(path)}, 0))::text`
+            const names = unique.map(p => p.slice(p.lastIndexOf("/") + 1))
+            const others = await tx.clientRecord.findMany({ where: { OR: names.map(name => ({ attachment: { contains: name } })) }, select: { attachment: true } })
+            const stillUsed = new Set(others.flatMap(r => parseRecordFiles(r.attachment).map(f => ownFilePath(f.url, companyId))))
+            const paths = unique.filter(p => !stillUsed.has(p))
+            if (!paths.length) return
+            await tx.removedRecordFile.createMany({ data: paths.map(path => ({ path })), skipDuplicates: true })
+            // A refused removal comes back as an error, not thrown; thrown, nothing is noted as removed.
+            const { error } = await storage.storage.from("app-assets").remove(paths)
+            if (error) throw error
+        }, { timeout: 30_000 })
     } catch (error) {
         console.error("Failed to delete record files from storage:", error)
     }
@@ -390,6 +412,7 @@ export class RecordService {
                     sectionId = made.id
                 }
             }
+            await claimFiles(tx, input.files, companyId)
             const record = await tx.clientRecord.create({
                 data: {
                     content: input.content,
@@ -436,6 +459,7 @@ export class RecordService {
             const now = new Set(parseRecordFiles(current.attachment).map(f => f.url))
             const seen = new Set(input.filesBefore)
             if (now.size !== seen.size || [...now].some(url => !seen.has(url))) throw new Error("RECORD_CHANGED")
+            await claimFiles(tx, input.files.filter(f => !now.has(f.url)), record.companyId)
             // A new date or reminder is a new deadline: its reminders are owed again.
             const datesChanged = (current.expiryDate?.getTime() ?? null) !== (expiryDate?.getTime() ?? null) || current.reminderDays !== reminderDays
             const row = await tx.clientRecord.update({

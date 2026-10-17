@@ -979,6 +979,13 @@ model ClientRecord {
   @@map("ClientNote")
 }
 
+/// A record's file removed from storage (RecordService): no record may be
+/// given it again, as its object is gone. Its path in the bucket.
+model RemovedRecordFile {
+  path      String   @id
+  removedAt DateTime @default(now())
+}
+
 model ProfileUpdateRequest {
   id           String   @id @default(uuid())
   userId       String

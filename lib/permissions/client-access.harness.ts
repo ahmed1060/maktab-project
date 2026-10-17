@@ -43,6 +43,7 @@ const models: Record<string, any> = {
     vendor: model(vendorRow),
     recordSection: model(sectionRow),
     clientRecord: model(recordRow),
+    removedRecordFile: { count: async () => 0, createMany: async () => ({ count: 0 }) },
 }
 
 export const prismaMock: any = new Proxy({}, {
@@ -52,6 +53,7 @@ export const prismaMock: any = new Proxy({}, {
         // The row locks RecordService takes on a client, a section or a record: the row, if it's there.
         if (prop === "$queryRaw") return async (sql: TemplateStringsArray, ...values: any[]) => {
             const text = sql.join("?")
+            if (text.includes("pg_advisory")) return [{}]
             if (text.includes('FROM "Vendor"')) return vendorRow(values[0]) ? [{ id: values[0] }] : []
             // The section's: by its id, or a client's section by name, which none of the fixtures is.
             if (text.includes('FROM "ClientSection" WHERE id')) return sectionRow(values[0]) ? [{ id: values[0] }] : []

@@ -23,8 +23,13 @@ const BUCKET = "https://abc.supabase.co/storage/v1/object/public/app-assets"
 const removed: string[] = []
 // Storage answers a refused removal with an error, rather than throwing.
 let refuseRemoval = false
+// How long storage takes to remove files, for a test that needs it to take a moment.
+let removalTakes = 0
 vi.mock("@/lib/storage", () => ({
-    supabase: { storage: { from: () => ({ remove: async (paths: string[]) => (refuseRemoval ? { data: null, error: { message: "Forbidden" } } : (removed.push(...paths), { data: [], error: null })) }) } },
+    supabase: { storage: { from: () => ({ remove: async (paths: string[]) => {
+        if (removalTakes) await new Promise(r => setTimeout(r, removalTakes))
+        return refuseRemoval ? { data: null, error: { message: "Forbidden" } } : (removed.push(...paths), { data: [], error: null })
+    } }) } },
     uploadToCloud: async () => { throw new Error("no uploads here") },
 }))
 
@@ -534,6 +539,43 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             })
             expect(added).toMatch(/lock timeout/)
             await db.query(`DELETE FROM "Company" WHERE id = 'c5'`)
+        })
+
+        it("gives no record a file being removed from storage", async () => {
+            const x = file("c1", "handover.pdf")
+            const a = (await Records.create(admin, { content: "Handover", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            removalTakes = 500
+            try {
+                removed.length = 0
+                // Its file is taken off, and as storage removes it, a request gives the same file to another record.
+                const takingOff = Records.update(admin, { id: a, content: "Handover", files: [], filesBefore: [x.url], expiryDate: null, reminderDays: null })
+                await new Promise(r => setTimeout(r, 150))
+                const [, giving] = await Promise.allSettled([takingOff, Records.create(admin, { content: "Handover, copy", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })])
+                expect(removed).toEqual(["c1/records/handover.pdf"])
+                expect(giving).toMatchObject({ status: "rejected", reason: { message: "RECORD_FILE_INVALID" } })
+                // Nor later.
+                await expect(Records.create(admin, { content: "Handover, again", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).rejects.toThrow("RECORD_FILE_INVALID")
+            } finally {
+                removalTakes = 0
+            }
+        })
+
+        it("keeps a file a record is being given as another takes it off", async () => {
+            const x = file("c1", "permit-scan.pdf")
+            const a = (await Records.create(admin, { content: "Permit scan", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow AFTER INSERT ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Permit scan, copy') EXECUTE FUNCTION test_slow()`)
+            try {
+                removed.length = 0
+                // Another record is being given the file, and before it's saved, the first takes it off.
+                const giving = Records.create(admin, { content: "Permit scan, copy", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })
+                await new Promise(r => setTimeout(r, 150))
+                await Promise.all([giving, Records.update(admin, { id: a, content: "Permit scan", files: [], filesBefore: [x.url], expiryDate: null, reminderDays: null })])
+                // The copy has it, so it stays.
+                expect(removed).toEqual([])
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
+            }
         })
 
         it("won't add a record to a client deleted meanwhile", async () => {
