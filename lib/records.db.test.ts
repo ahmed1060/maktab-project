@@ -521,6 +521,21 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("lets no client be added to a company while its deletion lists its records' files", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c5', 'Five', now())`)
+            const { prisma } = await import("@/lib/prisma")
+            let added: unknown = "not tried"
+            await prisma.$transaction(async tx => {
+                await Records.filesOfCompany(tx, "c5")
+                // Meanwhile someone adds a client to it, giving up after a moment.
+                await db.query(`SET lock_timeout = '300ms'`)
+                added = await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v8', 'c5', 'Theta', 'Rami', '0107', 'Minya', now())`).then(() => "added", (e: Error) => e.message)
+                await db.query(`RESET lock_timeout`)
+            })
+            expect(added).toMatch(/lock timeout/)
+            await db.query(`DELETE FROM "Company" WHERE id = 'c5'`)
+        })
+
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id
