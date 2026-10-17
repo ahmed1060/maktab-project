@@ -39,7 +39,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     sections?: SectionItem[]
     /** Whether the add form is open, for a page whose header has the button. */
     adding?: boolean
-    /** Opens the page's way to add a record: a client's form, or the Records page's choice of client. */
+    /** Opens or closes the add form. */
     onAddingChange?: (open: boolean) => void
     /** After a record is added, changed or deleted: a section's count may have moved. */
     onChanged?: () => void
@@ -240,13 +240,12 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
                 onEdit={canEdit && viewing ? () => { setEditing(viewing); setViewing(null) } : undefined}
                 onDelete={canDelete && viewing ? () => setDeleting(viewing) : undefined}
             />
-            {vendorId && (
-                <RecordForm open={adding} onClose={() => onAddingChange?.(false)} vendorId={vendorId} sections={sections} onSaved={changed} />
-            )}
+            {/* To this client, or on the Records page to the one chosen in the form. */}
+            <RecordForm open={adding} onClose={() => onAddingChange?.(false)} vendorId={vendorId} sections={vendorId ? sections : undefined} onSaved={changed} />
             <RecordForm
                 open={!!editing}
                 onClose={() => setEditing(null)}
-                vendorId={editing?.client.id ?? vendorId ?? ''}
+                vendorId={editing?.client.id ?? vendorId}
                 sections={editSections}
                 record={editing}
                 onSaved={changed}

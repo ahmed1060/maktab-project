@@ -74,22 +74,36 @@ describe("record screens offer only what the server allows", () => {
     const SECTIONS = source("components/records/SectionsCard.tsx")
     const VIEW = source("components/records/RecordDialog.tsx")
 
-    it("offers adding a record from the Records page, by choosing its client, only with records.contribute", () => {
+    it("adds a record from the Records page in one form, choosing its client there, only with records.contribute", () => {
         const PAGE = source("app/(dashboard)/dashboard/records/page.tsx")
         const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        const FORM = source("components/records/RecordForm.tsx")
         expect(PAGE).toContain("action={can('records.contribute') && <Button")
-        expect(PAGE).toContain("<ClientPicker open={picking}")
+        expect(PAGE).toContain("<RecordsList adding={adding && can('records.contribute')} onAddingChange={setAdding} />")
         expect(LIST).toContain("action={canEdit && onAddingChange ? <Button")
-        expect(source("components/records/ClientPicker.tsx")).toContain("router.push(`/dashboard/vendors/${encodeURIComponent(clientId)}?add=1`)")
-        expect(CLIENT).toContain("useState(params.get('add') === '1')")
+        // The form opens on the Records page itself, with no client given, and the record is added there.
+        expect(LIST).toContain("<RecordForm open={adding} onClose={() => onAddingChange?.(false)} vendorId={vendorId} sections={vendorId ? sections : undefined} onSaved={changed} />")
+        expect(FORM).toContain("const choosing = !vendorId && !editing")
+        expect(FORM).not.toContain("router.push")
         expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
+        expect(CLIENT).not.toContain("params.get('add')")
+    })
+    it("loads the chosen client's sections before a record can be added to it, rather than starting a first one", () => {
+        const FORM = source("components/records/RecordForm.tsx")
+        expect(FORM).toContain("choosing && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null")
+        expect(FORM).toContain("const ready = !!clientId && list !== undefined")
+        expect(FORM).toContain("busy={saving} disabled={!ready}")
+        expect(FORM).toContain("{t('records_sections_failed')}")
+        // A section of the client before isn't what the record goes into.
+        expect(FORM).toContain("const section = sectionId === NEW_SECTION || list?.some(s => s.id === sectionId) ? sectionId : list?.[0]?.id ?? NEW_SECTION")
     })
     it("on the Records page, finds any client by name to add a record to, not only the first ones listed", () => {
-        const PICKER = source("components/records/ClientPicker.tsx")
-        expect(PICKER).toContain("<SearchInput {...p} autoComplete=\"off\" value={query}")
-        expect(PICKER).toContain("if (search) params.set('search', search)")
-        // A choice a search no longer lists isn't what Continue opens.
-        expect(PICKER).toContain("const clientId = clients.some(c => c.id === chosen) ? chosen : clients[0]?.id ?? ''")
+        const CLIENTS = source("components/records/useClients.ts")
+        const FORM = source("components/records/RecordForm.tsx")
+        expect(FORM).toContain("<SearchInput {...p} autoComplete=\"off\" value={clients.query}")
+        expect(CLIENTS).toContain("if (search) params.set('search', search)")
+        // A choice a search no longer lists isn't what the record is added to.
+        expect(FORM).toContain("const clientId = vendorId ?? (clients.clients.some(c => c.id === chosen) ? chosen : clients.clients[0]?.id ?? '')")
     })
     it("on a client's page, says when its details didn't load, though its records did", () => {
         const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")

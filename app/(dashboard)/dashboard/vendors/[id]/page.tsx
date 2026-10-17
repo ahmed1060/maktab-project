@@ -41,8 +41,7 @@ export default function VendorPage() {
     const { can } = useCan()
     const seesVendor = can('vendors.view')
     const seesRecords = can('records.view')
-    // Arriving from the Records page's Add record (?add=1), with the form open.
-    const [adding, setAdding] = useState(params.get('add') === '1')
+    const [adding, setAdding] = useState(false)
     const { mutate } = useSWRConfig()
 
     const { data: vendorBody, error: vendorError, isLoading: vendorLoading, mutate: reloadVendor } = useSWR<{ data: Vendor }>(seesVendor ? `/api/vendors?id=${encodeURIComponent(id)}` : null, fetcher)
