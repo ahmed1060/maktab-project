@@ -762,3 +762,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   when its records didn't load, with Try again; saving a record from a
   form opened before someone else changed its files says so, and asks to
   open it again (`CLIENTS_PLAN.md` change log).
+- **2026-10-17:** From Codex's seventh review of #82: Add record's picker
+  has a search by name, as it lists only the first 50 clients; a client's
+  page says when its details didn't load, with Try again
+  (`CLIENTS_PLAN.md` change log).

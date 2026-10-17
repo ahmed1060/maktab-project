@@ -118,7 +118,8 @@ change):
   it's for, from the company's clients by name, then opens that client's
   page with the form. Without it, someone who may add records but not see
   the vendors list, as an ordinary employee, could never add a client's
-  first record (from Codex's review of #82).
+  first record (from Codex's review of #82). It lists the first 50 by name
+  and says when there are more; a search by name finds any of the others.
 
 ### 0.3 Shipping the rename without breaking production (Decided)
 
@@ -897,3 +898,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   without Records until they sign in again; deleting a company holds the
   company too; and a record can't be given a file as it's removed from
   storage (a new table, `RemovedRecordFile`). Still waiting to be merged.
+- **2026-10-17:** PR 0a (#82): Codex's seventh review is fixed too (§0.2):
+  a reminder's link says when looking the record up fails, rather than
+  that it's gone; reminders still go out when whoever added a record is
+  deleted as they're sent; Add record's picker finds any client by name,
+  not only the first 1,000; a client's page says when its details didn't
+  load; and files are removed from storage 100 at a time, as storage caps
+  each call. Still waiting to be merged.
