@@ -905,3 +905,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   not only the first 1,000; a client's page says when its details didn't
   load; and files are removed from storage 100 at a time, as storage caps
   each call. Still waiting to be merged.
+- **2026-10-17:** PR 0a (#82): Codex's eighth review is fixed too (§0.2):
+  a % or _ in the Records search is that letter, not any; a client's first
+  record and a section started or renamed to the same name at that moment
+  no longer fail the record; and a record's file is noted as removed, and
+  that committed, before storage removes it. A file storage refuses stays
+  noted as removed, and the orphan sweep removes it. Still waiting to be
+  merged.
