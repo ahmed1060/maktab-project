@@ -6,6 +6,7 @@ import { parseModuleIcons, parseModuleOverrides } from "@/lib/modules"
 import { parseTheme } from "@/lib/theme"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { RoleService, PREVIEW_LASTS_MS } from "@/lib/services/role.service"
+import { CATALOGUE_VERSION } from "@/lib/permissions/catalogue"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { v4 as uuidv4 } from 'uuid'
@@ -469,7 +470,7 @@ export const authOptions: NextAuthOptions = {
                 token.jti = uuidv4()
                 // What they may do: their role's grants (ROLES_PLAN.md §4.4).
                 // The Super Admin is outside the role system and holds none.
-                if (user.role !== 'SUPER_ADMIN') Object.assign(token, await RoleService.forToken(user.id as string))
+                if (user.role !== 'SUPER_ADMIN') Object.assign(token, await RoleService.forToken(user.id as string), { catalogue: CATALOGUE_VERSION })
 
                 // Store remember flag in token
                 if ('remember' in user) {
@@ -511,9 +512,12 @@ export const authOptions: NextAuthOptions = {
             // can() gives nothing to someone without them. Load them now, on
             // its first request, rather than leave the person refused
             // everything until the next minute's check.
-            if (token.sub && !user && token.role !== 'SUPER_ADMIN' && token.grants === undefined) {
+            // And one read against an older catalogue (CATALOGUE_VERSION) may
+            // lack permissions this release knows, though its role version
+            // matches: reloaded once, on its first request here.
+            if (token.sub && !user && token.role !== 'SUPER_ADMIN' && (token.grants === undefined || token.catalogue !== CATALOGUE_VERSION)) {
                 try {
-                    Object.assign(token, await RoleService.forToken(token.sub as string))
+                    Object.assign(token, await RoleService.forToken(token.sub as string), { catalogue: CATALOGUE_VERSION })
                 } catch (e) {
                     console.error("[AUTH] Loading role grants failed — revoking session", e)
                     return {} as any

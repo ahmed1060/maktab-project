@@ -34,10 +34,11 @@ vi.mock("@/lib/services/role.service", async (original) => {
 })
 
 const { authOptions } = await import("@/lib/auth")
+const { CATALOGUE_VERSION } = await import("@/lib/permissions/catalogue")
 const jwt = (token: Record<string, unknown>) => authOptions.callbacks!.jwt!({ token } as never) as Promise<any>
 
 // A token whose minute has passed, so this call checks the row again.
-const due = (token: Record<string, unknown>) => ({ sub: "u1", role: "EMPLOYEE", sessionVersion: 0, checkedAt: 0, ...token })
+const due = (token: Record<string, unknown>) => ({ sub: "u1", role: "EMPLOYEE", sessionVersion: 0, checkedAt: 0, catalogue: CATALOGUE_VERSION, ...token })
 const acting = (actingUntil: Date | null, roleId = "cover") => ({
     sessionVersion: 0, status: "ACTIVE", role: "EMPLOYEE", roleId, assignedRole: { version: 1 }, actingUntil, company: null,
 })

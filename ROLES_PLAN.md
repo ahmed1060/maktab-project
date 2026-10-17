@@ -474,6 +474,16 @@ leave the old permissions in place.
 So a permission change reaches everyone within about a minute, at no extra
 database cost.
 
+The token also notes which release of the permission catalogue its grants
+were read against (`CATALOGUE_VERSION` in `lib/permissions/catalogue.ts`),
+raised whenever permissions are added or renamed. A token read against an
+earlier one reloads its grants on its first request, whatever the role's
+version says. Preview builds migrate the production database before the
+release that reads it is live, so the older release can refresh a token at
+a new role version while dropping permissions it doesn't know; the catalogue
+check undoes that once the new release is live (from Codex's review of #82,
+when `clients.*` became `records.*`).
+
 **Token size.** The session is a cookie, and cookies are limited to about 4 KB.
 Permissions are stored in the token as short numeric codes with a scope digit, not
 as full key strings, so even a role holding every permission stays well under the

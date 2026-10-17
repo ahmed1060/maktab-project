@@ -175,6 +175,19 @@ export const PERMISSIONS = {
 
 export type Permission = keyof typeof PERMISSIONS
 
+/**
+ * Which release of this catalogue a session's grants were read against.
+ * Raised whenever permissions are added or renamed: a session token made
+ * against an earlier one reloads its grants once (lib/auth.ts), whatever
+ * its role's version says. Preview builds migrate the production database
+ * before the release that reads it is live, so the older release may
+ * already have refreshed a token at the new role version, dropping the
+ * permissions it didn't know (Codex on #82).
+ *
+ * 2: records.* (codes 25–28), renamed from clients.* (CLIENTS_PLAN.md §0.2).
+ */
+export const CATALOGUE_VERSION = 2
+
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []
 

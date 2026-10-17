@@ -119,6 +119,8 @@ declare module "next-auth/jwt" {
         roleId?: string | null
         roleVersion?: number
         grants?: string
+        /** The permission catalogue `grants` were read against (CATALOGUE_VERSION); older ones reload. */
+        catalogue?: number
         /** An acting role is over and `grants` are those of the role returned to (§6.13). */
         actingEnded?: true
         preview?: import("@/lib/services/role.service").RolePreview | null
