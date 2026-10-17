@@ -41,7 +41,8 @@ async function companyToday(companyId: string) {
 }
 
 /** The most clients the Records page offers to add a record to. */
-export const CLIENTS_MAX = 1000
+/** How many clients the Add record picker lists at once; a search by name finds the rest. */
+export const CLIENTS_SHOWN = 50
 
 const PERSON = { select: { firstName: true, lastName: true } } as const
 
@@ -284,18 +285,24 @@ export class RecordService {
      * without records yet. A Super Admin's chosen company's, or every
      * company's, each named with its company.
      */
-    static async clients(session: Session, companyId?: string | null) {
+    static async clients(session: Session, companyId?: string | null, search?: string | null) {
         const sa = isSuperAdmin(session)
         const company = sa ? companyId || null : session.user.companyId
-        if (!sa && !company) return []
+        if (!sa && !company) return { clients: [], more: false }
         if (!sa && !can(session.user as any, "records.contribute", { companyId: company! })) throw new Error("RECORD_FORBIDDEN")
+        // Its letters as they are: LIKE's own % and _ escaped.
+        const name = search?.trim().replace(/[\\%_]/g, c => `\\${c}`)
         const vendors = await prisma.vendor.findMany({
-            where: company ? { companyId: company } : {},
+            where: { ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
             select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true } } }) },
             orderBy: [{ name: "asc" }, { id: "asc" }],
-            take: CLIENTS_MAX,
+            // One past what's listed, to say there are more to search for.
+            take: CLIENTS_SHOWN + 1,
         })
-        return vendors.map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name } : {}) }))
+        return {
+            clients: vendors.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name } : {}) })),
+            more: vendors.length > CLIENTS_SHOWN,
+        }
     }
 
     /** A client's sections, with how many records each holds, and the client's name for the page. */

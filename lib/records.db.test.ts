@@ -60,6 +60,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
     let db: Client
     let Records: typeof import("@/lib/services/record.service").RecordService
     let Vendors: typeof import("@/lib/services/vendor.service").VendorService
+    let CLIENTS_SHOWN: number
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -85,7 +86,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         // Today is 16 October 2026 where the company is; only the clock is faked.
         vi.useFakeTimers({ toFake: ["Date"] })
         vi.setSystemTime(new Date("2026-10-16T09:00:00Z"))
-        Records = (await import("@/lib/services/record.service")).RecordService
+        const service = await import("@/lib/services/record.service")
+        Records = service.RecordService
+        CLIENTS_SHOWN = service.CLIENTS_SHOWN
         Vendors = (await import("@/lib/services/vendor.service")).VendorService
     }, 180_000)
 
@@ -481,12 +484,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("offers the company's clients to add a record to, by name, to whoever may add one", async () => {
-            const names = (list: { name: string }[]) => list.map(c => c.name)
+            const names = (list: { clients: { name: string }[] }) => list.clients.map(c => c.name)
             expect(names(await Records.clients(employee))).toEqual(["Acme", "Delta"])
             expect(names(await Records.clients(otherAdmin))).toEqual(["Gamma"])
             // A Super Admin's chosen company, or every company's, each named with its company.
             expect(names(await Records.clients(superAdmin, "c2"))).toEqual(["Gamma"])
-            expect((await Records.clients(superAdmin)).map(c => `${c.name} ${c.company}`)).toEqual(["Acme One", "Delta One", "Gamma Two"])
+            expect((await Records.clients(superAdmin)).clients.map(c => `${c.name} ${c.company}`)).toEqual(["Acme One", "Delta One", "Gamma Two"])
             // Someone on a role without records.contribute.
             const without = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: "" } } as any
             await expect(Records.clients(without)).rejects.toThrow("RECORD_FORBIDDEN")
@@ -584,6 +587,25 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`DELETE FROM "Vendor" WHERE id = 'v5'`)
             await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, sectionId: section })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
             await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, vendorId: "v5", sectionTitle: "New" })).rejects.toThrow("VENDOR_NOT_FOUND")
+        })
+
+        it("finds any of a company's clients to add a record to by its name, however many it has", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
+            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") SELECT 'm' || n, 'c4', 'Market ' || lpad(n::text, 4, '0'), 'Owner', '0100', 'Cairo', now() FROM generate_series(1, 1100) n`)
+            try {
+                const first = await Records.clients(superAdmin, "c4")
+                expect(first.clients).toHaveLength(CLIENTS_SHOWN)
+                expect(first.more).toBe(true)
+                // The last of them, far past the first ones listed, by any part of its name.
+                expect(await Records.clients(superAdmin, "c4", " market 1100 ")).toEqual({ clients: [{ id: "m1100", name: "Market 1100" }], more: false })
+                expect(await Records.clients(employee, null, "CM")).toEqual({ clients: [{ id: "v1", name: "Acme" }], more: false })
+                // Never another company's, nor a name's letters taken as a pattern.
+                expect((await Records.clients(employee, null, "Gamma")).clients).toEqual([])
+                expect((await Records.clients(superAdmin, "c4", "%")).clients).toEqual([])
+                expect((await Records.clients(superAdmin, "c4", "Market_1100")).clients).toEqual([])
+            } finally {
+                await db.query(`DELETE FROM "Company" WHERE id = 'c4'`)
+            }
         })
 
         it("sends the reminders on when whoever added a record is deleted as they go out", async () => {

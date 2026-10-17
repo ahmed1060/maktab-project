@@ -84,6 +84,13 @@ describe("record screens offer only what the server allows", () => {
         expect(CLIENT).toContain("useState(params.get('add') === '1')")
         expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
     })
+    it("on the Records page, finds any client by name to add a record to, not only the first ones listed", () => {
+        const PICKER = source("components/records/ClientPicker.tsx")
+        expect(PICKER).toContain("<SearchInput {...p} autoComplete=\"off\" value={query}")
+        expect(PICKER).toContain("if (search) params.set('search', search)")
+        // A choice a search no longer lists isn't what Continue opens.
+        expect(PICKER).toContain("const clientId = clients.some(c => c.id === chosen) ? chosen : clients[0]?.id ?? ''")
+    })
     it("on a client's page, says when its sections didn't load, rather than showing none and starting a first one", () => {
         const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
         expect(CLIENT).toContain("const sectionsFailed = seesRecords && !sectionsBody")
