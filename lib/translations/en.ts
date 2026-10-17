@@ -3070,6 +3070,7 @@ export const en = {
         records_delete_empty_section_question: "Delete {title}?",
         vendor_page_title: "Vendor",
         vendor_details: "Details",
+        vendor_details_failed: "Its details didn't load",
         vendor_not_found: "This vendor wasn't found.",
         vendor_load_failed: "This vendor didn't load",
         ui_opens_new_tab: "(opens in a new tab)",

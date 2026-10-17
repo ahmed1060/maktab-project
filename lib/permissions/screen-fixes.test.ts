@@ -91,6 +91,12 @@ describe("record screens offer only what the server allows", () => {
         // A choice a search no longer lists isn't what Continue opens.
         expect(PICKER).toContain("const clientId = clients.some(c => c.id === chosen) ? chosen : clients[0]?.id ?? ''")
     })
+    it("on a client's page, says when its details didn't load, though its records did", () => {
+        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        expect(CLIENT).toContain("const detailsFailed = seesVendor && !vendorBody")
+        expect(CLIENT).toContain("{detailsFailed && (")
+        expect(CLIENT).toContain("title={t('vendor_details_failed')} action={<Button onClick={() => { void reloadVendor() }}>{t('try_again')}</Button>}")
+    })
     it("on a client's page, says when its sections didn't load, rather than showing none and starting a first one", () => {
         const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
         expect(CLIENT).toContain("const sectionsFailed = seesRecords && !sectionsBody")

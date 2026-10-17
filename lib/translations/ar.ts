@@ -3061,6 +3061,7 @@ export const ar = {
         records_delete_empty_section_question: "هل تريد حذف {title}؟",
         vendor_page_title: "المورد",
         vendor_details: "التفاصيل",
+        vendor_details_failed: "لم يتم تحميل تفاصيله",
         vendor_not_found: "لم يتم العثور على هذا المورد.",
         vendor_load_failed: "لم يتم تحميل هذا المورد",
         ui_opens_new_tab: "(يفتح في علامة تبويب جديدة)",

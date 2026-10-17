@@ -57,6 +57,8 @@ export default function VendorPage() {
     const vendor = vendorBody?.data
     const name = vendor?.name ?? sectionsBody?.data.client.name
     const sections = sectionsBody?.data.sections ?? []
+    // Its details didn't load, though its name came with its sections: said, not left out.
+    const detailsFailed = seesVendor && !vendorBody
     // Its sections didn't load: not "none", which would have the form start a first one.
     const sectionsFailed = seesRecords && !sectionsBody
     const back = seesVendor ? { href: '/dashboard/vendors', label: modules.label('vendors') } : { href: '/dashboard/records', label: modules.label('records') }
@@ -95,6 +97,12 @@ export default function VendorPage() {
                                 : vendor.locationName,
                         },
                     ]} />
+                </Card>
+            )}
+
+            {detailsFailed && (
+                <Card title={t('vendor_details')}>
+                    <EmptyState icon={WarningCircleIcon} title={t('vendor_details_failed')} action={<Button onClick={() => { void reloadVendor() }}>{t('try_again')}</Button>} />
                 </Card>
             )}
 
