@@ -766,3 +766,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   has a search by name, as it lists only the first 50 clients; a client's
   page says when its details didn't load, with Try again
   (`CLIENTS_PLAN.md` change log).
+- **2026-10-17:** Decided: the date range picker (Day Off, the audit log's
+  and the employees' filters) gets the date picker's fix in a PR of its own
+  after #82: west of UTC it showed the day before the one picked.

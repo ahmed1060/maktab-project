@@ -912,3 +912,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   that committed, before storage removes it. A file storage refuses stays
   noted as removed, and the orphan sweep removes it. Still waiting to be
   merged.
+- **2026-10-17:** Decided: two problems found while building 0a get PRs
+  of their own, after 0a merges. The date range picker shows a picked day
+  as that day west of UTC, as the date picker now does (`UI_PLAN.md`). And
+  deleting a company removes everything it stored under its own folder,
+  such as its logo and its people's photos, not only its records' files.
