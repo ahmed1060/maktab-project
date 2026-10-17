@@ -140,33 +140,40 @@ async function claimFiles(tx: Prisma.TransactionClient, files: readonly RecordFi
     if (await tx.removedRecordFile.count({ where: { path: { in: paths } } })) throw new Error("RECORD_FILE_INVALID")
 }
 
+/** How many files one call to storage removes: it caps the keys per call (as MaintenanceService's sweep does). */
+const REMOVE_CHUNK = 100
+
 /**
  * Removes files from storage once no record refers to them: a file can be
  * on two records, when someone attached one record's file to another. Called
  * once the record no longer refers to them itself. Each file is held while
  * it's checked and removed, and noted as removed, so no record is given it
- * meanwhile or afterwards (claimFiles). Best effort: the orphan sweep
- * catches a miss.
+ * meanwhile or afterwards (claimFiles). In as many calls as storage takes
+ * them, each on its own, so one refused leaves the rest removed. Best effort:
+ * the orphan sweep catches a miss.
  */
 async function removeFiles(files: readonly RecordFile[], companyId: string) {
     const unique = [...new Set(files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p))].sort()
     if (!unique.length || !supabase) return
     const storage = supabase
-    try {
-        await prisma.$transaction(async tx => {
-            for (const path of unique) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${fileLock(path)}, 0))::text`
-            const names = unique.map(p => p.slice(p.lastIndexOf("/") + 1))
-            const others = await tx.clientRecord.findMany({ where: { OR: names.map(name => ({ attachment: { contains: name } })) }, select: { attachment: true } })
-            const stillUsed = new Set(others.flatMap(r => parseRecordFiles(r.attachment).map(f => ownFilePath(f.url, companyId))))
-            const paths = unique.filter(p => !stillUsed.has(p))
-            if (!paths.length) return
-            await tx.removedRecordFile.createMany({ data: paths.map(path => ({ path })), skipDuplicates: true })
-            // A refused removal comes back as an error, not thrown; thrown, nothing is noted as removed.
-            const { error } = await storage.storage.from("app-assets").remove(paths)
-            if (error) throw error
-        }, { timeout: 30_000 })
-    } catch (error) {
-        console.error("Failed to delete record files from storage:", error)
+    for (let i = 0; i < unique.length; i += REMOVE_CHUNK) {
+        const chunk = unique.slice(i, i + REMOVE_CHUNK)
+        try {
+            await prisma.$transaction(async tx => {
+                for (const path of chunk) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${fileLock(path)}, 0))::text`
+                const names = chunk.map(p => p.slice(p.lastIndexOf("/") + 1))
+                const others = await tx.clientRecord.findMany({ where: { OR: names.map(name => ({ attachment: { contains: name } })) }, select: { attachment: true } })
+                const stillUsed = new Set(others.flatMap(r => parseRecordFiles(r.attachment).map(f => ownFilePath(f.url, companyId))))
+                const paths = chunk.filter(p => !stillUsed.has(p))
+                if (!paths.length) return
+                await tx.removedRecordFile.createMany({ data: paths.map(path => ({ path })), skipDuplicates: true })
+                // A refused removal comes back as an error, not thrown; thrown, nothing is noted as removed.
+                const { error } = await storage.storage.from("app-assets").remove(paths)
+                if (error) throw error
+            }, { timeout: 30_000 })
+        } catch (error) {
+            console.error("Failed to delete record files from storage:", error)
+        }
     }
 }
 

@@ -25,9 +25,14 @@ const removed: string[] = []
 let refuseRemoval = false
 // How long storage takes to remove files, for a test that needs it to take a moment.
 let removalTakes = 0
+// How many calls to come storage refuses, after which it removes again.
+let refuseCalls = 0
 vi.mock("@/lib/storage", () => ({
     supabase: { storage: { from: () => ({ remove: async (paths: string[]) => {
         if (removalTakes) await new Promise(r => setTimeout(r, removalTakes))
+        // Storage takes only so many files in one call, and refuses more.
+        if (paths.length > 100) return { data: null, error: { message: "Too many keys" } }
+        if (refuseCalls > 0) return (refuseCalls--, { data: null, error: { message: "Service unavailable" } })
         return refuseRemoval ? { data: null, error: { message: "Forbidden" } } : (removed.push(...paths), { data: [], error: null })
     } }) } },
     uploadToCloud: async () => { throw new Error("no uploads here") },
@@ -606,6 +611,28 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             } finally {
                 await db.query(`DELETE FROM "Company" WHERE id = 'c4'`)
             }
+        })
+
+        it("removes a section's many files, in as many calls as storage takes them", async () => {
+            // 25 records of 10 files each: more than one call to storage takes.
+            const archive = async (title: string) => {
+                const section = (await Records.createSection(admin, { vendorId: "v1", title })).id
+                const files = (n: number) => JSON.stringify(Array.from({ length: 10 }, (_, i) => ({ url: `${BUCKET}/c1/records/${title}-${n}-${i}.pdf`, name: `${title}-${n}-${i}.pdf`, size: 1 })))
+                for (let n = 0; n < 25; n++) await db.query(`INSERT INTO "ClientNote"(id, content, "sectionId", "updatedAt", attachment) VALUES ($1, 'Archived', $2, now(), $3)`, [`${title}-${n}`, section, files(n)])
+                return section
+            }
+            const noted = async (title: string) => (await db.query(`SELECT count(*)::int AS n FROM "RemovedRecordFile" WHERE path LIKE $1`, [`c1/records/${title}-%`])).rows[0].n
+            removed.length = 0
+            await Records.deleteSection(admin, await archive("archive"))
+            expect(new Set(removed).size).toBe(250)
+            expect(await noted("archive")).toBe(250)
+            // One call refused leaves the others' files removed, and its own for the sweep.
+            removed.length = 0
+            refuseCalls = 1
+            await Records.deleteSection(admin, await archive("boxes"))
+            expect(refuseCalls).toBe(0)
+            expect(new Set(removed).size).toBe(150)
+            expect(await noted("boxes")).toBe(150)
         })
 
         it("sends the reminders on when whoever added a record is deleted as they go out", async () => {
