@@ -147,10 +147,12 @@ const REMOVE_CHUNK = 100
  * Removes files from storage once no record refers to them: a file can be
  * on two records, when someone attached one record's file to another. Called
  * once the record no longer refers to them itself. Each file is held while
- * it's checked and removed, and noted as removed, so no record is given it
- * meanwhile or afterwards (claimFiles). In as many calls as storage takes
- * them, each on its own, so one refused leaves the rest removed. Best effort:
- * the orphan sweep catches a miss.
+ * it's checked and noted as removed, and that note is committed before
+ * storage is asked, so no record is given it meanwhile or afterwards
+ * (claimFiles), even should the database fail once storage has it gone. In
+ * as many calls as storage takes them, each on its own, so one refused
+ * leaves the rest removed. Best effort: a file storage refuses stays noted as
+ * removed, and the orphan sweep removes it.
  */
 async function removeFiles(files: readonly RecordFile[], companyId: string) {
     const unique = [...new Set(files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p))].sort()
@@ -159,18 +161,19 @@ async function removeFiles(files: readonly RecordFile[], companyId: string) {
     for (let i = 0; i < unique.length; i += REMOVE_CHUNK) {
         const chunk = unique.slice(i, i + REMOVE_CHUNK)
         try {
-            await prisma.$transaction(async tx => {
+            const paths = await prisma.$transaction(async tx => {
                 for (const path of chunk) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${fileLock(path)}, 0))::text`
                 const names = chunk.map(p => p.slice(p.lastIndexOf("/") + 1))
                 const others = await tx.clientRecord.findMany({ where: { OR: names.map(name => ({ attachment: { contains: name } })) }, select: { attachment: true } })
                 const stillUsed = new Set(others.flatMap(r => parseRecordFiles(r.attachment).map(f => ownFilePath(f.url, companyId))))
                 const paths = chunk.filter(p => !stillUsed.has(p))
-                if (!paths.length) return
-                await tx.removedRecordFile.createMany({ data: paths.map(path => ({ path })), skipDuplicates: true })
-                // A refused removal comes back as an error, not thrown; thrown, nothing is noted as removed.
-                const { error } = await storage.storage.from("app-assets").remove(paths)
-                if (error) throw error
-            }, { timeout: 30_000 })
+                if (paths.length) await tx.removedRecordFile.createMany({ data: paths.map(path => ({ path })), skipDuplicates: true })
+                return paths
+            })
+            if (!paths.length) continue
+            // A refused removal comes back as an error, not thrown.
+            const { error } = await storage.storage.from("app-assets").remove(paths)
+            if (error) throw error
         } catch (error) {
             console.error("Failed to delete record files from storage:", error)
         }

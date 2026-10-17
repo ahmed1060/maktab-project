@@ -653,13 +653,29 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await Records.deleteSection(admin, await archive("archive"))
             expect(new Set(removed).size).toBe(250)
             expect(await noted("archive")).toBe(250)
-            // One call refused leaves the others' files removed, and its own for the sweep.
+            // One call refused leaves the others' files removed, and its own noted as removed, for the sweep.
             removed.length = 0
             refuseCalls = 1
             await Records.deleteSection(admin, await archive("boxes"))
             expect(refuseCalls).toBe(0)
             expect(new Set(removed).size).toBe(150)
-            expect(await noted("boxes")).toBe(150)
+            expect(await noted("boxes")).toBe(250)
+        })
+
+        it("removes a file from storage only once it's noted as removed for good", async () => {
+            // Noting the file as removed fails as it's committed.
+            await db.query(`CREATE FUNCTION test_fail() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'commit failed'; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE CONSTRAINT TRIGGER test_fail AFTER INSERT ON "RemovedRecordFile" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.path = 'c1/records/notary.pdf') EXECUTE FUNCTION test_fail()`)
+            try {
+                const deed = (await Records.create(admin, { content: "Notary deed", files: [file("c1", "notary.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+                removed.length = 0
+                await Records.delete(admin, deed)
+                // Still in storage, so a record may still be given it.
+                expect(removed).toEqual([])
+                await Records.create(admin, { content: "Notary deed, again", files: [file("c1", "notary.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })
+            } finally {
+                await db.query(`DROP TRIGGER test_fail ON "RemovedRecordFile"; DROP FUNCTION test_fail()`)
+            }
         })
 
         it("sends the reminders on when whoever added a record is deleted as they go out", async () => {
