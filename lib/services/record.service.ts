@@ -393,16 +393,18 @@ export class RecordService {
                 // As createSection: no first record starts a section of the new name meanwhile.
                 const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
-                // And the section, which may have been deleted since it was found (deleteSection).
-                const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${input.id} FOR NO KEY UPDATE`
-                if (!held.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+                // And the section, which may have been deleted since it was
+                // found (deleteSection), or renamed: its title now is the one
+                // this renames, and audits.
+                const [held] = await tx.$queryRaw<{ id: string; title: string }[]>`SELECT id, title FROM "ClientSection" WHERE id = ${input.id} FOR NO KEY UPDATE`
+                if (!held) throw new Error("RECORD_SECTION_NOT_FOUND")
                 const renamed = await tx.recordSection.update({
                     where: { id: input.id },
                     data: { title: input.title, lastEditedById: who.byUser },
                     select: { id: true, title: true },
                 })
                 const { AuditLogService } = await import("./audit-log.service")
-                await AuditLogService.log("UPDATE_SECTION", "SECTION", input.id, { tx, ...who.audit, details: { before: { title: section.title }, after: { title: input.title } } })
+                await AuditLogService.log("UPDATE_SECTION", "SECTION", input.id, { tx, ...who.audit, details: { before: { title: held.title }, after: { title: input.title } } })
                 return renamed
             })
         } catch (error) {

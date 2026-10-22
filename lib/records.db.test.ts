@@ -323,6 +323,25 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("audits a rename from the title the section has as it's renamed", async () => {
+            const section = await Records.createSection(admin, { vendorId: "v2", title: "Audited A" })
+            const { prisma } = await import("@/lib/prisma")
+            const findUnique = prisma.recordSection.findUnique.bind(prisma.recordSection)
+            // Renamed by someone else just after this rename found it.
+            const spy = vi.spyOn(prisma.recordSection, "findUnique").mockImplementationOnce((async (args: any) => {
+                const found = await findUnique(args)
+                await db.query(`UPDATE "ClientSection" SET title = 'Audited B' WHERE id = $1`, [section.id])
+                return found
+            }) as any)
+            try {
+                await Records.renameSection(admin, { id: section.id, title: "Audited C" })
+            } finally {
+                spy.mockRestore()
+            }
+            const { rows: [audit] } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'UPDATE_SECTION' AND "entityId" = $1`, [section.id])
+            expect(audit.details).toEqual({ before: { title: "Audited B" }, after: { title: "Audited C" } })
+        })
+
         it("says a record deleted as it's opened is not found", async () => {
             const { id } = await Records.create(admin, { content: "Going", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })
             const { prisma } = await import("@/lib/prisma")
