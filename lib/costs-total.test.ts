@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { costsDue } from "./costs-total"
+import { costsDue, dueParts } from "./costs-total"
 
 /**
  * The Costs page's total (CLIENTS_PLAN.md §3.5): what's still due across
@@ -37,5 +37,20 @@ describe("the Costs page's total", () => {
     it("is nothing for an empty list, and ignores what isn't a number", () => {
         expect(costsDue([])).toBe(0)
         expect(costsDue([{ totalCost: 0, memberCosts: { amal: "abc" }, memberPaymentStatus: {} }])).toBe(0)
+    })
+})
+
+describe("the parts Mark all as paid confirms (CLIENTS_PLAN.md §4.1)", () => {
+    it("are each share still owed, and the part of the cost that's no one's share", () => {
+        expect(dueParts([{ id: "t", totalCost: 25, memberCosts: { amal: 10, omar: 5 }, memberPaymentStatus: { omar: "PAID" } }])).toEqual([
+            { taskId: "t", userId: "amal", amount: 10 },
+            { taskId: "t", userId: null, amount: 10 },
+        ])
+        // Not split at all: the whole cost is the task's own.
+        expect(dueParts([{ id: "u", totalCost: 40, memberCosts: {}, memberPaymentStatus: {} }])).toEqual([{ taskId: "u", userId: null, amount: 40 }])
+    })
+
+    it("with an employee picked, are their shares only", () => {
+        expect(dueParts([{ id: "t", totalCost: 25, memberCosts: { amal: 10, omar: 5 }, memberPaymentStatus: {} }], "omar")).toEqual([{ taskId: "t", userId: "omar", amount: 5 }])
     })
 })

@@ -4,6 +4,8 @@ import { grantFor, type Actor } from "@/lib/permissions/can"
 import { assignedToTeamWhere } from "@/lib/team-scope"
 import { dayRangeIn } from "@/lib/services/filter-zone"
 import { placeFilters } from "@/lib/place-filters"
+import { createHash } from "node:crypto"
+import { dueParts, partsLine } from "@/lib/costs-total"
 
 /**
  * A task in which this member's share of the cost is still to pay: more than
@@ -89,4 +91,29 @@ export async function pendingCostsWhere(
     where.AND.push(...placeFilters(filters.clientId, filters.locationId))
 
     return where
+}
+
+/**
+ * What the Costs page's list owes, as "Mark all as paid" confirms it
+ * (CLIENTS_PLAN.md §4.1): how many parts are due, what they come to, the
+ * tasks they're on, and a digest of exactly those parts. The button sends
+ * the digest back; it pays only if the list still comes to the same.
+ */
+export async function pendingCostsSnapshot(where: { AND: any[] }, employeeId?: string | null, db: { task: { findMany: (args: any) => Promise<any[]> } } = prisma) {
+    const tasks = await db.task.findMany({ where, select: { id: true, totalCost: true, memberCosts: true, memberPaymentStatus: true } })
+    return snapshotOf(tasks, employeeId)
+}
+
+/** With an employee picked, their shares only, as Mark all as paid pays then. */
+export function snapshotOf(tasks: { id: string; totalCost: unknown; memberCosts: unknown; memberPaymentStatus: unknown }[], employeeId?: string | null) {
+    const rows = tasks.map(t => ({ ...t, totalCost: Number(t.totalCost) }))
+    const parts = dueParts(rows, employeeId)
+    return {
+        count: parts.length,
+        // To the piastre, as the parts are.
+        amount: Math.round(parts.reduce((sum, p) => sum + p.amount, 0) * 100) / 100,
+        taskIds: [...new Set(parts.map(p => p.taskId))],
+        digest: createHash("sha256").update(partsLine(parts)).digest("hex"),
+        rows,
+    }
 }

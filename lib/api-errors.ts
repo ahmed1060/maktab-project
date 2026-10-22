@@ -40,6 +40,11 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     TASK_LOCATION_NEEDS_PIN: { status: 400, message: "This location has no pin yet. Place its pin on the Locations page, then pick it." },
     TASK_LOCATION_OTHER_CLIENT: { status: 400, message: "That location is another client's. Pick one of this client's locations, or a shared one." },
     COMPANY_SELECTION_REQUIRED: { status: 400, message: "Choose a company first." },
+    // Mark all as paid pays exactly what was confirmed (CLIENTS_PLAN.md §4.1).
+    PAYMENT_LIST_CHANGED: { status: 409, message: "The costs to pay changed since you looked. Look at the list again, then pay." },
+    PAYMENT_CONFIRMATION_REQUIRED: { status: 400, message: "Confirm what's paid first." },
+    // A task whose costs are paid stays, with its payment record (§4.2).
+    TASK_HAS_PAID_COSTS: { status: 409, message: "This task's costs are paid, so it can't be deleted." },
     SETTLEMENT_NOT_FOUND: { status: 404, message: "Settlement not found." },
     ONLY_PAID_SUPPORTED: { status: 400, message: "A payment can only be marked as paid." },
     UNKNOWN_SUBSCRIPTION_TYPE: { status: 400, message: "This payment's subscription type isn't one the system knows." },

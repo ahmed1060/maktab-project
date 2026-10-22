@@ -4,7 +4,8 @@ import { can } from "@/lib/permissions/can"
 import { prisma } from "@/lib/prisma"
 import { TaskService } from "@/lib/services/task.service"
 import { scopesToTeam, assignedToTeamWhere } from "@/lib/team-scope"
-import { pendingCostsWhere } from "@/lib/services/costs-query"
+import { pendingCostsSnapshot, pendingCostsWhere } from "@/lib/services/costs-query"
+import { KNOWN_REFUSALS } from "@/lib/api-errors"
 import { assertStepUp } from "@/lib/step-up"
 
 export const POST = withStandardHandler(async (req, session, json) => {
@@ -18,11 +19,13 @@ export const POST = withStandardHandler(async (req, session, json) => {
     await assertStepUp(session, "tasks.pay")
 
     const teamOnly = scopesToTeam(session.user, "tasks.pay")
-    const { taskIds, filters } = json
+    const { taskIds, filters, confirm } = json
     let finalTaskIds = taskIds
     // With one employee picked, the Costs page lists their shares, and only
     // those are paid.
     let memberId: string | undefined
+    // The list's digest as confirmed, when paying by the Costs page's filters (CLIENTS_PLAN.md §4.1).
+    let confirmed: string | undefined
 
     try {
         if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
@@ -31,12 +34,17 @@ export const POST = withStandardHandler(async (req, session, json) => {
             if (userRole !== 'SUPER_ADMIN' && !userCompanyId) return ApiResponse.forbidden("No company assigned")
             // The Costs page's own query, so this pays the list shown: for a
             // Super Admin, the chosen company's, not every company's.
+            // Exactly what the person confirmed, "Pay 7 costs, 3,450 EGP", and
+            // nothing else: if the list has changed since, they look again.
+            if (typeof confirm?.digest !== "string") return refuse("PAYMENT_CONFIRMATION_REQUIRED")
             const where = await pendingCostsWhere(session.user, filters)
             if (!where) return ApiResponse.success({ count: 0 })
 
-            const tasks = await prisma.task.findMany({ where, select: { id: true } })
-            finalTaskIds = tasks.map(t => t.id)
             if (filters.employeeId) memberId = String(filters.employeeId)
+            const snapshot = await pendingCostsSnapshot(where, memberId)
+            if (snapshot.digest !== confirm.digest) return refuse("PAYMENT_LIST_CHANGED")
+            finalTaskIds = snapshot.taskIds
+            confirmed = confirm.digest
         } else if (userRole !== 'SUPER_ADMIN') {
             if (!userCompanyId) return ApiResponse.forbidden("No company assigned")
             const valid = await prisma.task.findMany({
@@ -56,12 +64,18 @@ export const POST = withStandardHandler(async (req, session, json) => {
             return ApiResponse.success({ count: 0 })
         }
 
-        const result = await TaskService.bulkUpdatePayment(finalTaskIds, session, memberId)
+        const result = await TaskService.bulkUpdatePayment(finalTaskIds, session, memberId, confirmed)
         return ApiResponse.success(result)
     } catch (error: any) {
+        if (error?.message === "PAYMENT_LIST_CHANGED") return refuse("PAYMENT_LIST_CHANGED")
         console.error("Bulk payment status update failed", error)
         return ApiResponse.error("Failed to update payment status")
     }
 }, {
     audit: { action: 'BULK_UPDATE_PAYMENT', entityType: 'TASK' }
 })
+
+function refuse(code: "PAYMENT_LIST_CHANGED" | "PAYMENT_CONFIRMATION_REQUIRED") {
+    const { status, message } = KNOWN_REFUSALS[code]
+    return ApiResponse.error(message, status)
+}
