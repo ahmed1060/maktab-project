@@ -1,16 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useReportUnsaved } from '@/lib/useUnsavedChanges'
 import {
-    MANAGEMENT_MODULES,
     MAX_MODULE_LABEL_LENGTH,
-    MENU_MODULES,
     MODULES,
     MODULE_KEYS,
+    isModuleKey,
     isValidModuleIcon,
     modulesFrom,
     parseModuleIcons,
@@ -19,6 +18,7 @@ import {
     type ModuleKey,
     type ModuleOverrides,
 } from '@/lib/modules'
+import { COMPANY_GROUPS } from '@/lib/side-bar'
 
 /**
  * A palette, not an emoji keyboard.
@@ -266,12 +266,16 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
         )
     }
 
-    const previewGroup = (heading: string, keys: readonly ModuleKey[]) => (
+    // The side bar's groups, with only the modules in them: the names and
+    // icons here are the company's to choose (lib/side-bar.ts).
+    const previewGroup = (heading: string | null, keys: readonly ModuleKey[]) => (
         <>
-            <p style={{
-                fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase',
-                color: 'var(--text-faint)', letterSpacing: '0.1em', margin: '0.75rem 0 0.25rem',
-            }}>{heading}</p>
+            {heading ? (
+                <p style={{
+                    fontSize: '0.75rem', fontWeight: 600,
+                    color: 'var(--text-faint)', margin: '0.75rem 0 0.25rem',
+                }}>{heading}</p>
+            ) : <div style={{ height: '0.5rem' }} />}
             {keys.map(key => {
                 const entry = preview.entry(key)
                 return (
@@ -303,8 +307,10 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                 <p style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', letterSpacing: '0.1em', margin: 0 }}>
                     {t('module_names_preview')}
                 </p>
-                {previewGroup(t('menu'), MENU_MODULES)}
-                {previewGroup(t('management'), MANAGEMENT_MODULES)}
+                {COMPANY_GROUPS.map(group => {
+                    const keys = group.items.filter(isModuleKey)
+                    return keys.length > 0 && <Fragment key={group.key}>{previewGroup(group.labelKey && t(group.labelKey), keys)}</Fragment>
+                })}
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: isRtl ? 'flex-start' : 'flex-end' }}>

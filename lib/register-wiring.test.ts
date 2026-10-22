@@ -119,14 +119,11 @@ describe("the register screen says what it does not know", () => {
 })
 
 describe("the payroll link", () => {
-    const SHELL = readFileSync("components/DashboardShell.tsx", "utf8")
-
     it("is for those who hold payroll.view", () => {
         // A Team Leader manages people, not pay.
-        const start = SHELL.indexOf('href="/dashboard/payroll"')
-        expect(start).toBeGreaterThan(-1)
-        const guard = SHELL.slice(Math.max(0, start - 400), start)
-        expect(guard).toContain("{canSeePayroll && (")
-        expect(SHELL).toContain("const canSeePayroll = permissions.can('payroll.view')")
+        // The side bar's own pages, and who sees each, are in lib/side-bar.ts.
+        const SIDE_BAR = readFileSync("lib/side-bar.ts", "utf8")
+        expect(SIDE_BAR).toContain("payroll: { href: '/dashboard/payroll'")
+        expect(SIDE_BAR).toContain("case 'payroll': return v.can('payroll.view')")
     })
 })

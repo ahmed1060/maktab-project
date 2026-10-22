@@ -31,7 +31,8 @@ describe("the sidebar says where you are", () => {
     it("every sidebar link can be marked as the current page, and is drawn so", () => {
         const links = [...SHELL.matchAll(/<Link\b[^>]*?href=/g)].length
         const marked = [...SHELL.matchAll(/\{\.\.\.currentFor\(/g)].length
-        expect(links).toBeGreaterThanOrEqual(9)
+        // One link, drawn for every item of every group (lib/side-bar.ts).
+        expect(links).toBeGreaterThanOrEqual(1)
         expect(marked).toBe(links)
         expect(SHELL).toContain("{ 'aria-current': 'page' as const }")
         expect(CSS).toContain('.nav-link[aria-current="page"]')
