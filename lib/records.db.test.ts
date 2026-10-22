@@ -603,6 +603,28 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("deletes a section and its company at once without a deadlock: the section goes with the company", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
+            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Theta', 'Nour', '0106', 'Luxor', now())`)
+            await Records.create(superAdmin, { content: "Theta lease", files: [], expiryDate: null, reminderDays: null, vendorId: "v7", sectionTitle: "Leases" })
+            const section = (await db.query(`SELECT id FROM "ClientSection" WHERE "vendorId" = 'v7'`)).rows[0].id
+            // The company's deletion holds its clients and records, then waits
+            // here before its rows go, the section among them.
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.8); RETURN OLD; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE DELETE ON "Company" FOR EACH ROW WHEN (OLD.id = 'c4') EXECUTE FUNCTION test_slow()`)
+            try {
+                const { CompanyService } = await import("@/lib/services/company.service")
+                const deletingCompany = CompanyService.delete("c4", { user: { ...superAdmin.user, mfaEnabled: true, stepUpAt: Date.now() } })
+                await new Promise(r => setTimeout(r, 300))
+                const [company, sectionDeleted] = await Promise.allSettled([deletingCompany, Records.deleteSection(superAdmin, section)])
+                expect(company.status).toBe("fulfilled")
+                expect(sectionDeleted).toMatchObject({ status: "rejected", reason: { message: "RECORD_SECTION_NOT_FOUND" } })
+                expect((await db.query(`SELECT count(*)::int AS n FROM "ClientSection" WHERE id = $1`, [section])).rows[0].n).toBe(0)
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "Company"; DROP FUNCTION test_slow()`)
+            }
+        })
+
         it("refuses an edit from a form opened before someone else changed the record's files", async () => {
             const id = (await Records.create(admin, { content: "Lease", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)

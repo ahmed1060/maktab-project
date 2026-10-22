@@ -455,8 +455,14 @@ export class RecordService {
         allow(session, "records.delete", section.companyId, "RECORD_SECTION_NOT_FOUND")
         const who = actor(session)
         const records = await prisma.$transaction(async tx => {
-            // Held first, so a record being added meanwhile (create) is among
-            // those deleted here, with its files, or finds the section gone.
+            // Its client held first, as adding a record, renaming a section and
+            // deleting the company hold it before the section and its records.
+            // Holding the section first, a company deletion holding the records
+            // waited on it while it waited on them (Codex on #82).
+            const client = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR NO KEY UPDATE`
+            if (!client.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+            // Then the section, so a record being added meanwhile (create) is
+            // among those deleted here, with its files, or finds the section gone.
             const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${id} FOR UPDATE`
             if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
             // Its records too, so an edit of one's files (update) is listed
