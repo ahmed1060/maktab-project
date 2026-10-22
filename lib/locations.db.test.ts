@@ -18,6 +18,7 @@ import { encodeGrants } from "@/lib/permissions/grants"
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
 const LOCATIONS = "20261109000000_locations"
+const HQ_MEANWHILE = "20261110000001_locations_hq_meanwhile"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ remove: async () => ({ data: [], error: null }) }) } }, uploadToCloud: async () => { throw new Error("no uploads here") } }))
@@ -32,6 +33,16 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
 `
 // Clients from before locations: one picked from the place search (its map
 // link carries the pin, in either form the app has written), one typed.
+// Clients the release before adds while locations wait for review, after
+// their migration: two with no HQ, and one given an HQ from the Locations
+// page meanwhile, once that release is live.
+const CLIENTS_MEANWHILE = `
+INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "locationLink", "updatedAt") VALUES
+ ('m1', 'c1', 'Meanwhile', 'Hoda', '0110', 'Dokki, Giza', 'https://www.google.com/maps/search/?api=1&query=30.0383,31.2109', now()),
+ ('m2', 'c2', 'Meanwhile Two', 'Ali', '0111', 'Typed meanwhile', NULL, now()),
+ ('m3', 'c1', 'Given one', 'Rami', '0112', 'Old text', NULL, now());
+INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "updatedAt") VALUES ('m3hq', 'c1', 'm3', 'Picked HQ', true, 30.1, 31.1, now());
+`
 const CLIENTS_BEFORE = `
 INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "locationLink", "updatedAt") VALUES
  ('k1', 'c1', 'Acme', 'Mona', '0100', 'Nasr City, Cairo', 'https://www.google.com/maps?q=30.0561,31.3301', now()),
@@ -64,6 +75,7 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
         await db.connect()
         for (const m of MIGRATIONS) {
             if (m === LOCATIONS) await db.query(CLIENTS_BEFORE)
+            if (m === HQ_MEANWHILE) await db.query(CLIENTS_MEANWHILE)
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
@@ -102,6 +114,21 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
             await expect(add(`('x5', 'c1', NULL, 'Off the earth', false, 91, 31, NULL, NULL, now())`)).rejects.toThrow(/Location_pin_on_earth/)
         })
 
+        it("then makes an HQ for each client the release before added meanwhile, and leaves one given an HQ since", async () => {
+            expect(await hqOf("m1")).toEqual([{ name: "Dokki, Giza", latitude: 30.0383, longitude: 31.2109 }])
+            expect(await hqOf("m2")).toEqual([{ name: "Typed meanwhile", latitude: null, longitude: null }])
+            expect(await hqOf("m3")).toEqual([{ name: "Picked HQ", latitude: 30.1, longitude: 31.1 }])
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Location" WHERE "clientId" = 'm3'`)).rows[0].n).toBe(1)
+        })
+
+        it("then gives the companies already there their built-in roles' location permissions, and has their holders reload", async () => {
+            const { rows } = await db.query(`
+                SELECT r."companyId", r."builtIn", r.version, array_agg(g.permission ORDER BY g.permission) FILTER (WHERE g.permission LIKE 'locations.%') AS locations
+                FROM "Role" r LEFT JOIN "RoleGrant" g ON g."roleId" = r.id GROUP BY r.id ORDER BY r."companyId", r."builtIn"`)
+            const want = { ADMIN: ["locations.add", "locations.manage", "locations.view"], TEAM_LEADER: ["locations.add", "locations.view"], EMPLOYEE: null } as Record<string, string[] | null>
+            for (const role of rows) expect(role.locations, `${role.companyId} ${role.builtIn}`).toEqual(want[role.builtIn])
+        })
+
         it("leaves Row Level Security on, as on every table", async () => {
             expect((await db.query(`SELECT relrowsecurity FROM pg_class WHERE relname = 'Location'`)).rows).toEqual([{ relrowsecurity: true }])
         })
@@ -121,12 +148,12 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
         it("lists by client, each one's HQ first and the shared ones last, and finds one by its client's name", async () => {
             const { data } = await Locations.list(admin, { page: 1, limit: 50 })
             expect(data.map(l => `${l.client?.name ?? "-"} ${l.name}${l.isHq ? " (HQ)" : ""}`)).toEqual([
-                "Acme Nasr City, Cairo (HQ)", "Acme Maadi branch", "Beta Smouha (HQ)", "- Port warehouse",
+                "Acme Nasr City, Cairo (HQ)", "Acme Maadi branch", "Beta Smouha (HQ)", "Given one Picked HQ (HQ)", "Meanwhile Dokki, Giza (HQ)", "- Port warehouse",
             ])
             expect((await Locations.list(admin, { search: "beta", page: 1, limit: 50 })).data.map(l => l.name)).toEqual(["Smouha"])
             expect((await Locations.list(admin, { clientId: "shared", page: 1, limit: 50 })).data.map(l => l.name)).toEqual(["Port warehouse"])
             // Another company's aren't listed; one with no permission is refused.
-            expect((await Locations.list(otherAdmin, { page: 1, limit: 50 })).data.map(l => l.name)).toEqual(["Typed by hand"])
+            expect((await Locations.list(otherAdmin, { page: 1, limit: 50 })).data.map(l => l.name)).toEqual(["Typed by hand", "Typed meanwhile"])
             await expect(Locations.list(employee, { page: 1, limit: 50 })).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
         })
 
