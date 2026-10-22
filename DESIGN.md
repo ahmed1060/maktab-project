@@ -510,6 +510,12 @@ These are built once, in the building-blocks PR, and every page uses them
   - Only a failure that can pass is tried again: no answer at all, the
     server's own error, or the server too busy. A refusal or "not found"
     is the answer, and is said at once.
+  - The same goes for anything else a screen loads: a picker's options, a
+    form's details, a card's numbers, a preview. Whatever it shows when it
+    fails, a message, a Try again or a picker left empty, comes only after
+    the three tries.
+  - Only loading is tried again. A save is sent once: sent again, it
+    might be done twice.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
 
@@ -737,3 +743,5 @@ changed:
 - **2026-10-22:** A list or page that didn't load tries again by itself
   three times before saying so (§5.5), at the product owner's request. A
   refusal or "not found" is said at once.
+- **2026-10-22:** So does anything else a screen loads (§5.5), at the
+  product owner's request. A save is never sent again.
