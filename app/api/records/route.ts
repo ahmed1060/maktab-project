@@ -31,7 +31,7 @@ export const GET = withStandardHandler(async (req, session) => {
         page,
         limit,
     })
-    return ApiResponse.success({ data: result.data, total: result.total, page, totalPages: Math.ceil(result.total / limit), today: result.today })
+    return ApiResponse.success({ data: result.data, total: result.total, page, totalPages: Math.ceil(result.total / limit), today: result.today, dayEndsAt: result.dayEndsAt })
 }, { permission: "records.view" })
 
 export const POST = withStandardHandler(async (_req, session, json) => {

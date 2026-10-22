@@ -342,6 +342,19 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(audit.details).toEqual({ before: { title: "Audited B" }, after: { title: "Audited C" } })
         })
 
+        it("says when the list's day ends, the soonest of every company's for a Super Admin", async () => {
+            // 09:00 UTC on 16 October: noon in Cairo, whose day ends at 21:00 UTC.
+            expect((await Records.list(admin, { page: 1, limit: 1 })).dayEndsAt).toBe("2026-10-16T21:00:00.000Z")
+            await db.query(`UPDATE "Company" SET timezone = 'Pacific/Honolulu' WHERE id = 'c2'`)
+            try {
+                // 23:00 on the 15th in Honolulu, whose day ends at 10:00 UTC.
+                expect((await Records.list(superAdmin, { page: 1, limit: 1 })).dayEndsAt).toBe("2026-10-16T10:00:00.000Z")
+                expect((await Records.list(superAdmin, { companyId: "c1", page: 1, limit: 1 })).dayEndsAt).toBe("2026-10-16T21:00:00.000Z")
+            } finally {
+                await db.query(`UPDATE "Company" SET timezone = 'Africa/Cairo' WHERE id = 'c2'`)
+            }
+        })
+
         it("says a record deleted as it's opened is not found", async () => {
             const { id } = await Records.create(admin, { content: "Going", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })
             const { prisma } = await import("@/lib/prisma")

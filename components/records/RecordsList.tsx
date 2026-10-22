@@ -31,6 +31,9 @@ const LIMIT = 20
  * client's, with a filter by section. Search, the "Expiring soon" filter,
  * and opening, editing and deleting a record work the same in both.
  */
+/** How long until an instant, from now; none once it's passed. */
+const msUntil = (iso: string) => Math.max(0, Date.parse(iso) - Date.now())
+
 export default function RecordsList({ vendorId, sections = [], adding = false, onAddingChange, onChanged, openRecordId }: {
     /** One client's records; none for every client's. */
     vendorId?: string
@@ -83,6 +86,15 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     const records: RecordItem[] = failed ? [] : result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
+
+    // Its expiry badges and filter are of the company's day (or the soonest
+    // to end, across companies): reloaded once the next day starts.
+    const dayEndsAt: string | undefined = result?.data?.dayEndsAt
+    useEffect(() => {
+        if (!dayEndsAt) return
+        const timer = setTimeout(() => { void mutate() }, msUntil(dayEndsAt) + 1000)
+        return () => clearTimeout(timer)
+    }, [dayEndsAt, mutate])
 
     useAdjustOnChange([selectedCompanyId], () => setPage(1))
     // A record open in a dialog is the last company's once a Super Admin

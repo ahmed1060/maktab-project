@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { noticeRow } from "@/lib/notice-row"
 import { supabase } from "@/lib/storage"
-import { calendarDateStr } from "@/lib/time"
+import { calendarDateStr, endOfDayIn } from "@/lib/time"
 import { resolveTimeZone } from "@/lib/timezone"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
@@ -35,9 +35,22 @@ async function companyDays() {
     return zones.map(z => ({ timezone: z.timezone, today: recordsToday(z.timezone) }))
 }
 
+async function companyZone(companyId: string) {
+    return (await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }))?.timezone ?? null
+}
+
 async function companyToday(companyId: string) {
-    const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
-    return recordsToday(company?.timezone)
+    return recordsToday(await companyZone(companyId))
+}
+
+/**
+ * When the first of these zones' days ends, as an instant: a list's expiry
+ * badges and filter are of its day, so a page open past it reloads then.
+ */
+function dayEndsAt(zones: readonly (string | null)[]) {
+    const now = new Date()
+    const ends = (zones.length ? zones : [null]).map(z => endOfDayIn(now, resolveTimeZone(z)).getTime() + 1)
+    return new Date(Math.min(...ends)).toISOString()
 }
 
 /** How many clients the Add record picker lists at once; a search by name finds the rest. */
@@ -284,12 +297,13 @@ export class RecordService {
     static async list(session: Session, query: RecordListQuery) {
         const sa = isSuperAdmin(session)
         const companyId = sa ? query.companyId || null : session.user.companyId
-        if (!sa && !companyId) return { data: [] as RecordRow[], total: 0, today: recordsToday() }
+        if (!sa && !companyId) return { data: [] as RecordRow[], total: 0, today: recordsToday(), dayEndsAt: dayEndsAt([]) }
         if (!sa && !can(session.user as any, "records.view", { companyId: companyId! })) throw new Error("RECORD_FORBIDDEN")
 
         // Every company's records by its own day, for a Super Admin looking at them all.
         const days = companyId ? null : await companyDays()
-        const today = companyId ? await companyToday(companyId) : recordsToday()
+        const zone = companyId ? await companyZone(companyId) : null
+        const today = companyId ? recordsToday(zone) : recordsToday()
         const trimmed = query.search?.trim()
         const search = trimmed ? likeText(trimmed) : ""
         const where: Prisma.ClientRecordWhereInput = {
@@ -325,7 +339,7 @@ export class RecordService {
             const zone = (r.section.vendor as { company?: { timezone: string } } | null)?.company?.timezone
             return days?.find(d => d.timezone === zone)?.today ?? today
         }
-        return { data: rows.map(r => shape(r, dayOf(r))), total, today }
+        return { data: rows.map(r => shape(r, dayOf(r))), total, today, dayEndsAt: dayEndsAt(days ? days.map(d => d.timezone) : [zone]) }
     }
 
     /** One record, for the link in its reminder. */

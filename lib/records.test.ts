@@ -180,6 +180,15 @@ describe("a record's form", () => {
     })
 })
 
+describe("the records list across midnight", () => {
+    it("reloads once its day ends, so the expiry badges and filter are the new day's", () => {
+        const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
+        expect(LIST).toContain("const dayEndsAt: string | undefined = result?.data?.dayEndsAt")
+        expect(LIST).toMatch(/setTimeout\(\(\) => \{ void mutate\(\) \}, msUntil\(dayEndsAt\) \+ 1000\)\s*return \(\) => clearTimeout\(timer\)\s*\}, \[dayEndsAt, mutate\]\)/)
+        expect(readFileSync("app/api/records/route.ts", "utf8")).toContain("dayEndsAt: result.dayEndsAt")
+    })
+})
+
 describe("a record a reminder links to", () => {
     const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
 
