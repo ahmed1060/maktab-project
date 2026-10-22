@@ -779,3 +779,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   editing a record there says when its client's sections didn't load, with
   Try again, rather than offering only the one it's in
   (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's tenth review of #82: a failed search for a
+  client in Add record says so, with Try again, rather than leaving the last
+  search's clients up as if they matched (`CLIENTS_PLAN.md` change log).

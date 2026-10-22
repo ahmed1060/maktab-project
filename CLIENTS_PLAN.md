@@ -91,7 +91,8 @@ Production has no data in these parts, so now is the right time.
   form uploaded but didn't save, because the form was closed or a save
   failed, are removed again (`DELETE /api/records/uploads`, ten to a
   request). A failed save keeps what it uploaded for the next try. A
-  record is given a new file only once storage says it has it;
+  record is given a new file only once storage says it has it, and a
+  Super Admin's own upload only by a Super Admin;
 - two people adding records into the same new section at once get one
   section, and a client isn't deleted while a record is being added to it.
   A section deleted as a record is added to it takes that record's files
@@ -111,8 +112,10 @@ Production has no data in these parts, so now is the right time.
   given a file that's gone.
 - on the Records page, Add record lists only the chosen company's clients:
   a Super Admin who picks another company while it's open sees that
-  company's load, not the last one's. Editing a record there loads its
-  client's sections in the form, and says if they didn't load.
+  company's load, not the last one's, and a search that fails says so.
+  Editing a record there loads its client's sections in the form, and says
+  if they didn't load. A record moved to a section deleted at that moment
+  is refused, rather than failing.
 
 **Proposed** (built this way in 0a, for the product owner to confirm or
 change):
@@ -937,3 +940,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   found"; files a form uploaded and didn't save are removed ten to a
   request, however many there are; and a record is given a new file only
   once storage says it has it. Still waiting to be merged.
+- **2026-10-22:** PR 0a (#82): Codex's tenth review is fixed too (§0.2): a
+  record moved to a section deleted at that moment is refused with "section
+  not found" rather than failing; a Super Admin's own upload goes on a
+  record only by a Super Admin's hand; and a failed search in Add record's
+  clients says so, rather than showing the last search's. Still waiting to
+  be merged.
