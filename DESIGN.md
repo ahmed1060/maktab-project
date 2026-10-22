@@ -503,6 +503,13 @@ These are built once, in the building-blocks PR, and every page uses them
   one line saying what didn't load, and Try again, which shows it's busy
   while it tries. It never says there's nothing, or offers to add one, when
   it doesn't know.
+  - Before saying so, it tries again by itself, three times: half a
+    second, one second and two seconds apart, still showing that it's
+    loading. So a moment's trouble with the connection or the server
+    doesn't reach the screen.
+  - Only a failure that can pass is tried again: no answer at all, the
+    server's own error, or the server too busy. A refusal or "not found"
+    is the answer, and is said at once.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
 
@@ -727,3 +734,6 @@ changed:
 - **2026-10-16:** Text people type keeps its own direction in either
   language (§7). In the first Arabic check of records, an English record's
   full stop moved to its start.
+- **2026-10-22:** A list or page that didn't load tries again by itself
+  three times before saying so (§5.5), at the product owner's request. A
+  refusal or "not found" is said at once.
