@@ -102,9 +102,11 @@ export class TaskService {
         // one, each the task's company's.
         let resolvedClientId: string | null = null
         if (clientId) {
-            const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyId: true } })
+            const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyId: true, archivedAt: true } })
             if (!client) throw new Error("CLIENT_NOT_FOUND")
             if (client.companyId !== targetCompanyId) throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
+            // An archived client takes no new work (CLIENTS_PLAN.md §4.3).
+            if (client.archivedAt) throw new Error("CLIENT_ARCHIVED")
             resolvedClientId = client.id
         }
 
@@ -185,9 +187,10 @@ export class TaskService {
         const clientChanges = clientId !== undefined && (clientId || null) !== existingTask.clientId
         const newClientId = clientChanges ? clientId || null : existingTask.clientId
         if (clientChanges) {
-            const client = newClientId ? await prisma.client.findUnique({ where: { id: newClientId }, select: { companyId: true, name: true } }) : null
+            const client = newClientId ? await prisma.client.findUnique({ where: { id: newClientId }, select: { companyId: true, name: true, archivedAt: true } }) : null
             if (newClientId && !client) throw new Error("CLIENT_NOT_FOUND")
             if (client && client.companyId !== existingTask.companyId) throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
+            if (client?.archivedAt) throw new Error("CLIENT_ARCHIVED")
             changes.client = { from: existingTask.client?.name ?? null, to: client?.name ?? null }
         }
         let place: Awaited<ReturnType<typeof LocationService.forTask>> | null = null
@@ -1111,11 +1114,11 @@ export class TaskService {
             // safety net (same role as the deadline/attachment checks below),
             // not the primary check.
             const clientIds = Array.from(new Set(tasks.map(t => t.clientId).filter(Boolean)))
-            const clientMap = new Map<string, { id: string, companyId: string }>()
+            const clientMap = new Map<string, { id: string, companyId: string, archivedAt: Date | null }>()
             if (clientIds.length > 0) {
                 const clients = await tx.client.findMany({
                     where: { id: { in: clientIds } },
-                    select: { id: true, companyId: true }
+                    select: { id: true, companyId: true, archivedAt: true }
                 })
                 clients.forEach(v => clientMap.set(v.id, v))
             }
@@ -1153,6 +1156,7 @@ export class TaskService {
                     if (userRole === 'SUPER_ADMIN' && taskCompanyId && client.companyId !== taskCompanyId) {
                         throw new Error(`CROSS_COMPANY_CLIENT: ${task.title}`)
                     }
+                    if (client.archivedAt) throw new Error(`CLIENT_ARCHIVED: ${task.title}`)
                     resolvedClientId = client.id
                 }
                 const place = await LocationService.forTask(tx, String(locationId), { companyId: taskCompanyId ?? null, clientId: resolvedClientId })

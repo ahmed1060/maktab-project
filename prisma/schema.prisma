@@ -1153,6 +1153,9 @@ model Client {
   locationName String
   locationLink String?
   createdById  String?
+  /// Archived instead of deleted, as it has tasks or records (CLIENTS_PLAN.md
+  /// §4.3): left out of what's picked from, kept in filters and history.
+  archivedAt   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)

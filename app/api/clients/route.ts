@@ -39,10 +39,20 @@ export const GET = withStandardHandler(async (req, session) => {
         companyId = userCompanyId
     }
 
+    // In use unless asked (CLIENTS_PLAN.md §4.3): what's picked from leaves
+    // archived clients out; ?archived=1 lists those, and ?archived=all both,
+    // as a filter keeps them.
+    const archived = searchParams.get('archived')
     const clients = await prisma.client.findMany({
-        where: companyId ? { companyId } : {},
+        where: {
+            ...(companyId ? { companyId } : {}),
+            ...(archived === 'all' ? {} : { archivedAt: archived === '1' ? { not: null } : null }),
+        },
         orderBy: { name: 'asc' },
         include: {
+            // Whether deleting it archives it instead: it has tasks or records.
+            _count: { select: { tasks: true } },
+            recordSections: { where: { records: { some: {} } }, select: { id: true }, take: 1 },
             // createdBy is null for a Super-Admin-created client (the FK
             // only targets User) — the frontend shows a generic "Super
             // Admin" label in that case rather than nothing.
@@ -55,7 +65,7 @@ export const GET = withStandardHandler(async (req, session) => {
         }
     })
 
-    return ApiResponse.success(clients)
+    return ApiResponse.success(clients.map(({ _count, recordSections, ...client }) => ({ ...client, inUse: _count.tasks > 0 || recordSections.length > 0 })))
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
@@ -92,6 +102,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
 
     try {
+        // Restored from the archive (CLIENTS_PLAN.md §4.3).
+        if (validation.data.restore) return ApiResponse.success(await ClientService.restore(validation.data.id, session))
         const result = await ClientService.update(validation.data, session)
         return ApiResponse.success(result)
     } catch (error: any) {
@@ -113,8 +125,9 @@ export const DELETE = withStandardHandler(async (req, session) => {
     if (!id) return ApiResponse.badRequest("ID required")
 
     try {
-        await ClientService.delete(id, session)
-        return ApiResponse.success({ success: true, id })
+        // One with tasks or records is archived instead (CLIENTS_PLAN.md §4.3), and says so.
+        const result = await ClientService.delete(id, session)
+        return ApiResponse.success({ success: true, id, archived: result.archived })
     } catch (error: any) {
         if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.notFound("Client not found")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()

@@ -246,4 +246,40 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
         ])
         await expect(LocationService.forFilters(employee, {})).rejects.toThrow()
     })
+
+    describe("an archived client (CLIENTS_PLAN.md §4.3)", () => {
+        let Clients: typeof import("@/lib/services/client.service").ClientService
+
+        it("is what deleting one with tasks does; one with none is deleted", async () => {
+            Clients = (await import("@/lib/services/client.service")).ClientService
+            const theirs = await Tasks.create(task({ title: "Beta's job", clientId: "k2", locationId: "port" }) as any, admin)
+            expect(await Clients.delete("k2", admin)).toMatchObject({ archived: true })
+            expect((await db.query(`SELECT "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = 'k2'`)).rows[0].archived).toBe(true)
+            expect((await row(theirs.id)).clientId).toBe("k2")
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k7', 'c1', 'Unused', 'Rami', '0107', 'Nowhere', now())`)
+            expect(await Clients.delete("k7", admin)).toMatchObject({ archived: false })
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Client" WHERE id = 'k7'`)).rows[0].n).toBe(0)
+        })
+
+        it("takes no new task, nor an existing one moved to it, nor one uploaded for it", async () => {
+            await expect(Tasks.create(task({ clientId: "k2", locationId: "port" }) as any, admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            const other = await Tasks.create(task({ locationId: "port" }) as any, admin)
+            await expect(Tasks.updateDetails(other.id, { id: other.id, clientId: "k2" } as any, admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            await expect(Tasks.bulkCreate([task({ title: "For an archived one", clientId: "k2", locationId: "port" })], admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED: For an archived one" })
+        })
+
+        it("keeps its own tasks editable, and isn't offered to add a record to", async () => {
+            const { rows: [mine] } = await db.query(`SELECT id FROM "Task" WHERE title = 'Beta''s job'`)
+            await Tasks.updateDetails(mine.id, { id: mine.id, title: "Beta's old job" } as any, admin)
+            expect((await db.query(`SELECT title, "clientId" FROM "Task" WHERE id = $1`, [mine.id])).rows[0]).toEqual({ title: "Beta's old job", clientId: "k2" })
+            const { RecordService } = await import("@/lib/services/record.service")
+            const recordAdmin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1" }) } as any
+            expect((await RecordService.clients(recordAdmin, null, null)).clients.map(c => c.name)).not.toContain("Beta")
+        })
+
+        it("is in use again once restored", async () => {
+            await Clients.restore("k2", admin)
+            expect((await row((await Tasks.create(task({ clientId: "k2", locationId: "port" }) as any, admin)).id)).clientId).toBe("k2")
+        })
+    })
 })

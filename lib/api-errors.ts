@@ -27,7 +27,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     RECORD_CHANGED: { status: 409, message: "Someone changed this record's files since you opened it. Close it and open it again to see them." },
     RECORD_FORBIDDEN: { status: 403, message: "You don't have permission to do that." },
     CLIENT_NOT_FOUND: { status: 404, message: "Client not found." },
-    CLIENT_HAS_RECORDS: { status: 409, message: "This client has records. Delete them on its page first." },
+    // Archived rather than given new work (CLIENTS_PLAN.md §4.3).
+    CLIENT_ARCHIVED: { status: 400, message: "This client is archived. Restore it on the Clients page first." },
     // The places tasks happen at (lib/services/location.service.ts); a
     // check-in place's are LOCATION_*, below.
     TASK_LOCATION_NOT_FOUND: { status: 404, message: "Location not found." },

@@ -372,7 +372,8 @@ export class RecordService {
         const trimmed = search?.trim()
         const name = trimmed ? likeText(trimmed) : ""
         const clients = await prisma.client.findMany({
-            where: { ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
+            // An archived client isn't offered (CLIENTS_PLAN.md §4.3).
+            where: { archivedAt: null, ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
             select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true } } }) },
             orderBy: [{ name: "asc" }, { id: "asc" }],
             // One past what's listed, to say there are more to search for.
