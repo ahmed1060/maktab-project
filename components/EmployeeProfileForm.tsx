@@ -17,6 +17,7 @@ import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
 import { useDialog } from '@/lib/useDialog'
 import { startNavigationProgress } from '@/components/NavigationProgress'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -136,7 +137,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         const fetchEmployee = async () => {
             if (!sessionUserId) return // Don't fetch if no session (avoids errors on signout)
             try {
-                const res = await fetch(`/api/users?id=${userId}`, { cache: 'no-store' })
+                const res = await fetchRetrying(`/api/users?id=${userId}`, { cache: 'no-store' })
                 const result = await res.json()
                 if (!result.success) throw new Error(result.error || 'Failed to fetch employee')
                 const employee = result.data
@@ -171,7 +172,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
                 // Check for pending name change requests
                 if (userId === sessionUserId && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
-                    const reqRes = await fetch(`/api/profile-requests?status=PENDING`)
+                    const reqRes = await fetchRetrying(`/api/profile-requests?status=PENDING`)
                     if (reqRes.ok) {
                         const result = await reqRes.json()
                         const requestsData = result.data?.data || []
@@ -189,7 +190,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
 
         const fetchCompanies = async () => {
             try {
-                const res = await fetch('/api/companies?limit=1000')
+                const res = await fetchRetrying('/api/companies?limit=1000')
                 if (res.ok) {
                     const result = await res.json()
                     const data = result.data || {}
@@ -210,7 +211,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         // handed a list it is going to throw most of away.
         const fetchLeaders = async () => {
             try {
-                const res = await fetch('/api/users?role=TEAM_LEADER&limit=1000')
+                const res = await fetchRetrying('/api/users?role=TEAM_LEADER&limit=1000')
                 if (res.ok) {
                     const result = await res.json()
                     setLeaders(result.data?.data || [])

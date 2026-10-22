@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
-import { fetcher, SWRError } from '@/lib/swr-fetcher'
+import { fetcher, fetchRetrying, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -115,7 +115,7 @@ export default function PayrollRegisterPage() {
         if (!isSuper) return
         (async () => {
             try {
-                const res = await fetch('/api/companies?limit=200')
+                const res = await fetchRetrying('/api/companies?limit=200')
                 if (!res.ok) return
                 const body = await res.json()
                 // The envelope is { data: { data: [...], total, ... } } — the

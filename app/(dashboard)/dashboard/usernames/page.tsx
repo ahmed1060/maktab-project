@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 // F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
 // (prototype pollution + ReDoS in the parser) — SheetJS stopped publishing
 // patched releases to npm. exceljs is maintained and gets normal npm
@@ -35,7 +36,7 @@ export default function UsernamesPage() {
         const fetchUsers = async () => {
             try {
                 // Fetch all active users the current user can see
-                const res = await fetch('/api/users?limit=1000')
+                const res = await fetchRetrying('/api/users?limit=1000')
                 if (res.ok) {
                     const result = await res.json()
                     const data = result.data.data || result.data || []

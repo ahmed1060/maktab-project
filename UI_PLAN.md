@@ -799,3 +799,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   seconds apart, before it says so with Try again (`DESIGN.md` §5.5). A
   refusal or "not found" is said at once. It's in the shared fetcher
   (`lib/swr-fetcher.ts`), so every screen that loads through it does this.
+- **2026-10-22:** So does anything else a screen loads, at the product
+  owner's request (`DESIGN.md` §5.5): the pickers' options, a person's
+  profile, a payslip, the system settings, a contract's end preview, the
+  jobs card, the face check's models. A save is never sent again. A test
+  reads the code for any load that would skip it.

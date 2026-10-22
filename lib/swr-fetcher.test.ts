@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { fetcher, RETRY_DELAYS_MS, SWRError } from "./swr-fetcher"
+import { fetcher, fetchRetrying, RETRY_DELAYS_MS, SWRError } from "./swr-fetcher"
 
 /**
  * A list or page that didn't load tries again by itself three times before
@@ -64,5 +64,54 @@ describe("loading a list's data", () => {
 
     it("is the only retrying: SWR's own is off, as it would show the error while it retried", () => {
         expect(readFileSync("app/providers.tsx", "utf8")).toContain("shouldRetryOnError: false")
+    })
+})
+
+describe("anything else a screen loads", () => {
+    it("is tried again the same way, and the screen gets the answer as fetch gives it", async () => {
+        vi.useFakeTimers()
+        const answers = [() => { throw new TypeError("Failed to fetch") }, () => failing(502), () => ok({ data: "fine" })]
+        const fetchMock = vi.fn(async () => answers.shift()!())
+        vi.stubGlobal("fetch", fetchMock)
+        const { value } = await settle(fetchRetrying("/api/users?role=TEAM_LEADER", { cache: "no-store" }))
+        expect(value).toBeInstanceOf(Response)
+        expect(await (value as Response).json()).toEqual({ data: "fine" })
+        expect(fetchMock).toHaveBeenCalledTimes(3)
+        expect(fetchMock).toHaveBeenLastCalledWith("/api/users?role=TEAM_LEADER", { cache: "no-store" })
+    })
+
+    it("gives back the last answer once three tries again have failed, for the screen to say so", async () => {
+        vi.useFakeTimers()
+        const fetchMock = vi.fn(async () => failing(503))
+        vi.stubGlobal("fetch", fetchMock)
+        const { value } = await settle(fetchRetrying("/api/payslips/1"))
+        expect((value as Response).status).toBe(503)
+        expect(fetchMock).toHaveBeenCalledTimes(4)
+    })
+
+    it("gives a refusal or \"not found\" back at once", async () => {
+        const fetchMock = vi.fn(async () => failing(404))
+        vi.stubGlobal("fetch", fetchMock)
+        expect((await fetchRetrying("/api/requests/gone")).status).toBe(404)
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it("never sends a save again: sent twice, it might be done twice", async () => {
+        for (const method of ["POST", "PUT", "PATCH", "DELETE", "post"]) {
+            const fetchMock = vi.fn(async () => failing(503))
+            vi.stubGlobal("fetch", fetchMock)
+            expect((await fetchRetrying("/api/x", { method })).status, method).toBe(503)
+            expect(fetchMock, method).toHaveBeenCalledTimes(1)
+            vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch") }))
+            await expect(fetchRetrying("/api/x", { method }), method).rejects.toThrow("Failed to fetch")
+        }
+    })
+
+    it("isn't tried again once it's called off", async () => {
+        const controller = new AbortController()
+        const fetchMock = vi.fn(async () => { controller.abort(); throw new DOMException("Aborted", "AbortError") })
+        vi.stubGlobal("fetch", fetchMock)
+        await expect(fetchRetrying("/api/x", { signal: controller.signal })).rejects.toThrow("Aborted")
+        expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 })

@@ -11,7 +11,7 @@
  * callers read `error` to distinguish "still loading" from "the request
  * failed" (see each page's SWRError usage).
  *
- * A failure that can pass is tried again first (RETRY_DELAYS_MS), so a
+ * A failure that can pass is tried again first (fetchRetrying), so a
  * screen says it didn't load only once those have failed too (DESIGN.md
  * §5.5). SWR's own retrying is off (app/providers.tsx): it would show the
  * error while it retried.
@@ -32,8 +32,31 @@ export const RETRY_DELAYS_MS = [500, 1000, 2000] as const
  */
 export const worthRetrying = (status: number | undefined) => status === undefined || status >= 500 || status === 408 || status === 429
 
-async function once(url: string) {
-    const res = await fetch(url, { cache: 'no-store' })
+/**
+ * `fetch`, for anything a screen loads: a GET that fails in a way that can
+ * pass is tried again, three times (RETRY_DELAYS_MS), and its last answer is
+ * given back, so a screen shows a failure only once those have failed too
+ * (DESIGN.md §5.5). Anything else, a save above all, is sent once: sent
+ * again, it might be done twice. One called off isn't tried again.
+ */
+export async function fetchRetrying(input: string, init?: RequestInit): Promise<Response> {
+    const method = (init?.method ?? 'GET').toUpperCase()
+    if (method !== 'GET' && method !== 'HEAD') return fetch(input, init)
+    for (let attempt = 0; ; attempt++) {
+        const delay = RETRY_DELAYS_MS[attempt]
+        try {
+            const res = await fetch(input, init)
+            if (res.ok || delay === undefined || !worthRetrying(res.status)) return res
+        } catch (error) {
+            if (delay === undefined || init?.signal?.aborted) throw error
+        }
+        await new Promise(resolve => setTimeout(resolve, delay))
+        if (init?.signal?.aborted) throw init.signal.reason
+    }
+}
+
+export const fetcher = async (url: string) => {
+    const res = await fetchRetrying(url, { cache: 'no-store' })
     if (!res.ok) {
         const error = new SWRError('Request failed')
         try {
@@ -45,16 +68,4 @@ async function once(url: string) {
         throw error
     }
     return res.json()
-}
-
-export const fetcher = async (url: string) => {
-    for (let attempt = 0; ; attempt++) {
-        try {
-            return await once(url)
-        } catch (error) {
-            const delay = RETRY_DELAYS_MS[attempt]
-            if (delay === undefined || !worthRetrying((error as SWRError).status)) throw error
-            await new Promise(resolve => setTimeout(resolve, delay))
-        }
-    }
 }

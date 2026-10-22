@@ -9,6 +9,7 @@ import { RECURRENCE_STYLE } from '@/lib/recurrence'
 import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import Link from 'next/link'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 
 export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
@@ -355,7 +356,7 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
         queryParams.set('limit', '1000')
         if (obligation.companyId) queryParams.set('companyId', obligation.companyId)
 
-        const res = await fetch(`/api/users?${queryParams.toString()}`)
+        const res = await fetchRetrying(`/api/users?${queryParams.toString()}`)
         if (res.ok) {
             const result = await res.json()
             const data = result.data

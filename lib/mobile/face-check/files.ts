@@ -5,6 +5,7 @@
  */
 
 import { ANTISPOOF_MODELS } from "./antispoof"
+import { fetchRetrying } from "@/lib/swr-fetcher"
 
 export const MODELS_URL = "/face-models/v2"
 const CACHE = "nizmo-face-models-v2"
@@ -40,8 +41,9 @@ export async function cached(url: string, onBytes?: (n: number) => void, key: st
         onBytes?.(bytes.byteLength)
         return { bytes, fresh: false }
     }
-    // Offline, or the connection dropped: the person is told the download failed, not a browser error.
-    const res = await fetch(url).catch(() => { throw unavailable() })
+    // Offline, or the connection dropped, after three tries again (DESIGN.md
+    // §5.5): the person is told the download failed, not a browser error.
+    const res = await fetchRetrying(url).catch(() => { throw unavailable() })
     if (!res.ok || !res.body) throw unavailable()
     const chunks: Uint8Array[] = []
     const reader = res.body.getReader()
@@ -119,7 +121,7 @@ export async function runtime(manifest: Manifest, path: string, onBytes: (n: num
 /** What the site serves, never cached: offline, missing or not JSON is FACE_MODELS_UNAVAILABLE (review on #47). */
 export async function manifestOf(): Promise<Manifest> {
     try {
-        const res = await fetch(`${MODELS_URL}/manifest.json`, { cache: "no-store" })
+        const res = await fetchRetrying(`${MODELS_URL}/manifest.json`, { cache: "no-store" })
         if (!res.ok) throw unavailable()
         const m = (await res.json()) as Manifest
         if (!m?.files || typeof m.total !== "number") throw unavailable()

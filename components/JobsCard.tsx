@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useNow } from '@/lib/useNow'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type Job = {
     job: string
@@ -75,7 +76,7 @@ export default function JobsCard() {
 
     useEffect(() => {
         let cancelled = false
-        fetch('/api/admin/maintenance/jobs')
+        fetchRetrying('/api/admin/maintenance/jobs')
             .then(r => r.json())
             .then(body => {
                 if (cancelled) return

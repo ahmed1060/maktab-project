@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
-import { fetcher } from '@/lib/swr-fetcher'
+import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -84,7 +84,7 @@ export default function SystemHealthPage() {
     // time it answers.
     useEffect(() => {
         let ignore = false
-        fetch('/api/system-settings')
+        fetchRetrying('/api/system-settings')
             .then(res => res.json())
             .then(result => {
                 if (ignore || !result.success) return
@@ -199,7 +199,7 @@ export default function SystemHealthPage() {
         setBackupsLoading(true)
         setBackupsError(null)
         try {
-            const res = await fetch('/api/admin/maintenance/backups')
+            const res = await fetchRetrying('/api/admin/maintenance/backups')
             const result = await res.json()
             if (result.success) {
                 setBackups(result.data.backups)

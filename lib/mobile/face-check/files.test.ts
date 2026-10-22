@@ -7,7 +7,16 @@ import { joined, manifestOf, onPhone, runtime, MODELS_URL, ORT_WASM, SMALL_FILES
  * parts one at a time, and every way the download can fail named the same.
  */
 
-afterEach(() => { vi.unstubAllGlobals() })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
+
+/** Lets each wait between tries again pass (DESIGN.md §5.5). */
+async function settle<T>(run: Promise<T>) {
+    vi.useFakeTimers()
+    const outcome = run.then(value => ({ value }), error => ({ error }))
+    for (let i = 0; i < 4; i++) await vi.runAllTimersAsync()
+    vi.useRealTimers()
+    return outcome as Promise<{ value?: T; error?: unknown }>
+}
 
 const parts = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5]), new Uint8Array([6])]
 const whole = new Uint8Array([1, 2, 3, 4, 5, 6])
@@ -44,16 +53,26 @@ describe("joining the model's parts", () => {
         await expect(joined(manifest("0".repeat(64)), "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_CORRUPT" })
     })
 
-    it("says the models are unavailable when a part can't be downloaded", async () => {
-        vi.stubGlobal("fetch", async () => { throw new TypeError("Failed to fetch") })
-        await expect(joined(manifest(), "m.onnx", () => {})).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
+    it("tries a part again when the connection drops, and carries on", async () => {
+        const answers: (() => Response)[] = [() => { throw new TypeError("Failed to fetch") }, ...parts.map(p => () => new Response(p))]
+        const fetchMock = vi.fn(async () => answers.shift()!())
+        vi.stubGlobal("fetch", fetchMock)
+        expect(await settle(joined(manifest(), "m.onnx", () => {}))).toEqual({ value: whole })
+        expect(fetchMock).toHaveBeenCalledTimes(4)
+    })
+
+    it("says the models are unavailable when a part can't be downloaded, after three tries again", async () => {
+        const fetchMock = vi.fn(async () => { throw new TypeError("Failed to fetch") })
+        vi.stubGlobal("fetch", fetchMock)
+        expect((await settle(joined(manifest(), "m.onnx", () => {}))).error).toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
+        expect(fetchMock).toHaveBeenCalledTimes(4)
     })
 })
 
 describe("the manifest", () => {
     it("says the models are unavailable, whatever went wrong", async () => {
         vi.stubGlobal("fetch", async () => { throw new TypeError("Failed to fetch") })
-        await expect(manifestOf()).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
+        expect((await settle(manifestOf())).error).toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })
         // Not published (the face check is off there): the site's 404 page.
         vi.stubGlobal("fetch", async () => new Response("<html>Not found</html>", { status: 404 }))
         await expect(manifestOf()).rejects.toMatchObject({ code: "FACE_MODELS_UNAVAILABLE" })

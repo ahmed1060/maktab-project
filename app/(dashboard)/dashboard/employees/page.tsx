@@ -26,6 +26,7 @@ import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
 import { employeesListUrl, type EmployeesQuery } from './list-query'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 interface Employee {
     id: string
@@ -131,7 +132,7 @@ export default function EmployeesPage() {
 
     useEffect(() => {
         if (!canAssignTeams) return
-        fetch('/api/users?role=TEAM_LEADER&limit=1000')
+        fetchRetrying('/api/users?role=TEAM_LEADER&limit=1000')
             .then(r => r.json())
             .then(d => setTeamLeaders(d.data?.data || []))
             .catch(() => { /* the picker simply stays empty */ })
