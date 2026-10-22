@@ -415,6 +415,22 @@ These are built once, in the building-blocks PR, and every page uses them
     inside it: an option that opens a form isn't what a select does. It
     opens the form in a dialog, and what's added there is picked when it
     closes.
+- **A name typed or picked from a saved list,** such as a task's title or
+  a cost's name (`CLIENTS_PLAN.md` §5), is a text field that suggests as
+  it's typed:
+  - below it, up to eight of the list's names that contain what's typed,
+    the part typed in bold; nothing is shown until something is typed,
+    and nothing archived;
+  - what's typed can be kept as it is: it's saved as typed, with no name
+    picked. Picking a suggestion fills the field with it;
+  - when what's typed isn't on the list, ignoring capitals, the last line
+    offers "+ Add 'X' to the list" to whoever may add names. Nothing is
+    added any other way;
+  - the arrow keys move through the suggestions, Enter picks one, Escape
+    closes them. Each suggestion is 36px tall (44px on phones), and the
+    one under the keys is shaded;
+  - the field says which name it's linked to only by the suggestion
+    picked: typing again unlinks it.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -829,3 +845,5 @@ changed:
   client and location (`CLIENTS_PLAN.md` §2.3): grouped options, one that
   can't be picked yet greyed with why, and "+ New location" as a button
   below the select.
+- **2026-10-22:** A name typed or picked from a saved list (§5.3), for task
+  titles and cost names (`CLIENTS_PLAN.md` §5).
