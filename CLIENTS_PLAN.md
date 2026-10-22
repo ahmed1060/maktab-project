@@ -312,11 +312,14 @@ needs no data change.
     employee's shares only, and a task is paid once no share of it is left.
     The page shows only shares still to pay, so one paid this way leaves it.
 - **A paid task can be deleted, and its payment record goes with it**
-  (`TaskService.delete` doesn't check payment).
+  (`TaskService.delete` doesn't check payment). Fixed in step 4, PR 4a
+  (§4.2).
 - **Deleting a vendor quietly unlinks all its tasks** (`onDelete: SetNull`).
+  Fixed in step 4, PR 4b: one with tasks is archived instead (§4.3).
 - **Bug: cost descriptions are thrown away.** The task's cost form sends a
   description with each cost, but the server saves only the amount ("Added
-  cost: 150.00 EGP"), so every cost shows "No description".
+  cost: 150.00 EGP"), so every cost shows "No description". Fixed in step
+  4, PR 4c (§4.4).
 - **Bug: a cost not split by member broke the Costs page.** The page shows
   each member's share of a task's cost (`memberCosts`). A task with a cost
   and no shares, as tasks had before shares, was shown under
@@ -476,6 +479,16 @@ separate system. On screen they're renamed **Check-in places** (أماكن
    - So costs move into their own table here, where the description fix
      already changes how they're saved. Production has no costs yet, so
      there's nothing to move.
+   - **How it moves (PR 4c).** Each cost is a row, with its id and
+     description, and still an entry in the task's comments, which names
+     its row. The release before reads and writes only the entries, and
+     the migration runs while it's live, so it can add a cost with no row
+     or remove one and leave its row. Until that's tidied, the entries say
+     which costs a task has. A cost with no row is removed as before.
+   - **Proposed:** a small PR, 4d, once 4c is live, gives the costs added
+     meanwhile their rows and removes the rows left over. From then on the
+     rows say which costs a task has. It comes before anything points at a
+     cost (§6, §7).
 
 ---
 
@@ -788,9 +801,9 @@ balance first, automatically:
        and on the date filters counting the company's days, which come
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Proposed: it ships as three PRs. 4a, payment safety
-       (§4.1, §4.2), was merged in #101 on 2026-10-29. 4b, archiving
-       clients (§4.3), is built, and open for review in #102. 4c moves
-       costs into their own table, with their descriptions (§4.4, §4.5).
+       (§4.1, §4.2), is built, and 4b, archiving clients (§4.3). 4c moves costs
+       into their own table, with their descriptions (§4.4, §4.5), and is
+       built too. Proposed: 4d tidies up after it (§4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1390,3 +1403,18 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   use there at once: its details, reloaded by Restore, say whether it's
   archived ahead of its sections, which weren't reloaded and kept it
   archived (found by Codex).
+- **2026-10-22:** Step 4's third PR, 4c, is built (§4.4, §4.5):
+  - **Each cost is a row of its own**, with an id, and its description.
+    The migration gives every cost already saved a row; none has a
+    description, as they were thrown away.
+  - **A cost's description is kept,** up to 200 characters, and shows on
+    the task's page. One longer is refused, and the field stops at 200.
+  - **A cost is removed by its id,** and only it. Costs added together
+    were saved at the same moment, and removing one by that moment took
+    them all off the list, though only its amount came off the totals.
+  - **A cost can't be removed once its person's costs on the task are
+    paid.**
+  - **Two people saving the same task at once** each keep their costs.
+    The task is held while it's saved; one person's costs used to go from
+    the list while their total stayed.
+  - **Proposed:** PR 4d, once 4c is live, finishes the move (§4.5).
