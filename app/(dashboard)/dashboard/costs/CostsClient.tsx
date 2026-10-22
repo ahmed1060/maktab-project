@@ -11,6 +11,7 @@ import Pagination from '@/components/Pagination'
 import { useCan } from '@/lib/useCan'
 import { shareOwed, unallocatedCost } from '@/lib/cost-shares'
 import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
@@ -19,9 +20,11 @@ interface CostsClientProps {
     totalPages: number
     /** What the whole filtered list still owes, or the picked employee's share of it (CLIENTS_PLAN.md §3.5). */
     totalDue: number
+    /** What Mark all as paid would pay, every part of every task in the list, as it's confirmed (§4.1). */
+    toPay: { count: number; amount: number; digest: string } | null
 }
 
-export default function CostsClient({ tasksWithCosts, total, page, totalPages, totalDue }: CostsClientProps) {
+export default function CostsClient({ tasksWithCosts, total, page, totalPages, totalDue, toPay }: CostsClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
@@ -44,6 +47,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
     const { can, companyWide } = useCan()
     const isEmployee = !can('tasks.pay')
     const [isUpdating, setIsUpdating] = useState(false)
+    const [confirming, setConfirming] = useState(false)
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackMessage, setFeedbackMessage] = useState('')
 
@@ -137,16 +141,24 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
         router.push(`/dashboard/costs?${params.toString()}`)
     }
 
+    // Pays exactly what the window said, and refuses if the list has changed since (CLIENTS_PLAN.md §4.1).
     const handleMarkAllAsPaid = async () => {
+        if (!toPay) return
         setIsUpdating(true)
         try {
             const res = await fetch('/api/tasks/payment/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filters })
+                body: JSON.stringify({ filters, confirm: { digest: toPay.digest } })
             })
 
-            if (res.ok) {
+            if (res.status === 409) {
+                // Changed since it was shown: shown again as it is now.
+                setFeedbackMessage(t('costs_pay_changed'))
+                setShowFeedback(true)
+                setTimeout(() => setShowFeedback(false), 5000)
+                router.refresh()
+            } else if (res.ok) {
                 setFeedbackMessage(t('successfully_marked_paid'))
                 setShowFeedback(true)
                 setTimeout(() => setShowFeedback(false), 5000)
@@ -163,8 +175,10 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
             setTimeout(() => setShowFeedback(false), 5000)
         } finally {
             setIsUpdating(false)
+            setConfirming(false)
         }
     }
+    const money = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
     useEffect(() => {
         setTitle(modules.label('costs'))
@@ -221,9 +235,9 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
                 primaryAction={
                     // Paying everything at once is for those who pay across the
                     // company; a Team Leader pays their team's one at a time.
-                    companyWide('tasks.pay') && total > 0 && (
+                    companyWide('tasks.pay') && total > 0 && toPay && toPay.count > 0 && (
                         <button
-                            onClick={handleMarkAllAsPaid}
+                            onClick={() => setConfirming(true)}
                             disabled={isUpdating}
                             style={{
                                 background: 'var(--ok-fill)',
@@ -279,6 +293,17 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
+            />
+
+            <ConfirmModal
+                isOpen={confirming && !!toPay}
+                title={t('mark_all_as_paid')}
+                message={toPay ? t('costs_pay_question').replace('{count}', toPay.count.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')).replace('{amount}', money(toPay.amount)) : ''}
+                confirmText={toPay ? t('costs_pay_button').replace('{count}', toPay.count.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')).replace('{amount}', money(toPay.amount)) : ''}
+                cancelText={t('cancel')}
+                onConfirm={handleMarkAllAsPaid}
+                onCancel={() => setConfirming(false)}
+                variant="warning"
             />
         </div>
     )

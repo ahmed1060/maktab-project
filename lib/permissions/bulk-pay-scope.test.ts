@@ -88,6 +88,7 @@ vi.mock("@/lib/prisma", () => {
     const tx: any = {
         task: {
             findMany,
+            count: async ({ where }: any) => (await findMany({ where })).length,
             update: async ({ where, data }: any) => { seen.paid.push(where.id); seen.writes[where.id] = data; return {} },
             updateMany: async ({ where }: any) => { seen.paid.push(...(where.id?.in ?? [])); return { count: 0 } },
         },
@@ -107,11 +108,16 @@ const ACTORS = {
     superAdmin: withGrants({ id: "sa", role: "SUPER_ADMIN", companyId: null }),
 }
 
-/** What the Costs page shows this payer for these filters, as Mark all as paid confirms it (CLIENTS_PLAN.md §4.1). */
+/**
+ * What the Costs page shows this payer for these filters, as Mark all as
+ * paid confirms it (CLIENTS_PLAN.md §4.1): the page's own, so a payment by
+ * filters is refused if the page and the button count it differently.
+ */
 async function shown(actor: keyof typeof ACTORS, filters: object) {
-    const { pendingCostsSnapshot, pendingCostsWhere } = await import("@/lib/services/costs-query")
-    const where = await pendingCostsWhere(stepUpConfirmed(ACTORS[actor]) as any, filters)
-    return where ? (await pendingCostsSnapshot(where, (filters as any).employeeId)).digest : "nothing"
+    state.session = { user: stepUpConfirmed(ACTORS[actor]) }
+    const { default: CostsPage } = await import("@/app/(dashboard)/dashboard/costs/page")
+    const page: any = await CostsPage({ searchParams: Promise.resolve(filters as any) })
+    return page.props.toPay?.digest ?? "nothing"
 }
 
 async function send(actor: keyof typeof ACTORS, body: object) {
