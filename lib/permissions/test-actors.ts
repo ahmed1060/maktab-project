@@ -1,5 +1,5 @@
 import { BUILT_IN_GRANTS, builtInGrantsToken, isBuiltInRole } from "./built-in"
-import { permissionOf, toStored } from "./stored-names"
+import { permissionOf } from "./stored-names"
 
 /**
  * A test's signed-in person as their session token would carry them: with the
@@ -52,8 +52,7 @@ export function whoMatches(people: Person[], where: Record<string, any>): string
 
 /**
  * `role.findUnique` over every company's built-in roles, as the roles
- * migration creates them, under their stored names: a role's id is
- * `${companyId}:${kind}`. Answers a
+ * migration creates them: a role's id is `${companyId}:${kind}`. Answers a
  * lookup by kind (RoleAssignmentService.builtIn) and by id, with its grants
  * (RoleAssignmentService.chosen). Anything else is not a built-in role.
  */
@@ -62,7 +61,7 @@ export async function builtInRoleLookup({ where }: { where: any }) {
         ? [where.companyId_builtIn.companyId, where.companyId_builtIn.builtIn]
         : String(where.id ?? "").split(":")
     if (!companyId || !isBuiltInRole(kind)) return null
-    const grants = toStored(Object.entries(BUILT_IN_GRANTS[kind]).map(([permission, scope]) => ({ permission, scope })))
+    const grants = Object.entries(BUILT_IN_GRANTS[kind]).map(([permission, scope]) => ({ permission, scope }))
     return { id: `${companyId}:${kind}`, companyId, baseRole: kind, builtIn: kind, grants }
 }
 

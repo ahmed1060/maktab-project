@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { normalizeGrants, grantRows } from "@/lib/permissions/grant-rules"
-import { fromStored, templateGrants, toStored } from "@/lib/permissions/stored-names"
+import { fromStored, templateGrants } from "@/lib/permissions/stored-names"
 import { GrantsError, RoleService, checkSeparation } from "./role.service"
 import type { UserRole } from "@prisma/client"
 import type { CreateTemplateInput, UpdateTemplateInput } from "@/lib/validations/role.schema"
@@ -30,7 +30,7 @@ export class RoleTemplateService {
         const conflicts = checkSeparation({}, verdict.grants, input.acknowledgeConflicts)
         const created = await prisma.$transaction(async (tx) => {
             const template = await tx.roleTemplate.create({
-                data: { name: input.name, description: input.description ?? null, baseRole: input.baseRole, grants: toStored(grants) },
+                data: { name: input.name, description: input.description ?? null, baseRole: input.baseRole, grants },
             })
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log("CREATE_ROLE_TEMPLATE", "ROLE_TEMPLATE", template.id, {
@@ -60,7 +60,7 @@ export class RoleTemplateService {
             grants,
         }
         await prisma.$transaction(async (tx) => {
-            await tx.roleTemplate.update({ where: { id: input.id }, data: { ...after, grants: toStored(after.grants) } })
+            await tx.roleTemplate.update({ where: { id: input.id }, data: after })
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log("UPDATE_ROLE_TEMPLATE", "ROLE_TEMPLATE", input.id, {
                 tx, superAdminId: session.user.id,

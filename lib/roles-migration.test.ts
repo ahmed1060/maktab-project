@@ -28,8 +28,8 @@ const LATER = [
 // A later one that renames permissions: clients.* became records.*, for the
 // old Clients section moving onto each client (CLIENTS_PLAN.md §0.2). The
 // names it renames are read out of its SQL too. And vendors.* became
-// clients.* in code only: the rows keep the old names until 0c, read as the
-// new (lib/permissions/stored-names.ts).
+// clients.*, in code in 0b and in the rows in 0c, which a later migration
+// rewrites: read here as the new (lib/permissions/stored-names.ts).
 const RENAMING = readFileSync("prisma/migrations/20261104000000_records_on_clients/migration.sql", "utf8")
 function renamed(): Record<string, string> {
     const list = RENAMING.match(/WHEN name IN \(([^)]*)\)\s*THEN 'records\.' \|\| substr\(name, length\('clients\.'\) \+ 1\)/)

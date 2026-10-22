@@ -8,7 +8,6 @@ import { decodeGrants, encodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
-import { storedName } from "@/lib/permissions/stored-names"
 import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleRequestService } from "@/lib/services/role-request.service"
 import { RoleChangeRequestService } from "@/lib/services/role-change-request.service"
@@ -66,6 +65,12 @@ const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.
 // clients.* became records.* (CLIENTS_PLAN.md §0.2): the built-in roles'
 // grants went through it.
 const RECORDS = "20261104000000_records_on_clients"
+// And on: 0a kept Records grants from editors that didn't know them, 0b
+// dropped that and the renaming on the way in, and 0c rewrote vendors.* to
+// clients.* (CLIENTS_PLAN.md §0.3), which this release writes.
+const RECORDS_KEPT = "20261104000003_records_grants_kept"
+const RECORDS_COMPAT_DROPPED = "20261106000000_records_compat_dropped"
+const CLIENT_NAMES = "20261107000000_client_names_stored"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -118,6 +123,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(FACE))
         await db.query(sql(FACE_REVIEWS))
         await db.query(sql(RECORDS))
+        await db.query(sql(RECORDS_KEPT))
+        await db.query(sql(RECORDS_COMPAT_DROPPED))
+        await db.query(sql(CLIENT_NAMES))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -150,9 +158,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    // Under the names the database keeps until 0c (stored-names.ts).
-                    const stored = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).map(([permission, scope]) => [storedName(permission as any), scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(stored)
+                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
                 }
             }
         })

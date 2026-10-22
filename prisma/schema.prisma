@@ -273,7 +273,6 @@ model Company {
   finalSettlements     FinalSettlement[]
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
-  legacyClients        LegacyClient[]
   package              Package?                  @relation(fields: [packageId], references: [id], onDelete: Restrict)
   lockedAttempts       LockedModuleAttempt[]
   payments             CompanyPayment[]
@@ -477,8 +476,6 @@ model User {
   auditLogs                  AuditLog[]
   trustedDevices             TrustedDevice[]
   verificationCodes          VerificationCode[]
-  createdLegacyClients       LegacyClient[]          @relation("LegacyClientCreatedBy")
-  editedLegacyClients        LegacyClient[]          @relation("LegacyClientEditedBy")
   createdRecords             ClientRecord[]          @relation("CreatedNotes")
   editedRecords              ClientRecord[]          @relation("EditedNotes")
   createdSections            RecordSection[]         @relation("SectionCreatedBy")
@@ -903,29 +900,6 @@ model SalaryRecord {
   @@index([year])
 }
 
-/// The old Clients section's own list of businesses, from before records
-/// moved onto clients in PR 0a (CLIENTS_PLAN.md §0.2). Nothing reads or
-/// writes it. Its table stays until 0c drops it, once 0b's code is live:
-/// while 0b waits for review, 0a's code still selects every column of a
-/// section, its old client column included (§0.3). That column stays until
-/// 0d, as this release selects it too.
-model LegacyClient {
-  id             String          @id @default(uuid())
-  name           String
-  companyId      String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  createdById    String?
-  lastEditedById String?
-  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy      User?           @relation("LegacyClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  lastEditedBy   User?           @relation("LegacyClientEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
-  sections       RecordSection[]
-
-  @@unique([name, companyId])
-  @@map("Client")
-}
-
 /// A group of a client's records, such as "Licences" or "Contracts"
 /// (CLIENTS_PLAN.md §0.2).
 model RecordSection {
@@ -935,8 +909,9 @@ model RecordSection {
   /// section, of which 0b deletes any; the table's check says exactly one of
   /// the two is set. Its column keeps the old name until 0d.
   clientId       String?         @map("vendorId")
-  /// The old Clients section's business. Nothing sets it; 0d drops it,
-  /// with the app closed, as every release until then selects it.
+  /// The old Clients section's business, whose table 0c dropped. Nothing
+  /// sets it; 0d drops it, with the app closed, as every release until
+  /// then selects it.
   legacyClientId String?         @map("clientId")
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -944,7 +919,6 @@ model RecordSection {
   lastEditedById String?
   records        ClientRecord[]
   client         Client?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  legacyClient   LegacyClient?   @relation(fields: [legacyClientId], references: [id], onDelete: Cascade)
   createdBy      User?           @relation("SectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   lastEditedBy   User?           @relation("SectionEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
 

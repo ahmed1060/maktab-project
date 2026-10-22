@@ -3,7 +3,7 @@ import { BUILT_IN_GRANTS, type BuiltInRole } from "@/lib/permissions/built-in"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
 import type { Scope } from "@/lib/permissions/catalogue"
 import { normalizeGrants, grantRows } from "@/lib/permissions/grant-rules"
-import { grantsFromRows, templateGrants, toStored } from "@/lib/permissions/stored-names"
+import { grantsFromRows, templateGrants } from "@/lib/permissions/stored-names"
 import type { CreateRoleInput, UpdateRoleInput } from "@/lib/validations/role.schema"
 import type { UserRole } from "@prisma/client"
 import { resolveBundles, serializeAccess, type SerializedAccess } from "@/lib/features/bundles"
@@ -64,8 +64,8 @@ export class RoleService {
                 data: {
                     companyId, name, baseRole: builtIn, builtIn,
                     grants: {
-                        create: toStored((Object.entries(BUILT_IN_GRANTS[builtIn]) as [string, Scope][])
-                            .map(([permission, scope]) => ({ permission, scope }))),
+                        create: (Object.entries(BUILT_IN_GRANTS[builtIn]) as [string, Scope][])
+                            .map(([permission, scope]) => ({ permission, scope })),
                     },
                 },
             })
@@ -194,7 +194,7 @@ export class RoleService {
                 data: {
                     companyId: input.companyId, name: input.name, description: input.description ?? null,
                     baseRole, copiedFromTemplateId: template?.id ?? null,
-                    grants: { create: toStored(grantRows(verdict.grants)) },
+                    grants: { create: grantRows(verdict.grants) },
                 },
             })
             const { AuditLogService } = await import("./audit-log.service")
@@ -253,7 +253,7 @@ export class RoleService {
             })
             if (grants) {
                 await tx.roleGrant.deleteMany({ where: { roleId: input.id } })
-                await tx.roleGrant.createMany({ data: toStored(grants).map(g => ({ roleId: input.id, ...g })) })
+                await tx.roleGrant.createMany({ data: grants.map(g => ({ roleId: input.id, ...g })) })
             }
             // For a removal that must be instant: sign every holder out now.
             if (input.applyNow && accessChanged) {
