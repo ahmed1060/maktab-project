@@ -6,6 +6,7 @@ import { ObligationService } from "@/lib/services/obligation.service"
 import { assignedToTeamWhere, and } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
 import { parsePaging } from "@/lib/pagination"
+import { dayRangeIn } from "@/lib/services/filter-zone"
 
 export const GET = withStandardHandler(async (req, session) => {
     const userId = (session.user as any).id
@@ -62,15 +63,9 @@ export const GET = withStandardHandler(async (req, session) => {
         })
     }
 
-    if (dateFrom || dateTo) {
-        whereClause.updatedAt = {}
-        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
-        if (dateTo) {
-            const end = new Date(dateTo)
-            end.setHours(23, 59, 59, 999)
-            whereClause.updatedAt.lte = end
-        }
-    }
+    // Days where the company is, not on the server's clock.
+    const updatedAt = await dayRangeIn(dateFrom, dateTo, whereClause.companyId)
+    if (updatedAt) whereClause.updatedAt = updatedAt
 
     const { page, limit, skip } = parsePaging(searchParams, 10)
 

@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { grantFor, type Actor } from "@/lib/permissions/can"
 import { assignedToTeamWhere } from "@/lib/team-scope"
+import { dayRangeIn } from "@/lib/services/filter-zone"
 
 /**
  * A task in which this member's share of the cost is still to pay: more than
@@ -76,12 +77,9 @@ export async function pendingCostsWhere(
     // show, and Mark all as paid pays those, not the rest of each task.
     if (filters.employeeId) where.AND.push({ assignees: { some: { id: filters.employeeId } } }, unpaidShareOf(filters.employeeId))
     if (filters.search) where.AND.push({ title: { contains: filters.search, mode: "insensitive" } })
-    if (filters.dateFrom) where.AND.push({ updatedAt: { gte: new Date(filters.dateFrom) } })
-    if (filters.dateTo) {
-        const end = new Date(filters.dateTo)
-        end.setHours(23, 59, 59, 999)
-        where.AND.push({ updatedAt: { lte: end } })
-    }
+    // Days where the company is, not on the server's clock.
+    const updatedAt = await dayRangeIn(filters.dateFrom, filters.dateTo, companyId)
+    if (updatedAt) where.AND.push({ updatedAt })
 
     return where
 }
