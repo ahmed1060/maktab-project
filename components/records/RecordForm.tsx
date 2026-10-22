@@ -12,22 +12,12 @@ import { RECORD_FILES_FOLDER, RECORD_FILES_MAX, RECORD_FILE_ACCEPT, RECORD_FILE_
 import { RECORD_TEXT_MAX, REMINDER_DAYS_MAX, SECTION_TITLE_MAX } from '@/lib/validations/record.schema'
 import type { RecordItem, SectionItem } from './types'
 import { useClients } from './useClients'
+import { discardUploads as discard } from './discard-uploads'
 
 const NEW_SECTION = '__new__'
 const KINDS = RECORD_FILE_ACCEPT.split(',')
 
 type Errors = Partial<Record<'section' | 'content' | 'files' | 'reminder', string>>
-
-/** Files uploaded for a record that isn't saved with them: removed again, without waiting. */
-function discard(urls: string[]) {
-    if (!urls.length) return
-    void fetch('/api/records/uploads', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls }),
-        keepalive: true,
-    }).catch(() => {})
-}
 
 /**
  * Adding a record to a client, or editing one (CLIENTS_PLAN.md §0.2): its

@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest"
+import { describe, it, expect, afterEach, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import { addDays, daysBetween, EXPIRES_SOON_DAYS, expiryDay, expiryRange, expiryState, parseExpiryDay } from "./record-expiry"
 import { ownFilePath, parseRecordFiles, storeRecordFiles } from "./record-files"
-import { createRecordSchema, updateRecordSchema, RECORD_TEXT_MAX } from "./validations/record.schema"
+import { createRecordSchema, discardUploadsSchema, updateRecordSchema, RECORD_TEXT_MAX } from "./validations/record.schema"
 import { personName } from "@/components/records/types"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
@@ -141,7 +141,28 @@ describe("a record's form", () => {
         expect(FORM).toContain("unsaved.current.push(done.url)")
         expect(FORM).toContain("if (!inFlight.current) discard(list.splice(0))")
         expect(FORM).toContain("discard(unsaved.current.splice(0).filter(url => !saved.has(url)))")
-        expect(FORM).toContain("fetch('/api/records/uploads', {")
+        expect(FORM).toContain("import { discardUploads as discard } from './discard-uploads'")
+    })
+
+    it("removes them in requests the route accepts, however many a form uploaded across failed saves", async () => {
+        const { discardUploads } = await import("@/components/records/discard-uploads")
+        const sent: string[][] = []
+        vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+            expect(url).toBe("/api/records/uploads")
+            const body = JSON.parse(String(init.body))
+            // Each one as the route reads it: one over its limit was refused whole.
+            expect(discardUploadsSchema.safeParse(body).success).toBe(true)
+            sent.push(body.urls)
+            return new Response("{}")
+        })
+        try {
+            const urls = Array.from({ length: 23 }, (_, i) => `https://abc.supabase.co/storage/v1/object/public/app-assets/c1/records/${i}.pdf`)
+            discardUploads(urls)
+            expect(sent.map(batch => batch.length)).toEqual([10, 10, 3])
+            expect(sent.flat()).toEqual(urls)
+        } finally {
+            vi.unstubAllGlobals()
+        }
     })
 
     it("closed while a save is on its way, leaves that save's files to it: kept if it saves, removed if not", () => {
