@@ -9,9 +9,11 @@ interface LocationSearchInputProps {
     placeholder?: string
     label?: string
     locale: string
+    /** Drawn as a building block's field (DESIGN.md §5.3), on a page moved onto them. */
+    blocks?: boolean
 }
 
-export default function LocationSearchInput({ value, onChange, placeholder, label, locale }: LocationSearchInputProps) {
+export default function LocationSearchInput({ value, onChange, placeholder, label, locale, blocks = false }: LocationSearchInputProps) {
     const [query, setQuery] = useState(value.name)
     const [suggestions, setSuggestions] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
@@ -100,12 +102,16 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
     }
 
     return (
-        <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
-            {label && <label className="label" style={{ display: 'block', marginBottom: '0.5rem' }}>{label}</label>}
+        <div ref={wrapperRef} className={blocks ? 'ui-field' : undefined} style={{ position: 'relative', width: '100%' }}>
+            {label && (blocks
+                ? <span className="ui-label" aria-hidden="true">{label}</span>
+                : <label className="label" style={{ display: 'block', marginBottom: '0.5rem' }}>{label}</label>)}
             <div style={{ position: 'relative' }}>
                 <input aria-label={label}
                     type="text"
-                    className="input"
+                    // Its own suggestions open here; the browser's would cover them.
+                    autoComplete="off"
+                    className={blocks ? 'ui-input' : 'input'}
                     value={query}
                     onChange={(e) => {
                         setQuery(e.target.value)
@@ -134,10 +140,10 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                         }
                     }}
                     placeholder={placeholder}
-                    style={{ width: '100%', paddingRight: loading ? '2rem' : '0.75rem' }}
+                    style={blocks ? { paddingInlineEnd: loading ? '2rem' : undefined } : { width: '100%', paddingRight: loading ? '2rem' : '0.75rem' }}
                 />
                 {loading && (
-                    <div style={{ position: 'absolute', right: locale === 'ar' ? 'auto' : '0.75rem', left: locale === 'ar' ? '0.75rem' : 'auto', top: '50%', transform: 'translateY(-50%)' }}>
+                    <div style={blocks ? { position: 'absolute', insetInlineEnd: '0.75rem', top: '50%', transform: 'translateY(-50%)' } : { position: 'absolute', right: locale === 'ar' ? 'auto' : '0.75rem', left: locale === 'ar' ? '0.75rem' : 'auto', top: '50%', transform: 'translateY(-50%)' }}>
                         <div style={{ width: '16px', height: '16px', border: '2px solid var(--border)', borderTopColor: 'var(--info-solid)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
                     </div>
                 )}
