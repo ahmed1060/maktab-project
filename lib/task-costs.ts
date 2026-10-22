@@ -1,12 +1,9 @@
 /**
  * A task's costs (CLIENTS_PLAN.md §4.4, §4.5). Each is a row of its own
- * (TaskCost), with its id and description, and an entry in the task's
- * comments naming that row, which the release before reads and writes.
- *
- * While the release before may be live, the entries say which costs a task
- * has: it adds entries with no row, and removes an entry and leaves its row.
- * A later migration gives those entries their rows and removes the rows left
- * over; until then, a cost with no row is removed by when it was added.
+ * (TaskCost), which says the task has it, with its id and description. Each
+ * is also an entry in the task's comments naming that row, still written for
+ * the release before, which lists the entries; they agree since 4d's
+ * migration.
  */
 
 export const COST_DESCRIPTION_MAX = 200
@@ -24,11 +21,20 @@ export type CostEntry = {
     date: string
 }
 
+/** A cost's row, as the task's page has it. */
+export type CostRow = {
+    id: string
+    amount: number
+    description: string | null
+    authorId: string | null
+    authorName: string | null
+    /** When it was added, which costs added together share. */
+    createdAt: string
+}
+
 /** One cost, as the task's page lists it. */
 export type CostLine = {
-    /** Its row; none for one the release before added. */
-    id: string | null
-    /** When it was added, which costs added together share. */
+    id: string
     date: string
     amount: number
     description: string | null
@@ -52,13 +58,6 @@ export function cents(amount: number): number {
     return sign * Number(`${Math.round(Number(`${Math.abs(amount)}e2`))}e-2`)
 }
 
-/**
- * A cost entry for an amount above nothing, to the cent: the app never wrote
- * any other, and the migration gave only these rows.
- */
-function isCost(entry: unknown): entry is CostEntry {
-    return isCostEntry(entry) && typeof entry.amount === 'number' && cents(entry.amount) > 0
-}
 
 /**
  * What was typed as a cost's description, or none. Refused over 200
@@ -87,22 +86,15 @@ export function costEntry(cost: { id: string; amount: number; description: strin
 }
 
 /**
- * The task's costs, in the order they were added: each entry, with its
- * row's id and description. A row whose entry the release before removed
- * isn't one any more.
+ * The task's costs, in the order they were added: its rows, those added
+ * together in the order their entries are in.
  */
-export function costLines(comments: unknown, rows: { id: string; description: string | null }[]): CostLine[] {
-    const byId = new Map(rows.map(r => [r.id, r]))
+export function costLines(rows: CostRow[], comments: unknown): CostLine[] {
     const entries = Array.isArray(comments) ? comments : []
-    return entries.filter(isCost).map(e => {
-        const row = typeof e.costId === 'string' ? byId.get(e.costId) : undefined
-        return {
-            id: row?.id ?? null,
-            date: String(e.date),
-            amount: e.amount,
-            description: row ? row.description : typeof e.description === 'string' && e.description.trim() ? e.description : null,
-            author: typeof e.author === 'string' ? e.author : null,
-            authorId: typeof e.authorId === 'string' ? e.authorId : null,
-        }
-    })
+    const place = new Map<string, number>()
+    entries.forEach((e, i) => { if (isCostEntry(e) && typeof e.costId === 'string') place.set(e.costId, i) })
+    const at = (id: string) => place.get(id) ?? Number.MAX_SAFE_INTEGER
+    return [...rows]
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || at(a.id) - at(b.id))
+        .map(r => ({ id: r.id, date: r.createdAt, amount: r.amount, description: r.description, author: r.authorName, authorId: r.authorId }))
 }
