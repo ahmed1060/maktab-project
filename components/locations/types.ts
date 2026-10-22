@@ -12,4 +12,4 @@ export type LocationItem = {
     company: { name: string }
 }
 
-export type ClientOption = { id: string; name: string; company?: string }
+export type ClientOption = { id: string; name: string; company?: string; archived?: boolean }

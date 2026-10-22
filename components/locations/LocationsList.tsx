@@ -91,7 +91,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const total: number = result?.data?.total || 0
 
     // The filter by client, for whoever may see the clients.
-    const clients = useClientOptions(onePage && can('clients.view'))
+    const clients = useClientOptions(onePage && can('clients.view'), true)
 
     useAdjustOnChange([selectedCompanyId], () => { setPage(1); setForClient('') })
     // A location open in the form is the last company's once a Super Admin
@@ -179,7 +179,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const clientOptions = [
         { value: '', label: t('locations_filter_all') },
         { value: SHARED, label: t('locations_filter_shared') },
-        ...clients.clients.map(c => ({ value: c.id, label: c.company ? `${c.name} · ${c.company}` : c.name })),
+        ...clients.clients.map(c => ({ value: c.id, label: [c.name, c.company, c.archived && t('clients_archived_mark')].filter(Boolean).join(' · ') })),
     ]
     const statusOptions = [
         { value: '', label: t('locations_in_use') },

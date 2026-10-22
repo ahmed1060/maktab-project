@@ -110,11 +110,12 @@ describe("the Locations page", () => {
 
     it("offers the clients to filter by only to whoever may see them", async () => {
         await page()
-        expect(state.keys).toContain("/api/clients")
+        // Archived ones too: a filter keeps them (CLIENTS_PLAN.md §4.3).
+        expect(state.keys).toContain("/api/clients?archived=all")
         state.keys = []
         state.grants = new Set(["locations.view"])
         await page()
-        expect(state.keys).not.toContain("/api/clients")
+        expect(state.keys.some(k => k.startsWith("/api/clients"))).toBe(false)
     })
 })
 

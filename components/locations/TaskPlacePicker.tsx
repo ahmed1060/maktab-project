@@ -24,7 +24,7 @@ type PickRow = { id: string; name: string; isHq: boolean; needsPin: boolean }
  * is listed greyed: no task can use it until it has one (§2.8). "+ New
  * location" adds one there and then, and picks it.
  */
-export default function TaskPlacePicker({ value, onChange, companyId, current, error, disabled = false }: {
+export default function TaskPlacePicker({ value, onChange, companyId, current, currentClient, error, disabled = false }: {
     value: TaskPlace
     onChange: (value: TaskPlace) => void
     /** The task's company: a Super Admin's chosen one, or the edited task's. */
@@ -34,6 +34,8 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, e
      * more (archived since), so an edit that leaves it alone can keep it.
      */
     current?: { id: string; label: string } | null
+    /** The edited task's client, offered though it may be archived since (CLIENTS_PLAN.md §4.3). */
+    currentClient?: { id: string; name: string } | null
     /** Shown once a save has been tried. */
     error?: string
     disabled?: boolean
@@ -104,7 +106,11 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, e
             {seesClients && !waitsForCompany && (
                 <Field label={t('location_client')} hint={t('task_client_hint')}>{p => (
                     <Select {...p} icon={StorefrontIcon} value={value.clientId} onChange={e => pickClient(e.target.value)} disabled={disabled}
-                        options={[{ value: '', label: t('task_no_client') }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
+                        options={[
+                            { value: '', label: t('task_no_client') },
+                            ...clients.map(c => ({ value: c.id, label: c.name })),
+                            ...(currentClient && !clients.some(c => c.id === currentClient.id) ? [{ value: currentClient.id, label: `${currentClient.name} · ${t('clients_archived_mark')}` }] : []),
+                        ]} />
                 )}</Field>
             )}
             {locationField
