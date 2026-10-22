@@ -12,6 +12,34 @@ import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
 import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
+import { LocationService } from "./location.service"
+
+/**
+ * Where a task's check measures from (CLIENTS_PLAN.md §2.5): its location's
+ * pin, and that location's own radius or the system's. A task from before
+ * locations has its typed location's coordinates, if it had any, and the
+ * system's radius.
+ */
+async function checkTarget(task: { location: string | null; place: { latitude: number | null; longitude: number | null; radiusMeters: number | null } | null }) {
+    const { locationVerifyRadiusMeters } = await SystemSettingsService.get()
+    if (task.place && task.place.latitude !== null && task.place.longitude !== null) {
+        return { coords: { lat: task.place.latitude, lng: task.place.longitude }, radius: task.place.radiusMeters ?? locationVerifyRadiusMeters }
+    }
+    const coords = extractCoords(task.location)
+    return coords ? { coords, radius: locationVerifyRadiusMeters } : null
+}
+
+const PLACE = { select: { latitude: true, longitude: true, radiusMeters: true } } as const
+
+/** A task's location text by its name, for its history: JSON from the form, or plain text from before it. */
+function nameOf(text: string | null): string | null {
+    if (!text) return null
+    try {
+        const parsed = JSON.parse(text)
+        if (parsed && typeof parsed.name === "string") return parsed.name
+    } catch { /* plain text */ }
+    return text
+}
 
 /**
  * TaskService
@@ -35,8 +63,11 @@ export class TaskService {
         const userId = session.user.id
         const userCompanyId = session.user.companyId
 
-        const { assigneeIds, deadline, clientId, location: requestedLocation, ...rest } = input
+        // A typed location is no more (CLIENTS_PLAN.md §2.3): one is picked,
+        // and its text below takes the place of any the request carried.
+        const { assigneeIds, deadline, clientId, locationId, ...rest } = input
         const deadlineDate = new Date(deadline)
+        if (!locationId) throw new Error("TASK_LOCATION_REQUIRED")
 
         // 1. Cross-Company Assignment Validation
         if (userRole !== 'SUPER_ADMIN') {
@@ -44,23 +75,6 @@ export class TaskService {
 
             const verdict = await checkAssignees(assigneeIds, session, "tasks.create")
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
-        }
-
-        // 1.5 Client resolution — authoritative when present: the location
-        // actually stored comes from the client, not from whatever location
-        // text the request also carried (see createTaskSchema's clientId
-        // comment for why: a UI toggle alone isn't a real guarantee against
-        // a tampered request sending both).
-        let resolvedClientId: string | null = null
-        let resolvedLocation = requestedLocation
-        if (clientId) {
-            const client = await prisma.client.findUnique({ where: { id: clientId } })
-            if (!client) throw new Error("CLIENT_NOT_FOUND")
-            if (userRole !== 'SUPER_ADMIN' && client.companyId !== userCompanyId) {
-                throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
-            }
-            resolvedClientId = client.id
-            resolvedLocation = JSON.stringify({ name: client.locationName, link: client.locationLink || '' })
         }
 
         // 2. Deadline Safety Check (Strengthened to 3-hour minimum)
@@ -82,12 +96,25 @@ export class TaskService {
             targetCompanyId = firstAssignee?.companyId || null
         }
 
+        // The client, optional, and the location, its client's or a shared
+        // one, each the task's company's.
+        let resolvedClientId: string | null = null
+        if (clientId) {
+            const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyId: true } })
+            if (!client) throw new Error("CLIENT_NOT_FOUND")
+            if (client.companyId !== targetCompanyId) throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
+            resolvedClientId = client.id
+        }
+
         // 3. Database Transaction
         return await prisma.$transaction(async (tx) => {
+            const place = await LocationService.forTask(tx, locationId, { companyId: targetCompanyId, clientId: resolvedClientId })
             const task = await tx.task.create({
                 data: {
                     ...rest,
-                    location: resolvedLocation,
+                    // Its name and map link, as the releases before read them.
+                    location: place.text,
+                    locationId: place.id,
                     clientId: resolvedClientId,
                     companyId: targetCompanyId,
                     assignees: { connect: assigneeIds.map(id => ({ id })) },
@@ -122,7 +149,7 @@ export class TaskService {
      * Updates task details with change tracking and coordinate verification.
      */
     static async updateDetails(id: string, input: UpdateTaskInput, session: any) {
-        const { title, description, assigneeIds, deadline, difficulty, location, attachments } = input
+        const { title, description, assigneeIds, deadline, difficulty, clientId, locationId, attachments } = input
         const userRole = session.user.role
         const userName = session.user.name
 
@@ -130,6 +157,7 @@ export class TaskService {
             where: { id },
             select: {
                 title: true, description: true, location: true, attachments: true, comments: true, companyId: true,
+                clientId: true, locationId: true, client: { select: { name: true } },
                 company: { select: { autoVerifyLocation: true } }
             }
         })
@@ -147,7 +175,26 @@ export class TaskService {
         const changes: any = {}
         if (title && existingTask.title !== title) changes.title = { from: existingTask.title, to: title }
         if (description && existingTask.description !== description) changes.description = { from: existingTask.description, to: description }
-        if (location && existingTask.location !== location) changes.location = { from: existingTask.location, to: location }
+
+        // Its client and its location, picked again (CLIENTS_PLAN.md §2.3,
+        // §3.1): each the task's company's, the location its client's or a
+        // shared one, and both in its history by name. A typed location is
+        // no more, so one a request carries is ignored.
+        const clientChanges = clientId !== undefined && (clientId || null) !== existingTask.clientId
+        const newClientId = clientChanges ? clientId || null : existingTask.clientId
+        if (clientChanges) {
+            const client = newClientId ? await prisma.client.findUnique({ where: { id: newClientId }, select: { companyId: true, name: true } }) : null
+            if (newClientId && !client) throw new Error("CLIENT_NOT_FOUND")
+            if (client && client.companyId !== existingTask.companyId) throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
+            changes.client = { from: existingTask.client?.name ?? null, to: client?.name ?? null }
+        }
+        let place: Awaited<ReturnType<typeof LocationService.forTask>> | null = null
+        if (clientChanges || (locationId !== undefined && locationId !== existingTask.locationId)) {
+            const picked = locationId || existingTask.locationId
+            if (!picked) throw new Error("TASK_LOCATION_REQUIRED")
+            place = await LocationService.forTask(prisma, picked, { companyId: existingTask.companyId, clientId: newClientId })
+            if (place.id !== existingTask.locationId) changes.location = { from: nameOf(existingTask.location), to: place.label }
+        }
 
         const existingComments: any[] = Array.isArray(existingTask.comments) ? existingTask.comments : []
         let finalComments = [...existingComments, {
@@ -163,10 +210,10 @@ export class TaskService {
         // company (only possible for a SUPER_ADMIN-created task) defaults to
         // on, same as a fresh Company row would.
         const autoVerifyLocation = existingTask.company?.autoVerifyLocation ?? true
-        if (location && autoVerifyLocation) {
-            const targetCoords = extractCoords(location)
-            if (targetCoords) {
-                const { locationVerifyRadiusMeters } = await SystemSettingsService.get()
+        if (place && changes.location && autoVerifyLocation) {
+            const target = await checkTarget({ location: place.text, place: place.place })
+            if (target) {
+                const { coords: targetCoords, radius } = target
                 finalComments = finalComments.map((c: any) => {
                     if (c.type === 'LOCATION_ADDED' && c.location && (!c.verificationStatus || c.autoVerified)) {
                         const submittedCoords = extractCoords(c.location)
@@ -183,7 +230,7 @@ export class TaskService {
                         if (accuracy === null && c.verificationStatus) return c
 
                         c.verificationStatus = locationVerdict(
-                            targetCoords, submittedCoords, locationVerifyRadiusMeters, accuracy,
+                            targetCoords, submittedCoords, radius, accuracy,
                         )
                         c.autoVerified = true
                     }
@@ -196,7 +243,8 @@ export class TaskService {
             ...(title && { title }),
             ...(description && { description }),
             ...(difficulty !== undefined && { difficulty }),
-            ...(location !== undefined && { location }),
+            ...(place && { location: place.text, locationId: place.id }),
+            ...(clientChanges && { clientId: newClientId }),
             ...(attachments && { attachments: normalizeJsonInput(attachments) }),
             isEdited: true,
             comments: finalComments
@@ -259,7 +307,7 @@ export class TaskService {
         return await prisma.$transaction(async (tx) => {
             const currentTask = await tx.task.findUnique({
                 where: { id },
-                include: { assignees: true, company: { select: { autoVerifyLocation: true } } }
+                include: { assignees: true, company: { select: { autoVerifyLocation: true } }, place: PLACE }
             })
             if (!currentTask) throw new Error("TASK_NOT_FOUND")
 
@@ -343,15 +391,16 @@ export class TaskService {
                 // task with no company (only possible when SUPER_ADMIN-created)
                 // defaults to on, same as a fresh Company row would.
                 const autoVerifyLocation = currentTask.company?.autoVerifyLocation ?? true
-                if (currentTask.location && autoVerifyLocation) {
-                    const targetCoords = extractCoords(currentTask.location)
+                // Measured from its location's pin, within that location's own
+                // radius when it has one (CLIENTS_PLAN.md §2.5).
+                const target = autoVerifyLocation ? await checkTarget(currentTask) : null
+                if (target) {
                     const submittedCoords = extractCoords(location)
-                    if (targetCoords && submittedCoords) {
-                        const { locationVerifyRadiusMeters } = await SystemSettingsService.get()
+                    if (submittedCoords) {
                         locationComment.verificationStatus = locationVerdict(
-                            targetCoords,
+                            target.coords,
                             submittedCoords,
-                            locationVerifyRadiusMeters,
+                            target.radius,
                             extractAccuracy(location),
                         )
                         locationComment.autoVerified = true
@@ -650,6 +699,9 @@ export class TaskService {
                         createdBy: originalTask.createdBy,
                         attachments: originalTask.attachments,
                         location: originalTask.location,
+                        // The same client and place: it's the same work.
+                        clientId: originalTask.clientId,
+                        locationId: originalTask.locationId,
                         comments: [...commentsToClone, {
                             text: `Transferred from task "${originalTask.title}".`,
                             author: "System",

@@ -50,8 +50,11 @@ const later = () => new Date(Date.now() + 7 * 86_400_000).toISOString()
 const P = (id: string) => ({ params: { id } })
 const ASSIGNEE: Record<string, string> = { "t-emp": "emp", "t-loner": "loner", "t-admin": "admin", "t-other": "other" }
 
+// At a shared location in the assignee's company (task-access.harness.ts).
 const create = (assignee: string) => async () =>
-    (await import("@/app/api/tasks/route")).POST(withBody("POST", "/api/tasks", { title: "New task", description: "Something to do", assigneeIds: [assignee], deadline: later() }))
+    (await import("@/app/api/tasks/route")).POST(withBody("POST", "/api/tasks", {
+        title: "New task", description: "Something to do", assigneeIds: [assignee], deadline: later(), locationId: assignee === "other" ? "loc-c2" : "loc-c1",
+    }))
 
 /** Per task: the action, the status the task is in for it, and the request. */
 const ON_TASK: [string, string, (t: string) => Promise<Response>][] = [

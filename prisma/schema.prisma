@@ -590,14 +590,23 @@ model Task {
   // a client never touches historical tasks — SetNull just detaches the
   // reference, the copied location text stays exactly as it was.
   clientId            String?
+  // The location it's done at (CLIENTS_PLAN.md §2.3): its client's, or a
+  // shared one. `location` above keeps that location's name and map link as
+  // they were when picked, for the releases before that read only it; the
+  // check uses this one's pin and radius, so a pin corrected later applies
+  // to open tasks. A location goes only with its client; its tasks keep
+  // their text then. Tasks from before locations have none.
+  locationId          String?
   company             Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   client              Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  place               Location?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]            @relation("MultipleAssignees")
 
   @@index([createdBy])
   @@index([companyId])
   @@index([clientId])
+  @@index([locationId])
   @@index([status])
   @@index([createdAt])
   @@index([paymentStatus])
@@ -1186,6 +1195,7 @@ model Location {
   company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   client       Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdBy    User?     @relation("LocationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  tasks        Task[]
 
   @@index([companyId])
   @@index([clientId])
