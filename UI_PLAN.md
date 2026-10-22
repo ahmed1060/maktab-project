@@ -908,3 +908,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   for review in #97. With it, the Admins and Team Leaders of the companies
   already there are offered Locations in the side bar, as a new company's
   are.
+- **2026-10-22:** The task form's client and location pickers are on the
+  building blocks (`CLIENTS_PLAN.md` step 2, PR 2a; `DESIGN.md` §5.3, "a
+  pick from a list that can grow"), on creating a task and in its edit
+  window. The rest of those two screens is as it was, until their own
+  turn. Two building block changes: a select's options can come in
+  groups, with an option that can't be picked greyed; and fields that go
+  together are spaced as in a dialog wherever they are.
