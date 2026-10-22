@@ -810,3 +810,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   way through is tried again too, not only one that gets no answer. The face
   check's model downloads, tens of megabytes each, start a part over and
   count its progress once.
+- **2026-10-22:** Decided by the product owner: the top bar keeps its
+  glass when the app shell moves onto the building blocks (`DESIGN.md`
+  §5.1). Today's bar already does this (`components/DashboardShell.tsx`);
+  the new shell keeps it, with its transition naming what it changes
+  rather than `all`, and reduce motion respected.
