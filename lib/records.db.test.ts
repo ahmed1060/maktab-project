@@ -18,6 +18,7 @@ const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
 const RECORDS = "20261104000000_records_on_clients"
 const CLIENT_NAMES = "20261107000000_client_names_stored"
+const DATABASE_NAMES = "20261108000000_client_names_in_database"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BUCKET = "https://abc.supabase.co/storage/v1/object/public/app-assets"
@@ -67,6 +68,17 @@ INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES ('t
 UPDATE "Company" SET "moduleLabels" = '{"vendors":"Suppliers","tasks":"Jobs"}', "moduleIcons" = '{"vendors":"🚛"}' WHERE id = 'c2';
 `
 
+// What 0b's code wrote while 0c waited for review, under the old names, and
+// what 0d renames: a vendor with a section and a task, a grant, and a
+// company's name for Clients, saved whole.
+const AS_0B_WROTE_LATER = `
+INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v0', 'c2', 'Older', 'Sami', '0109', 'Qena', now());
+INSERT INTO "ClientSection"(id, title, "vendorId", "updatedAt") VALUES ('s0', 'Kept', 'v0', now());
+INSERT INTO "Task"(id, title, description, status, deadline, "updatedAt", "companyId", "vendorId") VALUES ('t0', 'Visit', 'Visit them', 'PENDING', now(), now(), 'c2', 'v0');
+INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('r-0b', 'vendors.view', 'COMPANY');
+UPDATE "Company" SET "moduleLabels" = '{"vendors":"Partners"}' WHERE id = 'c2';
+`
+
 const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1" }) } as any
 const employee = { user: withGrants({ id: "e1", role: "EMPLOYEE", companyId: "c1" }) } as any
 const otherAdmin = { user: withGrants({ id: "a2", role: "ADMIN", companyId: "c2" }) } as any
@@ -92,11 +104,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         for (const m of MIGRATIONS) {
             if (m === RECORDS) await db.query(OLD_SECTION)
             if (m === CLIENT_NAMES) await db.query(AS_0B_WROTE)
+            if (m === DATABASE_NAMES) await db.query(AS_0B_WROTE_LATER)
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
         await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "isProtected", "updatedAt") VALUES ('sa1', 'sa@x', 'p', 'Sam', 'Admin', 'sa1', true, now())`)
-        await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
+        await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
             ('v1', 'c1', 'Acme', 'Mona', '0100', 'Cairo', now()),
             ('v2', 'c1', 'Beta', 'Omar', '0101', 'Giza', now()),
             ('v3', 'c2', 'Gamma', 'Sara', '0102', 'Alex', now())`)
@@ -151,12 +164,26 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(template.grants).toEqual([{ permission: "clients.manage", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }, { permission: "clients.view", scope: "COMPANY" }])
         })
 
-        it("moves a company's own name and icon for Clients to the module's new key, and drops the old Clients table (0c)", async () => {
+        it("moves a company's own name and icon for Clients to the module's new key, as 0c found them and 0b saved them since (0c, 0d)", async () => {
             const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c2'`)
-            expect(company).toEqual({ moduleLabels: { clients: "Suppliers", tasks: "Jobs" }, moduleIcons: { clients: "🚛" } })
-            expect((await db.query(`SELECT to_regclass('"Client"') AS t`)).rows[0].t).toBeNull()
-            // Its column on sections stays until 0d: 0b's code selects every column of a section.
-            expect((await db.query(`SELECT 1 FROM information_schema.columns WHERE table_name = 'ClientSection' AND column_name = 'clientId'`)).rows).toHaveLength(1)
+            expect(company).toEqual({ moduleLabels: { clients: "Partners" }, moduleIcons: { clients: "🚛" } })
+        })
+
+        it("renames vendors to clients in the database, with what 0b wrote while 0c waited for review (0d)", async () => {
+            expect((await db.query(`SELECT to_regclass('"Vendor"') AS t`)).rows[0].t).toBeNull()
+            expect((await db.query(`SELECT id, name FROM "Client" WHERE id = 'v0'`)).rows).toEqual([{ id: "v0", name: "Older" }])
+            expect((await db.query(`SELECT "clientId" FROM "ClientSection" WHERE id = 's0'`)).rows).toEqual([{ clientId: "v0" }])
+            expect((await db.query(`SELECT "clientId" FROM "Task" WHERE id = 't0'`)).rows).toEqual([{ clientId: "v0" }])
+            const columns = (await db.query(`SELECT table_name, column_name FROM information_schema.columns WHERE column_name IN ('vendorId', 'clientId') AND table_name IN ('Task', 'ClientSection') ORDER BY 1, 2`)).rows
+            expect(columns).toEqual([{ table_name: "ClientSection", column_name: "clientId" }, { table_name: "Task", column_name: "clientId" }])
+            // The grant 0b wrote under the old name, which the role already held under the new.
+            expect((await db.query(`SELECT permission FROM "RoleGrant" WHERE "roleId" = 'r-0b' AND permission LIKE '%.view' ORDER BY 1`)).rows.map(r => r.permission)).toEqual(["clients.view", "tasks.view"])
+            expect((await db.query(`SELECT count(*)::int AS n FROM "RoleGrant" WHERE permission LIKE 'vendors.%'`)).rows[0].n).toBe(0)
+            // Deleting a client still takes its sections, and leaves its tasks.
+            await db.query(`DELETE FROM "Client" WHERE id = 'v0'`)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "ClientSection" WHERE id = 's0'`)).rows[0].n).toBe(0)
+            expect((await db.query(`SELECT "clientId" FROM "Task" WHERE id = 't0'`)).rows).toEqual([{ clientId: null }])
+            await db.query(`DELETE FROM "Task" WHERE id = 't0'`)
         })
 
         it("no longer renames a name on the way in, now that clients.* names the businesses (0b)", async () => {
@@ -172,15 +199,14 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`UPDATE "Company" SET "moduleLabels" = NULL WHERE id = 'c2'`)
         })
 
-        it("deletes the old section's own sections and their records, and a section still has exactly one owner", async () => {
-            expect((await db.query(`SELECT id FROM "ClientSection" WHERE "vendorId" IS NULL`)).rows).toEqual([])
+        it("deletes the old section's own sections and their records (0b), and every section has a client (0d)", async () => {
+            expect((await db.query(`SELECT id FROM "ClientSection" WHERE id = 'old-s'`)).rows).toEqual([])
             expect((await db.query(`SELECT id FROM "ClientNote" WHERE id = 'old-n'`)).rows).toEqual([])
-            await expect(db.query(`INSERT INTO "ClientSection"(id, title, "updatedAt") VALUES ('none', 'Nobody''s', now())`)).rejects.toThrow(/ClientSection_one_owner/)
-            await expect(db.query(`INSERT INTO "ClientSection"(id, title, "clientId", "vendorId", "updatedAt") VALUES ('both', 'Both', 'old', 'v1', now())`)).rejects.toThrow(/ClientSection_one_owner/)
+            await expect(db.query(`INSERT INTO "ClientSection"(id, title, "updatedAt") VALUES ('none', 'Nobody''s', now())`)).rejects.toThrow(/"clientId".*not-null|null value in column "clientId"/)
         })
     })
 
-    describe("Clients grants, written under their new names and read under either until 0d", () => {
+    describe("Clients grants, under their new names", () => {
         let Roles: typeof import("@/lib/services/role.service").RoleService
         let Templates: typeof import("@/lib/services/role-template.service").RoleTemplateService
         beforeAll(async () => {
@@ -197,10 +223,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(await stored(role.id)).toEqual(["clients.view COMPANY"])
         })
 
-        it("are read under their old names too, as 0b's code writes them while 0c waits for review", async () => {
-            const role = await Roles.create({ companyId: "c1", name: "Saved by 0b later", baseRole: "EMPLOYEE", grants: [{ permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
-            await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ($1, 'vendors.view', 'COMPANY')`, [role.id])
-            expect((await Roles.getById(role.id)).grants).toContainEqual({ permission: "clients.view", scope: "COMPANY" })
+        it("are what a session holds, and who can do what, says", async () => {
+            const role = await Roles.create({ companyId: "c1", name: "Viewer", baseRole: "EMPLOYEE", grants: [{ permission: "clients.view", scope: "COMPANY" }] }, superAdmin)
             await db.query(`UPDATE "User" SET "roleId" = $1 WHERE id = 'e1'`, [role.id])
             try {
                 const { decodeGrants } = await import("@/lib/permissions/grants")
@@ -211,30 +235,24 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             } finally {
                 await db.query(`UPDATE "User" SET "roleId" = (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE') WHERE id = 'e1'`)
             }
-            // Saved again, it holds the new name alone.
-            await Roles.update({ id: role.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, superAdmin)
-            expect(await stored(role.id)).toEqual(["clients.view COMPANY"])
         })
 
-        it("are written under their new names in a template, which reads either", async () => {
+        it("are written under their new names in a template", async () => {
             const template = await Templates.create({ name: "Clients desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
             const grants = async () => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [template.id])).rows[0].grants
             expect(await grants()).toEqual([{ permission: "tasks.view", scope: "TEAM" }, { permission: "clients.view", scope: "COMPANY" }])
-            // As 0b's template editor saves it while 0c waits for review.
-            await db.query(`UPDATE "RoleTemplate" SET grants = '[{"permission":"vendors.manage","scope":"COMPANY"}]' WHERE id = $1`, [template.id])
-            expect((await Templates.getById(template.id)).grants).toEqual([{ permission: "clients.manage", scope: "COMPANY" }])
-            // A role made from it holds what it says, under the new names.
+            await Templates.update({ id: template.id, grants: [{ permission: "clients.manage", scope: "COMPANY" }] }, superAdmin)
+            expect((await Templates.getById(template.id)).grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }, { permission: "clients.manage", scope: "COMPANY" }])
+            // A role made from it holds what it says.
             const role = await Roles.create({ companyId: "c1", name: "From the desk", fromTemplateId: template.id }, superAdmin)
             expect(await stored(role.id)).toEqual(["clients.manage COMPANY", "clients.view COMPANY"])
         })
 
-        it("keep a company's name and icon for Clients under the module's new key, and read its old one", async () => {
+        it("keep a company's name and icon for Clients under the module's new key", async () => {
             const { CompanyService } = await import("@/lib/services/company.service")
             await CompanyService.update({ id: "c2", moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "🏥" } } as any, superAdmin)
             const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c2'`)
             expect(company).toEqual({ moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "🏥" } })
-            const { parseModuleOverrides } = await import("@/lib/modules")
-            expect(parseModuleOverrides({ vendors: "Customers" })).toEqual({ clients: "Customers" })
             await db.query(`UPDATE "Company" SET "moduleLabels" = NULL, "moduleIcons" = NULL WHERE id = 'c2'`)
         })
     })
@@ -439,7 +457,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await expect(Clients.delete("v2", admin)).rejects.toThrow("CLIENT_HAS_RECORDS")
             await Records.delete(admin, note)
             await Clients.delete("v2", admin)
-            expect((await db.query(`SELECT count(*)::int AS n FROM "ClientSection" WHERE "vendorId" = 'v2'`)).rows[0].n).toBe(0)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "ClientSection" WHERE "clientId" = 'v2'`)).rows[0].n).toBe(0)
         })
 
         it("deletes a section with every record in it, and their files", async () => {
@@ -529,7 +547,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("won't delete a client while a record is being added to it", async () => {
-            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v4', 'c1', 'Delta', 'Nour', '0103', 'Suez', now())`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v4', 'c1', 'Delta', 'Nour', '0103', 'Suez', now())`)
             const section = (await Records.createSection(admin, { clientId: "v4", title: "Licences" })).id
             // The record is written and its transaction takes a moment to finish, as someone deletes the client.
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
@@ -635,9 +653,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("deletes a section and its company at once without a deadlock: the section goes with the company", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
-            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Theta', 'Nour', '0106', 'Luxor', now())`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Theta', 'Nour', '0106', 'Luxor', now())`)
             await Records.create(superAdmin, { content: "Theta lease", files: [], expiryDate: null, reminderDays: null, clientId: "v7", sectionTitle: "Leases" })
-            const section = (await db.query(`SELECT id FROM "ClientSection" WHERE "vendorId" = 'v7'`)).rows[0].id
+            const section = (await db.query(`SELECT id FROM "ClientSection" WHERE "clientId" = 'v7'`)).rows[0].id
             // The company's deletion holds its clients and records, then waits
             // here before its rows go, the section among them.
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.8); RETURN OLD; END $$ LANGUAGE plpgsql`)
@@ -740,7 +758,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("removes a deleted company's records' files", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c3', 'Three', now())`)
-            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v6', 'c3', 'Zeta', 'Rana', '0105', 'Aswan', now())`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v6', 'c3', 'Zeta', 'Rana', '0105', 'Aswan', now())`)
             await Records.create(superAdmin, { content: "Zeta licence", files: [file("c3", "zeta.pdf")], expiryDate: null, reminderDays: null, clientId: "v6", sectionTitle: "Licences" })
             removed.length = 0
             const { CompanyService } = await import("@/lib/services/company.service")
@@ -806,7 +824,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("removes the files an edit just gave a record of a company being deleted", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
-            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Eta', 'Huda', '0106', 'Tanta', now())`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Eta', 'Huda', '0106', 'Tanta', now())`)
             const id = (await Records.create(superAdmin, { content: "Eta permit", files: [], expiryDate: null, reminderDays: null, clientId: "v7", sectionTitle: "Licences" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Eta permit, scanned') EXECUTE FUNCTION test_slow()`)
@@ -830,7 +848,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 await Records.filesOfCompany(tx, "c5")
                 // Meanwhile someone adds a client to it, giving up after a moment.
                 await db.query(`SET lock_timeout = '300ms'`)
-                added = await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v8', 'c5', 'Theta', 'Rami', '0107', 'Minya', now())`).then(() => "added", (e: Error) => e.message)
+                added = await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v8', 'c5', 'Theta', 'Rami', '0107', 'Minya', now())`).then(() => "added", (e: Error) => e.message)
                 await db.query(`RESET lock_timeout`)
             })
             expect(added).toMatch(/lock timeout/)
@@ -875,16 +893,16 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("won't add a record to a client deleted meanwhile", async () => {
-            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
             const section = (await Records.createSection(admin, { clientId: "v5", title: "Licences" })).id
-            await db.query(`DELETE FROM "Vendor" WHERE id = 'v5'`)
+            await db.query(`DELETE FROM "Client" WHERE id = 'v5'`)
             await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, sectionId: section })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
             await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, clientId: "v5", sectionTitle: "New" })).rejects.toThrow("CLIENT_NOT_FOUND")
         })
 
         it("finds any of a company's clients to add a record to by its name, however many it has", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
-            await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") SELECT 'm' || n, 'c4', 'Market ' || lpad(n::text, 4, '0'), 'Owner', '0100', 'Cairo', now() FROM generate_series(1, 1100) n`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") SELECT 'm' || n, 'c4', 'Market ' || lpad(n::text, 4, '0'), 'Owner', '0100', 'Cairo', now() FROM generate_series(1, 1100) n`)
             try {
                 const first = await Records.clients(superAdmin, "c4")
                 expect(first.clients).toHaveLength(CLIENTS_SHOWN)
