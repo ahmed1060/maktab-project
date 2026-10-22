@@ -43,7 +43,7 @@ export default function RecordForm({ open, onClose, vendorId, sections, record, 
     onClose: () => void
     /** The record's client; none to choose one here, on the Records page. */
     vendorId?: string
-    /** That client's sections. */
+    /** That client's sections; none to load them here. */
     sections?: SectionItem[]
     /** The record being edited; none to add one. */
     record?: RecordItem | null
@@ -72,12 +72,16 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
     const [chosen, setChosen] = useState('')
     // What was chosen, while it's listed; otherwise the first listed.
     const clientId = vendorId ?? (clients.clients.some(c => c.id === chosen) ? chosen : clients.clients[0]?.id ?? '')
+    // The client's sections, loaded here when they aren't handed in: on the
+    // Records page, the chosen client's, or the edited record's client's.
+    const loadsSections = sections === undefined
     const { data: theirs, error: theirsError, isValidating: reloadingSections, mutate: reloadSections } = useSWR<{ data: { sections: SectionItem[] } }>(
-        choosing && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null, fetcher,
+        loadsSections && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null, fetcher,
     )
-    // Not yet known for a chosen client, rather than none, which would start a first section.
-    const list = choosing ? theirs?.data.sections : sections ?? []
-    const sectionsFailed = choosing && !!clientId && !theirs && !!theirsError
+    // Not yet known, rather than none, which would start a first section, or
+    // leave an edited record nowhere else to move to.
+    const list = loadsSections ? theirs?.data.sections : sections
+    const sectionsFailed = loadsSections && !!clientId && !theirs && !!theirsError
     const [sectionId, setSectionId] = useState(record?.section.id ?? '')
     // What was chosen, while the client has it (or a new one); otherwise its first, or a new one.
     const section = sectionId === NEW_SECTION || list?.some(s => s.id === sectionId) ? sectionId : list?.[0]?.id ?? NEW_SECTION

@@ -15,7 +15,6 @@ import {
     type Column, type MenuItem,
 } from '@/components/ui'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
-import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -101,15 +100,6 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
             .then((body: { data?: RecordItem } | null) => { if (body?.data && (!vendorId || body.data.client.id === vendorId)) setViewing(body.data) })
             .catch(() => { /* the list is still there to find it in */ })
     }, [openRecordId, vendorId])
-
-    // Editing from the Records page: the record can move to another of its
-    // client's sections, so they're fetched for the form.
-    const { data: theirSections } = useSWR<{ data?: { sections?: SectionItem[] } }>(
-        editing && !vendorId ? `/api/records/sections?vendorId=${encodeURIComponent(editing.client.id)}` : null, fetcher,
-    )
-    const editSections: SectionItem[] = vendorId
-        ? sections
-        : theirSections?.data?.sections ?? (editing ? [{ id: editing.section.id, title: editing.section.title, records: 0 }] : [])
 
     const filtersOn = (expiry ? 1 : 0) + (sectionId ? 1 : 0)
     const resetFilters = () => { setQuery(''); setSearch(''); setExpiry(''); setSectionId(''); setPage(1) }
@@ -246,7 +236,9 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
                 open={!!editing}
                 onClose={() => setEditing(null)}
                 vendorId={editing?.client.id ?? vendorId}
-                sections={editSections}
+                // On the Records page the form loads the record's client's
+                // sections, to move it to another, and says if they don't load.
+                sections={vendorId ? sections : undefined}
                 record={editing}
                 onSaved={changed}
             />

@@ -90,7 +90,7 @@ describe("record screens offer only what the server allows", () => {
     })
     it("loads the chosen client's sections before a record can be added to it, rather than starting a first one", () => {
         const FORM = source("components/records/RecordForm.tsx")
-        expect(FORM).toContain("choosing && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null")
+        expect(FORM).toContain("loadsSections && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null")
         expect(FORM).toContain("const ready = !!clientId && list !== undefined")
         expect(FORM).toContain("busy={saving} disabled={!ready}")
         expect(FORM).toContain("{t('records_sections_failed')}")
