@@ -274,6 +274,7 @@ One corner size for each level, so the level shows at a glance:
 | Panels, tables, cards, dialogs | 12px |
 | Menus, pop-ups, toasts | 8px |
 | Fields, side bar items, pager buttons | 6px |
+| The top bar, floating once the page scrolls (§5.1) | 24px |
 
 ### 4.3 Depth
 
@@ -309,9 +310,22 @@ These are built once, in the building-blocks PR, and every page uses them
   - Company Settings sits at the bottom.
 - **Side bar on phones:** a drawer from the start side, opened from the
   menu button. Check in sits at the top, beside Dashboard.
-- **Top bar:** 60px tall (56px on phones), `--panel` background with a
-  hairline below. On the end side it has the language switch, the bell and
-  the account menu (`UI_PLAN.md` §2.1).
+- **Top bar:** 60px tall (56px on phones). On the end side it has the
+  language switch, the bell and the account menu (`UI_PLAN.md` §2.1). It
+  stays at the top as the page scrolls, and is kept as it is today
+  (decided by the product owner):
+  - at the top of the page it has no background of its own, and sits on
+    the page;
+  - once the page scrolls (past 10px), it floats as a pane of glass: 16px
+    in from the page's edges, with 24px corners, a see-through
+    `--header-glass-bg` with a 20px blur and 160% saturation behind it, a
+    hairline `--header-glass-border` edge and `--header-shadow`. The page
+    scrolling under it shows through, blurred;
+  - it eases between the two over 300ms, changing only its background,
+    edge, shadow, margins and corners. With "reduce motion" on, it changes
+    at once;
+  - where the browser can't blur, the glass colour alone is opaque enough
+    to read the bar on.
 - **Page area:** `--page` background, with the page-edge spacing from
   §4.1.
 
@@ -745,3 +759,8 @@ changed:
   refusal or "not found" is said at once.
 - **2026-10-22:** So does anything else a screen loads (§5.5), at the
   product owner's request. A save is never sent again.
+- **2026-10-22:** The top bar keeps its glass, as the product owner asked
+  (§5.1): flat at the top of the page, and once it scrolls, a floating
+  pane of glass with a blur behind it, 24px corners (§4.2) and a shadow,
+  easing in over 300ms. It replaces the flat `--panel` bar the app shell
+  was to have.
