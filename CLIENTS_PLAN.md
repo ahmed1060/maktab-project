@@ -221,6 +221,21 @@ sign-in.
   still reads both, and 0d, with the app closed, rewrites any old name left
   and removes the reading of them. No trigger is needed.
 
+**How 0c keeps to this** (built):
+
+- **The stored names are rewritten** (migration
+  `20261107000000_client_names_stored`): `vendors.view` and
+  `vendors.manage` become `clients.view` and `clients.manage` in roles and
+  templates, and a company's own name and icon for Clients move to the
+  module's `clients` key. 0b's code, live while 0c waits for review, reads
+  either. A role somehow holding a permission under both names keeps one.
+- **The code writes the new names,** and still reads the old as the new
+  (`lib/permissions/stored-names.ts`, `lib/modules.ts`), for what 0b's code
+  writes meanwhile. Nobody's session reloads: the codes in it are the same.
+- **Today's clients table goes,** with the old section's link to it. No
+  release reads it. Its column on sections stays until 0d, as 0b's code
+  selects every column of a section.
+
 **PR 0d, the maintenance window:**
 
 - It renames the `Vendor` table and the `vendorId` columns to their new
@@ -724,6 +739,8 @@ balance first, automatically:
      - 0b, Vendors becoming Clients in code, was merged in #92 on
        2026-10-23 (§0.1, §0.3). It renames and nothing else: the Clients
        list page looks as it did.
+     - 0c, the stored names following the code, is built (§0.3). It opens
+       once 0b is merged and live, as its migration runs against 0b's code.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1101,3 +1118,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   change log).
 - **2026-10-23:** 0b was merged in #92. The side bar groups and the
   Clients list page open for review in #93.
+- **2026-10-22:** PR 0c is built (§0.3): the stored permission names and
+  the module's key are rewritten to `clients`, the code writes the new
+  names while still reading the old, and today's clients table is dropped.
+  It opens for review once 0b is merged and live, as its migration runs
+  against 0b's code.

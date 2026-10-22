@@ -238,7 +238,7 @@ them, as today.
 | | `records.contribute` | Add a section or a record, and edit any record (built as its own right: records are a shared notebook as much as a register) | `POST /records`, `PUT /records`, `POST /records/sections` |
 | | `records.edit` | Rename a section | `PUT /records/sections` |
 | | `records.delete` | Delete a section or a record — **cannot be undone**, high-risk (§6.15) | `DELETE /records`, `DELETE /records/sections` |
-| **Clients** | `clients.view` / `clients.manage` | See clients; create, edit and delete them (named `vendors.*` until 0b; the database keeps those names until 0c, `CLIENTS_PLAN.md` §0.3) | `clients` |
+| **Clients** | `clients.view` / `clients.manage` | See clients; create, edit and delete them (named `vendors.*` until 0b, and in the database until 0c, `CLIENTS_PLAN.md` §0.3) | `clients` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |
