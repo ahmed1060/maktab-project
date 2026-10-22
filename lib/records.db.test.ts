@@ -625,6 +625,21 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("audits a section's title as it was when deleted, though renamed just before", async () => {
+            const section = (await Records.createSection(admin, { vendorId: "v1", title: "Old name" })).id
+            await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
+            await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientSection" FOR EACH ROW WHEN (NEW.title = 'New name') EXECUTE FUNCTION test_slow()`)
+            try {
+                const renaming = Records.renameSection(admin, { id: section, title: "New name" })
+                await new Promise(r => setTimeout(r, 150))
+                await Promise.all([renaming, Records.deleteSection(admin, section)])
+                const [log] = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'DELETE_SECTION' AND "entityId" = $1`, [section])).rows
+                expect(log.details.title).toBe("New name")
+            } finally {
+                await db.query(`DROP TRIGGER test_slow ON "ClientSection"; DROP FUNCTION test_slow()`)
+            }
+        })
+
         it("refuses an edit from a form opened before someone else changed the record's files", async () => {
             const id = (await Records.create(admin, { content: "Lease", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)

@@ -462,16 +462,18 @@ export class RecordService {
             const client = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR NO KEY UPDATE`
             if (!client.length) throw new Error("RECORD_SECTION_NOT_FOUND")
             // Then the section, so a record being added meanwhile (create) is
-            // among those deleted here, with its files, or finds the section gone.
-            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${id} FOR UPDATE`
-            if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+            // among those deleted here, with its files, or finds the section
+            // gone. Its title now is the one audited: renamed since it was
+            // found, the old one was (Codex on #82).
+            const [locked] = await tx.$queryRaw<{ id: string; title: string }[]>`SELECT id, title FROM "ClientSection" WHERE id = ${id} FOR UPDATE`
+            if (!locked) throw new Error("RECORD_SECTION_NOT_FOUND")
             // Its records too, so an edit of one's files (update) is listed
             // here as it's saved, rather than read from before it.
             await tx.$queryRaw`SELECT id FROM "ClientNote" WHERE "sectionId" = ${id} ORDER BY id FOR UPDATE`
             const records = await tx.clientRecord.findMany({ where: { sectionId: id }, select: { attachment: true } })
             await tx.recordSection.delete({ where: { id } })
             const { AuditLogService } = await import("./audit-log.service")
-            await AuditLogService.log("DELETE_SECTION", "SECTION", id, { tx, ...who.audit, details: { title: section.title, vendorId: section.vendorId, records: records.length } })
+            await AuditLogService.log("DELETE_SECTION", "SECTION", id, { tx, ...who.audit, details: { title: locked.title, vendorId: section.vendorId, records: records.length } })
             return records
         })
         await removeFiles(records.flatMap(r => parseRecordFiles(r.attachment)), section.companyId)
