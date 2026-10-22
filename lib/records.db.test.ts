@@ -27,8 +27,10 @@ let refuseRemoval = false
 let removalTakes = 0
 // How many calls to come storage refuses, after which it removes again.
 let refuseCalls = 0
+// Files never uploaded, though their addresses look like this company's.
+const notStored = new Set<string>()
 vi.mock("@/lib/storage", () => ({
-    supabase: { storage: { from: () => ({ remove: async (paths: string[]) => {
+    supabase: { storage: { from: () => ({ exists: async (path: string) => ({ data: !notStored.has(path) && !removed.includes(path), error: null }), remove: async (paths: string[]) => {
         if (removalTakes) await new Promise(r => setTimeout(r, removalTakes))
         // Storage takes only so many files in one call, and refuses more.
         if (paths.length > 100) return { data: null, error: { message: "Too many keys" } }
@@ -197,6 +199,22 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await expect(Records.delete(employee, licence)).rejects.toThrow("RECORD_FORBIDDEN")
             await expect(Records.update(admin, { id: licence, content: "x", files: [], filesBefore: [file("c1", "reg.pdf").url], expiryDate: null, reminderDays: null, sectionId: (await Records.sectionsOf(otherAdmin, "v3")).sections[0].id })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
             await expect(Records.create(admin, { content: "x", files: [file("c2", "theirs.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })).rejects.toThrow("RECORD_FILE_INVALID")
+        })
+
+        it("refuses a file storage doesn't have, though its address is this company's", async () => {
+            notStored.add("c1/records/made-up.pdf")
+            const add = (files: ReturnType<typeof file>[]) => Records.create(admin, { content: "Permit", files, expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })
+            await expect(add([file("c1", "made-up.pdf")])).rejects.toMatchObject({ message: "RECORD_FILE_INVALID" })
+            const { id } = await add([file("c1", "kept-here.pdf")])
+            const edit = (files: ReturnType<typeof file>[], content = "Permit") => Records.update(admin, { id, content, files, filesBefore: [file("c1", "kept-here.pdf").url], expiryDate: null, reminderDays: null })
+            await expect(edit([file("c1", "kept-here.pdf"), file("c1", "made-up.pdf")])).rejects.toMatchObject({ message: "RECORD_FILE_INVALID" })
+            // Only what's new is asked about: one the record has can't keep it from being edited.
+            notStored.add("c1/records/kept-here.pdf")
+            await edit([file("c1", "kept-here.pdf")], "Permit, renewed")
+            expect((await Records.get(admin, id)).content).toBe("Permit, renewed")
+            // Gone again, without storage, for the tests after that count the section's records.
+            await db.query(`DELETE FROM "ClientNote" WHERE id = $1`, [id])
+            notStored.clear()
         })
 
         it("says a record deleted as it's opened is not found", async () => {

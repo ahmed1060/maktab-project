@@ -124,6 +124,20 @@ function checkFiles(files: readonly RecordFile[], companyId: string) {
     for (const f of files) if (!ownFilePath(f.url, companyId)) throw new Error("RECORD_FILE_INVALID")
 }
 
+/**
+ * Each file a record is newly given is in storage. An address of the right
+ * shape needn't be one that was uploaded: one made up, or for a file since
+ * removed, would be kept as a file nobody can open. One removed after this
+ * is refused when it's claimed (claimFiles), as its removal is noted first.
+ */
+async function checkStored(files: readonly RecordFile[], companyId: string) {
+    const paths = [...new Set(files.map(f => ownFilePath(f.url, companyId)).filter((p): p is string => !!p))]
+    if (!paths.length || !supabase) return
+    const storage = supabase.storage.from("app-assets")
+    const stored = await Promise.all(paths.map(async path => (await storage.exists(path)).data))
+    if (stored.some(found => !found)) throw new Error("RECORD_FILE_INVALID")
+}
+
 /** The lock on one file, between its removal and a record being given it. */
 const fileLock = (path: string) => `record-file:${path}`
 
@@ -424,6 +438,7 @@ export class RecordService {
             allow(session, "records.contribute", companyId, "VENDOR_NOT_FOUND")
         }
         checkFiles(input.files, companyId)
+        await checkStored(input.files, companyId)
 
         return prisma.$transaction(async tx => {
             const { AuditLogService } = await import("./audit-log.service")
@@ -482,6 +497,9 @@ export class RecordService {
             if (target.vendorId !== record.vendorId) throw new Error("RECORD_SECTION_NOT_FOUND")
         }
         checkFiles(input.files, record.companyId)
+        // Those it didn't have as it was read; one added since is refused below (RECORD_CHANGED).
+        const had = new Set(parseRecordFiles(record.attachment).map(f => f.url))
+        await checkStored(input.files.filter(f => !had.has(f.url)), record.companyId)
         const who = actor(session)
         const expiryDate = input.expiryDate ? parseExpiryDay(input.expiryDate) : null
         const reminderDays = input.expiryDate ? input.reminderDays : null
