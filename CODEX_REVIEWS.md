@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-17 12:35 UTC, against GitHub.
+Last checked: 2026-10-22 00:30 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,20 +39,18 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #82 Records move onto clients (step 0, PR 0a) | Open | `767ca72` (2026-10-17 07:41 UTC) | Every commit after `767ca72` (below) |
+| #82 Records move onto clients (step 0, PR 0a) | Open | `6bff35c` (2026-10-22 00:18 UTC) | The ninth review's fixes, after `6bff35c` (below) |
 
-#82's commits Codex hasn't seen, besides this file's own:
+Codex's limit reset by 2026-10-22, and its ninth review covered every #82
+commit up to `6bff35c`. The commits after it fix that review, and are sent
+to Codex as they're pushed:
 
-- `b57ca88` A search for records matches % and _ as the letters typed
-- `8676560` A client's first record and a new section of its name don't collide
-- `97bdcfa` A record file is noted as removed before storage removes it
-- `35672c5` Plans: PR 0a's eighth review is fixed
-- `f11e6e6` Plans: two fixes found in 0a get PRs of their own
-- `971ba7b` The Records page adds a record in one form, without leaving
-- `50390ab` Plans: the Records page's Add record is one form there (Decided)
-- `b4d42a5` Plans: a client's own page keeps its Add record
-
-Requests for it that hit the limit: 2026-10-17 07:54 UTC and 12:31 UTC.
+- `7d33d06` A record deleted as it's opened is not found, not an error
+- `f0e5e93` Add record's clients are never another company's
+- `93e285f` Editing a record says when its client's sections didn't load
+- `5d0f5b3` A record form's leftover uploads are removed however many there are
+- `21ba9b1` A record is given only files that are in storage
+- the plans' and this file's own commits
 
 ## Reviewed
 
