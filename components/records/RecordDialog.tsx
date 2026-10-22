@@ -23,6 +23,8 @@ export default function RecordDialog({ record, onClose, showClient, onEdit, onDe
     if (!record) return null
     const details = [
         ...(showClient ? [{ label: t('records_col_vendor'), value: <Link href={`/dashboard/vendors/${record.client.id}`} prefetch={false}><bdi>{record.client.name}</bdi></Link> }] : []),
+        // Its company, for a Super Admin, who sees every company's (Codex on #82).
+        ...(record.client.company ? [{ label: t('company_label'), value: <bdi>{record.client.company}</bdi> }] : []),
         { label: t('records_section'), value: <bdi>{record.section.title}</bdi> },
         {
             label: t('records_expiry_date'),

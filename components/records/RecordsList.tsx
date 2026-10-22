@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import {
-    ArticleIcon, BuildingsIcon, CalendarXIcon, EyeIcon, FileIcon, FolderIcon, HourglassIcon, PencilSimpleIcon, TrashIcon, WarningCircleIcon,
+    ArticleIcon, BuildingOfficeIcon, BuildingsIcon, CalendarXIcon, EyeIcon, FileIcon, FolderIcon, HourglassIcon, PencilSimpleIcon, TrashIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -227,6 +227,9 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
                                 details={[
                                     { icon: FolderIcon, text: <bdi>{r.section.title}</bdi> },
                                     ...(showClient ? [{ icon: BuildingsIcon, text: <Link href={`/dashboard/vendors/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link> }] : []),
+                                    // Its company, in a Super Admin's view of every company's, as in the table:
+                                    // two may have clients of the same name (Codex on #82).
+                                    ...(showClient && r.client.company ? [{ icon: BuildingOfficeIcon, text: <bdi>{r.client.company}</bdi> }] : []),
                                     { icon: r.expiryDate ? CalendarXIcon : HourglassIcon, text: r.expiryDate ? formatDay(r.expiryDate, locale) : t('records_no_expiry') },
                                     ...(r.files.length ? [{ icon: FileIcon, text: countOf(t, locale, r.files.length, 'files') }] : []),
                                 ]}

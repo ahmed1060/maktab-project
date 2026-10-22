@@ -208,3 +208,11 @@ describe("who added or edited a record", () => {
         expect(ar.records_deleted_user).toBe("مستخدم محذوف")
     })
 })
+
+describe("a record in a Super Admin's view of every company", () => {
+    // Two companies may have clients of the same name (Codex on #82).
+    it("names its company on a phone's card, as the table does, and when it's opened", () => {
+        expect(readFileSync("components/records/RecordsList.tsx", "utf8")).toContain("...(showClient && r.client.company ? [{ icon: BuildingOfficeIcon, text: <bdi>{r.client.company}</bdi> }] : [])")
+        expect(readFileSync("components/records/RecordDialog.tsx", "utf8")).toContain("...(record.client.company ? [{ label: t('company_label'), value: <bdi>{record.client.company}</bdi> }] : [])")
+    })
+})

@@ -719,6 +719,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(removed).toEqual(["c3/records/zeta.pdf"])
         })
 
+        it("names a record's company to a Super Admin, who sees every company's, and to nobody else", async () => {
+            const id = (await Records.create(admin, { content: "Named company", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            expect((await Records.get(superAdmin, id)).client).toEqual({ id: "v1", name: expect.any(String), company: "One" })
+            expect((await Records.get(admin, id)).client).not.toHaveProperty("company")
+        })
+
         it("tells a Super Admin's record from one by a user since deleted", async () => {
             await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e9', 'e9@x', 'p', 'Lina', 'Gone', 'EMPLOYEE', 2026, 'e9', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
             const leaver = { user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any

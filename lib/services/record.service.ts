@@ -346,7 +346,9 @@ export class RecordService {
     static async get(session: Session, id: string) {
         const found = await recordWithCompany(id)
         allow(session, "records.view", found.companyId, "RECORD_NOT_FOUND")
-        const row = await prisma.clientRecord.findUnique({ where: { id }, select: ROW(false) })
+        // With its company for a Super Admin, who sees every company's: two
+        // may have clients of the same name (Codex on #82).
+        const row = await prisma.clientRecord.findUnique({ where: { id }, select: ROW(isSuperAdmin(session)) })
         // Deleted since its company was looked up.
         if (!row) throw new Error("RECORD_NOT_FOUND")
         return shape(row, await companyToday(found.companyId))
