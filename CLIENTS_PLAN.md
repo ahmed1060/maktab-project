@@ -159,8 +159,8 @@ Two things make a single big rename unsafe:
 |---|---|---|
 | 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table is no longer used; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
 | 0b | Vendors become Clients in code (§0.1). The code reads both the old `vendors.*` permission names and the new ones, and writes the old; the database names stay as they are for now. 0a's triggers and the old section's own rows go (see below) | None |
-| 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and the code writes the new names, still reading both. Today's clients table and its column are dropped | None, because 0b already accepts both |
-| 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below). Any old permission name left is rewritten, and the code stops reading them | None. The app is closed for about 15 minutes, at a time the product owner chooses |
+| 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and the code writes the new names, still reading both. Today's clients table is dropped | None, because 0b already accepts both |
+| 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below). Any old permission name left is rewritten, and the code stops reading them. The old clients table's column on sections is dropped | None. The app is closed for about 15 minutes, at a time the product owner chooses |
 
 The app ignores permission names it doesn't know instead of failing
 (`lib/permissions/matrix.ts`), so the short overlaps above can't break
@@ -186,8 +186,9 @@ sign-in.
   (`lib/records-release.ts`, migration `20261104000003_records_grants_kept`).
 - **0b therefore also:**
   1. deletes the old section's own rows, if any (production has none). Its
-     table and column are dropped in 0c instead: 0a's code, live while 0b
-     waits for review, reads every column of a section, the old one too;
+     table is dropped in 0c instead, and its column on sections in 0d: 0a's
+     code, live while 0b waits for review, reads every column of a section,
+     the old one too, and 0b's own does while 0c waits;
   2. drops 0a's triggers and their functions, before "clients" takes its new
      meaning, the ones keeping Records grants too, and `lib/records-release.ts`
      with its calls;
@@ -225,7 +226,9 @@ sign-in.
 - It renames the `Vendor` table and the `vendorId` columns to their new
   names, and removes the old-name mapping from the code: the schema's
   `@map`s, and the reading of old permission names and the module's old
-  key, after rewriting any 0b wrote while 0c waited for review.
+  key, after rewriting any 0b wrote while 0c waited for review. It also
+  drops the old clients table's column on sections, which every release
+  until then reads.
 - It's kept small so its review is quick.
 - When its checks pass:
   1. turn maintenance mode on;
@@ -1077,8 +1080,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   the old page addresses open the new ones. The database keeps the old
   permission names and the module's key until 0c, read as the new; the code
   writes the old. 0a's triggers and the old section's own rows go. Today's
-  clients table and its column are now dropped in 0c rather than 0b, as
-  0a's code reads every column of a section while 0b waits for review. It
+  clients table is now dropped in 0c rather than 0b, and its column on
+  sections in 0d, as each release reads every column of a section while
+  the next waits for review. It
   opens for review once 0a is merged. Proposed: the side bar groups and the
   Clients list page on the building blocks in a small PR after it (§8).
 - **2026-10-22:** The product owner agreed both of 0b's proposals.
