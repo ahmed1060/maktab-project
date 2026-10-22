@@ -7,6 +7,7 @@ import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
 import { earliestDeadline } from "@/lib/deadline"
 import { scopesToTeam } from "@/lib/team-scope"
+import { KNOWN_REFUSALS } from "@/lib/api-errors"
 
 export const POST = withStandardHandler(async (req, session, json) => {
     const userRole = session.user.role
@@ -101,6 +102,11 @@ export const POST = withStandardHandler(async (req, session, json) => {
         }, 201)
     } catch (error: any) {
         if (isNextInternalError(error)) throw error
+        // A task's client or location refused (CLIENTS_PLAN.md §2.7): said,
+        // with the task's title, rather than logged as a fault.
+        const refused = /^([A-Z_]+): ([\s\S]+)$/.exec(error?.message ?? "")
+        const known = refused ? KNOWN_REFUSALS[refused[1]] : undefined
+        if (refused && known) return ApiResponse.badRequest(`${refused[2]}: ${known.message}`)
         console.error("[BULK_TASK_CREATE_ERROR]", error)
         if (error.code === 'P2003') {
             return ApiResponse.error("Database constraint violation. Please check if all assigned employees still exist.")

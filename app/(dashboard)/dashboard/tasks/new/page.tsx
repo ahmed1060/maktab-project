@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
 import { useLanguage } from '@/context/LanguageContext'
-import { useModules } from '@/lib/useModules'
 import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import TaskPlacePicker, { type TaskPlace } from '@/components/locations/TaskPlacePicker'
+import { locationProblem, rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
+import type { TranslationKey } from '@/lib/translations'
 import BulkTaskReviewModal from '@/components/BulkTaskReviewModal'
 import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 // F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
@@ -40,6 +41,8 @@ export default function NewTaskPage() {
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
+    // The company's locations in use, for the upload's rows (CLIENTS_PLAN.md §2.7).
+    const [bulkPlaces, setBulkPlaces] = useState<BulkPlace[]>([])
     const router = useRouter()
 
     const { showToast } = useToast()
@@ -47,10 +50,8 @@ export default function NewTaskPage() {
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
     const userRole = (session?.user as any)?.role
-    const modules = useModules()
-    const clientsName = modules.label('clients')
-    // The permission GET /api/clients checks — someone who may not read the
-    // client list gets the plain location field only, same as always.
+    // The permission GET /api/clients checks: the bulk upload's rows are
+    // matched to clients by name only for someone who may read the list.
     const canUseClients = useCan().can('clients.view')
 
     // Who can be assigned. SWR, keyed by the company a Super Admin is looking
@@ -184,6 +185,25 @@ export default function NewTaskPage() {
         const worksheet = workbook.worksheets[0]
 
         if (worksheet) {
+            // The locations a row can name (CLIENTS_PLAN.md §2.7): the
+            // template's own Locations sheet, by the hidden column of each
+            // name's location; and the company's in use now, to check them
+            // against. A template from before has no such sheet, and its
+            // rows take their client's HQ.
+            const listed = workbook.worksheets.find(w => w.name === 'Locations' || w.name === 'المواقع')
+            const listedRows: unknown[][] = []
+            listed?.eachRow(row => { listedRows.push(Array.isArray(row.values) ? row.values.slice(1).map(cellToPrimitive) : []) })
+            const sheet = sheetLocations(listedRows)
+            let places: BulkPlace[]
+            try {
+                const company = userRole === 'SUPER_ADMIN' && selectedCompanyId ? `&companyId=${encodeURIComponent(selectedCompanyId)}` : ''
+                places = (await fetcher(`/api/locations?pick=all${company}`)).data.locations
+            } catch (err: any) {
+                showToast(t(err?.status === 403 ? 'task_location_no_permission' : 'task_location_load_failed'), 'error')
+                return
+            }
+            setBulkPlaces(places)
+
             // Mirror XLSX.utils.sheet_to_json(worksheet, { header: 1 }): one
             // array per row, 0-indexed columns, raw cell values. exceljs's
             // row.values is 1-indexed with index 0 always undefined, and rows
@@ -262,18 +282,23 @@ export default function NewTaskPage() {
                 // company (schema constraint), so a plain name match here
                 // has no ambiguity risk the way employee full names would.
                 let clientId: string | null = null
-                let clientLocation = ''
-                let clientLocationLink = ''
                 if (clientNameRaw) {
                     const client = clients.find((v: any) => v.name.toLowerCase() === clientNameRaw.toLowerCase())
                     if (client) {
                         clientId = client.id
-                        clientLocation = client.locationName
-                        clientLocationLink = client.locationLink || ''
                     } else {
                         addError('client', `${t('invalid_client_name' as any) || 'Unknown client'}: ${clientNameRaw}`)
                     }
                 }
+
+                // 1.6 Its location: Column H through the template's list, or
+                // its client's HQ. A name the list doesn't have is flagged,
+                // with what was written, to be picked on the review screen.
+                const locationCell = row[7] === null || row[7] === undefined ? '' : String(row[7]).trim()
+                const { locationId, problem } = rowLocation(locationCell, clientId, sheet, places)
+                // What was written is said with it: the select can't show a
+                // location this row may not have.
+                if (problem) addError('location', locationCell ? `${t(`bulk_location_${problem}` as TranslationKey)}: ${locationCell}` : t(`bulk_location_${problem}` as TranslationKey))
 
                 // 2. Process Deadline
                 let finalDeadline = ''
@@ -352,8 +377,7 @@ export default function NewTaskPage() {
                     unresolvedUsernames,
                     deadline: finalDeadline,
                     difficulty: diffPoints,
-                    location: clientLocation,
-                    locationLink: clientLocationLink,
+                    locationId,
                     clientId,
                     clientNameRaw,
                     validationErrors,
@@ -401,6 +425,10 @@ export default function NewTaskPage() {
         if (task.difficulty < 0 || task.difficulty > 10) {
             addError('difficulty', t('invalid_difficulty'))
         }
+
+        // Its location, as picked on the review screen, for its client.
+        const problem = locationProblem(task.locationId, task.clientId, bulkPlaces)
+        if (problem) addError('location', t(`bulk_location_${problem}` as TranslationKey))
 
         return {
             ...task,
@@ -688,7 +716,7 @@ export default function NewTaskPage() {
                 setBulkTasks={setBulkTasks}
                 users={users}
                 clients={clients}
-                clientsName={clientsName}
+                places={bulkPlaces}
                 revalidateRow={revalidateRow}
                 isSubmitting={isSubmitting}
                 setIsSubmitting={setIsSubmitting}

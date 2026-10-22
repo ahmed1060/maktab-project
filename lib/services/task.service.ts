@@ -1100,21 +1100,21 @@ export class TaskService {
             // safety net (same role as the deadline/attachment checks below),
             // not the primary check.
             const clientIds = Array.from(new Set(tasks.map(t => t.clientId).filter(Boolean)))
-            const clientMap = new Map<string, { id: string, companyId: string, locationName: string, locationLink: string | null }>()
+            const clientMap = new Map<string, { id: string, companyId: string }>()
             if (clientIds.length > 0) {
                 const clients = await tx.client.findMany({
                     where: { id: { in: clientIds } },
-                    select: { id: true, companyId: true, locationName: true, locationLink: true }
+                    select: { id: true, companyId: true }
                 })
                 clients.forEach(v => clientMap.set(v.id, v))
             }
 
             for (const task of tasks) {
-                const { assigneeIds, deadline, clientId, location: requestedLocation, ...rest } = task
-                // No location yet: until its review screen picks them
-                // (CLIENTS_PLAN.md §2.7), an uploaded task keeps its client's
-                // or its typed text, and a locationId sent is never checked.
-                delete rest.locationId
+                // Each at a location picked on the review screen (CLIENTS_PLAN.md
+                // §2.7); a typed one is no more, and its text below takes the
+                // place of any the request carried.
+                const { assigneeIds, deadline, clientId, locationId, ...rest } = task
+                if (!locationId) throw new Error(`TASK_LOCATION_REQUIRED: ${task.title}`)
                 const deadlineDate = new Date(deadline)
                 const minDeadline = earliestDeadline()
                 if (deadlineDate < minDeadline) throw new Error(`DEADLINE_TOO_SOON: ${task.title}`)
@@ -1131,10 +1131,8 @@ export class TaskService {
                     ? (assigneeIds[0] ? assigneeToCompanyMap.get(assigneeIds[0]) : null)
                     : userCompanyId
 
-                // Client resolution — same authoritative-location rule as
-                // TaskService.create.
+                // Client resolution — the same checks as TaskService.create.
                 let resolvedClientId: string | null = null
-                let resolvedLocation = requestedLocation
                 if (clientId) {
                     const client = clientMap.get(clientId)
                     if (!client) throw new Error(`CLIENT_NOT_FOUND: ${task.title}`)
@@ -1145,13 +1143,15 @@ export class TaskService {
                         throw new Error(`CROSS_COMPANY_CLIENT: ${task.title}`)
                     }
                     resolvedClientId = client.id
-                    resolvedLocation = JSON.stringify({ name: client.locationName, link: client.locationLink || '' })
                 }
+                const place = await LocationService.forTask(tx, String(locationId), { companyId: taskCompanyId ?? null, clientId: resolvedClientId })
+                    .catch((error: Error) => { throw new Error(`${error.message}: ${task.title}`) })
 
                 const createdTask = await (tx.task as any).create({
                     data: {
                         ...rest,
-                        location: resolvedLocation,
+                        location: place.text,
+                        locationId: place.id,
                         clientId: resolvedClientId,
                         // rest.attachments/comments may still arrive as a JSON
                         // string from the bulk-import payload (same shape as

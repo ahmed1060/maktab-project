@@ -23,8 +23,8 @@ export const createTaskSchema = z.object({
         .min(0).max(10)
         .optional()
         .default(0),
-    // Typed by hand before locations; ignored now (CLIENTS_PLAN.md §2.3).
-    // Still read by bulk import until its review screen picks locations too.
+    // Typed by hand before locations; ignored now (CLIENTS_PLAN.md §2.3):
+    // the picked location's own name and map link take its place.
     location: z.any().optional(),
     // The task's client, if it has one, and where it's done: that client's
     // location or a shared one. TaskService checks both against the task's

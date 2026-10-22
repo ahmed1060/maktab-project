@@ -185,6 +185,34 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
         await expect(LocationService.pickable(employee, {})).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
     })
 
+    describe("the bulk upload", () => {
+        const titled = (title: string, over: Record<string, unknown>) => task({ title, ...over })
+
+        it("creates each task at the location picked for it, with its name and map link as its text", async () => {
+            await Tasks.bulkCreate([titled("Bulk at Acme", { clientId: "k1", locationId: "acme-hq" }), titled("Bulk at the port", { locationId: "port" })], admin)
+            const { rows } = await db.query(`SELECT title, "clientId", "locationId", location FROM "Task" WHERE title LIKE 'Bulk at %' ORDER BY title`)
+            expect(rows.map(r => [r.title, r.clientId, r.locationId, JSON.parse(r.location).name])).toEqual([
+                ["Bulk at Acme", "k1", "acme-hq", "Acme - Nasr City"],
+                ["Bulk at the port", null, "port", "Port gate"],
+            ])
+        })
+
+        it("refuses the whole upload, naming the task, when one has no location or another client's", async () => {
+            await expect(Tasks.bulkCreate([titled("Fine one", { locationId: "port" }), titled("No place", {})], admin)).rejects.toMatchObject({ message: "TASK_LOCATION_REQUIRED: No place" })
+            await expect(Tasks.bulkCreate([titled("Wrong place", { clientId: "k2", locationId: "acme-hq" })], admin)).rejects.toMatchObject({ message: "TASK_LOCATION_OTHER_CLIENT: Wrong place" })
+            await expect(Tasks.bulkCreate([titled("Unpinned", { clientId: "k2", locationId: "beta-hq" })], admin)).rejects.toMatchObject({ message: "TASK_LOCATION_NEEDS_PIN: Unpinned" })
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE title IN ('Fine one', 'No place', 'Wrong place', 'Unpinned')`)).rows[0].n).toBe(0)
+        })
+
+        it("lists every location in use for the review screen, with its client", async () => {
+            const { LocationService } = await import("@/lib/services/location.service")
+            const { locations } = await LocationService.pickableAll(admin, {})
+            expect(locations.map(l => [l.id, l.clientId, l.needsPin]).sort()).toEqual([
+                ["acme-hq", "k1", false], ["acme-site", "k1", false], ["beta-hq", "k2", true], ["port", null, false],
+            ])
+        })
+    })
+
     it("keeps the client and location on a transferred task's copy", async () => {
         const made = await Tasks.create(task({ clientId: "k1", locationId: "acme-hq" }) as any, admin)
         await db.query(`UPDATE "Task" SET status = 'IN_PROGRESS' WHERE id = $1`, [made.id])
@@ -193,8 +221,8 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
         expect(rows).toEqual([{ clientId: "k1", locationId: "acme-hq" }])
     })
 
-    it("takes no location from a bulk upload until its review screen picks them, so none of another company's", async () => {
-        const [made] = await Tasks.bulkCreate([task({ title: "Bulk at theirs", locationId: "theirs" })], admin)
-        expect((await row(made.id)).locationId).toBeNull()
+    it("refuses another company's location from a bulk upload, as creating a task does", async () => {
+        await expect(Tasks.bulkCreate([task({ title: "Bulk at theirs", locationId: "theirs" })], admin)).rejects.toMatchObject({ message: "TASK_LOCATION_NOT_FOUND: Bulk at theirs" })
+        expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE title = 'Bulk at theirs'`)).rows[0].n).toBe(0)
     })
 })
