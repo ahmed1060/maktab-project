@@ -217,6 +217,27 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             notStored.clear()
         })
 
+        it("refuses moving a record to a section deleted as it's moved, rather than failing", async () => {
+            const { id } = await Records.create(admin, { content: "Moving", files: [], expiryDate: null, reminderDays: null, vendorId: "v2", sectionTitle: "Moving from" })
+            const to = await Records.createSection(admin, { vendorId: "v2", title: "Moving to" })
+            const { prisma } = await import("@/lib/prisma")
+            const findUnique = prisma.recordSection.findUnique.bind(prisma.recordSection)
+            // Deleted just after it's checked to be the same client's, before the record is moved into it.
+            const spy = vi.spyOn(prisma.recordSection, "findUnique").mockImplementationOnce((async (args: any) => {
+                const found = await findUnique(args)
+                await db.query(`DELETE FROM "ClientSection" WHERE id = $1`, [to.id])
+                return found
+            }) as any)
+            try {
+                await expect(Records.update(admin, { id, content: "Moving", files: [], filesBefore: [], expiryDate: null, reminderDays: null, sectionId: to.id })).rejects.toMatchObject({ message: "RECORD_SECTION_NOT_FOUND" })
+            } finally {
+                spy.mockRestore()
+            }
+            expect((await Records.get(admin, id)).section.title).toBe("Moving from")
+            // Gone again, for the tests after that count this client's records.
+            await db.query(`DELETE FROM "ClientNote" WHERE id = $1`, [id])
+        })
+
         it("says a record deleted as it's opened is not found", async () => {
             const { id } = await Records.create(admin, { content: "Going", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })
             const { prisma } = await import("@/lib/prisma")

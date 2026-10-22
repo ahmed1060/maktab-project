@@ -510,7 +510,15 @@ export class RecordService {
             // changed the date it's compared with.
             const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientNote" WHERE id = ${input.id} FOR UPDATE`
             if (!locked.length) throw new Error("RECORD_NOT_FOUND")
-            const current = await tx.clientRecord.findUniqueOrThrow({ where: { id: input.id }, select: { attachment: true, expiryDate: true, reminderDays: true } })
+            const current = await tx.clientRecord.findUniqueOrThrow({ where: { id: input.id }, select: { attachment: true, expiryDate: true, reminderDays: true, sectionId: true } })
+            // The section it moves to, held until it's there, so it isn't
+            // deleted meanwhile (deleteSection) with nowhere for the record to
+            // go. Not the one it's in: that deletion holds its section, then
+            // waits for this record.
+            if (input.sectionId && input.sectionId !== current.sectionId) {
+                const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${input.sectionId} FOR SHARE`
+                if (!held.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+            }
             // Made from the record as it was before someone else changed its
             // files: refused, or a file they took off, and that's removed from
             // storage, could come back on the record from this older form.
