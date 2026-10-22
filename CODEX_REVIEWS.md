@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-22 00:30 UTC, against GitHub.
+Last checked: 2026-10-22 01:00 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,17 +39,16 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #82 Records move onto clients (step 0, PR 0a) | Open | `6bff35c` (2026-10-22 00:18 UTC) | The ninth review's fixes, after `6bff35c` (below) |
+| #82 Records move onto clients (step 0, PR 0a) | Open | `3162db4` (2026-10-22 00:40 UTC) | The tenth review's fixes, after `3162db4` (below) |
 
-Codex's limit reset by 2026-10-22, and its ninth review covered every #82
-commit up to `6bff35c`. The commits after it fix that review, and are sent
-to Codex as they're pushed:
+Codex's limit reset by 2026-10-22. Its ninth review covered every #82
+commit up to `6bff35c`, and its tenth the ninth's fixes, up to `3162db4`.
+The commits after it fix the tenth, and are sent to Codex as they're
+pushed:
 
-- `7d33d06` A record deleted as it's opened is not found, not an error
-- `f0e5e93` Add record's clients are never another company's
-- `93e285f` Editing a record says when its client's sections didn't load
-- `5d0f5b3` A record form's leftover uploads are removed however many there are
-- `21ba9b1` A record is given only files that are in storage
+- `96eec0f` A failed client search says so in Add record
+- `676061b` A record moved to a section deleted at that moment is refused
+- `be638c8` Only a Super Admin gives a record a Super Admin's upload
 - the plans' and this file's own commits
 
 ## Reviewed
