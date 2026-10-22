@@ -85,6 +85,9 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     const total: number = result?.data?.total || 0
 
     useAdjustOnChange([selectedCompanyId], () => setPage(1))
+    // A record open in a dialog is the last company's once a Super Admin
+    // picks another: closed, so it can't be edited or deleted unseen.
+    useAdjustOnChange([scope], () => { setViewing(null); setEditing(null); setDeleting(null) })
     useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
     // A section that's gone from the client's list can't stay picked.
     useAdjustOnChange([sections.map(s => s.id).join(',')], () => setSectionId(id => (id && !sections.some(s => s.id === id) ? '' : id)))

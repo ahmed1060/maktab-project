@@ -62,6 +62,13 @@ describe("editing a record from the Records page", () => {
         expect(html).not.toMatch(/<button type="submit"[^>]*disabled=""/)
     })
 
+    it("closes, as do viewing and deleting one, when a Super Admin picks another company", () => {
+        // Each holds a record of the company before, which Save or Delete would still act on.
+        const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
+        expect(LIST).toContain("const scope = vendorId ?? selectedCompanyId")
+        expect(LIST).toContain("useAdjustOnChange([scope], () => { setViewing(null); setEditing(null); setDeleting(null) })")
+    })
+
     it("is opened with no sections, for the form to load them", () => {
         const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
         expect(LIST).not.toContain("editSections")
