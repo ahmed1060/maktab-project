@@ -443,6 +443,39 @@ describe("a client's page and its records (DESIGN.md §5.5)", () => {
         expect(render(h(ui.PageHeader, { title: "Acme" }))).not.toContain("ui-back-link")
     })
 
+    it("details are one fact to a row on a phone, in a dialog too", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "")
+        // Every rule, with where it is and whether it's in a phone's media block.
+        const rules: { selectors: string[]; body: string; at: number; phone: boolean }[] = []
+        let depth = 0, phoneDepth = 0, from = 0
+        for (let i = 0; i < css.length; i++) {
+            if (css[i] === "{") {
+                const head = css.slice(from, i).trim()
+                depth++
+                if (head.startsWith("@media (max-width: 767px)")) phoneDepth = depth
+                else if (!head.startsWith("@")) {
+                    const close = css.indexOf("}", i)
+                    rules.push({ selectors: head.split(",").map(x => x.trim()), body: css.slice(i + 1, close), at: i, phone: phoneDepth > 0 })
+                    i = close
+                    depth--
+                }
+                from = i + 1
+            } else if (css[i] === "}") {
+                if (depth === phoneDepth) phoneDepth = 0
+                depth--
+                from = i + 1
+            }
+        }
+        // Each selector that gives details more columns, overridden as specifically, and later, on a phone.
+        for (const selector of [".ui-details", ".ui-dialog .ui-details"]) {
+            const wide = rules.filter(r => !r.phone && r.selectors.includes(selector) && /grid-template-columns/.test(r.body))
+            expect(wide.length, selector).toBeGreaterThan(0)
+            const narrow = rules.filter(r => r.phone && r.selectors.includes(selector) && /grid-template-columns:\s*minmax\(0, 1fr\)/.test(r.body))
+            expect(narrow.length, selector).toBeGreaterThan(0)
+            expect(Math.max(...narrow.map(r => r.at)), selector).toBeGreaterThan(Math.max(...wide.map(r => r.at)))
+        }
+    })
+
     it("details are a list of labels and their values", () => {
         const html = render(h(ui.Details, { items: [{ label: "Owner", value: "Mona" }, { label: "Mobile", value: "0100" }] }))
         expect(html).toBe('<dl class="ui-details"><div class="ui-detail"><dt>Owner</dt><dd>Mona</dd></div><div class="ui-detail"><dt>Mobile</dt><dd>0100</dd></div></dl>')

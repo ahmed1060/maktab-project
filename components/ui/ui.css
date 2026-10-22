@@ -1615,7 +1615,9 @@ html[lang="ar"] .ui-empty-title {
     font-size: var(--text-2xl);
     line-height: var(--leading-2xl);
   }
-  .ui-details {
+  /* In a dialog too, which sets two columns with a more specific selector. */
+  .ui-details,
+  .ui-dialog .ui-details {
     grid-template-columns: minmax(0, 1fr);
   }
   .ui-back-link {
