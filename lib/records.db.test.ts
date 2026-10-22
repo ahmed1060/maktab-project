@@ -189,6 +189,13 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(await grantsOf(clerk)).toEqual([])
         })
 
+        it("lets a company still be deleted with its roles and their Records grants", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c9', 'Nine', now())`)
+            const role = await Roles.create({ companyId: "c9", name: "Records clerk", baseRole: "EMPLOYEE", grants: [{ permission: "records.view", scope: "COMPANY" }] }, superAdmin)
+            await db.query(`DELETE FROM "Company" WHERE id = 'c9'`)
+            expect(await grantsOf(role.id)).toEqual([])
+        })
+
         it("keeps a template's Records grants when main's editor saves it without them; this release can still remove them", async () => {
             const template = await Templates.create({ name: "Records desk", baseRole: "EMPLOYEE", grants: [{ permission: "records.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
             const grants = async () => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [template.id])).rows[0].grants
