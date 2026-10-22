@@ -202,15 +202,37 @@ async function removeFiles(files: readonly RecordFile[], companyId: string) {
     }
 }
 
+/** Postgres's "could not obtain lock" for a NOWAIT, however Prisma wraps it. */
+const lockNotAvailable = (error: unknown): boolean => {
+    const e = error as { code?: string; meta?: { code?: string }; cause?: unknown; message?: string } | null
+    return !!e && (e.code === "55P03" || e.meta?.code === "55P03" || /could not obtain lock/.test(e.message ?? "") || lockNotAvailable(e.cause))
+}
+
 /**
- * Whoever a record's notice goes to, held so they can't be deleted while it's
- * sent; null once they're gone. Taken before the record's claim, in the order a
- * user's deletion takes the two, so neither waits on the other.
+ * A record's notice, in its own transaction, with the record held and
+ * whoever it goes to held too, so they can't be deleted while it's sent.
+ * The record is held first, as an edit and its company's deletion hold it
+ * before the people its company deletes. A user's own deletion holds them
+ * before their records, so they're asked for without waiting: one being
+ * deleted means letting go, and going again once they are, when the record
+ * no longer names them (Codex on #82). Null for nobody to send it to.
  */
-async function recipient(tx: Prisma.TransactionClient, userId: string | null) {
-    if (!userId) return null
-    const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR KEY SHARE`
-    return held.length ? userId : null
+async function withNotice(recordId: string, send: (tx: Prisma.TransactionClient, to: string | null) => Promise<void>) {
+    for (let attempt = 1; ; attempt++) {
+        try {
+            return await prisma.$transaction(async tx => {
+                const [held] = await tx.$queryRaw<{ createdById: string | null }[]>`SELECT "createdById" FROM "ClientNote" WHERE id = ${recordId} FOR NO KEY UPDATE`
+                if (!held) return
+                const to = held.createdById
+                    && (await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${held.createdById} FOR KEY SHARE NOWAIT`).length
+                    ? held.createdById : null
+                await send(tx, to)
+            })
+        } catch (error) {
+            if (attempt >= 5 || !lockNotAvailable(error)) throw error
+            await new Promise(r => setTimeout(r, 100 * attempt))
+        }
+    }
 }
 
 /** Typed text as Prisma's contains matches it: its letters as they are, LIKE's own %, _ and backslash escaped. */
@@ -659,8 +681,7 @@ export class RecordService {
         })
         let expiring = 0
         for (const record of expiringToday) {
-            await prisma.$transaction(async tx => {
-                const to = await recipient(tx, record.createdById)
+            await withNotice(record.id, async (tx, to) => {
                 // Claimed on the deadline it was found for: an edit since then owes its own notice instead.
                 const claimed = await tx.clientRecord.updateMany({ where: { id: record.id, expiryDate: record.expiryDate, notifiedOnExpiry: false }, data: { notifiedOnExpiry: true } })
                 if (!claimed.count) return
@@ -686,8 +707,7 @@ export class RecordService {
         for (const record of pending) {
             const expires = expiryDay(record.expiryDate!)
             if (today < addDays(expires, -record.reminderDays!)) continue
-            await prisma.$transaction(async tx => {
-                const to = await recipient(tx, record.createdById)
+            await withNotice(record.id, async (tx, to) => {
                 const claimed = await tx.clientRecord.updateMany({
                     where: { id: record.id, expiryDate: record.expiryDate, reminderDays: record.reminderDays, notifiedDaysBefore: false },
                     data: { notifiedDaysBefore: true },

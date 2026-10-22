@@ -839,6 +839,49 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
+        it("sends the reminders on when their company's deletion holds a record, then deletes whoever added it", async () => {
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e9', 'e9@x', 'p', 'Rana', 'Gone', 'EMPLOYEE', 2026, 'e9', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+            const theirs = (await Records.create({ user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any, { content: "Fire certificate", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            // As CompanyService.delete does: its records held (filesOfCompany), then its people deleted with it.
+            const deleting = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await deleting.connect()
+            try {
+                await deleting.query("BEGIN")
+                await deleting.query(`SELECT id FROM "ClientNote" WHERE id = $1 FOR UPDATE`, [theirs])
+                const checking = Records.checkExpiries()
+                await new Promise(r => setTimeout(r, 300))
+                const deleted = deleting.query(`DELETE FROM "User" WHERE id = 'e9'`).then(() => deleting.query("COMMIT"))
+                const [checked, done] = await Promise.allSettled([checking, deleted])
+                // Neither is the one a deadlock aborts.
+                expect(checked.status).toBe("fulfilled")
+                expect(done.status).toBe("fulfilled")
+            } finally {
+                await deleting.end()
+            }
+            const { rows } = await db.query(`SELECT "notifiedOnExpiry", "createdById" FROM "ClientNote" WHERE id = $1`, [theirs])
+            expect(rows).toEqual([{ notifiedOnExpiry: true, createdById: null }])
+        })
+
+        it("waits for whoever added a record while they're held, then sends their reminder", async () => {
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e10', 'e10@x', 'p', 'Hala', 'Held', 'EMPLOYEE', 2026, 'e10', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+            const theirs = (await Records.create({ user: withGrants({ id: "e10", role: "EMPLOYEE", companyId: "c1" }) } as any, { content: "Lift inspection", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            // Held as their deletion holds them, then let go: the reminder asks again rather than failing.
+            const holding = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await holding.connect()
+            try {
+                await holding.query("BEGIN")
+                await holding.query(`SELECT id FROM "User" WHERE id = 'e10' FOR UPDATE`)
+                const checking = Records.checkExpiries()
+                await new Promise(r => setTimeout(r, 250))
+                await holding.query("ROLLBACK")
+                await checking
+            } finally {
+                await holding.end()
+            }
+            expect((await db.query(`SELECT "notifiedOnExpiry" FROM "ClientNote" WHERE id = $1`, [theirs])).rows[0].notifiedOnExpiry).toBe(true)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = 'e10' AND "relatedId" = $1`, [`/dashboard/records/${theirs}`])).rows[0].n).toBe(1)
+        })
+
         it("sends the reminders on when whoever added a record is deleted as they go out", async () => {
             await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e8', 'e8@x', 'p', 'Nour', 'Gone', 'EMPLOYEE', 2026, 'e8', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
             const leaver = { user: withGrants({ id: "e8", role: "EMPLOYEE", companyId: "c1" }) } as any
