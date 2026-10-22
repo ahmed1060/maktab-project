@@ -781,7 +781,7 @@ balance first, automatically:
        Proposed: step 2 ships as two PRs. 2b moves the bulk upload onto
        locations: the Excel Locations sheet and the review screen's
        pickers (§2.7). Until then, an uploaded task still takes its
-       client's own location fields, or its typed text.
+       client's own location fields, or its typed text. 2b is built too.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1247,3 +1247,20 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   location until its review screen picks them (2b), so it can't link
   another company's. Saving a location from a task's form saves only the
   location, and "+ New location" from a task's edit window opens above it.
+- **2026-10-22:** Step 2's second PR, 2b, is built (§2.7):
+  - **The Excel template** has a Locations sheet: each location a task
+    can use, by its name, "Client - Location" or a shared one's own, each
+    name once, numbered where two would read the same. A hidden column
+    keeps the location each name stands for. The main sheet has a
+    Location column after the others, a dropdown from that list.
+  - **The upload** finds each row's location through the file's own
+    Locations sheet, never by matching the name against the company's
+    locations. A name it doesn't find exactly once, another client's
+    location, or one with no pin is flagged, with what was written. A
+    row with no location takes its client's HQ. A template from before
+    has no Location column, so its rows take their client's HQ too.
+  - **The review screen** has each row's client and location as selects,
+    as on the task form: changing the client keeps a shared location or
+    picks the new client's HQ.
+  - **Typed locations are gone** from bulk creation too. A refused
+    location names its task, instead of failing the upload as a fault.

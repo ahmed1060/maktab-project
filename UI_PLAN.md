@@ -922,3 +922,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   task's edit window opens above it. A dialog that opens from an older
   page's modal sits above that modal (`DESIGN.md` §5.5). Saving the
   location there no longer saves the task too.
+- **2026-10-22:** The bulk upload's review screen picks each row's client
+  and location with the building blocks' selects, grouped as on the task
+  form (`CLIENTS_PLAN.md` step 2, PR 2b). The rest of the screen is as it
+  was, until its own turn.
