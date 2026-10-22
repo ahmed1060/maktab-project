@@ -199,6 +199,24 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await expect(Records.create(admin, { content: "x", files: [file("c2", "theirs.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })).rejects.toThrow("RECORD_FILE_INVALID")
         })
 
+        it("says a record deleted as it's opened is not found", async () => {
+            const { id } = await Records.create(admin, { content: "Going", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })
+            const { prisma } = await import("@/lib/prisma")
+            const findUnique = prisma.clientRecord.findUnique.bind(prisma.clientRecord)
+            // Deleted just after its company is looked up, before the record itself is read.
+            const spy = vi.spyOn(prisma.clientRecord, "findUnique").mockImplementationOnce((async (args: any) => {
+                const found = await findUnique(args)
+                await db.query(`DELETE FROM "ClientNote" WHERE id = $1`, [id])
+                return found
+            }) as any)
+            try {
+                // Exactly: Prisma's own error quotes the code around it, this name included.
+                await expect(Records.get(admin, id)).rejects.toMatchObject({ message: "RECORD_NOT_FOUND" })
+            } finally {
+                spy.mockRestore()
+            }
+        })
+
         it("reminds whoever added a record, the chosen days before and on the day, once per deadline", async () => {
             // The licence expires on the 20th, four days away, with a 7-day reminder.
             await db.query(`UPDATE "ClientNote" SET "expiryDate" = '2026-10-16' WHERE id = $1`, [gamma])
