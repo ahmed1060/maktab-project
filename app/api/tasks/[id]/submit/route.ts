@@ -27,8 +27,10 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'ACCESS_DENIED') return ApiResponse.forbidden("Access denied")
         if (error.message === 'TASK_ALREADY_DECIDED') return ApiResponse.badRequest("This task has already been approved; it can't be submitted again")
         if (error.message === 'USER_LOCATION_LIMIT') return ApiResponse.badRequest("Location limit reached (10 per user)")
-        console.error("Task submission error:", error)
-        return ApiResponse.error("Failed to save task progress")
+        // Anything else goes to the handler: a known refusal, such as a cost's
+        // description too long, is answered there, and a fault is logged with
+        // a reference. All of it used to be "Failed to save task progress".
+        throw error
     }
 }, {
     audit: {

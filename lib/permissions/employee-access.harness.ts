@@ -75,6 +75,8 @@ export const prismaMock: any = new Proxy({}, {
     get(_t, prop: string) {
         if (prop === "$transaction") return async (fn: any) => typeof fn === "function" ? fn(prismaMock) : Promise.all(fn)
         if (prop === "then") return undefined
+        // A row lock taken while a task is rewritten: nothing to hold here.
+        if (prop === "$queryRaw") return async () => []
         return models[prop] ??= model()
     },
 })

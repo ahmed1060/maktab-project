@@ -16,6 +16,9 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     OVERLAPPING_REQUEST: { status: 409, message: "You already have a leave request for that day." },
     ATTACHMENT_LIMIT_EXCEEDED: { status: 400, message: "A task or obligation can have at most 20 attachments." },
     COST_LIMIT_EXCEEDED: { status: 400, message: "Costs added at once can total at most 10,000." },
+    // A task's costs, each a row of its own (CLIENTS_PLAN.md §4.4, §4.5).
+    COST_DESCRIPTION_TOO_LONG: { status: 400, message: "A cost's description can be at most 200 characters." },
+    COST_ALREADY_PAID: { status: 409, message: "This person's costs on this task are paid, so this one can't be removed." },
     COMPLETED_REQUEST_STATUS_LOCKED: { status: 400, message: "A completed request can't go back to pending or in progress." },
     INVALID_ITEM_TYPE: { status: 400, message: "Unknown item type." },
     NOTE_NOT_FOUND: { status: 404, message: "Note not found." },
