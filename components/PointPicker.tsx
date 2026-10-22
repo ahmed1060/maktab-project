@@ -23,7 +23,13 @@ const CAIRO: [number, number] = [30.0444, 31.2357]
 
 type Status = { kind: 'accuracy'; meters: number; text: string } | { kind: 'error'; key: ReturnType<typeof locateErrorKey> | 'att_loc_here_unsupported' }
 
-export default function PointPicker({ value, radius, onChange }: { value: string; radius: number; onChange: (text: string) => void }) {
+export default function PointPicker({ value, radius, onChange, blocks = false }: {
+    value: string
+    radius: number
+    onChange: (text: string) => void
+    /** Drawn with the building blocks' buttons and colours (DESIGN.md §5.3), on a page moved onto them. */
+    blocks?: boolean
+}) {
     const { t, locale } = useLanguage()
     const hereKey = process.env.NEXT_PUBLIC_HERE_API_KEY
     const [mapOpen, setMapOpen] = useState(false)
@@ -166,21 +172,25 @@ export default function PointPicker({ value, radius, onChange }: { value: string
     }
 
     const shown = status && (status.kind === 'error' || status.text === value) ? status : null
+    // The building blocks' secondary button, or the older pages' own.
+    const button = blocks ? { className: 'ui-btn ui-btn-secondary ui-btn-sm' } : { className: 'btn btn-secondary', style: { fontSize: '0.8rem' } }
+    const soft = blocks ? 'var(--muted)' : 'var(--text-soft)'
+    const danger = blocks ? 'var(--problem-text)' : 'var(--danger-fg)'
 
     return (
         <div style={{ display: 'grid', gap: '0.4rem' }}>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }} disabled={locating} onClick={locate}>
+                <button type="button" {...button} disabled={locating} onClick={locate}>
                     {locating ? t('att_loc_here_busy') : t('att_loc_here')}
                 </button>
                 {/* No key, no map: the HERE key is what draws it. */}
                 {hereKey && (
-                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }} aria-expanded={mapOpen} onClick={() => setMapOpen(o => !o)}>
+                    <button type="button" {...button} aria-expanded={mapOpen} onClick={() => setMapOpen(o => !o)}>
                         {mapOpen ? t('att_loc_pick_close') : t('att_loc_pick')}
                     </button>
                 )}
             </div>
-            <span role="status" style={{ fontSize: '0.75rem', color: shown?.kind === 'error' || (shown?.kind === 'accuracy' && shown.meters > Math.max(MAX_ACCURACY_METERS, radius)) ? 'var(--danger-fg)' : 'var(--text-soft)' }}>
+            <span role="status" style={{ fontSize: '0.75rem', color: shown?.kind === 'error' || (shown?.kind === 'accuracy' && shown.meters > Math.max(MAX_ACCURACY_METERS, radius)) ? danger : soft }}>
                 {shown?.kind === 'error' && t(shown.key)}
                 {shown?.kind === 'accuracy' && (shown.meters > Math.max(MAX_ACCURACY_METERS, radius)
                     ? t('att_loc_here_rough').replace('{n}', String(shown.meters))
@@ -189,13 +199,13 @@ export default function PointPicker({ value, radius, onChange }: { value: string
             {mapOpen && hereKey && (
                 <div style={{ display: 'grid', gap: '0.4rem' }}>
                     <div style={{ position: 'relative', isolation: 'isolate' }} dir="ltr">
-                        <div ref={box} aria-label={t('att_loc_map_label')} style={{ height: '18rem', borderRadius: '0.75rem', border: '1px solid var(--field-border)' }} />
+                        <div ref={box} aria-label={t('att_loc_map_label')} style={{ height: '18rem', borderRadius: blocks ? '6px' : '0.75rem', border: `1px solid ${blocks ? 'var(--field-line)' : 'var(--field-border)'}` }} />
                         {/* The centre of the map, where "Pin the centre" puts the pin. */}
                         <span aria-hidden="true" className="map-cross" />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem' }} onClick={pinCentre}>{t('att_loc_pin_centre')}</button>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{t('att_loc_pick_hint')}</span>
+                        <button type="button" {...button} onClick={pinCentre}>{t('att_loc_pin_centre')}</button>
+                        <span style={{ fontSize: '0.75rem', color: soft }}>{t('att_loc_pick_hint')}</span>
                     </div>
                 </div>
             )}

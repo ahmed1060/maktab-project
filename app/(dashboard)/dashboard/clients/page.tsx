@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
@@ -9,7 +9,7 @@ import {
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
-import LocationSearchInput from '@/components/LocationSearchInput'
+import PlaceFields from '@/components/locations/PlaceFields'
 import {
     Button, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, TextInput,
     type Column, type MenuItem,
@@ -22,6 +22,7 @@ import { useModules } from '@/lib/useModules'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { draftOf, pinOfLink, readPlace, emptyPlace, type PlaceDraft, type PlaceErrors } from '@/lib/place-draft'
 
 interface Client {
     id: string
@@ -30,6 +31,8 @@ interface Client {
     mobileNumber: string
     locationName: string
     locationLink: string | null
+    /** Its HQ, if it has one yet. */
+    locations: { id: string; name: string; latitude: number | null; longitude: number | null; radiusMeters: number | null }[]
     company?: { name: string }
     createdBy: { firstName: string, lastName: string } | null
 }
@@ -38,15 +41,25 @@ type ClientFormState = {
     name: string
     ownerName: string
     mobileNumber: string
-    locationName: string
-    locationLink: string
 }
 
-const emptyForm: ClientFormState = { name: '', ownerName: '', mobileNumber: '', locationName: '', locationLink: '' }
+const emptyForm: ClientFormState = { name: '', ownerName: '', mobileNumber: '' }
 const LIMIT = 20
 
-/** Whether a form has everything a client needs. */
-const complete = (f: ClientFormState) => !!(f.name.trim() && f.ownerName.trim() && f.mobileNumber.trim() && f.locationName.trim())
+/** Whether a form has the details a client needs; its HQ is checked when it's saved. */
+const complete = (f: ClientFormState) => !!(f.name.trim() && f.ownerName.trim() && f.mobileNumber.trim())
+
+/**
+ * A client's HQ in its form: the HQ it has, or, for one the release before
+ * added, its own location fields, with the pin from its map link if it has
+ * one there.
+ */
+function hqDraft(c: Client): PlaceDraft {
+    const hq = c.locations?.[0]
+    if (hq) return draftOf(hq)
+    return { name: c.locationName, point: pinOfLink(c.locationLink ?? '') ?? '', radius: '' }
+}
+const sameDraft = (a: PlaceDraft, b: PlaceDraft) => a.name === b.name && a.point === b.point && a.radius === b.radius
 
 /**
  * The businesses the company works for (CLIENTS_PLAN.md §0.1), on the
@@ -229,7 +242,12 @@ export default function ClientsPage() {
     )
 }
 
-/** Adding a client, or editing one: a dialog with its details, mounted afresh each time it opens. */
+/**
+ * Adding a client, or editing one: a dialog with its details and its HQ
+ * (CLIENTS_PLAN.md §2.4), mounted afresh each time it opens. An edit leaves
+ * the HQ as it is unless it's changed here, so a client whose HQ has no pin
+ * yet can still have its phone number corrected.
+ */
 function ClientForm({ title, client, pickCompany = false, companyId, onClose, onSaved }: {
     title: string
     /** The client edited; none to add one. */
@@ -241,12 +259,17 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
     onClose: () => void
     onSaved: () => void
 }) {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     const { showToast } = useToast()
     const formId = useId()
+    const formRef = useRef<HTMLFormElement>(null)
     const [form, setForm] = useState<ClientFormState>(client
-        ? { name: client.name, ownerName: client.ownerName, mobileNumber: client.mobileNumber, locationName: client.locationName, locationLink: client.locationLink ?? '' }
+        ? { name: client.name, ownerName: client.ownerName, mobileNumber: client.mobileNumber }
         : emptyForm)
+    const [opened] = useState<PlaceDraft>(() => (client ? hqDraft(client) : emptyPlace))
+    const [hq, setHq] = useState<PlaceDraft>(opened)
+    const [hqErrors, setHqErrors] = useState<PlaceErrors>({})
+    const [tried, setTried] = useState(false)
     const [chosenCompany, setChosenCompany] = useState('')
     const [saving, setSaving] = useState(false)
     const { data: companiesBody } = useSWR(pickCompany ? '/api/companies?limit=1000' : null, fetcher)
@@ -259,14 +282,25 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
     const save = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!ready || saving) return
+        // A new client's HQ, or one changed here.
+        const sendsHq = !client || !sameDraft(hq, opened)
+        const { place, errors } = sendsHq ? readPlace(hq) : { place: null, errors: {} }
+        setHqErrors(errors)
+        setTried(true)
+        if (sendsHq && !place) {
+            // To the first field that needs fixing, once it's marked.
+            requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+            return
+        }
         setSaving(true)
         try {
+            const details = { ...form, ...(place ? { hq: place } : {}) }
             const res = await fetch('/api/clients', {
                 method: client ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(client
-                    ? { id: client.id, ...form }
-                    : { ...form, ...(pickCompany ? { companyId: chosenCompany } : companyId ? { companyId } : {}) }),
+                    ? { id: client.id, ...details }
+                    : { ...details, ...(pickCompany ? { companyId: chosenCompany } : companyId ? { companyId } : {}) }),
             })
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}))
@@ -293,7 +327,7 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
                 <Button type="submit" form={formId} variant="primary" busy={saving} disabled={!ready}>{client ? t('save') : t('create')}</Button>
             </>}
         >
-            <form id={formId} onSubmit={save} className="ui-dialog-body" noValidate>
+            <form ref={formRef} id={formId} onSubmit={save} className="ui-dialog-body" noValidate>
                 {pickCompany && (
                     <Field label={t('select_company')}>{p => (
                         <Select {...p} icon={BuildingsIcon} value={chosenCompany} onChange={e => setChosenCompany(e.target.value)} disabled={saving}
@@ -307,13 +341,13 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
                 <Field label={t('client_owner_name')}>{p => <TextInput {...p} name="ownerName" autoComplete="off" dir="auto" value={form.ownerName} onChange={set('ownerName')} disabled={saving} />}</Field>
                 {/* A phone number reads left to right in either language (DESIGN.md §3.3). */}
                 <Field label={t('client_mobile_number')}>{p => <TextInput {...p} name="mobileNumber" type="tel" autoComplete="off" dir="ltr" value={form.mobileNumber} onChange={set('mobileNumber')} disabled={saving} />}</Field>
-                <LocationSearchInput
-                    blocks
-                    label={t('client_location')}
-                    value={{ name: form.locationName, link: form.locationLink }}
-                    onChange={v => setForm(f => ({ ...f, locationName: v.name, locationLink: v.link }))}
-                    placeholder={t('location_name_placeholder')}
-                    locale={locale}
+                <PlaceFields
+                    draft={hq}
+                    onChange={d => { setHq(d); if (tried) setHqErrors(readPlace(d).errors) }}
+                    errors={hqErrors}
+                    nameLabel={t('client_hq')}
+                    nameHint={t('client_hq_hint')}
+                    disabled={saving}
                 />
             </form>
         </Dialog>

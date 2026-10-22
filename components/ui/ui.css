@@ -1131,6 +1131,11 @@ a.ui-row:focus-visible {
   font-weight: 500;
   color: var(--ink);
 }
+/* A badge beside a name, as a client's HQ. */
+.ui-item-title > .ui-badge {
+  margin-inline-start: var(--space-2);
+  vertical-align: middle;
+}
 .ui-item-detail,
 .ui-meta {
   overflow-wrap: anywhere;
@@ -1181,6 +1186,10 @@ a.ui-row:focus-visible {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+/* A card's actions stay at its end, with or without words beside them. */
+.ui-list-card-foot > .ui-row-actions {
+  margin-inline-start: auto;
 }
 
 /* ── Pager ── */

@@ -27,6 +27,7 @@ export const MODULE_KEYS = [
     'costs',
     'employees',
     'clients',
+    'locations',
 ] as const
 
 export type ModuleKey = (typeof MODULE_KEYS)[number]
@@ -72,6 +73,8 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     costs: { labelKey: 'costs', icon: '💰', href: '/dashboard/costs' },
     employees: { labelKey: 'employees', icon: '👥', href: '/dashboard/employees' },
     clients: { labelKey: 'clients', icon: '🚚', href: '/dashboard/clients' },
+    // The places tasks happen at (CLIENTS_PLAN.md §2).
+    locations: { labelKey: 'locations', icon: '🗺️', href: '/dashboard/locations' },
 }
 
 /** A company's overrides, by module. A missing key falls through to the default. */

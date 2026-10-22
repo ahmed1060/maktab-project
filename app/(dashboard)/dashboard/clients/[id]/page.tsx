@@ -4,14 +4,16 @@ import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { PlusIcon, StorefrontIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { MapPinPlusIcon, PlusIcon, StorefrontIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import AccessDenied from '@/components/AccessDenied'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { Button, Card, Details, EmptyState, Page, PageHeader, Section } from '@/components/ui'
+import { Button, Card, Details, EmptyState, Page, PageHeader, Section, StatusBadge } from '@/components/ui'
+import LocationsList from '@/components/locations/LocationsList'
 import RecordsList from '@/components/records/RecordsList'
 import SectionsCard from '@/components/records/SectionsCard'
 import type { SectionItem } from '@/components/records/types'
+import { googleMapsLink } from '@/lib/attendance/geo'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
 import { useCan } from '@/lib/useCan'
@@ -23,13 +25,16 @@ type Client = {
     mobileNumber: string
     locationName: string
     locationLink: string | null
+    /** Its HQ, if it has one yet. */
+    locations: { id: string; name: string; latitude: number | null; longitude: number | null }[]
 }
 
 /**
- * A client's own page (CLIENTS_PLAN.md §0.2): its details, for whoever may
- * see clients, and its records, for whoever may see records. Someone who may
- * see only records, as an ordinary employee may, still gets the client's
- * name and its records.
+ * A client's own page (CLIENTS_PLAN.md §0.2, §2.4): its details, for
+ * whoever may see clients, its locations, for whoever may see locations, and
+ * its records, for whoever may see records. Someone who may see only
+ * records, as an ordinary employee may, still gets the client's name and its
+ * records.
  */
 export default function ClientPage() {
     const { t } = useLanguage()
@@ -41,7 +46,9 @@ export default function ClientPage() {
     const { can } = useCan()
     const seesClient = can('clients.view')
     const seesRecords = can('records.view')
+    const seesLocations = can('locations.view')
     const [adding, setAdding] = useState(false)
+    const [addingLocation, setAddingLocation] = useState(false)
     const { mutate } = useSWRConfig()
 
     const { data: clientBody, error: clientError, isLoading: clientLoading, mutate: reloadClient } = useSWR<{ data: Client }>(seesClient ? `/api/clients?id=${encodeURIComponent(id)}` : null, fetcher)
@@ -60,6 +67,15 @@ export default function ClientPage() {
     const detailsFailed = seesClient && !clientBody
     // Its sections didn't load: not "none", which would have the form start a first one.
     const sectionsFailed = seesRecords && !sectionsBody
+    // Its HQ, with a map link to its pin; a client the release before added has its own location fields until it has one.
+    const hqOf = (c: Client) => {
+        const hq = c.locations[0]
+        if (!hq) return c.locationLink
+            ? <a href={c.locationLink} target="_blank" rel="noopener noreferrer"><bdi>{c.locationName}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
+            : <bdi>{c.locationName}</bdi>
+        if (hq.latitude === null || hq.longitude === null) return <><bdi>{hq.name}</bdi> <StatusBadge tone="problem">{t('locations_needs_pin')}</StatusBadge></>
+        return <a href={googleMapsLink(hq.latitude, hq.longitude)} target="_blank" rel="noopener noreferrer"><bdi>{hq.name}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
+    }
     const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') } : { href: '/dashboard/records', label: modules.label('records') }
 
     if (!name) {
@@ -89,12 +105,7 @@ export default function ClientPage() {
                     <Details items={[
                         { label: t('client_owner_name'), value: client.ownerName },
                         { label: t('client_mobile_number'), value: <a href={`tel:${client.mobileNumber.replace(/[^0-9+]/g, '')}`}><bdi>{client.mobileNumber}</bdi></a> },
-                        {
-                            label: t('client_location'),
-                            value: client.locationLink
-                                ? <a href={client.locationLink} target="_blank" rel="noopener noreferrer">{client.locationName}<span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
-                                : client.locationName,
-                        },
+                        { label: t('client_hq'), value: hqOf(client) },
                     ]} />
                 </Card>
             )}
@@ -103,6 +114,22 @@ export default function ClientPage() {
                 <Card title={t('client_details')}>
                     <EmptyState icon={WarningCircleIcon} title={t('client_details_failed')} action={<Button onClick={() => { void reloadClient() }}>{t('try_again')}</Button>} />
                 </Card>
+            )}
+
+            {seesLocations && (
+                <Section
+                    title={modules.label('locations')}
+                    action={can('locations.add') && <Button size="sm" icon={MapPinPlusIcon} onClick={() => setAddingLocation(true)}>{t('locations_add')}</Button>}
+                >
+                    {client && client.locations.length === 0 && <p className="ui-hint">{t('locations_no_hq')}</p>}
+                    <LocationsList
+                        clientId={id}
+                        adding={addingLocation && can('locations.add')}
+                        onAddingChange={setAddingLocation}
+                        // Its HQ, in its details, may have moved.
+                        onChanged={() => { void reloadClient() }}
+                    />
+                </Section>
             )}
 
             {sectionsFailed && (

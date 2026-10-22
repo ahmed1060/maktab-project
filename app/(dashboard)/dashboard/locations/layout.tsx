@@ -1,0 +1,10 @@
+import { guardModule } from "@/lib/features/guard"
+
+// Gated at the layout rather than inside the page: the page is a Client
+// Component and cannot read the session server-side, and a client-side check
+// would render the real screen for an instant before replacing it. A
+// client's places are part of the Clients module.
+export default async function LocationsLayout({ children }: { children: React.ReactNode }) {
+    const locked = await guardModule('CLIENTS')
+    return locked ?? <>{children}</>
+}

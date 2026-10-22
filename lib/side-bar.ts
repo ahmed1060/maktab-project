@@ -56,11 +56,11 @@ export type SideBarGroup = {
     items: SideBarItemKey[]
 }
 
-/** A company's people's side bar (§2.1), in order. Locations and My cash advance join when they're built. */
+/** A company's people's side bar (§2.1), in order. My cash advance joins when it's built. */
 export const COMPANY_GROUPS: readonly SideBarGroup[] = [
     { key: 'top', labelKey: null, items: ['dashboard', 'checkIn'] },
     { key: 'work', labelKey: 'nav_group_work', items: ['tasks', 'obligations'] },
-    { key: 'clients', labelKey: 'nav_group_clients', items: ['clients', 'records'] },
+    { key: 'clients', labelKey: 'nav_group_clients', items: ['clients', 'locations', 'records'] },
     // The request pages sit together here until the one Requests page (§2.3).
     { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests', 'dayOff', 'roleRequests', 'profileRequests'] },
     { key: 'money', labelKey: 'nav_group_money', items: ['costs', 'payroll'] },
@@ -98,6 +98,7 @@ export const MODULE_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
     costs: 'tasks.pay',
     employees: 'employees.view',
     clients: 'clients.view',
+    locations: 'locations.view',
 }
 
 /** Whether this person is shown an item. */

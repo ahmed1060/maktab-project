@@ -22,10 +22,10 @@ import { resolveTitleKey } from "./page-title"
 import { COMPANY_GROUPS, PAGES } from "./side-bar"
 
 describe("the module registry", () => {
-    it("covers the nine company-facing modules and no more", () => {
+    it("covers the ten company-facing modules and no more", () => {
         expect([...MODULE_KEYS].sort()).toEqual([
             "clients", "costs", "dashboard", "dayOff", "employees",
-            "obligations", "records", "requests", "tasks",
+            "locations", "obligations", "records", "requests", "tasks",
         ])
     })
 
