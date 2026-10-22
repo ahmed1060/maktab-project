@@ -119,9 +119,18 @@ function allow(session: Session, permission: Permission, companyId: string, notF
     if (!can(session.user as any, permission, { companyId })) throw new Error("RECORD_FORBIDDEN")
 }
 
-/** Each file must be one uploaded here for this company (lib/record-files.ts). */
-function checkFiles(files: readonly RecordFile[], companyId: string) {
-    for (const f of files) if (!ownFilePath(f.url, companyId)) throw new Error("RECORD_FILE_INVALID")
+/**
+ * Each file must be one uploaded here for this company (lib/record-files.ts).
+ * A Super Admin's own uploads, under "platform", are given to a record only
+ * by a Super Admin: anyone else who had one's address could put it on their
+ * own company's records. One a record already has stays, whoever edits it.
+ */
+function checkFiles(session: Session, files: readonly RecordFile[], companyId: string, had: ReadonlySet<string> = new Set()) {
+    for (const f of files) {
+        const path = ownFilePath(f.url, companyId)
+        if (!path) throw new Error("RECORD_FILE_INVALID")
+        if (path.startsWith("platform/") && !isSuperAdmin(session) && !had.has(f.url)) throw new Error("RECORD_FILE_INVALID")
+    }
 }
 
 /**
@@ -437,7 +446,7 @@ export class RecordService {
             companyId = vendor.companyId
             allow(session, "records.contribute", companyId, "VENDOR_NOT_FOUND")
         }
-        checkFiles(input.files, companyId)
+        checkFiles(session, input.files, companyId)
         await checkStored(input.files, companyId)
 
         return prisma.$transaction(async tx => {
@@ -496,9 +505,9 @@ export class RecordService {
             const target = await sectionWithCompany(input.sectionId)
             if (target.vendorId !== record.vendorId) throw new Error("RECORD_SECTION_NOT_FOUND")
         }
-        checkFiles(input.files, record.companyId)
-        // Those it didn't have as it was read; one added since is refused below (RECORD_CHANGED).
+        // Those it didn't have as it was read are new; one added since is refused below (RECORD_CHANGED).
         const had = new Set(parseRecordFiles(record.attachment).map(f => f.url))
+        checkFiles(session, input.files, record.companyId, had)
         await checkStored(input.files.filter(f => !had.has(f.url)), record.companyId)
         const who = actor(session)
         const expiryDate = input.expiryDate ? parseExpiryDay(input.expiryDate) : null

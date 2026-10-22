@@ -217,6 +217,19 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             notStored.clear()
         })
 
+        it("takes a Super Admin's own upload only from a Super Admin, and keeps one a record has", async () => {
+            const theirs = file("platform", "guide.pdf")
+            const add = (who: any, files: ReturnType<typeof file>[]) => Records.create(who, { content: "Guide", files, expiryDate: null, reminderDays: null, vendorId: "v2", sectionTitle: "Guides" })
+            await expect(add(admin, [theirs])).rejects.toMatchObject({ message: "RECORD_FILE_INVALID" })
+            const { id } = await add(superAdmin, [theirs])
+            // An Admin edits it, keeping the file it has, but can't add another of the platform's.
+            await Records.update(admin, { id, content: "Guide, edited", files: [theirs], filesBefore: [theirs.url], expiryDate: null, reminderDays: null })
+            expect((await Records.get(admin, id)).files.map(f => f.url)).toEqual([theirs.url])
+            await expect(Records.update(admin, { id, content: "Guide", files: [theirs, file("platform", "other.pdf")], filesBefore: [theirs.url], expiryDate: null, reminderDays: null })).rejects.toMatchObject({ message: "RECORD_FILE_INVALID" })
+            // Gone again, without storage, for the tests after that count this client's records.
+            await db.query(`DELETE FROM "ClientNote" WHERE id = $1`, [id])
+        })
+
         it("refuses moving a record to a section deleted as it's moved, rather than failing", async () => {
             const { id } = await Records.create(admin, { content: "Moving", files: [], expiryDate: null, reminderDays: null, vendorId: "v2", sectionTitle: "Moving from" })
             const to = await Records.createSection(admin, { vendorId: "v2", title: "Moving to" })
