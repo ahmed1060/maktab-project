@@ -393,6 +393,9 @@ export class RecordService {
                 // As createSection: no first record starts a section of the new name meanwhile.
                 const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+                // And the section, which may have been deleted since it was found (deleteSection).
+                const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${input.id} FOR NO KEY UPDATE`
+                if (!held.length) throw new Error("RECORD_SECTION_NOT_FOUND")
                 const renamed = await tx.recordSection.update({
                     where: { id: input.id },
                     data: { title: input.title, lastEditedById: who.byUser },
