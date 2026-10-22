@@ -782,3 +782,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-22:** From Codex's tenth review of #82: a failed search for a
   client in Add record says so, with Try again, rather than leaving the last
   search's clients up as if they matched (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's eleventh review of #82: on the Records page,
+  a record open in a dialog closes when a Super Admin picks another
+  company; an edit refused as out of date reloads the list; and a record's
+  details in its dialog are one to a row on a phone, as `DESIGN.md` says
+  (`CLIENTS_PLAN.md` change log).

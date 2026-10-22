@@ -946,3 +946,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   record only by a Super Admin's hand; and a failed search in Add record's
   clients says so, rather than showing the last search's. Still waiting to
   be merged.
+- **2026-10-22:** PR 0a (#82): Codex's eleventh review is fixed too (§0.2):
+  a record open to view, edit or delete closes when a Super Admin picks
+  another company, so it can't be changed unseen; an edit refused because
+  someone changed the record's files reloads the records, so opening it
+  again shows them; renaming a section deleted at that moment says it's
+  gone rather than failing; and a record's details in its dialog are one
+  to a row on a phone. Still waiting to be merged.
