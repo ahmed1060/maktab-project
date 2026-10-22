@@ -389,6 +389,19 @@ These are built once, in the building-blocks PR, and every page uses them
     what's wrong with one that isn't a colour;
   - a preview of a primary button, a link and a selected tab in the
     colour, in light and dark, before it's saved.
+- **A place on the map,** such as a location's pin (`CLIENTS_PLAN.md`
+  §2.5), is a group of fields under its label:
+  - a place search, which drops the pin on the place picked, and gives it
+    a name if it has none yet;
+  - the pin as coordinates (`30.0444, 31.2357`), which can be pasted from
+    Google Maps, with "Use my current location" and "Pick on the map"
+    below it as secondary buttons. The map shows the pin, which can be
+    dragged, and the check radius as a circle around it;
+  - the check radius in metres, below, with the default it takes when
+    left empty as its hint.
+
+  It's the same map as the check-in places (Company Settings), so a pin
+  is placed the same way everywhere.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -794,3 +807,6 @@ changed:
   never `--muted`, which a dark backdrop under the glass can bring below
   4.5:1; and it takes the same room floating or not, so the page doesn't
   move.
+- **2026-10-22:** A place on the map (§5.3), for the locations tasks happen
+  at (`CLIENTS_PLAN.md` §2): a place search, the pin with "Use my current
+  location" and "Pick on the map", and the check radius.
