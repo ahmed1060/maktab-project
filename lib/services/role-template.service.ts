@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { normalizeGrants, grantRows } from "@/lib/permissions/grant-rules"
-import { fromStored, templateGrants } from "@/lib/permissions/stored-names"
+import { normalizeGrants, grantRows, templateGrants } from "@/lib/permissions/grant-rules"
 import { GrantsError, RoleService, checkSeparation } from "./role.service"
 import type { UserRole } from "@prisma/client"
 import type { CreateTemplateInput, UpdateTemplateInput } from "@/lib/validations/role.schema"
@@ -93,7 +92,7 @@ export class RoleTemplateService {
             roles: roles.map(role => ({
                 id: role.id, name: role.name, companyId: role.companyId, companyName: role.company.name,
                 holders: role._count.users,
-                difference: differenceOf(fromStored(role.grants), template.grants),
+                difference: differenceOf(role.grants, template.grants),
             })),
         }
     }

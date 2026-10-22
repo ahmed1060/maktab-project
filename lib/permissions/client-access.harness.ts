@@ -54,7 +54,7 @@ export const prismaMock: any = new Proxy({}, {
         if (prop === "$queryRaw") return async (sql: TemplateStringsArray, ...values: any[]) => {
             const text = sql.join("?")
             if (text.includes("pg_advisory")) return [{}]
-            if (text.includes('FROM "Vendor"')) return clientRow(values[0]) ? [{ id: values[0] }] : []
+            if (text.includes('FROM "Client"')) return clientRow(values[0]) ? [{ id: values[0] }] : []
             // The section's: by its id, or a client's section by name, which none of the fixtures is.
             if (text.includes('FROM "ClientSection" WHERE id')) return sectionRow(values[0]) ? [{ id: values[0] }] : []
             if (text.includes('FROM "ClientSection"')) return []

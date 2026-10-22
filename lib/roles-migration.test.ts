@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 import { isPermission } from "@/lib/permissions/catalogue"
-import { permissionOf } from "@/lib/permissions/stored-names"
 
 /**
  * The migration that made roles data seeds every company's built-in roles
@@ -27,14 +26,20 @@ const LATER = [
 
 // A later one that renames permissions: clients.* became records.*, for the
 // old Clients section moving onto each client (CLIENTS_PLAN.md §0.2). The
-// names it renames are read out of its SQL too. And vendors.* became
-// clients.*, in code in 0b and in the rows in 0c, which a later migration
-// rewrites: read here as the new (lib/permissions/stored-names.ts).
+// names it renames are read out of its SQL too. And another: vendors.*
+// became clients.*, in code in 0b and in the rows in 0c (CLIENTS_PLAN.md
+// §0.3), whose names are read the same way.
 const RENAMING = readFileSync("prisma/migrations/20261104000000_records_on_clients/migration.sql", "utf8")
+const CLIENT_NAMES = readFileSync("prisma/migrations/20261107000000_client_names_stored/migration.sql", "utf8")
 function renamed(): Record<string, string> {
     const list = RENAMING.match(/WHEN name IN \(([^)]*)\)\s*THEN 'records\.' \|\| substr\(name, length\('clients\.'\) \+ 1\)/)
     if (!list) throw new Error("the rename's list of names wasn't found")
-    return Object.fromEntries([...list[1].matchAll(/'clients\.(\w+)'/g)].map(([old, verb]) => [old.slice(1, -1), `records.${verb}`]))
+    const clients = CLIENT_NAMES.match(/UPDATE "RoleGrant" SET "permission" = 'clients\.' \|\| substr\("permission", length\('vendors\.'\) \+ 1\)\s*WHERE "permission" IN \(([^)]*)\)/)
+    if (!clients) throw new Error("0c's list of names wasn't found")
+    return {
+        ...Object.fromEntries([...list[1].matchAll(/'clients\.(\w+)'/g)].map(([old, verb]) => [old.slice(1, -1), `records.${verb}`])),
+        ...Object.fromEntries([...clients[1].matchAll(/'vendors\.(\w+)'/g)].map(([old, verb]) => [old.slice(1, -1), `clients.${verb}`])),
+    }
 }
 
 function seeded(): Record<string, Record<string, string>> {
@@ -43,7 +48,7 @@ function seeded(): Record<string, Record<string, string>> {
     for (const sql of [SQL, ...LATER]) {
         const block = sql.slice(sql.indexOf('INSERT INTO "RoleGrant"'), sql.indexOf('AS g("builtIn"'))
         for (const [, role, permission, scope] of block.matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)) {
-            ;(out[role] ??= {})[rename[permission] ?? permissionOf(permission)] = scope
+            ;(out[role] ??= {})[rename[permission] ?? permission] = scope
         }
     }
     return out
@@ -57,10 +62,11 @@ describe("the roles migration seeds the built-in grants", () => {
         }
     })
 
-    it("renames each of the old Clients section's four permissions", () => {
+    it("renames each of the old Clients section's four permissions, then the vendors' two", () => {
         expect(renamed()).toEqual({
             "clients.view": "records.view", "clients.contribute": "records.contribute",
             "clients.edit": "records.edit", "clients.delete": "records.delete",
+            "vendors.view": "clients.view", "vendors.manage": "clients.manage",
         })
     })
 

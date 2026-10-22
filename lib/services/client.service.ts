@@ -92,7 +92,7 @@ export class ClientService {
             // business; they're deleted on its page first, one by one. Its
             // row is held first, so a record being added meanwhile
             // (RecordService.create) is counted, or finds the client gone.
-            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${id} FOR UPDATE`
+            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${id} FOR UPDATE`
             if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
             const records = await tx.clientRecord.count({ where: { section: { clientId: id } } })
             if (records > 0) throw new Error("CLIENT_HAS_RECORDS")

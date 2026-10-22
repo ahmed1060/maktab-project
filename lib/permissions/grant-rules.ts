@@ -75,3 +75,18 @@ export function covers(held: Grants, wanted: Grants): boolean {
     return (Object.entries(wanted) as [Permission, Scope][])
         .every(([permission, scope]) => !!held[permission] && WIDTH[held[permission]!] >= WIDTH[scope])
 }
+
+/**
+ * A role's grant rows as grants. A grant for a permission the catalogue
+ * doesn't know is skipped rather than trusted: it can't be encoded, and it
+ * gates nothing.
+ */
+export function grantsFromRows(rows: { permission: string; scope: string }[]): Grants {
+    const grants: Grants = {}
+    for (const g of rows) if (isPermission(g.permission)) grants[g.permission] = g.scope as Scope
+    return grants
+}
+
+/** A role template's grants, a JSON list. */
+export const templateGrants = (json: unknown): GrantInput[] =>
+    Array.isArray(json) ? json.filter((g): g is GrantInput => typeof g?.permission === "string") : []
