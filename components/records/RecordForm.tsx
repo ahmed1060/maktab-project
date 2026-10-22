@@ -37,6 +37,7 @@ export default function RecordForm({ open, onClose, vendorId, sections, record, 
     sections?: SectionItem[]
     /** The record being edited; none to add one. */
     record?: RecordItem | null
+    /** Reloads the records: once saved, and when a save is refused because the record changed since it opened. */
     onSaved: () => void
 }) {
     // Mounted afresh each time it opens, so it starts from the record as it is.
@@ -181,6 +182,9 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
             const body = await res.json().catch(() => null)
             if (!res.ok) {
                 showToast(body?.error || t('error_generic'), 'error')
+                // Someone changed its files since it opened (RECORD_CHANGED):
+                // the list reloads, so opening it again shows them as they are.
+                if (res.status === 409) onSaved()
                 return
             }
             // Saved with the record now, but for any taken off again before this save.

@@ -131,6 +131,13 @@ describe("a record's form", () => {
         expect(updateRecordSchema.safeParse({ id: "r1", content: "x", files: [], filesBefore: [] }).success).toBe(true)
     })
 
+    it("refused because someone changed the record's files, reloads the records, so opening it again shows them", () => {
+        // Opened again from a list never reloaded, it had the same files as before, and was refused again.
+        expect(FORM).toMatch(/if \(!res\.ok\) \{\s*showToast\(body\?\.error \|\| t\('error_generic'\), 'error'\)[\s\S]{0,200}?if \(res\.status === 409\) onSaved\(\)\s*return/)
+        expect(readFileSync("lib/api-errors.ts", "utf8")).toMatch(/RECORD_CHANGED: \{ status: 409,/)
+        expect(readFileSync("components/records/RecordsList.tsx", "utf8")).toMatch(/record=\{editing\}\s*onSaved=\{changed\}/)
+    })
+
     it("keeps each file it uploads, so a failed save doesn't upload it again", () => {
         expect(FORM).toContain("const done = await upload(file)")
         expect(FORM).toContain("setKept(files)")
