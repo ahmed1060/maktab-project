@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-22 05:45 UTC, against GitHub.
+Last checked: 2026-10-22 06:30 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,17 +39,17 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #82 Records move onto clients (step 0, PR 0a) | Open | `ec7159e` (2026-10-22 01:00 UTC) | The eleventh review's fixes, after `ec7159e` (below) |
+| #82 Records move onto clients (step 0, PR 0a) | Open | `b910873` (2026-10-22 05:45 UTC) | The twelfth review's fixes, after `b910873` (below) |
 
-Codex's limit reset by 2026-10-22. Its ninth review covered every #82
-commit up to `6bff35c`, its tenth up to `3162db4`, and its eleventh up to
-`ec7159e`. The commits after it fix the eleventh, and are sent to Codex
-as they're pushed:
+Codex's limit reset by 2026-10-22. Its ninth to twelfth reviews covered
+every #82 commit up to `b910873`. The commits after it fix the twelfth,
+and are sent to Codex as they're pushed:
 
-- `055b050` A record's dialogs close when a Super Admin picks another company
-- `c1bc87f` An edit refused as out of date reloads the records
-- `47e8ed0` Renaming a section deleted at that moment says it's gone
-- the details-on-a-phone fix, the plans' and this file's own commits
+- `d1194d4` Main's role editor can't take away a role's Records grants
+- `9be81d9` A section's rename is audited from the title it had as it was renamed
+- `1090575` Expiry reminders and a company's deletion can't deadlock
+- `6ce0a2f` The Records list reloads when the company's day ends
+- the plans' and this file's own commits
 
 ## Reviewed
 
