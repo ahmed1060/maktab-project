@@ -485,8 +485,8 @@ separate system. On screen they're renamed **Check-in places** (أماكن
      the migration runs while it's live, so it can add a cost with no row
      or remove one and leave its row. Until that's tidied, the entries say
      which costs a task has. A cost with no row is removed as before.
-   - **Proposed:** a small PR, 4d, once 4c is live, gives the costs added
-     meanwhile their rows and removes the rows left over. From then on the
+   - **Decided (2026-10-22):** a small PR, 4d, once 4c is live, gives the
+     costs added meanwhile their rows and removes the rows left over. From then on the
      rows say which costs a task has. It comes before anything points at a
      cost (§6, §7).
 
@@ -800,10 +800,11 @@ balance first, automatically:
        stands on the fix that has Mark all as paid pay only the list shown,
        and on the date filters counting the company's days, which come
        before it in their own PRs. It was merged in #100 on 2026-10-29.
-     - Step 4 (§4). Proposed: it ships as three PRs. 4a, payment safety
-       (§4.1, §4.2), is built, and 4b, archiving clients (§4.3). 4c moves costs
-       into their own table, with their descriptions (§4.4, §4.5), and is
-       built too. Proposed: 4d tidies up after it (§4.5).
+     - Step 4 (§4). Decided (2026-10-22): it ships as three PRs, and a
+       fourth, small one. 4a, payment safety (§4.1, §4.2), is built, and
+       4b, archiving clients (§4.3). 4c moves costs into their own table,
+       with their descriptions (§4.4, §4.5), and is built too. 4d tidies up
+       after it, once 4c is live (§4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1418,3 +1419,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     The task is held while it's saved; one person's costs used to go from
     the list while their total stayed.
   - **Proposed:** PR 4d, once 4c is live, finishes the move (§4.5).
+- **2026-10-22:** Decided by the product owner: step 4 ships as three PRs,
+  4a, 4b and 4c, and a small fourth, 4d, once 4c is live (§4.5, §8).
