@@ -23,6 +23,7 @@ describe("permission codes", () => {
         "payroll.view": 38, "payroll.prepare": 39, "payroll.approve": 40, "payroll.issue_payslips": 41,
         "payroll.mark_paid": 42, "settlements.manage": 43, "debts.view": 44, "debts.waive": 45,
         "settings.view": 46, "settings.edit": 47, "audit.view": 48,
+        "locations.view": 55, "locations.add": 56, "locations.manage": 57,
         "attendance.view_team": 49, "attendance.correct": 50, "attendance.approve_overtime": 51, "attendance.approve_permissions": 52,
         "attendance.approve_devices": 53,
         "attendance.approve_face": 54,

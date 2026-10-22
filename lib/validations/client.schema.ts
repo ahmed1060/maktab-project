@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { placeSchema } from "./location.schema"
 
 // Permissive on purpose — a phone number field that's too strict about
 // format (country codes, spacing, dashes) rejects real numbers more often
@@ -13,8 +14,8 @@ export const createClientSchema = z.object({
     name: z.string().min(1, "Client name is required").max(100),
     ownerName: z.string().min(1, "Owner name is required").max(100),
     mobileNumber: mobileNumberSchema,
-    locationName: z.string().min(1, "Location is required").max(200),
-    locationLink: z.string().url().optional().or(z.literal('')),
+    /** Its HQ (CLIENTS_PLAN.md §2.1): every client has one, with its pin. */
+    hq: placeSchema,
     companyId: z.string().optional(),
 })
 
@@ -23,8 +24,7 @@ export const updateClientSchema = z.object({
     name: z.string().min(1, "Client name is required").max(100).optional(),
     ownerName: z.string().min(1, "Owner name is required").max(100).optional(),
     mobileNumber: mobileNumberSchema.optional(),
-    locationName: z.string().min(1, "Location is required").max(200).optional(),
-    locationLink: z.string().url().optional().or(z.literal('')),
+    hq: placeSchema.optional(),
 })
 
 export type CreateClientInput = z.infer<typeof createClientSchema>

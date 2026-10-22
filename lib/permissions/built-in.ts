@@ -109,6 +109,12 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "clients.view": "COMPANY",
         "clients.manage": "COMPANY",
         "costs.view": "COMPANY",
+        // The places tasks happen at: whoever creates tasks sees and adds
+        // them; an Admin manages them (CLIENTS_PLAN.md §2.9). Given to the
+        // companies there already were by migration 20261110000000.
+        "locations.view": "COMPANY",
+        "locations.add": "COMPANY",
+        "locations.manage": "COMPANY",
 
         // Settings: the company's own settings, but only the tabs the Super
         // Admin chooses to show it, and none until they switch that on
@@ -170,6 +176,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "records.contribute": "COMPANY",
         "records.edit": "COMPANY",
         "clients.view": "COMPANY",
+        // They create tasks, so they see and add the places tasks happen at
+        // (CLIENTS_PLAN.md §2.9). Migration 20261110000000.
+        "locations.view": "COMPANY",
+        "locations.add": "COMPANY",
     },
     // Everyone reads and adds to the company's records.
     EMPLOYEE: {

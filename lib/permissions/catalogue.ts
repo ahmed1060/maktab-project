@@ -116,6 +116,12 @@ export const PERMISSIONS = {
     // (CLIENTS_PLAN.md §0.3).
     "clients.view":             { code: 29, module: "CLIENTS", scopes: COMPANY },
     "clients.manage":           { code: 30, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    // The places tasks happen at (CLIENTS_PLAN.md §2.9): seeing them, adding
+    // one (as the task form will), and managing them (pin and radius,
+    // archiving, which is a client's HQ). Adding or managing includes seeing.
+    "locations.view":           { code: 55, module: "CLIENTS", scopes: COMPANY },
+    "locations.add":            { code: 56, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
+    "locations.manage":         { code: 57, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY },
 
     // --- Day off -----------------------------------------------------------
@@ -190,8 +196,11 @@ export type Permission = keyof typeof PERMISSIONS
  * Not raised for clients.* (codes 29–30), renamed from vendors.* in 0b–0d:
  * every release in between read either name as the same code, so no token
  * lost them.
+ *
+ * 3: locations.* (codes 55–57), for the places tasks happen at
+ * (CLIENTS_PLAN.md §2.9).
  */
-export const CATALOGUE_VERSION = 2
+export const CATALOGUE_VERSION = 3
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

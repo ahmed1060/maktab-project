@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { CreateClientInput, UpdateClientInput } from "../validations/client.schema"
 import { can } from "@/lib/permissions/can"
+import { googleMapsLink } from "@/lib/attendance/geo"
+import { LocationService } from "./location.service"
 
 export class ClientService {
     static async create(input: CreateClientInput, session: any) {
@@ -8,7 +10,7 @@ export class ClientService {
         const userId = session.user.id
         const userCompanyId = (session.user as any).companyId
 
-        const { name, ownerName, mobileNumber, locationName, locationLink, companyId } = input
+        const { name, ownerName, mobileNumber, hq, companyId } = input
 
         let targetCompanyId = userCompanyId
         if (userRole === 'SUPER_ADMIN') {
@@ -18,29 +20,36 @@ export class ClientService {
             if (!targetCompanyId) throw new Error("USER_NO_COMPANY")
         }
 
-        const client = await prisma.client.create({
-            data: {
-                name,
-                ownerName,
-                mobileNumber,
-                locationName,
-                locationLink: locationLink || null,
-                companyId: targetCompanyId!,
-                // Client.createdById's FK targets User only — a Super Admin's
-                // id lives in a separate table and would violate it. Same
-                // guard Task.create() already uses for the identical reason.
-                createdById: userRole === 'SUPER_ADMIN' ? null : userId
-            }
-        })
-
+        // Client.createdById's FK targets User only — a Super Admin's id lives
+        // in a separate table and would violate it. Same guard Task.create()
+        // already uses for the identical reason.
+        const byUser = userRole === 'SUPER_ADMIN' ? null : userId
         const { AuditLogService } = await import("./audit-log.service")
-        await AuditLogService.log('CREATE_VENDOR', 'VENDOR', client.id, {
-            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-            details: { name, companyId: targetCompanyId }
-        })
+        return prisma.$transaction(async tx => {
+            const client = await tx.client.create({
+                data: {
+                    name,
+                    ownerName,
+                    mobileNumber,
+                    // Its HQ's, which the task form copies into a new task
+                    // until step 2 (LocationService.saveHq keeps them so).
+                    locationName: hq.name,
+                    locationLink: googleMapsLink(hq.latitude, hq.longitude),
+                    companyId: targetCompanyId!,
+                    createdById: byUser,
+                }
+            })
+            // Its HQ, with it: no client is ever without one it was given.
+            await LocationService.saveHq(tx, client, hq, byUser)
 
-        return client
+            await AuditLogService.log('CREATE_VENDOR', 'VENDOR', client.id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: { name, companyId: targetCompanyId, hq }
+            })
+            return client
+        })
     }
 
     static async update(input: UpdateClientInput, session: any) {
@@ -56,22 +65,21 @@ export class ClientService {
             throw new Error("FORBIDDEN")
         }
 
-        const updateData: any = { ...rest }
-        if ('locationLink' in rest) updateData.locationLink = rest.locationLink || null
-
-        const updated = await prisma.client.update({
-            where: { id },
-            data: updateData
-        })
-
+        const { hq, ...details } = rest
         const { AuditLogService } = await import("./audit-log.service")
-        await AuditLogService.log('UPDATE_VENDOR', 'VENDOR', id, {
-            userId: userRole !== 'SUPER_ADMIN' ? userId : null,
-            superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-            details: rest
-        })
+        return prisma.$transaction(async tx => {
+            await tx.client.update({ where: { id }, data: details })
+            // Its HQ's details, and its own location fields with them.
+            if (hq) await LocationService.saveHq(tx, client, hq, userRole === 'SUPER_ADMIN' ? null : userId)
 
-        return updated
+            await AuditLogService.log('UPDATE_VENDOR', 'VENDOR', id, {
+                tx,
+                userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                details: rest
+            })
+            return tx.client.findUniqueOrThrow({ where: { id } })
+        })
     }
 
     static async delete(id: string, session: any) {
