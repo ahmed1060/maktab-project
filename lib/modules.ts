@@ -81,7 +81,7 @@ export type ModuleOverrides = Partial<Record<ModuleKey, string>>
  * Module keys as a company's overrides store them (CLIENTS_PLAN.md §0.3).
  * Clients were Vendors until 0b, and their overrides keep the old key until
  * 0c rewrites them: main's code, live while each PR waits for review, knows
- * only that one. So the old key is read as the new, and written. 0c removes
+ * only that one. So the old key is read as the new, and written. 0d removes
  * this, as it does lib/permissions/stored-names.ts.
  */
 const STORED_KEY: Partial<Record<ModuleKey, string>> = { clients: 'vendors' }

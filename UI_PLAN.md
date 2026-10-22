@@ -323,10 +323,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      details, files, a record's expiry, and opening an item from a list
      (§5.5). It also adds that text people type keeps its own direction in
      either language (§7).
-   - The side bar groups (§2.1, §2.2) land with step 0. Proposed: in a
-     small PR straight after 0b, which makes Vendors Clients in code and
-     leaves the screens as they were, with the Clients list page rebuilt on
-     the building blocks (`CLIENTS_PLAN.md` §8).
+   - The side bar groups (§2.1, §2.2) land with step 0. Decided
+     (2026-10-22): in a small PR straight after 0b, which makes Vendors
+     Clients in code and leaves the screens as they were, with the Clients
+     list page rebuilt on the building blocks (`CLIENTS_PLAN.md` §8).
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
@@ -845,3 +845,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the new ones. Nothing looks different. Proposed: the side bar groups, and
   the Clients list page on the building blocks, in a small PR after it
   (§5).
+- **2026-10-22:** Decided by the product owner: the side bar groups, and
+  the Clients list page on the building blocks, come in a small PR straight
+  after 0b (§5).

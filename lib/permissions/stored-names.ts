@@ -10,7 +10,9 @@ import type { GrantInput } from "./grant-rules"
  * one shared database, so main's code is live against it while each PR waits
  * for review, and it knows only the old names: a row renamed under it would
  * be a grant it no longer sees. So this release reads both names and writes
- * the old one, and 0c, with this release live, can rewrite the rows. 0c also
+ * the old one, and 0c, with this release live, can rewrite the rows. 0c
+ * writes the new names but still reads both, as this release writes the old
+ * while 0c waits for review; 0d, with the app closed, rewrites any left and
  * removes this.
  *
  * The codes in the session token don't change (catalogue.ts), so a token

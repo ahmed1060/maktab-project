@@ -159,8 +159,8 @@ Two things make a single big rename unsafe:
 |---|---|---|
 | 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table is no longer used; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
 | 0b | Vendors become Clients in code (§0.1). The code reads both the old `vendors.*` permission names and the new ones, and writes the old; the database names stay as they are for now. 0a's triggers and the old section's own rows go (see below) | None |
-| 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed. Today's clients table and its column are dropped | None, because 0b already accepts both |
-| 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below) | None. The app is closed for about 15 minutes, at a time the product owner chooses |
+| 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and the code writes the new names, still reading both. Today's clients table and its column are dropped | None, because 0b already accepts both |
+| 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below). Any old permission name left is rewritten, and the code stops reading them | None. The app is closed for about 15 minutes, at a time the product owner chooses |
 
 The app ignores permission names it doesn't know instead of failing
 (`lib/permissions/matrix.ts`), so the short overlaps above can't break
@@ -215,15 +215,17 @@ sign-in.
   Client.
 - **A page open from before the deploy** calls the old API addresses and
   needs a reload, as it did for 0a.
-- **Proposed for 0c:** a grant 0b's code writes while 0c waits for review
-  has the old name. So 0c's code writes the new names and still reads
-  both, and 0d, with the app closed, rewrites any old name left and
-  removes the reading of them. No trigger is needed.
+- **0c and 0d** (Decided on 2026-10-22): a grant 0b's code writes while 0c
+  waits for review has the old name. So 0c's code writes the new names and
+  still reads both, and 0d, with the app closed, rewrites any old name left
+  and removes the reading of them. No trigger is needed.
 
 **PR 0d, the maintenance window:**
 
 - It renames the `Vendor` table and the `vendorId` columns to their new
-  names, and removes the old-name mapping from the code.
+  names, and removes the old-name mapping from the code: the schema's
+  `@map`s, and the reading of old permission names and the module's old
+  key, after rewriting any 0b wrote while 0c waited for review.
 - It's kept small so its review is quick.
 - When its checks pass:
   1. turn maintenance mode on;
@@ -719,8 +721,8 @@ balance first, automatically:
        §0.3). It renames and nothing else: the Clients list page looks as
        it did.
      - The new side bar groups land with step 0. 0a puts the Records item
-       where the old Clients item was. Proposed: the groups come in a small
-       PR straight after 0b, now that the Clients group (§2.1 of
+       where the old Clients item was. Decided (2026-10-22): the groups come
+       in a small PR straight after 0b, now that the Clients group (§2.1 of
        `UI_PLAN.md`) can hold Clients and Records, with the Clients list
        page rebuilt on the building blocks.
      - Every screen these steps create or rework uses the building blocks:
@@ -1079,3 +1081,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   0a's code reads every column of a section while 0b waits for review. It
   opens for review once 0a is merged. Proposed: the side bar groups and the
   Clients list page on the building blocks in a small PR after it (§8).
+- **2026-10-22:** The product owner agreed both of 0b's proposals.
+  - **Decided:** the side bar groups, and the Clients list page on the
+    building blocks, come in a small PR straight after 0b (§8).
+  - **Decided:** 0c writes the new permission names and still reads both,
+    so a grant 0b's code writes while 0c waits for review isn't lost; 0d,
+    with the app closed, rewrites any old name left and stops reading them.
+    No trigger is needed (§0.3).
