@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import { prisma } from "@/lib/prisma"
 import { TaskService } from "@/lib/services/task.service"
 import { scopesToTeam, assignedToTeamWhere } from "@/lib/team-scope"
+import { pendingCostsWhere } from "@/lib/services/costs-query"
 import { assertStepUp } from "@/lib/step-up"
 
 export const POST = withStandardHandler(async (req, session, json) => {
@@ -24,29 +25,11 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
             if (!filters) return ApiResponse.badRequest("taskIds or filters required")
 
-            const where: any = {
-                AND: [
-                    { OR: [{ status: 'APPROVED' }, { status: 'COMPLETED' }, { status: 'REJECTED' }] },
-                    { totalCost: { gt: 0 } },
-                    { paymentStatus: 'PENDING_PAYMENT' }
-                ]
-            }
-
-            if (userRole !== 'SUPER_ADMIN') {
-                if (!userCompanyId) return ApiResponse.forbidden("No company assigned")
-                where.AND.push({ assignees: { some: { companyId: userCompanyId } } })
-            }
-            // Someone who pays their team's tasks (tasks.pay at TEAM) pays
-            // only those — the rule every single-task payment route applies.
-            if (teamOnly) where.AND.push(assignedToTeamWhere(session.user.id))
-
-            if (filters.employeeId) where.AND.push({ assignees: { some: { id: filters.employeeId } } })
-            if (filters.search) where.AND.push({ title: { contains: filters.search, mode: 'insensitive' } })
-            if (filters.dateFrom) where.AND.push({ updatedAt: { gte: new Date(filters.dateFrom) } })
-            if (filters.dateTo) {
-                const end = new Date(filters.dateTo); end.setHours(23, 59, 59, 999)
-                where.AND.push({ updatedAt: { lte: end } })
-            }
+            if (userRole !== 'SUPER_ADMIN' && !userCompanyId) return ApiResponse.forbidden("No company assigned")
+            // The Costs page's own query, so this pays the list shown: for a
+            // Super Admin, the chosen company's, not every company's.
+            const where = await pendingCostsWhere(session.user, filters)
+            if (!where) return ApiResponse.success({ count: 0 })
 
             const tasks = await prisma.task.findMany({ where, select: { id: true } })
             finalTaskIds = tasks.map(t => t.id)

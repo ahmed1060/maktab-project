@@ -54,6 +54,8 @@ describe("every high-risk action asks", () => {
     const READS_ONLY: Record<string, string> = {
         // Which tasks a team-scoped payer may see in the payment list.
         "lib/services/task.service.ts": "tasks.pay scope for a list; the delete path is the route's, which asks",
+        // Which costs a payer sees; POST /api/tasks/payment/bulk asks before paying them.
+        "lib/services/costs-query.ts": "tasks.pay scope for the Costs list and Mark all as paid",
         // Same checks as the routes that call them, after the route asked.
         "lib/services/record.service.ts": "called by DELETE /api/records and /api/records/sections, which ask",
         // Names them as what a review lists, not to let anybody act.
