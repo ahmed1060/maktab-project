@@ -728,7 +728,8 @@ balance first, automatically:
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
        `UI_PLAN.md`) can hold Clients and Records, with the Clients list
-       page rebuilt on the building blocks.
+       page rebuilt on the building blocks. Built, and opens for review
+       after 0b.
      - Every screen these steps create or rework uses the building blocks:
        Clients, Locations, Records, the Costs tabs, Cash advances, and the
        task form's pickers.
@@ -1095,3 +1096,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     No trigger is needed (§0.3).
 - **2026-10-23:** 0a was merged in #82. 0b opens for review in #92, on
   main as #83–#91 left it: its commits are as built, on that main.
+- **2026-10-22:** The side bar groups and the Clients list page on the
+  building blocks are built, to open for review after 0b (§8, `UI_PLAN.md`
+  change log).
