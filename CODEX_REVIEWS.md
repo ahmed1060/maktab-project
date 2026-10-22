@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-22 01:00 UTC, against GitHub.
+Last checked: 2026-10-22 05:45 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,17 +39,17 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #82 Records move onto clients (step 0, PR 0a) | Open | `3162db4` (2026-10-22 00:40 UTC) | The tenth review's fixes, after `3162db4` (below) |
+| #82 Records move onto clients (step 0, PR 0a) | Open | `ec7159e` (2026-10-22 01:00 UTC) | The eleventh review's fixes, after `ec7159e` (below) |
 
 Codex's limit reset by 2026-10-22. Its ninth review covered every #82
-commit up to `6bff35c`, and its tenth the ninth's fixes, up to `3162db4`.
-The commits after it fix the tenth, and are sent to Codex as they're
-pushed:
+commit up to `6bff35c`, its tenth up to `3162db4`, and its eleventh up to
+`ec7159e`. The commits after it fix the eleventh, and are sent to Codex
+as they're pushed:
 
-- `96eec0f` A failed client search says so in Add record
-- `676061b` A record moved to a section deleted at that moment is refused
-- `be638c8` Only a Super Admin gives a record a Super Admin's upload
-- the plans' and this file's own commits
+- `055b050` A record's dialogs close when a Super Admin picks another company
+- `c1bc87f` An edit refused as out of date reloads the records
+- `47e8ed0` Renaming a section deleted at that moment says it's gone
+- the details-on-a-phone fix, the plans' and this file's own commits
 
 ## Reviewed
 
