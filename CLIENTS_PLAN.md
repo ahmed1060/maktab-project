@@ -486,9 +486,11 @@ separate system. On screen they're renamed **Check-in places** (أماكن
      or remove one and leave its row. Until that's tidied, the entries say
      which costs a task has. A cost with no row is removed as before.
    - **Decided (2026-10-22):** a small PR, 4d, once 4c is live, gives the
-     costs added meanwhile their rows and removes the rows left over. From then on the
-     rows say which costs a task has. It comes before anything points at a
-     cost (§6, §7).
+     costs added meanwhile their rows and removes the rows left over. From
+     then on the rows say which costs a task has. It comes before anything
+     points at a cost (§6, §7). Built: the task's page lists the rows, and
+     a cost is removed by its row. The entries are still written, for the
+     release before.
 
 ---
 
@@ -801,11 +803,10 @@ balance first, automatically:
        and on the date filters counting the company's days, which come
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Decided (2026-10-22): it ships as three PRs, and a
-       fourth, small one. 4a, payment safety (§4.1, §4.2), was merged in
-       #101 on 2026-10-29, and 4b, archiving clients (§4.3), in #102. 4c
-       moves costs into their own table, with their descriptions (§4.4,
-       §4.5); it's built, and open for review in #103. 4d tidies up after
-       it, once 4c is live (§4.5).
+       fourth, small one. 4a, payment safety (§4.1, §4.2), is built, and
+       4b, archiving clients (§4.3). 4c moves costs into their own table,
+       with their descriptions (§4.4, §4.5), and is built too. 4d tidies up
+       after it, once 4c is live (§4.5), and is built.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1435,3 +1436,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-29:** In 4c (#103), a cost is kept to the cent with half a
   cent going up, as Postgres rounds it: 1.005 was rounded down, being a
   hair under in binary, and the totals owed with it (found by Codex).
+- **2026-10-22:** Step 4's small fourth PR, 4d, is built (§4.5). It opens
+  once 4c is live:
+  - **Its migration** gives the costs the release before added meanwhile
+    their rows, and removes the rows of costs it removed. From then on the
+    rows say which costs a task has, and the task's page lists them.
+  - **Like 4c's, its migration removes the helpers it makes:** a database
+    set up from scratch runs every migration in one go.
