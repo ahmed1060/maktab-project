@@ -882,3 +882,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   screenshots).
 - **2026-10-23:** The side bar groups and the Clients list page were
   merged in #93.
+- **2026-10-22:** The Locations page and each client's Locations section
+  are built on the building blocks (`CLIENTS_PLAN.md` step 1, PR 1a):
+  - search, a filter by client or shared, and In use or Archived. A table
+    on computers and cards on phones, a page of 20 at a time, and the row
+    menu: Edit, Make HQ, Archive or Restore;
+  - each client's HQ is marked with a badge and listed first. A location
+    with no pin yet says "Needs a pin" as a problem badge;
+  - adding and editing in a dialog, with the place fields of `DESIGN.md`
+    §5.3: its name, a place search that drops the pin, the pin, and the
+    check radius. The client form uses the same fields for its HQ;
+  - two building block changes: a badge beside an item's name, and a list
+    card's actions keep to its end when nothing is beside them.
