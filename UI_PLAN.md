@@ -965,3 +965,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** `CLIENTS_PLAN.md`'s step 3 was merged in #100, and 4a
   opens for review in #101, with the Costs page's Mark all as paid asking
   first.
+- **2026-10-22:** The Clients list gets In use and Archived, and its row
+  menu Archive or Restore (`CLIENTS_PLAN.md` step 4, PR 4b). An archived
+  client's page has an "Archived" badge beside its name and Restore in
+  its header. Costs' Mark all as paid asks first, in a confirmation
+  window (PR 4a).

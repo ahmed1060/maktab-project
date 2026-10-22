@@ -788,9 +788,8 @@ balance first, automatically:
        and on the date filters counting the company's days, which come
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Proposed: it ships as three PRs. 4a, payment safety
-       (§4.1, §4.2), is built, and open for review in #101. 4b archives
-       clients (§4.3). 4c moves costs into their own table, with their
-       descriptions (§4.4, §4.5).
+       (§4.1, §4.2), is built, and 4b, archiving clients (§4.3). 4c moves costs
+       into their own table, with their descriptions (§4.4, §4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1353,3 +1352,16 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   payments as the task's page does, stored as JSON text too, as older
   tasks may have them: read as text, a share paid wasn't seen, and the
   task was deleted while its page hid Delete (found by Codex).
+- **2026-10-22:** Step 4's second PR, 4b, is built (§4.3):
+  - **A client with tasks or records is archived instead of deleted,**
+    with its records, tasks and locations kept. The Clients list's menu
+    says Archive for one of these and Delete for the rest, and its
+    window says what archiving does.
+  - **An archived client is left out of what's picked from:** the task
+    form, the bulk upload's template and review, Add record and Add
+    location. A task already at it keeps it, and can still be edited.
+    The server refuses new work for one.
+  - **It stays in filters and history:** the Tasks, Costs and Locations
+    filters list it, marked archived.
+  - **The Clients list** has In use and Archived. An archived client's
+    page says so, with Restore for whoever manages clients.
