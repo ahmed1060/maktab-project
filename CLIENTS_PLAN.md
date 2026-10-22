@@ -787,6 +787,9 @@ balance first, automatically:
        stands on the fix that has Mark all as paid pay only the list shown,
        and on the date filters counting the company's days, which come
        before it in their own PRs. It's open for review in #100.
+     - Step 4 (§4). Proposed: it ships as three PRs. 4a, payment safety
+       (§4.1, §4.2), is built. 4b archives clients (§4.3). 4c moves costs
+       into their own table, with their descriptions (§4.4, §4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1322,3 +1325,13 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   sets on the Tasks or Costs page, for someone who can't pick it, still
   narrows the list, so it's counted on the Filters badge and Reset clears
   it; before, Reset left it in place (found by Codex).
+- **2026-10-22:** Step 4's first PR, 4a, is built (§4.1, §4.2):
+  - **Mark all as paid** asks first, "Pay 7 costs, 3,450 EGP?", counting
+    each person's part still due. The page sends back a digest of exactly
+    those parts, and the server pays them only if the list still comes to
+    the same: the tasks are held while it checks. If anything changed, it
+    pays nothing and shows the list again as it is.
+  - **A task whose costs are paid, in full or in part, can't be
+    deleted.** Its Delete button is gone, and a page from before is told
+    why.
+  - **Proposed:** step 4 ships as three PRs, 4a, 4b and 4c (§8).
