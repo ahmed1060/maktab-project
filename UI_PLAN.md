@@ -794,3 +794,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   looking at every company's records sees each record's company on its
   phone card and in the record's details, so two companies' clients of the
   same name can't be mixed up (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** At the product owner's request, a list or page that
+  didn't load tries again by itself three times, half a second, one and two
+  seconds apart, before it says so with Try again (`DESIGN.md` §5.5). A
+  refusal or "not found" is said at once. It's in the shared fetcher
+  (`lib/swr-fetcher.ts`), so every screen that loads through it does this.
