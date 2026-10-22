@@ -14,7 +14,10 @@ const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true 
 
 // Not refusals: a code the system itself should never produce. They stay a
 // 500, logged with a reference, because something is wrong.
-const FAULTS = new Set(["BUILT_IN_ROLE_MISSING"])
+// FOLDER_INVALID: a caller asking MaintenanceService.removeFolder for the
+// whole bucket or a path, which only code can do, and CompanyService.delete
+// catches and logs it.
+const FAULTS = new Set(["BUILT_IN_ROLE_MISSING", "FOLDER_INVALID"])
 
 describe("codes a service throws", () => {
     it("are each answered by a route, a shared answer, or the refusals map", async () => {

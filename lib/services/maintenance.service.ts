@@ -97,6 +97,32 @@ export class MaintenanceService {
 
 
     /**
+     * Everything one company stored, removed from storage: its logo, its
+     * people's photos and whatever they uploaded, all under the folder named
+     * by its id. For a company that's been deleted, so no row refers to any
+     * of it any more (CompanyService.delete).
+     *
+     * Only a folder name, never '' (the whole bucket) or a path, and never
+     * a folder the platform itself keeps. In calls of 100, as storage caps
+     * the keys per call; a refused call throws, the rest left for the orphan
+     * sweep.
+     */
+    static async removeFolder(folder: string) {
+        if (!/^[A-Za-z0-9_-]+$/.test(folder) || ['platform', 'templates', 'avatars'].includes(folder)) throw new Error("FOLDER_INVALID")
+        if (!supabase) return { removed: 0 }
+        const paths = (await this.listAllAssets(folder)).map(f => f.name)
+        const CHUNK = 100
+        let removed = 0
+        for (let i = 0; i < paths.length; i += CHUNK) {
+            const chunk = paths.slice(i, i + CHUNK)
+            const { error } = await supabase.storage.from('app-assets').remove(chunk)
+            if (error) throw error
+            removed += chunk.length
+        }
+        return { removed }
+    }
+
+    /**
      * Every bucket path any live row refers to.
      *
      * All six columns that can hold one, and the sweep deletes whatever is not

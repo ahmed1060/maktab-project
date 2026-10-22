@@ -478,6 +478,11 @@ export class CompanyService {
             return { deleted, recordFiles }
         })
         await RecordService.removeUnused(recordFiles, id)
+        // Then whatever else it stored under its own folder: its logo, its
+        // people's photos, their tasks' files. Best effort, as the company
+        // is already gone: what storage refuses is left to the orphan sweep.
+        const { MaintenanceService } = await import("./maintenance.service")
+        await MaintenanceService.removeFolder(id).catch(error => console.error("[COMPANY_DELETE] Removing the company's files failed", { companyId: id, error }))
         return deleted
     }
 
