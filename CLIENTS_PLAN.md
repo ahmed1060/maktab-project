@@ -253,6 +253,24 @@ sign-in.
 
   That's about 15 minutes with the app closed.
 
+**How 0d keeps to this** (built):
+
+- **The code commits come first,** with the schema using the new names,
+  the reading of old names gone, and the raw SQL naming `Client` and
+  `clientId`. Their preview build migrates nothing, so production is
+  untouched until the last commit. Only that preview is broken meanwhile.
+- **The last commit is the migration**
+  (`20261108000000_client_names_in_database`), with the database tests
+  that need it:
+  1. any `vendors.*` name or old module key that 0b's code wrote while 0c
+     waited for review is rewritten, as 0c rewrote the rest;
+  2. the old clients table's column on sections is dropped, and every
+     section must have a client;
+  3. the `Vendor` table becomes `Client`, and the `vendorId` columns on
+     tasks and sections become `clientId`, with their keys and indexes.
+- **The Super Admin isn't kept out by maintenance mode,** so their pages
+  may fail between pushing that commit and production deploying it.
+
 ### 0.4 What production holds today
 
 - 0 vendors, 0 clients, 0 sections and 0 notes;
@@ -741,6 +759,9 @@ balance first, automatically:
        list page looks as it did.
      - 0c, the stored names following the code, is open for review in #94
        (§0.3). Its migration runs against 0b's code, live since #92.
+     - 0d, the database's names following the code, is built (§0.3). It
+       opens once 0c is merged and live, and its last commit is pushed in
+       the maintenance window, at a time the product owner chooses.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1124,3 +1145,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   against 0b's code.
 - **2026-10-23:** The side bar groups and the Clients list page were
   merged in #93. 0c opens for review in #94.
+- **2026-10-22:** PR 0d is built (§0.3): the database's names follow the
+  code (`Vendor` becomes `Client`, `vendorId` becomes `clientId`), the
+  old section column goes, and the code stops reading the old permission
+  names and module key. Its migration is its last commit, pushed in the
+  maintenance window. It opens once 0c is merged and live.
