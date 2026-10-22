@@ -830,3 +830,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   their company greyed out and can't change it; a person stays in the
   company they were added to (`CLIENTS_PLAN.md` change log). Adding a
   person still asks a Super Admin which company.
+- **2026-10-22:** Fixed, in its own PR: the Tasks, Obligations and Costs
+  date filters count days where the company is (a Super Admin's view of
+  every company, the platform's default zone). They counted them in UTC, so
+  in Cairo "to 15 January" took in the first two hours of the 16th. Mark
+  all as paid uses the same days, as it shares the Costs page's search.
