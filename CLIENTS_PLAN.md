@@ -773,7 +773,8 @@ balance first, automatically:
        before added meanwhile. Given in 1a, the grants would reach the
        live role editor, which doesn't know them yet and would drop them
        when a role is saved. Until 1b is merged, only the Super Admin
-       sees the Locations page in those companies.
+       sees the Locations page in those companies. 1b is built too, with
+       its two migrations.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1196,3 +1197,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   manage clients still edits the rest, adds a client with its HQ, and gives
   one to a client without one. The Locations page links a location's
   client only for whoever may open the client's page.
+- **2026-10-22:** PR 1b is built, for once 1a is merged and live (§8,
+  §2.9): the built-in Admin and Team Leader roles of the companies already
+  there get the location permissions a new company's have, and their
+  holders reload them. Any client the release before added while 1a waited
+  gets its HQ, as 1a's migration gave every client there then. A client
+  given one since keeps it.
