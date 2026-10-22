@@ -3,7 +3,6 @@ import { normalizeGrants, grantRows, type GrantInput } from "@/lib/permissions/g
 import { GrantsError, RoleService, checkSeparation } from "./role.service"
 import type { UserRole } from "@prisma/client"
 import type { CreateTemplateInput, UpdateTemplateInput } from "@/lib/validations/role.schema"
-import { asRecordsRelease } from "@/lib/records-release"
 
 /**
  * Role templates (ROLES_PLAN.md §6.1): the Super Admin's starting points for
@@ -60,8 +59,6 @@ export class RoleTemplateService {
             grants,
         }
         await prisma.$transaction(async (tx) => {
-            // This release's: its Records grants may go too (lib/records-release.ts).
-            await asRecordsRelease(tx)
             await tx.roleTemplate.update({ where: { id: input.id }, data: after })
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log("UPDATE_ROLE_TEMPLATE", "ROLE_TEMPLATE", input.id, {
