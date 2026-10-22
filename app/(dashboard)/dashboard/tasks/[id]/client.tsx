@@ -12,6 +12,7 @@ import TrashIcon from '@/components/TrashIcon'
 import TaskCostsSection from '@/components/TaskCostsSection'
 import TaskLocationHistorySection from '@/components/TaskLocationHistorySection'
 import TaskSubmissionForm from '@/components/TaskSubmissionForm'
+import type { PickedName } from '@/components/ui'
 import TaskEditDetailsModal from '@/components/TaskEditDetailsModal'
 import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
@@ -54,6 +55,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const attachmentsOf = (src: any): any[] => Array.isArray(src.attachments) ? src.attachments : []
     const editFormFrom = (src: any) => ({
         title: src.title,
+        // The name its title was picked as (CLIENTS_PLAN.md §5.5).
+        titleEntryId: (src.titleEntryId ?? null) as string | null,
         description: src.description,
         assigneeIds: src.assignees?.map((a: any) => a.id) || [],
         deadline: src.deadline,
@@ -90,7 +93,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [existingAttachments, setExistingAttachments] = useState<any[]>(() => attachmentsOf(initialTask))
     const [note, setNote] = useState('')
     const [cost, setCost] = useState('')
-    const [costDescription, setCostDescription] = useState('')
+    // A cost's name as typed, and the name it was picked as from the list (CLIENTS_PLAN.md §5).
+    const [costName, setCostName] = useState<PickedName>({ text: '', entryId: null })
     const [location, setLocation] = useState('')
     const [locationStatus, setLocationStatus] = useState('')
     const [uploading, setUploading] = useState(false)
@@ -345,7 +349,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             // Clear form fields even for drafts to avoid duplication on next save
             setNote('')
             setCost('')
-            setCostDescription('')
+            setCostName({ text: '', entryId: null })
             setLocation('')
             setLocationStatus('')
             setPendingFiles([])
@@ -395,9 +399,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             showToast(t('cost_negative_error'), 'error')
             return
         }
-        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costDescription || '' }])
+        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costName.text, nameEntryId: costName.entryId }])
         setCost('')
-        setCostDescription('')
+        setCostName({ text: '', entryId: null })
     }
 
     const removeCostEntry = (index: number) => {
@@ -677,6 +681,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
         setEditForm({
             title: task.title,
+            titleEntryId: task.titleEntryId ?? null,
             description: task.description,
             assigneeIds: task.assignees?.map((a: any) => a.id) || [],
             deadline: task.deadline,
@@ -717,11 +722,14 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
 
         try {
-            const { clientId, locationId, ...details } = editForm
+            const { clientId, locationId, titleEntryId, ...details } = editForm
+            // The name its title is picked as, sent when the title or it changes.
+            const titleChanged = editForm.title !== task.title || titleEntryId !== (task.titleEntryId ?? null)
             const res = await fetch(`/api/tasks/${task.id}/details`, {
                 method: 'PUT',
                 body: JSON.stringify({
                     ...details,
+                    ...(titleChanged ? { titleEntryId } : {}),
                     ...(clientChanged ? { clientId: clientId || null } : {}),
                     ...(locationId && locationId !== task.locationId ? { locationId } : {}),
                 }),
@@ -1105,8 +1113,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 onAddFiles={handleFiles}
                                 onRemoveFile={removePendingFile}
                                 uploading={uploading}
-                                costDescription={costDescription}
-                                setCostDescription={setCostDescription}
+                                costName={costName}
+                                setCostName={setCostName}
+                                companyId={task.companyId}
                                 cost={cost}
                                 setCost={setCost}
                                 onAddCost={handleAddCost}

@@ -7,6 +7,8 @@ import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { locationLabel } from '@/lib/locations'
+import { NamePicker } from '@/components/ui'
+import { useListNames } from '@/components/lists/useListNames'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. editForm/
 // editFieldErrors stay owned by the parent (handleSaveDetails and
@@ -18,6 +20,7 @@ interface TaskEditDetailsModalProps {
     onSubmit: (e: React.FormEvent) => void
     editForm: {
         title: string
+        titleEntryId: string | null
         description: string
         clientId: string
         locationId: string
@@ -36,13 +39,24 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
     // stays open. See lib/useNow.ts.
     const now = useNow()
     const action = useBusyAction()
+    const titleNames = useListNames('TASK_TITLE', task.companyId)
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={t('edit_task_details_title')} hideFooter>
             <form onSubmit={e => { e.preventDefault(); void action.run('save', () => onSubmit(e)) }} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <label className="label">{t('name_label')}</label>
-                    <input aria-label={t('name_label')} className="input" value={editForm.title} onChange={e => { setEditForm({ ...editForm, title: e.target.value }); setEditFieldErrors({ ...editFieldErrors, title: '' }); }} style={{ borderColor: editFieldErrors.title ? 'var(--danger-solid)' : undefined }} maxLength={100} required />
+                    <label className="label" htmlFor="edit-task-title">{t('name_label')}</label>
+                    {/* Typed, or picked from the company's task titles (CLIENTS_PLAN.md §5). */}
+                    <NamePicker
+                        id="edit-task-title"
+                        aria-invalid={editFieldErrors.title ? true : undefined}
+                        value={{ text: editForm.title, entryId: editForm.titleEntryId }}
+                        onChange={next => { setEditForm({ ...editForm, title: next.text, titleEntryId: next.entryId }); setEditFieldErrors({ ...editFieldErrors, title: '' }) }}
+                        {...titleNames}
+                        addLabel={t('lists_add_to_list')}
+                        failedLabel={t('lists_add_failed')}
+                        maxLength={100}
+                    />
                     <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.title.length}/100</div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>

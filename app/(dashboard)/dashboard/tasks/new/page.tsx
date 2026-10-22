@@ -9,6 +9,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import TaskPlacePicker, { type TaskPlace } from '@/components/locations/TaskPlacePicker'
+import { NamePicker, type PickedName } from '@/components/ui'
+import { useListNames } from '@/components/lists/useListNames'
 import { locationProblem, rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
 import type { TranslationKey } from '@/lib/translations'
 import BulkTaskReviewModal from '@/components/BulkTaskReviewModal'
@@ -32,7 +34,9 @@ export default function NewTaskPage() {
     // The deadline floor offered to the picker, kept current while the form
     // stays open. See lib/useNow.ts.
     const now = useNow()
-    const [title, setTitle] = useState('')
+    // Its title as typed, and the name it was picked as from the list (CLIENTS_PLAN.md §5).
+    const [titleName, setTitleName] = useState<PickedName>({ text: '', entryId: null })
+    const title = titleName.text
     const [description, setDescription] = useState('')
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
@@ -49,6 +53,7 @@ export default function NewTaskPage() {
 
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
+    const titleNames = useListNames('TASK_TITLE', selectedCompanyId)
     const userRole = (session?.user as any)?.role
     // The permission GET /api/clients checks: the bulk upload's rows are
     // matched to clients by name only for someone who may read the list.
@@ -151,6 +156,7 @@ export default function NewTaskPage() {
                 method: 'POST',
                 body: JSON.stringify({
                     title,
+                    titleEntryId: titleName.entryId ?? undefined,
                     description,
                     assigneeIds,
                     deadline,
@@ -545,16 +551,19 @@ export default function NewTaskPage() {
             )}
             <form onSubmit={handleSubmit}>
                 <div id="field-title" style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
-                    <input aria-label={t('title_label' as any)}
-                        className="input"
-                        value={title}
-                        onChange={e => {
-                            setTitle(e.target.value)
+                    <label htmlFor="task-title" style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
+                    {/* Typed, or picked from the company's task titles (CLIENTS_PLAN.md §5). */}
+                    <NamePicker
+                        id="task-title"
+                        aria-invalid={fieldErrors.title ? true : undefined}
+                        value={titleName}
+                        onChange={next => {
+                            setTitleName(next)
                             if (fieldErrors.title) setFieldErrors({ ...fieldErrors, title: '' })
                         }}
-                        style={fieldErrors.title ? { borderColor: 'var(--danger-solid)' } : {}}
-                        required
+                        {...titleNames}
+                        addLabel={t('lists_add_to_list')}
+                        failedLabel={t('lists_add_failed')}
                         maxLength={100}
                     />
                     {fieldErrors.title && (

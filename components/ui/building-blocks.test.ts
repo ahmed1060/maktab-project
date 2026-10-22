@@ -168,6 +168,21 @@ describe("text areas and choices", () => {
     })
 })
 
+describe("a name typed or picked from a saved list", () => {
+    it("is a combobox tied to its list of suggestions, which stays hidden until something's typed", () => {
+        const html = render(h(ui.NamePicker, {
+            id: "title", value: { text: "", entryId: null }, onChange: () => {}, suggest: async () => [],
+            addLabel: "Add “{name}” to the list", failedLabel: "Couldn't add it", maxLength: 100,
+        }))
+        const list = html.match(/aria-controls="([^"]+)"/)?.[1]
+        expect(html).toContain('role="combobox"')
+        expect(html).toContain('aria-autocomplete="list"')
+        expect(html).toContain('aria-expanded="false"')
+        expect(html).toContain('autoComplete="off"')
+        expect(html).toMatch(new RegExp(`<ul id="${list}" role="listbox" class="ui-suggestions" hidden=""`))
+    })
+})
+
 describe("dialogs", () => {
     it("are nothing until opened", () => {
         expect(render(h(ui.Dialog, { open: false, onClose: () => {}, title: "Reject request", children: "x" }))).toBe("")

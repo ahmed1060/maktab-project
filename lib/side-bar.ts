@@ -14,7 +14,7 @@ import type { TranslationKey } from './translations'
 
 /** One of the app's own pages, which a company can't rename, unlike its modules (lib/modules.ts). */
 type PageKey =
-    | 'checkIn' | 'attendance' | 'myAttendance' | 'roleRequests' | 'profileRequests' | 'payroll' | 'myPayslips' | 'companySettings'
+    | 'checkIn' | 'attendance' | 'myAttendance' | 'roleRequests' | 'profileRequests' | 'payroll' | 'myPayslips' | 'companySettings' | 'savedLists'
     | 'companies' | 'packages' | 'allUsers'
     | 'roleTemplates' | 'policyTemplates' | 'publicHolidays'
     | 'superAdmins' | 'roleChanges' | 'accessReviews' | 'whoCan'
@@ -33,6 +33,8 @@ export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey; ic
     payroll: { href: '/dashboard/payroll', labelKey: 'payroll', icon: '🧾' },
     myPayslips: { href: '/dashboard/documents', labelKey: 'my_payslips', icon: '📄' },
     companySettings: { href: '/dashboard/settings', labelKey: 'company_settings_title', icon: '⚙️' },
+    // The saved lists of cost names and task titles (CLIENTS_PLAN.md §5.6).
+    savedLists: { href: '/dashboard/lists', labelKey: 'saved_lists_title', icon: '📋' },
     companies: { href: '/dashboard/companies', labelKey: 'companies', icon: '🏢' },
     packages: { href: '/dashboard/packages', labelKey: 'packages', icon: '📦' },
     allUsers: { href: '/dashboard/all-users', labelKey: 'all_users', icon: '👥' },
@@ -65,7 +67,7 @@ export const COMPANY_GROUPS: readonly SideBarGroup[] = [
     { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests', 'dayOff', 'roleRequests', 'profileRequests'] },
     { key: 'money', labelKey: 'nav_group_money', items: ['costs', 'payroll'] },
     { key: 'me', labelKey: 'nav_group_me', items: ['myAttendance', 'myPayslips'] },
-    { key: 'bottom', labelKey: null, items: ['companySettings'] },
+    { key: 'bottom', labelKey: null, items: ['companySettings', 'savedLists'] },
 ]
 
 /** The Super Admin's own pages (§2.2), after the company's. */
@@ -120,6 +122,8 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
         // The Super Admin is nobody's employee, and has no payslips.
         case 'myPayslips': return !v.superAdmin
         case 'companySettings': return v.companySettings
+        // For whoever manages the lists (CLIENTS_PLAN.md §5.7), in a company with Tasks.
+        case 'savedLists': return v.can('lists.manage')
     }
     if (key in PAGES) return v.superAdmin
     const permission = MODULE_PERMISSION[key as ModuleKey]

@@ -1741,3 +1741,66 @@ html[lang="ar"] .ui-empty-title {
     max-width: none;
   }
 }
+
+/* ── A name typed or picked from a saved list (§5.3) ── */
+.ui-namepicker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ui-suggestions {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--elev-2);
+  font-family: var(--font-ui);
+}
+.ui-suggestions[hidden] {
+  display: none;
+}
+.ui-suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-field);
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ui-suggestion:hover,
+.ui-suggestion[aria-selected="true"] {
+  background: var(--brand-tint);
+}
+.ui-suggestion strong {
+  font-weight: 600;
+}
+.ui-suggestion-add {
+  color: var(--brand-text);
+  font-weight: 500;
+}
+.ui-suggestion-add[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: progress;
+}
+@media (max-width: 767px) {
+  .ui-suggestion {
+    min-height: 44px;
+  }
+}
