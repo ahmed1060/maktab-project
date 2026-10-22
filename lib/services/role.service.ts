@@ -7,6 +7,7 @@ import type { CreateRoleInput, UpdateRoleInput } from "@/lib/validations/role.sc
 import type { UserRole } from "@prisma/client"
 import { resolveBundles, serializeAccess, type SerializedAccess } from "@/lib/features/bundles"
 import { newConflicts } from "@/lib/permissions/separation"
+import { asRecordsRelease } from "@/lib/records-release"
 
 type Client = Pick<typeof prisma, "role" | "user">
 
@@ -263,6 +264,8 @@ export class RoleService {
                 },
             })
             if (grants) {
+                // This release's: its Records grants may go too (lib/records-release.ts).
+                await asRecordsRelease(tx)
                 await tx.roleGrant.deleteMany({ where: { roleId: input.id } })
                 await tx.roleGrant.createMany({ data: grants.map(g => ({ roleId: input.id, ...g })) })
             }

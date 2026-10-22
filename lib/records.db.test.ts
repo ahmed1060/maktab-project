@@ -147,6 +147,61 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
     })
 
+    describe("Records grants while main's release still runs", () => {
+        let Roles: typeof import("@/lib/services/role.service").RoleService
+        let Templates: typeof import("@/lib/services/role-template.service").RoleTemplateService
+        let clerk: string
+        beforeAll(async () => {
+            Roles = (await import("@/lib/services/role.service")).RoleService
+            Templates = (await import("@/lib/services/role-template.service")).RoleTemplateService
+            clerk = (await Roles.create({ companyId: "c1", name: "Records clerk", baseRole: "EMPLOYEE", grants: [{ permission: "records.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)).id
+        })
+        const grantsOf = async (roleId: string) =>
+            (await db.query(`SELECT permission, scope FROM "RoleGrant" WHERE "roleId" = $1 ORDER BY permission`, [roleId])).rows.map(r => `${r.permission} ${r.scope}`)
+        // What main's role editor does on save: every grant deleted, then the ones it knows written back.
+        const mainSaves = async (roleId: string, grants: [string, string][]) => {
+            await db.query("BEGIN")
+            try {
+                await db.query(`DELETE FROM "RoleGrant" WHERE "roleId" = $1`, [roleId])
+                for (const [permission, scope] of grants) await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ($1, $2, $3)`, [roleId, permission, scope])
+                await db.query("COMMIT")
+            } catch (error) {
+                await db.query("ROLLBACK")
+                throw error
+            }
+        }
+
+        it("keeps a role's Records grants when main's editor saves it without them", async () => {
+            await mainSaves(clerk, [["tasks.view", "COMPANY"]])
+            expect(await grantsOf(clerk)).toEqual(["records.view COMPANY", "tasks.view COMPANY"])
+        })
+
+        it("takes main's old name for a grant the role keeps as that grant, not a second one", async () => {
+            await mainSaves(clerk, [["clients.view", "TEAM"], ["tasks.view", "COMPANY"]])
+            expect(await grantsOf(clerk)).toEqual(["records.view COMPANY", "tasks.view COMPANY"])
+        })
+
+        it("lets this release take a Records grant away, and a role still be deleted with its grants", async () => {
+            await Roles.update({ id: clerk, grants: [{ permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
+            expect(await grantsOf(clerk)).toEqual(["tasks.view TEAM"])
+            await Roles.update({ id: clerk, grants: [{ permission: "records.view", scope: "COMPANY" }] }, superAdmin)
+            await db.query(`DELETE FROM "Role" WHERE id = $1`, [clerk])
+            expect(await grantsOf(clerk)).toEqual([])
+        })
+
+        it("keeps a template's Records grants when main's editor saves it without them; this release can still remove them", async () => {
+            const template = await Templates.create({ name: "Records desk", baseRole: "EMPLOYEE", grants: [{ permission: "records.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
+            const grants = async () => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [template.id])).rows[0].grants
+            // Main's editor: the list it knows, one of them under the old name.
+            await db.query(`UPDATE "RoleTemplate" SET grants = $2 WHERE id = $1`, [template.id, JSON.stringify([{ permission: "tasks.view", scope: "COMPANY" }])])
+            expect(await grants()).toEqual([{ permission: "tasks.view", scope: "COMPANY" }, { permission: "records.view", scope: "COMPANY" }])
+            await db.query(`UPDATE "RoleTemplate" SET grants = $2 WHERE id = $1`, [template.id, JSON.stringify([{ permission: "clients.view", scope: "TEAM" }])])
+            expect(await grants()).toEqual([{ permission: "records.view", scope: "TEAM" }])
+            await Templates.update({ id: template.id, grants: [{ permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
+            expect(await grants()).toEqual([{ permission: "tasks.view", scope: "TEAM" }])
+        })
+    })
+
     describe("RecordService", () => {
         let licence: string, contract: string, note: string, gamma: string
 
