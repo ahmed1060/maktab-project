@@ -3,13 +3,11 @@ import bcrypt from 'bcryptjs'
 
 const prisma = createScriptClient()
 
-// Seed credentials must come from the environment. This used to hardcode
-// ahmed.hossam1060@gmail.com / mohamedsadek@gmail.com with the password
-// "12345678" directly in this file — and print both in README.md /
-// DATABASE_SETUP.md — so anyone with read access to the repo (or its
-// history) had two live super-admin passwords. Set SEED_ADMIN_EMAIL_1 /
-// SEED_ADMIN_PASSWORD_1 (and optionally _2 for a second account) before
-// running this script; it refuses to run without at least one.
+// Seed credentials come from the environment, never this file: whatever is
+// written here, anyone who can read the repository or its history can read.
+// Set SEED_ADMIN_EMAIL_1 / SEED_ADMIN_PASSWORD_1 (and optionally _2 for a
+// second account) before running this script; it refuses to run without at
+// least one.
 type SeedAdmin = {
     email: string
     username: string
