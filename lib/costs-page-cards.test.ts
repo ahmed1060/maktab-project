@@ -35,7 +35,7 @@ const task = (fields: object) => ({
 async function costsPage(tasks: object[], query = "") {
     address.query = query
     const { default: CostsClient } = await import("@/app/(dashboard)/dashboard/costs/CostsClient")
-    return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: tasks, total: tasks.length, page: 1, totalPages: 1 }))
+    return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: tasks, total: tasks.length, page: 1, totalPages: 1, totalDue: 0 }))
 }
 
 describe("the Costs page's cards", () => {
