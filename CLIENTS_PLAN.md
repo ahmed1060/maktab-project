@@ -525,6 +525,31 @@ separate system. On screen they're renamed **Check-in places** (أماكن
    - cost names: the Add cost form.
 9. **Filters and totals:** by cost name on the Costs page, and by title on
    the Tasks page.
+10. **How it's built (step 5).**
+    - **Proposed:** step 5 ships as three PRs:
+      - 5a: the lists, the picker, the Saved lists page, the permissions
+        for new companies, and the title and cost name fields (built);
+      - 5b: the permissions for the companies already there, once 5a's
+        role editor is live, as for locations (§2.9);
+      - 5c: the bulk import matching titles to the list, and the filters
+        and totals by title and cost name (§5.8–5.9).
+    - **What's saved** (§5.5): the text as typed, and the name it was
+      picked as only while the text is that name, ignoring capitals. Typed
+      over after picking, or renamed in the meantime, it's saved as typed.
+      A transfer's copy keeps its task's name.
+    - **Proposed:** an archived name can't be added again with "+ Add":
+      it's refused, saying whoever manages the lists can restore it, so an
+      Admin's archiving isn't undone by someone typing it. A task already
+      picked as it keeps it, and keeps it when edited.
+    - **Proposed:** the Saved lists page (`/dashboard/lists`) sits in the
+      side bar under Company Settings, for whoever manages lists. Company
+      Settings' own tabs depend on the Super Admin's switch, which an
+      Admin's Manage lists doesn't.
+    - **Proposed:** 5b gives Add list names to every role in the
+      companies there already are, custom ones too, as Everyone has it
+      (§5.7). Taking over someone's account needs everything their role
+      holds, so a custom role that manages Employees would otherwise lose
+      that once Employees can add names.
 
 ---
 
@@ -808,6 +833,8 @@ balance first, automatically:
        which moves costs into their own table, with their descriptions
        (§4.4, §4.5), in #103. 4d tidies up after it, now that 4c is live
        (§4.5); it's built, and open for review in #104.
+     - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
+       and 5c (§5.10). 5a is built.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1450,3 +1477,18 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   PR, 4d, opens for review in #104, now that 4c is live. Production has
   no costs yet, neither entries nor rows (checked read-only), so its
   migration changes nothing there.
+- **2026-10-22:** Step 5's first PR, 5a, is built (§5):
+  - **Each company keeps two lists,** of cost names and of task titles. A
+    name is in a list once, ignoring capitals.
+  - **The title on a new task or an edited one, and a cost's name on the
+    task's page, are typed or picked:** names that contain what's typed
+    are suggested, those starting with it first, and "+ Add" adds what's
+    typed for whoever may add names, the only way one is added.
+  - **The Saved lists page** renames, merges and archives names, with how
+    often each was picked. Merging moves what was picked as one to the
+    other; what was typed stays.
+  - **Add list names (everyone) and Manage lists (Admin)** come to new
+    companies now, and to those already there with 5b.
+  - **Proposed:** the split into 5a, 5b and 5c, an archived name refused
+    by "+ Add", the page's place in the side bar, and 5b giving Add list
+    names to every role (§5.10).

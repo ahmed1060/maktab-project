@@ -996,3 +996,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 4c was merged in #103, and 4d opens
   for review in #104. A task's page looks as it did, its costs listed from
   their rows.
+- **2026-10-22:** A name typed or picked from a saved list (`DESIGN.md`
+  §5.3) is the title field on a new task and in Edit task details, and the
+  cost name field on a task's page (`CLIENTS_PLAN.md` step 5, PR 5a). On a
+  phone, Add costs' name takes its own line, the amount below it. A new
+  page, Saved lists, has a tab for each list. Proposed: it sits in the side
+  bar under Company Settings, for whoever manages lists.
