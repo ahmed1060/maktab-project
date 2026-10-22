@@ -413,6 +413,7 @@ model SuperAdmin {
   accessReviewAnswers AccessReviewLine[]
   trustedDevices      TrustedDevice[]
   verificationCodes   VerificationCode[]
+  createdNotes        ClientRecord[]      @relation("SuperAdminCreatedNotes")
 }
 
 model User {
@@ -970,7 +971,11 @@ model ClientRecord {
   /// the person's id alone is null then, as it is for a user since deleted.
   createdBySuperAdmin    Boolean   @default(false)
   lastEditedBySuperAdmin Boolean   @default(false)
+  /// Which Super Admin added it, for its reminders; none for one added
+  /// before this was kept.
+  createdBySuperAdminId  String?
   createdBy          User?         @relation("CreatedNotes", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBySuper     SuperAdmin?   @relation("SuperAdminCreatedNotes", fields: [createdBySuperAdminId], references: [id], onDelete: SetNull)
   lastEditedBy       User?         @relation("EditedNotes", fields: [lastEditedById], references: [id], onDelete: SetNull)
   section            RecordSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 

@@ -228,17 +228,20 @@ const lockNotAvailable = (error: unknown): boolean => {
  * before the people its company deletes. A user's own deletion holds them
  * before their records, so they're asked for without waiting: one being
  * deleted means letting go, and going again once they are, when the record
- * no longer names them (Codex on #82). Null for nobody to send it to.
+ * no longer names them (Codex on #82). A Super Admin who added it is held
+ * the same way. Null for nobody to send it to.
  */
-async function withNotice(recordId: string, send: (tx: Prisma.TransactionClient, to: string | null) => Promise<void>) {
+type Recipient = { userId: string } | { superAdminId: string } | null
+
+async function withNotice(recordId: string, send: (tx: Prisma.TransactionClient, to: Recipient) => Promise<void>) {
     for (let attempt = 1; ; attempt++) {
         try {
             return await prisma.$transaction(async tx => {
-                const [held] = await tx.$queryRaw<{ createdById: string | null }[]>`SELECT "createdById" FROM "ClientNote" WHERE id = ${recordId} FOR NO KEY UPDATE`
+                const [held] = await tx.$queryRaw<{ createdById: string | null; createdBySuperAdminId: string | null }[]>`SELECT "createdById", "createdBySuperAdminId" FROM "ClientNote" WHERE id = ${recordId} FOR NO KEY UPDATE`
                 if (!held) return
-                const to = held.createdById
-                    && (await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${held.createdById} FOR KEY SHARE NOWAIT`).length
-                    ? held.createdById : null
+                let to: Recipient = null
+                if (held.createdById && (await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${held.createdById} FOR KEY SHARE NOWAIT`).length) to = { userId: held.createdById }
+                else if (held.createdBySuperAdminId && (await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "SuperAdmin" WHERE id = ${held.createdBySuperAdminId} FOR KEY SHARE NOWAIT`).length) to = { superAdminId: held.createdBySuperAdminId }
                 await send(tx, to)
             })
         } catch (error) {
@@ -534,6 +537,8 @@ export class RecordService {
                     sectionId,
                     createdById: who.byUser,
                     createdBySuperAdmin: isSuperAdmin(session),
+                    // Who, for its reminders: they have no User row (Codex on #82).
+                    createdBySuperAdminId: isSuperAdmin(session) ? session.user.id : null,
                     attachment: storeRecordFiles(input.files),
                     expiryDate: input.expiryDate ? parseExpiryDay(input.expiryDate) : null,
                     reminderDays: input.expiryDate ? input.reminderDays : null,
@@ -713,7 +718,7 @@ export class RecordService {
                 if (to) {
                     await tx.notification.create({
                         data: {
-                            userId: to,
+                            ...to,
                             type: "NOTE_EXPIRING",
                             ...noticeRow({ key: "notice_note_expiring_today", params: { snippet: record.content.slice(0, 20), client: record.section.vendor!.name } }),
                             relatedId: link(record.id),
@@ -741,7 +746,7 @@ export class RecordService {
                 if (to) {
                     await tx.notification.create({
                         data: {
-                            userId: to,
+                            ...to,
                             type: "NOTE_REMINDER",
                             ...noticeRow({ key: "notice_note_expiring", params: { snippet: record.content.slice(0, 20), client: record.section.vendor!.name, days: daysBetween(today, expires) } }),
                             relatedId: link(record.id),

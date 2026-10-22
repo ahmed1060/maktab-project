@@ -725,6 +725,13 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect((await Records.get(admin, id)).client).not.toHaveProperty("company")
         })
 
+        it("reminds a Super Admin who added a record, as anyone who did", async () => {
+            const id = (await Records.create(superAdmin, { content: "Support's permit", files: [], expiryDate: "2026-10-20", reminderDays: 7, vendorId: "v1", sectionTitle: "Permits by support" })).id
+            await Records.checkExpiries()
+            const { rows } = await db.query(`SELECT "userId", "superAdminId", type FROM "Notification" WHERE "relatedId" = $1`, [`/dashboard/records/${id}`])
+            expect(rows).toEqual([{ userId: null, superAdminId: superAdmin.user.id, type: "NOTE_REMINDER" }])
+        })
+
         it("tells a Super Admin's record from one by a user since deleted", async () => {
             await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e9', 'e9@x', 'p', 'Lina', 'Gone', 'EMPLOYEE', 2026, 'e9', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
             const leaver = { user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any
