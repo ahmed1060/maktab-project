@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-22 07:00 UTC, against GitHub.
+Last checked: 2026-10-22 21:50 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,23 +39,23 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #82 Records move onto clients (step 0, PR 0a) | Open | `b910873` (2026-10-22 05:45 UTC) | Every commit after `b910873` (below) |
+| #82 Records move onto clients (step 0, PR 0a) | Open | `5056bc0` (2026-10-22 21:07 UTC) | Every commit after `5056bc0` (below) |
 
-Codex's ninth to twelfth reviews, after its limit reset on 2026-10-22,
-covered every #82 commit up to `b910873`. The commits after it, the
-twelfth review's fixes, haven't been reviewed: the request for them at
-06:11 UTC on 2026-10-22 hit the usage limit.
+Codex's thirteenth review, at 21:07 UTC on 2026-10-22, covered every #82
+commit up to `5056bc0`, the twelfth review's fixes among them. The
+requests for those at 06:11, 10:22 and 15:47 UTC had each hit the usage
+limit. The thirteenth review's four findings are fixed in the commits
+after it, which haven't been reviewed:
 
-- `d1194d4` Main's role editor can't take away a role's Records grants
-- `9be81d9` A section's rename is audited from the title it had as it was renamed
-- `1090575` Expiry reminders and a company's deletion can't deadlock
-- `6ce0a2f` The Records list reloads when the company's day ends
-- `ef72c96` Records grants kept from main's editor don't stop a company being deleted
+- `caac524` Deleting a section holds its client first, as deleting the company does
+- `f8a7b21` A deleted section's audit entry has its title as it was when deleted
+- `31ffdfd` A Super Admin sees a record's company on a phone and when it's opened
+- `65edc6f` A Super Admin who adds a record gets its reminders
 - the plans' and this file's own commits
 
 **Decided (2026-10-22): #82 waits for this review before it's merged.** If
 it's merged first after all, the review-only PR (step 2 above) runs from
-`b910873` to #82's last commit.
+`5056bc0` to #82's last commit.
 
 ## Reviewed
 

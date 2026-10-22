@@ -790,3 +790,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-22:** From Codex's twelfth review of #82: a Records list open
   past the company's midnight reloads then, so its expiry badges and the
   expiry filter are the new day's (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's thirteenth review of #82: a Super Admin
+  looking at every company's records sees each record's company on its
+  phone card and in the record's details, so two companies' clients of the
+  same name can't be mixed up (`CLIENTS_PLAN.md` change log).

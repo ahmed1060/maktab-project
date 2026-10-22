@@ -105,6 +105,7 @@ Production has no data in these parts, so now is the right time.
   by an edit just before isn't left in storage; deleting a company removes
   its records' files too. A record a Super Admin added or edited says so
   (two new columns), and one by a user since deleted reads "Deleted user".
+  Which Super Admin added a record is kept too, so its reminders reach them.
 - an edit says which files the record had when its form opened, and is
   refused if someone changed them since: the person opens the record again.
 - removing a file from storage and giving a record a file each hold the
@@ -115,7 +116,12 @@ Production has no data in these parts, so now is the right time.
   company's load, not the last one's, and a search that fails says so.
   Editing a record there loads its client's sections in the form, and says
   if they didn't load. A record moved to a section deleted at that moment
-  is refused, rather than failing.
+  is refused, rather than failing. A Super Admin looking at every company
+  sees each record's company on a phone, and in the record when it's
+  opened, as on a computer.
+- deleting a section holds its client first, as deleting the company does,
+  so the two can't deadlock, and its audit entry has its title as it was
+  when deleted.
 
 **Proposed** (built this way in 0a, for the product owner to confirm or
 change):
@@ -123,8 +129,8 @@ change):
 - **"Expires soon"** shows from 30 days before a record's expiry date, up to
   and including the day, and "Expired" after it. The filter has both, with
   "Expired" beside the decided "Expiring soon".
-- **A reminder** goes to whoever added the record, as it did in the old
-  section: the chosen number of days before, and on the day. It says how
+- **A reminder** goes to whoever added the record, a Super Admin too, as
+  it did in the old section: the chosen number of days before, and on the day. It says how
   many days are actually left. Changing the date or the reminder sends them
   again for the new date; the old section never did, so a renewed licence
   was never reminded about again.
@@ -969,3 +975,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   title it had as it was renamed; and the Records list reloads when the
   company's day ends, so its expiry badges and filter are that day's. Still
   waiting to be merged.
+- **2026-10-22:** PR 0a (#82): Codex's thirteenth review is fixed too
+  (§0.2): deleting a section holds its client first, as deleting the
+  company does, so the two can't deadlock; a deleted section's audit entry
+  has its title as it was when deleted; a Super Admin looking at every
+  company sees a record's company on a phone and when it's opened; and a
+  Super Admin who adds a record gets its reminders (a new, additive
+  migration; production has no records yet, so none needs filling in).
+  Still waiting to be merged.
