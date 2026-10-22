@@ -89,8 +89,9 @@ Production has no data in these parts, so now is the right time.
 - a record carries only files uploaded for records in its own company. A
   file is removed from storage once no record has it, and files a record's
   form uploaded but didn't save, because the form was closed or a save
-  failed, are removed again (`DELETE /api/records/uploads`). A failed save
-  keeps what it uploaded for the next try;
+  failed, are removed again (`DELETE /api/records/uploads`, ten to a
+  request). A failed save keeps what it uploaded for the next try. A
+  record is given a new file only once storage says it has it;
 - two people adding records into the same new section at once get one
   section, and a client isn't deleted while a record is being added to it.
   A section deleted as a record is added to it takes that record's files
@@ -108,6 +109,10 @@ Production has no data in these parts, so now is the right time.
 - removing a file from storage and giving a record a file each hold the
   file, and a removed file is noted (`RemovedRecordFile`), so no record is
   given a file that's gone.
+- on the Records page, Add record lists only the chosen company's clients:
+  a Super Admin who picks another company while it's open sees that
+  company's load, not the last one's. Editing a record there loads its
+  client's sections in the form, and says if they didn't load.
 
 **Proposed** (built this way in 0a, for the product owner to confirm or
 change):
@@ -924,3 +929,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   the client's page: a button there that leaves the page had no meaning.
   The client's sections load once it's chosen, and nothing can be added
   until they have.
+- **2026-10-22:** PR 0a (#82): Codex's ninth review is fixed too (§0.2): a
+  Super Admin who picks another company while Add record is open no longer
+  adds the record to the last company's client; editing a record on the
+  Records page says when its client's sections didn't load, rather than
+  offering only the one it's in; a record deleted as it's opened is "not
+  found"; files a form uploaded and didn't save are removed ten to a
+  request, however many there are; and a record is given a new file only
+  once storage says it has it. Still waiting to be merged.

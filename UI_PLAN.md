@@ -773,3 +773,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   that page: which vendor (with a search once there are more than 50), its
   section, then the record (`CLIENTS_PLAN.md` §0.2). It no longer opens the
   vendor's page. A vendor's own page keeps its Add record, for that vendor.
+- **2026-10-22:** From Codex's ninth review of #82: Add record on the
+  Records page lists only the chosen company's clients, so a Super Admin
+  who picks another company while it's open waits for that company's; and
+  editing a record there says when its client's sections didn't load, with
+  Try again, rather than offering only the one it's in
+  (`CLIENTS_PLAN.md` change log).
