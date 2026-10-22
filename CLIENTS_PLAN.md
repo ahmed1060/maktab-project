@@ -171,11 +171,18 @@ sign-in.
   and a company's own name for the old section's side bar item. Triggers
   rename them to `records.*` and to Records as they're written, so nothing
   written meanwhile is lost to 0a's code.
+- **Main's editors can't drop a Records grant.** Main's role and template
+  editors save every grant they know and drop the rest, and they don't know
+  `records.*`. So a `records.*` grant stays when a write that isn't 0a's
+  would remove it, and main writing a grant's old name for one a role keeps
+  is that grant. 0a marks its own writes, so it can still remove one
+  (`lib/records-release.ts`, migration `20261104000003_records_grants_kept`).
 - **0b therefore also:**
   1. deletes the old section's own rows, if any (production has none), and
      drops today's clients table and its column;
   2. drops 0a's triggers and their functions, before "clients" takes its new
-     meaning;
+     meaning, the ones keeping Records grants too, and `lib/records-release.ts`
+     with its calls;
   3. sends the old `/dashboard/vendors/...` addresses on to
      `/dashboard/clients/...`, for links already sent.
 
@@ -953,3 +960,12 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   again shows them; renaming a section deleted at that moment says it's
   gone rather than failing; and a record's details in its dialog are one
   to a row on a phone. Still waiting to be merged.
+- **2026-10-22:** PR 0a (#82): Codex's twelfth review is fixed too (§0.2,
+  §0.3): main's role and template editors, which save every grant they know
+  and drop the rest, can no longer take away a role's Records grants while
+  0a waits (a new, additive migration; production has had no role saved
+  since 0a's migration, so none has lost them); expiry reminders and a
+  company's deletion can't deadlock; a section's rename is audited from the
+  title it had as it was renamed; and the Records list reloads when the
+  company's day ends, so its expiry badges and filter are that day's. Still
+  waiting to be merged.

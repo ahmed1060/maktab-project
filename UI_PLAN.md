@@ -787,3 +787,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   company; an edit refused as out of date reloads the list; and a record's
   details in its dialog are one to a row on a phone, as `DESIGN.md` says
   (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's twelfth review of #82: a Records list open
+  past the company's midnight reloads then, so its expiry badges and the
+  expiry filter are the new day's (`CLIENTS_PLAN.md` change log).
