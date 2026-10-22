@@ -24,3 +24,26 @@ export const needsPin = (location: { latitude: number | null }) => location.lati
 
 /** The radius a location's check uses: its own, or the default. */
 export const radiusOf = (location: { radiusMeters: number | null }) => location.radiusMeters ?? LOCATION_RADIUS_DEFAULT
+
+/**
+ * Locations by name, each name once (§2.7), for the Excel template's list:
+ * where two would read the same ("Al Noor - Maadi branch" could be a shared
+ * location's name too), the second and on are numbered, "Al Noor - Maadi
+ * branch (2)". In the order given, so the same list numbers the same way.
+ */
+export function numberedLabels<T extends { label: string }>(list: T[]): (T & { label: string })[] {
+    const seen = new Map<string, number>()
+    const taken = new Set(list.map(l => l.label))
+    return list.map(l => {
+        const n = (seen.get(l.label) ?? 0) + 1
+        seen.set(l.label, n)
+        if (n === 1) return l
+        // A number another location's name already ends with is skipped.
+        let k = n
+        while (taken.has(`${l.label} (${k})`)) k++
+        seen.set(l.label, k)
+        const label = `${l.label} (${k})`
+        taken.add(label)
+        return { ...l, label }
+    })
+}

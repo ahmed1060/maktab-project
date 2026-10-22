@@ -232,6 +232,24 @@ export class LocationService {
     }
 
     /**
+     * Every location in use in a company, with its client, for the bulk
+     * upload's review screen (§2.7): each row offers its own client's and
+     * the shared ones, and is checked against them.
+     */
+    static async pickableAll(session: Session, query: { companyId?: string | null }) {
+        const companyId = isSuperAdmin(session) ? query.companyId || null : session.user.companyId ?? null
+        if (!companyId) throw new Error("COMPANY_SELECTION_REQUIRED")
+        allow(session, "locations.view", companyId)
+        const all = await prisma.location.findMany({
+            where: { companyId, archivedAt: null },
+            select: PICK,
+            orderBy: [{ isHq: "desc" }, { name: "asc" }, { id: "asc" }],
+            take: PICK_LIMIT * 4,
+        })
+        return { locations: all.map(l => ({ ...pickRow(l), clientId: l.clientId })) }
+    }
+
+    /**
      * The location a task is to be done at (§2.3), checked against the
      * task: its company's, in use, its pin placed (§2.8), and its client's
      * or a shared one; a task with no client takes a shared one. Returns

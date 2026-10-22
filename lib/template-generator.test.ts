@@ -26,9 +26,13 @@ const users = [
     { firstName: "Omar", lastName: "Said", username: "omar", role: "TEAM_LEADER" },
 ]
 const clients = [{ name: "Delta Supplies", locationName: "Nasr City" }]
+const locations = [
+    { id: "loc-hq", label: "Delta Supplies - Nasr City", client: "Delta Supplies" },
+    { id: "loc-port", label: "Port gate", client: null },
+]
 
-async function generated(locale: "en" | "ar", u = users, v = clients) {
-    const out = await generateBulkTaskTemplate(await baseFile(), locale, u, v)
+async function generated(locale: "en" | "ar", u = users, v = clients, l = locations) {
+    const out = await generateBulkTaskTemplate(await baseFile(), locale, u, v, l)
     const wb = new Workbook()
     await wb.xlsx.load(out as any)
     return wb
@@ -37,7 +41,7 @@ async function generated(locale: "en" | "ar", u = users, v = clients) {
 describe("the bulk-task template", () => {
     it("keeps the base sheet and adds the two lookup sheets", async () => {
         const wb = await generated("en")
-        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "Users", "Clients"])
+        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "Users", "Clients", "Locations"])
         expect(wb.getWorksheet("Tasks")!.getCell("A1").value).toBe("Title")
     })
 
@@ -63,7 +67,7 @@ describe("the bulk-task template", () => {
 
     it("names the sheets in Arabic, right to left, for an Arabic download", async () => {
         const wb = await generated("ar")
-        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "المستخدمين", "الموردين"])
+        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "المستخدمين", "الموردين", "المواقع"])
         expect(wb.getWorksheet("المستخدمين")!.views[0]).toMatchObject({ rightToLeft: true })
     })
 
@@ -73,6 +77,26 @@ describe("the bulk-task template", () => {
         const tasks = (await generated("ar")).getWorksheet("Tasks")!
         expect(tasks.getCell("C3").dataValidation).toMatchObject({ formulae: ["'الموردين'!$A$2:$A$2"] })
         expect(tasks.getCell("D3").dataValidation).toMatchObject({ formulae: ["'المستخدمين'!$A$2:$A$3"] })
+    })
+
+    it("lists the locations by name, each with its client, and the location each names in a hidden column", async () => {
+        // CLIENTS_PLAN.md §2.7: the upload finds a row's location by this
+        // column, never by matching the name.
+        const sheet = (await generated("en")).getWorksheet("Locations")!
+        expect([2, 3].map(r => [sheet.getCell(`A${r}`).value, sheet.getCell(`B${r}`).value, sheet.getCell(`C${r}`).value])).toEqual([
+            ["Delta Supplies - Nasr City", "Delta Supplies", "loc-hq"],
+            ["Port gate", "Shared", "loc-port"],
+        ])
+        expect(sheet.getColumn(3).hidden).toBe(true)
+    })
+
+    it("adds a Location column after the base file's own, headed as they are, wired to the list for every data row", async () => {
+        const tasks = (await generated("en")).getWorksheet("Tasks")!
+        expect(tasks.getCell("H1").value).toBe("Location")
+        expect(tasks.getCell("H2").value).toBe("Pick from the list. Left empty, it's the client's HQ.")
+        for (const row of [3, 52]) expect(tasks.getCell(`H${row}`).dataValidation).toMatchObject({ type: "list", formulae: ["'Locations'!$A$2:$A$3"] })
+        const ar = (await generated("ar")).getWorksheet("Tasks")!
+        expect(ar.getCell("H3").dataValidation).toMatchObject({ formulae: ["'المواقع'!$A$2:$A$3"] })
     })
 
     it("refuses a base file with no sheet at all", async () => {

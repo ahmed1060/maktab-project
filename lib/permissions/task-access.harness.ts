@@ -72,6 +72,7 @@ const location = {
         const companyId = ({ "loc-c1": "c1", "loc-c2": "c2" } as Record<string, string>)[where.id]
         return companyId ? { id: where.id, companyId, clientId: null, name: "Head office", latitude: 30.0444, longitude: 31.2357, radiusMeters: null, archivedAt: null, client: null } : null
     },
+    findMany: async () => [],
 }
 
 export const prismaMock: any = new Proxy({}, {
