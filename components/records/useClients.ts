@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useCompany } from '@/context/CompanyContext'
-import { scopedKey, scopedFetcher, forScope } from '@/lib/swr-scoped'
+import { scopedKey, scopedFetcher, forScope, loadFailed } from '@/lib/swr-scoped'
 
 export type ClientOption = { id: string; name: string; company?: string }
 
@@ -31,7 +31,10 @@ export function useClients(on: boolean) {
     // flashing away, but not another company's: a Super Admin who picks
     // another company meanwhile could add a record to the last one's client.
     const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(on ? scopedKey(url, selectedCompanyId) : null, scopedFetcher, { keepPreviousData: true })
-    const data = forScope<{ data: { clients: ClientOption[]; more: boolean } }>(scoped, selectedCompanyId)
+    // A search that failed says so, rather than leaving the last list's
+    // clients up as if they matched it.
+    const failed = loadFailed(scoped, error, on ? url : null)
+    const data = failed ? undefined : forScope<{ data: { clients: ClientOption[]; more: boolean } }>(scoped, selectedCompanyId)
     return {
         query,
         setQuery,
@@ -40,7 +43,7 @@ export function useClients(on: boolean) {
         clients: data?.data.clients ?? [],
         more: data?.data.more ?? false,
         loading: isLoading && !data,
-        failed: !!error && !data,
+        failed,
         retrying: isValidating,
         retry: () => { void mutate() },
     }
