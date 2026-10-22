@@ -97,6 +97,11 @@ export const PERMISSIONS = {
     "tasks.delete":             { code: 20, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: CANNOT_BE_UNDONE },
     "tasks.pay":                { code: 21, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
     "tasks.penalize":           { code: 22, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: "Affects pay" },
+    // The company's saved lists of cost names and task titles (CLIENTS_PLAN.md
+    // §5.7): adding a name to one, as "+ Add" does, and managing them
+    // (renaming, merging and archiving names), which includes adding.
+    "lists.add":                { code: 58, module: "TASKS", scopes: COMPANY },
+    "lists.manage":             { code: 59, module: "TASKS", scopes: COMPANY, implies: ["lists.add"] },
 
     // --- Obligations, records, clients, costs ------------------------------
     "obligations.view":         { code: 23, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
@@ -199,8 +204,11 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 3: locations.* (codes 55–57), for the places tasks happen at
  * (CLIENTS_PLAN.md §2.9).
+ *
+ * 4: lists.* (codes 58–59), for the saved lists of cost names and task
+ * titles (CLIENTS_PLAN.md §5.7).
  */
-export const CATALOGUE_VERSION = 3
+export const CATALOGUE_VERSION = 4
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

@@ -19,6 +19,17 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     // A task's costs, each a row of its own (CLIENTS_PLAN.md §4.4, §4.5).
     COST_DESCRIPTION_TOO_LONG: { status: 400, message: "A cost's description can be at most 200 characters." },
     COST_ALREADY_PAID: { status: 409, message: "This person's costs on this task are paid, so this one can't be removed." },
+    // The saved lists of cost names and task titles (CLIENTS_PLAN.md §5).
+    LIST_KIND_INVALID: { status: 400, message: "That isn't one of the saved lists." },
+    LIST_NAME_NOT_FOUND: { status: 404, message: "That name isn't on the list." },
+    LIST_NAME_FORBIDDEN: { status: 403, message: "You don't have permission to do that." },
+    LIST_NAME_REQUIRED: { status: 400, message: "Type the name first." },
+    LIST_NAME_TOO_SHORT: { status: 400, message: "That name is too short: a task's title takes at least 3 characters." },
+    LIST_NAME_TOO_LONG: { status: 400, message: "That name is too long: a task's title takes up to 100 characters, a cost's name up to 200." },
+    LIST_NAME_TAKEN: { status: 409, message: "That name is already on the list. Merge the two instead." },
+    LIST_NAME_ARCHIVED: { status: 409, message: "That name is archived. Whoever manages the lists can restore it on the Saved lists page." },
+    LIST_MERGE_SELF: { status: 400, message: "Pick another name to merge it into." },
+    COMPANY_NOT_FOUND: { status: 404, message: "Company not found." },
     COMPLETED_REQUEST_STATUS_LOCKED: { status: 400, message: "A completed request can't go back to pending or in progress." },
     INVALID_ITEM_TYPE: { status: 400, message: "Unknown item type." },
     NOTE_NOT_FOUND: { status: 404, message: "Note not found." },

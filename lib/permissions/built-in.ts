@@ -115,6 +115,12 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "locations.view": "COMPANY",
         "locations.add": "COMPANY",
         "locations.manage": "COMPANY",
+        // The saved lists of cost names and task titles: everyone adds a
+        // name; an Admin renames, merges and archives them (CLIENTS_PLAN.md
+        // §5.7). Given to the companies there already are by step 5's
+        // second PR, once this release's role editor is live.
+        "lists.add": "COMPANY",
+        "lists.manage": "COMPANY",
 
         // Settings: the company's own settings, but only the tabs the Super
         // Admin chooses to show it, and none until they switch that on
@@ -180,11 +186,15 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // (CLIENTS_PLAN.md §2.9). Migration 20261110000000.
         "locations.view": "COMPANY",
         "locations.add": "COMPANY",
+        // Everyone adds names to the saved lists (CLIENTS_PLAN.md §5.7).
+        "lists.add": "COMPANY",
     },
-    // Everyone reads and adds to the company's records.
+    // Everyone reads and adds to the company's records, and adds names to
+    // the saved lists (CLIENTS_PLAN.md §5.7).
     EMPLOYEE: {
         "records.view": "COMPANY",
         "records.contribute": "COMPANY",
+        "lists.add": "COMPANY",
     },
 }
 
