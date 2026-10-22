@@ -404,6 +404,17 @@ These are built once, in the building-blocks PR, and every page uses them
 
   It's the same map as the check-in places (Company Settings), so a pin
   is placed the same way everywhere.
+- **A pick from a list that can grow,** such as a task's location
+  (`CLIENTS_PLAN.md` §2.3, §2.4), is a select with what can be added to
+  it beside it:
+  - the options in groups under their own headings, such as a client's
+    locations, its HQ first and marked "HQ", then the shared ones;
+  - an option that can't be picked yet stays in the list, greyed, with
+    why after its name ("needs a pin"), so it isn't searched for in vain;
+  - "+ New location" as a quiet button below the select, never an option
+    inside it: an option that opens a form isn't what a select does. It
+    opens the form in a dialog, and what's added there is picked when it
+    closes.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -812,3 +823,7 @@ changed:
 - **2026-10-22:** A place on the map (§5.3), for the locations tasks happen
   at (`CLIENTS_PLAN.md` §2): a place search, the pin with "Use my current
   location" and "Pick on the map", and the check radius.
+- **2026-10-22:** A pick from a list that can grow (§5.3), for a task's
+  client and location (`CLIENTS_PLAN.md` §2.3): grouped options, one that
+  can't be picked yet greyed with why, and "+ New location" as a button
+  below the select.
