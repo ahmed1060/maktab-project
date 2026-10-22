@@ -28,6 +28,13 @@ describe("a picked calendar day", () => {
         expect(picker).toContain("return calendarDay(dateStr).toLocaleDateString(")
         expect(picker).not.toContain("const date = new Date(dateStr)")
     })
+
+    it("is what the date range picker shows, west of UTC too", async () => {
+        process.env.TZ = "America/Los_Angeles"
+        const { default: DateRangePicker } = await import("@/components/DateRangePicker")
+        const html = renderToStaticMarkup(h(DateRangePicker, { dateFrom: "2026-10-01", dateTo: "2026-10-20", onChange: () => {}, label: "Dates" }))
+        expect(html).toContain("Oct 1, 2026 → Oct 20, 2026")
+    })
 })
 
 describe("the date picker while its form saves", () => {

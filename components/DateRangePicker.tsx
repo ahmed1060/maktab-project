@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
 import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
+import { calendarDay } from '@/lib/calendar-day'
 import { CalendarBlankIcon } from '@phosphor-icons/react/ssr'
 import { Icon } from '@/components/ui/Icon'
 
@@ -64,10 +65,10 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [isMobile])
 
+    // A picked day is that day wherever the browser is (see calendarDay).
     const formatDate = (dateStr: string) => {
         if (!dateStr) return ''
-        const date = new Date(dateStr)
-        return date.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        return calendarDay(dateStr).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
     const getDaysInMonth = (date: Date) => {
