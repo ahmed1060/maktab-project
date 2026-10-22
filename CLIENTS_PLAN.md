@@ -766,7 +766,7 @@ balance first, automatically:
        2026-10-23 (§0.3), its migration run in a maintenance window of
        about 8 minutes.
      - Step 1, the Locations system: PR 1a was merged in #96 on
-       2026-10-29 (§2). Proposed:
+       2026-10-29 (§2). Decided (2026-10-22):
        it ships as two PRs. 1b, opened once 1a is merged and live, gives
        the companies already there their built-in roles' location
        permissions (§2.9), and makes an HQ for any client the release
@@ -778,9 +778,9 @@ balance first, automatically:
      - Step 2's first PR, 2a, was merged in #98 on 2026-10-29: tasks are
        done at locations, made and edited with the client and location pickers
        (§2.3, §2.4, §3.1).
-       Proposed: step 2 ships as two PRs. 2b moves the bulk upload onto
-       locations: the Excel Locations sheet and the review screen's
-       pickers (§2.7). Until then, an uploaded task still takes its
+       Decided (2026-10-22): step 2 ships as two PRs. 2b moves the bulk
+       upload onto locations: the Excel Locations sheet and the review
+       screen's pickers (§2.7). Until then, an uploaded task still takes its
        client's own location fields, or its typed text. 2b is open for
        review in #99.
      - Step 3, filters and totals, is built (§3), as one PR after 2b. It
@@ -1302,3 +1302,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     picked, it's their share. It showed 0 before, whatever the list held.
   - **"View tasks"** on each client, in the Clients list's row menu and on
     its page, opens Tasks filtered to it.
+- **2026-10-22:** Decided by the product owner: step 1 ships as two PRs,
+  1a and 1b, and step 2 as two, 2a and 2b (§8).
