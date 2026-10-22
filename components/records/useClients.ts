@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useCompany } from '@/context/CompanyContext'
-import { fetcher } from '@/lib/swr-fetcher'
+import { scopedKey, scopedFetcher, forScope } from '@/lib/swr-scoped'
 
 export type ClientOption = { id: string; name: string; company?: string }
 
@@ -27,8 +27,11 @@ export function useClients(on: boolean) {
     if (selectedCompanyId) params.set('companyId', selectedCompanyId)
     if (search) params.set('search', search)
     const url = `/api/records/clients${params.toString() ? `?${params}` : ''}`
-    // The clients already listed stay while a search loads, rather than flashing away.
-    const { data, error, isLoading, isValidating, mutate } = useSWR<{ data: { clients: ClientOption[]; more: boolean } }>(on ? url : null, fetcher, { keepPreviousData: true })
+    // The clients already listed stay while a search loads, rather than
+    // flashing away, but not another company's: a Super Admin who picks
+    // another company meanwhile could add a record to the last one's client.
+    const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(on ? scopedKey(url, selectedCompanyId) : null, scopedFetcher, { keepPreviousData: true })
+    const data = forScope<{ data: { clients: ClientOption[]; more: boolean } }>(scoped, selectedCompanyId)
     return {
         query,
         setQuery,
