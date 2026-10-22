@@ -359,6 +359,12 @@
 .ui-dialog-body p {
   margin: 0;
 }
+/* Fields that go together, such as a task's client and location, spaced as in a dialog. */
+.ui-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
 .ui-dialog-actions {
   display: flex;
   flex-wrap: wrap;

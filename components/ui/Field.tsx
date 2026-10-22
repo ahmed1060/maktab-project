@@ -78,15 +78,28 @@ export function SearchInput(props: Omit<ComponentPropsWithoutRef<'input'>, 'type
     return <TextInput icon={MagnifyingGlassIcon} type="search" {...props} />
 }
 
-export type SelectOption = { value: string; label: string }
+/** An option; one that can't be picked yet stays listed, greyed, with why in its label (DESIGN.md §5.3). */
+export type SelectOption = { value: string; label: string; disabled?: boolean }
 
-export function Select({ icon, options, className, id, ...rest }: { icon?: PhosphorIcon; options: SelectOption[] } & Omit<ComponentPropsWithoutRef<'select'>, 'children'>) {
+const option = (o: SelectOption) => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
+
+/**
+ * A select. `groups` follow the options, each under its own heading, as a
+ * client's locations and then the shared ones (DESIGN.md §5.3); a group with
+ * none is left out.
+ */
+export function Select({ icon, options, groups = [], className, id, ...rest }: {
+    icon?: PhosphorIcon
+    options: SelectOption[]
+    groups?: { label: string; options: SelectOption[] }[]
+} & Omit<ComponentPropsWithoutRef<'select'>, 'children'>) {
     return (
         <span className={cx('ui-control', icon && 'has-start-icon')}>
             {icon && <Icon icon={icon} size={16} />}
             {/* The id is the Field's label's, written out so it's plain the select has one. */}
             <select id={id} className={cx('ui-select', className)} {...rest}>
-                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {options.map(option)}
+                {groups.filter(g => g.options.length > 0).map(g => <optgroup key={g.label} label={g.label}>{g.options.map(option)}</optgroup>)}
             </select>
             <Icon icon={CaretDownIcon} size={16} className="ui-icon-end" />
         </span>

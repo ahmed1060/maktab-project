@@ -7,7 +7,7 @@ import { BuildingsIcon, StorefrontIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import { Button, Dialog, Field, Select } from '@/components/ui'
+import { Button, Choice, Dialog, Field, Select } from '@/components/ui'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { draftOf, emptyPlace, readPlace, type PlaceDraft, type PlaceErrors } from '@/lib/place-draft'
@@ -18,30 +18,42 @@ import type { LocationItem } from './types'
 const SHARED = 'shared'
 
 /**
+ * From a task's form (CLIENTS_PLAN.md §2.4): the task's client, if it has
+ * one, which the new location is that client's unless it's made shared, and
+ * the company a Super Admin is making the task in.
+ */
+export type ForTask = { clientId: string | null; clientName?: string; companyId?: string | null }
+
+/**
  * Adding a location, or editing one (CLIENTS_PLAN.md §2.4): its name, its
  * pin and its check radius. On the Locations page, whose it is is chosen
- * here first: a client's, or shared. A client's first location is its HQ.
- * A location stays with the client it was added to.
+ * here first: a client's, or shared. From a task's form, it's the task
+ * client's, or shared. A client's first location is its HQ. A location
+ * stays with the client it was added to.
  */
-export default function LocationForm({ open, onClose, clientId, location, onSaved }: {
+export default function LocationForm({ open, onClose, clientId, location, forTask, onSaved }: {
     open: boolean
     onClose: () => void
     /** The client it's added to; none to choose here, on the Locations page. */
     clientId?: string
     /** The location being edited; none to add one. */
     location?: LocationItem | null
-    onSaved: () => void
+    /** Added from a task's form. */
+    forTask?: ForTask
+    /** Once it's saved, with what was saved. */
+    onSaved: (saved?: LocationItem) => void
 }) {
     // Mounted afresh each time it opens, so it starts from the location as it is.
     if (!open) return null
-    return <Form onClose={onClose} clientId={clientId} location={location ?? null} onSaved={onSaved} />
+    return <Form onClose={onClose} clientId={clientId} location={location ?? null} forTask={forTask} onSaved={onSaved} />
 }
 
-function Form({ onClose, clientId, location, onSaved }: {
+function Form({ onClose, clientId, location, forTask, onSaved }: {
     onClose: () => void
     clientId?: string
     location: LocationItem | null
-    onSaved: () => void
+    forTask?: ForTask
+    onSaved: (saved?: LocationItem) => void
 }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
@@ -53,12 +65,14 @@ function Form({ onClose, clientId, location, onSaved }: {
     const editing = location !== null
     // On the Locations page: a client's, or shared. Without seeing the
     // clients, only a shared one.
-    const choosing = !clientId && !editing
+    const choosing = !clientId && !editing && !forTask
+    // From a task's form: its client's, unless made shared.
+    const [taskShared, setTaskShared] = useState(false)
     const clients = useClientOptions(choosing && can('clients.view'))
     // Chosen each time, never Shared by default: a branch left on it would be no client's.
     const [chosen, setChosen] = useState('')
     const sharedChosen = chosen === SHARED || (choosing && !can('clients.view'))
-    const forClient = clientId ?? (clients.clients.some(c => c.id === chosen) ? chosen : '')
+    const forClient = forTask ? (taskShared ? '' : forTask.clientId ?? '') : clientId ?? (clients.clients.some(c => c.id === chosen) ? chosen : '')
     const [clientMissing, setClientMissing] = useState(false)
     // A shared location is a company's: a Super Admin who hasn't picked one says which.
     const superAdmin = (session?.user as { role?: string } | undefined)?.role === 'SUPER_ADMIN'
@@ -92,7 +106,7 @@ function Form({ onClose, clientId, location, onSaved }: {
         }
         setSaving(true)
         try {
-            const company = pickCompany ? chosenCompany : superAdmin && !forClient ? selectedCompanyId : null
+            const company = pickCompany ? chosenCompany : superAdmin && !forClient ? (forTask ? forTask.companyId : selectedCompanyId) : null
             const res = await fetch('/api/locations', {
                 method: editing ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -106,7 +120,7 @@ function Form({ onClose, clientId, location, onSaved }: {
                 return
             }
             showToast(t(editing ? 'locations_updated' : 'locations_added'), 'success')
-            onSaved()
+            onSaved(body?.data)
             onClose()
         } catch {
             showToast(t('error_generic'), 'error')
@@ -149,6 +163,21 @@ function Form({ onClose, clientId, location, onSaved }: {
                                     <Select {...p} icon={StorefrontIcon} value={forClient || (chosen === SHARED ? SHARED : '')} onChange={e => { setChosen(e.target.value); setClientMissing(false) }} options={clientOptions} disabled={saving} />
                                 )}</Field>
                             )
+                )}
+                {forTask && (forTask.clientId
+                    ? (
+                        <Choice
+                            legend={t('location_whose')}
+                            name="whose"
+                            value={taskShared ? 'shared' : 'client'}
+                            onChange={v => setTaskShared(v === 'shared')}
+                            options={[
+                                { value: 'client', label: <bdi>{t('location_for_client').replace('{name}', forTask.clientName ?? '')}</bdi>, disabled: saving },
+                                { value: 'shared', label: t('location_client_shared'), disabled: saving },
+                            ]}
+                        />
+                    )
+                    : <p className="ui-hint">{t('location_task_shared_hint')}</p>
                 )}
                 {pickCompany && (
                     <Field label={t('select_company')}>{p => (

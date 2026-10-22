@@ -1,11 +1,12 @@
 'use client'
 import Modal from '@/components/Modal'
 import DateTimePicker from '@/components/DateTimePicker'
-import LocationSearchInput from '@/components/LocationSearchInput'
+import TaskPlacePicker from '@/components/locations/TaskPlacePicker'
 import { useLanguage } from '@/context/LanguageContext'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useBusyAction } from '@/lib/useBusyAction'
+import { locationLabel } from '@/lib/locations'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. editForm/
 // editFieldErrors stay owned by the parent (handleSaveDetails and
@@ -18,14 +19,14 @@ interface TaskEditDetailsModalProps {
     editForm: {
         title: string
         description: string
-        location: string
-        locationLink?: string
+        clientId: string
+        locationId: string
         deadline: string
         difficulty: number
     }
     setEditForm: (form: any) => void
-    editFieldErrors: { title: string, description: string }
-    setEditFieldErrors: (errors: { title: string, description: string }) => void
+    editFieldErrors: { title: string, description: string, locationId: string }
+    setEditFieldErrors: (errors: { title: string, description: string, locationId: string }) => void
     task: any
 }
 
@@ -49,15 +50,14 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                     <textarea aria-label={t('description_changes_title').split(' ')[0]} className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? 'var(--danger-solid)' : undefined }} maxLength={1000} required />
                     <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
                 </div>
+                {/* Its client and its location, picked again (CLIENTS_PLAN.md §2.3, §3.1). */}
                 <div style={{ marginBottom: '1.25rem' }}>
-                    <LocationSearchInput
-                        label="Location"
-                        value={{ name: editForm.location, link: (editForm as any).locationLink }}
-                        onChange={(val) => {
-                            setEditForm({ ...editForm, location: val.name, locationLink: val.link })
-                        }}
-                        placeholder={t('location_name_placeholder')}
-                        locale={locale}
+                    <TaskPlacePicker
+                        value={{ clientId: editForm.clientId, locationId: editForm.locationId }}
+                        onChange={next => { setEditForm({ ...editForm, ...next }); setEditFieldErrors({ ...editFieldErrors, locationId: '' }) }}
+                        companyId={task.companyId}
+                        current={task.place && task.locationId ? { id: task.locationId, label: locationLabel(task.place.name, task.place.client?.name) } : null}
+                        error={editFieldErrors.locationId || undefined}
                     />
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>

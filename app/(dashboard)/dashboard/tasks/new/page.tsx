@@ -9,7 +9,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
-import LocationSearchInput from '@/components/LocationSearchInput'
+import TaskPlacePicker, { type TaskPlace } from '@/components/locations/TaskPlacePicker'
 import BulkTaskReviewModal from '@/components/BulkTaskReviewModal'
 import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 // F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
@@ -36,13 +36,7 @@ export default function NewTaskPage() {
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
-    const [location, setLocation] = useState('')
-    const [locationLink, setLocationLink] = useState('')
-    // Clients feature: mutually exclusive with typing a location — picking a
-    // client clears the typed fields and vice versa, both here and (as the
-    // real guarantee) server-side in TaskService.create.
-    const [useClient, setUseClient] = useState(false)
-    const [clientId, setClientId] = useState('')
+    const [place, setPlace] = useState<TaskPlace>({ clientId: '', locationId: '' })
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
@@ -129,6 +123,9 @@ export default function NewTaskPage() {
         if (!deadline) {
             errors.deadline = t('select_deadline')
         }
+        if (!place.locationId) {
+            errors.locationId = t('task_location_required')
+        }
         if (assigneeIds.length === 0) {
             errors.assigneeIds = t('select_employee_placeholder')
         }
@@ -157,8 +154,8 @@ export default function NewTaskPage() {
                     assigneeIds,
                     deadline,
                     difficulty: parseInt(difficulty) || 0,
-                    location: location || locationLink ? JSON.stringify({ name: location, link: locationLink }) : '',
-                    clientId: useClient && clientId ? clientId : undefined,
+                    clientId: place.clientId || undefined,
+                    locationId: place.locationId,
                     attachments: []
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -564,83 +561,19 @@ export default function NewTaskPage() {
                         {description.length}/1000
                     </div>
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
-                    {canUseClients && (
-                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <button
-                                type="button"
-                                onClick={() => { setUseClient(false); setClientId('') }}
-                                className={useClient ? 'btn' : 'btn btn-primary'}
-                                style={{ padding: '0.35rem 0.9rem', fontSize: '0.8rem' }}
-                            >
-                                {t('type_location' as any) || 'Type a location'}
-                            </button>
-                            <button
-                                type="button"
-                                disabled={clients.length === 0}
-                                onClick={() => {
-                                    if (clients.length === 0) return
-                                    setUseClient(true); setLocation(''); setLocationLink('')
-                                }}
-                                className={useClient ? 'btn btn-primary' : 'btn'}
-                                style={{
-                                    padding: '0.35rem 0.9rem',
-                                    fontSize: '0.8rem',
-                                    opacity: clients.length === 0 ? 0.5 : 1,
-                                    cursor: clients.length === 0 ? 'not-allowed' : 'pointer'
-                                }}
-                                title={clients.length === 0 ? (locale === 'ar' ? `لا يوجد ${clientsName} بعد` : `No ${clientsName} yet`) : ''}
-                            >
-                                {/* Composed directly from the custom label, not a
-                                    translation key — see clients/page.tsx for why. */}
-                                {locale === 'ar' ? `اختر ${clientsName}` : `Select a ${clientsName}`}
-                            </button>
-                            {/* Always shown, not hidden, when there are zero clients
-                                — the toggle used to disappear entirely in that case
-                                with no explanation and no way to discover the
-                                Clients page from here. */}
-                            {clients.length === 0 && (
-                                <a
-                                    href="/dashboard/clients"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ fontSize: '0.75rem', color: 'var(--info-fg)', textDecoration: 'none' }}
-                                >
-                                    {locale === 'ar' ? `+ إضافة ${clientsName}` : `+ Add a ${clientsName}`}
-                                </a>
-                            )}
-                        </div>
-                    )}
-
-                    {useClient ? (
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                                {clientsName}
-                            </label>
-                            <select aria-label={clientsName}
-                                value={clientId}
-                                onChange={(e) => setClientId(e.target.value)}
-                                className="input"
-                                style={{ width: '100%' }}
-                            >
-                                <option value="">{t('select_client_placeholder' as any) || 'Select...'}</option>
-                                {clients.map(v => (
-                                    <option key={v.id} value={v.id}>{v.name} — {v.locationName}</option>
-                                ))}
-                            </select>
-                        </div>
-                    ) : (
-                        <LocationSearchInput
-                            label={t('location_name_label')}
-                            value={{ name: location, link: locationLink }}
-                            onChange={(val) => {
-                                setLocation(val.name)
-                                setLocationLink(val.link)
-                            }}
-                            placeholder={t('location_name_placeholder')}
-                            locale={locale}
-                        />
-                    )}
+                {/* Where it's done: its client, if it has one, and a location
+                    picked from the list (CLIENTS_PLAN.md §2.3). */}
+                <div id="field-locationId" style={{ marginBottom: '1.25rem' }}>
+                    <TaskPlacePicker
+                        value={place}
+                        onChange={next => {
+                            setPlace(next)
+                            if (fieldErrors.locationId) setFieldErrors({ ...fieldErrors, locationId: '' })
+                        }}
+                        companyId={userRole === 'SUPER_ADMIN' ? selectedCompanyId : null}
+                        error={fieldErrors.locationId || undefined}
+                        disabled={isSubmitting}
+                    />
                 </div>
                 <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
