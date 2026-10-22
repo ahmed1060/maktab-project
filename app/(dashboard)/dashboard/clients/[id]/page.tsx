@@ -8,7 +8,7 @@ import { MapPinPlusIcon, PlusIcon, StorefrontIcon, WarningCircleIcon } from '@ph
 import { useLanguage } from '@/context/LanguageContext'
 import AccessDenied from '@/components/AccessDenied'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { Button, Card, Details, EmptyState, Page, PageHeader, Section, StatusBadge } from '@/components/ui'
+import { Button, Card, Details, EmptyState, Page, PageHeader, Section, SectionLink, StatusBadge } from '@/components/ui'
 import LocationsList from '@/components/locations/LocationsList'
 import RecordsList from '@/components/records/RecordsList'
 import SectionsCard from '@/components/records/SectionsCard'
@@ -101,7 +101,11 @@ export default function ClientPage() {
             />
 
             {client && (
-                <Card title={t('client_details')}>
+                <Card
+                    title={t('client_details')}
+                    // Its tasks, on the Tasks page filtered to it (CLIENTS_PLAN.md §3.6).
+                    actions={<SectionLink href={`/dashboard/tasks?clientId=${encodeURIComponent(id)}`}>{t('clients_view_tasks')}</SectionLink>}
+                >
                     <Details items={[
                         { label: t('client_owner_name'), value: client.ownerName },
                         { label: t('client_mobile_number'), value: <a href={`tel:${client.mobileNumber.replace(/[^0-9+]/g, '')}`}><bdi>{client.mobileNumber}</bdi></a> },

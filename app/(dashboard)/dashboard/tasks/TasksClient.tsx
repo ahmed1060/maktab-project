@@ -9,6 +9,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import { useCan } from '@/lib/useCan'
+import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
 
 interface TasksClientProps {
     tasks: any[]
@@ -38,6 +39,9 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
         status: searchParams?.get('status') || '',
         search: searchParams?.get('search') || ''
     })
+    // Its client, or none, and where it's done (CLIENTS_PLAN.md §3), kept in
+    // the address so a filtered link can be shared.
+    const placeFilters = usePlaceFilters({ clientId: searchParams?.get('clientId') || '', locationId: searchParams?.get('locationId') || '' })
 
     const [sortBy, setSortBy] = useState(searchParams?.get('sortBy') || 'smart')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(searchParams?.get('sortOrder') as any || 'asc')
@@ -195,6 +199,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
                 totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
+                extraFilters={placeFilters}
                 placeholder={locale === 'ar' ? 'بحث في عنوان المهمة أو الوصف' : 'Search Task Title or Description'}
                 isEmployee={reach === null}
                 sortBy={sortBy}

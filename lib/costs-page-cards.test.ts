@@ -24,6 +24,7 @@ vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: () => true, companyWide: 
 // Its filters and pages aren't what's checked here.
 vi.mock("@/components/EmployeeFilter", () => ({ default: () => null }))
 vi.mock("@/components/Pagination", () => ({ default: () => null }))
+vi.mock("@/components/locations/usePlaceFilters", () => ({ usePlaceFilters: () => [] }))
 
 const ali = { id: "u1", firstName: "Ali", lastName: "Hassan" }
 const mona = { id: "u2", firstName: "Mona", lastName: "Adel" }
