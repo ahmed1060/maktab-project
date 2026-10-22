@@ -29,7 +29,7 @@ interface TaskConfirmModalsProps {
     onConfirmSubmit: () => void
 
     // Delete cost/attachment/note item
-    itemToDelete: { type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null
+    itemToDelete: { type: 'ATTACHMENT' | 'COST' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null
     setItemToDelete: (v: null) => void
     onConfirmDeleteItem: () => void
 
@@ -112,7 +112,7 @@ export default function TaskConfirmModals({
 
             {/* Delete Item Modal */}
             <Modal isOpen={!!itemToDelete} onClose={() => setItemToDelete(null)} title={
-                itemToDelete?.type === 'COST_ADDITION' ? t('delete_cost_title') :
+                itemToDelete?.type === 'COST' || itemToDelete?.type === 'COST_ADDITION' ? t('delete_cost_title') :
                     itemToDelete?.type === 'ATTACHMENT' ? t('delete_attachment_title') :
                         t('delete_note_title')
             } hideFooter>

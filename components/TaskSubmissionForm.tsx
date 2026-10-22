@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { COST_DESCRIPTION_MAX } from '@/lib/task-costs'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. `isDragging` is
 // local (only ever read by this dropzone's own border style), but every
@@ -99,7 +100,7 @@ export default function TaskSubmissionForm({
             <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    <input aria-label={t('add_costs_label')} type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} style={{ flex: 1 }} />
+                    <input aria-label={t('add_costs_label')} type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} maxLength={COST_DESCRIPTION_MAX} style={{ flex: 1 }} />
                     <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
                     <button onClick={onAddCost} disabled={!cost} className="btn" style={{ background: 'var(--border)', color: 'var(--info-fg)', fontWeight: '700', minWidth: '80px', opacity: 1, cursor: 'pointer' }}>{t('add_label')}</button>
                 </div>

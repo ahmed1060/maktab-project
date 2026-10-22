@@ -6,6 +6,7 @@ import SectionBoundary from './SectionBoundary'
 import SafeDate from './SafeDate'
 import { useCan } from '@/lib/useCan'
 import { isReviewed } from '@/lib/task-reviewed'
+import { costLines } from '@/lib/task-costs'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx (1834 lines before
 // this split). Purely presentational — no state of its own, just reads
@@ -14,7 +15,7 @@ import { isReviewed } from '@/lib/task-reviewed'
 interface TaskCostsSectionProps {
     task: any
     userId: string
-    onDeleteItem: (type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => void
+    onDeleteItem: (type: 'ATTACHMENT' | 'COST' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => void
     onPaymentStatusChange: (newStatus: string, targetUserId?: string) => void
     getMemberCosts: (taskObj: any) => Record<string, number>
     getMemberPaymentStatus: (taskObj: any) => Record<string, string>
@@ -28,23 +29,23 @@ function TaskCostsSectionBody({
     const modules = useModules()
 
     if (!task.comments) return null
-        const logs = Array.isArray(task.comments) ? task.comments : []
-        if (!Array.isArray(logs)) return null
-        const costs = logs.filter((l: any) => l.type === 'COST_ADDITION')
+        // Each with its description (CLIENTS_PLAN.md §4.4), from its row.
+        const costs = costLines(task.comments, task.costs ?? [])
         if (costs.length === 0) return null
 
         return (
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>{modules.label('costs')}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {costs.map((c: any, i: number) => (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column', background: 'var(--warn-bg-yellow-subtle)', border: '1px solid var(--warn-border-yellow)', borderRadius: '0.5rem', padding: '1rem' }}>
+                    {costs.map((c, i) => (
+                        <div key={c.id ?? `${c.date}-${i}`} style={{ display: 'flex', flexDirection: 'column', background: 'var(--warn-bg-yellow-subtle)', border: '1px solid var(--warn-border-yellow)', borderRadius: '0.5rem', padding: '1rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
-                                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                {/* A description is up to 200 characters, a link among them: it wraps, however long its words. */}
+                                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left', minWidth: 0, overflowWrap: 'anywhere' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
                                         {task.status === 'IN_PROGRESS' && (c.authorId === userId || can('tasks.edit')) && (
-                                            <button aria-label={t('delete_cost_title')} onClick={() => onDeleteItem('COST_ADDITION', c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
+                                            <button aria-label={t('delete_cost_title')} onClick={() => onDeleteItem(c.id ? 'COST' : 'COST_ADDITION', c.id ?? c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
                                                 <TrashIcon size={14} />
                                             </button>
                                         )}
@@ -53,7 +54,7 @@ function TaskCostsSectionBody({
                                 </div>
                                 <div style={{ textAlign: 'center', background: 'var(--warn-bg)', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid var(--warn-border)' }}>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--warn-fg)' }}>{(c.amount || 0).toFixed(2)} {t('egp')}</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--warn-fg)' }}>{c.amount.toFixed(2)} {t('egp')}</div>
                                 </div>
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg-mid)', marginTop: '0.5rem', borderTop: '1px dashed var(--warn-border)', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
