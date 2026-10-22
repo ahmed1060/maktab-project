@@ -783,6 +783,10 @@ balance first, automatically:
        pickers (§2.7). Until then, an uploaded task still takes its
        client's own location fields, or its typed text. 2b is open for
        review in #99.
+     - Step 3, filters and totals, is built (§3), as one PR after 2b. It
+       stands on the fix that has Mark all as paid pay only the list shown,
+       and on the date filters counting the company's days, which come
+       before it in their own PRs.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1284,3 +1288,17 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   sheet below its heading: read as a location, the heading made a
   location named "Name", or "الاسم", named twice, and refused (found by
   Codex).
+- **2026-10-22:** Step 3 is built (§3):
+  - **A client filter** on the Tasks and Costs pages, with "No client",
+    for whoever may see clients, and **a location filter** beside it for
+    whoever may see locations: the picked client's locations and the
+    shared ones. Both are kept in the address with the other filters.
+    The Costs page has the location filter too, so Mark all as paid can
+    apply it (§3.4).
+  - **Mark all as paid** pays only the client's and the location's costs
+    shown, with a test that it pays nothing else.
+  - **The Costs page's total** is what the whole filtered list still owes,
+    across every page, leaving out the parts paid; with an employee
+    picked, it's their share. It showed 0 before, whatever the list held.
+  - **"View tasks"** on each client, in the Clients list's row menu and on
+    its page, opens Tasks filtered to it.

@@ -938,3 +938,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   every location in use, as the template's Locations sheet does.
 - **2026-10-29:** In 2b (#99), a location named as the Locations sheet's
   heading is found on upload like any other.
+- **2026-10-22:** The Tasks and Costs pages' filter panel takes a client
+  and a location, as selects among the panel's own, until those pages get
+  their own turn on the building blocks (`CLIENTS_PLAN.md` step 3). The
+  Costs page's total chip is "Total due" now, and real. "View tasks" is in
+  the Clients list's row menu, which everyone who sees the list now has,
+  and on a client's page.
