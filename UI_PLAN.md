@@ -115,7 +115,7 @@ permissions allow, as today.
 
 - **They come after the company's groups,** which the Super Admin sees for
   the company they've picked, as today.
-- **Their Arabic names (Proposed):** المشتركون (Customers), القوالب
+- **Their Arabic names (Decided on 2026-10-22):** المشتركون (Customers), القوالب
   (Templates), الصلاحيات (Access) and التشغيل (Operations). العملاء, the
   word for a company's clients, would name two groups in the same side bar.
 
@@ -873,3 +873,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     "Add client", or use the company's own name for its clients when it
     has one;
   - Proposed: the Super Admin's group names in Arabic (§2.2).
+- **2026-10-22:** Decided by the product owner: the Super Admin's group
+  names in Arabic are المشتركون, القوالب, الصلاحيات and التشغيل (§2.2).
