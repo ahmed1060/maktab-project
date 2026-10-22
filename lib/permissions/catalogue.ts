@@ -98,7 +98,7 @@ export const PERMISSIONS = {
     "tasks.pay":                { code: 21, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
     "tasks.penalize":           { code: 22, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: "Affects pay" },
 
-    // --- Obligations, records, vendors, costs ------------------------------
+    // --- Obligations, records, clients, costs ------------------------------
     "obligations.view":         { code: 23, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
     "obligations.manage":       { code: 24, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
     // A client's records (CLIENTS_PLAN.md §0.2) are a shared notebook as much
@@ -107,14 +107,15 @@ export const PERMISSIONS = {
     // contribute: add a section or a record, and edit any record.
     // edit: rename a section.
     // These were clients.*, for the old Clients section, with the same codes
-    // and meaning. The migration that renamed them renames them on the way
-    // into the database too, until 0b (CLIENTS_PLAN.md §0.3).
+    // and meaning (CLIENTS_PLAN.md §0.2).
     "records.view":             { code: 25, module: "RECORDS", scopes: COMPANY },
     "records.contribute":       { code: 26, module: "RECORDS", scopes: COMPANY, implies: ["records.view"] },
     "records.edit":             { code: 27, module: "RECORDS", scopes: COMPANY, implies: ["records.view"] },
     "records.delete":           { code: 28, module: "RECORDS", scopes: COMPANY, implies: ["records.view"], highRisk: CANNOT_BE_UNDONE },
-    "vendors.view":             { code: 29, module: "VENDORS", scopes: COMPANY },
-    "vendors.manage":           { code: 30, module: "VENDORS", scopes: COMPANY, implies: ["vendors.view"] },
+    // These were vendors.*, with the same codes and meaning. Their rows keep
+    // the old names until 0c (./stored-names.ts).
+    "clients.view":             { code: 29, module: "CLIENTS", scopes: COMPANY },
+    "clients.manage":           { code: 30, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY },
 
     // --- Day off -----------------------------------------------------------
@@ -185,6 +186,10 @@ export type Permission = keyof typeof PERMISSIONS
  * permissions it didn't know (Codex on #82).
  *
  * 2: records.* (codes 25–28), renamed from clients.* (CLIENTS_PLAN.md §0.2).
+ *
+ * Not raised for clients.* (codes 29–30), renamed from vendors.* in 0b: their
+ * rows keep the old names (./stored-names.ts), which every release reads as
+ * the same codes, so no token loses them.
  */
 export const CATALOGUE_VERSION = 2
 

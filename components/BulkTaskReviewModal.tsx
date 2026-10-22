@@ -23,15 +23,15 @@ interface BulkTaskReviewModalProps {
     bulkTasks: any[]
     setBulkTasks: (tasks: any[]) => void
     users: any[]
-    vendors: any[]
-    vendorsName: string
+    clients: any[]
+    clientsName: string
     revalidateRow: (task: any) => any
     isSubmitting: boolean
     setIsSubmitting: (v: boolean) => void
 }
 
 export default function BulkTaskReviewModal({
-    isOpen, onClose, bulkTasks, setBulkTasks, users, vendors, vendorsName, revalidateRow, isSubmitting, setIsSubmitting
+    isOpen, onClose, bulkTasks, setBulkTasks, users, clients, clientsName, revalidateRow, isSubmitting, setIsSubmitting
 }: BulkTaskReviewModalProps) {
     const { t, locale } = useLanguage()
     // The deadline floor offered to the picker, kept current while the form
@@ -47,9 +47,9 @@ export default function BulkTaskReviewModal({
     const [editAnchorRect, setEditAnchorRect] = useState<DOMRect | null>(null)
     const [assigneeSearch, setAssigneeSearch] = useState('')
     // Per-row toggle override — defaults to whatever the Excel parse
-    // resolved (vendor mode if it found a matching Vendor Name column),
+    // resolved (client mode if it found a matching Client Name column),
     // but stays independent per row once a person switches it manually.
-    const [locationModeOverride, setLocationModeOverride] = useState<Record<number, 'type' | 'vendor'>>({})
+    const [locationModeOverride, setLocationModeOverride] = useState<Record<number, 'type' | 'client'>>({})
 
     // A dialog: focus in, Tab kept inside, Escape closes, focus back where it was (Codex review of #36).
     const dialog = useDialog(isOpen, onClose)
@@ -536,42 +536,42 @@ export default function BulkTaskReviewModal({
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ minWidth: '170px' }}>
-                                                {vendors.length > 0 && (() => {
-                                                    const mode = locationModeOverride[idx] || (bt.vendorId ? 'vendor' : 'type')
+                                                {clients.length > 0 && (() => {
+                                                    const mode = locationModeOverride[idx] || (bt.clientId ? 'client' : 'type')
                                                     return (
                                                         <div style={{ display: 'flex', gap: '0.3rem', marginBottom: '0.4rem' }}>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setLocationModeOverride({ ...locationModeOverride, [idx]: 'type' })}
-                                                                className={mode === 'vendor' ? 'btn' : 'btn btn-primary'}
+                                                                className={mode === 'client' ? 'btn' : 'btn btn-primary'}
                                                                 style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
                                                             >
                                                                 {t('type_location' as any) || 'Type'}
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setLocationModeOverride({ ...locationModeOverride, [idx]: 'vendor' })}
-                                                                className={mode === 'vendor' ? 'btn btn-primary' : 'btn'}
+                                                                onClick={() => setLocationModeOverride({ ...locationModeOverride, [idx]: 'client' })}
+                                                                className={mode === 'client' ? 'btn btn-primary' : 'btn'}
                                                                 style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
                                                             >
-                                                                {vendorsName}
+                                                                {clientsName}
                                                             </button>
                                                         </div>
                                                     )
                                                 })()}
 
-                                                {(locationModeOverride[idx] || (bt.vendorId ? 'vendor' : 'type')) === 'vendor' ? (
+                                                {(locationModeOverride[idx] || (bt.clientId ? 'client' : 'type')) === 'client' ? (
                                                     <select
-                                                        aria-label={t('vendor_label' as any)}
-                                                        value={bt.vendorId || ''}
+                                                        aria-label={t('client_label' as any)}
+                                                        value={bt.clientId || ''}
                                                         onChange={(e) => {
-                                                            const vendor = vendors.find((v: any) => v.id === e.target.value)
+                                                            const client = clients.find((v: any) => v.id === e.target.value)
                                                             const newTasks = [...bulkTasks]
-                                                            newTasks[idx].vendorId = vendor?.id || null
-                                                            newTasks[idx].location = vendor?.locationName || ''
-                                                            newTasks[idx].locationLink = vendor?.locationLink || ''
+                                                            newTasks[idx].clientId = client?.id || null
+                                                            newTasks[idx].location = client?.locationName || ''
+                                                            newTasks[idx].locationLink = client?.locationLink || ''
                                                             const updatedErrors = { ...(bt.validationErrors || {}) }
-                                                            delete updatedErrors.vendor
+                                                            delete updatedErrors.client
                                                             newTasks[idx].validationErrors = updatedErrors
                                                             newTasks[idx].isInvalid = Object.keys(updatedErrors).length > 0
                                                             setBulkTasks(newTasks)
@@ -579,8 +579,8 @@ export default function BulkTaskReviewModal({
                                                         className="input"
                                                         style={{ width: '100%', fontSize: '0.8rem' }}
                                                     >
-                                                        <option value="">{t('select_vendor_placeholder' as any) || 'Select...'}</option>
-                                                        {vendors.map((v: any) => (
+                                                        <option value="">{t('select_client_placeholder' as any) || 'Select...'}</option>
+                                                        {clients.map((v: any) => (
                                                             <option key={v.id} value={v.id}>{v.name}</option>
                                                         ))}
                                                     </select>
@@ -591,16 +591,16 @@ export default function BulkTaskReviewModal({
                                                             const newTasks = [...bulkTasks]
                                                             newTasks[idx].location = val.name
                                                             newTasks[idx].locationLink = val.link
-                                                            newTasks[idx].vendorId = null
+                                                            newTasks[idx].clientId = null
                                                             setBulkTasks(newTasks)
                                                         }}
                                                         placeholder={t('location_name_placeholder')}
                                                         locale={locale}
                                                     />
                                                 )}
-                                                {bt.validationErrors?.vendor && (
+                                                {bt.validationErrors?.client && (
                                                     <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                                                        {bt.validationErrors.vendor.map((err: string, i: number) => (
+                                                        {bt.validationErrors.client.map((err: string, i: number) => (
                                                             <div key={i}>• {err}</div>
                                                         ))}
                                                     </div>
@@ -656,7 +656,7 @@ export default function BulkTaskReviewModal({
                                 deadline: bt.deadline,
                                 difficulty: bt.difficulty,
                                 location: bt.location ? JSON.stringify({ name: bt.location, link: bt.locationLink || '' }) : '',
-                                vendorId: bt.vendorId || undefined
+                                clientId: bt.clientId || undefined
                             }))
 
                             try {

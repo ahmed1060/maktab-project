@@ -23,7 +23,7 @@ export type { Grants }
  * - Obligations — lib/permissions/obligation-access.characterization.test.ts
  * - Requests, name-change requests and performance points —
  *   lib/permissions/request-access.characterization.test.ts
- * - Records, vendors and cost history —
+ * - Records, clients and cost history —
  *   lib/permissions/client-access.characterization.test.ts
  * - Screens — lib/permissions/screen-gates.test.ts
  * - Protected fields — lib/permissions/field-access.characterization.test.ts
@@ -100,14 +100,14 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "requests.reset_points": "COMPANY",
         "profile_requests.review": "COMPANY",
 
-        // Vendors and their records: everything, in their company. A
+        // Clients and their records: everything, in their company. A
         // person's cost history: anyone's in their company.
         "records.view": "COMPANY",
         "records.contribute": "COMPANY",
         "records.edit": "COMPANY",
         "records.delete": "COMPANY",
-        "vendors.view": "COMPANY",
-        "vendors.manage": "COMPANY",
+        "clients.view": "COMPANY",
+        "clients.manage": "COMPANY",
         "costs.view": "COMPANY",
 
         // Settings: the company's own settings, but only the tabs the Super
@@ -163,13 +163,13 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "requests.review": "TEAM",
 
         // Records are company-wide: a leader adds to them and renames
-        // sections, but does not delete. Vendors they read, to pick one for a
+        // sections, but does not delete. Clients they read, to pick one for a
         // task. They see their own cost history as anyone does, not their
         // team's.
         "records.view": "COMPANY",
         "records.contribute": "COMPANY",
         "records.edit": "COMPANY",
-        "vendors.view": "COMPANY",
+        "clients.view": "COMPANY",
     },
     // Everyone reads and adds to the company's records.
     EMPLOYEE: {

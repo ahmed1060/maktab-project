@@ -1,4 +1,5 @@
 import { BUILT_IN_GRANTS, builtInGrantsToken, isBuiltInRole } from "./built-in"
+import { permissionOf, toStored } from "./stored-names"
 
 /**
  * A test's signed-in person as their session token would carry them: with the
@@ -17,8 +18,8 @@ type Person = { id: string; role: string; companyId: string | null; teamLeaderId
 /**
  * Whether a person matches a Prisma `where` on User — enough of Prisma's
  * language for "who should be told": fields, OR and AND, `in`, and a role's
- * grants (holdersOf). The person holds their built-in role's grants, as the
- * roles migration gave them. Anything else throws rather than guessing, so a
+ * grants (holdersOf), by any name they're stored under. The person holds
+ * their built-in role's grants, as the roles migration gave them. Anything else throws rather than guessing, so a
  * query this cannot read fails its test instead of passing it.
  */
 export function matchesUserWhere(person: Person, where: Record<string, any>): boolean {
@@ -28,7 +29,10 @@ export function matchesUserWhere(person: Person, where: Record<string, any>): bo
         if (key === "assignedRole") {
             const wanted = value?.grants?.some
             if (!wanted) throw new Error(`unsupported assignedRole condition: ${JSON.stringify(value)}`)
-            const held = isBuiltInRole(person.role) ? BUILT_IN_GRANTS[person.role][wanted.permission as keyof typeof BUILT_IN_GRANTS.ADMIN] : undefined
+            const names: string[] = typeof wanted.permission === "string" ? [wanted.permission] : wanted.permission?.in
+            if (!Array.isArray(names)) throw new Error(`unsupported grant condition: ${JSON.stringify(wanted)}`)
+            const grants = isBuiltInRole(person.role) ? BUILT_IN_GRANTS[person.role] as Record<string, string> : {}
+            const held = names.map(name => grants[permissionOf(name)]).find(Boolean)
             if (!held || (wanted.scope && held !== wanted.scope)) return false
             continue
         }
@@ -48,7 +52,8 @@ export function whoMatches(people: Person[], where: Record<string, any>): string
 
 /**
  * `role.findUnique` over every company's built-in roles, as the roles
- * migration creates them: a role's id is `${companyId}:${kind}`. Answers a
+ * migration creates them, under their stored names: a role's id is
+ * `${companyId}:${kind}`. Answers a
  * lookup by kind (RoleAssignmentService.builtIn) and by id, with its grants
  * (RoleAssignmentService.chosen). Anything else is not a built-in role.
  */
@@ -57,7 +62,7 @@ export async function builtInRoleLookup({ where }: { where: any }) {
         ? [where.companyId_builtIn.companyId, where.companyId_builtIn.builtIn]
         : String(where.id ?? "").split(":")
     if (!companyId || !isBuiltInRole(kind)) return null
-    const grants = Object.entries(BUILT_IN_GRANTS[kind]).map(([permission, scope]) => ({ permission, scope }))
+    const grants = toStored(Object.entries(BUILT_IN_GRANTS[kind]).map(([permission, scope]) => ({ permission, scope })))
     return { id: `${companyId}:${kind}`, companyId, baseRole: kind, builtIn: kind, grants }
 }
 

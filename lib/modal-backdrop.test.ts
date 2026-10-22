@@ -6,7 +6,7 @@ import { join } from "node:path"
  * Something you click has the size its classes give it, so every class on a
  * clickable element must exist in globals.css. The project has no Tailwind,
  * but nine dialog backdrops were written as Tailwind's "absolute inset-0":
- * with no CSS behind them they had no size, and clicking outside the Vendors,
+ * with no CSS behind them they had no size, and clicking outside the Clients,
  * Clients, client-note and backup dialogs, and every ConfirmModal, did
  * nothing (accessibility audit, 4 October 2026).
  */

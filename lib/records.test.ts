@@ -97,12 +97,12 @@ describe("a new or edited record", () => {
 
     it("needs its text, and a section: one there, or a new one's name", () => {
         expect(createRecordSchema.safeParse(base).success).toBe(true)
-        expect(createRecordSchema.safeParse({ content: "x", vendorId: "v1", sectionTitle: "Licences" }).success).toBe(true)
+        expect(createRecordSchema.safeParse({ content: "x", clientId: "v1", sectionTitle: "Licences" }).success).toBe(true)
         expect(createRecordSchema.safeParse({ ...base, content: "   " }).success).toBe(false)
         expect(createRecordSchema.safeParse({ ...base, content: "x".repeat(RECORD_TEXT_MAX + 1) }).success).toBe(false)
         expect(createRecordSchema.safeParse({ content: "x" }).success).toBe(false)
-        expect(createRecordSchema.safeParse({ content: "x", vendorId: "v1" }).success).toBe(false)
-        expect(createRecordSchema.safeParse({ ...base, vendorId: "v1", sectionTitle: "Both" }).success).toBe(false)
+        expect(createRecordSchema.safeParse({ content: "x", clientId: "v1" }).success).toBe(false)
+        expect(createRecordSchema.safeParse({ ...base, clientId: "v1", sectionTitle: "Both" }).success).toBe(false)
     })
 
     it("reminds only with a real expiry date to count back from, and at most a year ahead", () => {
@@ -193,7 +193,7 @@ describe("a record a reminder links to", () => {
     const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
 
     it("opens on its own client's page only, not over another client's records", () => {
-        expect(LIST).toContain("if (body?.data && (!vendorId || body.data.client.id === vendorId)) setViewing(body.data)")
+        expect(LIST).toContain("if (body?.data && (!clientId || body.data.client.id === clientId)) setViewing(body.data)")
         expect(LIST).not.toContain("if (body?.data) setViewing(body.data)")
     })
 })

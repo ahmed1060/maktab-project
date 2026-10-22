@@ -19,7 +19,7 @@ export type RecordItem = {
     createdBySuperAdmin: boolean
     lastEditedBySuperAdmin: boolean
     section: { id: string; title: string }
-    /** The vendor it's kept for, and its company in a Super Admin's view of every company. */
+    /** The client it's kept for, and its company in a Super Admin's view of every company. */
     client: { id: string; name: string; company?: string }
 }
 

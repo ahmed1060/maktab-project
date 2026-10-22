@@ -601,7 +601,7 @@ export const authOptions: NextAuthOptions = {
                             token.mfaEnabled = u?.mfaEnabled || false
                             token.maintenanceMode = settings?.maintenanceMode || false
                             token.maintenanceMessage = settings?.maintenanceMessage || null
-                            // Vendors feature: deliberately refreshed here rather than
+                            // Clients feature: deliberately refreshed here rather than
                             // only seeded at sign-in like companyName is — the whole
                             // point of letting a Super Admin rename this tab is that it
                             // takes effect promptly, not just after the next login.

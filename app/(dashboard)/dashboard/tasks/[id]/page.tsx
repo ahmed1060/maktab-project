@@ -25,8 +25,8 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
                 select: { id: true, firstName: true, lastName: true, status: true, role: true }
             },
             // Cosmetic only — location itself was already copied into
-            // task.location at creation time regardless of vendor.
-            vendor: { select: { name: true } }
+            // task.location at creation time regardless of client.
+            client: { select: { name: true } }
         }
     })
 

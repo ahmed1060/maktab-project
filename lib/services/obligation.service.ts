@@ -81,7 +81,7 @@ export class ObligationService {
                 status: 'PENDING',
                 // Obligation.createdById's FK targets User only — a Super
                 // Admin's id lives in a separate table. Same guard
-                // Task.create()/Vendor.create() use for the identical reason.
+                // Task.create()/Client.create() use for the identical reason.
                 createdById: userRole === 'SUPER_ADMIN' ? null : session.user.id
             }
         })

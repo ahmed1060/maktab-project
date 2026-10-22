@@ -76,22 +76,22 @@ describe("record screens offer only what the server allows", () => {
 
     it("adds a record from the Records page in one form, choosing its client there, only with records.contribute", () => {
         const PAGE = source("app/(dashboard)/dashboard/records/page.tsx")
-        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        const CLIENT = source("app/(dashboard)/dashboard/clients/[id]/page.tsx")
         const FORM = source("components/records/RecordForm.tsx")
         expect(PAGE).toContain("action={can('records.contribute') && <Button")
         expect(PAGE).toContain("<RecordsList adding={adding && can('records.contribute')} onAddingChange={setAdding} />")
         expect(LIST).toContain("action={canEdit && onAddingChange ? <Button")
         // The form opens on the Records page itself, with no client given, and the record is added there.
-        expect(LIST).toContain("<RecordForm open={adding} onClose={() => onAddingChange?.(false)} vendorId={vendorId} sections={vendorId ? sections : undefined} onSaved={changed} />")
-        expect(FORM).toContain("const choosing = !vendorId && !editing")
+        expect(LIST).toContain("<RecordForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} sections={clientId ? sections : undefined} onSaved={changed} />")
+        expect(FORM).toContain("const choosing = !clientId && !editing")
         expect(FORM).not.toContain("router.push")
         expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
         expect(CLIENT).not.toContain("params.get('add')")
     })
     it("loads the chosen client's sections before a record can be added to it, rather than starting a first one", () => {
         const FORM = source("components/records/RecordForm.tsx")
-        expect(FORM).toContain("loadsSections && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null")
-        expect(FORM).toContain("const ready = !!clientId && list !== undefined")
+        expect(FORM).toContain("loadsSections && forClient ? `/api/records/sections?clientId=${encodeURIComponent(forClient)}` : null")
+        expect(FORM).toContain("const ready = !!forClient && list !== undefined")
         expect(FORM).toContain("busy={saving} disabled={!ready}")
         expect(FORM).toContain("{t('records_sections_failed')}")
         // A section of the client before isn't what the record goes into.
@@ -103,16 +103,16 @@ describe("record screens offer only what the server allows", () => {
         expect(FORM).toContain("<SearchInput {...p} autoComplete=\"off\" value={clients.query}")
         expect(CLIENTS).toContain("if (search) params.set('search', search)")
         // A choice a search no longer lists isn't what the record is added to.
-        expect(FORM).toContain("const clientId = vendorId ?? (clients.clients.some(c => c.id === chosen) ? chosen : clients.clients[0]?.id ?? '')")
+        expect(FORM).toContain("const forClient = clientId ?? (clients.clients.some(c => c.id === chosen) ? chosen : clients.clients[0]?.id ?? '')")
     })
     it("on a client's page, says when its details didn't load, though its records did", () => {
-        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
-        expect(CLIENT).toContain("const detailsFailed = seesVendor && !vendorBody")
+        const CLIENT = source("app/(dashboard)/dashboard/clients/[id]/page.tsx")
+        expect(CLIENT).toContain("const detailsFailed = seesClient && !clientBody")
         expect(CLIENT).toContain("{detailsFailed && (")
-        expect(CLIENT).toContain("title={t('vendor_details_failed')} action={<Button onClick={() => { void reloadVendor() }}>{t('try_again')}</Button>}")
+        expect(CLIENT).toContain("title={t('client_details_failed')} action={<Button onClick={() => { void reloadClient() }}>{t('try_again')}</Button>}")
     })
     it("on a client's page, says when its sections didn't load, rather than showing none and starting a first one", () => {
-        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        const CLIENT = source("app/(dashboard)/dashboard/clients/[id]/page.tsx")
         expect(CLIENT).toContain("const sectionsFailed = seesRecords && !sectionsBody")
         expect(CLIENT).toContain("action={seesRecords && !sectionsFailed && can('records.contribute') && <Button")
         expect(CLIENT).toContain("{sectionsFailed && (")

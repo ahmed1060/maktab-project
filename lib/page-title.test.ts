@@ -23,7 +23,7 @@ const ROUTES = [
     "/dashboard/costs",
     "/dashboard/employees",
     "/dashboard/employees/abc/history",
-    "/dashboard/vendors",
+    "/dashboard/clients",
     "/dashboard/super-admins",
     "/dashboard/companies",
     "/dashboard/companies/abc/payments",

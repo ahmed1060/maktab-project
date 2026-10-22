@@ -16,7 +16,7 @@ describe("API paths resolve to the right module", () => {
         expect(moduleForApiPath('/api/tasks/abc-123/submit')).toBe('TASKS')
         expect(moduleForApiPath('/api/obligations/abc/revert')).toBe('OBLIGATIONS')
         expect(moduleForApiPath('/api/records/sections')).toBe('RECORDS')
-        expect(moduleForApiPath('/api/vendors')).toBe('VENDORS')
+        expect(moduleForApiPath('/api/clients')).toBe('CLIENTS')
     })
 
     it("maps the HR surfaces", () => {
@@ -105,7 +105,7 @@ describe("the endpoints that cross a bundle line", () => {
         expect(requireFeature(session, moduleForApiPath('/api/users/abc/bonus')!, { onDeny: 'hide' }).allowed).toBe(true)
         expect(requireFeature(session, moduleForApiPath('/api/day-off-requests')!, { onDeny: 'lock' }).allowed).toBe(true)
         expect(requireFeature(session, moduleForApiPath('/api/tasks')!, { onDeny: 'lock' }).allowed).toBe(false)
-        expect(requireFeature(session, moduleForApiPath('/api/vendors')!, { onDeny: 'lock' }).allowed).toBe(false)
+        expect(requireFeature(session, moduleForApiPath('/api/clients')!, { onDeny: 'lock' }).allowed).toBe(false)
     })
 })
 
@@ -115,7 +115,7 @@ describe("page paths and their guards", () => {
         expect(moduleForPagePath('/dashboard/tasks/abc')).toBe('TASKS')
         expect(moduleForPagePath('/dashboard/obligations')).toBe('OBLIGATIONS')
         expect(moduleForPagePath('/dashboard/records/abc')).toBe('RECORDS')
-        expect(moduleForPagePath('/dashboard/vendors')).toBe('VENDORS')
+        expect(moduleForPagePath('/dashboard/clients')).toBe('CLIENTS')
         expect(moduleForPagePath('/dashboard/costs')).toBe('COSTS')
         expect(moduleForPagePath('/dashboard/day-off-requests')).toBe('DAY_OFF')
     })
@@ -137,7 +137,7 @@ describe("page paths and their guards", () => {
             TASKS: 'tasks',
             OBLIGATIONS: 'obligations',
             RECORDS: 'records',
-            VENDORS: 'vendors',
+            CLIENTS: 'clients',
             COSTS: 'costs',
             DAY_OFF: 'day-off-requests',
         }
@@ -156,9 +156,9 @@ describe("page paths and their guards", () => {
         const gated = ALL_MODULES.filter(m => MODULE_BUNDLE[m] !== null)
         for (const mod of gated) {
             const reachable =
-                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/records', '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
+                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/records', '/dashboard/clients', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
                     .some(p => moduleForPagePath(p) === mod) ||
-                ['/api/tasks', '/api/obligations', '/api/records', '/api/vendors', '/api/day-off-requests',
+                ['/api/tasks', '/api/obligations', '/api/records', '/api/clients', '/api/day-off-requests',
                  '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk']
                     .some(p => moduleForApiPath(p) === mod)
             expect(reachable, `${module} is gated but nothing routes to it`).toBe(true)
@@ -182,7 +182,7 @@ describe("what this deploy does on the day it ships", () => {
 
     it("no API path is refused for a grandfathered company", () => {
         for (const path of [
-            '/api/tasks', '/api/obligations', '/api/clients', '/api/vendors',
+            '/api/tasks', '/api/obligations', '/api/records', '/api/clients',
             '/api/day-off-requests', '/api/users/abc/bonus', '/api/users/abc/salary-history',
             '/api/tasks/abc/penalty', '/api/tasks/payment/bulk',
         ]) {
@@ -195,7 +195,7 @@ describe("what this deploy does on the day it ships", () => {
     it("no sidebar entry is locked for a grandfathered company", () => {
         for (const href of [
             '/dashboard/tasks', '/dashboard/obligations', '/dashboard/clients',
-            '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests',
+            '/dashboard/clients', '/dashboard/costs', '/dashboard/day-off-requests',
         ]) {
             const mod = moduleForPagePath(href)!
             expect(requireFeature(grandfathered, mod, { onDeny: 'lock' }).allowed, href).toBe(true)

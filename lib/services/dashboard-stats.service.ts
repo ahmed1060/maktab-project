@@ -27,10 +27,10 @@ export const getSuperAdminOverviewStats = unstable_cache(
             prisma.company.count(),
             prisma.user.count(),
             prisma.task.count(),
-            // The businesses companies work for: vendors, which 0b renames
-            // clients (CLIENTS_PLAN.md §0.1). The old Clients section's own
-            // list is gone; its records are on each vendor now (§0.2).
-            prisma.vendor.count(),
+            // The businesses companies work for: clients (CLIENTS_PLAN.md
+            // §0.1). The old Clients section's own list is gone; its records
+            // are on each client now (§0.2).
+            prisma.client.count(),
             prisma.task.groupBy({ by: ['status'], _count: true }),
             prisma.auditLog.count({
                 where: { action: 'SYSTEM_API_ERROR', createdAt: { gte: oneDayAgo } }

@@ -121,7 +121,7 @@ export default function LocationSearchInput({ value, onChange, placeholder, labe
                         // matter what was typed — onChange only ever fired from
                         // handleSelect below or from clearing the field to empty.
                         // That silently blocked submission everywhere this
-                        // component is used (Vendors, task creation, the bulk
+                        // component is used (Clients, task creation, the bulk
                         // review modal, task editing) with no error shown. Commit
                         // whatever's typed on blur as a plain name (no map link,
                         // since it was never verified against a real place) if it

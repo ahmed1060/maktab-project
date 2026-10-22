@@ -66,7 +66,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
     const dbName = `records_test_${Date.now()}`
     let db: Client
     let Records: typeof import("@/lib/services/record.service").RecordService
-    let Vendors: typeof import("@/lib/services/vendor.service").VendorService
+    let Clients: typeof import("@/lib/services/client.service").ClientService
     let CLIENTS_SHOWN: number
 
     beforeAll(async () => {
@@ -96,7 +96,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         const service = await import("@/lib/services/record.service")
         Records = service.RecordService
         CLIENTS_SHOWN = service.CLIENTS_SHOWN
-        Vendors = (await import("@/lib/services/vendor.service")).VendorService
+        Clients = (await import("@/lib/services/client.service")).ClientService
     }, 180_000)
 
     afterAll(async () => {
@@ -152,21 +152,85 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
     })
 
+    describe("Clients grants, under the names the database keeps until 0c", () => {
+        let Roles: typeof import("@/lib/services/role.service").RoleService
+        let Templates: typeof import("@/lib/services/role-template.service").RoleTemplateService
+        beforeAll(async () => {
+            Roles = (await import("@/lib/services/role.service")).RoleService
+            Templates = (await import("@/lib/services/role-template.service")).RoleTemplateService
+        })
+        const stored = async (roleId: string) =>
+            (await db.query(`SELECT permission, scope FROM "RoleGrant" WHERE "roleId" = $1 ORDER BY permission`, [roleId])).rows.map(r => `${r.permission} ${r.scope}`)
+
+        it("are written under their old names, which main's release reads, and read back under the new", async () => {
+            const role = await Roles.create({ companyId: "c1", name: "Desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.manage", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
+            expect(await stored(role.id)).toEqual(["tasks.view TEAM", "vendors.manage COMPANY", "vendors.view COMPANY"])
+            expect((await Roles.getById(role.id)).grants.map(g => g.permission).sort()).toEqual(["clients.manage", "clients.view", "tasks.view"])
+            await Roles.update({ id: role.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, superAdmin)
+            expect(await stored(role.id)).toEqual(["vendors.view COMPANY"])
+        })
+
+        it("are read under either name, as 0c will rewrite them while this release runs", async () => {
+            const role = await Roles.create({ companyId: "c1", name: "Rewritten", baseRole: "EMPLOYEE", grants: [{ permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
+            await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ($1, 'clients.view', 'COMPANY')`, [role.id])
+            expect((await Roles.getById(role.id)).grants).toContainEqual({ permission: "clients.view", scope: "COMPANY" })
+            await db.query(`UPDATE "User" SET "roleId" = $1 WHERE id = 'e1'`, [role.id])
+            try {
+                const { decodeGrants } = await import("@/lib/permissions/grants")
+                expect(decodeGrants((await Roles.forToken("e1")).grants)).toMatchObject({ "clients.view": "COMPANY" })
+                const { AccessReportService } = await import("@/lib/services/access-report.service")
+                expect((await AccessReportService.whoCan("c1", "clients.view")).holders).toContainEqual(expect.objectContaining({ user: expect.objectContaining({ id: "e1" }), scope: "COMPANY" }))
+                expect((await AccessReportService.whatCan("e1")).grants).toContainEqual({ permission: "clients.view", module: "CLIENTS", scope: "COMPANY" })
+            } finally {
+                await db.query(`UPDATE "User" SET "roleId" = (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE') WHERE id = 'e1'`)
+            }
+        })
+
+        it("are found under their old names for whoever holds them, as the built-in roles have them", async () => {
+            const { AccessReportService } = await import("@/lib/services/access-report.service")
+            // The Admin's built-in role, as the migrations gave it: vendors.manage.
+            expect((await db.query(`SELECT 1 FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE r."companyId" = 'c1' AND r."builtIn" = 'ADMIN' AND g.permission = 'vendors.manage'`)).rows).toHaveLength(1)
+            expect((await AccessReportService.whoCan("c1", "clients.manage")).holders.map(h => h.user.id)).toContain("a1")
+        })
+
+        it("are written under their old names in a template, and read back under the new", async () => {
+            const template = await Templates.create({ name: "Clients desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
+            const grants = async () => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [template.id])).rows[0].grants
+            expect(await grants()).toEqual([{ permission: "tasks.view", scope: "TEAM" }, { permission: "vendors.view", scope: "COMPANY" }])
+            expect((await Templates.getById(template.id)).grants).toContainEqual({ permission: "clients.view", scope: "COMPANY" })
+            await Templates.update({ id: template.id, grants: [{ permission: "clients.manage", scope: "COMPANY" }] }, superAdmin)
+            expect(await grants()).toEqual([{ permission: "vendors.view", scope: "COMPANY" }, { permission: "vendors.manage", scope: "COMPANY" }])
+            // A role made from it holds what it says.
+            const role = await Roles.create({ companyId: "c1", name: "From the desk", fromTemplateId: template.id }, superAdmin)
+            expect(await stored(role.id)).toEqual(["vendors.manage COMPANY", "vendors.view COMPANY"])
+        })
+
+        it("keep a company's name and icon for Clients under its old key, read as the new", async () => {
+            const { CompanyService } = await import("@/lib/services/company.service")
+            await CompanyService.update({ id: "c2", moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "🏥" } } as any, superAdmin)
+            const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c2'`)
+            expect(company).toEqual({ moduleLabels: { vendors: "Customers", tasks: "Jobs" }, moduleIcons: { vendors: "🏥" } })
+            const { parseModuleOverrides } = await import("@/lib/modules")
+            expect(parseModuleOverrides(company.moduleLabels)).toEqual({ clients: "Customers", tasks: "Jobs" })
+            await db.query(`UPDATE "Company" SET "moduleLabels" = NULL, "moduleIcons" = NULL WHERE id = 'c2'`)
+        })
+    })
+
     describe("RecordService", () => {
         let licence: string, contract: string, note: string, gamma: string
 
         it("starts a client's first section by name, and a second record of that name goes into it", async () => {
             const later = () => vi.setSystemTime(new Date(Date.now() + 1000))
-            licence = (await Records.create(admin, { content: "Commercial register", files: [file("c1", "reg.pdf")], expiryDate: "2026-10-20", reminderDays: 7, vendorId: "v1", sectionTitle: "Licences" })).id
+            licence = (await Records.create(admin, { content: "Commercial register", files: [file("c1", "reg.pdf")], expiryDate: "2026-10-20", reminderDays: 7, clientId: "v1", sectionTitle: "Licences" })).id
             later()
-            contract = (await Records.create(employee, { content: "Supply contract", files: [], expiryDate: "2026-10-01", reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })).id
+            contract = (await Records.create(employee, { content: "Supply contract", files: [], expiryDate: "2026-10-01", reminderDays: null, clientId: "v1", sectionTitle: "Licences" })).id
             const { sections } = await Records.sectionsOf(admin, "v1")
             expect(sections).toEqual([{ id: expect.any(String), title: "Licences", records: 2 }])
             later()
-            note = (await Records.create(admin, { content: "Call before visiting", files: [], expiryDate: null, reminderDays: null, vendorId: "v2", sectionTitle: "Notes" })).id
+            note = (await Records.create(admin, { content: "Call before visiting", files: [], expiryDate: null, reminderDays: null, clientId: "v2", sectionTitle: "Notes" })).id
             later()
-            gamma = (await Records.create(otherAdmin, { content: "Gamma licence", files: [], expiryDate: "2026-10-18", reminderDays: null, vendorId: "v3", sectionTitle: "Licences" })).id
-            await expect(Records.createSection(admin, { vendorId: "v1", title: "Licences" })).rejects.toThrow("RECORD_SECTION_TAKEN")
+            gamma = (await Records.create(otherAdmin, { content: "Gamma licence", files: [], expiryDate: "2026-10-18", reminderDays: null, clientId: "v3", sectionTitle: "Licences" })).id
+            await expect(Records.createSection(admin, { clientId: "v1", title: "Licences" })).rejects.toThrow("RECORD_SECTION_TAKEN")
         })
 
         it("lists the company's records across its clients, newest first, never another company's or the old section's", async () => {
@@ -196,19 +260,19 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(soon.data.map(r => [r.id, r.expiry])).toEqual([[licence, "soon"]])
             const expired = await Records.list(admin, { expiry: "expired", page: 1, limit: 20 })
             expect(expired.data.map(r => [r.id, r.expiry])).toEqual([[contract, "expired"]])
-            expect((await Records.list(admin, { vendorId: "v2", page: 1, limit: 20 })).data.map(r => r.id)).toEqual([note])
+            expect((await Records.list(admin, { clientId: "v2", page: 1, limit: 20 })).data.map(r => r.id)).toEqual([note])
         })
 
         it("hides another company's record, and refuses one's own company's without the permission", async () => {
             await expect(Records.get(otherAdmin, licence)).rejects.toThrow("RECORD_NOT_FOUND")
             await expect(Records.delete(employee, licence)).rejects.toThrow("RECORD_FORBIDDEN")
             await expect(Records.update(admin, { id: licence, content: "x", files: [], filesBefore: [file("c1", "reg.pdf").url], expiryDate: null, reminderDays: null, sectionId: (await Records.sectionsOf(otherAdmin, "v3")).sections[0].id })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
-            await expect(Records.create(admin, { content: "x", files: [file("c2", "theirs.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })).rejects.toThrow("RECORD_FILE_INVALID")
+            await expect(Records.create(admin, { content: "x", files: [file("c2", "theirs.pdf")], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Licences" })).rejects.toThrow("RECORD_FILE_INVALID")
         })
 
         it("refuses a file storage doesn't have, though its address is this company's", async () => {
             notStored.add("c1/records/made-up.pdf")
-            const add = (files: ReturnType<typeof file>[]) => Records.create(admin, { content: "Permit", files, expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })
+            const add = (files: ReturnType<typeof file>[]) => Records.create(admin, { content: "Permit", files, expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Licences" })
             await expect(add([file("c1", "made-up.pdf")])).rejects.toMatchObject({ message: "RECORD_FILE_INVALID" })
             const { id } = await add([file("c1", "kept-here.pdf")])
             const edit = (files: ReturnType<typeof file>[], content = "Permit") => Records.update(admin, { id, content, files, filesBefore: [file("c1", "kept-here.pdf").url], expiryDate: null, reminderDays: null })
@@ -224,7 +288,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("takes a Super Admin's own upload only from a Super Admin, and keeps one a record has", async () => {
             const theirs = file("platform", "guide.pdf")
-            const add = (who: any, files: ReturnType<typeof file>[]) => Records.create(who, { content: "Guide", files, expiryDate: null, reminderDays: null, vendorId: "v2", sectionTitle: "Guides" })
+            const add = (who: any, files: ReturnType<typeof file>[]) => Records.create(who, { content: "Guide", files, expiryDate: null, reminderDays: null, clientId: "v2", sectionTitle: "Guides" })
             await expect(add(admin, [theirs])).rejects.toMatchObject({ message: "RECORD_FILE_INVALID" })
             const { id } = await add(superAdmin, [theirs])
             // An Admin edits it, keeping the file it has, but can't add another of the platform's.
@@ -236,8 +300,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("refuses moving a record to a section deleted as it's moved, rather than failing", async () => {
-            const { id } = await Records.create(admin, { content: "Moving", files: [], expiryDate: null, reminderDays: null, vendorId: "v2", sectionTitle: "Moving from" })
-            const to = await Records.createSection(admin, { vendorId: "v2", title: "Moving to" })
+            const { id } = await Records.create(admin, { content: "Moving", files: [], expiryDate: null, reminderDays: null, clientId: "v2", sectionTitle: "Moving from" })
+            const to = await Records.createSection(admin, { clientId: "v2", title: "Moving to" })
             const { prisma } = await import("@/lib/prisma")
             const findUnique = prisma.recordSection.findUnique.bind(prisma.recordSection)
             // Deleted just after it's checked to be the same client's, before the record is moved into it.
@@ -257,7 +321,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("refuses renaming a section deleted as it's renamed, rather than failing", async () => {
-            const section = await Records.createSection(admin, { vendorId: "v2", title: "Renaming" })
+            const section = await Records.createSection(admin, { clientId: "v2", title: "Renaming" })
             const { prisma } = await import("@/lib/prisma")
             const findUnique = prisma.recordSection.findUnique.bind(prisma.recordSection)
             // Deleted just after it's found, before the rename is written.
@@ -274,7 +338,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("audits a rename from the title the section has as it's renamed", async () => {
-            const section = await Records.createSection(admin, { vendorId: "v2", title: "Audited A" })
+            const section = await Records.createSection(admin, { clientId: "v2", title: "Audited A" })
             const { prisma } = await import("@/lib/prisma")
             const findUnique = prisma.recordSection.findUnique.bind(prisma.recordSection)
             // Renamed by someone else just after this rename found it.
@@ -306,7 +370,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("says a record deleted as it's opened is not found", async () => {
-            const { id } = await Records.create(admin, { content: "Going", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Licences" })
+            const { id } = await Records.create(admin, { content: "Going", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Licences" })
             const { prisma } = await import("@/lib/prisma")
             const findUnique = prisma.clientRecord.findUnique.bind(prisma.clientRecord)
             // Deleted just after its company is looked up, before the record itself is read.
@@ -349,9 +413,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("won't delete a client that has records; its records go first", async () => {
-            await expect(Vendors.delete("v2", admin)).rejects.toThrow("VENDOR_HAS_RECORDS")
+            await expect(Clients.delete("v2", admin)).rejects.toThrow("CLIENT_HAS_RECORDS")
             await Records.delete(admin, note)
-            await Vendors.delete("v2", admin)
+            await Clients.delete("v2", admin)
             expect((await db.query(`SELECT count(*)::int AS n FROM "ClientSection" WHERE "vendorId" = 'v2'`)).rows[0].n).toBe(0)
         })
 
@@ -364,16 +428,16 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect((await db.query(`SELECT count(*)::int AS n FROM "ClientNote" WHERE id = ANY($1)`, [[licence, contract]])).rows[0].n).toBe(0)
             expect(removed).toEqual(["c1/records/contract.pdf"])
             const { rows: [audit] } = await db.query(`SELECT "userId", details FROM "AuditLog" WHERE action = 'DELETE_SECTION'`)
-            expect(audit).toEqual({ userId: "a1", details: { title: "Licences", vendorId: "v1", records: 2 } })
+            expect(audit).toEqual({ userId: "a1", details: { title: "Licences", clientId: "v1", records: 2 } })
         })
 
         it("carries only records' files, and removes one only once no record has it", async () => {
             const avatar = { url: `${BUCKET}/c1/avatars/1-face.png`, name: "face.png", size: 100 }
-            await expect(Records.create(admin, { content: "x", files: [avatar], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).rejects.toThrow("RECORD_FILE_INVALID")
+            await expect(Records.create(admin, { content: "x", files: [avatar], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).rejects.toThrow("RECORD_FILE_INVALID")
             removed.length = 0
             const shared = file("c1", "shared.pdf")
-            const first = (await Records.create(admin, { content: "Lease", files: [shared], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
-            const second = (await Records.create(admin, { content: "Lease, copy", files: [shared, file("c1", "own.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const first = (await Records.create(admin, { content: "Lease", files: [shared], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
+            const second = (await Records.create(admin, { content: "Lease, copy", files: [shared, file("c1", "own.pdf")], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             await Records.delete(admin, first)
             await Records.update(admin, { id: second, content: "Lease, copy", files: [shared], filesBefore: [shared.url, file("c1", "own.pdf").url], expiryDate: null, reminderDays: null })
             expect(removed).toEqual(["c1/records/own.pdf"])
@@ -384,7 +448,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("discards files uploaded for a record never saved, but none a record has or that aren't the person's", async () => {
             removed.length = 0
             const kept = file("c1", "on-a-record.pdf")
-            await Records.create(admin, { content: "Deed", files: [kept], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })
+            await Records.create(admin, { content: "Deed", files: [kept], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })
             const urls = [
                 file("c1", "abandoned.pdf").url,
                 kept.url,
@@ -406,7 +470,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE INSERT ON "ClientSection" FOR EACH ROW WHEN (NEW.title = 'Permits') EXECUTE FUNCTION test_slow()`)
             try {
-                const add = (content: string) => Records.create(admin, { content, files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Permits" })
+                const add = (content: string) => Records.create(admin, { content, files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Permits" })
                 const first = add("Signage permit")
                 await new Promise(r => setTimeout(r, 150))
                 const made = await Promise.all([first, add("Parking permit")])
@@ -423,14 +487,14 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE INSERT ON "ClientSection" FOR EACH ROW WHEN (NEW.title IN ('Stamps', 'Seals') AND NEW."createdById" = 'a1') EXECUTE FUNCTION test_slow()`)
             try {
-                const add = (sectionTitle: string) => Records.create(admin, { content: `${sectionTitle} record`, files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle })
+                const add = (sectionTitle: string) => Records.create(admin, { content: `${sectionTitle} record`, files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle })
                 const adding = add("Stamps")
                 await new Promise(r => setTimeout(r, 150))
-                const [added, started] = await Promise.allSettled([adding, Records.createSection(employee, { vendorId: "v1", title: "Stamps" })])
+                const [added, started] = await Promise.allSettled([adding, Records.createSection(employee, { clientId: "v1", title: "Stamps" })])
                 expect(added.status).toBe("fulfilled")
                 expect(started).toMatchObject({ status: "rejected", reason: new Error("RECORD_SECTION_TAKEN") })
 
-                const other = (await Records.createSection(employee, { vendorId: "v1", title: "Old seals" })).id
+                const other = (await Records.createSection(employee, { clientId: "v1", title: "Old seals" })).id
                 const addingSeal = add("Seals")
                 await new Promise(r => setTimeout(r, 150))
                 const [sealed, renamed] = await Promise.allSettled([addingSeal, Records.renameSection(admin, { id: other, title: "Seals" })])
@@ -443,17 +507,17 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("won't delete a client while a record is being added to it", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v4', 'c1', 'Delta', 'Nour', '0103', 'Suez', now())`)
-            const section = (await Records.createSection(admin, { vendorId: "v4", title: "Licences" })).id
+            const section = (await Records.createSection(admin, { clientId: "v4", title: "Licences" })).id
             // The record is written and its transaction takes a moment to finish, as someone deletes the client.
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow AFTER INSERT ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Trade licence') EXECUTE FUNCTION test_slow()`)
             try {
                 const adding = Records.create(admin, { content: "Trade licence", files: [], expiryDate: null, reminderDays: null, sectionId: section })
                 await new Promise(r => setTimeout(r, 150))
-                const deleting = Vendors.delete("v4", admin)
+                const deleting = Clients.delete("v4", admin)
                 const [added, deleted] = await Promise.allSettled([adding, deleting])
                 expect(added.status).toBe("fulfilled")
-                expect(deleted).toMatchObject({ status: "rejected", reason: { message: "VENDOR_HAS_RECORDS" } })
+                expect(deleted).toMatchObject({ status: "rejected", reason: { message: "CLIENT_HAS_RECORDS" } })
                 expect((await db.query(`SELECT count(*)::int AS n FROM "ClientNote" WHERE "sectionId" = $1`, [section])).rows[0].n).toBe(1)
             } finally {
                 await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
@@ -464,8 +528,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             // At 09:00 UTC on the 16th it's 12:00 on the 16th in Cairo and still 23:00 on the 15th in Honolulu.
             await db.query(`UPDATE "Company" SET timezone = 'Pacific/Honolulu' WHERE id = 'c2'`)
             try {
-                const there = (await Records.create(otherAdmin, { content: "Harbour permit", files: [], expiryDate: "2026-10-15", reminderDays: null, vendorId: "v3", sectionTitle: "Licences" })).id
-                const here = (await Records.create(admin, { content: "Shop permit", files: [], expiryDate: "2026-10-15", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+                const there = (await Records.create(otherAdmin, { content: "Harbour permit", files: [], expiryDate: "2026-10-15", reminderDays: null, clientId: "v3", sectionTitle: "Licences" })).id
+                const here = (await Records.create(admin, { content: "Shop permit", files: [], expiryDate: "2026-10-15", reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
                 const ids = async (session: any, expiry: "soon" | "expired") => (await Records.list(session, { expiry, page: 1, limit: 50 })).data.map(r => r.id)
                 expect(await ids(otherAdmin, "soon")).toContain(there)
                 expect(await ids(otherAdmin, "expired")).not.toContain(there)
@@ -489,8 +553,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("sends no notice for a deadline changed while the reminders were going out", async () => {
-            const due = (await Records.create(admin, { content: "Fire certificate", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
-            const soon = (await Records.create(admin, { content: "Insurance", files: [], expiryDate: "2026-10-20", reminderDays: 7, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const due = (await Records.create(admin, { content: "Fire certificate", files: [], expiryDate: "2026-10-16", reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
+            const soon = (await Records.create(admin, { content: "Insurance", files: [], expiryDate: "2026-10-20", reminderDays: 7, clientId: "v1", sectionTitle: "Contracts" })).id
             // Someone renews both as the job finds them: the edit is written, not yet committed.
             const edit = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
             await edit.connect()
@@ -514,7 +578,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("deletes a section with a record added as it goes, and that record's files", async () => {
-            const section = (await Records.createSection(admin, { vendorId: "v1", title: "Old papers" })).id
+            const section = (await Records.createSection(admin, { clientId: "v1", title: "Old papers" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow AFTER INSERT ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Late arrival') EXECUTE FUNCTION test_slow()`)
             try {
@@ -532,7 +596,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("won't add a record to a section being deleted", async () => {
-            const section = (await Records.createSection(admin, { vendorId: "v1", title: "Doomed" })).id
+            const section = (await Records.createSection(admin, { clientId: "v1", title: "Doomed" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN OLD; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE DELETE ON "ClientSection" FOR EACH ROW WHEN (OLD.title = 'Doomed') EXECUTE FUNCTION test_slow()`)
             try {
@@ -549,7 +613,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("deletes a section and its company at once without a deadlock: the section goes with the company", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Theta', 'Nour', '0106', 'Luxor', now())`)
-            await Records.create(superAdmin, { content: "Theta lease", files: [], expiryDate: null, reminderDays: null, vendorId: "v7", sectionTitle: "Leases" })
+            await Records.create(superAdmin, { content: "Theta lease", files: [], expiryDate: null, reminderDays: null, clientId: "v7", sectionTitle: "Leases" })
             const section = (await db.query(`SELECT id FROM "ClientSection" WHERE "vendorId" = 'v7'`)).rows[0].id
             // The company's deletion holds its clients and records, then waits
             // here before its rows go, the section among them.
@@ -569,7 +633,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("audits a section's title as it was when deleted, though renamed just before", async () => {
-            const section = (await Records.createSection(admin, { vendorId: "v1", title: "Old name" })).id
+            const section = (await Records.createSection(admin, { clientId: "v1", title: "Old name" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientSection" FOR EACH ROW WHEN (NEW.title = 'New name') EXECUTE FUNCTION test_slow()`)
             try {
@@ -584,7 +648,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("refuses an edit from a form opened before someone else changed the record's files", async () => {
-            const id = (await Records.create(admin, { content: "Lease", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const id = (await Records.create(admin, { content: "Lease", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'First edit') EXECUTE FUNCTION test_slow()`)
             try {
@@ -603,7 +667,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("never brings back a file another edit removed, from a form that still had it", async () => {
             const kept = file("c1", "deed.pdf")
-            const id = (await Records.create(admin, { content: "Deed", files: [kept], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const id = (await Records.create(admin, { content: "Deed", files: [kept], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Deed, file taken off') EXECUTE FUNCTION test_slow()`)
             try {
@@ -622,7 +686,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("removes the files of the record as it was deleted, an edit just before included", async () => {
-            const id = (await Records.create(admin, { content: "Permit", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const id = (await Records.create(admin, { content: "Permit", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Permit, scanned') EXECUTE FUNCTION test_slow()`)
             try {
@@ -639,7 +703,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("says so when storage refuses to remove a record's files", async () => {
-            const id = (await Records.create(admin, { content: "Stamp", files: [file("c1", "stamp.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const id = (await Records.create(admin, { content: "Stamp", files: [file("c1", "stamp.pdf")], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             const logged = vi.spyOn(console, "error").mockImplementation(() => {})
             refuseRemoval = true
             try {
@@ -654,7 +718,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("removes a deleted company's records' files", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c3', 'Three', now())`)
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v6', 'c3', 'Zeta', 'Rana', '0105', 'Aswan', now())`)
-            await Records.create(superAdmin, { content: "Zeta licence", files: [file("c3", "zeta.pdf")], expiryDate: null, reminderDays: null, vendorId: "v6", sectionTitle: "Licences" })
+            await Records.create(superAdmin, { content: "Zeta licence", files: [file("c3", "zeta.pdf")], expiryDate: null, reminderDays: null, clientId: "v6", sectionTitle: "Licences" })
             removed.length = 0
             const { CompanyService } = await import("@/lib/services/company.service")
             await CompanyService.delete("c3", { user: { ...superAdmin.user, mfaEnabled: true, stepUpAt: Date.now() } })
@@ -663,13 +727,13 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("names a record's company to a Super Admin, who sees every company's, and to nobody else", async () => {
-            const id = (await Records.create(admin, { content: "Named company", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const id = (await Records.create(admin, { content: "Named company", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             expect((await Records.get(superAdmin, id)).client).toEqual({ id: "v1", name: expect.any(String), company: "One" })
             expect((await Records.get(admin, id)).client).not.toHaveProperty("company")
         })
 
         it("reminds a Super Admin who added a record, as anyone who did", async () => {
-            const id = (await Records.create(superAdmin, { content: "Support's permit", files: [], expiryDate: "2026-10-20", reminderDays: 7, vendorId: "v1", sectionTitle: "Permits by support" })).id
+            const id = (await Records.create(superAdmin, { content: "Support's permit", files: [], expiryDate: "2026-10-20", reminderDays: 7, clientId: "v1", sectionTitle: "Permits by support" })).id
             await Records.checkExpiries()
             const { rows } = await db.query(`SELECT "userId", "superAdminId", type FROM "Notification" WHERE "relatedId" = $1`, [`/dashboard/records/${id}`])
             expect(rows).toEqual([{ userId: null, superAdminId: superAdmin.user.id, type: "NOTE_REMINDER" }])
@@ -678,8 +742,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("tells a Super Admin's record from one by a user since deleted", async () => {
             await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e9', 'e9@x', 'p', 'Lina', 'Gone', 'EMPLOYEE', 2026, 'e9', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
             const leaver = { user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any
-            const theirs = (await Records.create(leaver, { content: "Left behind", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
-            const support = (await Records.create(superAdmin, { content: "Added by support", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const theirs = (await Records.create(leaver, { content: "Left behind", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
+            const support = (await Records.create(superAdmin, { content: "Added by support", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             await Records.update(superAdmin, { id: theirs, content: "Left behind, checked", files: [], filesBefore: [], expiryDate: null, reminderDays: null })
             await db.query(`DELETE FROM "User" WHERE id = 'e9'`)
             expect(await Records.get(admin, theirs)).toMatchObject({ createdBy: null, createdBySuperAdmin: false, lastEditedBy: null, lastEditedBySuperAdmin: true })
@@ -702,7 +766,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("deletes a section with the files an edit just gave one of its records", async () => {
-            const id = (await Records.create(admin, { content: "Map", files: [], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Plans" })).id
+            const id = (await Records.create(admin, { content: "Map", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Plans" })).id
             const section = (await Records.get(admin, id)).section.id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Map, scanned') EXECUTE FUNCTION test_slow()`)
@@ -720,7 +784,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("removes the files an edit just gave a record of a company being deleted", async () => {
             await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c4', 'Four', now())`)
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v7', 'c4', 'Eta', 'Huda', '0106', 'Tanta', now())`)
-            const id = (await Records.create(superAdmin, { content: "Eta permit", files: [], expiryDate: null, reminderDays: null, vendorId: "v7", sectionTitle: "Licences" })).id
+            const id = (await Records.create(superAdmin, { content: "Eta permit", files: [], expiryDate: null, reminderDays: null, clientId: "v7", sectionTitle: "Licences" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow BEFORE UPDATE ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Eta permit, scanned') EXECUTE FUNCTION test_slow()`)
             try {
@@ -752,18 +816,18 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("gives no record a file being removed from storage", async () => {
             const x = file("c1", "handover.pdf")
-            const a = (await Records.create(admin, { content: "Handover", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const a = (await Records.create(admin, { content: "Handover", files: [x], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             removalTakes = 500
             try {
                 removed.length = 0
                 // Its file is taken off, and as storage removes it, a request gives the same file to another record.
                 const takingOff = Records.update(admin, { id: a, content: "Handover", files: [], filesBefore: [x.url], expiryDate: null, reminderDays: null })
                 await new Promise(r => setTimeout(r, 150))
-                const [, giving] = await Promise.allSettled([takingOff, Records.create(admin, { content: "Handover, copy", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })])
+                const [, giving] = await Promise.allSettled([takingOff, Records.create(admin, { content: "Handover, copy", files: [x], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })])
                 expect(removed).toEqual(["c1/records/handover.pdf"])
                 expect(giving).toMatchObject({ status: "rejected", reason: { message: "RECORD_FILE_INVALID" } })
                 // Nor later.
-                await expect(Records.create(admin, { content: "Handover, again", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).rejects.toThrow("RECORD_FILE_INVALID")
+                await expect(Records.create(admin, { content: "Handover, again", files: [x], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).rejects.toThrow("RECORD_FILE_INVALID")
             } finally {
                 removalTakes = 0
             }
@@ -771,13 +835,13 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("keeps a file a record is being given as another takes it off", async () => {
             const x = file("c1", "permit-scan.pdf")
-            const a = (await Records.create(admin, { content: "Permit scan", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const a = (await Records.create(admin, { content: "Permit scan", files: [x], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             await db.query(`CREATE FUNCTION test_slow() RETURNS trigger AS $$ BEGIN PERFORM pg_sleep(0.5); RETURN NEW; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE TRIGGER test_slow AFTER INSERT ON "ClientNote" FOR EACH ROW WHEN (NEW.content = 'Permit scan, copy') EXECUTE FUNCTION test_slow()`)
             try {
                 removed.length = 0
                 // Another record is being given the file, and before it's saved, the first takes it off.
-                const giving = Records.create(admin, { content: "Permit scan, copy", files: [x], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })
+                const giving = Records.create(admin, { content: "Permit scan, copy", files: [x], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })
                 await new Promise(r => setTimeout(r, 150))
                 await Promise.all([giving, Records.update(admin, { id: a, content: "Permit scan", files: [], filesBefore: [x.url], expiryDate: null, reminderDays: null })])
                 // The copy has it, so it stays.
@@ -789,10 +853,10 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("won't add a record to a client deleted meanwhile", async () => {
             await db.query(`INSERT INTO "Vendor"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v5', 'c1', 'Epsilon', 'Hana', '0104', 'Luxor', now())`)
-            const section = (await Records.createSection(admin, { vendorId: "v5", title: "Licences" })).id
+            const section = (await Records.createSection(admin, { clientId: "v5", title: "Licences" })).id
             await db.query(`DELETE FROM "Vendor" WHERE id = 'v5'`)
             await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, sectionId: section })).rejects.toThrow("RECORD_SECTION_NOT_FOUND")
-            await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, vendorId: "v5", sectionTitle: "New" })).rejects.toThrow("VENDOR_NOT_FOUND")
+            await expect(Records.create(admin, { content: "Late", files: [], expiryDate: null, reminderDays: null, clientId: "v5", sectionTitle: "New" })).rejects.toThrow("CLIENT_NOT_FOUND")
         })
 
         it("finds any of a company's clients to add a record to by its name, however many it has", async () => {
@@ -817,7 +881,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("removes a section's many files, in as many calls as storage takes them", async () => {
             // 25 records of 10 files each: more than one call to storage takes.
             const archive = async (title: string) => {
-                const section = (await Records.createSection(admin, { vendorId: "v1", title })).id
+                const section = (await Records.createSection(admin, { clientId: "v1", title })).id
                 const files = (n: number) => JSON.stringify(Array.from({ length: 10 }, (_, i) => ({ url: `${BUCKET}/c1/records/${title}-${n}-${i}.pdf`, name: `${title}-${n}-${i}.pdf`, size: 1 })))
                 for (let n = 0; n < 25; n++) await db.query(`INSERT INTO "ClientNote"(id, content, "sectionId", "updatedAt", attachment) VALUES ($1, 'Archived', $2, now(), $3)`, [`${title}-${n}`, section, files(n)])
                 return section
@@ -841,12 +905,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             await db.query(`CREATE FUNCTION test_fail() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'commit failed'; END $$ LANGUAGE plpgsql`)
             await db.query(`CREATE CONSTRAINT TRIGGER test_fail AFTER INSERT ON "RemovedRecordFile" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.path = 'c1/records/notary.pdf') EXECUTE FUNCTION test_fail()`)
             try {
-                const deed = (await Records.create(admin, { content: "Notary deed", files: [file("c1", "notary.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+                const deed = (await Records.create(admin, { content: "Notary deed", files: [file("c1", "notary.pdf")], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
                 removed.length = 0
                 await Records.delete(admin, deed)
                 // Still in storage, so a record may still be given it.
                 expect(removed).toEqual([])
-                await Records.create(admin, { content: "Notary deed, again", files: [file("c1", "notary.pdf")], expiryDate: null, reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })
+                await Records.create(admin, { content: "Notary deed, again", files: [file("c1", "notary.pdf")], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })
             } finally {
                 await db.query(`DROP TRIGGER test_fail ON "RemovedRecordFile"; DROP FUNCTION test_fail()`)
             }
@@ -854,7 +918,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("sends the reminders on when their company's deletion holds a record, then deletes whoever added it", async () => {
             await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e9', 'e9@x', 'p', 'Rana', 'Gone', 'EMPLOYEE', 2026, 'e9', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
-            const theirs = (await Records.create({ user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any, { content: "Fire certificate", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const theirs = (await Records.create({ user: withGrants({ id: "e9", role: "EMPLOYEE", companyId: "c1" }) } as any, { content: "Fire certificate", files: [], expiryDate: "2026-10-16", reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             // As CompanyService.delete does: its records held (filesOfCompany), then its people deleted with it.
             const deleting = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
             await deleting.connect()
@@ -877,7 +941,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("waits for whoever added a record while they're held, then sends their reminder", async () => {
             await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e10', 'e10@x', 'p', 'Hala', 'Held', 'EMPLOYEE', 2026, 'e10', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
-            const theirs = (await Records.create({ user: withGrants({ id: "e10", role: "EMPLOYEE", companyId: "c1" }) } as any, { content: "Lift inspection", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const theirs = (await Records.create({ user: withGrants({ id: "e10", role: "EMPLOYEE", companyId: "c1" }) } as any, { content: "Lift inspection", files: [], expiryDate: "2026-10-16", reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
             // Held as their deletion holds them, then let go: the reminder asks again rather than failing.
             const holding = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
             await holding.connect()
@@ -898,8 +962,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("sends the reminders on when whoever added a record is deleted as they go out", async () => {
             await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId") SELECT 'e8', 'e8@x', 'p', 'Nour', 'Gone', 'EMPLOYEE', 2026, 'e8', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
             const leaver = { user: withGrants({ id: "e8", role: "EMPLOYEE", companyId: "c1" }) } as any
-            const theirs = (await Records.create(leaver, { content: "Trade licence", files: [], expiryDate: "2026-10-16", reminderDays: null, vendorId: "v1", sectionTitle: "Contracts" })).id
-            const soon = (await Records.create(leaver, { content: "Tax card", files: [], expiryDate: "2026-10-20", reminderDays: 7, vendorId: "v1", sectionTitle: "Contracts" })).id
+            const theirs = (await Records.create(leaver, { content: "Trade licence", files: [], expiryDate: "2026-10-16", reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
+            const soon = (await Records.create(leaver, { content: "Tax card", files: [], expiryDate: "2026-10-20", reminderDays: 7, clientId: "v1", sectionTitle: "Contracts" })).id
             // Someone is editing the record as the job finds it, and the person who added it is deleted meanwhile.
             const edit = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
             const leave = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { roleParam } from "@/lib/notice"
 import { isBuiltInRole } from "@/lib/permissions/built-in"
-import { isPermission } from "@/lib/permissions/catalogue"
+import { grantsFromRows } from "@/lib/permissions/stored-names"
 import { decodeGrants, type Grants } from "@/lib/permissions/grants"
 import { covers } from "@/lib/permissions/grant-rules"
 import { startOfDayIn } from "@/lib/time"
@@ -18,9 +18,7 @@ type RoleRow = { id: string; companyId: string; baseRole: UserRole; grants: { pe
 
 /** A role's grants as the catalogue knows them. */
 function grantsOf(role: RoleRow): Grants {
-    const grants: Grants = {}
-    for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope as any
-    return grants
+    return grantsFromRows(role.grants)
 }
 
 /**

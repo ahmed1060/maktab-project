@@ -8,7 +8,7 @@ import { RecordService } from "@/lib/services/record.service"
 
 /**
  * A client's records (CLIENTS_PLAN.md §0.2): the Records page across every
- * client, and the records on one client's page (?vendorId=). Each check is
+ * client, and the records on one client's page (?clientId=). Each check is
  * RecordService's, against the record's company; the permission here only
  * turns away someone who holds none at all.
  */
@@ -24,7 +24,7 @@ export const GET = withStandardHandler(async (req, session) => {
 
     const result = await RecordService.list(session, {
         companyId: searchParams.get("companyId"),
-        vendorId: searchParams.get("vendorId"),
+        clientId: searchParams.get("clientId"),
         sectionId: searchParams.get("sectionId"),
         search: searchParams.get("search"),
         expiry,

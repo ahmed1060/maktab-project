@@ -24,7 +24,7 @@ export const ATTENDANCE_BUNDLES = ['ATTENDANCE_TERMINALS', 'ATTENDANCE_MOBILE'] 
  */
 export type Module =
     | 'DASHBOARD' | 'EMPLOYEES' | 'USERNAMES' | 'PROFILE_REQUESTS' | 'REQUESTS'
-    | 'TASKS' | 'OBLIGATIONS' | 'RECORDS' | 'VENDORS' | 'COSTS'
+    | 'TASKS' | 'OBLIGATIONS' | 'RECORDS' | 'CLIENTS' | 'COSTS'
     | 'DAY_OFF' | 'PAYROLL' | 'SALARY_ADJUSTMENTS'
     | 'ATTENDANCE'
 
@@ -48,7 +48,7 @@ export const MODULE_BUNDLE: Record<Module, Bundle | readonly Bundle[] | null> = 
     TASKS: 'COMPANY_MANAGEMENT',
     OBLIGATIONS: 'COMPANY_MANAGEMENT',
     RECORDS: 'COMPANY_MANAGEMENT',
-    VENDORS: 'COMPANY_MANAGEMENT',
+    CLIENTS: 'COMPANY_MANAGEMENT',
     COSTS: 'COMPANY_MANAGEMENT',
 
     // HR — time, money, and the record of both.

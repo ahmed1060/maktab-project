@@ -43,7 +43,7 @@ function taskRow(id: string) {
         title: "Task", description: "A task to do", status: taskState.status, difficulty: 1,
         comments: itemsBy(t.assignees[0]?.id), memberCosts: {},
         totalCost: 0, isPaid: false, paymentStatus: "PENDING_PAYMENT", createdById: "admin", createdBy: "admin",
-        deadline: new Date(Date.now() + 86_400_000), vendorId: null, location: null,
+        deadline: new Date(Date.now() + 86_400_000), clientId: null, location: null,
         attachments: [],
         acknowledged: false, updatedAt: new Date(), createdAt: new Date(),
         ...t,

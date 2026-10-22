@@ -7,7 +7,7 @@ import { NextResponse } from "next/server"
 
 // Streams the raw base template exactly as the Super Admin uploaded it —
 // no company data baked in, no company needed (unlike /api/templates/
-// download, which augments the base file with one company's Users/Vendors
+// download, which augments the base file with one company's Users/Clients
 // sheets). Only useful for confirming what's actually currently uploaded,
 // which is why it's Super-Admin-only, same as the upload endpoint itself.
 export const GET = withStandardHandler(async (req, session) => {

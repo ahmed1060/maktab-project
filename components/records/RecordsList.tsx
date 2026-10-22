@@ -35,9 +35,9 @@ const LIMIT = 20
 /** How long until an instant, from now; none once it's passed. */
 const msUntil = (iso: string) => Math.max(0, Date.parse(iso) - Date.now())
 
-export default function RecordsList({ vendorId, sections = [], adding = false, onAddingChange, onChanged, openRecordId }: {
+export default function RecordsList({ clientId, sections = [], adding = false, onAddingChange, onChanged, openRecordId }: {
     /** One client's records; none for every client's. */
-    vendorId?: string
+    clientId?: string
     /** That client's sections, for the filter and the form. */
     sections?: SectionItem[]
     /** Whether the add form is open, for a page whose header has the button. */
@@ -53,7 +53,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     const { showToast } = useToast()
     const { can } = useCan()
     const { selectedCompanyId } = useCompany()
-    const showClient = !vendorId
+    const showClient = !clientId
 
     const [query, setQuery] = useState('')
     const [search, setSearch] = useState('')
@@ -74,13 +74,13 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
     if (search) params.set('search', search)
     if (expiry) params.set('expiry', expiry)
-    if (vendorId) params.set('vendorId', vendorId)
-    if (vendorId && sectionId) params.set('sectionId', sectionId)
-    if (!vendorId && selectedCompanyId) params.set('companyId', selectedCompanyId)
+    if (clientId) params.set('clientId', clientId)
+    if (clientId && sectionId) params.set('sectionId', sectionId)
+    if (!clientId && selectedCompanyId) params.set('companyId', selectedCompanyId)
     const listUrl = `/api/records?${params}`
     // On a client's page the client decides the company; on the Records page,
     // a Super Admin's chosen one does, and another's rows mustn't linger.
-    const scope = vendorId ?? selectedCompanyId
+    const scope = clientId ?? selectedCompanyId
     const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(scopedKey(listUrl, scope), scopedFetcher, { keepPreviousData: true })
     const result = forScope(scoped, scope)
     const failed = loadFailed(scoped, error, listUrl)
@@ -113,9 +113,9 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
         opened.current = openRecordId
         fetchRetrying(`/api/records?id=${encodeURIComponent(openRecordId)}`)
             .then(r => (r.ok ? r.json() : null))
-            .then((body: { data?: RecordItem } | null) => { if (body?.data && (!vendorId || body.data.client.id === vendorId)) setViewing(body.data) })
+            .then((body: { data?: RecordItem } | null) => { if (body?.data && (!clientId || body.data.client.id === clientId)) setViewing(body.data) })
             .catch(() => { /* the list is still there to find it in */ })
-    }, [openRecordId, vendorId])
+    }, [openRecordId, clientId])
 
     const filtersOn = (expiry ? 1 : 0) + (sectionId ? 1 : 0)
     const resetFilters = () => { setQuery(''); setSearch(''); setExpiry(''); setSectionId(''); setPage(1) }
@@ -161,7 +161,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
         : <span className="ui-item-detail">{t('records_no_expiry')}</span>
     const client = (r: RecordItem) => (
         <ItemTitle
-            title={<Link href={`/dashboard/vendors/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link>}
+            title={<Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link>}
             detail={r.client.company}
             detailIcon={r.client.company ? BuildingsIcon : undefined}
         />
@@ -172,7 +172,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
 
     const columns: Column<RecordItem>[] = [
         { key: 'record', header: t('records_col_record'), cell: r => <ItemTitle title={title(r)} detail={<bdi>{r.section.title}</bdi>} detailIcon={FolderIcon} /> },
-        ...(showClient ? [{ key: 'client', header: t('records_col_vendor'), cell: client }] : []),
+        ...(showClient ? [{ key: 'client', header: t('records_col_client'), cell: client }] : []),
         { key: 'expires', header: t('records_col_expires'), cell: expires },
         { key: 'files', header: t('records_col_files'), cell: files },
         { key: 'added', header: t('records_col_added'), cell: added },
@@ -202,7 +202,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
                 activeCount={filtersOn}
                 onReset={filtersOn > 0 || query ? resetFilters : undefined}
             >
-                {vendorId && sections.length > 0 && (
+                {clientId && sections.length > 0 && (
                     <Field label={t('records_section')} hideLabel>{p => (
                         <Select {...p} icon={FolderIcon} value={sectionId} onChange={e => { setSectionId(e.target.value); setPage(1) }}
                             options={[{ value: '', label: t('records_all_sections') }, ...sections.map(s => ({ value: s.id, label: s.title }))]} />
@@ -227,7 +227,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
                                 status={<ExpiryBadge state={r.expiry} />}
                                 details={[
                                     { icon: FolderIcon, text: <bdi>{r.section.title}</bdi> },
-                                    ...(showClient ? [{ icon: BuildingsIcon, text: <Link href={`/dashboard/vendors/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link> }] : []),
+                                    ...(showClient ? [{ icon: BuildingsIcon, text: <Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link> }] : []),
                                     // Its company, in a Super Admin's view of every company's, as in the table:
                                     // two may have clients of the same name (Codex on #82).
                                     ...(showClient && r.client.company ? [{ icon: BuildingOfficeIcon, text: <bdi>{r.client.company}</bdi> }] : []),
@@ -250,14 +250,14 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
                 onDelete={canDelete && viewing ? () => setDeleting(viewing) : undefined}
             />
             {/* To this client, or on the Records page to the one chosen in the form. */}
-            <RecordForm open={adding} onClose={() => onAddingChange?.(false)} vendorId={vendorId} sections={vendorId ? sections : undefined} onSaved={changed} />
+            <RecordForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} sections={clientId ? sections : undefined} onSaved={changed} />
             <RecordForm
                 open={!!editing}
                 onClose={() => setEditing(null)}
-                vendorId={editing?.client.id ?? vendorId}
+                clientId={editing?.client.id ?? clientId}
                 // On the Records page the form loads the record's client's
                 // sections, to move it to another, and says if they don't load.
-                sections={vendorId ? sections : undefined}
+                sections={clientId ? sections : undefined}
                 record={editing}
                 onSaved={changed}
             />

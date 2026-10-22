@@ -145,8 +145,8 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                 {/* Who may do what here (ROLES_PLAN.md §6.2). */}
                 {tab === 'roles' && <CompanyRolesCard companyId={companyId} />}
 
-                {/* Replaces the Vendors-only rename this screen used to
-                    carry: every module can be renamed now, and Vendors is
+                {/* Replaces the Clients-only rename this screen used to
+                    carry: every module can be renamed now, and Clients is
                     just one of the nine. */}
                 {tab === 'modules' && (
                     <CompanyModulesCard

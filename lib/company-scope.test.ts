@@ -42,8 +42,8 @@ describe("the four rules for whose names you see", () => {
     it("rule 4 — anything unresolved still lands on the built-in name", () => {
         // A scope that resolves to no company, or a company with no overrides,
         // is not an error state: it is the default label.
-        expect(modulesFrom(null, t).label("vendors")).toBe(en.vendors)
-        expect(modulesFrom({ moduleLabels: null, moduleIcons: null }, t).label("vendors")).toBe(en.vendors)
+        expect(modulesFrom(null, t).label("clients")).toBe(en.clients)
+        expect(modulesFrom({ moduleLabels: null, moduleIcons: null }, t).label("clients")).toBe(en.clients)
     })
 })
 
@@ -52,13 +52,13 @@ describe("what a scoped render actually shows", () => {
         // The Super Admin's own session carries no company names at all, which
         // is exactly why rule 1 needed a second source in the first place.
         const scoped: CompanyBranding = {
-            moduleLabels: { vendors: "Clinics" },
-            moduleIcons: { vendors: "🏥" },
+            moduleLabels: { clients: "Clinics" },
+            moduleIcons: { clients: "🏥" },
             logoUrl: null,
         }
         const modules = modulesFrom(scoped, t)
-        expect(modules.label("vendors")).toBe("Clinics")
-        expect(modules.icon("vendors")).toBe("🏥")
+        expect(modules.label("clients")).toBe("Clinics")
+        expect(modules.icon("clients")).toBe("🏥")
     })
 
     it("is the same shape the session is, so one resolver serves both", () => {

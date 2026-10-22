@@ -347,7 +347,7 @@ export default function CompaniesPage() {
                                                     Edit/Ban/Delete instead of looking bundled with Payments. */}
                                                 <Link href={`/dashboard/companies/${company.id}/settings`} aria-label={t('company_settings_title') || 'Settings'}
                                                     // Navigates, and nothing else. It used to set the global
-                                                    // company scope on the way, so that Vendors and Tasks —
+                                                    // company scope on the way, so that Clients and Tasks —
                                                     // which read only the switcher — would follow you into the
                                                     // company you had just opened. That traded a navigation
                                                     // problem for a persistent one: setSelectedCompanyId writes

@@ -34,13 +34,13 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
     const hasAccess = await verifyResourceAccess(session, obligation.id, 'OBLIGATION')
     if (!hasAccess) return <AccessDenied />
 
-    // Fetch creator details. Unlike Task/Vendor, Obligation never captured
+    // Fetch creator details. Unlike Task/Client, Obligation never captured
     // a creator before its createdById column existed — every row from
     // before that migration has createdById = NULL because the data was
     // never recorded, not because a Super Admin made it. A fixed rollout
     // cutoff (this migration's applied date) distinguishes that case
     // ("genuinely unknown") from a real post-rollout Super Admin creation
-    // (also NULL, but for the same reason Task.createdBy/Vendor.createdById
+    // (also NULL, but for the same reason Task.createdBy/Client.createdById
     // are — the FK only targets User).
     const OBLIGATION_CREATED_BY_ROLLOUT = new Date('2026-09-08T00:00:00Z')
     let creatorName: string | null = null

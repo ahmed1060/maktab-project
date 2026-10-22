@@ -10,7 +10,7 @@ export type ClientOption = { id: string; name: string; company?: string }
 /**
  * The clients a record can be added to from the Records page (CLIENTS_PLAN.md
  * §0.2): the first ones by name, and whether there are more, which a search
- * by name finds. Someone who may add records but not see the vendors list, as
+ * by name finds. Someone who may add records but not see the clients list, as
  * an ordinary employee, reaches a client without records yet this way.
  */
 export function useClients(on: boolean) {

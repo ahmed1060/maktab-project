@@ -28,11 +28,11 @@ type Errors = Partial<Record<'section' | 'content' | 'files' | 'reminder', strin
  * behind: once uploaded, a file is kept for another try if the save fails,
  * and removed again if the form closes without saving it.
  */
-export default function RecordForm({ open, onClose, vendorId, sections, record, onSaved }: {
+export default function RecordForm({ open, onClose, clientId, sections, record, onSaved }: {
     open: boolean
     onClose: () => void
     /** The record's client; none to choose one here, on the Records page. */
-    vendorId?: string
+    clientId?: string
     /** That client's sections; none to load them here. */
     sections?: SectionItem[]
     /** The record being edited; none to add one. */
@@ -42,12 +42,12 @@ export default function RecordForm({ open, onClose, vendorId, sections, record, 
 }) {
     // Mounted afresh each time it opens, so it starts from the record as it is.
     if (!open) return null
-    return <Form onClose={onClose} vendorId={vendorId} sections={sections} record={record ?? null} onSaved={onSaved} />
+    return <Form onClose={onClose} clientId={clientId} sections={sections} record={record ?? null} onSaved={onSaved} />
 }
 
-function Form({ onClose, vendorId, sections, record, onSaved }: {
+function Form({ onClose, clientId, sections, record, onSaved }: {
     onClose: () => void
-    vendorId?: string
+    clientId?: string
     sections?: SectionItem[]
     record: RecordItem | null
     onSaved: () => void
@@ -58,25 +58,25 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
     const form = useRef<HTMLFormElement>(null)
     const editing = record !== null
     // On the Records page: which client, then that client's sections.
-    const choosing = !vendorId && !editing
+    const choosing = !clientId && !editing
     const clients = useClients(choosing)
     const [chosen, setChosen] = useState('')
     // What was chosen, while it's listed; otherwise the first listed.
-    const clientId = vendorId ?? (clients.clients.some(c => c.id === chosen) ? chosen : clients.clients[0]?.id ?? '')
+    const forClient = clientId ?? (clients.clients.some(c => c.id === chosen) ? chosen : clients.clients[0]?.id ?? '')
     // The client's sections, loaded here when they aren't handed in: on the
     // Records page, the chosen client's, or the edited record's client's.
     const loadsSections = sections === undefined
     const { data: theirs, error: theirsError, isValidating: reloadingSections, mutate: reloadSections } = useSWR<{ data: { sections: SectionItem[] } }>(
-        loadsSections && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null, fetcher,
+        loadsSections && forClient ? `/api/records/sections?clientId=${encodeURIComponent(forClient)}` : null, fetcher,
     )
     // Not yet known, rather than none, which would start a first section, or
     // leave an edited record nowhere else to move to.
     const list = loadsSections ? theirs?.data.sections : sections
-    const sectionsFailed = loadsSections && !!clientId && !theirs && !!theirsError
+    const sectionsFailed = loadsSections && !!forClient && !theirs && !!theirsError
     const [sectionId, setSectionId] = useState(record?.section.id ?? '')
     // What was chosen, while the client has it (or a new one); otherwise its first, or a new one.
     const section = sectionId === NEW_SECTION || list?.some(s => s.id === sectionId) ? sectionId : list?.[0]?.id ?? NEW_SECTION
-    const ready = !!clientId && list !== undefined
+    const ready = !!forClient && list !== undefined
     const [sectionTitle, setSectionTitle] = useState('')
     const [content, setContent] = useState(record?.content ?? '')
     const [kept, setKept] = useState<RecordFile[]>(record?.files ?? [])
@@ -173,7 +173,7 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
             const where = editing
                 // Its files as it opened, so an edit someone made since isn't undone.
                 ? { id: record!.id, sectionId: section, filesBefore: record!.files.map(f => f.url) }
-                : newSection ? { vendorId: clientId, sectionTitle: sectionTitle.trim() } : { sectionId: section }
+                : newSection ? { clientId: forClient, sectionTitle: sectionTitle.trim() } : { sectionId: section }
             const res = await fetch('/api/records', {
                 method: editing ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -212,25 +212,25 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
     const noClients = choosing && (clients.failed || clients.loading || (clients.clients.length === 0 && !clients.searching))
     const clientFields = choosing && (
         clients.failed
-            ? <EmptyState icon={WarningCircleIcon} title={t('records_vendors_failed')} action={<Button busy={clients.retrying} onClick={clients.retry}>{t('try_again')}</Button>} />
+            ? <EmptyState icon={WarningCircleIcon} title={t('records_clients_failed')} action={<Button busy={clients.retrying} onClick={clients.retry}>{t('try_again')}</Button>} />
             : clients.loading
                 ? <p className="ui-hint" role="status">{t('loading')}</p>
                 : clients.clients.length === 0 && !clients.searching
-                    ? <EmptyState icon={StorefrontIcon} title={t('records_no_vendors')} />
+                    ? <EmptyState icon={StorefrontIcon} title={t('records_no_clients')} />
                     : <>
                         {/* Only a company with more clients than are listed needs to search them. */}
                         {(clients.more || clients.searching) && (
-                            <Field label={t('records_find_vendor')} hint={clients.more ? t('records_more_vendors').replace('{n}', num(clients.clients.length)) : undefined}>{p => (
+                            <Field label={t('records_find_client')} hint={clients.more ? t('records_more_clients').replace('{n}', num(clients.clients.length)) : undefined}>{p => (
                                 <SearchInput {...p} autoComplete="off" value={clients.query} onChange={e => clients.setQuery(e.target.value)} disabled={saving} />
                             )}</Field>
                         )}
                         {clients.clients.length === 0
-                            ? <p className="ui-hint" role="status">{t('records_no_vendors_match')}</p>
+                            ? <p className="ui-hint" role="status">{t('records_no_clients_match')}</p>
                             : (
-                                <Field label={t('records_col_vendor')}>{p => (
+                                <Field label={t('records_col_client')}>{p => (
                                     <Select
                                         {...p}
-                                        value={clientId}
+                                        value={forClient}
                                         onChange={e => setChosen(e.target.value)}
                                         options={clients.clients.map(c => ({ value: c.id, label: c.company ? `${c.name} · ${c.company}` : c.name }))}
                                         disabled={saving}
@@ -250,7 +250,7 @@ function Form({ onClose, vendorId, sections, record, onSaved }: {
                 <div><Button busy={reloadingSections} onClick={() => { void reloadSections() }}>{t('try_again')}</Button></div>
             </div>
         )
-        : clientId && list === undefined
+        : forClient && list === undefined
             ? <p className="ui-hint" role="status">{t('records_sections_loading')}</p>
             : <>
                 {list && list.length > 0 && (

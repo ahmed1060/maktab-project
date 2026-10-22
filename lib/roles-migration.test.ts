@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 import { isPermission } from "@/lib/permissions/catalogue"
+import { permissionOf } from "@/lib/permissions/stored-names"
 
 /**
  * The migration that made roles data seeds every company's built-in roles
@@ -26,7 +27,9 @@ const LATER = [
 
 // A later one that renames permissions: clients.* became records.*, for the
 // old Clients section moving onto each client (CLIENTS_PLAN.md §0.2). The
-// names it renames are read out of its SQL too.
+// names it renames are read out of its SQL too. And vendors.* became
+// clients.* in code only: the rows keep the old names until 0c, read as the
+// new (lib/permissions/stored-names.ts).
 const RENAMING = readFileSync("prisma/migrations/20261104000000_records_on_clients/migration.sql", "utf8")
 function renamed(): Record<string, string> {
     const list = RENAMING.match(/WHEN name IN \(([^)]*)\)\s*THEN 'records\.' \|\| substr\(name, length\('clients\.'\) \+ 1\)/)
@@ -40,7 +43,7 @@ function seeded(): Record<string, Record<string, string>> {
     for (const sql of [SQL, ...LATER]) {
         const block = sql.slice(sql.indexOf('INSERT INTO "RoleGrant"'), sql.indexOf('AS g("builtIn"'))
         for (const [, role, permission, scope] of block.matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)) {
-            ;(out[role] ??= {})[rename[permission] ?? permission] = scope
+            ;(out[role] ??= {})[rename[permission] ?? permissionOf(permission)] = scope
         }
     }
     return out

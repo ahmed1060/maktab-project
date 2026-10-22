@@ -9,7 +9,7 @@ import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { assertRecentStepUp } from "@/lib/step-up"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
-import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
+import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides, storedOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
 import type { CompanyBranding } from "@/lib/company-scope"
 import { uploadToCloud } from "@/lib/storage"
@@ -251,8 +251,8 @@ export class CompanyService {
                 ...(name && { name }),
                 ...(isBanned !== undefined && { isBanned }),
                 ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
-                ...(nextLabels !== undefined && { moduleLabels: nextLabels ?? Prisma.DbNull }),
-                ...(nextIcons !== undefined && { moduleIcons: nextIcons ?? Prisma.DbNull }),
+                ...(nextLabels !== undefined && { moduleLabels: storedOverrides(nextLabels) ?? Prisma.DbNull }),
+                ...(nextIcons !== undefined && { moduleIcons: storedOverrides(nextIcons) ?? Prisma.DbNull }),
                 // Payroll policy. The schema validates all three before they
                 // reach here — the zone in particular, because its refusal
                 // carries a reason the form needs to show.
@@ -460,7 +460,7 @@ export class CompanyService {
             // Prisma cascades (onDelete: Cascade) in schema.prisma will handle:
             // - Tasks, Obligations, Requests, Payments
             // - Users and their personal data (Notifications, Salary, etc.)
-            // - Vendors, and their record sections and records
+            // - Clients, and their record sections and records
             // The records' files are in storage, outside the database: listed
             // here, and removed once the company is gone.
             const recordFiles = await RecordService.filesOfCompany(tx, id)
@@ -725,7 +725,7 @@ export class CompanyService {
      * more than one reminder and never survived an extension.
      *
      * Reminders now reach the company's own Admins as well as the platform's
-     * Super Admins. Telling only the vendor is survivable while renewals are
+     * Super Admins. Telling only the client is survivable while renewals are
      * chased by hand; once grace and lockout are automatic it is a trap, because
      * the customer's first warning would be the screen going red.
      */

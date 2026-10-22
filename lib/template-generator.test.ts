@@ -16,7 +16,7 @@ import { generateBulkTaskTemplate } from "./services/template-generator.service"
 async function baseFile(): Promise<Buffer> {
     const wb = new Workbook()
     const ws = wb.addWorksheet("Tasks")
-    ws.addRow(["Title", "Description", "Vendor Name", "Employee Name", "Deadline Date", "Deadline Time", "Difficulty"])
+    ws.addRow(["Title", "Description", "Client Name", "Employee Name", "Deadline Date", "Deadline Time", "Difficulty"])
     ws.addRow(["(instructions)"])
     return Buffer.from(await wb.xlsx.writeBuffer())
 }
@@ -25,9 +25,9 @@ const users = [
     { firstName: "Laila", lastName: "Fouad", username: "laila", role: "EMPLOYEE" },
     { firstName: "Omar", lastName: "Said", username: "omar", role: "TEAM_LEADER" },
 ]
-const vendors = [{ name: "Delta Supplies", locationName: "Nasr City" }]
+const clients = [{ name: "Delta Supplies", locationName: "Nasr City" }]
 
-async function generated(locale: "en" | "ar", u = users, v = vendors) {
+async function generated(locale: "en" | "ar", u = users, v = clients) {
     const out = await generateBulkTaskTemplate(await baseFile(), locale, u, v)
     const wb = new Workbook()
     await wb.xlsx.load(out as any)
@@ -37,7 +37,7 @@ async function generated(locale: "en" | "ar", u = users, v = vendors) {
 describe("the bulk-task template", () => {
     it("keeps the base sheet and adds the two lookup sheets", async () => {
         const wb = await generated("en")
-        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "Users", "Vendors"])
+        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "Users", "Clients"])
         expect(wb.getWorksheet("Tasks")!.getCell("A1").value).toBe("Title")
     })
 
@@ -47,10 +47,10 @@ describe("the bulk-task template", () => {
         expect(users.getCell("C3").value).toBe("omar")
     })
 
-    it("wires the vendor and employee columns to their lists, for every data row", async () => {
+    it("wires the client and employee columns to their lists, for every data row", async () => {
         const tasks = (await generated("en")).getWorksheet("Tasks")!
         for (const row of [3, 52]) {
-            expect(tasks.getCell(`C${row}`).dataValidation).toMatchObject({ type: "list", formulae: ["'Vendors'!$A$2:$A$2"] })
+            expect(tasks.getCell(`C${row}`).dataValidation).toMatchObject({ type: "list", formulae: ["'Clients'!$A$2:$A$2"] })
             expect(tasks.getCell(`D${row}`).dataValidation).toMatchObject({ type: "list", formulae: ["'Users'!$A$2:$A$3"] })
         }
         expect(tasks.getCell("C53").dataValidation).toBeUndefined()
@@ -68,7 +68,7 @@ describe("the bulk-task template", () => {
     })
 
     it("points an Arabic file's dropdowns at the Arabic sheets, which is where the lists are", async () => {
-        // They used to say Users!/Vendors! in every language. In an Arabic
+        // They used to say Users!/Clients! in every language. In an Arabic
         // file no sheet has either name, so both dropdowns were empty.
         const tasks = (await generated("ar")).getWorksheet("Tasks")!
         expect(tasks.getCell("C3").dataValidation).toMatchObject({ formulae: ["'الموردين'!$A$2:$A$2"] })
@@ -77,7 +77,7 @@ describe("the bulk-task template", () => {
 
     it("refuses a base file with no sheet at all", async () => {
         const empty = Buffer.from(await new Workbook().xlsx.writeBuffer())
-        await expect(generateBulkTaskTemplate(empty, "en", users, vendors)).rejects.toThrow()
+        await expect(generateBulkTaskTemplate(empty, "en", users, clients)).rejects.toThrow()
     })
 })
 
