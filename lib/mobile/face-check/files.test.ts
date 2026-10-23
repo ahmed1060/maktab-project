@@ -61,6 +61,20 @@ describe("joining the model's parts", () => {
         expect(fetchMock).toHaveBeenCalledTimes(4)
     })
 
+    it("tries a part again when the connection drops part way through it, and counts its bytes once (Codex on #84)", async () => {
+        let pulls = 0
+        const cutOff = () => new Response(new ReadableStream({
+            pull(c) { if (pulls++ === 0) c.enqueue(parts[0].slice(0, 2)); else c.error(new TypeError("network error")) },
+        }))
+        const answers: (() => Response)[] = [cutOff, ...parts.map(p => () => new Response(p))]
+        const fetchMock = vi.fn(async () => answers.shift()!())
+        vi.stubGlobal("fetch", fetchMock)
+        let bytes = 0
+        expect(await settle(joined(manifest(), "m.onnx", n => { bytes += n }))).toEqual({ value: whole })
+        expect(fetchMock).toHaveBeenCalledTimes(4)
+        expect(bytes).toBe(whole.length)
+    })
+
     it("says the models are unavailable when a part can't be downloaded, after three tries again", async () => {
         const fetchMock = vi.fn(async () => { throw new TypeError("Failed to fetch") })
         vi.stubGlobal("fetch", fetchMock)

@@ -11,6 +11,13 @@ import { fetcher, fetchRetrying, RETRY_DELAYS_MS, SWRError } from "./swr-fetcher
 
 const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
 const failing = (status: number) => new Response(JSON.stringify({ error: "nope" }), { status })
+/** An answer whose connection drops part way through its body, after the start of it came. */
+const dropping = () => {
+    let pulls = 0
+    return new Response(new ReadableStream({
+        pull(c) { if (pulls++ === 0) c.enqueue(new TextEncoder().encode('{"data":')); else c.error(new TypeError("network error")) },
+    }), { status: 200 })
+}
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
 
@@ -29,6 +36,15 @@ describe("loading a list's data", () => {
         vi.stubGlobal("fetch", fetchMock)
         expect(await settle(fetcher("/api/clients"))).toEqual({ value: { data: [1] } })
         expect(fetchMock).toHaveBeenCalledTimes(3)
+    })
+
+    it("tries again when the connection drops while the answer comes in (Codex on #84)", async () => {
+        vi.useFakeTimers()
+        const answers = [() => dropping(), () => ok({ data: [2] })]
+        const fetchMock = vi.fn(async () => answers.shift()!())
+        vi.stubGlobal("fetch", fetchMock)
+        expect(await settle(fetcher("/api/clients"))).toEqual({ value: { data: [2] } })
+        expect(fetchMock).toHaveBeenCalledTimes(2)
     })
 
     it("says it didn't load once three tries again have failed too, half a second, a second and two apart", async () => {
@@ -78,6 +94,16 @@ describe("anything else a screen loads", () => {
         expect(await (value as Response).json()).toEqual({ data: "fine" })
         expect(fetchMock).toHaveBeenCalledTimes(3)
         expect(fetchMock).toHaveBeenLastCalledWith("/api/users?role=TEAM_LEADER", { cache: "no-store" })
+    })
+
+    it("tries again when the connection drops while the answer comes in, and gives the screen the whole answer (Codex on #84)", async () => {
+        vi.useFakeTimers()
+        const answers = [() => dropping(), () => ok({ data: "whole" })]
+        const fetchMock = vi.fn(async () => answers.shift()!())
+        vi.stubGlobal("fetch", fetchMock)
+        const { value } = await settle(fetchRetrying("/api/payslips/1"))
+        expect(await (value as Response).json()).toEqual({ data: "whole" })
+        expect(fetchMock).toHaveBeenCalledTimes(2)
     })
 
     it("gives back the last answer once three tries again have failed, for the screen to say so", async () => {

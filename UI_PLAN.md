@@ -806,3 +806,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   reads the code for any load that would skip it.
 - **2026-10-23:** And the record a reminder's link opens on the Records
   page, which came with #82 after the rest.
+- **2026-10-23:** From Codex's review of #84: a load whose answer stops part
+  way through is tried again too, not only one that gets no answer. The face
+  check's model downloads, tens of megabytes each, start a part over and
+  count its progress once.
