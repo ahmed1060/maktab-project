@@ -333,7 +333,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (2026-10-22): in a small PR straight after 0b, which makes Vendors
      Clients in code and leaves the screens as they were, with the Clients
      list page rebuilt on the building blocks (`CLIENTS_PLAN.md` §8). It's
-     built, and opens for review after 0b.
+     built, and open for review in #93.
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
@@ -875,3 +875,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Proposed: the Super Admin's group names in Arabic (§2.2).
 - **2026-10-22:** Decided by the product owner: the Super Admin's group
   names in Arabic are المشتركون, القوالب, الصلاحيات and التشغيل (§2.2).
+- **2026-10-23:** `CLIENTS_PLAN.md`'s 0b was merged in #92. The side bar
+  groups and the Clients list page open for review in #93.
