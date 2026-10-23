@@ -804,3 +804,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   profile, a payslip, the system settings, a contract's end preview, the
   jobs card, the face check's models. A save is never sent again. A test
   reads the code for any load that would skip it.
+- **2026-10-23:** And the record a reminder's link opens on the Records
+  page, which came with #82 after the rest.
