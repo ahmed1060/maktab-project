@@ -77,6 +77,25 @@ describe("the stylesheet says what DESIGN.md says", () => {
         }
     })
 
+    it("text on the glass top bar reads at 4.5:1 whatever scrolls under it, though helper text wouldn't", () => {
+        // The glass over black is its darkest, behind light mode's dark text;
+        // over white, its lightest, behind dark mode's light text (Codex on #85).
+        const glass = (theme: "light" | "dark") => {
+            const [r, g, b, a] = GLASS.find(x => x.token === "--header-glass-bg")![theme].match(/[\d.]+/g)!.map(Number)
+            const under = theme === "light" ? 0 : 255
+            return "#" + [r, g, b].map(c => Math.round(c * a + under * (1 - a)).toString(16).padStart(2, "0")).join("")
+        }
+        expect([glass("light"), glass("dark")]).toEqual(["#d1d1d1", "#2a2e33"])
+        for (const theme of ["light", "dark"] as const) {
+            for (const token of ["--ink", "--ink-2"]) expect([theme, token, contrast(THEMES[theme][token], glass(theme)) >= 4.5]).toEqual([theme, token, true])
+        }
+        expect(contrast(THEMES.light["--muted"], glass("light"))).toBeLessThan(4.5)
+        expect(DOC).toContain("text and icons on the bar are `--ink` or `--ink-2`, never `--muted`.")
+        expect(DOC).toContain("`--muted` reads only 3.5:1 on the first; `--ink-2` reads 7.7:1 on both;")
+        expect(contrast(THEMES.light["--muted"], glass("light")).toFixed(1)).toBe("3.5")
+        expect(Math.min(contrast(THEMES.light["--ink-2"], glass("light")), contrast(THEMES.dark["--ink-2"], glass("dark"))).toFixed(1)).toBe("7.7")
+    })
+
     it.each(["light", "dark"] as const)("status colours, %s", theme => {
         for (const s of STATUSES) {
             const key = MEANING_TOKEN[s.name]

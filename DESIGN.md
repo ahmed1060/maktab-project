@@ -329,6 +329,10 @@ These are built once, in the building-blocks PR, and every page uses them
     `--header-glass-bg` with a 20px blur and 160% saturation behind it, a
     hairline `--header-glass-border` edge and `--header-shadow`. The page
     scrolling under it shows through, blurred;
+  - text and icons on the bar are `--ink` or `--ink-2`, never `--muted`.
+    Whatever scrolls under it, a dark map say, the glass is at its darkest
+    `#d1d1d1` in light mode and its lightest `#2a2e33` in dark mode, and
+    `--muted` reads only 3.5:1 on the first; `--ink-2` reads 7.7:1 on both;
   - it eases between the two over 300ms, changing only its background,
     blur (`backdrop-filter` and `-webkit-backdrop-filter`), edge, shadow,
     margins and corners, so the blur comes in with the rest rather than
