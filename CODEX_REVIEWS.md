@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-23 02:23 UTC, against GitHub.
+Last checked: 2026-10-23 08:26 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -37,24 +37,15 @@ limits" reviews nothing.
 
 ## Waiting for Codex
 
-| PR | State | Last commit Codex reviewed | Not yet reviewed |
-| --- | --- | --- | --- |
-| #84 Anything a screen loads tries again three times before it fails | Open | `b6f9ca1` (2026-10-23 02:16 UTC) | Every commit after `b6f9ca1` (below) |
-
-Codex's first review of #84 found one thing: a connection that dropped
-while an answer's body came in wasn't tried again. It's fixed in the
-commits after it, which haven't been reviewed:
-
-- `a26d1a7` A load that drops while its answer comes in is tried again too
-- this file's own commit
+Nothing is waiting: every open and merged PR has been reviewed.
 
 ## Reviewed
 
-Every merged PR, #1 to #83, has been reviewed in full.
+Every merged PR, #1 to #84, has been reviewed in full.
 
 | PR | How |
 | --- | --- |
-| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#83 | At its last commit |
+| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#84 | At its last commit |
 | #1, #28, #29, #33, #35–#38, #45, #48, #73–#78 | After merging, on main containing its last commit |
 | #2 | Review-only #71 |
 | #3 | Review-only #69 |
