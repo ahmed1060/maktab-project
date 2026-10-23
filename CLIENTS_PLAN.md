@@ -1024,4 +1024,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   everything it stored under its own folder, its logo, its people's photos
   and their tasks' files, after its records' files. Best effort, as the
   company is already gone: what storage refuses is logged and left to the
-  orphan sweep.
+  orphan sweep. Not a file a live row still uses, such as the photo of
+  someone a Super Admin moved to another company.
