@@ -14,6 +14,13 @@ const bucket = new Set<string>()
 const state = { refuse: false }
 /** What live rows still use, as stored: public URLs into the bucket. */
 const live = { avatars: [] as string[] }
+/**
+ * People, as Postgres keeps them: in the order they were written, which a
+ * query without an order may return. `whilePaging` runs once, after the first
+ * page is read, as a change made meanwhile would.
+ */
+const people = { rows: [] as { id: string; avatar: string }[], whilePaging: null as null | (() => void) }
+const url = (path: string) => `https://nizmo.supabase.co/storage/v1/object/public/app-assets/${path}`
 vi.mock("@/lib/storage", () => ({
     supabase: {
         storage: {
@@ -44,7 +51,18 @@ vi.mock("@/lib/prisma", () => {
     const none = { findMany: async () => [] }
     return { prisma: {
         company: { findUnique: async ({ where }: any) => ({ id: where.id, name: "Acme", users: [] }), findMany: async () => [] },
-        user: { findMany: async ({ skip }: any) => (skip ? [] : live.avatars.map(avatar => ({ avatar }))) },
+        user: {
+            findMany: async ({ where, skip = 0, take, orderBy }: any) => {
+                let rows = [...people.rows, ...live.avatars.map((avatar, i) => ({ id: `live-${i}`, avatar }))]
+                if (where?.id?.gt) rows = rows.filter(r => r.id > where.id.gt)
+                if (orderBy?.id === "asc") rows.sort((a, b) => (a.id < b.id ? -1 : 1))
+                const page = rows.slice(skip, skip + (take ?? rows.length))
+                const change = people.whilePaging
+                people.whilePaging = null
+                change?.()
+                return page
+            },
+        },
         task: none, obligation: none, clientRecord: none, superAdmin: none,
         $transaction: async (fn: any) => fn(tx),
     } }
@@ -67,6 +85,8 @@ beforeEach(() => {
     STORED.forEach(p => bucket.add(p))
     state.refuse = false
     live.avatars = []
+    people.rows = []
+    people.whilePaging = null
 })
 
 describe("deleting a company", () => {
@@ -79,6 +99,17 @@ describe("deleting a company", () => {
     it("keeps a file a live row still uses: the photo of someone moved to another company", async () => {
         // A Super Admin can move a person to another company; their photo stays where they uploaded it.
         live.avatars = ["https://nizmo.supabase.co/storage/v1/object/public/app-assets/c1/avatars/2-face.png"]
+        const { CompanyService } = await import("@/lib/services/company.service")
+        await CompanyService.delete("c1", session)
+        expect([...bucket].filter(p => p.startsWith("c1/"))).toEqual(["c1/avatars/2-face.png"])
+    })
+
+    it("keeps a photo in use when someone else is deleted while the references are read", async () => {
+        // 600 people with photos elsewhere, and the one moved from c1 first on the second page of 500.
+        people.rows = Array.from({ length: 600 }, (_, i) => ({ id: `p${String(i).padStart(4, "0")}`, avatar: url(`c2/avatars/${i}.png`) }))
+        people.rows[500].avatar = url("c1/avatars/2-face.png")
+        // An earlier person deleted after the first page: an offset would step past one row (Codex on #89).
+        people.whilePaging = () => { people.rows.shift() }
         const { CompanyService } = await import("@/lib/services/company.service")
         await CompanyService.delete("c1", session)
         expect([...bucket].filter(p => p.startsWith("c1/"))).toEqual(["c1/avatars/2-face.png"])

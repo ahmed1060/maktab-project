@@ -148,45 +148,52 @@ export class MaintenanceService {
             for (const path of extractBucketPaths(value)) referenced.add(path)
         }
 
-        // Paged, because these are the two that scale with usage.
-        for (let skip = 0; ; skip += BATCH) {
+        // Paged, because these are the two that scale with usage. By id, each
+        // page after the last one's: an offset over rows that change between
+        // pages steps past one, and a file only it refers to would be taken
+        // for unused (Codex on #89).
+        for (let after: string | undefined; ;) {
             const rows = await prisma.user.findMany({
-                where: { avatar: { not: null } },
-                select: { avatar: true },
-                skip, take: BATCH,
+                where: { avatar: { not: null }, ...(after && { id: { gt: after } }) },
+                select: { id: true, avatar: true },
+                orderBy: { id: 'asc' }, take: BATCH,
             })
             rows.forEach(r => add(r.avatar))
             if (rows.length < BATCH) break
+            after = rows[rows.length - 1].id
         }
 
-        for (let skip = 0; ; skip += BATCH) {
+        for (let after: string | undefined; ;) {
             const rows = await prisma.task.findMany({
-                where: { attachments: { not: Prisma.DbNull } },
-                select: { attachments: true },
-                skip, take: BATCH,
+                where: { attachments: { not: Prisma.DbNull }, ...(after && { id: { gt: after } }) },
+                select: { id: true, attachments: true },
+                orderBy: { id: 'asc' }, take: BATCH,
             })
             rows.forEach(r => add(r.attachments))
             if (rows.length < BATCH) break
+            after = rows[rows.length - 1].id
         }
 
-        for (let skip = 0; ; skip += BATCH) {
+        for (let after: string | undefined; ;) {
             const rows = await prisma.obligation.findMany({
-                where: { attachments: { not: null } },
-                select: { attachments: true },
-                skip, take: BATCH,
+                where: { attachments: { not: null }, ...(after && { id: { gt: after } }) },
+                select: { id: true, attachments: true },
+                orderBy: { id: 'asc' }, take: BATCH,
             })
             rows.forEach(r => add(r.attachments))
             if (rows.length < BATCH) break
+            after = rows[rows.length - 1].id
         }
 
-        for (let skip = 0; ; skip += BATCH) {
+        for (let after: string | undefined; ;) {
             const rows = await prisma.clientRecord.findMany({
-                where: { attachment: { not: null } },
-                select: { attachment: true },
-                skip, take: BATCH,
+                where: { attachment: { not: null }, ...(after && { id: { gt: after } }) },
+                select: { id: true, attachment: true },
+                orderBy: { id: 'asc' }, take: BATCH,
             })
             rows.forEach(r => add(r.attachment))
             if (rows.length < BATCH) break
+            after = rows[rows.length - 1].id
         }
 
         // Bounded by the number of companies and of Super Admins, so unpaged.
