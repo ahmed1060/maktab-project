@@ -127,7 +127,7 @@ below, which are all worked out from the one chosen colour.
 | Token | Light | Dark | Used for |
 |---|---|---|---|
 | `--page` | `#f6f9fc` | `#0a1220` | The page behind everything |
-| `--panel` | `#ffffff` | `#0f1a2b` | Panels, tables, cards, the side bar |
+| `--panel` | `#ffffff` | `#0f1a2b` | Panels, tables, cards, the side bar; the top bar where the browser can't blur (§5.1) |
 | `--panel-raised` | `#ffffff` | `#16233a` | Menus, pop-ups, dialogs, toasts |
 | `--ink` | `#0d253d` | `#e6edf5` | Main text: titles and row content |
 | `--ink-2` | `#273951` | `#b8c4d4` | Secondary text in rows and forms |
@@ -329,8 +329,11 @@ These are built once, in the building-blocks PR, and every page uses them
   - it eases between the two over 300ms, changing only its background,
     edge, shadow, margins and corners. With "reduce motion" on, it changes
     at once;
-  - where the browser can't blur, the glass colour alone is opaque enough
-    to read the bar on.
+  - where the browser can't blur, supporting neither `backdrop-filter`
+    nor `-webkit-backdrop-filter` (`@supports not`), it floats on solid
+    `--panel` instead, with the same edge and shadow. Without the blur the
+    glass is see-through, and its helper text, over a dark page, could
+    fall below 4.5:1.
 - **Page area:** `--page` background, with the page-edge spacing from
   §4.1.
 
