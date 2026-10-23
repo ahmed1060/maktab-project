@@ -75,6 +75,17 @@ describe("the side bar", () => {
         expect(nav).not.toContain("uppercase")
     })
 
+    it("draws its group headings and their spacing with the design's tokens (DESIGN.md §10)", () => {
+        const nav = readFileSync("components/DashboardShell.tsx", "utf8").split("<nav")[1].split("</nav>")[0]
+        const group = nav.slice(nav.indexOf('role="group"'), nav.indexOf("group.items.map("))
+        expect(group).not.toMatch(/'\d*\.?\d+rem'/)
+        expect(group).toContain("var(--text-sm)")
+        const preview = readFileSync("components/CompanyModulesCard.tsx", "utf8")
+        const heading = preview.slice(preview.indexOf("const previewGroup"), preview.indexOf("{heading}</p>"))
+        expect(heading).not.toMatch(/'\d*\.?\d+rem'/)
+        expect(heading).toContain("var(--text-xs)")
+    })
+
     it("lists each page once, and every module, as the Company Settings preview draws them", () => {
         const items = [...COMPANY_GROUPS, ...SUPER_ADMIN_GROUPS].flatMap(g => g.items)
         expect(new Set(items).size).toBe(items.length)

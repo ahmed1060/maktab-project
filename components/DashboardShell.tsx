@@ -371,12 +371,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                         Admin, who belongs to no one company, sees the defaults
                         (lib/auth.ts). */}
                     {groups.map((group, index) => (
-                        <div key={group.key} role="group" aria-label={group.labelKey ? t(group.labelKey) : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: index === 0 ? 0 : group.labelKey ? '1rem' : '1.5rem' }}>
+                        <div key={group.key} role="group" aria-label={group.labelKey ? t(group.labelKey) : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: index === 0 ? 0 : group.labelKey ? 'var(--space-4)' : 'var(--space-6)' }}>
                             {group.labelKey && (isCollapsed ? (
-                                <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: '0.5rem auto', width: '50%' }} />
+                                <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: 'var(--space-2) auto', width: '50%' }} />
                             ) : (
                                 // Sentence case, as every label is (DESIGN.md §3.4): Arabic has no capitals.
-                                <p aria-hidden="true" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--sidebar-fg)', paddingInlineStart: '1rem', margin: '0 0 0.1rem' }}>{t(group.labelKey)}</p>
+                                <p aria-hidden="true" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--sidebar-fg)', paddingInlineStart: 'var(--space-4)', margin: 0 }}>{t(group.labelKey)}</p>
                             ))}
                             {group.items.map(key => {
                                 const link = isModuleKey(key) ? modules.entry(key) : { href: PAGES[key].href, label: t(PAGES[key].labelKey), icon: PAGES[key].icon }

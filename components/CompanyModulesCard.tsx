@@ -272,10 +272,10 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
         <>
             {heading ? (
                 <p style={{
-                    fontSize: '0.75rem', fontWeight: 600,
-                    color: 'var(--text-faint)', margin: '0.75rem 0 0.25rem',
+                    fontSize: 'var(--text-xs)', fontWeight: 600,
+                    color: 'var(--text-faint)', margin: 'var(--space-3) 0 var(--space-1)',
                 }}>{heading}</p>
-            ) : <div style={{ height: '0.5rem' }} />}
+            ) : <div style={{ height: 'var(--space-2)' }} />}
             {keys.map(key => {
                 const entry = preview.entry(key)
                 return (
