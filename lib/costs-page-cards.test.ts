@@ -1,0 +1,63 @@
+import { describe, it, expect, vi } from "vitest"
+import { createElement as h } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
+
+/**
+ * The Costs page's cards: one per member's share of a task's cost. A cost
+ * that isn't split by member, as a task's was before memberCosts, is one card
+ * for the task. That card was given `task.assignee`, which a task doesn't
+ * have (it has assignees), so reading its id took the whole page down.
+ */
+
+const address = { query: "" }
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ push: () => {}, refresh: () => {} }),
+    useSearchParams: () => new URLSearchParams(address.query),
+}))
+vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
+vi.mock("@/context/HeaderContext", () => ({ useHeader: () => ({ setTitle: () => {}, setSubtitle: () => {} }) }))
+vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Costs" }) }))
+vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: () => true, companyWide: () => true }) }))
+// Its filters and pages aren't what's checked here.
+vi.mock("@/components/EmployeeFilter", () => ({ default: () => null }))
+vi.mock("@/components/Pagination", () => ({ default: () => null }))
+
+const ali = { id: "u1", firstName: "Ali", lastName: "Hassan" }
+const mona = { id: "u2", firstName: "Mona", lastName: "Adel" }
+const task = (fields: object) => ({
+    id: "t1", title: "Fix the gate", status: "APPROVED", updatedAt: "2026-10-20T09:00:00Z",
+    totalCost: 300, memberCosts: null, memberPaymentStatus: null, assignees: [ali, mona], ...fields,
+})
+
+async function costsPage(tasks: object[], query = "") {
+    address.query = query
+    const { default: CostsClient } = await import("@/app/(dashboard)/dashboard/costs/CostsClient")
+    return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: tasks, total: tasks.length, page: 1, totalPages: 1 }))
+}
+
+describe("the Costs page's cards", () => {
+    it("shows a cost not split by member as the task's, under its assignees' names", async () => {
+        const html = await costsPage([task({})])
+        expect(html).toContain("Fix the gate")
+        expect(html).toContain("Ali Hassan, Mona Adel")
+        expect(html).toContain("300.00")
+    })
+
+    it("names no one it doesn't know, for a task left with no assignees", async () => {
+        expect(await costsPage([task({ assignees: [] })])).toContain("unknown_user")
+    })
+
+    it("leaves that card out with an employee picked: it's no one's share", async () => {
+        expect(await costsPage([task({})], "employeeId=u2")).not.toContain("Fix the gate")
+    })
+
+    it("still shows a split cost as each member's, and only the picked one's in the filter", async () => {
+        const split = task({ memberCosts: { u1: 100, u2: 200 }, memberPaymentStatus: { u1: "PENDING_PAYMENT", u2: "PENDING_PAYMENT" } })
+        const all = await costsPage([split])
+        expect(all).toContain("Ali Hassan")
+        expect(all).toContain("Mona Adel")
+        const picked = await costsPage([split], "employeeId=u2")
+        expect(picked).toContain("Mona Adel")
+        expect(picked).not.toContain("Ali Hassan")
+    })
+})

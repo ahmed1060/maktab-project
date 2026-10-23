@@ -44,10 +44,13 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
         const userCosts = Object.entries(mCosts)
 
         if (userCosts.length === 0 && task.totalCost > 0) {
+            // A cost not split by member, as a task's was before memberCosts.
+            // A task has assignees, not an assignee: the card names them all.
+            const names = (task.assignees || []).map((a: any) => `${a.firstName} ${a.lastName}`.trim()).filter(Boolean)
             return [{
                 ...task,
                 displayCost: task.totalCost,
-                displayAssignee: task.assignee,
+                displayAssignee: { id: null, firstName: names.join(locale === 'ar' ? '، ' : ', ') || t('unknown_user'), lastName: '' },
                 individualPaymentStatus: task.paymentStatus
             }]
         }
