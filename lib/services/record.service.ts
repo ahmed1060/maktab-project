@@ -311,7 +311,7 @@ export class RecordService {
         const search = trimmed ? likeText(trimmed) : ""
         const where: Prisma.ClientRecordWhereInput = {
             section: {
-                clientId: query.clientId ? query.clientId : { not: null },
+                ...(query.clientId ? { clientId: query.clientId } : {}),
                 ...(query.sectionId ? { id: query.sectionId } : {}),
                 ...(companyId ? { client: { companyId } } : {}),
             },
@@ -409,7 +409,7 @@ export class RecordService {
             return await prisma.$transaction(async tx => {
                 // The client's lock a first record takes to start a section by
                 // name (create), so the two don't both start one of a name.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.clientId} FOR NO KEY UPDATE`
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${input.clientId} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
                 const section = await tx.recordSection.create({
                     data: { title: input.title, clientId: input.clientId, createdById: who.byUser },
@@ -432,7 +432,7 @@ export class RecordService {
         try {
             return await prisma.$transaction(async tx => {
                 // As createSection: no first record starts a section of the new name meanwhile.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.clientId} FOR NO KEY UPDATE`
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${section.clientId} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
                 // And the section, which may have been deleted since it was
                 // found (deleteSection), or renamed: its title now is the one
@@ -464,7 +464,7 @@ export class RecordService {
             // deleting the company hold it before the section and its records.
             // Holding the section first, a company deletion holding the records
             // waited on it while it waited on them (Codex on #82).
-            const client = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.clientId} FOR NO KEY UPDATE`
+            const client = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${section.clientId} FOR NO KEY UPDATE`
             if (!client.length) throw new Error("RECORD_SECTION_NOT_FOUND")
             // Then the section, so a record being added meanwhile (create) is
             // among those deleted here, with its files, or finds the section
@@ -510,7 +510,7 @@ export class RecordService {
                 sectionId = section.id
                 // Holds the client while the record is written, so it isn't
                 // deleted meanwhile with the record in it (ClientService.delete).
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.clientId} FOR SHARE`
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${section.clientId} FOR SHARE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
                 // And the section, which isn't deleted meanwhile either (deleteSection).
                 const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${section.id} FOR SHARE`
@@ -519,10 +519,10 @@ export class RecordService {
                 // One at a time per client, so two people naming the same new
                 // section at once start it once: the second finds the first's.
                 // It holds the client from being deleted meanwhile too.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.clientId!} FOR NO KEY UPDATE`
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${input.clientId!} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
                 // A section of that name already there is the one meant, held as above.
-                const [existing] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE "vendorId" = ${input.clientId!} AND title = ${input.sectionTitle!} FOR SHARE`
+                const [existing] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE "clientId" = ${input.clientId!} AND title = ${input.sectionTitle!} FOR SHARE`
                 if (existing) sectionId = existing.id
                 else {
                     const made = await tx.recordSection.create({ data: { title: input.sectionTitle!, clientId: input.clientId!, createdById: who.byUser }, select: { id: true } })
@@ -653,8 +653,8 @@ export class RecordService {
         // meanwhile (create); then their records, so an edit of one's files
         // (update) is listed as it's saved.
         await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR UPDATE`
-        await tx.$queryRaw`SELECT id FROM "Vendor" WHERE "companyId" = ${companyId} ORDER BY id FOR UPDATE`
-        await tx.$queryRaw`SELECT n.id FROM "ClientNote" n JOIN "ClientSection" s ON s.id = n."sectionId" JOIN "Vendor" v ON v.id = s."vendorId" WHERE v."companyId" = ${companyId} ORDER BY n.id FOR UPDATE OF n`
+        await tx.$queryRaw`SELECT id FROM "Client" WHERE "companyId" = ${companyId} ORDER BY id FOR UPDATE`
+        await tx.$queryRaw`SELECT n.id FROM "ClientNote" n JOIN "ClientSection" s ON s.id = n."sectionId" JOIN "Client" c ON c.id = s."clientId" WHERE c."companyId" = ${companyId} ORDER BY n.id FOR UPDATE OF n`
         const rows = await tx.clientRecord.findMany({ where: { attachment: { not: null }, section: { client: { companyId } } }, select: { attachment: true } })
         return rows.flatMap(r => parseRecordFiles(r.attachment))
     }
@@ -690,7 +690,7 @@ export class RecordService {
         let reminded = 0
         // Each company's records on its own day.
         for (const { timezone, today } of await companyDays()) {
-            const done = await RecordService.checkExpiriesOn(today, { clientId: { not: null }, client: { company: { timezone } } })
+            const done = await RecordService.checkExpiriesOn(today, { client: { company: { timezone } } })
             expiringToday += done.expiringToday
             reminded += done.reminded
         }

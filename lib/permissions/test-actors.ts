@@ -1,5 +1,4 @@
 import { BUILT_IN_GRANTS, builtInGrantsToken, isBuiltInRole } from "./built-in"
-import { permissionOf } from "./stored-names"
 
 /**
  * A test's signed-in person as their session token would carry them: with the
@@ -18,8 +17,8 @@ type Person = { id: string; role: string; companyId: string | null; teamLeaderId
 /**
  * Whether a person matches a Prisma `where` on User — enough of Prisma's
  * language for "who should be told": fields, OR and AND, `in`, and a role's
- * grants (holdersOf), by any name they're stored under. The person holds
- * their built-in role's grants, as the roles migration gave them. Anything else throws rather than guessing, so a
+ * grants (holdersOf). The person holds their built-in role's grants, as
+ * the roles migration gave them. Anything else throws rather than guessing, so a
  * query this cannot read fails its test instead of passing it.
  */
 export function matchesUserWhere(person: Person, where: Record<string, any>): boolean {
@@ -29,10 +28,8 @@ export function matchesUserWhere(person: Person, where: Record<string, any>): bo
         if (key === "assignedRole") {
             const wanted = value?.grants?.some
             if (!wanted) throw new Error(`unsupported assignedRole condition: ${JSON.stringify(value)}`)
-            const names: string[] = typeof wanted.permission === "string" ? [wanted.permission] : wanted.permission?.in
-            if (!Array.isArray(names)) throw new Error(`unsupported grant condition: ${JSON.stringify(wanted)}`)
-            const grants = isBuiltInRole(person.role) ? BUILT_IN_GRANTS[person.role] as Record<string, string> : {}
-            const held = names.map(name => grants[permissionOf(name)]).find(Boolean)
+            if (typeof wanted.permission !== "string") throw new Error(`unsupported grant condition: ${JSON.stringify(wanted)}`)
+            const held = isBuiltInRole(person.role) ? (BUILT_IN_GRANTS[person.role] as Record<string, string>)[wanted.permission] : undefined
             if (!held || (wanted.scope && held !== wanted.scope)) return false
             continue
         }

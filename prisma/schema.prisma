@@ -581,13 +581,13 @@ model Task {
   memberCosts         Json?
   memberPaymentStatus Json?
   companyId           String?
-  // Vendors feature: set when this task's location was chosen by picking a
-  // vendor rather than typing one — location/locationLink above are still
-  // the source of truth for display (copied from the vendor at creation
+  // Clients feature: set when this task's location was chosen by picking a
+  // client rather than typing one — location/locationLink above are still
+  // the source of truth for display (copied from the client at creation
   // time), this is only the formal link back for future reporting. Deleting
-  // a vendor never touches historical tasks — SetNull just detaches the
+  // a client never touches historical tasks — SetNull just detaches the
   // reference, the copied location text stays exactly as it was.
-  clientId            String?           @map("vendorId")
+  clientId            String?
   company             Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   client              Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
@@ -872,7 +872,7 @@ model Obligation {
   // was added has this as NULL for that reason, not because a Super Admin
   // made it. The app's own display logic accounts for that (see the
   // ObligationDetailPage rollout-cutoff comment) rather than assuming NULL
-  // always means Super Admin, the way it safely can for Task/Vendor.
+  // always means Super Admin, the way it safely can for Task/Client.
   createdById        String?
   createdBy          User?                @relation("ObligationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
@@ -905,24 +905,17 @@ model SalaryRecord {
 model RecordSection {
   id             String          @id @default(uuid())
   title          String
-  /// The client it belongs to. Null only on a section of the old Clients
-  /// section, of which 0b deletes any; the table's check says exactly one of
-  /// the two is set. Its column keeps the old name until 0d.
-  clientId       String?         @map("vendorId")
-  /// The old Clients section's business, whose table 0c dropped. Nothing
-  /// sets it; 0d drops it, with the app closed, as every release until
-  /// then selects it.
-  legacyClientId String?         @map("clientId")
+  /// The client it belongs to.
+  clientId       String
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   createdById    String?
   lastEditedById String?
   records        ClientRecord[]
-  client         Client?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdBy      User?           @relation("SectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   lastEditedBy   User?           @relation("SectionEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
 
-  @@unique([title, legacyClientId])
   @@unique([clientId, title])
   @@map("ClientSection")
 }
@@ -1134,8 +1127,8 @@ model DayOffCreditSnapshot {
   @@index([userId])
 }
 
-/// A business the company works for (CLIENTS_PLAN.md §0.1). Its table and
-/// columns keep the old name, Vendor, until 0d renames them.
+/// A business the company works for (CLIENTS_PLAN.md §0.1). Called a
+/// vendor, in the database too, until 0d renamed it.
 model Client {
   id           String   @id @default(uuid())
   companyId    String
@@ -1143,7 +1136,7 @@ model Client {
   ownerName    String
   mobileNumber String
   // Mirrors Task.location's {name, link} shape (stored there as JSON text)
-  // so copying a vendor's location into a task at creation time is a direct
+  // so copying a client's location into a task at creation time is a direct
   // field-to-field copy, no reshaping needed on either side.
   locationName String
   locationLink String?
@@ -1158,7 +1151,6 @@ model Client {
 
   @@unique([name, companyId])
   @@index([companyId])
-  @@map("Vendor")
 }
 
 /// One row per scheduled job, rewritten on every run.

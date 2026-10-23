@@ -77,15 +77,6 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
 /** A company's overrides, by module. A missing key falls through to the default. */
 export type ModuleOverrides = Partial<Record<ModuleKey, string>>
 
-/**
- * A module's old key that a company's overrides may still have
- * (CLIENTS_PLAN.md §0.3). Clients were Vendors until 0b, which kept writing
- * the old key; 0c rewrote it, but 0b's code, live while 0c waited for
- * review, wrote it to any company saved then. So it's read as the new; 0d,
- * with the app closed, rewrites any left and removes this, as it does
- * lib/permissions/stored-names.ts.
- */
-const KEY_OF: Record<string, ModuleKey> = { vendors: 'clients' }
 
 /**
  * Narrows whatever came out of a Json column to the shape this module expects.
@@ -100,8 +91,7 @@ export function parseModuleOverrides(value: unknown): ModuleOverrides {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
     const out: ModuleOverrides = {}
-    for (const [stored, raw] of Object.entries(value as Record<string, unknown>)) {
-        const key = KEY_OF[stored] ?? stored
+    for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
         if (!isModuleKey(key)) continue
         if (typeof raw !== 'string') continue
         const trimmed = raw.trim()
