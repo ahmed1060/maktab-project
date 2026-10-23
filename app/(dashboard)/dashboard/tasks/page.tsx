@@ -6,6 +6,7 @@ import TasksClient from "./TasksClient"
 import { and, assignedToReportsWhere, assignedToTeamWhere } from '@/lib/team-scope'
 import { grantFor } from '@/lib/permissions/can'
 import { shapeTask } from '@/lib/permissions/shape'
+import { dayRangeIn } from '@/lib/services/filter-zone'
 
 export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -105,15 +106,9 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
     }
 
     const { dateFrom, dateTo } = searchParams as any
-    if (dateFrom || dateTo) {
-        whereClause.updatedAt = {}
-        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
-        if (dateTo) {
-            const end = new Date(dateTo)
-            end.setHours(23, 59, 59, 999)
-            whereClause.updatedAt.lte = end
-        }
-    }
+    // Days where the company is, not on the server's clock.
+    const updatedAt = await dayRangeIn(dateFrom, dateTo, whereClause.companyId)
+    if (updatedAt) whereClause.updatedAt = updatedAt
 
     const [tasks, total] = await Promise.all([
         (prisma.task as any).findMany({

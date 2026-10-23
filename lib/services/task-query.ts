@@ -1,6 +1,8 @@
 import { isValidTaskStatus } from "@/lib/valid-enums"
 import { assignedToTeamWhere } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
+import { dayRange } from "@/lib/day-range"
+import { DEFAULT_TIME_ZONE } from "@/lib/time"
 
 export type TaskQuerySession = {
     user: {
@@ -30,7 +32,9 @@ export type TaskWhereResult =
 export function buildTaskWhereClause(
     session: TaskQuerySession,
     searchParams: URLSearchParams,
-    companyId: string | null
+    companyId: string | null,
+    /** Where the date filter's days are counted: the company's zone (lib/services/filter-zone.ts). */
+    timeZone: string = DEFAULT_TIME_ZONE
 ): TaskWhereResult {
     const userId = session.user.id
 
@@ -100,16 +104,9 @@ export function buildTaskWhereClause(
         })
     }
 
-    if (dateFrom || dateTo) {
-        const updatedAt: any = {}
-        if (dateFrom) updatedAt.gte = new Date(dateFrom)
-        if (dateTo) {
-            const end = new Date(dateTo)
-            end.setHours(23, 59, 59, 999)
-            updatedAt.lte = end
-        }
-        filters.push({ updatedAt })
-    }
+    // Days where the company is, not on the server's clock.
+    const updatedAt = dayRange(dateFrom, dateTo, timeZone)
+    if (updatedAt) filters.push({ updatedAt })
 
     return { empty: false, whereClause: { AND: [...scope, ...filters] } }
 }

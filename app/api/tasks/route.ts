@@ -5,6 +5,7 @@ import { createTaskSchema } from "@/lib/validations/task.schema"
 import { TaskService } from "@/lib/services/task.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildTaskWhereClause } from "@/lib/services/task-query"
+import { filterTimeZone } from "@/lib/services/filter-zone"
 import { shapeTask } from "@/lib/permissions/shape"
 
 export const GET = withStandardHandler(async (req, session) => {
@@ -18,7 +19,7 @@ export const GET = withStandardHandler(async (req, session) => {
         if (comp) companyId = comp.id
     }
 
-    const result = buildTaskWhereClause(session, searchParams, companyId)
+    const result = buildTaskWhereClause(session, searchParams, companyId, await filterTimeZone(session.user.companyId ?? companyId))
     if (result.empty) {
         return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
     }

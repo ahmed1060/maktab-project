@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import ObligationsClient from "./ObligationsClient"
 import { assignedToTeamWhere, and } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
+import { dayRangeIn } from "@/lib/services/filter-zone"
 
 export default async function ObligationsPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -65,15 +66,9 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
         and(whereClause, { assignees: { some: { id: employeeId } } })
     }
 
-    if (dateFrom || dateTo) {
-        whereClause.updatedAt = {}
-        if (dateFrom) whereClause.updatedAt.gte = new Date(dateFrom)
-        if (dateTo) {
-            const end = new Date(dateTo)
-            end.setHours(23, 59, 59, 999)
-            whereClause.updatedAt.lte = end
-        }
-    }
+    // Days where the company is, not on the server's clock.
+    const updatedAt = await dayRangeIn(dateFrom, dateTo, whereClause.companyId)
+    if (updatedAt) whereClause.updatedAt = updatedAt
 
     const [obligations, total] = await Promise.all([
         prisma.obligation.findMany({
