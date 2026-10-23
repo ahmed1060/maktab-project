@@ -25,6 +25,8 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
     const searchParams = useSearchParams()
 
     const filters = {
+        // A Super Admin's chosen company, so Mark all as paid pays its costs only.
+        company: searchParams.get('company') || '',
         employeeId: searchParams.get('employeeId') || '',
         dateFrom: searchParams.get('dateFrom') || '',
         dateTo: searchParams.get('dateTo') || '',

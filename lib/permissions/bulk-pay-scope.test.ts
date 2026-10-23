@@ -10,6 +10,10 @@ import { withGrants, stepUpConfirmed } from "./test-actors"
  * a team-scoped payer to tasks with someone on their team, on every path: by
  * filter, by ids, and inside the service that writes.
  *
+ * A Super Admin's Costs page lists the company they chose, but the route had
+ * no company in its query for them, so Mark all as paid paid every company's
+ * costs. The page and the route now share one query (lib/services/costs-query.ts).
+ *
  * Each query the route and service make is applied to the fixture tasks below,
  * so what is asserted is which tasks, not how the query is spelled.
  */
@@ -61,14 +65,18 @@ vi.mock("@/lib/prisma", () => {
             update: async ({ where }: any) => { seen.paid.push(where.id); return {} },
             updateMany: async ({ where }: any) => { seen.paid.push(...(where.id?.in ?? [])); return { count: 0 } },
         },
+        auditLog: { create: async () => ({}) },
     }
     // No settings row: step-up (§6.15) uses its default interval.
-    return { prisma: { ...tx, rateLimit: { upsert: async () => ({ count: 1 }) }, systemSettings: { findUnique: async () => null }, $transaction: async (fn: any) => fn(tx) } }
+    const COMPANIES = [{ id: "c1", name: "Acme" }, { id: "c2", name: "Delta" }]
+    const company = { findUnique: async ({ where }: any) => COMPANIES.find(c => c.name === where.name) ?? null }
+    return { prisma: { ...tx, company, rateLimit: { upsert: async () => ({ count: 1 }) }, systemSettings: { findUnique: async () => null }, $transaction: async (fn: any) => fn(tx) } }
 })
 
 const ACTORS = {
     admin:  withGrants({ id: "admin", role: "ADMIN", companyId: "c1" }),
     leader: withGrants({ id: "tl", role: "TEAM_LEADER", companyId: "c1" }),
+    superAdmin: withGrants({ id: "sa", role: "SUPER_ADMIN", companyId: null }),
 }
 
 async function pay(actor: keyof typeof ACTORS, body: object) {
@@ -98,5 +106,23 @@ describe("bulk mark paid reaches the payer's scope", () => {
 
     it("a Team Leader, by filter for one employee outside the team: nothing", async () => {
         expect(await pay("leader", { filters: { employeeId: "loner" } })).toEqual([])
+    })
+})
+
+describe("a Super Admin's Mark all as paid pays the company the Costs page shows", () => {
+    it("with a company chosen: that company's costs only", async () => {
+        expect(await pay("superAdmin", { filters: { company: "Delta" } })).toEqual(["t-c2"])
+    })
+
+    it("with none chosen: every company's, as the page lists them", async () => {
+        expect(await pay("superAdmin", { filters: {} })).toEqual(["t-c2", "t-loner", "t-own", "t-team"])
+    })
+
+    it("with a name that matches no company: nothing, not every company", async () => {
+        expect(await pay("superAdmin", { filters: { company: "Renamed" } })).toEqual([])
+    })
+
+    it("an Admin's company stays their own, whatever company the filters name", async () => {
+        expect(await pay("admin", { filters: { company: "Delta" } })).toEqual(["t-loner", "t-own", "t-team"])
     })
 })

@@ -3,8 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
-import { can, grantFor } from '@/lib/permissions/can'
-import { assignedToTeamWhere } from '@/lib/team-scope'
+import { can } from '@/lib/permissions/can'
+import { pendingCostsWhere } from '@/lib/services/costs-query'
 
 export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
@@ -25,8 +25,6 @@ export default async function CostsPage(props: { searchParams: Promise<{
         redirect('/login')
     }
 
-    const userRole = (session.user as any)?.role
-
     // The page is for paying task costs: those who hold tasks.pay.
     if (!can(session.user as any, 'tasks.pay')) {
         redirect('/dashboard')
@@ -36,77 +34,10 @@ export default async function CostsPage(props: { searchParams: Promise<{
     const limit = parseInt(searchParams.limit || '10')
     const skip = (page - 1) * limit
 
-    let companyId: string | undefined = undefined
-    if (searchParams.company) {
-        const comp = await prisma.company.findUnique({ where: { name: searchParams.company } })
-        if (comp) companyId = comp.id
-    }
-
-    // Determine strict company filter for non-Super Admins
-    const userCompanyId = (session.user as any).companyId
-    let finalCompanyId = companyId
-
-    if (userRole !== 'SUPER_ADMIN') {
-        if (!userCompanyId) {
-            return <CostsClient tasksWithCosts={[]} total={0} page={1} totalPages={0} />
-        }
-        finalCompanyId = userCompanyId
-    }
-
-    // Build Where Clause
-    const where: any = {
-        AND: [
-            {
-                OR: [
-                    { status: 'APPROVED' },
-                    { status: 'COMPLETED' },
-                    { status: 'REJECTED' }
-                ]
-            },
-            {
-                totalCost: { gt: 0 }
-            },
-            {
-                paymentStatus: 'PENDING_PAYMENT'
-            }
-        ]
-    }
-
-    if (finalCompanyId) {
-        where.AND.push({
-            assignees: { some: { companyId: finalCompanyId } }
-        })
-    }
-
-    // A Team Leader pays their team's tasks — tasks.pay at TEAM scope, the rule
-    // every task route applies through verifyResourceAccess — so this page
-    // lists those, not every pending payment in the company. It listed the
-    // company's, which put what colleagues outside the team are owed in front
-    // of a leader who could not act on most of it.
-    if (grantFor(session.user as any, 'tasks.pay') === 'TEAM') {
-        where.AND.push(assignedToTeamWhere((session.user as any).id))
-    }
-
-    if (searchParams.employeeId) {
-        where.AND.push({
-            assignees: { some: { id: searchParams.employeeId } }
-        })
-    }
-
-    if (searchParams.search) {
-        where.AND.push({
-            title: { contains: searchParams.search, mode: 'insensitive' }
-        })
-    }
-
-    if (searchParams.dateFrom) {
-        where.AND.push({ updatedAt: { gte: new Date(searchParams.dateFrom) } })
-    }
-
-    if (searchParams.dateTo) {
-        const toDate = new Date(searchParams.dateTo)
-        toDate.setHours(23, 59, 59, 999)
-        where.AND.push({ updatedAt: { lte: toDate } })
+    // The same query "Mark all as paid" runs, so it pays the list shown.
+    const where = await pendingCostsWhere(session.user as any, searchParams)
+    if (!where) {
+        return <CostsClient tasksWithCosts={[]} total={0} page={1} totalPages={0} />
     }
 
     // Fetch tasks and total count

@@ -44,7 +44,8 @@ const SURFACES: [string, string][] = [
     ["obligations", "app/api/obligations/route.ts"],
     ["exports", "app/api/templates/download/route.ts"],
     ["dashboard counters", "app/(dashboard)/dashboard/page.tsx"],
-    ["costs page", "app/(dashboard)/dashboard/costs/page.tsx"],
+    // The Costs page and its Mark all as paid share this query.
+    ["costs page", "lib/services/costs-query.ts"],
     ["obligations page", "app/(dashboard)/dashboard/obligations/page.tsx"],
 ]
 

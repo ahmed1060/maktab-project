@@ -236,6 +236,10 @@ needs no data change.
 - **"Mark all as paid" re-runs the search on the server**
   (`app/api/tasks/payment/bulk/route.ts`), so it can pay costs added after
   the person looked at the page.
+  - It used to have its own search, which for a Super Admin had no company
+    in it: the page listed the chosen company's costs, and the button paid
+    every company's. Fixed on 2026-10-22: the page and the button share one
+    search (`lib/services/costs-query.ts`).
 - **A paid task can be deleted, and its payment record goes with it**
   (`TaskService.delete` doesn't check payment).
 - **Deleting a vendor quietly unlinks all its tasks** (`onDelete: SetNull`).
@@ -983,3 +987,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   Super Admin who adds a record gets its reminders (a new, additive
   migration; production has no records yet, so none needs filling in).
   Still waiting to be merged.
+- **2026-10-22:** Fixed, in a PR of its own (§1): a Super Admin's "Mark all
+  as paid" pays only the company the Costs page shows. It paid every
+  company's pending costs, because its search had no company in it for a
+  Super Admin. The page and the button now share one search, and a company
+  name that matches none lists and pays nothing, not everything.

@@ -1,0 +1,66 @@
+import { prisma } from "@/lib/prisma"
+import { grantFor, type Actor } from "@/lib/permissions/can"
+import { assignedToTeamWhere } from "@/lib/team-scope"
+
+/** The Costs page's filters, as its address carries them. */
+export type CostFilters = {
+    /** A Super Admin's chosen company, by name (`?company=`). */
+    company?: string
+    employeeId?: string
+    search?: string
+    dateFrom?: string
+    dateTo?: string
+}
+
+/**
+ * Which costs wait to be paid, for the Costs page and for its "Mark all as
+ * paid" (POST /api/tasks/payment/bulk).
+ *
+ * One query for both, so the button pays the list shown and nothing else. The
+ * route built its own, and for a Super Admin it had no company in it: the page
+ * listed the chosen company's costs, and the button paid every company's.
+ *
+ * The company is the payer's own, or a Super Admin's chosen one. A name that
+ * matches no company is nothing, not every company. Null means there's
+ * nothing to list or pay.
+ */
+export async function pendingCostsWhere(
+    user: Actor & { id: string },
+    filters: CostFilters,
+): Promise<{ AND: any[] } | null> {
+    let companyId: string | null = null
+    if (user.role === "SUPER_ADMIN") {
+        if (filters.company) {
+            const company = await prisma.company.findUnique({ where: { name: filters.company }, select: { id: true } })
+            if (!company) return null
+            companyId = company.id
+        }
+    } else {
+        if (!user.companyId) return null
+        companyId = user.companyId
+    }
+
+    const where = {
+        AND: [
+            { OR: [{ status: "APPROVED" }, { status: "COMPLETED" }, { status: "REJECTED" }] },
+            { totalCost: { gt: 0 } },
+            { paymentStatus: "PENDING_PAYMENT" },
+        ] as any[],
+    }
+    if (companyId) where.AND.push({ assignees: { some: { companyId } } })
+
+    // A Team Leader pays their team's tasks — tasks.pay at TEAM scope, the rule
+    // every single-task payment route applies through verifyResourceAccess.
+    if (grantFor(user, "tasks.pay") === "TEAM") where.AND.push(assignedToTeamWhere(user.id))
+
+    if (filters.employeeId) where.AND.push({ assignees: { some: { id: filters.employeeId } } })
+    if (filters.search) where.AND.push({ title: { contains: filters.search, mode: "insensitive" } })
+    if (filters.dateFrom) where.AND.push({ updatedAt: { gte: new Date(filters.dateFrom) } })
+    if (filters.dateTo) {
+        const end = new Date(filters.dateTo)
+        end.setHours(23, 59, 59, 999)
+        where.AND.push({ updatedAt: { lte: end } })
+    }
+
+    return where
+}
