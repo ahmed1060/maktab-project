@@ -835,3 +835,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   every company, the platform's default zone). They counted them in UTC, so
   in Cairo "to 15 January" took in the first two hours of the 16th. Mark
   all as paid uses the same days, as it shares the Costs page's search.
+  Codex's review found two more: a day whose midnight the clocks skip (as
+  Havana's on 8 March) started an hour early, and an employee's own
+  obligations were counted in the platform's zone, not their company's.
