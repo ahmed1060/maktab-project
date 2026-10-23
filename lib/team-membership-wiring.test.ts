@@ -153,10 +153,13 @@ describe("the checks are about the resulting person, not the current one", () =>
         expect(data.teamLeaderId).toBeNull()
     })
 
-    it("clears it when a Super Admin moves them to another company", async () => {
+    it("never moves them to another company, not even for a Super Admin, so their leader stays theirs", async () => {
         db.target = person({ id: "u-1", teamLeaderId: "tl-1" })
-        const data = await written({ companyId: "co-2" }, { user: { id: "sa", role: "SUPER_ADMIN", companyId: null } })
-        expect(data.teamLeaderId).toBeNull()
+        await expect(update({ companyId: "co-2" }, { user: { id: "sa", role: "SUPER_ADMIN", companyId: null } })).rejects.toThrow("COMPANY_CHANGE_FORBIDDEN")
+        // Their own company, sent back as the form had it, is no change.
+        const data = await written({ companyId: "co-1" }, { user: { id: "sa", role: "SUPER_ADMIN", companyId: null } })
+        expect(data.teamLeaderId).toBeUndefined()
+        expect(data.companyId).toBeUndefined()
     })
 })
 

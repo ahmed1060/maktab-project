@@ -826,3 +826,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   days picked in any time zone. West of UTC it showed each day as the one
   before (Oct 1–20 read Sep 30–Oct 19 in Los Angeles); it now reads them
   as calendar days, as the date picker does.
+- **2026-10-23:** Decided by the product owner: editing a person shows
+  their company greyed out and can't change it; a person stays in the
+  company they were added to (`CLIENTS_PLAN.md` change log). Adding a
+  person still asks a Super Admin which company.

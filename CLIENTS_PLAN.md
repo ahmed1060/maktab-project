@@ -1031,3 +1031,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   pages by id, each after the last. An offset stepped past a row when an
   earlier one was deleted between pages, so a file only that row used could
   be taken for unused and removed.
+- **2026-10-23:** Decided by the product owner: a person stays in the
+  company they were added to. A Super Admin's edit form offered every
+  company and moved the person to the one picked; it now shows their
+  company greyed out, and the server refuses any other
+  (`COMPANY_CHANGE_FORBIDDEN`). What a move did, ending their phones,
+  places, session and acting role, is gone with it. Deleting a company
+  still keeps a file another company's row uses, as a safeguard.

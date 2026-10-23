@@ -167,11 +167,10 @@ const EDITS: Case[] = [
     {
         name: "moving an employee to another company",
         run: put({ id: "emp", companyId: "c2" }),
-        // Super Admin only; for an Admin the field is ignored. A new company
-        // means that company's role, so role and roleId are written with it,
-        // and the old company's check-in places are taken away (review on #20),
-        // and its phone and the check-ins a new one held (review on #21).
-        expected: c1Managers("attendancePunches,checkInPhones,companyId,role,roleId,sessionVersion,teamLeaderId,workLocations", { admin: [200, ""], employee: [200, ""] }),
+        // Nobody moves anyone (2026-10-23): a person stays in the company
+        // they were added to. Refused, nothing written, for everyone who may
+        // edit them, the employee too; the rest are refused before that.
+        expected: c1Managers("", { superAdmin: [400, ""], admin: [400, ""], employee: [400, ""] }),
     },
 ]
 
@@ -307,8 +306,8 @@ const LAST_ADMIN: Case[] = [
     {
         name: "moving a company's only Admin to another company",
         run: put({ id: "admin2", companyId: "c1" }),
-        // For an Admin the field is ignored, so nothing moves.
-        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [200, ""], leader: [403, ""], employee: [403, ""] },
+        // Refused as every move is, before the last-Admin rule is reached.
+        expected: { superAdmin: [400, ""], admin: [403, ""], otherAdmin: [400, ""], leader: [403, ""], employee: [403, ""] },
     },
     {
         name: "deleting a company's only Admin",

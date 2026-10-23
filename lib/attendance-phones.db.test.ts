@@ -218,24 +218,18 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
             .toEqual(["REGISTER_CHECK_IN_PHONE", "APPROVE_CHECK_IN_PHONE", "REVOKE_CHECK_IN_PHONE"])
     })
 
-    it("ends a person's phones, and discards what a new one held, when the Super Admin moves them to another company", async () => {
+    it("keeps a person's phones, and their company, when anyone asks to move them to another company", async () => {
+        // Nobody moves anyone (2026-10-23): a person stays in the company
+        // they were added to, so their phone stays the one their company
+        // approved, and their session stays theirs.
         const inUse = await register("m1")
         await Phones.decide(inUse.id, { approve: true }, "a1")
-        const waiting = await register("m1")
-        const punch = await held("m1", waiting.id)
-        const version = async () => (await db.query(`SELECT "sessionVersion" FROM "User" WHERE id = 'm1'`)).rows[0].sessionVersion
+        const version = async () => (await db.query(`SELECT "sessionVersion", "companyId" FROM "User" WHERE id = 'm1'`)).rows[0]
         const before = await version()
-        await UserService.update({ id: "m1", companyId: "c2" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })
-        // Their session, which names the old company, ends (review on #21).
-        expect(await version()).toBe(before + 1)
-        expect(await status(inUse.id)).toBe("REVOKED")
-        expect(await status(waiting.id)).toBe("REVOKED")
-        expect(await punchStatus(punch)).toMatchObject({ status: "REJECTED" })
-        // The old company no longer sees them, nor can decide them.
-        expect((await Phones.list("c1", { kind: "COMPANY" })).map(p => p.userId)).not.toContain("m1")
-        await expect(Phones.decide(waiting.id, { approve: true }, "a1")).rejects.toThrow("PHONE_NOT_PENDING")
-        // Nor can a session from before the move register a new phone under the old company (review on #21).
-        await expect(register("m1")).rejects.toThrow("USER_NOT_FOUND")
+        await expect(UserService.update({ id: "m1", companyId: "c2" } as any, { user: { id: "sa", role: "SUPER_ADMIN" } })).rejects.toThrow("COMPANY_CHANGE_FORBIDDEN")
+        expect(await version()).toEqual(before)
+        expect(await status(inUse.id)).toBe("ACTIVE")
+        expect((await Phones.list("c1", { kind: "COMPANY" })).map(p => p.userId)).toContain("m1")
     })
 
     it("keeps one unused number per person and purpose: asking again replaces the last", async () => {

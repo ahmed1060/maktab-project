@@ -352,7 +352,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     actingUntil: roleId && roleId !== currentRole?.id && actingDate ? actingDate : undefined,
                     gender,
                     avatar: avatarUrl,
-                    companyId: userRole === 'SUPER_ADMIN' ? companyId : undefined,
                     salary: can('salary.edit') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
                     baseDayOffCredit: can('dayoff.adjust_credit') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
                     username: userRole === 'SUPER_ADMIN' ? username : undefined,
@@ -793,13 +792,15 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                                 style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
                             />
                         ) : (
+                            // Shown, never changed: a person stays in the
+                            // company they were added to, and the server
+                            // refuses any other (COMPANY_CHANGE_FORBIDDEN).
                             <select
                                 aria-label={t('company_label')}
                                 className="input"
                                 value={companyId}
-                                onChange={e => setCompanyId(e.target.value)}
-                                disabled={isViewMode}
-                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                disabled
+                                style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
                             >
                                 <option value="">{t('select_company')}</option>
                                 {companies.map(c => (
