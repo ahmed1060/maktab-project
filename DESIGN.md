@@ -134,9 +134,9 @@ below, which are all worked out from the one chosen colour.
 | `--muted` | `#5d6b82` | `#8a9ab0` | Helper text, labels, table headers, empty states |
 | `--rule` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
 | `--field-line` | `#828e9f` | `#65758d` | The edge of a field, checkbox or toggle (3:1 or better on the page and on panels) |
-| `--header-glass-bg` | `rgba(255,255,255,.82)` | `rgba(13,17,23,.88)` | The top bar's glass, once the page scrolls (§5.1) |
-| `--header-glass-border` | `rgba(255,255,255,.45)` | `rgba(255,255,255,.10)` | The glass top bar's hairline edge |
-| `--header-shadow` | `0 4px 30px rgba(0,0,0,.05)` | `0 4px 30px rgba(0,0,0,.45)` | The glass top bar's shadow |
+| `--header-glass-bg` | `rgba(255, 255, 255, 0.82)` | `rgba(13, 17, 23, 0.88)` | The top bar's glass, once the page scrolls (§5.1) |
+| `--header-glass-border` | `rgba(255, 255, 255, 0.45)` | `rgba(255, 255, 255, 0.1)` | The glass top bar's hairline edge |
+| `--header-shadow` | `0 4px 30px rgba(0, 0, 0, 0.05)` | `0 4px 30px rgba(0, 0, 0, 0.45)` | The glass top bar's shadow |
 
 - Text is navy, never pure black. Dark mode is deep navy, never pure black
   either.

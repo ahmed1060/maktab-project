@@ -31,6 +31,22 @@ const THEMES = { light: block(":root {"), dark: block(':root[data-theme="dark"] 
 const NEUTRALS = [...DOC.matchAll(/^\| `(--[a-z0-9-]+)` \| `(#[0-9a-f]{6})` \| `(#[0-9a-f]{6})` \|/gm)]
     .map(m => ({ token: m[1], light: m[2], dark: m[3] }))
 
+/**
+ * DESIGN.md §2.2's glass top bar: | `--header-…` | `light` | `dark` |. These
+ * are the app's older tokens, kept with the bar's glass (§5.1), so they're
+ * declared in the stylesheet's first :root blocks, not the ones above
+ * (Codex on #85).
+ */
+const GLASS = [...DOC.matchAll(/^\| `(--header-[a-z-]+)` \| `([^`]+)` \| `([^`]+)` \|/gm)]
+    .map(m => ({ token: m[1], light: m[2], dark: m[3] }))
+
+/** A token as the first block for `selector` declares it, its spacing as one space. */
+function declared(selector: string, token: string): string | undefined {
+    const at = CSS.indexOf(selector)
+    const body = CSS.slice(at, CSS.indexOf("\n}", at))
+    return body.match(new RegExp(`${token}\\s*:\\s*([^;]+);`))?.[1].replace(/\s+/g, " ").trim()
+}
+
 /** DESIGN.md §2.3: | Meaning | statuses | `#bg` / `#fg` (n:1) | `#bg` / `#fg` (n:1) | */
 const MEANING_TOKEN: Record<string, string> = {
     "Neutral": "neutral", "In motion": "progress", "Waiting on someone": "waiting", "Done or good": "good", "Problem": "problem",
@@ -51,6 +67,14 @@ describe("the stylesheet says what DESIGN.md says", () => {
 
     it.each(["light", "dark"] as const)("neutrals, %s", theme => {
         for (const n of NEUTRALS) expect([n.token, THEMES[theme][n.token]]).toEqual([n.token, n[theme]])
+    })
+
+    it("the glass top bar's tokens, in both themes", () => {
+        expect(GLASS.map(g => g.token)).toEqual(["--header-glass-bg", "--header-glass-border", "--header-shadow"])
+        for (const g of GLASS) {
+            expect([g.token, declared(":root {", g.token)]).toEqual([g.token, g.light])
+            expect([g.token, declared(':root[data-theme="dark"] {', g.token)]).toEqual([g.token, g.dark])
+        }
     })
 
     it.each(["light", "dark"] as const)("status colours, %s", theme => {
