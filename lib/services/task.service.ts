@@ -11,7 +11,7 @@ import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
-import { shareOwed } from "@/lib/cost-shares"
+import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
 
 /**
  * TaskService
@@ -881,7 +881,8 @@ export class TaskService {
             if (targetUserId) {
                 memberPayments[targetUserId] = paymentStatus
                 updateData.memberPaymentStatus = memberPayments
-                const allPaid = Object.values(memberPayments).every(s => s === 'PAID')
+                // Paid once no share is left, as the Costs page and Mark all as paid count it.
+                const allPaid = allSharesPaid((task.memberCosts as any) || {}, memberPayments)
                 if (allPaid) {
                     updateData.paymentStatus = 'PAID'
                     updateData.status = 'COMPLETED'
@@ -1194,7 +1195,7 @@ export class TaskService {
                     if (!can(session.user, "tasks.pay", { companyId: task.companyId, userId: member.id, teamLeaderId: member.teamLeaderId })) throw new Error("OUTSIDE_TEAM")
 
                     payments[memberId] = 'PAID'
-                    const allPaid = Object.entries(mCosts).every(([uid, amount]) => !shareOwed(amount, payments[uid]))
+                    const allPaid = allSharesPaid(mCosts, payments)
                     await tx.task.update({
                         where: { id: task.id },
                         data: {

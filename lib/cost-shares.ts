@@ -10,3 +10,15 @@
 export function shareOwed(amount: unknown, status: unknown): boolean {
     return Number(amount) > 0 && status !== "PAID"
 }
+
+/**
+ * Whether nothing of a task's cost is left to pay: no share still owed. A
+ * status for someone with no share, or a share of nothing, doesn't keep the
+ * task waiting, since the Costs page shows neither (Codex on #87). A cost
+ * not split by member is paid once every status recorded for it is.
+ */
+export function allSharesPaid(shares: Record<string, unknown>, statuses: Record<string, unknown>): boolean {
+    const owed = Object.entries(shares)
+    if (owed.length === 0) return Object.values(statuses).every(status => status === "PAID")
+    return owed.every(([userId, amount]) => !shareOwed(amount, statuses[userId]))
+}

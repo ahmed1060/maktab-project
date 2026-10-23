@@ -108,6 +108,21 @@ describe.skipIf(!ADMIN_URL)("one employee's costs, in Postgres", () => {
         expect(await row("t8-race")).toEqual({ paid: { e1: "PAID", e2: "PAID" }, task: "PAID", status: "COMPLETED" })
     })
 
+    it("pays a task from its own page once no share is left, whoever else has a status", async () => {
+        // Mona has a status but no share; Ali's share removed down to nothing.
+        await task("t9-no-share", { e1: 100 }, { e1: "PENDING_PAYMENT", e2: "PENDING_PAYMENT" })
+        await task("t10-zero-share", { e1: 0, e2: 200 }, { e1: "PENDING_PAYMENT", e2: "PENDING_PAYMENT" })
+        await TaskService.updatePayment("t9-no-share", session, { paymentStatus: "PAID", targetUserId: "e1" })
+        await TaskService.updatePayment("t10-zero-share", session, { paymentStatus: "PAID", targetUserId: "e2" })
+        // Paid, as the Costs page counts it: it lists neither once nothing is left to pay.
+        expect(await row("t9-no-share")).toMatchObject({ task: "PAID", status: "COMPLETED" })
+        expect(await row("t10-zero-share")).toMatchObject({ task: "PAID", status: "COMPLETED" })
+        // And one with a share left stays waiting for it.
+        await task("t11-ali-owes", { e1: 100, e2: 200 }, { e1: "PENDING_PAYMENT", e2: "PENDING_PAYMENT" })
+        await TaskService.updatePayment("t11-ali-owes", session, { paymentStatus: "PAID", targetUserId: "e2" })
+        expect(await row("t11-ali-owes")).toMatchObject({ task: "PENDING_PAYMENT", status: "APPROVED" })
+    })
+
     it("pays every share of each task with no one picked, as before", async () => {
         await TaskService.bulkUpdatePayment(["t1-both", "t7-not-split"], session)
         expect(await row("t1-both")).toEqual({ paid: { e1: "PAID", e2: "PAID" }, task: "PAID", status: "COMPLETED" })
