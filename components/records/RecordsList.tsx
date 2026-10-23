@@ -15,6 +15,7 @@ import {
     type Column, type MenuItem,
 } from '@/components/ui'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -110,7 +111,7 @@ export default function RecordsList({ vendorId, sections = [], adding = false, o
     useEffect(() => {
         if (!openRecordId || opened.current === openRecordId) return
         opened.current = openRecordId
-        fetch(`/api/records?id=${encodeURIComponent(openRecordId)}`)
+        fetchRetrying(`/api/records?id=${encodeURIComponent(openRecordId)}`)
             .then(r => (r.ok ? r.json() : null))
             .then((body: { data?: RecordItem } | null) => { if (body?.data && (!vendorId || body.data.client.id === vendorId)) setViewing(body.data) })
             .catch(() => { /* the list is still there to find it in */ })

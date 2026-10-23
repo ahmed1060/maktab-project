@@ -5,7 +5,7 @@ import { useDialog } from '@/lib/useDialog'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import useSWR from 'swr'
-import { fetcher } from '@/lib/swr-fetcher'
+import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 import TeamHandOffModal from './TeamHandOffModal'
 
 /**
@@ -95,7 +95,7 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
         // a year, and each one would be a settlement calculation.
         const timer = setTimeout(async () => {
             try {
-                const res = await fetch(`/api/users/${userId}/employment?lastWorkingDay=${lastWorkingDay}`)
+                const res = await fetchRetrying(`/api/users/${userId}/employment?lastWorkingDay=${lastWorkingDay}`)
                 const body = await res.json()
                 if (cancelled) return
                 if (!res.ok) {

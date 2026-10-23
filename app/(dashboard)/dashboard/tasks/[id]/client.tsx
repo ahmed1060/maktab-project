@@ -19,6 +19,7 @@ import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { startNavigationProgress } from '@/components/NavigationProgress'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -225,7 +226,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             queryParams.set('limit', '1000')
             if (task.companyId) queryParams.set('companyId', task.companyId)
 
-            fetch(`/api/users?${queryParams.toString()}`)
+            fetchRetrying(`/api/users?${queryParams.toString()}`)
                 .then(r => {
                     if (!r.ok) throw new Error()
                     return r.json()

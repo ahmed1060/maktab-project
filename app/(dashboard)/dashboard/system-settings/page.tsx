@@ -10,6 +10,7 @@ import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import FaceSystemSwitch from '@/components/FaceSystemSwitch'
 import BrandColourCard from '@/components/BrandColourCard'
 import { DEFAULT_BRAND } from '@/lib/brand-colour'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type SystemSettings = {
     id: string
@@ -65,7 +66,7 @@ export default function SystemSettingsPage() {
         // Ignored once the page has gone, so a slow answer does not write into
         // a component that is no longer there.
         let ignore = false
-        fetch('/api/system-settings')
+        fetchRetrying('/api/system-settings')
             .then(async res => {
                 if (!res.ok) throw new Error(String(res.status))
                 const result = await res.json()

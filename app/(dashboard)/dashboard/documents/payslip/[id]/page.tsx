@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import DocumentFrame from '@/components/DocumentFrame'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type Doc = {
     person: { name: string; email: string }
@@ -32,7 +33,7 @@ export default function PayslipDocumentPage() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch(`/api/payslips/${params.id}`)
+                const res = await fetchRetrying(`/api/payslips/${params.id}`)
                 if (!res.ok) { setError(true); return }
                 setDoc((await res.json()).data)
             } catch {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import useSWR from "swr"
-import { fetcher } from "@/lib/swr-fetcher"
+import { fetcher, fetchRetrying } from "@/lib/swr-fetcher"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
 import { renderNotice, type NoticeParam } from "@/lib/notice"
@@ -151,7 +151,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                 if (notification.relatedId.startsWith('/')) router.push(notification.relatedId)
             } else if (type.includes('REQUEST')) {
                 // Fetch the current status of the request to determine redirection
-                fetch(`/api/requests/${notification.relatedId}`)
+                fetchRetrying(`/api/requests/${notification.relatedId}`)
                     .then(res => res.json())
                     .then(result => {
                         const request = result.data

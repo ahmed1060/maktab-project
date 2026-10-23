@@ -10,6 +10,7 @@ import { earliestDeadline } from '@/lib/deadline'
 import { permissionsOf, useCan } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import Link from 'next/link'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
@@ -39,7 +40,7 @@ export default function NewObligationPage() {
         queryParams.set('limit', '1000')
         if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
 
-        fetch(`/api/users?${queryParams.toString()}`)
+        fetchRetrying(`/api/users?${queryParams.toString()}`)
             .then(res => res.json())
             .then(result => {
                 const usersList = result?.data?.data || []

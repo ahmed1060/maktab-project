@@ -7,6 +7,7 @@ import { useCan } from '@/lib/useCan'
 import RoleSelect from '@/components/RoleSelect'
 import { apiErrorText } from "@/lib/api-error-text"
 import Link from 'next/link'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type Company = {
     id: string
@@ -47,7 +48,7 @@ export default function NewEmployeePage() {
 
     useEffect(() => {
         if (userRole === 'SUPER_ADMIN') {
-            fetch('/api/companies?limit=1000')
+            fetchRetrying('/api/companies?limit=1000')
                 .then(res => res.json())
                 .then(result => {
                     const companiesData = result.data?.data || []
@@ -57,7 +58,7 @@ export default function NewEmployeePage() {
         }
         // Asked for by role rather than fetched wholesale and filtered here.
         if (canAssignTeam) {
-            fetch('/api/users?role=TEAM_LEADER&limit=1000')
+            fetchRetrying('/api/users?role=TEAM_LEADER&limit=1000')
                 .then(res => res.json())
                 .then(result => setLeaders(result.data?.data || []))
                 .catch(err => console.error('Failed to fetch team leaders', err))

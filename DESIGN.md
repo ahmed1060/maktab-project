@@ -503,6 +503,19 @@ These are built once, in the building-blocks PR, and every page uses them
   one line saying what didn't load, and Try again, which shows it's busy
   while it tries. It never says there's nothing, or offers to add one, when
   it doesn't know.
+  - Before saying so, it tries again by itself, three times: half a
+    second, one second and two seconds apart, still showing that it's
+    loading. So a moment's trouble with the connection or the server
+    doesn't reach the screen.
+  - Only a failure that can pass is tried again: no answer at all, the
+    server's own error, or the server too busy. A refusal or "not found"
+    is the answer, and is said at once.
+  - The same goes for anything else a screen loads: a picker's options, a
+    form's details, a card's numbers, a preview. Whatever it shows when it
+    fails, a message, a Try again or a picker left empty, comes only after
+    the three tries.
+  - Only loading is tried again. A save is sent once: sent again, it
+    might be done twice.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
 
@@ -727,3 +740,8 @@ changed:
 - **2026-10-16:** Text people type keeps its own direction in either
   language (§7). In the first Arabic check of records, an English record's
   full stop moved to its start.
+- **2026-10-22:** A list or page that didn't load tries again by itself
+  three times before saying so (§5.5), at the product owner's request. A
+  refusal or "not found" is said at once.
+- **2026-10-22:** So does anything else a screen loads (§5.5), at the
+  product owner's request. A save is never sent again.

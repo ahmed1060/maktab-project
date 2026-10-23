@@ -16,9 +16,10 @@ import useSWR from 'swr'
 import { permissionsOf } from '@/lib/useCan'
 import { moveOption } from '@/lib/listbox-keys'
 import { useBusyAction } from '@/lib/useBusyAction'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 
 // Fetcher for SWR
-const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json())
+const fetcher = (url: string) => fetchRetrying(url, { cache: 'no-store' }).then(res => res.json())
 
 interface DashboardHeaderProps {
     user: {

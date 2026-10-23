@@ -794,3 +794,19 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   looking at every company's records sees each record's company on its
   phone card and in the record's details, so two companies' clients of the
   same name can't be mixed up (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** At the product owner's request, a list or page that
+  didn't load tries again by itself three times, half a second, one and two
+  seconds apart, before it says so with Try again (`DESIGN.md` §5.5). A
+  refusal or "not found" is said at once. It's in the shared fetcher
+  (`lib/swr-fetcher.ts`), so every screen that loads through it does this.
+- **2026-10-22:** So does anything else a screen loads, at the product
+  owner's request (`DESIGN.md` §5.5): the pickers' options, a person's
+  profile, a payslip, the system settings, a contract's end preview, the
+  jobs card, the face check's models. A save is never sent again. A test
+  reads the code for any load that would skip it.
+- **2026-10-23:** And the record a reminder's link opens on the Records
+  page, which came with #82 after the rest.
+- **2026-10-23:** From Codex's review of #84: a load whose answer stops part
+  way through is tried again too, not only one that gets no answer. The face
+  check's model downloads, tens of megabytes each, start a part over and
+  count its progress once.
