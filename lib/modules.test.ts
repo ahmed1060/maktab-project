@@ -25,8 +25,8 @@ import { resolveTitleKey } from "./page-title"
 describe("the module registry", () => {
     it("covers the nine company-facing modules and no more", () => {
         expect([...MODULE_KEYS].sort()).toEqual([
-            "clients", "costs", "dashboard", "dayOff", "employees",
-            "obligations", "requests", "tasks", "vendors",
+            "costs", "dashboard", "dayOff", "employees",
+            "obligations", "records", "requests", "tasks", "vendors",
         ])
     })
 
@@ -96,29 +96,29 @@ describe("the module registry", () => {
 
 describe("parsing overrides out of an untyped Json column", () => {
     it("keeps known keys with string values", () => {
-        expect(parseModuleOverrides({ clients: "Patients", tasks: "Jobs" }))
-            .toEqual({ clients: "Patients", tasks: "Jobs" })
+        expect(parseModuleOverrides({ records: "Patients", tasks: "Jobs" }))
+            .toEqual({ records: "Patients", tasks: "Jobs" })
     })
 
     it("drops unknown keys rather than trusting them", () => {
         // These maps are edited through a UI and stored untyped, so a stale or
         // renamed key is a real possibility, not a hypothetical.
-        expect(parseModuleOverrides({ clients: "Patients", superAdmins: "Owners", nonsense: "x" }))
-            .toEqual({ clients: "Patients" })
+        expect(parseModuleOverrides({ records: "Patients", superAdmins: "Owners", nonsense: "x" }))
+            .toEqual({ records: "Patients" })
     })
 
     it("drops non-string values", () => {
-        expect(parseModuleOverrides({ clients: 42, tasks: null, costs: { a: 1 }, employees: "Crew" }))
+        expect(parseModuleOverrides({ records: 42, tasks: null, costs: { a: 1 }, employees: "Crew" }))
             .toEqual({ employees: "Crew" })
     })
 
     it("treats an empty or whitespace value as no override at all", () => {
         // Storing one would render a module with no name.
-        expect(parseModuleOverrides({ clients: "", tasks: "   " })).toEqual({})
+        expect(parseModuleOverrides({ records: "", tasks: "   " })).toEqual({})
     })
 
     it("trims, so a stray space does not shift a sidebar row", () => {
-        expect(parseModuleOverrides({ clients: "  Patients  " })).toEqual({ clients: "Patients" })
+        expect(parseModuleOverrides({ records: "  Patients  " })).toEqual({ records: "Patients" })
     })
 
     it("returns an empty map for anything that is not an object", () => {
@@ -151,16 +151,16 @@ describe("resolving a module's name and icon", () => {
     it("treats an empty override as no override, not as a blank name", () => {
         // parseModuleOverrides already drops these, but the resolvers are also
         // called with maps straight off a form, which has not.
-        expect(resolveModuleLabel("clients", { clients: "" }, t)).toBe(en.clients)
-        expect(resolveModuleIcon("clients", { clients: "" })).toBe("🤝")
+        expect(resolveModuleLabel("records", { records: "" }, t)).toBe(en.records)
+        expect(resolveModuleIcon("records", { records: "" })).toBe("🗂️")
     })
 
     it("renames a module in every locale, because a name is not a translation", () => {
         // A company that calls Clients "Patients" calls them that in Arabic too:
         // there is no Arabic translation of a name this company invented.
         const arT = ((key: string) => (ar as Record<string, string>)[key]) as (key: any) => string
-        expect(resolveModuleLabel("clients", { clients: "Patients" }, arT)).toBe("Patients")
-        expect(resolveModuleLabel("clients", {}, arT)).toBe(ar.clients)
+        expect(resolveModuleLabel("records", { records: "Patients" }, arT)).toBe("Patients")
+        expect(resolveModuleLabel("records", {}, arT)).toBe(ar.records)
     })
 })
 
@@ -230,7 +230,7 @@ describe("validating an icon", () => {
 
 describe("parsing icon overrides", () => {
     it("keeps valid emoji and drops everything else", () => {
-        expect(parseModuleIcons({ vendors: "🏥", clients: "Patients", tasks: "" }))
+        expect(parseModuleIcons({ vendors: "🏥", records: "Patients", tasks: "" }))
             .toEqual({ vendors: "🏥" })
     })
 
@@ -301,8 +301,8 @@ describe("deciding what a company update stores", () => {
     it("replaces the whole map when the settings form saves", () => {
         // The form holds all nine and posts all nine, so a key it left out was
         // cleared, not left alone.
-        expect(planOverrideWrite({ clients: "Patients" }, "labels"))
-            .toEqual({ clients: "Patients" })
+        expect(planOverrideWrite({ records: "Patients" }, "labels"))
+            .toEqual({ records: "Patients" })
     })
 
     it("stores nothing rather than an empty map when the last override goes", () => {
@@ -317,9 +317,9 @@ describe("deciding what a company update stores", () => {
         // The only difference left between the two now that vendorsLabel is
         // gone: a label is kept as typed, an icon that is not an emoji is not
         // an icon.
-        const incoming = { vendors: "Suppliers", clients: "🏥" }
-        expect(planOverrideWrite(incoming, "labels")).toEqual({ vendors: "Suppliers", clients: "🏥" })
-        expect(planOverrideWrite(incoming, "icons")).toEqual({ clients: "🏥" })
+        const incoming = { vendors: "Suppliers", records: "🏥" }
+        expect(planOverrideWrite(incoming, "labels")).toEqual({ vendors: "Suppliers", records: "🏥" })
+        expect(planOverrideWrite(incoming, "icons")).toEqual({ records: "🏥" })
     })
 
     it("drops unknown module keys whichever kind it is asked for", () => {

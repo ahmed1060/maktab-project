@@ -161,7 +161,7 @@ describe("the reference set covers every column that can hold a bucket path", ()
             "prisma.company.findMany",
             "prisma.task.findMany",
             "prisma.obligation.findMany",
-            "prisma.businessClientNote.findMany",
+            "prisma.clientRecord.findMany",
         ]) {
             expect(service, `${source} is not part of the reference set`).toContain(source)
         }

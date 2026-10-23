@@ -449,18 +449,21 @@ export class CompanyService {
             where: { id },
             include: {
                 users: { select: { id: true } },
-                businessClients: { select: { id: true } }
             }
         })
 
         if (!company) throw new Error("COMPANY_NOT_FOUND")
         if (company.name === 'SHSD') throw new Error("CANNOT_DELETE_SHSD")
 
-        return await prisma.$transaction(async (tx) => {
+        const { RecordService } = await import("./record.service")
+        const { deleted, recordFiles } = await prisma.$transaction(async (tx) => {
             // Prisma cascades (onDelete: Cascade) in schema.prisma will handle:
             // - Tasks, Obligations, Requests, Payments
             // - Users and their personal data (Notifications, Salary, etc.)
-            // - Clients, Sections, and Notes
+            // - Vendors, and their record sections and records
+            // The records' files are in storage, outside the database: listed
+            // here, and removed once the company is gone.
+            const recordFiles = await RecordService.filesOfCompany(tx, id)
 
             const deleted = await tx.company.delete({ where: { id } })
 
@@ -472,8 +475,10 @@ export class CompanyService {
                 details: { name: company.name }
             })
 
-            return deleted
+            return { deleted, recordFiles }
         })
+        await RecordService.removeUnused(recordFiles, id)
+        return deleted
     }
 
     /**

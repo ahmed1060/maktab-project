@@ -7,7 +7,8 @@ import { withGrants } from "./test-actors"
  * Four places a screen disagreed with what its routes allow, fixed.
  *
  * - The client and section lists offered Edit and Delete to everyone, and the
- *   server refused anyone without clients.edit or clients.delete.
+ *   server refused anyone without clients.edit or clients.delete. Those are a
+ *   client's records now (records.*), and their screens ask the same.
  * - The Costs page listed every pending payment in the company to a Team
  *   Leader, who pays only their team's tasks.
  * - The obligations page listed the whole company's obligations to a Team
@@ -68,29 +69,75 @@ describe("the Costs page shows what its viewer may pay", () => {
 
 const source = (path: string) => stripComments(readFileSync(path, "utf8"))
 
-/** The JSX from a gate up to the handler it guards — the gate must come first. */
-function gateBefore(path: string, handler: string): string {
-    const s = source(path)
-    const at = s.indexOf(handler)
-    expect(at, `${handler} is in ${path}`).toBeGreaterThan(-1)
-    return s.slice(s.lastIndexOf("<button", at) - 80, at)
-}
+describe("record screens offer only what the server allows", () => {
+    const LIST = source("components/records/RecordsList.tsx")
+    const SECTIONS = source("components/records/SectionsCard.tsx")
+    const VIEW = source("components/records/RecordDialog.tsx")
 
-describe("client screens offer only what the server allows", () => {
-    const LIST = "app/(dashboard)/dashboard/clients/page.tsx"
-    const DETAIL = "app/(dashboard)/dashboard/clients/[id]/page.tsx"
-
-    it("offers renaming a client only with clients.edit", () => {
-        expect(gateBefore(LIST, "setEditingClientId(client.id)")).toContain("can('clients.edit') && (")
+    it("adds a record from the Records page in one form, choosing its client there, only with records.contribute", () => {
+        const PAGE = source("app/(dashboard)/dashboard/records/page.tsx")
+        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        const FORM = source("components/records/RecordForm.tsx")
+        expect(PAGE).toContain("action={can('records.contribute') && <Button")
+        expect(PAGE).toContain("<RecordsList adding={adding && can('records.contribute')} onAddingChange={setAdding} />")
+        expect(LIST).toContain("action={canEdit && onAddingChange ? <Button")
+        // The form opens on the Records page itself, with no client given, and the record is added there.
+        expect(LIST).toContain("<RecordForm open={adding} onClose={() => onAddingChange?.(false)} vendorId={vendorId} sections={vendorId ? sections : undefined} onSaved={changed} />")
+        expect(FORM).toContain("const choosing = !vendorId && !editing")
+        expect(FORM).not.toContain("router.push")
+        expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
+        expect(CLIENT).not.toContain("params.get('add')")
     })
-    it("offers deleting a client only with clients.delete", () => {
-        expect(gateBefore(LIST, "setDeleteConfirm({ isOpen: true, client })")).toContain("can('clients.delete') && (")
+    it("loads the chosen client's sections before a record can be added to it, rather than starting a first one", () => {
+        const FORM = source("components/records/RecordForm.tsx")
+        expect(FORM).toContain("loadsSections && clientId ? `/api/records/sections?vendorId=${encodeURIComponent(clientId)}` : null")
+        expect(FORM).toContain("const ready = !!clientId && list !== undefined")
+        expect(FORM).toContain("busy={saving} disabled={!ready}")
+        expect(FORM).toContain("{t('records_sections_failed')}")
+        // A section of the client before isn't what the record goes into.
+        expect(FORM).toContain("const section = sectionId === NEW_SECTION || list?.some(s => s.id === sectionId) ? sectionId : list?.[0]?.id ?? NEW_SECTION")
     })
-    it("offers renaming a section only with clients.edit", () => {
-        expect(gateBefore(DETAIL, "setEditingSectionId(section.id)")).toContain("can('clients.edit') && (")
+    it("on the Records page, finds any client by name to add a record to, not only the first ones listed", () => {
+        const CLIENTS = source("components/records/useClients.ts")
+        const FORM = source("components/records/RecordForm.tsx")
+        expect(FORM).toContain("<SearchInput {...p} autoComplete=\"off\" value={clients.query}")
+        expect(CLIENTS).toContain("if (search) params.set('search', search)")
+        // A choice a search no longer lists isn't what the record is added to.
+        expect(FORM).toContain("const clientId = vendorId ?? (clients.clients.some(c => c.id === chosen) ? chosen : clients.clients[0]?.id ?? '')")
     })
-    it("offers deleting a section only with clients.delete", () => {
-        expect(gateBefore(DETAIL, "setDeleteConfirm({ isOpen: true, section })")).toContain("can('clients.delete') && (")
+    it("on a client's page, says when its details didn't load, though its records did", () => {
+        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        expect(CLIENT).toContain("const detailsFailed = seesVendor && !vendorBody")
+        expect(CLIENT).toContain("{detailsFailed && (")
+        expect(CLIENT).toContain("title={t('vendor_details_failed')} action={<Button onClick={() => { void reloadVendor() }}>{t('try_again')}</Button>}")
+    })
+    it("on a client's page, says when its sections didn't load, rather than showing none and starting a first one", () => {
+        const CLIENT = source("app/(dashboard)/dashboard/vendors/[id]/page.tsx")
+        expect(CLIENT).toContain("const sectionsFailed = seesRecords && !sectionsBody")
+        expect(CLIENT).toContain("action={seesRecords && !sectionsFailed && can('records.contribute') && <Button")
+        expect(CLIENT).toContain("{sectionsFailed && (")
+        expect(CLIENT).toContain("title={t('records_load_failed')} action={<Button onClick={() => { void reloadSections() }}>{t('try_again')}</Button>}")
+        expect(CLIENT).toContain("{seesRecords && !sectionsFailed && (")
+    })
+    it("offers editing a record only with records.contribute", () => {
+        expect(LIST).toContain("const canEdit = can('records.contribute')")
+        expect(LIST).toContain("...(canEdit ? [{ key: 'edit'")
+        expect(LIST).toContain("onEdit={canEdit && viewing ?")
+        expect(VIEW).toContain("{onEdit && <Button")
+    })
+    it("offers deleting a record only with records.delete", () => {
+        expect(LIST).toContain("const canDelete = can('records.delete')")
+        expect(LIST).toContain("...(canDelete ? [{ key: 'delete'")
+        expect(LIST).toContain("onDelete={canDelete && viewing ?")
+        expect(VIEW).toContain("{onDelete && <Button")
+    })
+    it("offers renaming a section only with records.edit", () => {
+        expect(SECTIONS).toContain("const canRename = can('records.edit')")
+        expect(SECTIONS).toContain("...(canRename ? [{ key: 'rename'")
+    })
+    it("offers deleting a section only with records.delete", () => {
+        expect(SECTIONS).toContain("const canDelete = can('records.delete')")
+        expect(SECTIONS).toContain("...(canDelete ? [{ key: 'delete'")
     })
 })
 

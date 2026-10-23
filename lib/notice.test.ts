@@ -84,8 +84,9 @@ const SAME_ENGLISH: [NoticeText, string][] = [
     [{ key: "notice_role_change_asked", params: { company: "Cura", what: { key: "notice_its_roles" } } }, "Cura asks for a change to its roles."],
     [{ key: "notice_role_change_done", params: { response: " Added." } }, "Your request for a role change has been done. Added."],
     [{ key: "notice_role_change_declined", params: { response: "Not now" } }, "Your request for a role change was declined: Not now"],
-    [{ key: "notice_note_expiring_today", params: { snippet: "Call the supplier a", client: "Acme" } }, "Note \"Call the supplier a...\" in Acme expires today!"],
-    [{ key: "notice_note_expiring", params: { snippet: "Call the supplier a", client: "Acme", days: 3 } }, "Note \"Call the supplier a...\" in Acme is expiring in 3 days!"],
+    // Records now (CLIENTS_PLAN.md §0.2), no longer the old Clients section's notes.
+    [{ key: "notice_note_expiring_today", params: { snippet: "Call the supplier a", client: "Acme" } }, "Record \"Call the supplier a...\" for Acme expires today."],
+    [{ key: "notice_note_expiring", params: { snippet: "Call the supplier a", client: "Acme", days: 3 } }, "Record \"Call the supplier a...\" for Acme expires in 3 days."],
     [{ key: "notice_role_request_approved", params: { person: "Omar Said", role: "HR Officer" } }, "Omar Said now has the role HR Officer."],
     [{ key: "notice_role_request_declined", params: { person: "Omar Said", role: "HR Officer", note: "Not yet" } }, "Your request to give Omar Said the role HR Officer was declined: Not yet"],
     [{ key: "notice_role_request_waiting", params: { person: "Omar Said", role: "HR Officer" } }, "Still waiting for a decision: Omar Said for the role HR Officer."],

@@ -18,7 +18,7 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/api/tasks', 'TASKS'],
     ['/api/templates', 'TASKS'],          // the bulk-upload template is a Tasks feature
     ['/api/obligations', 'OBLIGATIONS'],
-    ['/api/clients', 'CLIENTS'],
+    ['/api/records', 'RECORDS'],
     ['/api/vendors', 'VENDORS'],
 
     // --- HR ---
@@ -109,7 +109,7 @@ export function moduleForApiPath(pathname: string): Module | null {
 export const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/tasks', 'TASKS'],
     ['/dashboard/obligations', 'OBLIGATIONS'],
-    ['/dashboard/clients', 'CLIENTS'],
+    ['/dashboard/records', 'RECORDS'],
     ['/dashboard/vendors', 'VENDORS'],
     ['/dashboard/costs', 'COSTS'],
     ['/dashboard/day-off-requests', 'DAY_OFF'],

@@ -435,3 +435,98 @@ describe("the building blocks page", () => {
         expect(page).toMatch(/if \(viewer\?\.role !== 'SUPER_ADMIN'\) return <AccessDenied \/>/)
     })
 })
+
+describe("a client's page and its records (DESIGN.md §5.5)", () => {
+    it("the page header's back link goes to the page it belongs to, its arrow mirrored in Arabic", () => {
+        const html = render(h(ui.PageHeader, { title: "Acme", back: { href: "/dashboard/vendors", label: "Vendors" } }))
+        expect(html).toMatch(/<a class="ui-back-link" href="\/dashboard\/vendors"><svg[^>]*class="ui-icon ui-flip"[^>]*>.*<\/svg>Vendors<\/a><h1 class="ui-page-title">Acme<\/h1>/)
+        expect(render(h(ui.PageHeader, { title: "Acme" }))).not.toContain("ui-back-link")
+    })
+
+    it("details are one fact to a row on a phone, in a dialog too", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "")
+        // Every rule, with where it is and whether it's in a phone's media block.
+        const rules: { selectors: string[]; body: string; at: number; phone: boolean }[] = []
+        let depth = 0, phoneDepth = 0, from = 0
+        for (let i = 0; i < css.length; i++) {
+            if (css[i] === "{") {
+                const head = css.slice(from, i).trim()
+                depth++
+                if (head.startsWith("@media (max-width: 767px)")) phoneDepth = depth
+                else if (!head.startsWith("@")) {
+                    const close = css.indexOf("}", i)
+                    rules.push({ selectors: head.split(",").map(x => x.trim()), body: css.slice(i + 1, close), at: i, phone: phoneDepth > 0 })
+                    i = close
+                    depth--
+                }
+                from = i + 1
+            } else if (css[i] === "}") {
+                if (depth === phoneDepth) phoneDepth = 0
+                depth--
+                from = i + 1
+            }
+        }
+        // Each selector that gives details more columns, overridden as specifically, and later, on a phone.
+        for (const selector of [".ui-details", ".ui-dialog .ui-details"]) {
+            const wide = rules.filter(r => !r.phone && r.selectors.includes(selector) && /grid-template-columns/.test(r.body))
+            expect(wide.length, selector).toBeGreaterThan(0)
+            const narrow = rules.filter(r => r.phone && r.selectors.includes(selector) && /grid-template-columns:\s*minmax\(0, 1fr\)/.test(r.body))
+            expect(narrow.length, selector).toBeGreaterThan(0)
+            expect(Math.max(...narrow.map(r => r.at)), selector).toBeGreaterThan(Math.max(...wide.map(r => r.at)))
+        }
+    })
+
+    it("details are a list of labels and their values", () => {
+        const html = render(h(ui.Details, { items: [{ label: "Owner", value: "Mona" }, { label: "Mobile", value: "0100" }] }))
+        expect(html).toBe('<dl class="ui-details"><div class="ui-detail"><dt>Owner</dt><dd>Mona</dd></div><div class="ui-detail"><dt>Mobile</dt><dd>0100</dd></div></dl>')
+    })
+
+    it("a saved file opens in a new tab and says so; a remove button is named for its file", () => {
+        const saved = render(h(ui.FileChip, { name: "licence.pdf", size: 2_516_582, href: "https://x/licence.pdf", onRemove: () => {} }))
+        expect(saved).toContain('<a href="https://x/licence.pdf" target="_blank" rel="noopener noreferrer" class="ui-file-open">')
+        expect(saved).toContain('<span class="ui-visually-hidden">(opens in a new tab)</span>')
+        expect(saved).toContain('<span class="ui-file-size">2.4 MB</span>')
+        expect(saved).toContain('aria-label="Remove licence.pdf"')
+        // Picked but not saved yet: nothing to open.
+        const picked = render(h(ui.FileChip, { name: "scan.png", size: 2048 }))
+        expect(picked).not.toContain("<a ")
+        expect(picked).not.toContain("ui-file-remove")
+        locale = "ar"
+        expect(render(h(ui.FileChip, { name: "scan.png", size: 2048, onRemove: () => {} }))).toContain('aria-label="إزالة scan.png"')
+    })
+
+    it("the file picker is a button, with the hint beside it and the input out of the way", () => {
+        const html = render(h(ui.FilePicker, { label: "Attach files", hint: "Up to 4 MB each", accept: ".pdf", onFiles: () => {} }))
+        expect(html).toContain('<button type="button" class="ui-btn ui-btn-secondary">')
+        expect(html).toContain("Attach files</button>")
+        expect(html).toContain('<span class="ui-hint">Up to 4 MB each</span>')
+        expect(html).toMatch(/<input type="file" multiple="" accept=".pdf" class="ui-visually-hidden" tabindex="-1" aria-hidden="true"\/>/)
+    })
+
+    it("the file picker takes a drop even while disabled, so the browser doesn't open the file in place of the page", () => {
+        const source = readFileSync("components/ui/Files.tsx", "utf8")
+        const picker = source.slice(source.indexOf("export function FilePicker"))
+        expect(picker).not.toContain("if (disabled) return")
+        expect(picker.match(/e\.preventDefault\(\)/g)).toHaveLength(2)
+        expect(picker).toContain("if (!disabled) onFiles([...e.dataTransfer.files])")
+    })
+
+    it("an expiry says Expired with the warning icon, or Expires soon, and nothing otherwise", () => {
+        const expired = render(h(ui.ExpiryDate, { state: "expired", children: "1 Oct 2026" }))
+        expect(expired).toContain('<span class="ui-expiry-date">1 Oct 2026</span>')
+        expect(expired).toMatch(/<span class="ui-badge ui-badge-problem"><svg[^>]*>.*<\/svg>Expired<\/span>/)
+        expect(render(h(ui.ExpiryDate, { state: "soon", children: "1 Nov 2026" }))).toContain('<span class="ui-badge ui-badge-waiting">Expires soon</span>')
+        expect(render(h(ui.ExpiryDate, { state: null, children: "1 Dec 2027" }))).not.toContain("ui-badge")
+        locale = "ar"
+        expect(render(h(ui.ExpiryBadge, { state: "soon" }))).toContain("ينتهي قريبًا")
+    })
+
+    it("their styles keep to logical properties and tokens", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const block = css.slice(css.indexOf("/* A page that belongs to another"), css.indexOf("/* ── Page layout and sections"))
+        expect(block.length).toBeGreaterThan(500)
+        expect(block).not.toMatch(/\b(left|right)\s*:/)
+        expect(block).not.toMatch(/(margin|padding)-(left|right)/)
+        expect(block).not.toMatch(/#[0-9a-f]{3,6}\b/i)
+    })
+})

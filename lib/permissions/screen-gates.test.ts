@@ -52,11 +52,16 @@ const FORM = "components/EmployeeProfileForm.tsx"
 const PEOPLE = D + "employees/page.tsx"
 
 const GATES: Gate[] = [
-    // --- Vendors, clients, costs ---------------------------------------------
+    // --- Vendors, records, costs ---------------------------------------------
     { what: "vendors: manage", file: D + "vendors/page.tsx", uses: "useCan().can('vendors.manage')", before: admins, now: p => p.can("vendors.manage") },
     { what: "new task: pick a vendor", file: D + "tasks/new/page.tsx", uses: "useCan().can('vendors.view')", before: managers, now: p => p.can("vendors.view") },
-    { what: "client notes: add and edit", file: D + "clients/[id]/sections/[sectionId]/page.tsx", uses: "const canEdit = can('clients.contribute')", before: () => true, now: p => p.can("clients.contribute") },
-    { what: "client notes: delete", file: D + "clients/[id]/sections/[sectionId]/page.tsx", uses: "const canDelete = can('clients.delete')", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("clients.delete") },
+    // The old Clients section's notes are a client's records now (CLIENTS_PLAN.md §0.2), with the same people allowed.
+    { what: "records: add and edit", file: "components/records/RecordsList.tsx", uses: "const canEdit = can('records.contribute')", before: () => true, now: p => p.can("records.contribute") },
+    { what: "records: delete", file: "components/records/RecordsList.tsx", uses: "const canDelete = can('records.delete')", before: admins, now: p => p.can("records.delete") },
+    { what: "record sections: add", file: "components/records/SectionsCard.tsx", uses: "const canAdd = can('records.contribute')", before: () => true, now: p => p.can("records.contribute") },
+    { what: "record sections: rename", file: "components/records/SectionsCard.tsx", uses: "const canRename = can('records.edit')", before: managers, now: p => p.can("records.edit") },
+    { what: "record sections: delete", file: "components/records/SectionsCard.tsx", uses: "const canDelete = can('records.delete')", before: admins, now: p => p.can("records.delete") },
+    { what: "a client's page: add a record", file: D + "vendors/[id]/page.tsx", uses: "can('records.contribute') && <Button", before: () => true, now: p => p.can("records.contribute") },
     { what: "costs page: open", file: D + "costs/page.tsx", uses: "if (!can(session.user as any, 'tasks.pay'))", before: managers, now: p => p.can("tasks.pay") },
     { what: "costs: employee layout", file: D + "costs/CostsClient.tsx", uses: "const isEmployee = !can('tasks.pay')", before: r => r === "EMPLOYEE", now: p => !p.can("tasks.pay") },
     { what: "costs: pay everything", file: D + "costs/CostsClient.tsx", uses: "companyWide('tasks.pay') && total > 0", before: admins, now: p => p.companyWide("tasks.pay") },

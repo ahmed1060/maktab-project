@@ -67,13 +67,15 @@ describe("the resource gate narrows to the team, not just the company", () => {
     })
 
     it("leaves company resources alone", () => {
-        // Clients, sections and notes belong to nobody in particular.
-        // Narrowing them to a team protects no one and just stops leaders
-        // using the screen they are given.
-        for (const kind of ["'CLIENT'", "'SECTION'", "'NOTE'"]) {
-            expect(blockAt(security, `case ${kind}:`)).not.toContain("teamOnly(")
-            expect(blockAt(security, `case ${kind}:`)).not.toContain("scopesToTeam")
-        }
+        // A client's records belong to nobody in particular (CLIENTS_PLAN.md
+        // §0.2). Narrowing them to a team protects no one and just stops
+        // leaders using the screen they are given, so RecordService asks
+        // about the company alone.
+        const records = body("lib/services/record.service.ts")
+        expect(records).toContain("can(session.user as any, permission, { companyId })")
+        expect(records).not.toContain("teamOnly(")
+        expect(records).not.toContain("scopesToTeam")
+        for (const kind of ["'CLIENT'", "'SECTION'", "'NOTE'"]) expect(security).not.toContain(`case ${kind}:`)
     })
 
     it("answers a yes-or-no without loading whole user rows", () => {

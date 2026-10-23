@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { createPortal } from 'react-dom'
@@ -240,7 +241,8 @@ export default function VendorsPage() {
                                         gap: '0.25rem'
                                     }}>
                                         <h3 className="text-lg font-bold text-slate-800 leading-tight" style={{ margin: 0 }}>
-                                            {vendor.name}
+                                            {/* Its own page holds its records (CLIENTS_PLAN.md §0.2). */}
+                                            <Link href={`/dashboard/vendors/${vendor.id}`} prefetch={false} className="ui-item-link">{vendor.name}</Link>
                                         </h3>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem' }}>
                                             {/* Only shown in the "all companies" view — vendor

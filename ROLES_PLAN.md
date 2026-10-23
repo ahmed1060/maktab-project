@@ -234,10 +234,10 @@ them, as today.
 | | `tasks.penalize` | Apply a task penalty — **deducts pay**; its own permission, labelled "affects pay" in the role editor (decided) | `tasks/[id]/penalty` |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
 | | `obligations.manage` | Create, edit, delete, revert | `obligations/*` |
-| **Clients** | `clients.view` | See clients, sections, notes | `GET /clients/*` |
-| | `clients.contribute` | Add a client, a section or a note, and edit any note (built as its own right: clients are a shared notebook as much as a register) | `POST /clients`, `clients/[id]/sections`, `…/notes` |
-| | `clients.edit` | Rename a client or a section | `PUT /clients`, `PUT clients/[id]/sections` |
-| | `clients.delete` | Delete a client, a section or a note — **cannot be undone**, high-risk (§6.15) | `DELETE /clients`, `…/sections`, `…/notes` |
+| **Records** | `records.view` | See a client's sections and records (today's vendors; `CLIENTS_PLAN.md` §0.2) | `GET /records`, `GET /records/sections` |
+| | `records.contribute` | Add a section or a record, and edit any record (built as its own right: records are a shared notebook as much as a register) | `POST /records`, `PUT /records`, `POST /records/sections` |
+| | `records.edit` | Rename a section | `PUT /records/sections` |
+| | `records.delete` | Delete a section or a record — **cannot be undone**, high-risk (§6.15) | `DELETE /records`, `DELETE /records/sections` |
 | **Vendors** | `vendors.view` / `vendors.manage` | See vendors; create, edit and delete them | `vendors` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
@@ -473,6 +473,16 @@ leave the old permissions in place.
 
 So a permission change reaches everyone within about a minute, at no extra
 database cost.
+
+The token also notes which release of the permission catalogue its grants
+were read against (`CATALOGUE_VERSION` in `lib/permissions/catalogue.ts`),
+raised whenever permissions are added or renamed. A token read against an
+earlier one reloads its grants on its first request, whatever the role's
+version says. Preview builds migrate the production database before the
+release that reads it is live, so the older release can refresh a token at
+a new role version while dropping permissions it doesn't know; the catalogue
+check undoes that once the new release is live (from Codex's review of #82,
+when `clients.*` became `records.*`).
 
 **Token size.** The session is a cookie, and cookies are limited to about 4 KB.
 Permissions are stored in the token as short numeric codes with a scope digit, not
@@ -714,7 +724,7 @@ the Super Admin. Clients with an auditor will be asked for exactly this record.
 ### 6.15 High-risk permissions and step-up confirmation — adopted
 
 A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
-`tasks.penalize`, `tasks.delete`, `clients.delete`, `salary.edit`,
+`tasks.penalize`, `tasks.delete`, `records.delete`, `salary.edit`,
 `salary_adjustments.manage`, `payroll.approve`, `payroll.mark_paid`,
 `debts.waive`, `employees.delete`, `employees.end_contract`. The catalogue
 (`lib/permissions/catalogue.ts`, `highRisk`) is the list the code checks.

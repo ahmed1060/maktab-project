@@ -23,7 +23,7 @@ export const MODULE_KEYS = [
     'obligations',
     'requests',
     'dayOff',
-    'clients',
+    'records',
     'costs',
     'employees',
     'vendors',
@@ -53,11 +53,14 @@ type ModuleDefinition = {
  * Defaults, read off the sidebar as it stands today, so an uncustomised
  * company is byte-identical to before this existed.
  *
- * Two of these settle an inconsistency rather than record one. Clients is 🤝 in
- * the sidebar but 🏢 on its own empty state, and Day Off is 📅 in the sidebar
- * and 🌴 on its page. Nobody has complained, but a module cannot have two
- * icons once there is one place that answers what its icon is — so the sidebar
- * value wins and the pages will follow it.
+ * One of these settles an inconsistency rather than recording one: Day Off is
+ * 📅 in the sidebar and 🌴 on its page. Nobody has complained, but a module
+ * cannot have two icons once there is one place that answers what its icon is
+ * — so the sidebar value wins and the pages will follow it.
+ *
+ * Records is today's Clients section, moved onto each client's page
+ * (CLIENTS_PLAN.md §0.2). Its key changed with it, and a company's own name or
+ * icon for it moved to the new key in the same migration.
  */
 export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     dashboard: { labelKey: 'dashboard', icon: '📊', href: '/dashboard' },
@@ -65,7 +68,7 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     obligations: { labelKey: 'obligations', icon: '📌', href: '/dashboard/obligations' },
     requests: { labelKey: 'requests', icon: '📩', href: '/dashboard/requests' },
     dayOff: { labelKey: 'day_off_requests', icon: '📅', href: '/dashboard/day-off-requests' },
-    clients: { labelKey: 'clients', icon: '🤝', href: '/dashboard/clients' },
+    records: { labelKey: 'records', icon: '🗂️', href: '/dashboard/records' },
     costs: { labelKey: 'costs', icon: '💰', href: '/dashboard/costs' },
     employees: { labelKey: 'employees', icon: '👥', href: '/dashboard/employees' },
     vendors: { labelKey: 'vendors', icon: '🚚', href: '/dashboard/vendors' },
@@ -202,7 +205,7 @@ export const MENU_MODULES: readonly ModuleKey[] = [
     'obligations',
     'requests',
     'dayOff',
-    'clients',
+    'records',
 ]
 
 export const MANAGEMENT_MODULES: readonly ModuleKey[] = ['costs', 'employees', 'vendors']

@@ -59,6 +59,84 @@ Production has no data in these parts, so now is the right time.
 - **The daily expiry reminder** (`/api/notes/check-expiry`) moves with the
   records.
 
+**Built in PR 0a** (open for review):
+
+- each client's page (`/dashboard/vendors/[id]` until 0b) shows its details
+  and its records, with a filter by section, and its sections, which can be
+  added, renamed and deleted. A client's first record names its first
+  section;
+- a record has its text, up to 10 files of up to 4 MB each, and an optional
+  expiry date with a reminder some days before it. A record's text that a
+  list cuts short opens whole in a dialog (`DESIGN.md` §5.5);
+- the Records item in the side bar, in the Menu group where the old Clients
+  item was, until the side bar's new groups come (below). Its page lists
+  every client's records, with search (by a record's text, its section's
+  name or its client's name) and the expiry filter;
+- **Decided:** the Records page's Add record opens the whole form there:
+  which client (a search by name appears once a company has more than the
+  first 50), that client's section or a new one, then the text, files and
+  expiry. The record is added without leaving the page. This is how someone
+  who may add records but not see the vendors list, as an ordinary
+  employee, adds a client's first record. A client's own page keeps its Add
+  record, which opens the same form for that client, with no client to
+  choose;
+- the permissions are `records.view`, `records.contribute`, `records.edit`
+  and `records.delete`, with the same codes, meaning and holders as the old
+  `clients.*`;
+- the reminder job is `/api/records/check-expiry`, and a reminder links to
+  the record's own address, `/dashboard/records/[id]`, which opens it on its
+  client's page. That address doesn't change when vendors become clients.
+- a record carries only files uploaded for records in its own company. A
+  file is removed from storage once no record has it, and files a record's
+  form uploaded but didn't save, because the form was closed or a save
+  failed, are removed again (`DELETE /api/records/uploads`, ten to a
+  request). A failed save keeps what it uploaded for the next try. A
+  record is given a new file only once storage says it has it, and a
+  Super Admin's own upload only by a Super Admin;
+- two people adding records into the same new section at once get one
+  section, and a client isn't deleted while a record is being added to it.
+  A section deleted as a record is added to it takes that record's files
+  with it;
+- a record's expiry, its badges, the filter and the reminders are counted
+  by the day where its company is, in the company's own time zone. A
+  reminder goes out only for the date it was found for, so a date changed
+  as the job runs gets its own reminder.
+- edits and deletes read a record's files as they write, so a file added
+  by an edit just before isn't left in storage; deleting a company removes
+  its records' files too. A record a Super Admin added or edited says so
+  (two new columns), and one by a user since deleted reads "Deleted user".
+  Which Super Admin added a record is kept too, so its reminders reach them.
+- an edit says which files the record had when its form opened, and is
+  refused if someone changed them since: the person opens the record again.
+- removing a file from storage and giving a record a file each hold the
+  file, and a removed file is noted (`RemovedRecordFile`), so no record is
+  given a file that's gone.
+- on the Records page, Add record lists only the chosen company's clients:
+  a Super Admin who picks another company while it's open sees that
+  company's load, not the last one's, and a search that fails says so.
+  Editing a record there loads its client's sections in the form, and says
+  if they didn't load. A record moved to a section deleted at that moment
+  is refused, rather than failing. A Super Admin looking at every company
+  sees each record's company on a phone, and in the record when it's
+  opened, as on a computer.
+- deleting a section holds its client first, as deleting the company does,
+  so the two can't deadlock, and its audit entry has its title as it was
+  when deleted.
+
+**Proposed** (built this way in 0a, for the product owner to confirm or
+change):
+
+- **"Expires soon"** shows from 30 days before a record's expiry date, up to
+  and including the day, and "Expired" after it. The filter has both, with
+  "Expired" beside the decided "Expiring soon".
+- **A reminder** goes to whoever added the record, a Super Admin too, as
+  it did in the old section: the chosen number of days before, and on the day. It says how
+  many days are actually left. Changing the date or the reminder sends them
+  again for the new date; the old section never did, so a renewed licence
+  was never reminded about again.
+- **A client with records can't be deleted** until its records are. Deleting
+  it would otherwise delete its licences and contracts with it, unasked.
+
 ### 0.3 Shipping the rename without breaking production (Decided)
 
 **Why this needs care.** Every build, previews included, runs
@@ -78,14 +156,41 @@ Two things make a single big rename unsafe:
 
 | PR | What it does | Effect on production while it waits for review |
 |---|---|---|
-| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table goes; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
-| 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now | None |
+| 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table is no longer used; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
+| 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now. Today's clients table goes (see below) | None |
 | 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
 | 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below) | None. The app is closed for about 15 minutes, at a time the product owner chooses |
 
 The app ignores permission names it doesn't know instead of failing
 (`lib/permissions/matrix.ts`), so the short overlaps above can't break
 sign-in.
+
+**How 0a keeps to this** (built):
+
+- **Today's clients table stays until 0b.** Main's code counts it on the
+  Super Admin's dashboard, so dropping it in 0a would break that page while
+  0a waits for review. 0a only stops using it: a section gets a client
+  column, the old column is no longer required, and a check says a section
+  has exactly one of the two.
+- **The database renames old names on the way in.** Main's code still
+  writes `clients.*` while 0a waits for review, for a company created then,
+  and a company's own name for the old section's side bar item. Triggers
+  rename them to `records.*` and to Records as they're written, so nothing
+  written meanwhile is lost to 0a's code.
+- **Main's editors can't drop a Records grant.** Main's role and template
+  editors save every grant they know and drop the rest, and they don't know
+  `records.*`. So a `records.*` grant stays when a write that isn't 0a's
+  would remove it, and main writing a grant's old name for one a role keeps
+  is that grant. 0a marks its own writes, so it can still remove one
+  (`lib/records-release.ts`, migration `20261104000003_records_grants_kept`).
+- **0b therefore also:**
+  1. deletes the old section's own rows, if any (production has none), and
+     drops today's clients table and its column;
+  2. drops 0a's triggers and their functions, before "clients" takes its new
+     meaning, the ones keeping Records grants too, and `lib/records-release.ts`
+     with its calls;
+  3. sends the old `/dashboard/vendors/...` addresses on to
+     `/dashboard/clients/...`, for links already sent.
 
 **PR 0d, the maintenance window:**
 
@@ -105,8 +210,10 @@ sign-in.
 - 0 vendors, 0 clients, 0 sections and 0 notes;
 - 0 audit entries for either, and no company has changed their labels or
   icons;
-- **36 role permission rows** use the `vendors.*` and `clients.*` names.
-  These are rewritten by 0a and 0c.
+- **36 role permission rows** use the `vendors.*` and `clients.*` names:
+  27 `clients.*` (rewritten by 0a) and 9 `vendors.*` (rewritten by 0c);
+- 0 custom roles, 0 role templates, and 0 reminders sent for notes
+  (checked again on 2026-10-16, before 0a).
 
 Packages store bundle names, not module names, so renaming the modules
 needs no data change.
@@ -561,9 +668,13 @@ balance first, automatically:
        Merged in #80 on 2026-10-16.
      - make the older pages, the side bar and the sign-in page follow
        the brand colour, in one small PR after it (`UI_PLAN.md` §4.6).
-       Built on 2026-10-16, waiting to be merged.
+       Merged in #81 on 2026-10-16.
   2. **Steps 0–7 above.**
-     - The new side bar groups land with step 0.
+     - Step 0's first PR, 0a, is open for review (§0.2, §0.3).
+     - The new side bar groups land with step 0. 0a puts the Records item
+       where the old Clients item was. Proposed: the groups come with 0b,
+       when Vendors become Clients and the Clients group (§2.1 of
+       `UI_PLAN.md`) can hold Clients and Records.
      - Every screen these steps create or rework uses the building blocks:
        Clients, Locations, Records, the Costs tabs, Cash advances, and the
        task form's pickers.
@@ -767,3 +878,108 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   (§8, `UI_PLAN.md` change log).
 - **2026-10-16:** The older pages' PR (#81): the map's radius ring has a
   white outline, from Codex's review (§8, `UI_PLAN.md` change log).
+- **2026-10-16:** The older pages' brand colour PR was merged in #81, so
+  step 0 is next (§8).
+- **2026-10-16:** Step 0's first PR, 0a, is built and open for review:
+  records on each client's page, the Records page, `records.*` permissions
+  and the reminder job (§0.2). How it keeps production working while it
+  waits, and what 0b must therefore do, is in §0.3. Three choices it made
+  are marked Proposed in §0.2: when a record "expires soon", who is
+  reminded and when, and that a client with records can't be deleted.
+- **2026-10-16:** PR 0a (#82) has Codex's review findings fixed (§0.2): a
+  record can neither carry nor delete the company's other files, such as a
+  photo or its logo; a form's unsaved uploads are removed again; a new
+  section named by two people at once is started once; a client isn't
+  deleted while a record is being added; and a reminder's record opens only
+  on its own client's page. Still waiting to be merged.
+- **2026-10-16:** PR 0a (#82): Codex's second review is fixed too (§0.2):
+  expiry is counted in each company's own time zone; a reminder is sent
+  only for the date it was found for; deleting a section takes along a
+  record being added to it, with its files; the date picker shows a picked
+  day as that day in every time zone; and a file dropped on a full file
+  picker no longer leaves the page. Still waiting to be merged.
+- **2026-10-16:** PR 0a (#82): Codex's third review is fixed too (§0.2):
+  edits and deletes remove the files of the record as they find it, a
+  refused removal is logged, deleting a company removes its records'
+  files, the expiry date can't change while a record saves, and a deleted
+  user's record no longer reads as a Super Admin's. Proposed: the Records
+  page's Add record, which asks which client first, so an employee can add
+  a client's first record. Still waiting to be merged.
+- **2026-10-16:** PR 0a (#82): Codex's fourth review is fixed too (§0.2):
+  deleting a section or a company holds its records while it lists their
+  files, so an edit saved at that moment doesn't leave a file behind, and
+  a record's form closed while it saves leaves that save's files to it.
+  Still waiting to be merged.
+- **2026-10-16:** PR 0a (#82): Codex's fifth review is fixed too (§0.2): a
+  client's page says when its sections didn't load, with Try again, rather
+  than showing none; and an edit is refused if someone changed the
+  record's files since its form opened, so a file taken off can't come
+  back on it. Still waiting to be merged.
+- **2026-10-17:** PR 0a (#82): Codex's sixth review is fixed too (§0.2,
+  `ROLES_PLAN.md` §4.4): sessions refreshed by the older release after the
+  migration reload their grants once this one is live, so nobody is left
+  without Records until they sign in again; deleting a company holds the
+  company too; and a record can't be given a file as it's removed from
+  storage (a new table, `RemovedRecordFile`). Still waiting to be merged.
+- **2026-10-17:** PR 0a (#82): Codex's seventh review is fixed too (§0.2):
+  a reminder's link says when looking the record up fails, rather than
+  that it's gone; reminders still go out when whoever added a record is
+  deleted as they're sent; Add record's picker finds any client by name,
+  not only the first 1,000; a client's page says when its details didn't
+  load; and files are removed from storage 100 at a time, as storage caps
+  each call. Still waiting to be merged.
+- **2026-10-17:** PR 0a (#82): Codex's eighth review is fixed too (§0.2):
+  a % or _ in the Records search is that letter, not any; a client's first
+  record and a section started or renamed to the same name at that moment
+  no longer fail the record; and a record's file is noted as removed, and
+  that committed, before storage removes it. A file storage refuses stays
+  noted as removed, and the orphan sweep removes it. Still waiting to be
+  merged.
+- **2026-10-17:** Decided: two problems found while building 0a get PRs
+  of their own, after 0a merges. The date range picker shows a picked day
+  as that day west of UTC, as the date picker now does (`UI_PLAN.md`). And
+  deleting a company removes everything it stored under its own folder,
+  such as its logo and its people's photos, not only its records' files.
+- **2026-10-17:** Decided (§0.2): the Records page's Add record opens the
+  whole form there, choosing the client in it, rather than taking you to
+  the client's page: a button there that leaves the page had no meaning.
+  The client's sections load once it's chosen, and nothing can be added
+  until they have.
+- **2026-10-22:** PR 0a (#82): Codex's ninth review is fixed too (§0.2): a
+  Super Admin who picks another company while Add record is open no longer
+  adds the record to the last company's client; editing a record on the
+  Records page says when its client's sections didn't load, rather than
+  offering only the one it's in; a record deleted as it's opened is "not
+  found"; files a form uploaded and didn't save are removed ten to a
+  request, however many there are; and a record is given a new file only
+  once storage says it has it. Still waiting to be merged.
+- **2026-10-22:** PR 0a (#82): Codex's tenth review is fixed too (§0.2): a
+  record moved to a section deleted at that moment is refused with "section
+  not found" rather than failing; a Super Admin's own upload goes on a
+  record only by a Super Admin's hand; and a failed search in Add record's
+  clients says so, rather than showing the last search's. Still waiting to
+  be merged.
+- **2026-10-22:** PR 0a (#82): Codex's eleventh review is fixed too (§0.2):
+  a record open to view, edit or delete closes when a Super Admin picks
+  another company, so it can't be changed unseen; an edit refused because
+  someone changed the record's files reloads the records, so opening it
+  again shows them; renaming a section deleted at that moment says it's
+  gone rather than failing; and a record's details in its dialog are one
+  to a row on a phone. Still waiting to be merged.
+- **2026-10-22:** PR 0a (#82): Codex's twelfth review is fixed too (§0.2,
+  §0.3): main's role and template editors, which save every grant they know
+  and drop the rest, can no longer take away a role's Records grants while
+  0a waits (a new, additive migration; production has had no role saved
+  since 0a's migration, so none has lost them); expiry reminders and a
+  company's deletion can't deadlock; a section's rename is audited from the
+  title it had as it was renamed; and the Records list reloads when the
+  company's day ends, so its expiry badges and filter are that day's. Still
+  waiting to be merged.
+- **2026-10-22:** PR 0a (#82): Codex's thirteenth review is fixed too
+  (§0.2): deleting a section holds its client first, as deleting the
+  company does, so the two can't deadlock; a deleted section's audit entry
+  has its title as it was when deleted; a Super Admin looking at every
+  company sees a record's company on a phone and when it's opened; and a
+  Super Admin who adds a record gets its reminders (a new, additive
+  migration; production has no records yet, so none needs filling in).
+  Still waiting to be merged.

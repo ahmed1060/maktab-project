@@ -15,7 +15,7 @@ describe("API paths resolve to the right module", () => {
         expect(moduleForApiPath('/api/tasks')).toBe('TASKS')
         expect(moduleForApiPath('/api/tasks/abc-123/submit')).toBe('TASKS')
         expect(moduleForApiPath('/api/obligations/abc/revert')).toBe('OBLIGATIONS')
-        expect(moduleForApiPath('/api/clients/abc/sections')).toBe('CLIENTS')
+        expect(moduleForApiPath('/api/records/sections')).toBe('RECORDS')
         expect(moduleForApiPath('/api/vendors')).toBe('VENDORS')
     })
 
@@ -114,7 +114,7 @@ describe("page paths and their guards", () => {
         expect(moduleForPagePath('/dashboard/tasks')).toBe('TASKS')
         expect(moduleForPagePath('/dashboard/tasks/abc')).toBe('TASKS')
         expect(moduleForPagePath('/dashboard/obligations')).toBe('OBLIGATIONS')
-        expect(moduleForPagePath('/dashboard/clients/abc/sections/def')).toBe('CLIENTS')
+        expect(moduleForPagePath('/dashboard/records/abc')).toBe('RECORDS')
         expect(moduleForPagePath('/dashboard/vendors')).toBe('VENDORS')
         expect(moduleForPagePath('/dashboard/costs')).toBe('COSTS')
         expect(moduleForPagePath('/dashboard/day-off-requests')).toBe('DAY_OFF')
@@ -136,7 +136,7 @@ describe("page paths and their guards", () => {
         const dirs: Record<string, string> = {
             TASKS: 'tasks',
             OBLIGATIONS: 'obligations',
-            CLIENTS: 'clients',
+            RECORDS: 'records',
             VENDORS: 'vendors',
             COSTS: 'costs',
             DAY_OFF: 'day-off-requests',
@@ -156,9 +156,9 @@ describe("page paths and their guards", () => {
         const gated = ALL_MODULES.filter(m => MODULE_BUNDLE[m] !== null)
         for (const mod of gated) {
             const reachable =
-                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/clients', '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
+                ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/records', '/dashboard/vendors', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
                     .some(p => moduleForPagePath(p) === mod) ||
-                ['/api/tasks', '/api/obligations', '/api/clients', '/api/vendors', '/api/day-off-requests',
+                ['/api/tasks', '/api/obligations', '/api/records', '/api/vendors', '/api/day-off-requests',
                  '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk']
                     .some(p => moduleForApiPath(p) === mod)
             expect(reachable, `${module} is gated but nothing routes to it`).toBe(true)

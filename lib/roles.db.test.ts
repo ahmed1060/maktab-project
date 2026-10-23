@@ -62,6 +62,9 @@ const APP_ATTEST = "20261025000000_app_attest"
 const FACE = "20261026000000_face_switches"
 const FACE_REVIEWS = "20261027000000_face_reviews"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
+// clients.* became records.* (CLIENTS_PLAN.md §0.2): the built-in roles'
+// grants went through it.
+const RECORDS = "20261104000000_records_on_clients"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -113,6 +116,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(APP_ATTEST))
         await db.query(sql(FACE))
         await db.query(sql(FACE_REVIEWS))
+        await db.query(sql(RECORDS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -153,8 +157,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         it("later gives the built-in Admin role the settings and attendance permissions, has its holders reload, and shows no company its settings", async () => {
             // ATTENDANCE_PLAN.md §5.2: the grants open nothing while the switch is off.
             // Five later grants to the Admin role (settings, attendance, attendance requests, check-in phones, face verification), each a reload.
+            // And one for every built-in role: clients.* became records.* (CLIENTS_PLAN.md §0.2).
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(role.builtIn === "ADMIN" ? 6 : 1)
+            for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(role.builtIn === "ADMIN" ? 7 : 2)
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([
                 { adminSettingsEnabled: false, adminSettingsTabs: [] },
@@ -240,7 +245,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 (await prisma.user.findMany({ where, select: { id: true }, orderBy: { id: "asc" } })).map(u => u.id)
             expect(await who({ companyId: "c1", ...holdersOf("dayoff.approve", "COMPANY") })).toEqual(["a1"])
             expect(await who({ companyId: "c1", ...holdersOf("tasks.review", "TEAM") })).toEqual(["n1", "t1"])
-            expect(await who({ companyId: "c1", ...holdersOf("clients.view") })).toEqual(["a1", "e1", "n1", "t1"])
+            expect(await who({ companyId: "c1", ...holdersOf("records.view") })).toEqual(["a1", "e1", "n1", "t1"])
         })
 
         it("keep a company's last Admin at work (rule 8)", async () => {
@@ -324,17 +329,17 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             const employee = (await RoleService.listForCompany("c2")).find(r => r.builtIn === "EMPLOYEE")!
             await expect(RoleService.update({ id: employee.id, name: "Staff" }, sa)).rejects.toThrow("ROLE_BUILT_IN_FIXED")
             await expect(RoleService.delete(employee.id, sa)).rejects.toThrow("ROLE_BUILT_IN_FIXED")
-            const updated = await RoleService.update({ id: employee.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, sa)
-            expect(updated.grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }])
+            const updated = await RoleService.update({ id: employee.id, grants: [{ permission: "records.view", scope: "COMPANY" }] }, sa)
+            expect(updated.grants).toEqual([{ permission: "records.view", scope: "COMPANY" }])
             // What its holders may do changed, so their sessions reload (§4.4)…
             expect(updated.version).toBe(employee.version + 1)
             const token = await RoleService.forToken("e2", prisma)
-            expect(decodeGrants(token.grants)).toEqual({ "clients.view": "COMPANY" })
+            expect(decodeGrants(token.grants)).toEqual({ "records.view": "COMPANY" })
             expect(token.roleVersion).toBe(updated.version)
             // …and the change is audited, before and after.
             const [audit] = (await auditOf(employee.id)).filter(a => a.action === "UPDATE_ROLE")
             expect(audit.details.before.grants).toHaveLength(2)
-            expect(audit.details.after.grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }])
+            expect(audit.details.after.grants).toEqual([{ permission: "records.view", scope: "COMPANY" }])
             expect(audit.details.holders).toBe(1)
         })
 
@@ -421,7 +426,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         // c1's Admin, with the grants their session carries.
         const admin = { id: "a1", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") }
         // Somebody on a narrower role that may assign: the rule-4 case.
-        const deputy = { id: "t1", role: "TEAM_LEADER", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.assign_role": "COMPANY", "clients.view": "COMPANY" }) }
+        const deputy = { id: "t1", role: "TEAM_LEADER", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.assign_role": "COMPANY", "records.view": "COMPANY" }) }
         let hr: string, deputyAdmin: string, payroll: string
         const auditOf = async (entityId: string) =>
             (await db.query(`SELECT action, details FROM "AuditLog" WHERE "entityId" = $1 ORDER BY "createdAt"`, [entityId])).rows
@@ -433,7 +438,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
             hr = (await RoleService.create({ companyId: "c1", name: "HR Officer", baseRole: "EMPLOYEE", grants: [{ permission: "dayoff.approve", scope: "COMPANY" }] }, sa)).id
             deputyAdmin = (await RoleService.create({ companyId: "c1", name: "Deputy Admin", baseRole: "ADMIN", grants: [{ permission: "employees.view", scope: "COMPANY" }] }, sa)).id
-            payroll = (await RoleService.create({ companyId: "c1", name: "Clients desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.view", scope: "COMPANY" }] }, sa)).id
+            payroll = (await RoleService.create({ companyId: "c1", name: "Clients desk", baseRole: "EMPLOYEE", grants: [{ permission: "records.view", scope: "COMPANY" }] }, sa)).id
         })
 
         it("gives a company's own role, with its base role, in a pair the database accepts", async () => {
@@ -773,14 +778,14 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await RoleService.create({ companyId: "c8", name: "trainee", baseRole: "EMPLOYEE", grants: [] }, sa)
             await RoleService.setDefault("c7", trainee.id, sa)
             const employee7 = (await RoleService.listForCompany("c7")).find(r => r.builtIn === "EMPLOYEE")!
-            await RoleService.update({ id: employee7.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, sa)
+            await RoleService.update({ id: employee7.id, grants: [{ permission: "records.view", scope: "COMPANY" }] }, sa)
 
             const result = await RoleService.copyFrom("c8", "c7", { includeBuiltIn: true }, sa)
             expect(result).toEqual({ copied: ["Auditor"], skipped: ["Trainee"], builtInsUpdated: ["Employee"], defaultRole: null })
             expect(await names("c8")).toEqual(["Admin", "Auditor", "Employee", "Team Leader", "trainee"])
             const copy = (await RoleService.listForCompany("c8")).find(r => r.name === "Auditor")!
             expect(copy).toMatchObject({ copiedFromTemplateId: template.id, grants: auditor.grants })
-            expect((await RoleService.listForCompany("c8")).find(r => r.builtIn === "EMPLOYEE")!.grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }])
+            expect((await RoleService.listForCompany("c8")).find(r => r.builtIn === "EMPLOYEE")!.grants).toEqual([{ permission: "records.view", scope: "COMPANY" }])
             // A copy: changing the source changes nothing here.
             await RoleService.update({ id: auditor.id, grants: [] }, sa)
             expect((await RoleService.getById(copy.id)).grants).toEqual(auditor.grants)
@@ -855,7 +860,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             const [audit] = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'CREATE_ROLE' AND "entityId" = $1`, [role.id])).rows
             expect(audit.details.separationOfDuties).toEqual({ pairs: ["prepare_approve_payroll"], acknowledged: true })
             // Held already: editing something else does not ask again…
-            await RoleService.update({ id: role.id, grants: [...both, { permission: "clients.view", scope: "COMPANY" }] }, sa)
+            await RoleService.update({ id: role.id, grants: [...both, { permission: "records.view", scope: "COMPANY" }] }, sa)
             // …a new pair does.
             await expect(RoleService.update({ id: role.id, grants: [...both, { permission: "salary.edit", scope: "COMPANY" }] }, sa)).rejects.toThrow("SEPARATION_UNACKNOWLEDGED")
         })

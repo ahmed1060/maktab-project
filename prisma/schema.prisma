@@ -413,6 +413,7 @@ model SuperAdmin {
   accessReviewAnswers AccessReviewLine[]
   trustedDevices      TrustedDevice[]
   verificationCodes   VerificationCode[]
+  createdNotes        ClientRecord[]      @relation("SuperAdminCreatedNotes")
 }
 
 model User {
@@ -478,10 +479,10 @@ model User {
   verificationCodes          VerificationCode[]
   createdClients             BusinessClient[]        @relation("ClientCreatedBy")
   editedClients              BusinessClient[]        @relation("ClientEditedBy")
-  createdBusinessClientNotes BusinessClientNote[]    @relation("CreatedNotes")
-  editedBusinessClientNotes  BusinessClientNote[]    @relation("EditedNotes")
-  createdSections            BusinessClientSection[] @relation("SectionCreatedBy")
-  editedSections             BusinessClientSection[] @relation("SectionEditedBy")
+  createdRecords             ClientRecord[]          @relation("CreatedNotes")
+  editedRecords              ClientRecord[]          @relation("EditedNotes")
+  createdSections            RecordSection[]         @relation("SectionCreatedBy")
+  editedSections             RecordSection[]         @relation("SectionEditedBy")
   createdVendors             Vendor[]                @relation("VendorCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
   dayOffRequests             DayOffRequest[]
@@ -902,59 +903,92 @@ model SalaryRecord {
   @@index([year])
 }
 
+/// Today's empty Clients section's own list of businesses. Records moved onto
+/// each client (Vendor) in PR 0a (CLIENTS_PLAN.md §0.2), and nothing reads
+/// this any more. It stays until 0b removes it, because main's code still
+/// counts it on the Super Admin's dashboard while 0a waits for review, and
+/// every build migrates the one shared database (§0.3).
 model BusinessClient {
-  id             String                  @id @default(uuid())
+  id             String          @id @default(uuid())
   name           String
   companyId      String
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   createdById    String?
   lastEditedById String?
-  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy      User?                   @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  lastEditedBy   User?                   @relation("ClientEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
-  sections       BusinessClientSection[]
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy      User?           @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lastEditedBy   User?           @relation("ClientEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
+  sections       RecordSection[]
 
   @@unique([name, companyId])
   @@map("Client")
 }
 
-model BusinessClientSection {
-  id             String               @id @default(uuid())
+/// A group of a client's records, such as "Licences" or "Contracts"
+/// (CLIENTS_PLAN.md §0.2).
+model RecordSection {
+  id             String          @id @default(uuid())
   title          String
-  clientId       String
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  /// The client it belongs to. Null only on a section of the old Clients
+  /// section, which 0b removes; the table's check says exactly one of the
+  /// two is set.
+  vendorId       String?
+  /// The old Clients section's business. Nothing sets it any more.
+  clientId       String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   createdById    String?
   lastEditedById String?
-  notes          BusinessClientNote[]
-  client         BusinessClient       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  createdBy      User?                @relation("SectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  lastEditedBy   User?                @relation("SectionEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
+  records        ClientRecord[]
+  vendor         Vendor?         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  client         BusinessClient? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy      User?           @relation("SectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lastEditedBy   User?           @relation("SectionEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
 
   @@unique([title, clientId])
+  @@unique([vendorId, title])
   @@map("ClientSection")
 }
 
-model BusinessClientNote {
-  id                 String                @id @default(uuid())
+/// One record: text, any attached files, and an optional expiry date with a
+/// reminder some days before it (CLIENTS_PLAN.md §0.2).
+model ClientRecord {
+  id                 String        @id @default(uuid())
   content            String
   sectionId          String
   createdById        String?
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
   attachment         String?
   expiryDate         DateTime?
-  notifiedDaysBefore Boolean               @default(false)
-  notifiedOnExpiry   Boolean               @default(false)
+  notifiedDaysBefore Boolean       @default(false)
+  notifiedOnExpiry   Boolean       @default(false)
   reminderDays       Int?
   lastEditedAt       DateTime?
   lastEditedById     String?
-  createdBy          User?                 @relation("CreatedNotes", fields: [createdById], references: [id], onDelete: SetNull)
-  lastEditedBy       User?                 @relation("EditedNotes", fields: [lastEditedById], references: [id], onDelete: SetNull)
-  section            BusinessClientSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  /// A Super Admin added it, or last edited it: they have no User row, so
+  /// the person's id alone is null then, as it is for a user since deleted.
+  createdBySuperAdmin    Boolean   @default(false)
+  lastEditedBySuperAdmin Boolean   @default(false)
+  /// Which Super Admin added it, for its reminders; none for one added
+  /// before this was kept.
+  createdBySuperAdminId  String?
+  createdBy          User?         @relation("CreatedNotes", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBySuper     SuperAdmin?   @relation("SuperAdminCreatedNotes", fields: [createdBySuperAdminId], references: [id], onDelete: SetNull)
+  lastEditedBy       User?         @relation("EditedNotes", fields: [lastEditedById], references: [id], onDelete: SetNull)
+  section            RecordSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
+  @@index([sectionId])
+  @@index([expiryDate])
   @@map("ClientNote")
+}
+
+/// A record's file removed from storage (RecordService): no record may be
+/// given it again, as its object is gone. Its path in the bucket.
+model RemovedRecordFile {
+  path      String   @id
+  removedAt DateTime @default(now())
 }
 
 model ProfileUpdateRequest {
@@ -1141,6 +1175,8 @@ model Vendor {
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy    User?    @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   tasks        Task[]
+  /// Its records, in sections (CLIENTS_PLAN.md §0.2).
+  recordSections RecordSection[]
 
   @@unique([name, companyId])
   @@index([companyId])

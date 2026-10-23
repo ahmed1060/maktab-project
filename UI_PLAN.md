@@ -315,9 +315,16 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      built from the building blocks;
    - **the older pages, the side bar and the sign-in page follow the
      colour too (§4.6),** in a small PR straight after the brand colour
-     setting's. Built on 2026-10-16, waiting to be merged.
+     setting's. Merged in #81 on 2026-10-16.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
-   - The side bar groups (§2.1, §2.2) land with step 0.
+   - Step 0's first PR, 0a, is open for review. It builds each client's
+     page and the Records page on the building blocks, with five new ones
+     written into `DESIGN.md` first: a back link above a page's title,
+     details, files, a record's expiry, and opening an item from a list
+     (§5.5). It also adds that text people type keeps its own direction in
+     either language (§7).
+   - The side bar groups (§2.1, §2.2) land with step 0. Proposed: with 0b,
+     when Vendors become Clients (`CLIENTS_PLAN.md` §8).
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
@@ -725,3 +732,65 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-16:** From Codex's review of #81, the check-in place's radius
   ring on the map has a thin white outline, as its pin does, so it shows on
   satellite imagery whatever the brand colour (`DESIGN.md` §2.1).
+- **2026-10-16:** The older pages, the side bar and the sign-in page follow
+  the brand colour, merged in #81 (§4.6, §5 step 3). Next is
+  `CLIENTS_PLAN.md`'s step 0.
+- **2026-10-16:** `CLIENTS_PLAN.md` step 0's first PR, 0a, is open: each
+  client's page and the Records page, on the building blocks (§5 step 4).
+  `DESIGN.md` gained a back link, details, files, a record's expiry and
+  opening an item from a list (§5.5), and a rule that typed text keeps its
+  own direction (§7). Proposed: the side bar's groups come with 0b.
+- **2026-10-16:** From Codex's review of #82: a record's form keeps files
+  it uploaded when a save fails, so trying again doesn't upload them twice,
+  and removes them again if it closes without saving them; a client's page
+  opens a reminder's record only if it's that client's (`CLIENTS_PLAN.md`
+  change log).
+- **2026-10-16:** From Codex's second review of #82: the date picker shows
+  a picked day as that day in every time zone (it showed the day before
+  west of UTC, on the Day Off page too), and a file dropped on a file
+  picker that's full, or otherwise turned off, no longer opens in place of
+  the page (`CLIENTS_PLAN.md` change log).
+- **2026-10-16:** From Codex's third review of #82: the Records page has
+  Add record, which asks which client it's for and opens its page with the
+  form (Proposed, `CLIENTS_PLAN.md` §0.2); the date picker can be turned
+  off, and is while a record saves; a record by a user since deleted says
+  "Deleted user" rather than Super Admin.
+- **2026-10-16:** From Codex's fourth review of #82: a record's form
+  closed while it saves no longer removes the files that save is storing
+  (`CLIENTS_PLAN.md` change log).
+- **2026-10-16:** From Codex's fifth review of #82: a client's page says
+  when its records didn't load, with Try again; saving a record from a
+  form opened before someone else changed its files says so, and asks to
+  open it again (`CLIENTS_PLAN.md` change log).
+- **2026-10-17:** From Codex's seventh review of #82: Add record's picker
+  has a search by name, as it lists only the first 50 clients; a client's
+  page says when its details didn't load, with Try again
+  (`CLIENTS_PLAN.md` change log).
+- **2026-10-17:** Decided: the date range picker (Day Off, the audit log's
+  and the employees' filters) gets the date picker's fix in a PR of its own
+  after #82: west of UTC it showed the day before the one picked.
+- **2026-10-17:** Decided: the Records page's Add record is one dialog on
+  that page: which vendor (with a search once there are more than 50), its
+  section, then the record (`CLIENTS_PLAN.md` §0.2). It no longer opens the
+  vendor's page. A vendor's own page keeps its Add record, for that vendor.
+- **2026-10-22:** From Codex's ninth review of #82: Add record on the
+  Records page lists only the chosen company's clients, so a Super Admin
+  who picks another company while it's open waits for that company's; and
+  editing a record there says when its client's sections didn't load, with
+  Try again, rather than offering only the one it's in
+  (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's tenth review of #82: a failed search for a
+  client in Add record says so, with Try again, rather than leaving the last
+  search's clients up as if they matched (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's eleventh review of #82: on the Records page,
+  a record open in a dialog closes when a Super Admin picks another
+  company; an edit refused as out of date reloads the list; and a record's
+  details in its dialog are one to a row on a phone, as `DESIGN.md` says
+  (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's twelfth review of #82: a Records list open
+  past the company's midnight reloads then, so its expiry badges and the
+  expiry filter are the new day's (`CLIENTS_PLAN.md` change log).
+- **2026-10-22:** From Codex's thirteenth review of #82: a Super Admin
+  looking at every company's records sees each record's company on its
+  phone card and in the record's details, so two companies' clients of the
+  same name can't be mixed up (`CLIENTS_PLAN.md` change log).

@@ -97,9 +97,9 @@ describe("the older pages' shades", () => {
     })
 
     it("cover every indigo and violet in app/globals.css, except the colours that mean something", () => {
-        // The info colours, and the lifetime and role badges' violets, keep
-        // their meaning in every company, like the status colours.
-        const stays = /^--(info-|lifetime-|accent-fg$)/
+        // The info colours, and the lifetime badge's violet, keep their
+        // meaning in every company, like the status colours.
+        const stays = /^--(info-|lifetime-)/
         const following = new Set<string>(OLD_PAGE_SHADES.map(s => s.token))
         for (const block of [lightRoot, darkRoot]) {
             for (const [, token, value] of block.matchAll(/^\s*(--[a-z0-9-]+):\s*(#[0-9a-f]{6});/gm)) {

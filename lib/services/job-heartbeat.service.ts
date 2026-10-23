@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma"
  */
 export const SCHEDULED_JOBS = [
     { job: "obligations", label: "Obligations", everyHours: 24 },
-    { job: "check-expiry", label: "Note expiry", everyHours: 24 },
+    { job: "check-expiry", label: "Record expiry", everyHours: 24 },
     { job: "check-subscriptions", label: "Subscriptions", everyHours: 24 },
     { job: "prune", label: "Prune logs", everyHours: 24 },
     { job: "employment", label: "Employment dates", everyHours: 24 },

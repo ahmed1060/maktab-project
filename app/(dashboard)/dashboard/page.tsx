@@ -145,7 +145,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         { label: t('total_companies'), value: num(totalCompanies), href: '/dashboard/companies' },
                         { label: t('total_users'), value: num(totalUsers), href: '/dashboard/all-users' },
                         { label: t('total_tasks'), value: num(totalTasks) },
-                        { label: t('business_clients'), value: num(totalClients) },
+                        { label: t('vendors'), value: num(totalClients) },
                     ]} />
 
                     <Columns>

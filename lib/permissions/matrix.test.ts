@@ -52,7 +52,7 @@ describe("the permission matrix", () => {
     })
 
     it("finds where a role has drifted from its template", () => {
-        expect([...drift({ "tasks.view": "TEAM", "clients.view": "COMPANY" }, { "tasks.view": "COMPANY", "vendors.view": "COMPANY" })].sort())
-            .toEqual(["clients.view", "tasks.view", "vendors.view"])
+        expect([...drift({ "tasks.view": "TEAM", "records.view": "COMPANY" }, { "tasks.view": "COMPANY", "vendors.view": "COMPANY" })].sort())
+            .toEqual(["records.view", "tasks.view", "vendors.view"])
     })
 })

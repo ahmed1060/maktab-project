@@ -24,7 +24,7 @@ export const ATTENDANCE_BUNDLES = ['ATTENDANCE_TERMINALS', 'ATTENDANCE_MOBILE'] 
  */
 export type Module =
     | 'DASHBOARD' | 'EMPLOYEES' | 'USERNAMES' | 'PROFILE_REQUESTS' | 'REQUESTS'
-    | 'TASKS' | 'OBLIGATIONS' | 'CLIENTS' | 'VENDORS' | 'COSTS'
+    | 'TASKS' | 'OBLIGATIONS' | 'RECORDS' | 'VENDORS' | 'COSTS'
     | 'DAY_OFF' | 'PAYROLL' | 'SALARY_ADJUSTMENTS'
     | 'ATTENDANCE'
 
@@ -47,7 +47,7 @@ export const MODULE_BUNDLE: Record<Module, Bundle | readonly Bundle[] | null> = 
     // Company Management — what the business does and what it costs.
     TASKS: 'COMPANY_MANAGEMENT',
     OBLIGATIONS: 'COMPANY_MANAGEMENT',
-    CLIENTS: 'COMPANY_MANAGEMENT',
+    RECORDS: 'COMPANY_MANAGEMENT',
     VENDORS: 'COMPANY_MANAGEMENT',
     COSTS: 'COMPANY_MANAGEMENT',
 

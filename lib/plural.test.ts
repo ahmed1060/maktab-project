@@ -27,7 +27,7 @@ describe("a count with its word", () => {
     })
 
     it("has every form in both languages, so none falls back to its key", () => {
-        for (const word of ["days", "pts", "employees", "requests"]) for (const form of ["zero", "one", "two", "few", "many", "other"]) {
+        for (const word of ["days", "pts", "employees", "requests", "records", "files"]) for (const form of ["zero", "one", "two", "few", "many", "other"]) {
             expect(en).toHaveProperty(`count_${word}_${form}`)
             expect(ar).toHaveProperty(`count_${word}_${form}`)
         }

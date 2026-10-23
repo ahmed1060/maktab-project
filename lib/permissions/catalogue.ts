@@ -98,17 +98,21 @@ export const PERMISSIONS = {
     "tasks.pay":                { code: 21, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
     "tasks.penalize":           { code: 22, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: "Affects pay" },
 
-    // --- Obligations, clients, vendors, costs ------------------------------
+    // --- Obligations, records, vendors, costs ------------------------------
     "obligations.view":         { code: 23, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
     "obligations.manage":       { code: 24, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
-    // Clients are a shared notebook as much as a register, so adding to it is
-    // its own right, apart from renaming and deleting what is there.
-    // contribute: add a client, a section or a note, and edit any note.
-    // edit: rename a client or a section.
-    "clients.view":             { code: 25, module: "CLIENTS", scopes: COMPANY },
-    "clients.contribute":       { code: 26, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
-    "clients.edit":             { code: 27, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
-    "clients.delete":           { code: 28, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"], highRisk: CANNOT_BE_UNDONE },
+    // A client's records (CLIENTS_PLAN.md §0.2) are a shared notebook as much
+    // as a register, so adding to them is its own right, apart from renaming
+    // and deleting what is there.
+    // contribute: add a section or a record, and edit any record.
+    // edit: rename a section.
+    // These were clients.*, for the old Clients section, with the same codes
+    // and meaning. The migration that renamed them renames them on the way
+    // into the database too, until 0b (CLIENTS_PLAN.md §0.3).
+    "records.view":             { code: 25, module: "RECORDS", scopes: COMPANY },
+    "records.contribute":       { code: 26, module: "RECORDS", scopes: COMPANY, implies: ["records.view"] },
+    "records.edit":             { code: 27, module: "RECORDS", scopes: COMPANY, implies: ["records.view"] },
+    "records.delete":           { code: 28, module: "RECORDS", scopes: COMPANY, implies: ["records.view"], highRisk: CANNOT_BE_UNDONE },
     "vendors.view":             { code: 29, module: "VENDORS", scopes: COMPANY },
     "vendors.manage":           { code: 30, module: "VENDORS", scopes: COMPANY, implies: ["vendors.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY },
@@ -170,6 +174,19 @@ export const PERMISSIONS = {
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS
+
+/**
+ * Which release of this catalogue a session's grants were read against.
+ * Raised whenever permissions are added or renamed: a session token made
+ * against an earlier one reloads its grants once (lib/auth.ts), whatever
+ * its role's version says. Preview builds migrate the production database
+ * before the release that reads it is live, so the older release may
+ * already have refreshed a token at the new role version, dropping the
+ * permissions it didn't know (Codex on #82).
+ *
+ * 2: records.* (codes 25–28), renamed from clients.* (CLIENTS_PLAN.md §0.2).
+ */
+export const CATALOGUE_VERSION = 2
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

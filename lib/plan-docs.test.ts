@@ -16,8 +16,8 @@ describe("the roles plan", () => {
     it("names only permissions the catalogue has, in its permission table", () => {
         const named = ROLES.split("\n").filter(l => l.startsWith("|")).flatMap(l => [...l.matchAll(/`([a-z_]+\.[a-z_]+)`/g)].map(m => m[1]))
         expect(named.filter(p => !(p in PERMISSIONS))).toEqual([])
-        // The three client rights, not the one the first draft had.
-        for (const p of ["clients.contribute", "clients.edit", "clients.delete"]) expect(named).toContain(p)
+        // The three record rights (once the old Clients section's), not the one the first draft had.
+        for (const p of ["records.contribute", "records.edit", "records.delete"]) expect(named).toContain(p)
     })
 
     it("lists every high-risk permission under step-up confirmation", () => {
