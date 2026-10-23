@@ -877,3 +877,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   names in Arabic are المشتركون, القوالب, الصلاحيات and التشغيل (§2.2).
 - **2026-10-23:** `CLIENTS_PLAN.md`'s 0b was merged in #92. The side bar
   groups and the Clients list page open for review in #93.
+- **2026-10-23:** The Clients list says it's loading, not that there are
+  no clients, until the session says who's looking (seen in this PR's
+  screenshots).
