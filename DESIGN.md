@@ -127,18 +127,23 @@ below, which are all worked out from the one chosen colour.
 | Token | Light | Dark | Used for |
 |---|---|---|---|
 | `--page` | `#f6f9fc` | `#0a1220` | The page behind everything |
-| `--panel` | `#ffffff` | `#0f1a2b` | Panels, tables, cards, the side bar, the top bar |
+| `--panel` | `#ffffff` | `#0f1a2b` | Panels, tables, cards, the side bar |
 | `--panel-raised` | `#ffffff` | `#16233a` | Menus, pop-ups, dialogs, toasts |
 | `--ink` | `#0d253d` | `#e6edf5` | Main text: titles and row content |
 | `--ink-2` | `#273951` | `#b8c4d4` | Secondary text in rows and forms |
 | `--muted` | `#5d6b82` | `#8a9ab0` | Helper text, labels, table headers, empty states |
 | `--rule` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
 | `--field-line` | `#828e9f` | `#65758d` | The edge of a field, checkbox or toggle (3:1 or better on the page and on panels) |
+| `--header-glass-bg` | `rgba(255,255,255,.82)` | `rgba(13,17,23,.88)` | The top bar's glass, once the page scrolls (§5.1) |
+| `--header-glass-border` | `rgba(255,255,255,.45)` | `rgba(255,255,255,.10)` | The glass top bar's hairline edge |
+| `--header-shadow` | `0 4px 30px rgba(0,0,0,.05)` | `0 4px 30px rgba(0,0,0,.45)` | The glass top bar's shadow |
 
 - Text is navy, never pure black. Dark mode is deep navy, never pure black
   either.
 - `--muted` was darkened from the reference's `#64748d`, which was 4.49:1
   on the page. Now it's 5.11:1 on the page and 4.70:1 on the brand tint.
+- The top bar's three glass tokens are the ones the app has today, kept
+  with its glass (§5.1).
 
 ### 2.3 Status and meaning
 
