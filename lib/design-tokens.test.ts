@@ -72,6 +72,9 @@ describe("the stylesheet says what DESIGN.md says", () => {
     it("the glass top bar's tokens, in both themes", () => {
         expect(GLASS.map(g => g.token)).toEqual(["--header-glass-bg", "--header-glass-border", "--header-shadow"])
         for (const g of GLASS) {
+            // Declared once for each theme and nowhere else, so a later block
+            // can't override the value checked here (Codex on #85).
+            expect([g.token, CSS.match(new RegExp(`${g.token}\\s*:`, "g"))?.length]).toEqual([g.token, 2])
             expect([g.token, declared(":root {", g.token)]).toEqual([g.token, g.light])
             expect([g.token, declared(':root[data-theme="dark"] {', g.token)]).toEqual([g.token, g.dark])
         }
