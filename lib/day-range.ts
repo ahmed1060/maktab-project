@@ -12,13 +12,30 @@ export function parseDay(value: string | null | undefined): Day | null {
     return { year, month, day }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** The time a zone's clocks show at an instant, as if it were UTC. */
+const wallClock = (at: number, timeZone: string) => at + offsetMsIn(new Date(at), timeZone)
+
 /** The first instant of a calendar day in a zone, as a UTC instant. */
 function startOf({ year, month, day }: Day, timeZone: string): number {
-    const guess = Date.UTC(year, month - 1, day)
-    // The offset at the guess, then again at the answer, for a day the
-    // clocks change on.
-    const first = guess - offsetMsIn(new Date(guess), timeZone)
-    return guess - offsetMsIn(new Date(first), timeZone)
+    const midnight = Date.UTC(year, month - 1, day)
+    // The zone's offsets the day before and the day after: its midnight is at
+    // one of them, or at both where the clocks go back over it, and the day
+    // starts at the first.
+    const offsets = [midnight - DAY_MS, midnight + DAY_MS].map(at => offsetMsIn(new Date(at), timeZone))
+    const midnights = offsets.map(offset => midnight - offset).filter(at => wallClock(at, timeZone) === midnight)
+    if (midnights.length) return Math.min(...midnights)
+    // The clocks skip midnight, as Cairo's do in April: the day starts when
+    // they jump, found to the second between the two offsets' midnights.
+    let before = midnight - Math.max(...offsets)
+    let after = midnight - Math.min(...offsets)
+    while (after - before > 1000) {
+        const mid = before + Math.floor((after - before) / 2000) * 1000
+        if (wallClock(mid, timeZone) >= midnight) after = mid
+        else before = mid
+    }
+    return after
 }
 
 /**

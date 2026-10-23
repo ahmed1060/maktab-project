@@ -41,6 +41,27 @@ describe("a date filter's days", () => {
         })
     })
 
+    it("start when the clocks jump, on a day they skip midnight", () => {
+        // Havana goes from -5 to -4 at midnight on 8 March 2026: there's no
+        // 00:00, and the day starts at 01:00, 05:00 UTC. The day before ends
+        // just before it.
+        expect(dayRange("2026-03-08", "2026-03-08", "America/Havana")).toEqual({
+            gte: new Date("2026-03-08T05:00:00.000Z"),
+            lte: new Date("2026-03-09T03:59:59.999Z"),
+        })
+        expect(dayRange(null, "2026-03-07", "America/Havana")).toEqual({ lte: new Date("2026-03-08T04:59:59.999Z") })
+        // Santiago, from -4 to -3 on 6 September; Cairo, from +2 to +3 on 24 April.
+        expect(dayRange("2026-09-06", null, "America/Santiago")).toEqual({ gte: new Date("2026-09-06T04:00:00.000Z") })
+        expect(dayRange("2026-04-24", null, "Africa/Cairo")).toEqual({ gte: new Date("2026-04-23T22:00:00.000Z") })
+    })
+
+    it("start at the first midnight, on a day the clocks go back over it", () => {
+        // Havana goes from -4 back to -5 at 01:00 on 1 November 2026, so its
+        // midnight comes twice, at 04:00 and 05:00 UTC.
+        expect(dayRange("2026-11-01", null, "America/Havana")).toEqual({ gte: new Date("2026-11-01T04:00:00.000Z") })
+        expect(dayRange(null, "2026-10-31", "America/Havana")).toEqual({ lte: new Date("2026-11-01T03:59:59.999Z") })
+    })
+
     it("leave an end open when it isn't a day, and are nothing when neither is", () => {
         expect(dayRange("2026-01-15", "", "Africa/Cairo")).toEqual({ gte: new Date("2026-01-14T22:00:00.000Z") })
         expect(dayRange(undefined, "2026-01-15", "Africa/Cairo")).toEqual({ lte: new Date("2026-01-15T21:59:59.999Z") })
