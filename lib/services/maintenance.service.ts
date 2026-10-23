@@ -106,11 +106,16 @@ export class MaintenanceService {
      * a folder the platform itself keeps. In calls of 100, as storage caps
      * the keys per call; a refused call throws, the rest left for the orphan
      * sweep.
+     *
+     * Not a file a live row still uses: a Super Admin can move a person to
+     * another company, and their photo stays where they uploaded it. Checked
+     * against every reference the orphan sweep keeps (collectReferencedPaths).
      */
     static async removeFolder(folder: string) {
         if (!/^[A-Za-z0-9_-]+$/.test(folder) || ['platform', 'templates', 'avatars'].includes(folder)) throw new Error("FOLDER_INVALID")
         if (!supabase) return { removed: 0 }
-        const paths = (await this.listAllAssets(folder)).map(f => f.name)
+        const inUse = await this.collectReferencedPaths()
+        const paths = (await this.listAllAssets(folder)).map(f => f.name).filter(path => !inUse.has(path))
         const CHUNK = 100
         let removed = 0
         for (let i = 0; i < paths.length; i += CHUNK) {

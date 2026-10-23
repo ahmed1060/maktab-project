@@ -12,6 +12,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 const bucket = new Set<string>()
 const state = { refuse: false }
+/** What live rows still use, as stored: public URLs into the bucket. */
+const live = { avatars: [] as string[] }
 vi.mock("@/lib/storage", () => ({
     supabase: {
         storage: {
@@ -38,7 +40,14 @@ vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: asy
 vi.mock("@/lib/services/record.service", () => ({ RecordService: { filesOfCompany: async () => [], removeUnused: async () => {} } }))
 vi.mock("@/lib/prisma", () => {
     const tx = { company: { delete: async ({ where }: any) => ({ id: where.id, name: "Acme" }) } }
-    return { prisma: { company: { findUnique: async ({ where }: any) => ({ id: where.id, name: "Acme", users: [] }) }, $transaction: async (fn: any) => fn(tx) } }
+    // Rows left once the company is gone: only people's photos refer to anything here.
+    const none = { findMany: async () => [] }
+    return { prisma: {
+        company: { findUnique: async ({ where }: any) => ({ id: where.id, name: "Acme", users: [] }), findMany: async () => [] },
+        user: { findMany: async ({ skip }: any) => (skip ? [] : live.avatars.map(avatar => ({ avatar }))) },
+        task: none, obligation: none, clientRecord: none, superAdmin: none,
+        $transaction: async (fn: any) => fn(tx),
+    } }
 })
 
 const STORED = [
@@ -57,6 +66,7 @@ beforeEach(() => {
     bucket.clear()
     STORED.forEach(p => bucket.add(p))
     state.refuse = false
+    live.avatars = []
 })
 
 describe("deleting a company", () => {
@@ -64,6 +74,14 @@ describe("deleting a company", () => {
         const { CompanyService } = await import("@/lib/services/company.service")
         await CompanyService.delete("c1", session)
         expect([...bucket].sort()).toEqual(["c2/avatars/2-face.png", "c2/logos/1-logo.png", "platform/records/1-guide.pdf", "templates/template_en.xlsx"])
+    })
+
+    it("keeps a file a live row still uses: the photo of someone moved to another company", async () => {
+        // A Super Admin can move a person to another company; their photo stays where they uploaded it.
+        live.avatars = ["https://nizmo.supabase.co/storage/v1/object/public/app-assets/c1/avatars/2-face.png"]
+        const { CompanyService } = await import("@/lib/services/company.service")
+        await CompanyService.delete("c1", session)
+        expect([...bucket].filter(p => p.startsWith("c1/"))).toEqual(["c1/avatars/2-face.png"])
     })
 
     it("is still done when storage refuses, which is logged", async () => {
