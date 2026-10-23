@@ -332,8 +332,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
    - The side bar groups (§2.1, §2.2) land with step 0. Decided
      (2026-10-22): in a small PR straight after 0b, which makes Vendors
      Clients in code and leaves the screens as they were, with the Clients
-     list page rebuilt on the building blocks (`CLIENTS_PLAN.md` §8). It's
-     built, and open for review in #93.
+     list page rebuilt on the building blocks (`CLIENTS_PLAN.md` §8). Merged
+     in #93 on 2026-10-23.
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
@@ -880,3 +880,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-23:** The Clients list says it's loading, not that there are
   no clients, until the session says who's looking (seen in this PR's
   screenshots).
+- **2026-10-23:** The side bar groups and the Clients list page were
+  merged in #93.

@@ -739,14 +739,13 @@ balance first, automatically:
      - 0b, Vendors becoming Clients in code, was merged in #92 on
        2026-10-23 (§0.1, §0.3). It renames and nothing else: the Clients
        list page looks as it did.
-     - 0c, the stored names following the code, is built (§0.3). It opens
-       once 0b is merged and live, as its migration runs against 0b's code.
+     - 0c, the stored names following the code, is open for review in #94
+       (§0.3). Its migration runs against 0b's code, live since #92.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
        `UI_PLAN.md`) can hold Clients and Records, with the Clients list
-       page rebuilt on the building blocks. Built, and open for review in
-       #93.
+       page rebuilt on the building blocks. Merged in #93 on 2026-10-23.
      - Every screen these steps create or rework uses the building blocks:
        Clients, Locations, Records, the Costs tabs, Cash advances, and the
        task form's pickers.
@@ -1123,3 +1122,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   names while still reading the old, and today's clients table is dropped.
   It opens for review once 0b is merged and live, as its migration runs
   against 0b's code.
+- **2026-10-23:** The side bar groups and the Clients list page were
+  merged in #93. 0c opens for review in #94.
