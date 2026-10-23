@@ -1014,3 +1014,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   from a task's page pays the task once no share is left, by the same rule
   as Mark all as paid. A status for someone with no share, or a share of
   nothing, kept the task waiting, while the Costs page showed nothing of it.
+- **2026-10-23:** From Codex's second review of #87, as the product owner
+  decided: what of a task's cost is no one's share (a cost from before
+  shares, beside a share added since) stays to pay until the task is paid
+  whole. Paying the shares no longer marks such a task paid, and the Costs
+  page shows that part as the task's own card, under its assignees' names.
+  No task anywhere has such a cost today.
