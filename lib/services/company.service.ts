@@ -9,7 +9,7 @@ import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { assertRecentStepUp } from "@/lib/step-up"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
-import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides, storedOverrides } from "@/lib/modules"
+import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
 import type { CompanyBranding } from "@/lib/company-scope"
 import { uploadToCloud } from "@/lib/storage"
@@ -251,8 +251,8 @@ export class CompanyService {
                 ...(name && { name }),
                 ...(isBanned !== undefined && { isBanned }),
                 ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
-                ...(nextLabels !== undefined && { moduleLabels: storedOverrides(nextLabels) ?? Prisma.DbNull }),
-                ...(nextIcons !== undefined && { moduleIcons: storedOverrides(nextIcons) ?? Prisma.DbNull }),
+                ...(nextLabels !== undefined && { moduleLabels: nextLabels ?? Prisma.DbNull }),
+                ...(nextIcons !== undefined && { moduleIcons: nextIcons ?? Prisma.DbNull }),
                 // Payroll policy. The schema validates all three before they
                 // reach here — the zone in particular, because its refusal
                 // carries a reason the form needs to show.

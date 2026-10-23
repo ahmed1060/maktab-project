@@ -17,6 +17,7 @@ import { withGrants } from "@/lib/permissions/test-actors"
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
 const RECORDS = "20261104000000_records_on_clients"
+const CLIENT_NAMES = "20261107000000_client_names_stored"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BUCKET = "https://abc.supabase.co/storage/v1/object/public/app-assets"
@@ -56,6 +57,16 @@ INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES ('t
 UPDATE "Company" SET "moduleLabels" = '{"clients":"Files","tasks":"Jobs"}', "moduleIcons" = '{"clients":"📁"}' WHERE id = 'c1';
 `
 
+// What 0b's code, which wrote the old names, left before 0c's migration: a
+// role holding a permission under both names, a template, and a company's
+// own name and icon for Clients.
+const AS_0B_WROTE = `
+INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES ('r-0b', 'c1', 'Saved by 0b', 'EMPLOYEE', now());
+INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('r-0b', 'vendors.view', 'COMPANY'), ('r-0b', 'vendors.manage', 'COMPANY'), ('r-0b', 'clients.manage', 'COMPANY'), ('r-0b', 'tasks.view', 'TEAM');
+INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES ('t-0b', 'Supplier desk', 'EMPLOYEE', '[{"permission":"vendors.manage","scope":"COMPANY"},{"permission":"tasks.view","scope":"TEAM"},{"permission":"vendors.view","scope":"COMPANY"}]', now());
+UPDATE "Company" SET "moduleLabels" = '{"vendors":"Suppliers","tasks":"Jobs"}', "moduleIcons" = '{"vendors":"🚛"}' WHERE id = 'c2';
+`
+
 const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1" }) } as any
 const employee = { user: withGrants({ id: "e1", role: "EMPLOYEE", companyId: "c1" }) } as any
 const otherAdmin = { user: withGrants({ id: "a2", role: "ADMIN", companyId: "c2" }) } as any
@@ -80,6 +91,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         await db.connect()
         for (const m of MIGRATIONS) {
             if (m === RECORDS) await db.query(OLD_SECTION)
+            if (m === CLIENT_NAMES) await db.query(AS_0B_WROTE)
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
@@ -112,7 +124,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
     describe("the migration", () => {
         it("renames the old section's permissions, in roles and templates, and has their holders reload", async () => {
-            const { rows } = await db.query(`SELECT r."builtIn", g.permission, r.version FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE r."companyId" = 'c1' AND (g.permission LIKE 'clients.%' OR g.permission LIKE 'records.%') ORDER BY 1, 2`)
+            const { rows } = await db.query(`SELECT r."builtIn", g.permission, r.version FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE r."companyId" = 'c1' AND (g.permission IN ('clients.contribute', 'clients.edit', 'clients.delete') OR g.permission LIKE 'records.%') ORDER BY 1, 2`)
             expect(rows.map(r => `${r.builtIn} ${r.permission}`).sort()).toEqual([
                 "ADMIN records.contribute", "ADMIN records.delete", "ADMIN records.edit", "ADMIN records.view",
                 "EMPLOYEE records.contribute", "EMPLOYEE records.view",
@@ -127,6 +139,24 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("moves a company's own name and icon for the section to Records", async () => {
             const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c1'`)
             expect(company).toEqual({ moduleLabels: { records: "Files", tasks: "Jobs" }, moduleIcons: { records: "📁" } })
+        })
+
+        it("rewrites the stored names of Clients' permissions, keeping one of a role's held under both (0c)", async () => {
+            const grants = async (where: string) => (await db.query(`SELECT r.id, g.permission, g.scope FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE ${where} ORDER BY 1, 2`)).rows.map(r => `${r.permission} ${r.scope}`)
+            expect(await grants(`g.permission LIKE 'vendors.%'`)).toEqual([])
+            expect(await grants(`r.id = 'r-0b'`)).toEqual(["clients.manage COMPANY", "clients.view COMPANY", "tasks.view TEAM"])
+            // The built-in roles the roles migration seeded with vendors.*.
+            expect(await grants(`r."companyId" = 'c1' AND r."builtIn" = 'ADMIN' AND g.permission LIKE 'clients.%'`)).toEqual(["clients.manage COMPANY", "clients.view COMPANY"])
+            const { rows: [template] } = await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = 't-0b'`)
+            expect(template.grants).toEqual([{ permission: "clients.manage", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }, { permission: "clients.view", scope: "COMPANY" }])
+        })
+
+        it("moves a company's own name and icon for Clients to the module's new key, and drops the old Clients table (0c)", async () => {
+            const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c2'`)
+            expect(company).toEqual({ moduleLabels: { clients: "Suppliers", tasks: "Jobs" }, moduleIcons: { clients: "🚛" } })
+            expect((await db.query(`SELECT to_regclass('"Client"') AS t`)).rows[0].t).toBeNull()
+            // Its column on sections stays until 0d: 0b's code selects every column of a section.
+            expect((await db.query(`SELECT 1 FROM information_schema.columns WHERE table_name = 'ClientSection' AND column_name = 'clientId'`)).rows).toHaveLength(1)
         })
 
         it("no longer renames a name on the way in, now that clients.* names the businesses (0b)", async () => {
@@ -145,14 +175,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("deletes the old section's own sections and their records, and a section still has exactly one owner", async () => {
             expect((await db.query(`SELECT id FROM "ClientSection" WHERE "vendorId" IS NULL`)).rows).toEqual([])
             expect((await db.query(`SELECT id FROM "ClientNote" WHERE id = 'old-n'`)).rows).toEqual([])
-            // Its table stays until 0c: 0a's code still selects every column of a section.
-            expect((await db.query(`SELECT id FROM "Client"`)).rows).toEqual([{ id: "old" }])
             await expect(db.query(`INSERT INTO "ClientSection"(id, title, "updatedAt") VALUES ('none', 'Nobody''s', now())`)).rejects.toThrow(/ClientSection_one_owner/)
             await expect(db.query(`INSERT INTO "ClientSection"(id, title, "clientId", "vendorId", "updatedAt") VALUES ('both', 'Both', 'old', 'v1', now())`)).rejects.toThrow(/ClientSection_one_owner/)
         })
     })
 
-    describe("Clients grants, under the names the database keeps until 0c", () => {
+    describe("Clients grants, written under their new names and read under either until 0d", () => {
         let Roles: typeof import("@/lib/services/role.service").RoleService
         let Templates: typeof import("@/lib/services/role-template.service").RoleTemplateService
         beforeAll(async () => {
@@ -162,17 +190,16 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         const stored = async (roleId: string) =>
             (await db.query(`SELECT permission, scope FROM "RoleGrant" WHERE "roleId" = $1 ORDER BY permission`, [roleId])).rows.map(r => `${r.permission} ${r.scope}`)
 
-        it("are written under their old names, which main's release reads, and read back under the new", async () => {
+        it("are written under their new names", async () => {
             const role = await Roles.create({ companyId: "c1", name: "Desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.manage", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
-            expect(await stored(role.id)).toEqual(["tasks.view TEAM", "vendors.manage COMPANY", "vendors.view COMPANY"])
-            expect((await Roles.getById(role.id)).grants.map(g => g.permission).sort()).toEqual(["clients.manage", "clients.view", "tasks.view"])
+            expect(await stored(role.id)).toEqual(["clients.manage COMPANY", "clients.view COMPANY", "tasks.view TEAM"])
             await Roles.update({ id: role.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, superAdmin)
-            expect(await stored(role.id)).toEqual(["vendors.view COMPANY"])
+            expect(await stored(role.id)).toEqual(["clients.view COMPANY"])
         })
 
-        it("are read under either name, as 0c will rewrite them while this release runs", async () => {
-            const role = await Roles.create({ companyId: "c1", name: "Rewritten", baseRole: "EMPLOYEE", grants: [{ permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
-            await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ($1, 'clients.view', 'COMPANY')`, [role.id])
+        it("are read under their old names too, as 0b's code writes them while 0c waits for review", async () => {
+            const role = await Roles.create({ companyId: "c1", name: "Saved by 0b later", baseRole: "EMPLOYEE", grants: [{ permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
+            await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ($1, 'vendors.view', 'COMPANY')`, [role.id])
             expect((await Roles.getById(role.id)).grants).toContainEqual({ permission: "clients.view", scope: "COMPANY" })
             await db.query(`UPDATE "User" SET "roleId" = $1 WHERE id = 'e1'`, [role.id])
             try {
@@ -184,34 +211,30 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             } finally {
                 await db.query(`UPDATE "User" SET "roleId" = (SELECT id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE') WHERE id = 'e1'`)
             }
+            // Saved again, it holds the new name alone.
+            await Roles.update({ id: role.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, superAdmin)
+            expect(await stored(role.id)).toEqual(["clients.view COMPANY"])
         })
 
-        it("are found under their old names for whoever holds them, as the built-in roles have them", async () => {
-            const { AccessReportService } = await import("@/lib/services/access-report.service")
-            // The Admin's built-in role, as the migrations gave it: vendors.manage.
-            expect((await db.query(`SELECT 1 FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE r."companyId" = 'c1' AND r."builtIn" = 'ADMIN' AND g.permission = 'vendors.manage'`)).rows).toHaveLength(1)
-            expect((await AccessReportService.whoCan("c1", "clients.manage")).holders.map(h => h.user.id)).toContain("a1")
-        })
-
-        it("are written under their old names in a template, and read back under the new", async () => {
+        it("are written under their new names in a template, which reads either", async () => {
             const template = await Templates.create({ name: "Clients desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
             const grants = async () => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [template.id])).rows[0].grants
-            expect(await grants()).toEqual([{ permission: "tasks.view", scope: "TEAM" }, { permission: "vendors.view", scope: "COMPANY" }])
-            expect((await Templates.getById(template.id)).grants).toContainEqual({ permission: "clients.view", scope: "COMPANY" })
-            await Templates.update({ id: template.id, grants: [{ permission: "clients.manage", scope: "COMPANY" }] }, superAdmin)
-            expect(await grants()).toEqual([{ permission: "vendors.view", scope: "COMPANY" }, { permission: "vendors.manage", scope: "COMPANY" }])
-            // A role made from it holds what it says.
+            expect(await grants()).toEqual([{ permission: "tasks.view", scope: "TEAM" }, { permission: "clients.view", scope: "COMPANY" }])
+            // As 0b's template editor saves it while 0c waits for review.
+            await db.query(`UPDATE "RoleTemplate" SET grants = '[{"permission":"vendors.manage","scope":"COMPANY"}]' WHERE id = $1`, [template.id])
+            expect((await Templates.getById(template.id)).grants).toEqual([{ permission: "clients.manage", scope: "COMPANY" }])
+            // A role made from it holds what it says, under the new names.
             const role = await Roles.create({ companyId: "c1", name: "From the desk", fromTemplateId: template.id }, superAdmin)
-            expect(await stored(role.id)).toEqual(["vendors.manage COMPANY", "vendors.view COMPANY"])
+            expect(await stored(role.id)).toEqual(["clients.manage COMPANY", "clients.view COMPANY"])
         })
 
-        it("keep a company's name and icon for Clients under its old key, read as the new", async () => {
+        it("keep a company's name and icon for Clients under the module's new key, and read its old one", async () => {
             const { CompanyService } = await import("@/lib/services/company.service")
             await CompanyService.update({ id: "c2", moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "🏥" } } as any, superAdmin)
             const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c2'`)
-            expect(company).toEqual({ moduleLabels: { vendors: "Customers", tasks: "Jobs" }, moduleIcons: { vendors: "🏥" } })
+            expect(company).toEqual({ moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "🏥" } })
             const { parseModuleOverrides } = await import("@/lib/modules")
-            expect(parseModuleOverrides(company.moduleLabels)).toEqual({ clients: "Customers", tasks: "Jobs" })
+            expect(parseModuleOverrides({ vendors: "Customers" })).toEqual({ clients: "Customers" })
             await db.query(`UPDATE "Company" SET "moduleLabels" = NULL, "moduleIcons" = NULL WHERE id = 'c2'`)
         })
     })

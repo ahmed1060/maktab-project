@@ -112,8 +112,9 @@ export const PERMISSIONS = {
     "records.contribute":       { code: 26, module: "RECORDS", scopes: COMPANY, implies: ["records.view"] },
     "records.edit":             { code: 27, module: "RECORDS", scopes: COMPANY, implies: ["records.view"] },
     "records.delete":           { code: 28, module: "RECORDS", scopes: COMPANY, implies: ["records.view"], highRisk: CANNOT_BE_UNDONE },
-    // These were vendors.*, with the same codes and meaning. Their rows keep
-    // the old names until 0c (./stored-names.ts).
+    // These were vendors.*, with the same codes and meaning. 0c rewrote
+    // their rows; one 0b wrote since is read as the new until 0d
+    // (./stored-names.ts).
     "clients.view":             { code: 29, module: "CLIENTS", scopes: COMPANY },
     "clients.manage":           { code: 30, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY },
@@ -187,9 +188,9 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 2: records.* (codes 25–28), renamed from clients.* (CLIENTS_PLAN.md §0.2).
  *
- * Not raised for clients.* (codes 29–30), renamed from vendors.* in 0b: their
- * rows keep the old names (./stored-names.ts), which every release reads as
- * the same codes, so no token loses them.
+ * Not raised for clients.* (codes 29–30), renamed from vendors.* in 0b, nor
+ * for 0c rewriting their rows: every release since 0b reads either name as
+ * the same code (./stored-names.ts), so no token loses them.
  */
 export const CATALOGUE_VERSION = 2
 
