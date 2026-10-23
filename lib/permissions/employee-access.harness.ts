@@ -44,8 +44,8 @@ const models: Record<string, any> = {
     // Each company's built-in roles, as the roles migration creates them.
     role: model({ findUnique: (args: any) => builtInRoleLookup(args) }),
     rateLimit: model({ upsert: async () => ({ count: 1 }) }),
-    // A move to another company removes the old company's check-in places after the person's own update
-    // (review on #67): recorded with the fields written, as it was when it rode on that update.
+    // Taking someone off their check-in places, recorded with the fields written. Editing a person never
+    // does it, now that a person stays in their company (#90); should an edit do it, the tests see it.
     userWorkLocation: model({ deleteMany: async () => { state.written.push({ workLocations: true }); return { count: 0 } } }),
     company: model({ findUnique: async ({ where }: any) => ({ id: where.id, name: where.id, isBanned: false }) }),
     user: model({
