@@ -1020,3 +1020,14 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   whole. Paying the shares no longer marks such a task paid, and the Costs
   page shows that part as the task's own card, under its assignees' names.
   No task anywhere has such a cost today.
+- **2026-10-22:** Built, in a PR of its own: deleting a company removes
+  everything it stored under its own folder, its logo, its people's photos
+  and their tasks' files, after its records' files. Best effort, as the
+  company is already gone: what storage refuses is logged and left to the
+  orphan sweep. Not a file a live row still uses, such as the photo of
+  someone a Super Admin moved to another company.
+- **2026-10-23:** From Codex's review of #89: the list of files still in
+  use, which deleting a company and the orphan sweep both trust, is read in
+  pages by id, each after the last. An offset stepped past a row when an
+  earlier one was deleted between pages, so a file only that row used could
+  be taken for unused and removed.
