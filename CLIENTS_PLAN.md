@@ -59,7 +59,7 @@ Production has no data in these parts, so now is the right time.
 - **The daily expiry reminder** (`/api/notes/check-expiry`) moves with the
   records.
 
-**Built in PR 0a** (open for review):
+**Built in PR 0a** (merged in #82 on 2026-10-23):
 
 - each client's page (`/dashboard/clients/[id]`, `/dashboard/vendors/[id]`
   until 0b) shows its details
@@ -719,9 +719,10 @@ balance first, automatically:
        the brand colour, in one small PR after it (`UI_PLAN.md` §4.6).
        Merged in #81 on 2026-10-16.
   2. **Steps 0–7 above.**
-     - Step 0's first PR, 0a, is open for review (§0.2, §0.3).
-     - 0b, Vendors becoming Clients in code, is open for review (§0.1,
-       §0.3). It renames and nothing else: the Clients list page looks as
+     - Step 0's first PR, 0a, was merged in #82 on 2026-10-23 (§0.2,
+       §0.3).
+     - 0b, Vendors becoming Clients in code, is open for review in #92
+       (§0.1, §0.3). It renames and nothing else: the Clients list page looks as
        it did.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
@@ -1092,3 +1093,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     so a grant 0b's code writes while 0c waits for review isn't lost; 0d,
     with the app closed, rewrites any old name left and stops reading them.
     No trigger is needed (§0.3).
+- **2026-10-23:** 0a was merged in #82. 0b opens for review in #92, on
+  main as #83–#91 left it: its commits are as built, on that main.

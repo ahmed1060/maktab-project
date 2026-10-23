@@ -317,9 +317,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      colour too (§4.6),** in a small PR straight after the brand colour
      setting's. Merged in #81 on 2026-10-16.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
-   - Step 0's first PR, 0a, is open for review. It builds each client's
-     page and the Records page on the building blocks, with five new ones
-     written into `DESIGN.md` first: a back link above a page's title,
+   - Step 0's first PR, 0a, was merged in #82 on 2026-10-23. It builds each
+     client's page and the Records page on the building blocks, with five new
+     ones written into `DESIGN.md` first: a back link above a page's title,
      details, files, a record's expiry, and opening an item from a list
      (§5.5). It also adds that text people type keeps its own direction in
      either language (§7).
@@ -848,3 +848,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-22:** Decided by the product owner: the side bar groups, and
   the Clients list page on the building blocks, come in a small PR straight
   after 0b (§5).
+- **2026-10-23:** `CLIENTS_PLAN.md`'s 0a was merged in #82, and 0b opens
+  for review in #92. Nothing looks different with it.
