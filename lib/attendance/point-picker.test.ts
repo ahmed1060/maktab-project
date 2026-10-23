@@ -103,3 +103,12 @@ describe("a slow position", () => {
         expect(success.indexOf("if (!wanted()) return")).toBeLessThan(success.indexOf("onChange(text)"))
     })
 })
+
+describe("the picker on the building blocks (DESIGN.md §10)", () => {
+    it("sizes its hints and rounds its map with the design's tokens, the older pages keeping their own", () => {
+        const picker = readFileSync("components/PointPicker.tsx", "utf8")
+        expect(picker).toContain("blocks ? 'var(--radius-field)' : '0.75rem'")
+        expect(picker).toContain("const small = blocks ? 'var(--text-xs)' : '0.75rem'")
+        expect(picker).not.toContain("blocks ? '6px'")
+    })
+})

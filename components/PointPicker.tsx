@@ -176,6 +176,7 @@ export default function PointPicker({ value, radius, onChange, blocks = false }:
     const button = blocks ? { className: 'ui-btn ui-btn-secondary ui-btn-sm' } : { className: 'btn btn-secondary', style: { fontSize: '0.8rem' } }
     const soft = blocks ? 'var(--muted)' : 'var(--text-soft)'
     const danger = blocks ? 'var(--problem-text)' : 'var(--danger-fg)'
+    const small = blocks ? 'var(--text-xs)' : '0.75rem'
 
     return (
         <div style={{ display: 'grid', gap: '0.4rem' }}>
@@ -190,7 +191,7 @@ export default function PointPicker({ value, radius, onChange, blocks = false }:
                     </button>
                 )}
             </div>
-            <span role="status" style={{ fontSize: '0.75rem', color: shown?.kind === 'error' || (shown?.kind === 'accuracy' && shown.meters > Math.max(MAX_ACCURACY_METERS, radius)) ? danger : soft }}>
+            <span role="status" style={{ fontSize: small, color: shown?.kind === 'error' || (shown?.kind === 'accuracy' && shown.meters > Math.max(MAX_ACCURACY_METERS, radius)) ? danger : soft }}>
                 {shown?.kind === 'error' && t(shown.key)}
                 {shown?.kind === 'accuracy' && (shown.meters > Math.max(MAX_ACCURACY_METERS, radius)
                     ? t('att_loc_here_rough').replace('{n}', String(shown.meters))
@@ -199,13 +200,13 @@ export default function PointPicker({ value, radius, onChange, blocks = false }:
             {mapOpen && hereKey && (
                 <div style={{ display: 'grid', gap: '0.4rem' }}>
                     <div style={{ position: 'relative', isolation: 'isolate' }} dir="ltr">
-                        <div ref={box} aria-label={t('att_loc_map_label')} style={{ height: '18rem', borderRadius: blocks ? '6px' : '0.75rem', border: `1px solid ${blocks ? 'var(--field-line)' : 'var(--field-border)'}` }} />
+                        <div ref={box} aria-label={t('att_loc_map_label')} style={{ height: '18rem', borderRadius: blocks ? 'var(--radius-field)' : '0.75rem', border: `1px solid ${blocks ? 'var(--field-line)' : 'var(--field-border)'}` }} />
                         {/* The centre of the map, where "Pin the centre" puts the pin. */}
                         <span aria-hidden="true" className="map-cross" />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <button type="button" {...button} onClick={pinCentre}>{t('att_loc_pin_centre')}</button>
-                        <span style={{ fontSize: '0.75rem', color: soft }}>{t('att_loc_pick_hint')}</span>
+                        <span style={{ fontSize: small, color: soft }}>{t('att_loc_pick_hint')}</span>
                     </div>
                 </div>
             )}
