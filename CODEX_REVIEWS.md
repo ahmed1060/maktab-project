@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-22 21:50 UTC, against GitHub.
+Last checked: 2026-10-23 00:56 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,31 +39,22 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #82 Records move onto clients (step 0, PR 0a) | Open | `5056bc0` (2026-10-22 21:07 UTC) | Every commit after `5056bc0` (below) |
+| #83 Every table has Row Level Security on again | Open | `5e3527d` (2026-10-23 00:52 UTC) | Every commit after `5e3527d` (below) |
 
-Codex's thirteenth review, at 21:07 UTC on 2026-10-22, covered every #82
-commit up to `5056bc0`, the twelfth review's fixes among them. The
-requests for those at 06:11, 10:22 and 15:47 UTC had each hit the usage
-limit. The thirteenth review's four findings are fixed in the commits
-after it, which haven't been reviewed:
+Codex's first review of #83 found two things in `lib/rls-migrations.test.ts`.
+They're fixed in the commits after it, which haven't been reviewed:
 
-- `caac524` Deleting a section holds its client first, as deleting the company does
-- `f8a7b21` A deleted section's audit entry has its title as it was when deleted
-- `31ffdfd` A Super Admin sees a record's company on a phone and when it's opened
-- `65edc6f` A Super Admin who adds a record gets its reminders
-- the plans' and this file's own commits
-
-**Decided (2026-10-22): #82 waits for this review before it's merged.** If
-it's merged first after all, the review-only PR (step 2 above) runs from
-`5056bc0` to #82's last commit.
+- `38afbf9` The RLS check reads a migration's statements in order, turning RLS off too
+- `fba7b11` The RLS check holds every migration the catch-all doesn't cover, by name or not
+- this file's own commit
 
 ## Reviewed
 
-Every merged PR, #1 to #81, has been reviewed in full.
+Every merged PR, #1 to #82, has been reviewed in full.
 
 | PR | How |
 | --- | --- |
-| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#81 | At its last commit |
+| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#82 | At its last commit |
 | #1, #28, #29, #33, #35–#38, #45, #48, #73–#78 | After merging, on main containing its last commit |
 | #2 | Review-only #71 |
 | #3 | Review-only #69 |
