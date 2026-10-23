@@ -759,10 +759,11 @@ balance first, automatically:
        list page looks as it did.
      - 0c, the stored names following the code, was merged in #94 on
        2026-10-23 (§0.3).
-     - 0d, the database's names following the code, is open for review in
-       #95 (§0.3), with its code. Its last commit, the migration, is pushed
-       in the maintenance window, at a time the product owner chooses.
-     - Step 1, the Locations system, is built as PR 1a (§2). Proposed:
+     - 0d, the database's names following the code, was merged in #95 on
+       2026-10-23 (§0.3), its migration run in a maintenance window of
+       about 8 minutes.
+     - Step 1, the Locations system, is open for review as PR 1a in #96
+       (§2). Proposed:
        it ships as two PRs. 1b, opened once 1a is merged and live, gives
        the companies already there their built-in roles' location
        permissions (§2.9), and makes an HQ for any client the release
@@ -1183,3 +1184,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **Until step 2,** a client's own location fields follow its HQ, as the
     task form still copies them into a new task.
   - **Proposed:** step 1 ships as two PRs, 1a and 1b (§8).
+- **2026-10-23:** 0d was merged in #95, so step 0 is done: Vendors are
+  Clients on screen, in the code and in the database. Its migration ran
+  with the app in maintenance mode from 22:35 to 22:46 UTC, and production
+  had no errors after it. Step 1's first PR, 1a, opens for review in #96.

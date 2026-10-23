@@ -894,3 +894,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     check radius. The client form uses the same fields for its HQ;
   - two building block changes: a badge beside an item's name, and a list
     card's actions keep to its end when nothing is beside them.
+- **2026-10-23:** `CLIENTS_PLAN.md`'s step 0 is done (#95), and step 1's
+  first PR, 1a, opens for review in #96.
