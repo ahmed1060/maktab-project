@@ -240,12 +240,24 @@ needs no data change.
     in it: the page listed the chosen company's costs, and the button paid
     every company's. Fixed on 2026-10-22: the page and the button share one
     search (`lib/services/costs-query.ts`).
+  - With one employee picked, the page listed that employee's share of each
+    task, and the button paid each task whole, the other members' shares
+    too. Fixed on 2026-10-23, as the product owner asked: it pays that
+    employee's shares only, and a task is paid once no share of it is left.
+    The page shows only shares still to pay, so one paid this way leaves it.
 - **A paid task can be deleted, and its payment record goes with it**
   (`TaskService.delete` doesn't check payment).
 - **Deleting a vendor quietly unlinks all its tasks** (`onDelete: SetNull`).
 - **Bug: cost descriptions are thrown away.** The task's cost form sends a
   description with each cost, but the server saves only the amount ("Added
   cost: 150.00 EGP"), so every cost shows "No description".
+- **Bug: a cost not split by member broke the Costs page.** The page shows
+  each member's share of a task's cost (`memberCosts`). A task with a cost
+  and no shares, as tasks had before shares, was shown under
+  `task.assignee`, which a task doesn't have, so the whole page failed.
+  Fixed on 2026-10-23: its card names the task's assignees. With an
+  employee picked it's left out, since it's no one's share. Production has
+  no such task.
 
 ---
 
@@ -992,3 +1004,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   company's pending costs, because its search had no company in it for a
   Super Admin. The page and the button now share one search, and a company
   name that matches none lists and pays nothing, not everything.
+- **2026-10-23:** Fixed, in a PR of its own (§1), two things on the Costs
+  page. A task with a cost not split by member no longer breaks it: its card
+  names the task's assignees. And, as the product owner asked, with one
+  employee picked Mark all as paid pays that employee's shares only, not
+  each task whole; a task is paid once no share of it is left, and the page
+  shows only shares still to pay. Production has no costs yet.
