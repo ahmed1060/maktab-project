@@ -70,8 +70,8 @@ Realtime. Two locks keep the Data API out of every table:
   ALTER TABLE "NewTable" ENABLE ROW LEVEL SECURITY;
   ```
 
-  `lib/rls-migrations.test.ts` fails in CI otherwise, and
-  `lib/rls.db.test.ts` checks it against a real Postgres.
+  No migration turns it off. `lib/rls-migrations.test.ts` fails in CI
+  otherwise, and `lib/rls.db.test.ts` checks it against a real Postgres.
 
 ## 5. Key Deployment Notes
 
