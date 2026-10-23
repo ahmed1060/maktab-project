@@ -67,6 +67,8 @@ export const prismaMock: any = new Proxy({}, {
     get(_t, prop: string) {
         if (prop === "task") return task
         if (prop === "$transaction") return async (fn: any) => typeof fn === "function" ? fn(prismaMock) : Promise.all(fn)
+        // Bulk payment locks the tasks it pays first; there are no rows here to hold.
+        if (prop === "$queryRaw") return async () => []
         return basePrisma[prop]
     },
 })
