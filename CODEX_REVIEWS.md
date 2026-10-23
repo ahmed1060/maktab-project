@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-23 08:37 UTC, against GitHub.
+Last checked: 2026-10-23 08:46 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,14 +39,13 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #85 DESIGN.md: the top bar keeps its glass | Open | `a8ced0f` (2026-10-23 08:35 UTC) | Every commit after `a8ced0f` (below) |
+| #85 DESIGN.md: the top bar keeps its glass | Open | `d77de70` (2026-10-23 08:45 UTC) | Every commit after `d77de70` (below) |
 
-Codex's first review of #85 found three things in `DESIGN.md`. They're
-fixed in the commits after it, which haven't been reviewed:
+Codex's first review of #85 found three things in `DESIGN.md`, fixed in
+`b45884b`, `38b1e4d` and `e662f96`; its second, of `d77de70`, found one
+more. That fix hasn't been reviewed:
 
-- `b45884b` DESIGN.md: the top bar's glass has its own tokens, not --panel
-- `38b1e4d` DESIGN.md: where the browser can't blur, the top bar is solid
-- `e662f96` DESIGN.md: the top bar's blur eases in with the rest
+- `cccb17e` DESIGN.md: the glass top bar's dark shadow is the one exception
 - this file's own commit
 
 ## Reviewed
