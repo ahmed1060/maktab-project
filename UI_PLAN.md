@@ -822,3 +822,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   bar is never the helper grey, which a dark map under it could make
   unreadable, and the bar no longer moves the page 32px as it floats, as
   today's does (`DESIGN.md` §5.1).
+- **2026-10-22:** Fixed, in its own PR: the date range picker shows the
+  days picked in any time zone. West of UTC it showed each day as the one
+  before (Oct 1–20 read Sep 30–Oct 19 in Los Angeles); it now reads them
+  as calendar days, as the date picker does.
