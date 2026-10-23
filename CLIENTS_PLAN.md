@@ -757,11 +757,11 @@ balance first, automatically:
      - 0b, Vendors becoming Clients in code, was merged in #92 on
        2026-10-23 (§0.1, §0.3). It renames and nothing else: the Clients
        list page looks as it did.
-     - 0c, the stored names following the code, is open for review in #94
-       (§0.3). Its migration runs against 0b's code, live since #92.
-     - 0d, the database's names following the code, is built (§0.3). It
-       opens once 0c is merged and live, and its last commit is pushed in
-       the maintenance window, at a time the product owner chooses.
+     - 0c, the stored names following the code, was merged in #94 on
+       2026-10-23 (§0.3).
+     - 0d, the database's names following the code, is open for review in
+       #95 (§0.3), with its code. Its last commit, the migration, is pushed
+       in the maintenance window, at a time the product owner chooses.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1150,3 +1150,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   old section column goes, and the code stops reading the old permission
   names and module key. Its migration is its last commit, pushed in the
   maintenance window. It opens once 0c is merged and live.
+- **2026-10-23:** 0c was merged in #94: production's 9 Clients grants are
+  stored under their new names, and the old clients table is gone. 0d
+  opens for review in #95 with its code; its migration waits for the
+  maintenance window.
