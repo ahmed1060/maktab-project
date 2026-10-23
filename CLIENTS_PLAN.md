@@ -1026,3 +1026,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   company is already gone: what storage refuses is logged and left to the
   orphan sweep. Not a file a live row still uses, such as the photo of
   someone a Super Admin moved to another company.
+- **2026-10-23:** From Codex's review of #89: the list of files still in
+  use, which deleting a company and the orphan sweep both trust, is read in
+  pages by id, each after the last. An offset stepped past a row when an
+  earlier one was deleted between pages, so a file only that row used could
+  be taken for unused and removed.
