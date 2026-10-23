@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { PERMISSIONS, isPermission, type Permission, type Scope } from "@/lib/permissions/catalogue"
 import { holdersOf } from "@/lib/permissions/holders"
+import { fromStored, storedNames } from "@/lib/permissions/stored-names"
 
 /**
  * "Who can do this?" (ROLES_PLAN.md §6.5) — the first question after a
@@ -18,7 +19,7 @@ export class AccessReportService {
             where: { companyId, status: { not: "DELETED" }, ...holdersOf(permission) },
             select: {
                 id: true, firstName: true, lastName: true, status: true,
-                assignedRole: { select: { id: true, name: true, builtIn: true, grants: { where: { permission }, select: { scope: true } } } },
+                assignedRole: { select: { id: true, name: true, builtIn: true, grants: { where: { permission: { in: storedNames(permission) } }, select: { scope: true } } } },
             },
             orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
         })
@@ -43,7 +44,7 @@ export class AccessReportService {
         })
         if (!user) throw new Error("USER_NOT_FOUND")
         const role = user.assignedRole
-        const grants = (role?.grants ?? [])
+        const grants = fromStored(role?.grants ?? [])
             // A grant the catalogue no longer knows gates nothing, and can()
             // never sees it (RoleService.forToken skips it too).
             .filter((g): g is { permission: Permission; scope: Scope } => isPermission(g.permission))

@@ -25,7 +25,7 @@ beforeEach(() => { lookup = async () => ({}) })
 describe("a reminder's link to a record", () => {
     it("opens the record on its client's page", async () => {
         lookup = async () => ({ client: { id: "v1" } })
-        await expect(open()).rejects.toThrow("REDIRECT /dashboard/vendors/v1?record=r1")
+        await expect(open()).rejects.toThrow("REDIRECT /dashboard/clients/v1?record=r1")
     })
 
     it("is not found when the record is gone, or not theirs to see", async () => {

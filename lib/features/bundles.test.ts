@@ -35,7 +35,7 @@ describe("the module table", () => {
     })
 
     it("puts operations in Company Management", () => {
-        for (const m of ['TASKS', 'OBLIGATIONS', 'RECORDS', 'VENDORS', 'COSTS'] as const) {
+        for (const m of ['TASKS', 'OBLIGATIONS', 'RECORDS', 'CLIENTS', 'COSTS'] as const) {
             expect(bundlesFor(m), m).toEqual(['COMPANY_MANAGEMENT'])
         }
     })
@@ -86,7 +86,7 @@ describe("resolving a package into access", () => {
     it("Company Management alone opens operations and closes HR", () => {
         const access = resolveBundles(CM)
         expect(hasModule(access, 'TASKS')).toBe(true)
-        expect(hasModule(access, 'VENDORS')).toBe(true)
+        expect(hasModule(access, 'CLIENTS')).toBe(true)
         expect(hasModule(access, 'DAY_OFF')).toBe(false)
         expect(hasModule(access, 'PAYROLL')).toBe(false)
     })

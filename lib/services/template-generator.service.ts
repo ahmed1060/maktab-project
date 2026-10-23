@@ -10,7 +10,7 @@ type TemplateUser = {
     role: string
 }
 
-type TemplateVendor = {
+type TemplateClient = {
     name: string
     locationName: string
 }
@@ -24,17 +24,17 @@ const LAST_DATA_ROW = 52
 /**
  * Turns the Super-Admin-uploaded base file into the actual downloadable
  * template: adds a "Users" sheet (backing the Employee Name column's
- * dropdown) and a "Vendors" sheet (backing the Vendor Name column's
- * dropdown), then wires the main sheet's Vendor Name (C) and Employee Name
+ * dropdown) and a "Clients" sheet (backing the Client Name column's
+ * dropdown), then wires the main sheet's Client Name (C) and Employee Name
  * (D) columns to them.
  *
  * The base file is the layout/branding — this never touches its existing
  * rows/columns, only adds the two reference sheets and the validations.
  * Its own column order needs to match what the parser reads (tasks/new/
- * page.tsx's handleBulkUpload): Title, Description, Vendor Name, Employee
+ * page.tsx's handleBulkUpload): Title, Description, Client Name, Employee
  * Name, Deadline Date, Deadline Time, Difficulty.
  */
-export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Locale, users: TemplateUser[], vendors: TemplateVendor[]): Promise<Buffer> {
+export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Locale, users: TemplateUser[], clients: TemplateClient[]): Promise<Buffer> {
     const dict = locale === 'ar' ? ar : en
     const t = (key: TranslationKey) => dict[key] || en[key]
     const isAr = locale === 'ar'
@@ -64,15 +64,15 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
         })
     })
 
-    // "Vendors" sheet — deliberately just Name + Location, nothing else
-    // (owner/mobile live on the Vendors page itself, not needed here).
-    const vendorsSheet = workbook.addWorksheet(isAr ? 'الموردين' : 'Vendors', isAr ? { views: [{ rightToLeft: true }] } : undefined)
-    vendorsSheet.columns = [
+    // "Clients" sheet — deliberately just Name + Location, nothing else
+    // (owner/mobile live on the Clients page itself, not needed here).
+    const clientsSheet = workbook.addWorksheet(isAr ? 'الموردين' : 'Clients', isAr ? { views: [{ rightToLeft: true }] } : undefined)
+    clientsSheet.columns = [
         { header: isAr ? 'الاسم' : 'Name', key: 'name', width: 30 },
         { header: isAr ? 'الموقع' : 'Location', key: 'location', width: 35 },
     ]
-    vendors.forEach(v => {
-        vendorsSheet.addRow({ name: v.name, location: v.locationName })
+    clients.forEach(v => {
+        clientsSheet.addRow({ name: v.name, location: v.locationName })
     })
 
     // Wire the main sheet's columns to both reference sheets. Ranges are
@@ -80,22 +80,22 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
     // still gets a (harmless, unused) 1-row range rather than a 0-row one,
     // which some spreadsheet apps reject.
     const usersLastRow = Math.max(users.length + 1, 2)
-    const vendorsLastRow = Math.max(vendors.length + 1, 2)
+    const clientsLastRow = Math.max(clients.length + 1, 2)
 
-    // By the sheets' actual names, not "Users"/"Vendors" written out: an
+    // By the sheets' actual names, not "Users"/"Clients" written out: an
     // Arabic download names them المستخدمين and الموردين, and a formula
     // pointing at a sheet that does not exist leaves every dropdown in the
     // file empty. Quoted, as a name that is not plain ASCII must be.
-    const vendorsRange = `${sheetRef(vendorsSheet.name)}!$A$2:$A$${vendorsLastRow}`
+    const clientsRange = `${sheetRef(clientsSheet.name)}!$A$2:$A$${clientsLastRow}`
     const usersRange = `${sheetRef(usersSheet.name)}!$A$2:$A$${usersLastRow}`
 
     for (let row = FIRST_DATA_ROW; row <= LAST_DATA_ROW; row++) {
-        // Column C: Vendor Name dropdown, sourced from Vendors!A. Optional —
-        // an empty cell just means no vendor for that row.
+        // Column C: Client Name dropdown, sourced from Clients!A. Optional —
+        // an empty cell just means no client for that row.
         mainSheet.getCell(`C${row}`).dataValidation = {
             type: 'list',
             allowBlank: true,
-            formulae: [vendorsRange]
+            formulae: [clientsRange]
         }
         // Column D: Employee Name — one merged column for both cases, not
         // two. A dropdown (sourced from Users!A, "FirstName LastName

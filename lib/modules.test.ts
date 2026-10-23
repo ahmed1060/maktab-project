@@ -25,8 +25,8 @@ import { resolveTitleKey } from "./page-title"
 describe("the module registry", () => {
     it("covers the nine company-facing modules and no more", () => {
         expect([...MODULE_KEYS].sort()).toEqual([
-            "costs", "dashboard", "dayOff", "employees",
-            "obligations", "records", "requests", "tasks", "vendors",
+            "clients", "costs", "dashboard", "dayOff", "employees",
+            "obligations", "records", "requests", "tasks",
         ])
     })
 
@@ -129,7 +129,7 @@ describe("parsing overrides out of an untyped Json column", () => {
 
     it("survives the backfill's exact shape", () => {
         // What the migration wrote for all four live companies.
-        expect(parseModuleOverrides({ vendors: "Clinics" })).toEqual({ vendors: "Clinics" })
+        expect(parseModuleOverrides({ clients: "Clinics" })).toEqual({ clients: "Clinics" })
     })
 })
 
@@ -138,14 +138,14 @@ const t = ((key: string) => (en as Record<string, string>)[key]) as (key: any) =
 
 describe("resolving a module's name and icon", () => {
     it("falls back to the translated default when nothing is overridden", () => {
-        expect(resolveModuleLabel("vendors", {}, t)).toBe(en.vendors)
-        expect(resolveModuleLabel("vendors", null, t)).toBe(en.vendors)
-        expect(resolveModuleIcon("vendors", null)).toBe("🚚")
+        expect(resolveModuleLabel("clients", {}, t)).toBe(en.clients)
+        expect(resolveModuleLabel("clients", null, t)).toBe(en.clients)
+        expect(resolveModuleIcon("clients", null)).toBe("🚚")
     })
 
     it("prefers the company's own name and icon", () => {
-        expect(resolveModuleLabel("vendors", { vendors: "Suppliers" }, t)).toBe("Suppliers")
-        expect(resolveModuleIcon("vendors", { vendors: "🏥" })).toBe("🏥")
+        expect(resolveModuleLabel("clients", { clients: "Suppliers" }, t)).toBe("Suppliers")
+        expect(resolveModuleIcon("clients", { clients: "🏥" })).toBe("🏥")
     })
 
     it("treats an empty override as no override, not as a blank name", () => {
@@ -167,12 +167,12 @@ describe("resolving a module's name and icon", () => {
 describe("modulesFrom", () => {
     it("reads both maps off a session user and answers for any module", () => {
         const modules = modulesFrom(
-            { moduleLabels: { vendors: "Suppliers" }, moduleIcons: { vendors: "🏥" } },
+            { moduleLabels: { clients: "Suppliers" }, moduleIcons: { clients: "🏥" } },
             t
         )
-        expect(modules.entry("vendors")).toEqual({
-            key: "vendors",
-            href: "/dashboard/vendors",
+        expect(modules.entry("clients")).toEqual({
+            key: "clients",
+            href: "/dashboard/clients",
             label: "Suppliers",
             icon: "🏥",
         })
@@ -195,9 +195,9 @@ describe("modulesFrom", () => {
     it("ignores an icon override that is not an emoji", () => {
         // The write path rejects these, but a row predating that validation —
         // or written by anything other than this app — must not put the word
-        // "Vendors" where a 1.4rem glyph belongs.
-        const modules = modulesFrom({ moduleIcons: { vendors: "VEND" } }, t)
-        expect(modules.icon("vendors")).toBe("🚚")
+        // "Clients" where a 1.4rem glyph belongs.
+        const modules = modulesFrom({ moduleIcons: { clients: "VEND" } }, t)
+        expect(modules.icon("clients")).toBe("🚚")
     })
 })
 
@@ -218,7 +218,7 @@ describe("validating an icon", () => {
     })
 
     it("rejects text, punctuation and whitespace", () => {
-        for (const bad of ["", "V", "Vendors", "...", "→", "🚚 trucks", " ", "🚚 "]) {
+        for (const bad of ["", "V", "Clients", "...", "→", "🚚 trucks", " ", "🚚 "]) {
             expect(isValidModuleIcon(bad), JSON.stringify(bad)).toBe(false)
         }
     })
@@ -230,8 +230,8 @@ describe("validating an icon", () => {
 
 describe("parsing icon overrides", () => {
     it("keeps valid emoji and drops everything else", () => {
-        expect(parseModuleIcons({ vendors: "🏥", records: "Patients", tasks: "" }))
-            .toEqual({ vendors: "🏥" })
+        expect(parseModuleIcons({ clients: "🏥", records: "Patients", tasks: "" }))
+            .toEqual({ clients: "🏥" })
     })
 
     it("drops unknown modules the same way labels do", () => {
@@ -244,15 +244,15 @@ describe("storing overrides", () => {
         // So a company that cleared every rename reads back identical to one
         // that never renamed anything.
         expect(emptyToNull({})).toBeNull()
-        expect(emptyToNull({ vendors: "Suppliers" })).toEqual({ vendors: "Suppliers" })
+        expect(emptyToNull({ clients: "Suppliers" })).toEqual({ clients: "Suppliers" })
     })
 
     it("compares two maps by what they say, not by key order", () => {
-        expect(sameOverrides({ vendors: "S", tasks: "J" }, { tasks: "J", vendors: "S" })).toBe(true)
+        expect(sameOverrides({ clients: "S", tasks: "J" }, { tasks: "J", clients: "S" })).toBe(true)
         expect(sameOverrides(null, {})).toBe(true)
-        expect(sameOverrides(null, { vendors: "S" })).toBe(false)
-        expect(sameOverrides({ vendors: "S" }, { vendors: "T" })).toBe(false)
-        expect(sameOverrides({ vendors: "S" }, {})).toBe(false)
+        expect(sameOverrides(null, { clients: "S" })).toBe(false)
+        expect(sameOverrides({ clients: "S" }, { clients: "T" })).toBe(false)
+        expect(sameOverrides({ clients: "S" }, {})).toBe(false)
     })
 })
 
@@ -309,16 +309,16 @@ describe("deciding what a company update stores", () => {
         // So a company that cleared every rename reads back identical to one
         // that never renamed anything.
         expect(planOverrideWrite({}, "labels")).toBeNull()
-        expect(planOverrideWrite({ vendors: "" }, "labels")).toBeNull()
-        expect(planOverrideWrite({ vendors: "not an emoji" }, "icons")).toBeNull()
+        expect(planOverrideWrite({ clients: "" }, "labels")).toBeNull()
+        expect(planOverrideWrite({ clients: "not an emoji" }, "icons")).toBeNull()
     })
 
     it("narrows labels and icons differently, which is what the kind selects", () => {
         // The only difference left between the two now that vendorsLabel is
         // gone: a label is kept as typed, an icon that is not an emoji is not
         // an icon.
-        const incoming = { vendors: "Suppliers", records: "🏥" }
-        expect(planOverrideWrite(incoming, "labels")).toEqual({ vendors: "Suppliers", records: "🏥" })
+        const incoming = { clients: "Suppliers", records: "🏥" }
+        expect(planOverrideWrite(incoming, "labels")).toEqual({ clients: "Suppliers", records: "🏥" })
         expect(planOverrideWrite(incoming, "icons")).toEqual({ records: "🏥" })
     })
 
@@ -346,7 +346,7 @@ describe("the contract step", () => {
         "components/PageTitle.tsx",
         "components/DashboardHeader.tsx",
         "components/BulkTaskReviewModal.tsx",
-        "app/(dashboard)/dashboard/vendors/page.tsx",
+        "app/(dashboard)/dashboard/clients/page.tsx",
         "app/(dashboard)/dashboard/tasks/new/page.tsx",
         "app/(dashboard)/dashboard/companies/[id]/settings/page.tsx",
     ]
@@ -365,13 +365,13 @@ describe("the contract step", () => {
         }
     })
 
-    it("keeps the vendors module itself, which is the point", () => {
-        // Dropping the column must not drop the feature. Vendors is still a
+    it("keeps the clients module itself, which is the point", () => {
+        // Dropping the column must not drop the feature. Clients is still a
         // module, still renameable, and still reachable at its own route — via
         // the maps now rather than a column of its own.
-        expect(isModuleKey("vendors")).toBe(true)
-        expect(MODULES.vendors.href).toBe("/dashboard/vendors")
-        expect(modulesFrom({ moduleLabels: { vendors: "Suppliers" } }, t).label("vendors"))
+        expect(isModuleKey("clients")).toBe(true)
+        expect(MODULES.clients.href).toBe("/dashboard/clients")
+        expect(modulesFrom({ moduleLabels: { clients: "Suppliers" } }, t).label("clients"))
             .toBe("Suppliers")
     })
 })

@@ -9,8 +9,8 @@ const mobileNumberSchema = z.string()
     .max(20, "Mobile number is too long")
     .regex(/^[0-9+\-\s()]+$/, "Mobile number can only contain digits, spaces, and + - ( )")
 
-export const createVendorSchema = z.object({
-    name: z.string().min(1, "Vendor name is required").max(100),
+export const createClientSchema = z.object({
+    name: z.string().min(1, "Client name is required").max(100),
     ownerName: z.string().min(1, "Owner name is required").max(100),
     mobileNumber: mobileNumberSchema,
     locationName: z.string().min(1, "Location is required").max(200),
@@ -18,14 +18,14 @@ export const createVendorSchema = z.object({
     companyId: z.string().optional(),
 })
 
-export const updateVendorSchema = z.object({
-    id: z.string().min(1, "Vendor ID is required"),
-    name: z.string().min(1, "Vendor name is required").max(100).optional(),
+export const updateClientSchema = z.object({
+    id: z.string().min(1, "Client ID is required"),
+    name: z.string().min(1, "Client name is required").max(100).optional(),
     ownerName: z.string().min(1, "Owner name is required").max(100).optional(),
     mobileNumber: mobileNumberSchema.optional(),
     locationName: z.string().min(1, "Location is required").max(200).optional(),
     locationLink: z.string().url().optional().or(z.literal('')),
 })
 
-export type CreateVendorInput = z.infer<typeof createVendorSchema>
-export type UpdateVendorInput = z.infer<typeof updateVendorSchema>
+export type CreateClientInput = z.infer<typeof createClientSchema>
+export type UpdateClientInput = z.infer<typeof updateClientSchema>

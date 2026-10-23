@@ -40,10 +40,10 @@ const REMINDER_NEEDS_DATE = { message: "A reminder needs an expiry date.", path:
 export const createRecordSchema = z.object({
     ...content,
     sectionId: id.optional(),
-    vendorId: id.optional(),
+    clientId: id.optional(),
     sectionTitle: title.optional(),
 })
-    .refine(r => (r.sectionId !== undefined) !== (r.vendorId !== undefined && r.sectionTitle !== undefined), { message: "Choose a section, or name a new one.", path: ["sectionId"] })
+    .refine(r => (r.sectionId !== undefined) !== (r.clientId !== undefined && r.sectionTitle !== undefined), { message: "Choose a section, or name a new one.", path: ["sectionId"] })
     .refine(remindsOnlyWithExpiry, REMINDER_NEEDS_DATE)
 
 /**
@@ -54,7 +54,7 @@ export const createRecordSchema = z.object({
 export const updateRecordSchema = z.object({ id, ...content, sectionId: id.optional(), filesBefore: z.array(z.string().max(2000)).max(RECORD_FILES_MAX) })
     .refine(remindsOnlyWithExpiry, REMINDER_NEEDS_DATE)
 
-export const createSectionSchema = z.object({ vendorId: id, title })
+export const createSectionSchema = z.object({ clientId: id, title })
 export const renameSectionSchema = z.object({ id, title })
 
 /** Files uploaded for a record that was never saved with them (RecordForm). */

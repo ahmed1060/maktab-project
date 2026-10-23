@@ -438,8 +438,8 @@ describe("the building blocks page", () => {
 
 describe("a client's page and its records (DESIGN.md §5.5)", () => {
     it("the page header's back link goes to the page it belongs to, its arrow mirrored in Arabic", () => {
-        const html = render(h(ui.PageHeader, { title: "Acme", back: { href: "/dashboard/vendors", label: "Vendors" } }))
-        expect(html).toMatch(/<a class="ui-back-link" href="\/dashboard\/vendors"><svg[^>]*class="ui-icon ui-flip"[^>]*>.*<\/svg>Vendors<\/a><h1 class="ui-page-title">Acme<\/h1>/)
+        const html = render(h(ui.PageHeader, { title: "Acme", back: { href: "/dashboard/clients", label: "Clients" } }))
+        expect(html).toMatch(/<a class="ui-back-link" href="\/dashboard\/clients"><svg[^>]*class="ui-icon ui-flip"[^>]*>.*<\/svg>Clients<\/a><h1 class="ui-page-title">Acme<\/h1>/)
         expect(render(h(ui.PageHeader, { title: "Acme" }))).not.toContain("ui-back-link")
     })
 

@@ -963,9 +963,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         ) : (
                             <span>{name}</span>
                         )}
-                        {(task as any).vendor?.name && (
+                        {(task as any).client?.name && (
                             <span style={{ color: 'var(--text-faint)', fontWeight: '400' }}>
-                                — {t('vendor_via_label' as any) || 'via'} {(task as any).vendor.name}
+                                — {t('client_via_label' as any) || 'via'} {(task as any).client.name}
                             </span>
                         )}
                     </div>

@@ -16,7 +16,7 @@ import type { SectionItem } from './types'
  * many records each holds: added with records.contribute, renamed with
  * records.edit, and deleted, with every record in them, with records.delete.
  */
-export default function SectionsCard({ vendorId, sections, onChanged }: { vendorId: string; sections: SectionItem[]; onChanged: () => void }) {
+export default function SectionsCard({ clientId, sections, onChanged }: { clientId: string; sections: SectionItem[]; onChanged: () => void }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { can } = useCan()
@@ -44,7 +44,7 @@ export default function SectionsCard({ vendorId, sections, onChanged }: { vendor
             const res = await fetch('/api/records/sections', {
                 method: adding ? 'POST' : 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(adding ? { vendorId, title } : { id: naming.id, title }),
+                body: JSON.stringify(adding ? { clientId, title } : { id: naming.id, title }),
             })
             const body = await res.json().catch(() => null)
             if (!res.ok) {

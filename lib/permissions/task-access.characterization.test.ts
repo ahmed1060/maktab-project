@@ -139,7 +139,7 @@ const COMPANY_WIDE: [string, () => Promise<Response>, Row][] = [
     ["bulk-creating tasks",                    async () => (await import("@/app/api/tasks/bulk/route")).POST(withBody("POST", "/api/tasks/bulk", { tasks: [] })), [400, 400, 400, 400, 403]],
     ["recording payment in bulk",              async () => (await import("@/app/api/tasks/payment/bulk/route")).POST(withBody("POST", "/api/tasks/payment/bulk", { taskIds: ["t-emp"] })), [200, 200, 200, 200, 403]],
     // Changed in Part B: the template lists every colleague's name, username
-    // and role and the company's vendors, and is for bulk-creating tasks — it
+    // and role and the company's clients, and is for bulk-creating tasks — it
     // now asks tasks.create. It asked nothing, so an employee could download
     // the staff list. (A Super Admin names the company; without one, 400.)
     ["downloading the task import template",   async () => (await import("@/app/api/templates/download/route")).GET(new Request(url("/api/templates/download?locale=en"))), [400, 200, 200, 200, 403]],

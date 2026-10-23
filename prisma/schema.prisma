@@ -273,7 +273,7 @@ model Company {
   finalSettlements     FinalSettlement[]
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
-  businessClients      BusinessClient[]
+  legacyClients        LegacyClient[]
   package              Package?                  @relation(fields: [packageId], references: [id], onDelete: Restrict)
   lockedAttempts       LockedModuleAttempt[]
   payments             CompanyPayment[]
@@ -281,7 +281,7 @@ model Company {
   requests             Request[]
   tasks                Task[]
   users                User[]
-  vendors              Vendor[]
+  clients              Client[]
   roles                Role[]                    @relation("CompanyRoles")
   roleRequests         RoleRequest[]
   roleChangeRequests   RoleChangeRequest[]
@@ -477,13 +477,13 @@ model User {
   auditLogs                  AuditLog[]
   trustedDevices             TrustedDevice[]
   verificationCodes          VerificationCode[]
-  createdClients             BusinessClient[]        @relation("ClientCreatedBy")
-  editedClients              BusinessClient[]        @relation("ClientEditedBy")
+  createdLegacyClients       LegacyClient[]          @relation("LegacyClientCreatedBy")
+  editedLegacyClients        LegacyClient[]          @relation("LegacyClientEditedBy")
   createdRecords             ClientRecord[]          @relation("CreatedNotes")
   editedRecords              ClientRecord[]          @relation("EditedNotes")
   createdSections            RecordSection[]         @relation("SectionCreatedBy")
   editedSections             RecordSection[]         @relation("SectionEditedBy")
-  createdVendors             Vendor[]                @relation("VendorCreatedBy")
+  createdClients             Client[]                @relation("ClientCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
   dayOffRequests             DayOffRequest[]
   notifications              Notification[]
@@ -590,15 +590,15 @@ model Task {
   // time), this is only the formal link back for future reporting. Deleting
   // a vendor never touches historical tasks — SetNull just detaches the
   // reference, the copied location text stays exactly as it was.
-  vendorId            String?
+  clientId            String?           @map("vendorId")
   company             Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  vendor              Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  client              Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]            @relation("MultipleAssignees")
 
   @@index([createdBy])
   @@index([companyId])
-  @@index([vendorId])
+  @@index([clientId])
   @@index([status])
   @@index([createdAt])
   @@index([paymentStatus])
@@ -903,12 +903,13 @@ model SalaryRecord {
   @@index([year])
 }
 
-/// Today's empty Clients section's own list of businesses. Records moved onto
-/// each client (Vendor) in PR 0a (CLIENTS_PLAN.md §0.2), and nothing reads
-/// this any more. It stays until 0b removes it, because main's code still
-/// counts it on the Super Admin's dashboard while 0a waits for review, and
-/// every build migrates the one shared database (§0.3).
-model BusinessClient {
+/// The old Clients section's own list of businesses, from before records
+/// moved onto clients in PR 0a (CLIENTS_PLAN.md §0.2). Nothing reads or
+/// writes it. Its table stays until 0c drops it, once 0b's code is live:
+/// while 0b waits for review, 0a's code still selects every column of a
+/// section, its old client column included (§0.3). That column stays until
+/// 0d, as this release selects it too.
+model LegacyClient {
   id             String          @id @default(uuid())
   name           String
   companyId      String
@@ -917,8 +918,8 @@ model BusinessClient {
   createdById    String?
   lastEditedById String?
   company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy      User?           @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  lastEditedBy   User?           @relation("ClientEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
+  createdBy      User?           @relation("LegacyClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lastEditedBy   User?           @relation("LegacyClientEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
   sections       RecordSection[]
 
   @@unique([name, companyId])
@@ -931,23 +932,24 @@ model RecordSection {
   id             String          @id @default(uuid())
   title          String
   /// The client it belongs to. Null only on a section of the old Clients
-  /// section, which 0b removes; the table's check says exactly one of the
-  /// two is set.
-  vendorId       String?
-  /// The old Clients section's business. Nothing sets it any more.
-  clientId       String?
+  /// section, of which 0b deletes any; the table's check says exactly one of
+  /// the two is set. Its column keeps the old name until 0d.
+  clientId       String?         @map("vendorId")
+  /// The old Clients section's business. Nothing sets it; 0d drops it,
+  /// with the app closed, as every release until then selects it.
+  legacyClientId String?         @map("clientId")
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   createdById    String?
   lastEditedById String?
   records        ClientRecord[]
-  vendor         Vendor?         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  client         BusinessClient? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client         Client?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  legacyClient   LegacyClient?   @relation(fields: [legacyClientId], references: [id], onDelete: Cascade)
   createdBy      User?           @relation("SectionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   lastEditedBy   User?           @relation("SectionEditedBy", fields: [lastEditedById], references: [id], onDelete: SetNull)
 
-  @@unique([title, clientId])
-  @@unique([vendorId, title])
+  @@unique([title, legacyClientId])
+  @@unique([clientId, title])
   @@map("ClientSection")
 }
 
@@ -1158,7 +1160,9 @@ model DayOffCreditSnapshot {
   @@index([userId])
 }
 
-model Vendor {
+/// A business the company works for (CLIENTS_PLAN.md §0.1). Its table and
+/// columns keep the old name, Vendor, until 0d renames them.
+model Client {
   id           String   @id @default(uuid())
   companyId    String
   name         String
@@ -1173,13 +1177,14 @@ model Vendor {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy    User?    @relation("VendorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy    User?    @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   tasks        Task[]
   /// Its records, in sections (CLIENTS_PLAN.md §0.2).
   recordSections RecordSection[]
 
   @@unique([name, companyId])
   @@index([companyId])
+  @@map("Vendor")
 }
 
 /// One row per scheduled job, rewritten on every run.

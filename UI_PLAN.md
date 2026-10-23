@@ -153,7 +153,7 @@ existing request pages sit together under People (§2.1).
 
 | English | Arabic | Meaning |
 |---|---|---|
-| Client / Clients | عميل / العملاء | A business the company works for (today's vendors) |
+| Client / Clients | عميل / العملاء | A business the company works for (called vendors until `CLIENTS_PLAN.md`'s 0b) |
 | Location / Locations | موقع / المواقع | Where a task is done: a client's HQ or branch, or a shared place |
 | HQ | المقر الرئيسي | A client's main location |
 | Check-in place / Check-in places | مكان الحضور / أماكن الحضور | Where employees check in for attendance (today's "work locations") |
@@ -317,14 +317,16 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      colour too (§4.6),** in a small PR straight after the brand colour
      setting's. Merged in #81 on 2026-10-16.
 4. **`CLIENTS_PLAN.md`, steps 0–7.**
-   - Step 0's first PR, 0a, is open for review. It builds each client's
-     page and the Records page on the building blocks, with five new ones
-     written into `DESIGN.md` first: a back link above a page's title,
+   - Step 0's first PR, 0a, was merged in #82 on 2026-10-23. It builds each
+     client's page and the Records page on the building blocks, with five new
+     ones written into `DESIGN.md` first: a back link above a page's title,
      details, files, a record's expiry, and opening an item from a list
      (§5.5). It also adds that text people type keeps its own direction in
      either language (§7).
-   - The side bar groups (§2.1, §2.2) land with step 0. Proposed: with 0b,
-     when Vendors become Clients (`CLIENTS_PLAN.md` §8).
+   - The side bar groups (§2.1, §2.2) land with step 0. Decided
+     (2026-10-22): in a small PR straight after 0b, which makes Vendors
+     Clients in code and leaves the screens as they were, with the Clients
+     list page rebuilt on the building blocks (`CLIENTS_PLAN.md` §8).
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
@@ -838,3 +840,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Codex's review found two more: a day whose midnight the clocks skip (as
   Havana's on 8 March) started an hour early, and an employee's own
   obligations were counted in the platform's zone, not their company's.
+- **2026-10-22:** `CLIENTS_PLAN.md`'s 0b is built: Vendors are Clients in
+  the code and at their pages' addresses, with the old addresses opening
+  the new ones. Nothing looks different. Proposed: the side bar groups, and
+  the Clients list page on the building blocks, in a small PR after it
+  (§5).
+- **2026-10-22:** Decided by the product owner: the side bar groups, and
+  the Clients list page on the building blocks, come in a small PR straight
+  after 0b (§5).
+- **2026-10-23:** `CLIENTS_PLAN.md`'s 0a was merged in #82, and 0b opens
+  for review in #92. Nothing looks different with it.

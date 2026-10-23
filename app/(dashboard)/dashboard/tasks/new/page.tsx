@@ -24,7 +24,7 @@ import { earliestDeadline } from '@/lib/deadline'
 import { useCan } from '@/lib/useCan'
 import Link from 'next/link'
 
-const NO_VENDORS: any[] = []
+const NO_CLIENTS: any[] = []
 
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
@@ -38,11 +38,11 @@ export default function NewTaskPage() {
     const [difficulty, setDifficulty] = useState('')
     const [location, setLocation] = useState('')
     const [locationLink, setLocationLink] = useState('')
-    // Vendors feature: mutually exclusive with typing a location — picking a
-    // vendor clears the typed fields and vice versa, both here and (as the
+    // Clients feature: mutually exclusive with typing a location — picking a
+    // client clears the typed fields and vice versa, both here and (as the
     // real guarantee) server-side in TaskService.create.
-    const [useVendor, setUseVendor] = useState(false)
-    const [vendorId, setVendorId] = useState('')
+    const [useClient, setUseClient] = useState(false)
+    const [clientId, setClientId] = useState('')
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
     const [bulkTasks, setBulkTasks] = useState<any[]>([])
@@ -54,10 +54,10 @@ export default function NewTaskPage() {
     const { selectedCompanyId } = useCompany()
     const userRole = (session?.user as any)?.role
     const modules = useModules()
-    const vendorsName = modules.label('vendors')
-    // The permission GET /api/vendors checks — someone who may not read the
-    // vendor list gets the plain location field only, same as always.
-    const canUseVendors = useCan().can('vendors.view')
+    const clientsName = modules.label('clients')
+    // The permission GET /api/clients checks — someone who may not read the
+    // client list gets the plain location field only, same as always.
+    const canUseClients = useCan().can('clients.view')
 
     // Who can be assigned. SWR, keyed by the company a Super Admin is looking
     // at, so switching company cannot leave the previous company's people in
@@ -100,13 +100,13 @@ export default function NewTaskPage() {
         // what a picker showed, not what a request could contain.
     }, [usersResult])
 
-    // Super Admin needs a company selected — same as the vendors page itself,
+    // Super Admin needs a company selected — same as the clients page itself,
     // no fetch at all until then rather than a 400.
-    const vendorsKey = !canUseVendors || (userRole === 'SUPER_ADMIN' && !selectedCompanyId)
+    const clientsKey = !canUseClients || (userRole === 'SUPER_ADMIN' && !selectedCompanyId)
         ? null
-        : `/api/vendors${userRole === 'SUPER_ADMIN' ? `?companyId=${encodeURIComponent(selectedCompanyId!)}` : ''}`
-    const { data: vendorsResult } = useSWR(vendorsKey, fetcher)
-    const vendors: any[] = vendorsKey && Array.isArray(vendorsResult?.data) ? vendorsResult.data : NO_VENDORS
+        : `/api/clients${userRole === 'SUPER_ADMIN' ? `?companyId=${encodeURIComponent(selectedCompanyId!)}` : ''}`
+    const { data: clientsResult } = useSWR(clientsKey, fetcher)
+    const clients: any[] = clientsKey && Array.isArray(clientsResult?.data) ? clientsResult.data : NO_CLIENTS
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
@@ -158,7 +158,7 @@ export default function NewTaskPage() {
                     deadline,
                     difficulty: parseInt(difficulty) || 0,
                     location: location || locationLink ? JSON.stringify({ name: location, link: locationLink }) : '',
-                    vendorId: useVendor && vendorId ? vendorId : undefined,
+                    clientId: useClient && clientId ? clientId : undefined,
                     attachments: []
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -209,7 +209,7 @@ export default function NewTaskPage() {
             const tasks = rows.map(row => {
                 const title = row[0] || ''
                 const description = row[1] || ''
-                const vendorNameRaw = row[2] ? String(row[2]).trim() : '' // Column C, optional
+                const clientNameRaw = row[2] ? String(row[2]).trim() : '' // Column C, optional
                 // Column D, "Employee Name" — one merged column for both
                 // cases: a single assignee is normally picked from the
                 // dropdown, which writes "FirstName LastName (username)"
@@ -259,22 +259,22 @@ export default function NewTaskPage() {
                 }
                 if (unresolvedUsernames.length > 0) addError('assignees', `${t('invalid_username' as any) || 'Invalid user'}: ${unresolvedUsernames.join(', ')}`)
 
-                // 1.5 Resolve vendor name (optional — empty cell means no
-                // vendor, task falls back to whatever location gets set
-                // manually in the review step). Vendor names are unique per
+                // 1.5 Resolve client name (optional — empty cell means no
+                // client, task falls back to whatever location gets set
+                // manually in the review step). Client names are unique per
                 // company (schema constraint), so a plain name match here
                 // has no ambiguity risk the way employee full names would.
-                let vendorId: string | null = null
-                let vendorLocation = ''
-                let vendorLocationLink = ''
-                if (vendorNameRaw) {
-                    const vendor = vendors.find((v: any) => v.name.toLowerCase() === vendorNameRaw.toLowerCase())
-                    if (vendor) {
-                        vendorId = vendor.id
-                        vendorLocation = vendor.locationName
-                        vendorLocationLink = vendor.locationLink || ''
+                let clientId: string | null = null
+                let clientLocation = ''
+                let clientLocationLink = ''
+                if (clientNameRaw) {
+                    const client = clients.find((v: any) => v.name.toLowerCase() === clientNameRaw.toLowerCase())
+                    if (client) {
+                        clientId = client.id
+                        clientLocation = client.locationName
+                        clientLocationLink = client.locationLink || ''
                     } else {
-                        addError('vendor', `${t('invalid_vendor_name' as any) || 'Unknown vendor'}: ${vendorNameRaw}`)
+                        addError('client', `${t('invalid_client_name' as any) || 'Unknown client'}: ${clientNameRaw}`)
                     }
                 }
 
@@ -355,10 +355,10 @@ export default function NewTaskPage() {
                     unresolvedUsernames,
                     deadline: finalDeadline,
                     difficulty: diffPoints,
-                    location: vendorLocation,
-                    locationLink: vendorLocationLink,
-                    vendorId,
-                    vendorNameRaw,
+                    location: clientLocation,
+                    locationLink: clientLocationLink,
+                    clientId,
+                    clientNameRaw,
                     validationErrors,
                     isInvalid: Object.keys(validationErrors).length > 0
                 }
@@ -565,66 +565,66 @@ export default function NewTaskPage() {
                     </div>
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
-                    {canUseVendors && (
+                    {canUseClients && (
                         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                             <button
                                 type="button"
-                                onClick={() => { setUseVendor(false); setVendorId('') }}
-                                className={useVendor ? 'btn' : 'btn btn-primary'}
+                                onClick={() => { setUseClient(false); setClientId('') }}
+                                className={useClient ? 'btn' : 'btn btn-primary'}
                                 style={{ padding: '0.35rem 0.9rem', fontSize: '0.8rem' }}
                             >
                                 {t('type_location' as any) || 'Type a location'}
                             </button>
                             <button
                                 type="button"
-                                disabled={vendors.length === 0}
+                                disabled={clients.length === 0}
                                 onClick={() => {
-                                    if (vendors.length === 0) return
-                                    setUseVendor(true); setLocation(''); setLocationLink('')
+                                    if (clients.length === 0) return
+                                    setUseClient(true); setLocation(''); setLocationLink('')
                                 }}
-                                className={useVendor ? 'btn btn-primary' : 'btn'}
+                                className={useClient ? 'btn btn-primary' : 'btn'}
                                 style={{
                                     padding: '0.35rem 0.9rem',
                                     fontSize: '0.8rem',
-                                    opacity: vendors.length === 0 ? 0.5 : 1,
-                                    cursor: vendors.length === 0 ? 'not-allowed' : 'pointer'
+                                    opacity: clients.length === 0 ? 0.5 : 1,
+                                    cursor: clients.length === 0 ? 'not-allowed' : 'pointer'
                                 }}
-                                title={vendors.length === 0 ? (locale === 'ar' ? `لا يوجد ${vendorsName} بعد` : `No ${vendorsName} yet`) : ''}
+                                title={clients.length === 0 ? (locale === 'ar' ? `لا يوجد ${clientsName} بعد` : `No ${clientsName} yet`) : ''}
                             >
                                 {/* Composed directly from the custom label, not a
-                                    translation key — see vendors/page.tsx for why. */}
-                                {locale === 'ar' ? `اختر ${vendorsName}` : `Select a ${vendorsName}`}
+                                    translation key — see clients/page.tsx for why. */}
+                                {locale === 'ar' ? `اختر ${clientsName}` : `Select a ${clientsName}`}
                             </button>
-                            {/* Always shown, not hidden, when there are zero vendors
+                            {/* Always shown, not hidden, when there are zero clients
                                 — the toggle used to disappear entirely in that case
                                 with no explanation and no way to discover the
-                                Vendors page from here. */}
-                            {vendors.length === 0 && (
+                                Clients page from here. */}
+                            {clients.length === 0 && (
                                 <a
-                                    href="/dashboard/vendors"
+                                    href="/dashboard/clients"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{ fontSize: '0.75rem', color: 'var(--info-fg)', textDecoration: 'none' }}
                                 >
-                                    {locale === 'ar' ? `+ إضافة ${vendorsName}` : `+ Add a ${vendorsName}`}
+                                    {locale === 'ar' ? `+ إضافة ${clientsName}` : `+ Add a ${clientsName}`}
                                 </a>
                             )}
                         </div>
                     )}
 
-                    {useVendor ? (
+                    {useClient ? (
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-                                {vendorsName}
+                                {clientsName}
                             </label>
-                            <select aria-label={vendorsName}
-                                value={vendorId}
-                                onChange={(e) => setVendorId(e.target.value)}
+                            <select aria-label={clientsName}
+                                value={clientId}
+                                onChange={(e) => setClientId(e.target.value)}
                                 className="input"
                                 style={{ width: '100%' }}
                             >
-                                <option value="">{t('select_vendor_placeholder' as any) || 'Select...'}</option>
-                                {vendors.map(v => (
+                                <option value="">{t('select_client_placeholder' as any) || 'Select...'}</option>
+                                {clients.map(v => (
                                     <option key={v.id} value={v.id}>{v.name} — {v.locationName}</option>
                                 ))}
                             </select>
@@ -754,8 +754,8 @@ export default function NewTaskPage() {
                 bulkTasks={bulkTasks}
                 setBulkTasks={setBulkTasks}
                 users={users}
-                vendors={vendors}
-                vendorsName={vendorsName}
+                clients={clients}
+                clientsName={clientsName}
                 revalidateRow={revalidateRow}
                 isSubmitting={isSubmitting}
                 setIsSubmitting={setIsSubmitting}

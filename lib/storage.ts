@@ -118,8 +118,8 @@ export function getTemplateUrl(locale: string) {
     return publicUrl
 }
 
-// Vendors feature: the download endpoint now generates the file per
-// request (adds the Users/Vendors sheets + dropdowns on top of this base)
+// Clients feature: the download endpoint now generates the file per
+// request (adds the Users/Clients sheets + dropdowns on top of this base)
 // instead of just redirecting to it — needs the actual bytes server-side,
 // not a public URL. Returns null the same way getTemplateUrl does if
 // nothing's been uploaded for this locale yet, rather than throwing.

@@ -11,7 +11,7 @@ import { useCompanyBranding } from "@/context/CompanyBrandingContext"
  *
  * Read from the session rather than fetched, for the same reason featureAccess
  * is: every screen in the app needs it, on first paint, and a fetch per screen
- * would mean the sidebar renders "Vendors" for a moment before becoming
+ * would mean the sidebar renders "Clients" for a moment before becoming
  * "Suppliers". lib/auth.ts refreshes both maps on the same 60s throttle as
  * everything else on the token, so a rename lands within a minute without a
  * re-login.

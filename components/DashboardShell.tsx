@@ -45,7 +45,7 @@ interface DashboardShellProps {
 const MANAGEMENT_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
     costs: 'tasks.pay',
     employees: 'employees.view',
-    vendors: 'vendors.view',
+    clients: 'clients.view',
 }
 
 const subscribeNever = () => () => {}
@@ -532,7 +532,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                 <p style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--sidebar-fg)', [isRtl ? 'paddingRight' : 'paddingLeft']: '1rem', marginTop: '1.5rem', marginBottom: '0.25rem', letterSpacing: '0.1em' }}>{t('management')}</p>
                             )}
 
-                            {/* Vendors is in here: its custom name used to be the
+                            {/* Clients is in here: its custom name used to be the
                                 only one of these that existed, through its own
                                 column. It is now just another module with an
                                 override, and the other eight can be renamed too.

@@ -23,7 +23,7 @@ vi.mock("@/components/ui/Dialog", () => ({
 }))
 vi.mock("swr", () => ({
     default: (key: string | null) => {
-        if (key?.startsWith("/api/records/sections?vendorId=v1")) {
+        if (key?.startsWith("/api/records/sections?clientId=v1")) {
             return sections.failing
                 ? { data: undefined, error: new Error("Request failed"), isValidating: false, mutate: async () => {} }
                 : { data: { data: { sections: [{ id: "s1", title: "Licences", records: 1 }, { id: "s2", title: "Contracts", records: 0 }] } }, error: undefined, isValidating: false, mutate: async () => {} }
@@ -42,7 +42,7 @@ const record = {
 async function editOnRecordsPage() {
     const { default: RecordForm } = await import("@/components/records/RecordForm")
     // As the Records page opens it: the record's client, and no sections handed in.
-    return renderToStaticMarkup(h(RecordForm, { open: true, onClose: () => {}, vendorId: "v1", record, onSaved: () => {} }))
+    return renderToStaticMarkup(h(RecordForm, { open: true, onClose: () => {}, clientId: "v1", record, onSaved: () => {} }))
 }
 
 describe("editing a record from the Records page", () => {
@@ -65,13 +65,13 @@ describe("editing a record from the Records page", () => {
     it("closes, as do viewing and deleting one, when a Super Admin picks another company", () => {
         // Each holds a record of the company before, which Save or Delete would still act on.
         const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
-        expect(LIST).toContain("const scope = vendorId ?? selectedCompanyId")
+        expect(LIST).toContain("const scope = clientId ?? selectedCompanyId")
         expect(LIST).toContain("useAdjustOnChange([scope], () => { setViewing(null); setEditing(null); setDeleting(null) })")
     })
 
     it("is opened with no sections, for the form to load them", () => {
         const LIST = readFileSync("components/records/RecordsList.tsx", "utf8")
         expect(LIST).not.toContain("editSections")
-        expect(LIST).toMatch(/vendorId=\{editing\?\.client\.id \?\? vendorId\}[\s\S]*?sections=\{vendorId \? sections : undefined\}\s*record=\{editing\}/)
+        expect(LIST).toMatch(/clientId=\{editing\?\.client\.id \?\? clientId\}[\s\S]*?sections=\{clientId \? sections : undefined\}\s*record=\{editing\}/)
     })
 })

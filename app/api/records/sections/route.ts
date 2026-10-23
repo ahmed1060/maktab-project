@@ -7,9 +7,9 @@ import { RecordService } from "@/lib/services/record.service"
 
 /** A client's sections of records (CLIENTS_PLAN.md §0.2). Each check is RecordService's. */
 export const GET = withStandardHandler(async (req, session) => {
-    const vendorId = new URL(req.url).searchParams.get("vendorId")
-    if (!vendorId) return ApiResponse.badRequest("Say whose sections to list.")
-    return ApiResponse.success(await RecordService.sectionsOf(session, vendorId))
+    const clientId = new URL(req.url).searchParams.get("clientId")
+    if (!clientId) return ApiResponse.badRequest("Say whose sections to list.")
+    return ApiResponse.success(await RecordService.sectionsOf(session, clientId))
 }, { permission: "records.view" })
 
 export const POST = withStandardHandler(async (_req, session, json) => {

@@ -23,7 +23,7 @@ export const GET = withStandardHandler(async (req, session) => {
 
     // Same scope this endpoint's callers already see elsewhere: own company
     // for Admin/Team Leader, ?companyId= for Super Admin (required — a
-    // template with no company's users/vendors in it isn't useful).
+    // template with no company's users/clients in it isn't useful).
     let targetCompanyId: string | null = null
     if (userRole === 'SUPER_ADMIN') {
         targetCompanyId = searchParams.get('companyId')
@@ -46,13 +46,13 @@ export const GET = withStandardHandler(async (req, session) => {
         and(userWhere, teamMemberWhere(session.user.id))
     }
 
-    const [users, vendors] = await Promise.all([
+    const [users, clients] = await Promise.all([
         prisma.user.findMany({
             where: userWhere,
             select: { firstName: true, lastName: true, username: true, role: true },
             orderBy: { firstName: 'asc' }
         }),
-        prisma.vendor.findMany({
+        prisma.client.findMany({
             where: { companyId: targetCompanyId! },
             select: { name: true, locationName: true },
             orderBy: { name: 'asc' }
@@ -60,7 +60,7 @@ export const GET = withStandardHandler(async (req, session) => {
     ])
 
     try {
-        const fileBuffer = await generateBulkTaskTemplate(baseBuffer, locale, users, vendors)
+        const fileBuffer = await generateBulkTaskTemplate(baseBuffer, locale, users, clients)
         return new NextResponse(fileBuffer as any, {
             status: 200,
             headers: {
@@ -73,7 +73,7 @@ export const GET = withStandardHandler(async (req, session) => {
         throw error
     }
 }, {
-    // For bulk-creating tasks, and it lists the company's people and vendors:
+    // For bulk-creating tasks, and it lists the company's people and clients:
     // whoever may create tasks, and nobody else.
     permission: "tasks.create",
 })

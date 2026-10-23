@@ -234,11 +234,11 @@ them, as today.
 | | `tasks.penalize` | Apply a task penalty — **deducts pay**; its own permission, labelled "affects pay" in the role editor (decided) | `tasks/[id]/penalty` |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
 | | `obligations.manage` | Create, edit, delete, revert | `obligations/*` |
-| **Records** | `records.view` | See a client's sections and records (today's vendors; `CLIENTS_PLAN.md` §0.2) | `GET /records`, `GET /records/sections` |
+| **Records** | `records.view` | See a client's sections and records (`CLIENTS_PLAN.md` §0.2) | `GET /records`, `GET /records/sections` |
 | | `records.contribute` | Add a section or a record, and edit any record (built as its own right: records are a shared notebook as much as a register) | `POST /records`, `PUT /records`, `POST /records/sections` |
 | | `records.edit` | Rename a section | `PUT /records/sections` |
 | | `records.delete` | Delete a section or a record — **cannot be undone**, high-risk (§6.15) | `DELETE /records`, `DELETE /records/sections` |
-| **Vendors** | `vendors.view` / `vendors.manage` | See vendors; create, edit and delete them | `vendors` |
+| **Clients** | `clients.view` / `clients.manage` | See clients; create, edit and delete them (named `vendors.*` until 0b; the database keeps those names until 0c, `CLIENTS_PLAN.md` §0.3) | `clients` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |

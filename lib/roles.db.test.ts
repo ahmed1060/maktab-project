@@ -8,6 +8,7 @@ import { decodeGrants, encodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
+import { storedName } from "@/lib/permissions/stored-names"
 import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleRequestService } from "@/lib/services/role-request.service"
 import { RoleChangeRequestService } from "@/lib/services/role-change-request.service"
@@ -149,7 +150,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    // Under the names the database keeps until 0c (stored-names.ts).
+                    const stored = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).map(([permission, scope]) => [storedName(permission as any), scope]))
+                    expect(grants, `${company} ${builtIn}`).toEqual(stored)
                 }
             }
         })
@@ -796,12 +799,12 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             const template = await RoleTemplateService.create({ name: "Cashier", baseRole: "EMPLOYEE", grants: [{ permission: "costs.view", scope: "COMPANY" }] }, sa)
             const in7 = await RoleService.create({ companyId: "c7", name: "Cashier", fromTemplateId: template.id }, sa)
             const in8 = await RoleService.create({ companyId: "c8", name: "Cashier", fromTemplateId: template.id }, sa)
-            await RoleTemplateService.update({ id: template.id, grants: [{ permission: "costs.view", scope: "COMPANY" }, { permission: "vendors.view", scope: "COMPANY" }] }, sa)
+            await RoleTemplateService.update({ id: template.id, grants: [{ permission: "costs.view", scope: "COMPANY" }, { permission: "clients.view", scope: "COMPANY" }] }, sa)
 
             const offer = await RoleTemplateService.offers(template.id)
-            expect(offer.roles.map(r => [r.companyName, r.difference.added])).toEqual([["Eight", ["vendors.view"]], ["Seven", ["vendors.view"]]])
+            expect(offer.roles.map(r => [r.companyName, r.difference.added])).toEqual([["Eight", ["clients.view"]], ["Seven", ["clients.view"]]])
             await RoleTemplateService.applyTo(template.id, [in7.id], {}, sa)
-            expect((await RoleService.getById(in7.id)).grants.map(g => g.permission).sort()).toEqual(["costs.view", "vendors.view"])
+            expect((await RoleService.getById(in7.id)).grants.map(g => g.permission).sort()).toEqual(["clients.view", "costs.view"])
             expect((await RoleService.getById(in7.id)).version).toBe(in7.version + 1)
             expect((await RoleService.getById(in8.id)).grants.map(g => g.permission)).toEqual(["costs.view"])
             // Only its own copies.

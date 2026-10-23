@@ -14,11 +14,11 @@ import type { CreateRecordInput, CreateSectionInput, RenameSectionInput, UpdateR
  * A client's records (CLIENTS_PLAN.md §0.2): sections of records, each with
  * text, files, and an optional expiry date with a reminder before it.
  *
- * A client is a Vendor until PR 0b renames it. Records are the company's,
- * not any one person's, so every check is company-wide: see them with
- * records.view; add a section or a record, and edit any record, with
- * records.contribute; rename a section with records.edit; delete with
- * records.delete, which the route confirms with a code first.
+ * Records are the company's, not any one person's, so every check is
+ * company-wide: see them with records.view; add a section or a record, and
+ * edit any record, with records.contribute; rename a section with
+ * records.edit; delete with records.delete, which the route confirms with a
+ * code first.
  *
  * Another company's record is "not found", never "not allowed", so its
  * existence isn't confirmed to anyone outside it.
@@ -65,7 +65,7 @@ const ROW = (withCompany: boolean) => ({
     section: {
         select: {
             id: true, title: true,
-            vendor: { select: { id: true, name: true, ...(withCompany ? { company: { select: { name: true, timezone: true } } } : {}) } },
+            client: { select: { id: true, name: true, ...(withCompany ? { company: { select: { name: true, timezone: true } } } : {}) } },
         },
     },
 }) satisfies Prisma.ClientRecordSelect
@@ -91,7 +91,7 @@ export type RecordRow = {
 }
 
 function shape(r: Row, today: string): RecordRow {
-    const vendor = r.section.vendor!
+    const client = r.section.client!
     return {
         id: r.id,
         content: r.content,
@@ -106,7 +106,7 @@ function shape(r: Row, today: string): RecordRow {
         createdBySuperAdmin: r.createdBySuperAdmin,
         lastEditedBySuperAdmin: r.lastEditedBySuperAdmin,
         section: { id: r.section.id, title: r.section.title },
-        client: { id: vendor.id, name: vendor.name, ...("company" in vendor && vendor.company ? { company: (vendor.company as { name: string }).name } : {}) },
+        client: { id: client.id, name: client.name, ...("company" in client && client.company ? { company: (client.company as { name: string }).name } : {}) },
     }
 }
 
@@ -260,10 +260,10 @@ const snippet = (text: string) => text.length > 50 ? `${text.slice(0, 50)}...` :
 async function sectionWithCompany(id: string) {
     const section = await prisma.recordSection.findUnique({
         where: { id },
-        select: { id: true, title: true, vendorId: true, vendor: { select: { companyId: true } } },
+        select: { id: true, title: true, clientId: true, client: { select: { companyId: true } } },
     })
-    if (!section || !section.vendorId || !section.vendor) throw new Error("RECORD_SECTION_NOT_FOUND")
-    return { ...section, vendorId: section.vendorId, companyId: section.vendor.companyId }
+    if (!section || !section.clientId || !section.client) throw new Error("RECORD_SECTION_NOT_FOUND")
+    return { ...section, clientId: section.clientId, companyId: section.client.companyId }
 }
 
 async function recordWithCompany(id: string) {
@@ -271,11 +271,11 @@ async function recordWithCompany(id: string) {
         where: { id },
         select: {
             id: true, content: true, attachment: true, expiryDate: true, reminderDays: true, sectionId: true,
-            section: { select: { vendorId: true, vendor: { select: { companyId: true } } } },
+            section: { select: { clientId: true, client: { select: { companyId: true } } } },
         },
     })
-    if (!record || !record.section.vendorId || !record.section.vendor) throw new Error("RECORD_NOT_FOUND")
-    return { ...record, vendorId: record.section.vendorId, companyId: record.section.vendor.companyId }
+    if (!record || !record.section.clientId || !record.section.client) throw new Error("RECORD_NOT_FOUND")
+    return { ...record, clientId: record.section.clientId, companyId: record.section.client.companyId }
 }
 
 const taken = (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
@@ -283,7 +283,7 @@ const taken = (error: unknown) => error instanceof Prisma.PrismaClientKnownReque
 export type RecordListQuery = {
     /** A Super Admin's chosen company; ignored for anyone else, who sees their own. Unset for a Super Admin is every company. */
     companyId?: string | null
-    vendorId?: string | null
+    clientId?: string | null
     sectionId?: string | null
     search?: string | null
     expiry?: ExpiryState | null
@@ -311,19 +311,19 @@ export class RecordService {
         const search = trimmed ? likeText(trimmed) : ""
         const where: Prisma.ClientRecordWhereInput = {
             section: {
-                vendorId: query.vendorId ? query.vendorId : { not: null },
+                clientId: query.clientId ? query.clientId : { not: null },
                 ...(query.sectionId ? { id: query.sectionId } : {}),
-                ...(companyId ? { vendor: { companyId } } : {}),
+                ...(companyId ? { client: { companyId } } : {}),
             },
             ...(query.expiry && !days ? { expiryDate: expiryRange(query.expiry, today) } : {}),
             ...(query.expiry && days ? {
-                AND: [{ OR: days.map(d => ({ expiryDate: expiryRange(query.expiry!, d.today), section: { vendor: { company: { timezone: d.timezone } } } })) }],
+                AND: [{ OR: days.map(d => ({ expiryDate: expiryRange(query.expiry!, d.today), section: { client: { company: { timezone: d.timezone } } } })) }],
             } : {}),
             ...(search ? {
                 OR: [
                     { content: { contains: search, mode: "insensitive" } },
                     { section: { title: { contains: search, mode: "insensitive" } } },
-                    { section: { vendor: { name: { contains: search, mode: "insensitive" } } } },
+                    { section: { client: { name: { contains: search, mode: "insensitive" } } } },
                 ],
             } : {}),
         }
@@ -339,7 +339,7 @@ export class RecordService {
             prisma.clientRecord.count({ where }),
         ])
         const dayOf = (r: Row) => {
-            const zone = (r.section.vendor as { company?: { timezone: string } } | null)?.company?.timezone
+            const zone = (r.section.client as { company?: { timezone: string } } | null)?.company?.timezone
             return days?.find(d => d.timezone === zone)?.today ?? today
         }
         return { data: rows.map(r => shape(r, dayOf(r))), total, today, dayEndsAt: dayEndsAt(days ? days.map(d => d.timezone) : [zone]) }
@@ -359,7 +359,7 @@ export class RecordService {
 
     /**
      * The clients a record can be added to, by name, for adding one from the
-     * Records page: someone who may add records but not see the vendors
+     * Records page: someone who may add records but not see the clients
      * list, as an ordinary employee, otherwise has no way to reach a client
      * without records yet. A Super Admin's chosen company's, or every
      * company's, each named with its company.
@@ -371,7 +371,7 @@ export class RecordService {
         if (!sa && !can(session.user as any, "records.contribute", { companyId: company! })) throw new Error("RECORD_FORBIDDEN")
         const trimmed = search?.trim()
         const name = trimmed ? likeText(trimmed) : ""
-        const vendors = await prisma.vendor.findMany({
+        const clients = await prisma.client.findMany({
             where: { ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
             select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true } } }) },
             orderBy: [{ name: "asc" }, { id: "asc" }],
@@ -379,44 +379,44 @@ export class RecordService {
             take: CLIENTS_SHOWN + 1,
         })
         return {
-            clients: vendors.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name } : {}) })),
-            more: vendors.length > CLIENTS_SHOWN,
+            clients: clients.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name } : {}) })),
+            more: clients.length > CLIENTS_SHOWN,
         }
     }
 
     /** A client's sections, with how many records each holds, and the client's name for the page. */
-    static async sectionsOf(session: Session, vendorId: string) {
-        const vendor = await prisma.vendor.findUnique({ where: { id: vendorId }, select: { id: true, name: true, companyId: true } })
-        if (!vendor) throw new Error("VENDOR_NOT_FOUND")
-        allow(session, "records.view", vendor.companyId, "VENDOR_NOT_FOUND")
+    static async sectionsOf(session: Session, clientId: string) {
+        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true } })
+        if (!client) throw new Error("CLIENT_NOT_FOUND")
+        allow(session, "records.view", client.companyId, "CLIENT_NOT_FOUND")
         const sections = await prisma.recordSection.findMany({
-            where: { vendorId },
+            where: { clientId },
             select: { id: true, title: true, _count: { select: { records: true } } },
             orderBy: { title: "asc" },
         })
         return {
-            client: { id: vendor.id, name: vendor.name },
+            client: { id: client.id, name: client.name },
             sections: sections.map(s => ({ id: s.id, title: s.title, records: s._count.records })),
         }
     }
 
     static async createSection(session: Session, input: CreateSectionInput) {
-        const vendor = await prisma.vendor.findUnique({ where: { id: input.vendorId }, select: { companyId: true } })
-        if (!vendor) throw new Error("VENDOR_NOT_FOUND")
-        allow(session, "records.contribute", vendor.companyId, "VENDOR_NOT_FOUND")
+        const client = await prisma.client.findUnique({ where: { id: input.clientId }, select: { companyId: true } })
+        if (!client) throw new Error("CLIENT_NOT_FOUND")
+        allow(session, "records.contribute", client.companyId, "CLIENT_NOT_FOUND")
         const who = actor(session)
         try {
             return await prisma.$transaction(async tx => {
                 // The client's lock a first record takes to start a section by
                 // name (create), so the two don't both start one of a name.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.vendorId} FOR NO KEY UPDATE`
-                if (!locked.length) throw new Error("VENDOR_NOT_FOUND")
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.clientId} FOR NO KEY UPDATE`
+                if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
                 const section = await tx.recordSection.create({
-                    data: { title: input.title, vendorId: input.vendorId, createdById: who.byUser },
+                    data: { title: input.title, clientId: input.clientId, createdById: who.byUser },
                     select: { id: true, title: true },
                 })
                 const { AuditLogService } = await import("./audit-log.service")
-                await AuditLogService.log("CREATE_SECTION", "SECTION", section.id, { tx, ...who.audit, details: { title: input.title, vendorId: input.vendorId } })
+                await AuditLogService.log("CREATE_SECTION", "SECTION", section.id, { tx, ...who.audit, details: { title: input.title, clientId: input.clientId } })
                 return section
             })
         } catch (error) {
@@ -432,7 +432,7 @@ export class RecordService {
         try {
             return await prisma.$transaction(async tx => {
                 // As createSection: no first record starts a section of the new name meanwhile.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR NO KEY UPDATE`
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.clientId} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
                 // And the section, which may have been deleted since it was
                 // found (deleteSection), or renamed: its title now is the one
@@ -464,7 +464,7 @@ export class RecordService {
             // deleting the company hold it before the section and its records.
             // Holding the section first, a company deletion holding the records
             // waited on it while it waited on them (Codex on #82).
-            const client = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR NO KEY UPDATE`
+            const client = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.clientId} FOR NO KEY UPDATE`
             if (!client.length) throw new Error("RECORD_SECTION_NOT_FOUND")
             // Then the section, so a record being added meanwhile (create) is
             // among those deleted here, with its files, or finds the section
@@ -478,7 +478,7 @@ export class RecordService {
             const records = await tx.clientRecord.findMany({ where: { sectionId: id }, select: { attachment: true } })
             await tx.recordSection.delete({ where: { id } })
             const { AuditLogService } = await import("./audit-log.service")
-            await AuditLogService.log("DELETE_SECTION", "SECTION", id, { tx, ...who.audit, details: { title: locked.title, vendorId: section.vendorId, records: records.length } })
+            await AuditLogService.log("DELETE_SECTION", "SECTION", id, { tx, ...who.audit, details: { title: locked.title, clientId: section.clientId, records: records.length } })
             return records
         })
         await removeFiles(records.flatMap(r => parseRecordFiles(r.attachment)), section.companyId)
@@ -488,17 +488,17 @@ export class RecordService {
     static async create(session: Session, input: CreateRecordInput) {
         const who = actor(session)
         let companyId: string
-        let section: { id: string; vendorId: string } | null = null
+        let section: { id: string; clientId: string } | null = null
         if (input.sectionId) {
             const found = await sectionWithCompany(input.sectionId)
             companyId = found.companyId
             section = found
             allow(session, "records.contribute", companyId, "RECORD_SECTION_NOT_FOUND")
         } else {
-            const vendor = await prisma.vendor.findUnique({ where: { id: input.vendorId! }, select: { companyId: true } })
-            if (!vendor) throw new Error("VENDOR_NOT_FOUND")
-            companyId = vendor.companyId
-            allow(session, "records.contribute", companyId, "VENDOR_NOT_FOUND")
+            const client = await prisma.client.findUnique({ where: { id: input.clientId! }, select: { companyId: true } })
+            if (!client) throw new Error("CLIENT_NOT_FOUND")
+            companyId = client.companyId
+            allow(session, "records.contribute", companyId, "CLIENT_NOT_FOUND")
         }
         checkFiles(session, input.files, companyId)
         await checkStored(input.files, companyId)
@@ -509,8 +509,8 @@ export class RecordService {
             if (section) {
                 sectionId = section.id
                 // Holds the client while the record is written, so it isn't
-                // deleted meanwhile with the record in it (VendorService.delete).
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.vendorId} FOR SHARE`
+                // deleted meanwhile with the record in it (ClientService.delete).
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${section.clientId} FOR SHARE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
                 // And the section, which isn't deleted meanwhile either (deleteSection).
                 const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${section.id} FOR SHARE`
@@ -519,14 +519,14 @@ export class RecordService {
                 // One at a time per client, so two people naming the same new
                 // section at once start it once: the second finds the first's.
                 // It holds the client from being deleted meanwhile too.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.vendorId!} FOR NO KEY UPDATE`
-                if (!locked.length) throw new Error("VENDOR_NOT_FOUND")
+                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Vendor" WHERE id = ${input.clientId!} FOR NO KEY UPDATE`
+                if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
                 // A section of that name already there is the one meant, held as above.
-                const [existing] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE "vendorId" = ${input.vendorId!} AND title = ${input.sectionTitle!} FOR SHARE`
+                const [existing] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE "vendorId" = ${input.clientId!} AND title = ${input.sectionTitle!} FOR SHARE`
                 if (existing) sectionId = existing.id
                 else {
-                    const made = await tx.recordSection.create({ data: { title: input.sectionTitle!, vendorId: input.vendorId!, createdById: who.byUser }, select: { id: true } })
-                    await AuditLogService.log("CREATE_SECTION", "SECTION", made.id, { tx, ...who.audit, details: { title: input.sectionTitle, vendorId: input.vendorId } })
+                    const made = await tx.recordSection.create({ data: { title: input.sectionTitle!, clientId: input.clientId!, createdById: who.byUser }, select: { id: true } })
+                    await AuditLogService.log("CREATE_SECTION", "SECTION", made.id, { tx, ...who.audit, details: { title: input.sectionTitle, clientId: input.clientId } })
                     sectionId = made.id
                 }
             }
@@ -559,7 +559,7 @@ export class RecordService {
         if (input.sectionId && input.sectionId !== record.sectionId) {
             // Another of the same client's sections; never another client's.
             const target = await sectionWithCompany(input.sectionId)
-            if (target.vendorId !== record.vendorId) throw new Error("RECORD_SECTION_NOT_FOUND")
+            if (target.clientId !== record.clientId) throw new Error("RECORD_SECTION_NOT_FOUND")
         }
         // Those it didn't have as it was read are new; one added since is refused below (RECORD_CHANGED).
         const had = new Set(parseRecordFiles(record.attachment).map(f => f.url))
@@ -655,7 +655,7 @@ export class RecordService {
         await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR UPDATE`
         await tx.$queryRaw`SELECT id FROM "Vendor" WHERE "companyId" = ${companyId} ORDER BY id FOR UPDATE`
         await tx.$queryRaw`SELECT n.id FROM "ClientNote" n JOIN "ClientSection" s ON s.id = n."sectionId" JOIN "Vendor" v ON v.id = s."vendorId" WHERE v."companyId" = ${companyId} ORDER BY n.id FOR UPDATE OF n`
-        const rows = await tx.clientRecord.findMany({ where: { attachment: { not: null }, section: { vendor: { companyId } } }, select: { attachment: true } })
+        const rows = await tx.clientRecord.findMany({ where: { attachment: { not: null }, section: { client: { companyId } } }, select: { attachment: true } })
         return rows.flatMap(r => parseRecordFiles(r.attachment))
     }
 
@@ -690,7 +690,7 @@ export class RecordService {
         let reminded = 0
         // Each company's records on its own day.
         for (const { timezone, today } of await companyDays()) {
-            const done = await RecordService.checkExpiriesOn(today, { vendorId: { not: null }, vendor: { company: { timezone } } })
+            const done = await RecordService.checkExpiriesOn(today, { clientId: { not: null }, client: { company: { timezone } } })
             expiringToday += done.expiringToday
             reminded += done.reminded
         }
@@ -701,7 +701,7 @@ export class RecordService {
     private static async checkExpiriesOn(today: string, section: Prisma.RecordSectionWhereInput) {
         const start = parseExpiryDay(today)!
         const tomorrow = parseExpiryDay(addDays(today, 1))!
-        const include = { section: { select: { vendorId: true, vendor: { select: { name: true } } } } } as const
+        const include = { section: { select: { clientId: true, client: { select: { name: true } } } } } as const
         const link = (id: string) => `/dashboard/records/${id}`
 
         const expiringToday = await prisma.clientRecord.findMany({
@@ -720,7 +720,7 @@ export class RecordService {
                         data: {
                             ...to,
                             type: "NOTE_EXPIRING",
-                            ...noticeRow({ key: "notice_note_expiring_today", params: { snippet: record.content.slice(0, 20), client: record.section.vendor!.name } }),
+                            ...noticeRow({ key: "notice_note_expiring_today", params: { snippet: record.content.slice(0, 20), client: record.section.client!.name } }),
                             relatedId: link(record.id),
                         },
                     })
@@ -748,7 +748,7 @@ export class RecordService {
                         data: {
                             ...to,
                             type: "NOTE_REMINDER",
-                            ...noticeRow({ key: "notice_note_expiring", params: { snippet: record.content.slice(0, 20), client: record.section.vendor!.name, days: daysBetween(today, expires) } }),
+                            ...noticeRow({ key: "notice_note_expiring", params: { snippet: record.content.slice(0, 20), client: record.section.client!.name, days: daysBetween(today, expires) } }),
                             relatedId: link(record.id),
                         },
                     })

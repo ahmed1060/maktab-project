@@ -14,7 +14,7 @@ import { formatDay, formatMoment, personName, type RecordItem } from './types'
 export default function RecordDialog({ record, onClose, showClient, onEdit, onDelete }: {
     record: RecordItem | null
     onClose: () => void
-    /** The vendor it's kept for, on the Records page; its own page says so already. */
+    /** The client it's kept for, on the Records page; its own page says so already. */
     showClient: boolean
     onEdit?: () => void
     onDelete?: () => void
@@ -22,7 +22,7 @@ export default function RecordDialog({ record, onClose, showClient, onEdit, onDe
     const { t, locale } = useLanguage()
     if (!record) return null
     const details = [
-        ...(showClient ? [{ label: t('records_col_vendor'), value: <Link href={`/dashboard/vendors/${record.client.id}`} prefetch={false}><bdi>{record.client.name}</bdi></Link> }] : []),
+        ...(showClient ? [{ label: t('records_col_client'), value: <Link href={`/dashboard/clients/${record.client.id}`} prefetch={false}><bdi>{record.client.name}</bdi></Link> }] : []),
         // Its company, for a Super Admin, who sees every company's (Codex on #82).
         ...(record.client.company ? [{ label: t('company_label'), value: <bdi>{record.client.company}</bdi> }] : []),
         { label: t('records_section'), value: <bdi>{record.section.title}</bdi> },

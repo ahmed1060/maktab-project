@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma"
 import { BUILT_IN_GRANTS, type BuiltInRole } from "@/lib/permissions/built-in"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { isPermission, type Scope } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantRows, type GrantInput } from "@/lib/permissions/grant-rules"
+import type { Scope } from "@/lib/permissions/catalogue"
+import { normalizeGrants, grantRows } from "@/lib/permissions/grant-rules"
+import { grantsFromRows, templateGrants, toStored } from "@/lib/permissions/stored-names"
 import type { CreateRoleInput, UpdateRoleInput } from "@/lib/validations/role.schema"
 import type { UserRole } from "@prisma/client"
 import { resolveBundles, serializeAccess, type SerializedAccess } from "@/lib/features/bundles"
 import { newConflicts } from "@/lib/permissions/separation"
-import { asRecordsRelease } from "@/lib/records-release"
 
 type Client = Pick<typeof prisma, "role" | "user">
 
@@ -49,17 +49,6 @@ export type RolePreview = {
 }
 
 /** How long a preview lasts before it ends by itself, if nobody ends it. */
-/**
- * A role's grants rows as grants. A grant for a permission no longer in the
- * catalogue is skipped rather than trusted: it cannot be encoded, and it gates
- * nothing.
- */
-function grantsOf(rows: { permission: string; scope: Scope }[]): Grants {
-    const grants: Grants = {}
-    for (const g of rows) if (isPermission(g.permission)) grants[g.permission] = g.scope
-    return grants
-}
-
 export const PREVIEW_LASTS_MS = 60 * 60 * 1000
 
 export class RoleService {
@@ -75,8 +64,8 @@ export class RoleService {
                 data: {
                     companyId, name, baseRole: builtIn, builtIn,
                     grants: {
-                        create: (Object.entries(BUILT_IN_GRANTS[builtIn]) as [string, Scope][])
-                            .map(([permission, scope]) => ({ permission, scope })),
+                        create: toStored((Object.entries(BUILT_IN_GRANTS[builtIn]) as [string, Scope][])
+                            .map(([permission, scope]) => ({ permission, scope }))),
                     },
                 },
             })
@@ -99,8 +88,7 @@ export class RoleService {
             },
         })
         if (!role) throw new Error("ROLE_NOT_FOUND")
-        const grants: Grants = {}
-        for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope
+        const grants = grantsFromRows(role.grants)
         return {
             roleId: role.id, roleName: role.name, roleBuiltIn: role.builtIn, baseRole: role.baseRole,
             companyId: role.companyId, companyName: role.company.name,
@@ -137,11 +125,11 @@ export class RoleService {
             })
             if (next?.roleId) {
                 const back = await prisma.role.findUnique({ where: { id: next.roleId }, select: { grants: { select: { permission: true, scope: true } } } })
-                if (back) return { ...held, grants: encodeGrants(grantsOf(back.grants)), role: next.role, actingEnded: true }
+                if (back) return { ...held, grants: encodeGrants(grantsFromRows(back.grants)), role: next.role, actingEnded: true }
             }
         }
         // actingEnded cleared explicitly: the token keeps whatever it is not told.
-        return { ...held, grants: encodeGrants(grantsOf(role.grants)), actingEnded: undefined }
+        return { ...held, grants: encodeGrants(grantsFromRows(role.grants)), actingEnded: undefined }
     }
 
     /** The version of a role, for the session's minute-by-minute check. */
@@ -197,7 +185,7 @@ export class RoleService {
 
         const baseRole = (input.baseRole ?? template?.baseRole) as UserRole | undefined
         if (!baseRole) throw new Error("BASE_ROLE_REQUIRED")
-        const verdict = normalizeGrants(input.grants ?? (template?.grants as GrantInput[] | undefined) ?? [])
+        const verdict = normalizeGrants(input.grants ?? (template ? templateGrants(template.grants) : undefined) ?? [])
         if (!verdict.ok) throw new GrantsError(verdict.errors)
         const conflicts = checkSeparation({}, verdict.grants, input.acknowledgeConflicts)
 
@@ -206,7 +194,7 @@ export class RoleService {
                 data: {
                     companyId: input.companyId, name: input.name, description: input.description ?? null,
                     baseRole, copiedFromTemplateId: template?.id ?? null,
-                    grants: { create: grantRows(verdict.grants) },
+                    grants: { create: toStored(grantRows(verdict.grants)) },
                 },
             })
             const { AuditLogService } = await import("./audit-log.service")
@@ -247,7 +235,7 @@ export class RoleService {
             const verdict = normalizeGrants(input.grants!)
             if (!verdict.ok) throw new GrantsError(verdict.errors)
             grants = grantRows(verdict.grants)
-            conflicts = checkSeparation(grantsOfRows(before.grants), verdict.grants, input.acknowledgeConflicts)
+            conflicts = checkSeparation(grantsFromRows(before.grants), verdict.grants, input.acknowledgeConflicts)
         }
         // What a session carries changed: bump the version so holders reload
         // within a minute (§4.4).
@@ -264,10 +252,8 @@ export class RoleService {
                 },
             })
             if (grants) {
-                // This release's: its Records grants may go too (lib/records-release.ts).
-                await asRecordsRelease(tx)
                 await tx.roleGrant.deleteMany({ where: { roleId: input.id } })
-                await tx.roleGrant.createMany({ data: grants.map(g => ({ roleId: input.id, ...g })) })
+                await tx.roleGrant.createMany({ data: toStored(grants).map(g => ({ roleId: input.id, ...g })) })
             }
             // For a removal that must be instant: sign every holder out now.
             if (input.applyNow && accessChanged) {
@@ -438,8 +424,7 @@ function shapeRole(
     },
     defaultRoleId: string | null,
 ) {
-    const grants: Grants = {}
-    for (const g of role.grants) if (isPermission(g.permission)) grants[g.permission] = g.scope as Scope
+    const grants = grantsFromRows(role.grants)
     return {
         id: role.id, companyId: role.companyId, name: role.name, description: role.description,
         baseRole: role.baseRole, builtIn: role.builtIn, version: role.version,
@@ -455,14 +440,6 @@ function shapeRole(
 function sameGrants(a: { permission: string; scope: string }[], b: { permission: string; scope: string }[]) {
     const key = (g: { permission: string; scope: string }[]) => g.map(x => `${x.permission}:${x.scope}`).sort().join(",")
     return key(a) === key(b)
-}
-
-
-/** Grants as the catalogue knows them, from rows. */
-function grantsOfRows(rows: { permission: string; scope: string }[]): Grants {
-    const grants: Grants = {}
-    for (const g of rows) if (isPermission(g.permission)) grants[g.permission] = g.scope as Scope
-    return grants
 }
 
 /**

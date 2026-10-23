@@ -59,9 +59,10 @@ Production has no data in these parts, so now is the right time.
 - **The daily expiry reminder** (`/api/notes/check-expiry`) moves with the
   records.
 
-**Built in PR 0a** (open for review):
+**Built in PR 0a** (merged in #82 on 2026-10-23):
 
-- each client's page (`/dashboard/vendors/[id]` until 0b) shows its details
+- each client's page (`/dashboard/clients/[id]`, `/dashboard/vendors/[id]`
+  until 0b) shows its details
   and its records, with a filter by section, and its sections, which can be
   added, renamed and deleted. A client's first record names its first
   section;
@@ -157,9 +158,9 @@ Two things make a single big rename unsafe:
 | PR | What it does | Effect on production while it waits for review |
 |---|---|---|
 | 0a | Records move onto clients (§0.2): sections attach to the vendor table; today's empty clients table is no longer used; `clients.*` permissions become `records.*`; the Records page and the reminder job move; the Super Admin dashboard's client count (`getSuperAdminOverviewStats`), which counts that table, counts the vendor table instead | Only today's Clients section stops working, and it's empty |
-| 0b | Vendors become Clients in code (§0.1). The code still accepts the old `vendors.*` permission names, and the database names stay as they are for now. Today's clients table goes (see below) | None |
-| 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and support for the old names is removed | None, because 0b already accepts both |
-| 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below) | None. The app is closed for about 15 minutes, at a time the product owner chooses |
+| 0b | Vendors become Clients in code (§0.1). The code reads both the old `vendors.*` permission names and the new ones, and writes the old; the database names stay as they are for now. 0a's triggers and the old section's own rows go (see below) | None |
+| 0c | The stored permission names are rewritten from `vendors.*` to `clients.*`, and the code writes the new names, still reading both. Today's clients table is dropped | None, because 0b already accepts both |
+| 0d | The database's own names are renamed too, during a short planned maintenance window (Decided: see below). Any old permission name left is rewritten, and the code stops reading them. The old clients table's column on sections is dropped | None. The app is closed for about 15 minutes, at a time the product owner chooses |
 
 The app ignores permission names it doesn't know instead of failing
 (`lib/permissions/matrix.ts`), so the short overlaps above can't break
@@ -167,11 +168,11 @@ sign-in.
 
 **How 0a keeps to this** (built):
 
-- **Today's clients table stays until 0b.** Main's code counts it on the
+- **Today's clients table stays until 0c.** Main's code counts it on the
   Super Admin's dashboard, so dropping it in 0a would break that page while
   0a waits for review. 0a only stops using it: a section gets a client
   column, the old column is no longer required, and a check says a section
-  has exactly one of the two.
+  has exactly one of the two. 0b keeps it too, for 0a's code (below).
 - **The database renames old names on the way in.** Main's code still
   writes `clients.*` while 0a waits for review, for a company created then,
   and a company's own name for the old section's side bar item. Triggers
@@ -184,18 +185,50 @@ sign-in.
   is that grant. 0a marks its own writes, so it can still remove one
   (`lib/records-release.ts`, migration `20261104000003_records_grants_kept`).
 - **0b therefore also:**
-  1. deletes the old section's own rows, if any (production has none), and
-     drops today's clients table and its column;
+  1. deletes the old section's own rows, if any (production has none). Its
+     table is dropped in 0c instead, and its column on sections in 0d: 0a's
+     code, live while 0b waits for review, reads every column of a section,
+     the old one too, and 0b's own does while 0c waits;
   2. drops 0a's triggers and their functions, before "clients" takes its new
      meaning, the ones keeping Records grants too, and `lib/records-release.ts`
      with its calls;
   3. sends the old `/dashboard/vendors/...` addresses on to
      `/dashboard/clients/...`, for links already sent.
 
+**How 0b keeps to this** (built):
+
+- **Stored names, read both ways.** Permission rows and role templates keep
+  `vendors.view` and `vendors.manage`, and a company's own name and icon
+  for Clients keep the module key `vendors`. The code reads both names as
+  the new and writes the old (`lib/permissions/stored-names.ts`,
+  `lib/modules.ts`), so 0a's code, live while 0b waits for review, sees
+  every grant and name 0b writes. A query by permission, such as "who can
+  do this?", asks for both names. The codes in the session token are the
+  same under either name, so nobody's session reloads.
+- **0a's triggers go** (migration `20261106000000_records_compat_dropped`),
+  with their functions and `lib/records-release.ts`. 0a's code doesn't need
+  them: it writes `records.*` itself.
+- **The old addresses open the new pages:** `/dashboard/vendors` and a
+  client's `/dashboard/vendors/[id]`.
+- **What stays as it was:** the database's table and column names (until
+  0d), and the audit log's codes for a client's changes (`CREATE_VENDOR` and
+  the rest), which are stored with each entry. On screen they all say
+  Client.
+- **A page open from before the deploy** calls the old API addresses and
+  needs a reload, as it did for 0a.
+- **0c and 0d** (Decided on 2026-10-22): a grant 0b's code writes while 0c
+  waits for review has the old name. So 0c's code writes the new names and
+  still reads both, and 0d, with the app closed, rewrites any old name left
+  and removes the reading of them. No trigger is needed.
+
 **PR 0d, the maintenance window:**
 
 - It renames the `Vendor` table and the `vendorId` columns to their new
-  names, and removes the old-name mapping from the code.
+  names, and removes the old-name mapping from the code: the schema's
+  `@map`s, and the reading of old permission names and the module's old
+  key, after rewriting any 0b wrote while 0c waited for review. It also
+  drops the old clients table's column on sections, which every release
+  until then reads.
 - It's kept small so its review is quick.
 - When its checks pass:
   1. turn maintenance mode on;
@@ -686,11 +719,16 @@ balance first, automatically:
        the brand colour, in one small PR after it (`UI_PLAN.md` §4.6).
        Merged in #81 on 2026-10-16.
   2. **Steps 0–7 above.**
-     - Step 0's first PR, 0a, is open for review (§0.2, §0.3).
+     - Step 0's first PR, 0a, was merged in #82 on 2026-10-23 (§0.2,
+       §0.3).
+     - 0b, Vendors becoming Clients in code, is open for review in #92
+       (§0.1, §0.3). It renames and nothing else: the Clients list page looks as
+       it did.
      - The new side bar groups land with step 0. 0a puts the Records item
-       where the old Clients item was. Proposed: the groups come with 0b,
-       when Vendors become Clients and the Clients group (§2.1 of
-       `UI_PLAN.md`) can hold Clients and Records.
+       where the old Clients item was. Decided (2026-10-22): the groups come
+       in a small PR straight after 0b, now that the Clients group (§2.1 of
+       `UI_PLAN.md`) can hold Clients and Records, with the Clients list
+       page rebuilt on the building blocks.
      - Every screen these steps create or rework uses the building blocks:
        Clients, Locations, Records, the Costs tabs, Cash advances, and the
        task form's pickers.
@@ -1038,3 +1076,22 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   (`COMPANY_CHANGE_FORBIDDEN`). What a move did, ending their phones,
   places, session and acting role, is gone with it. Deleting a company
   still keeps a file another company's row uses, as a safeguard.
+- **2026-10-22:** PR 0b is built (§0.1, §0.3): Vendors are Clients in the
+  code, its pages and its API (`/dashboard/clients`, `/api/clients`), and
+  the old page addresses open the new ones. The database keeps the old
+  permission names and the module's key until 0c, read as the new; the code
+  writes the old. 0a's triggers and the old section's own rows go. Today's
+  clients table is now dropped in 0c rather than 0b, and its column on
+  sections in 0d, as each release reads every column of a section while
+  the next waits for review. It
+  opens for review once 0a is merged. Proposed: the side bar groups and the
+  Clients list page on the building blocks in a small PR after it (§8).
+- **2026-10-22:** The product owner agreed both of 0b's proposals.
+  - **Decided:** the side bar groups, and the Clients list page on the
+    building blocks, come in a small PR straight after 0b (§8).
+  - **Decided:** 0c writes the new permission names and still reads both,
+    so a grant 0b's code writes while 0c waits for review isn't lost; 0d,
+    with the app closed, rewrites any old name left and stops reading them.
+    No trigger is needed (§0.3).
+- **2026-10-23:** 0a was merged in #82. 0b opens for review in #92, on
+  main as #83–#91 left it: its commits are as built, on that main.

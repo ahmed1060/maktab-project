@@ -18,7 +18,7 @@ const sharedTask = () => ({
     id: "t-shared", companyId: "c1", title: "Shared", description: "Two people, two payments",
     status: "IN_PROGRESS", difficulty: 1, comments: [], attachments: [], location: null,
     memberCosts: { ...SHARED_COSTS }, memberPaymentStatus: {}, totalCost: 350,
-    paymentStatus: "PENDING_PAYMENT", createdById: "admin", createdBy: "admin", vendorId: null,
+    paymentStatus: "PENDING_PAYMENT", createdById: "admin", createdBy: "admin", clientId: null,
     deadline: new Date(Date.now() + 86_400_000), updatedAt: new Date(), createdAt: new Date(),
     company: { autoVerifyLocation: false },
     assignees: [person("emp"), person("loner")],

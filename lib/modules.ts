@@ -26,7 +26,7 @@ export const MODULE_KEYS = [
     'records',
     'costs',
     'employees',
-    'vendors',
+    'clients',
 ] as const
 
 export type ModuleKey = (typeof MODULE_KEYS)[number]
@@ -71,11 +71,27 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     records: { labelKey: 'records', icon: '🗂️', href: '/dashboard/records' },
     costs: { labelKey: 'costs', icon: '💰', href: '/dashboard/costs' },
     employees: { labelKey: 'employees', icon: '👥', href: '/dashboard/employees' },
-    vendors: { labelKey: 'vendors', icon: '🚚', href: '/dashboard/vendors' },
+    clients: { labelKey: 'clients', icon: '🚚', href: '/dashboard/clients' },
 }
 
-/** A company's overrides, as stored. A missing key falls through to the default. */
+/** A company's overrides, by module. A missing key falls through to the default. */
 export type ModuleOverrides = Partial<Record<ModuleKey, string>>
+
+/**
+ * Module keys as a company's overrides store them (CLIENTS_PLAN.md §0.3).
+ * Clients were Vendors until 0b, and their overrides keep the old key until
+ * 0c rewrites them: main's code, live while each PR waits for review, knows
+ * only that one. So the old key is read as the new, and written. 0d removes
+ * this, as it does lib/permissions/stored-names.ts.
+ */
+const STORED_KEY: Partial<Record<ModuleKey, string>> = { clients: 'vendors' }
+const KEY_OF: Record<string, ModuleKey> = Object.fromEntries(Object.entries(STORED_KEY).map(([key, stored]) => [stored, key as ModuleKey]))
+
+/** Overrides as they're written to the company: under their stored keys. */
+export function storedOverrides(overrides: ModuleOverrides | null): Record<string, string> | null {
+    if (!overrides) return overrides
+    return Object.fromEntries(Object.entries(overrides).map(([key, value]) => [STORED_KEY[key as ModuleKey] ?? key, value]))
+}
 
 /**
  * Narrows whatever came out of a Json column to the shape this module expects.
@@ -90,7 +106,8 @@ export function parseModuleOverrides(value: unknown): ModuleOverrides {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
     const out: ModuleOverrides = {}
-    for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    for (const [stored, raw] of Object.entries(value as Record<string, unknown>)) {
+        const key = KEY_OF[stored] ?? stored
         if (!isModuleKey(key)) continue
         if (typeof raw !== 'string') continue
         const trimmed = raw.trim()
@@ -208,7 +225,7 @@ export const MENU_MODULES: readonly ModuleKey[] = [
     'records',
 ]
 
-export const MANAGEMENT_MODULES: readonly ModuleKey[] = ['costs', 'employees', 'vendors']
+export const MANAGEMENT_MODULES: readonly ModuleKey[] = ['costs', 'employees', 'clients']
 
 /**
  * The resolvers, bound to one company's overrides.
