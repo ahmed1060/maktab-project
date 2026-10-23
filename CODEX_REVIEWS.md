@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-23 09:44 UTC, against GitHub.
+Last checked: 2026-10-23 09:54 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -37,25 +37,15 @@ limits" reviews nothing.
 
 ## Waiting for Codex
 
-| PR | State | Last commit Codex reviewed | Not yet reviewed |
-| --- | --- | --- | --- |
-| #85 DESIGN.md: the top bar keeps its glass | Open | `f937920` (2026-10-23 09:44 UTC) | Every commit after `f937920` (below) |
-
-Codex's first four reviews of #85 found nine things, each fixed in its
-own commit: `b45884b`, `38b1e4d`, `e662f96`, `cccb17e`, `51d0e6f`,
-`871ad53`, `7cbd9c0`, and the fourth review's one, after `f937920`, which
-hasn't been reviewed:
-
-- `4eefda9` The design-token check refuses a glass token declared again
-- this file's own commit
+Nothing is waiting: every open and merged PR has been reviewed.
 
 ## Reviewed
 
-Every merged PR, #1 to #84, has been reviewed in full.
+Every merged PR, #1 to #85, has been reviewed in full.
 
 | PR | How |
 | --- | --- |
-| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#84 | At its last commit |
+| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#85 | At its last commit |
 | #1, #28, #29, #33, #35–#38, #45, #48, #73–#78 | After merging, on main containing its last commit |
 | #2 | Review-only #71 |
 | #3 | Review-only #69 |
