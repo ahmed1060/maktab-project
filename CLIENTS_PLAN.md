@@ -1010,3 +1010,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   employee picked Mark all as paid pays that employee's shares only, not
   each task whole; a task is paid once no share of it is left, and the page
   shows only shares still to pay. Production has no costs yet.
+- **2026-10-23:** From Codex's review of #87: paying one person's share
+  from a task's page pays the task once no share is left, by the same rule
+  as Mark all as paid. A status for someone with no share, or a share of
+  nothing, kept the task waiting, while the Costs page showed nothing of it.
