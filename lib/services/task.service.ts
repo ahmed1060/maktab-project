@@ -882,7 +882,7 @@ export class TaskService {
                 memberPayments[targetUserId] = paymentStatus
                 updateData.memberPaymentStatus = memberPayments
                 // Paid once no share is left, as the Costs page and Mark all as paid count it.
-                const allPaid = allSharesPaid((task.memberCosts as any) || {}, memberPayments)
+                const allPaid = allSharesPaid((task.memberCosts as any) || {}, memberPayments, task.totalCost)
                 if (allPaid) {
                     updateData.paymentStatus = 'PAID'
                     updateData.status = 'COMPLETED'
@@ -1175,7 +1175,7 @@ export class TaskService {
 
             const tasks = await tx.task.findMany({
                 where: whereClause,
-                select: { id: true, companyId: true, memberCosts: true, memberPaymentStatus: true, assignees: { select: { id: true, teamLeaderId: true } } } as any
+                select: { id: true, companyId: true, totalCost: true, memberCosts: true, memberPaymentStatus: true, assignees: { select: { id: true, teamLeaderId: true } } } as any
             })
 
             if (tasks.length !== taskIds.length && userRole !== 'SUPER_ADMIN') {
@@ -1195,7 +1195,7 @@ export class TaskService {
                     if (!can(session.user, "tasks.pay", { companyId: task.companyId, userId: member.id, teamLeaderId: member.teamLeaderId })) throw new Error("OUTSIDE_TEAM")
 
                     payments[memberId] = 'PAID'
-                    const allPaid = allSharesPaid(mCosts, payments)
+                    const allPaid = allSharesPaid(mCosts, payments, task.totalCost)
                     await tx.task.update({
                         where: { id: task.id },
                         data: {

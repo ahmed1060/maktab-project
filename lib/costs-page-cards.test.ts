@@ -66,9 +66,19 @@ describe("the Costs page's cards", () => {
 
     it("shows only the shares still to pay: not one paid already, or one of nothing", async () => {
         // Mona's share paid with her picked in the filter; Ali's removed down to nothing.
-        const html = await costsPage([task({ memberCosts: { u1: 0, u2: 200 }, memberPaymentStatus: { u2: "PAID" } }), task({ id: "t2", title: "Paint the lobby", memberCosts: { u1: 150 }, memberPaymentStatus: {} })])
+        const html = await costsPage([task({ totalCost: 200, memberCosts: { u1: 0, u2: 200 }, memberPaymentStatus: { u2: "PAID" } }), task({ id: "t2", title: "Paint the lobby", totalCost: 150, memberCosts: { u1: 150 }, memberPaymentStatus: {} })])
         expect(html).not.toContain("Fix the gate")
         expect(html).toContain("Paint the lobby")
         expect(html).toContain("150.00")
+    })
+
+    it("shows what of a cost is no one's share as the task's own, beside the shares", async () => {
+        // 100 EGP from before shares, then Ali's 50.
+        const html = await costsPage([task({ totalCost: 150, memberCosts: { u1: 50 }, memberPaymentStatus: {} })])
+        expect(html).toContain("50.00")
+        expect(html).toContain("Ali Hassan, Mona Adel")
+        expect(html).toContain("100.00")
+        // Not with an employee picked: it's no one's share.
+        expect(await costsPage([task({ totalCost: 150, memberCosts: { u1: 50 }, memberPaymentStatus: {} })], "employeeId=u1")).not.toContain("Ali Hassan, Mona Adel")
     })
 })

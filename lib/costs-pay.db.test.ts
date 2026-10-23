@@ -30,10 +30,10 @@ describe.skipIf(!ADMIN_URL)("one employee's costs, in Postgres", () => {
     const dbName = `costs_pay_test_${Date.now()}`
     let db: Client
 
-    /** A reviewed task waiting to be paid, shared by Ali and Mona. */
-    const task = async (id: string, shares: object | null, statuses: object | null) => {
+    /** A reviewed task waiting to be paid, shared by Ali and Mona; its total is its shares' unless given. */
+    const task = async (id: string, shares: Record<string, number> | null, statuses: object | null, total = shares ? Object.values(shares).reduce((a, b) => a + b, 0) : 300) => {
         await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "totalCost", "memberCosts", "memberPaymentStatus", "companyId", "updatedAt")
-            VALUES ($1, $1, '', 'APPROVED', now(), 300, $2, $3, 'c1', now())`, [id, shares, statuses])
+            VALUES ($1, $1, '', 'APPROVED', now(), $4, $2, $3, 'c1', now())`, [id, shares, statuses, total])
         await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") VALUES ($1, 'e1'), ($1, 'e2')`, [id])
     }
     const listed = async (employeeId?: string) => {
@@ -121,6 +121,20 @@ describe.skipIf(!ADMIN_URL)("one employee's costs, in Postgres", () => {
         await task("t11-ali-owes", { e1: 100, e2: 200 }, { e1: "PENDING_PAYMENT", e2: "PENDING_PAYMENT" })
         await TaskService.updatePayment("t11-ali-owes", session, { paymentStatus: "PAID", targetUserId: "e2" })
         expect(await row("t11-ali-owes")).toMatchObject({ task: "PENDING_PAYMENT", status: "APPROVED" })
+    })
+
+    it("keeps a task waiting while some of its cost is no one's share, until the task is paid whole", async () => {
+        // 100 EGP from before shares, then Ali's 50: his share is all that's split.
+        await task("t12-old-cost", { e1: 50 }, { e1: "PENDING_PAYMENT" }, 150)
+        await task("t13-old-cost", { e1: 50 }, { e1: "PENDING_PAYMENT" }, 150)
+        await TaskService.updatePayment("t12-old-cost", session, { paymentStatus: "PAID", targetUserId: "e1" })
+        await TaskService.bulkUpdatePayment(["t13-old-cost"], session, "e1")
+        expect(await row("t12-old-cost")).toEqual({ paid: { e1: "PAID" }, task: "PENDING_PAYMENT", status: "APPROVED" })
+        expect(await row("t13-old-cost")).toEqual({ paid: { e1: "PAID" }, task: "PENDING_PAYMENT", status: "APPROVED" })
+        // Still listed with no one picked, where its own 100 EGP is, and paid with it.
+        expect(await listed()).toContain("t12-old-cost")
+        await TaskService.bulkUpdatePayment(["t12-old-cost"], session)
+        expect(await row("t12-old-cost")).toMatchObject({ task: "PAID", status: "COMPLETED" })
     })
 
     it("pays every share of each task with no one picked, as before", async () => {

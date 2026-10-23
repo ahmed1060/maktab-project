@@ -9,7 +9,7 @@ import { useHeader } from '@/context/HeaderContext'
 import { useEffect } from 'react'
 import Pagination from '@/components/Pagination'
 import { useCan } from '@/lib/useCan'
-import { shareOwed } from '@/lib/cost-shares'
+import { shareOwed, unallocatedCost } from '@/lib/cost-shares'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
@@ -44,22 +44,10 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
         const mCosts = typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : (task.memberCosts || {})
         const userCosts = Object.entries(mCosts)
 
-        if (userCosts.length === 0 && task.totalCost > 0) {
-            // A cost not split by member, as a task's was before memberCosts.
-            // A task has assignees, not an assignee: the card names them all.
-            const names = (task.assignees || []).map((a: any) => `${a.firstName} ${a.lastName}`.trim()).filter(Boolean)
-            return [{
-                ...task,
-                displayCost: task.totalCost,
-                displayAssignee: { id: null, firstName: names.join(locale === 'ar' ? '، ' : ', ') || t('unknown_user'), lastName: '' },
-                individualPaymentStatus: task.paymentStatus
-            }]
-        }
-
         const mPaymentStatus = typeof task.memberPaymentStatus === 'string' ? JSON.parse(task.memberPaymentStatus) : (task.memberPaymentStatus || {})
         // Only the shares still to pay: one already paid, as one employee's
         // costs are by Mark all as paid, isn't waiting any more.
-        return userCosts.filter(([uid, amount]) => shareOwed(amount, mPaymentStatus[uid])).map(([uid, amount]) => {
+        const shares = userCosts.filter(([uid, amount]) => shareOwed(amount, mPaymentStatus[uid])).map(([uid, amount]) => {
             const assignee = task.assignees?.find((a: any) => a.id === uid)
 
             return {
@@ -69,6 +57,20 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
                 individualPaymentStatus: mPaymentStatus[uid] || 'PENDING_PAYMENT'
             }
         })
+
+        // What of the cost is no one's share: all of it for a cost not split
+        // by member, as a task's was before memberCosts, or what a task had
+        // then beside the shares added since. The task's own card: a task has
+        // assignees, not an assignee, so it names them all.
+        const unallocated = unallocatedCost(task.totalCost, mCosts)
+        if (unallocated <= 0) return shares
+        const names = (task.assignees || []).map((a: any) => `${a.firstName} ${a.lastName}`.trim()).filter(Boolean)
+        return [...shares, {
+            ...task,
+            displayCost: unallocated,
+            displayAssignee: { id: null, firstName: names.join(locale === 'ar' ? '، ' : ', ') || t('unknown_user'), lastName: '' },
+            individualPaymentStatus: task.paymentStatus
+        }]
     })
 
     // Filter flattened entries locally to ensure only the selected employee's card shows if employeeId is set
