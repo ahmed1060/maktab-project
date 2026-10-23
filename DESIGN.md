@@ -127,18 +127,23 @@ below, which are all worked out from the one chosen colour.
 | Token | Light | Dark | Used for |
 |---|---|---|---|
 | `--page` | `#f6f9fc` | `#0a1220` | The page behind everything |
-| `--panel` | `#ffffff` | `#0f1a2b` | Panels, tables, cards, the side bar, the top bar |
+| `--panel` | `#ffffff` | `#0f1a2b` | Panels, tables, cards, the side bar; the top bar where the browser can't blur (§5.1) |
 | `--panel-raised` | `#ffffff` | `#16233a` | Menus, pop-ups, dialogs, toasts |
 | `--ink` | `#0d253d` | `#e6edf5` | Main text: titles and row content |
 | `--ink-2` | `#273951` | `#b8c4d4` | Secondary text in rows and forms |
 | `--muted` | `#5d6b82` | `#8a9ab0` | Helper text, labels, table headers, empty states |
 | `--rule` | `#e3e8ee` | `#24324a` | Lines between rows; panel edges |
 | `--field-line` | `#828e9f` | `#65758d` | The edge of a field, checkbox or toggle (3:1 or better on the page and on panels) |
+| `--header-glass-bg` | `rgba(255, 255, 255, 0.82)` | `rgba(13, 17, 23, 0.88)` | The top bar's glass, once the page scrolls (§5.1) |
+| `--header-glass-border` | `rgba(255, 255, 255, 0.45)` | `rgba(255, 255, 255, 0.1)` | The glass top bar's hairline edge |
+| `--header-shadow` | `0 4px 30px rgba(0, 0, 0, 0.05)` | `0 4px 30px rgba(0, 0, 0, 0.45)` | The glass top bar's shadow |
 
 - Text is navy, never pure black. Dark mode is deep navy, never pure black
   either.
 - `--muted` was darkened from the reference's `#64748d`, which was 4.49:1
   on the page. Now it's 5.11:1 on the page and 4.70:1 on the brand tint.
+- The top bar's three glass tokens are the ones the app has today, kept
+  with its glass (§5.1).
 
 ### 2.3 Status and meaning
 
@@ -274,6 +279,7 @@ One corner size for each level, so the level shows at a glance:
 | Panels, tables, cards, dialogs | 12px |
 | Menus, pop-ups, toasts | 8px |
 | Fields, side bar items, pager buttons | 6px |
+| The top bar, floating once the page scrolls (§5.1) | 24px |
 
 ### 4.3 Depth
 
@@ -284,7 +290,10 @@ One corner size for each level, so the level shows at a glance:
 | 2 | `0 8px 24px rgba(13,37,61,.12), 0 2px 6px rgba(13,37,61,.06)` | Menus, pop-ups, dialogs, toasts |
 
 - **In dark mode,** shadows don't show. Depth comes from `--panel-raised` and
-  the hairline edge instead.
+  the hairline edge instead. The one exception is the glass top bar
+  (§5.1), kept as it is today: its dark `--header-shadow` is deep enough
+  to show, and with its hairline edge it sets the bar off from the page
+  scrolling under it.
 - **No panel inside a panel.** Sections within a panel are split by
   hairlines, not by more cards with more shadows.
 - **No gradients as decoration.** The logo tile is solid `--brand`.
@@ -309,9 +318,35 @@ These are built once, in the building-blocks PR, and every page uses them
   - Company Settings sits at the bottom.
 - **Side bar on phones:** a drawer from the start side, opened from the
   menu button. Check in sits at the top, beside Dashboard.
-- **Top bar:** 60px tall (56px on phones), `--panel` background with a
-  hairline below. On the end side it has the language switch, the bell and
-  the account menu (`UI_PLAN.md` §2.1).
+- **Top bar:** 60px tall (56px on phones). On the end side it has the
+  language switch, the bell and the account menu (`UI_PLAN.md` §2.1). It
+  stays at the top as the page scrolls, and is kept as it is today
+  (decided by the product owner):
+  - at the top of the page it has no background of its own, and sits on
+    the page;
+  - once the page scrolls (past 10px), it floats as a pane of glass: 16px
+    in from the page's edges, with 24px corners, a see-through
+    `--header-glass-bg` with a 20px blur and 160% saturation behind it, a
+    hairline `--header-glass-border` edge and `--header-shadow`. The page
+    scrolling under it shows through, blurred;
+  - the bar takes the same room in both: the inset, corners, glass, edge
+    and shadow are drawn on a layer inside it, so the page under it never
+    moves as it floats or settles. Today's bar grows its own margins
+    instead, which moves the page 32px at 10px of scroll; the rebuilt app
+    shell keeps the look and not that;
+  - text and icons on the bar are `--ink` or `--ink-2`, never `--muted`.
+    Whatever scrolls under it, a dark map say, the glass is at its darkest
+    `#d1d1d1` in light mode and its lightest `#2a2e33` in dark mode, and
+    `--muted` reads only 3.5:1 on the first; `--ink-2` reads 7.7:1 on both;
+  - it eases between the two over 300ms, changing only its background,
+    blur (`backdrop-filter` and `-webkit-backdrop-filter`), edge, shadow,
+    inset and corners, so the blur comes in with the rest rather than at
+    once. With "reduce motion" on, it changes at once;
+  - where the browser can't blur, supporting neither `backdrop-filter`
+    nor `-webkit-backdrop-filter` (`@supports not`), it floats on solid
+    `--panel` instead, with the same edge and shadow. Without the blur the
+    glass is see-through, and its helper text, over a dark page, could
+    fall below 4.5:1.
 - **Page area:** `--page` background, with the page-edge spacing from
   §4.1.
 
@@ -745,3 +780,17 @@ changed:
   refusal or "not found" is said at once.
 - **2026-10-22:** So does anything else a screen loads (§5.5), at the
   product owner's request. A save is never sent again.
+- **2026-10-22:** The top bar keeps its glass, as the product owner asked
+  (§5.1): flat at the top of the page, and once it scrolls, a floating
+  pane of glass with a blur behind it, 24px corners (§4.2) and a shadow,
+  easing in over 300ms. It replaces the flat `--panel` bar the app shell
+  was to have.
+- **2026-10-23:** From Codex's review of #85: the top bar's glass tokens
+  are in the neutrals table (§2.2), and `--panel` no longer names the top
+  bar; where the browser can't blur, the bar is solid `--panel`, as the
+  glass alone could leave helper text below 4.5:1; its blur eases in
+  with the rest (§5.1); its dark shadow is the one exception to dark
+  mode's depth without shadows (§4.3); its text is `--ink` or `--ink-2`,
+  never `--muted`, which a dark backdrop under the glass can bring below
+  4.5:1; and it takes the same room floating or not, so the page doesn't
+  move.

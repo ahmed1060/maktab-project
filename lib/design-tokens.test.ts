@@ -31,6 +31,22 @@ const THEMES = { light: block(":root {"), dark: block(':root[data-theme="dark"] 
 const NEUTRALS = [...DOC.matchAll(/^\| `(--[a-z0-9-]+)` \| `(#[0-9a-f]{6})` \| `(#[0-9a-f]{6})` \|/gm)]
     .map(m => ({ token: m[1], light: m[2], dark: m[3] }))
 
+/**
+ * DESIGN.md §2.2's glass top bar: | `--header-…` | `light` | `dark` |. These
+ * are the app's older tokens, kept with the bar's glass (§5.1), so they're
+ * declared in the stylesheet's first :root blocks, not the ones above
+ * (Codex on #85).
+ */
+const GLASS = [...DOC.matchAll(/^\| `(--header-[a-z-]+)` \| `([^`]+)` \| `([^`]+)` \|/gm)]
+    .map(m => ({ token: m[1], light: m[2], dark: m[3] }))
+
+/** A token as the first block for `selector` declares it, its spacing as one space. */
+function declared(selector: string, token: string): string | undefined {
+    const at = CSS.indexOf(selector)
+    const body = CSS.slice(at, CSS.indexOf("\n}", at))
+    return body.match(new RegExp(`${token}\\s*:\\s*([^;]+);`))?.[1].replace(/\s+/g, " ").trim()
+}
+
 /** DESIGN.md §2.3: | Meaning | statuses | `#bg` / `#fg` (n:1) | `#bg` / `#fg` (n:1) | */
 const MEANING_TOKEN: Record<string, string> = {
     "Neutral": "neutral", "In motion": "progress", "Waiting on someone": "waiting", "Done or good": "good", "Problem": "problem",
@@ -51,6 +67,36 @@ describe("the stylesheet says what DESIGN.md says", () => {
 
     it.each(["light", "dark"] as const)("neutrals, %s", theme => {
         for (const n of NEUTRALS) expect([n.token, THEMES[theme][n.token]]).toEqual([n.token, n[theme]])
+    })
+
+    it("the glass top bar's tokens, in both themes", () => {
+        expect(GLASS.map(g => g.token)).toEqual(["--header-glass-bg", "--header-glass-border", "--header-shadow"])
+        for (const g of GLASS) {
+            // Declared once for each theme and nowhere else, so a later block
+            // can't override the value checked here (Codex on #85).
+            expect([g.token, CSS.match(new RegExp(`${g.token}\\s*:`, "g"))?.length]).toEqual([g.token, 2])
+            expect([g.token, declared(":root {", g.token)]).toEqual([g.token, g.light])
+            expect([g.token, declared(':root[data-theme="dark"] {', g.token)]).toEqual([g.token, g.dark])
+        }
+    })
+
+    it("text on the glass top bar reads at 4.5:1 whatever scrolls under it, though helper text wouldn't", () => {
+        // The glass over black is its darkest, behind light mode's dark text;
+        // over white, its lightest, behind dark mode's light text (Codex on #85).
+        const glass = (theme: "light" | "dark") => {
+            const [r, g, b, a] = GLASS.find(x => x.token === "--header-glass-bg")![theme].match(/[\d.]+/g)!.map(Number)
+            const under = theme === "light" ? 0 : 255
+            return "#" + [r, g, b].map(c => Math.round(c * a + under * (1 - a)).toString(16).padStart(2, "0")).join("")
+        }
+        expect([glass("light"), glass("dark")]).toEqual(["#d1d1d1", "#2a2e33"])
+        for (const theme of ["light", "dark"] as const) {
+            for (const token of ["--ink", "--ink-2"]) expect([theme, token, contrast(THEMES[theme][token], glass(theme)) >= 4.5]).toEqual([theme, token, true])
+        }
+        expect(contrast(THEMES.light["--muted"], glass("light"))).toBeLessThan(4.5)
+        expect(DOC).toContain("text and icons on the bar are `--ink` or `--ink-2`, never `--muted`.")
+        expect(DOC).toContain("`--muted` reads only 3.5:1 on the first; `--ink-2` reads 7.7:1 on both;")
+        expect(contrast(THEMES.light["--muted"], glass("light")).toFixed(1)).toBe("3.5")
+        expect(Math.min(contrast(THEMES.light["--ink-2"], glass("light")), contrast(THEMES.dark["--ink-2"], glass("dark"))).toFixed(1)).toBe("7.7")
     })
 
     it.each(["light", "dark"] as const)("status colours, %s", theme => {
