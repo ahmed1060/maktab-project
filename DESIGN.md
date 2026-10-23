@@ -327,8 +327,9 @@ These are built once, in the building-blocks PR, and every page uses them
     hairline `--header-glass-border` edge and `--header-shadow`. The page
     scrolling under it shows through, blurred;
   - it eases between the two over 300ms, changing only its background,
-    edge, shadow, margins and corners. With "reduce motion" on, it changes
-    at once;
+    blur (`backdrop-filter` and `-webkit-backdrop-filter`), edge, shadow,
+    margins and corners, so the blur comes in with the rest rather than
+    at once. With "reduce motion" on, it changes at once;
   - where the browser can't blur, supporting neither `backdrop-filter`
     nor `-webkit-backdrop-filter` (`@supports not`), it floats on solid
     `--panel` instead, with the same edge and shadow. Without the blur the
@@ -772,3 +773,8 @@ changed:
   pane of glass with a blur behind it, 24px corners (§4.2) and a shadow,
   easing in over 300ms. It replaces the flat `--panel` bar the app shell
   was to have.
+- **2026-10-23:** From Codex's review of #85: the top bar's glass tokens
+  are in the neutrals table (§2.2), and `--panel` no longer names the top
+  bar; where the browser can't blur, the bar is solid `--panel`, as the
+  glass alone could leave helper text below 4.5:1; and its blur eases in
+  with the rest (§5.1).

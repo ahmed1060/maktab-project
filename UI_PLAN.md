@@ -815,3 +815,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   §5.1). Today's bar already does this (`components/DashboardShell.tsx`);
   the new shell keeps it, with its transition naming what it changes
   rather than `all`, and reduce motion respected.
+- **2026-10-23:** From Codex's review of #85: where the browser can't blur,
+  the glass top bar is solid instead, so its text keeps its contrast, and
+  the blur eases in with the rest (`DESIGN.md` §5.1).
