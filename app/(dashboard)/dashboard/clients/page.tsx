@@ -162,7 +162,9 @@ export default function ClientsPage() {
                 onReset={query ? () => setQuery('') : undefined}
             />
 
-            {isLoading && !result
+            {/* Loading, too, until the session says who's looking: before it, nobody
+                holds anything and nothing is asked for, which isn't "none". */}
+            {!session?.user || (isLoading && !result)
                 ? <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('clients_loading')} /></div>
                 : (
                     <DataList

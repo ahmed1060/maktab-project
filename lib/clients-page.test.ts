@@ -9,13 +9,15 @@ import { renderToStaticMarkup } from "react-dom/server"
  */
 
 const state = {
+    /** Whether the session has loaded: until it has, useSession has no user. */
+    loaded: true,
     role: "ADMIN",
     grants: new Set(["clients.view", "clients.manage"]),
     label: undefined as string | undefined,
     keys: [] as (string | null)[],
     list: { data: { data: [] as unknown[] } } as { data?: unknown; error?: Error },
 }
-vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u1", role: state.role } } }) }))
+vi.mock("next-auth/react", () => ({ useSession: () => (state.loaded ? { data: { user: { id: "u1", role: state.role } }, status: "authenticated" } : { data: undefined, status: "loading" }) }))
 vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.grants.has(p) }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => (key === "clients" ? "Clients" : key) }) }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
@@ -29,6 +31,7 @@ vi.mock("swr", () => ({
 }))
 
 beforeEach(() => {
+    state.loaded = true
     state.role = "ADMIN"
     state.grants = new Set(["clients.view", "clients.manage"])
     state.label = undefined
@@ -49,6 +52,16 @@ describe("the Clients list", () => {
         expect(html).toContain("Access Restricted")
         expect(html).not.toContain("clients_load_failed")
         expect(state.keys.filter(Boolean)).toEqual([])
+    })
+
+    it("waits for the session, rather than saying there are none before it knows who's looking", async () => {
+        // Before it loads, nobody holds anything, so nothing is asked for.
+        state.loaded = false
+        state.grants = new Set()
+        const html = await page()
+        expect(html).toContain("clients_loading")
+        expect(html).not.toContain("clients_none")
+        expect(html).not.toContain("Access Restricted")
     })
 
     it("says the list didn't load, with Try again, rather than that there are none", async () => {
