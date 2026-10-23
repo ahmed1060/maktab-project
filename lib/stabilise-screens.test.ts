@@ -21,9 +21,10 @@ describe("a page reached by typing its address", () => {
 
 describe("the menu", () => {
     it("offers My payslips to people, not to the Super Admin, who has none", () => {
-        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        const at = shell.indexOf('href="/dashboard/documents"')
-        expect(shell.slice(at - 200, at)).toContain("user?.role !== 'SUPER_ADMIN' && (")
+        // Who sees each of the side bar's pages is lib/side-bar.ts.
+        const sideBar = readFileSync("lib/side-bar.ts", "utf8")
+        expect(sideBar).toContain("case 'myPayslips': return !v.superAdmin")
+        expect(readFileSync("components/DashboardShell.tsx", "utf8")).toContain("superAdmin: user?.role === 'SUPER_ADMIN'")
     })
 
     it("and while the Super Admin previews a role, shows it as the role would see it without asking for their payslips", () => {

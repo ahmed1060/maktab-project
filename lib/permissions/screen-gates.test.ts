@@ -53,7 +53,7 @@ const PEOPLE = D + "employees/page.tsx"
 
 const GATES: Gate[] = [
     // --- Clients, records, costs ---------------------------------------------
-    { what: "clients: manage", file: D + "clients/page.tsx", uses: "useCan().can('clients.manage')", before: admins, now: p => p.can("clients.manage") },
+    { what: "clients: manage", file: D + "clients/page.tsx", uses: "const canManage = can('clients.manage')", before: admins, now: p => p.can("clients.manage") },
     { what: "new task: pick a client", file: D + "tasks/new/page.tsx", uses: "useCan().can('clients.view')", before: managers, now: p => p.can("clients.view") },
     // The old Clients section's notes are a client's records now (CLIENTS_PLAN.md §0.2), with the same people allowed.
     { what: "records: add and edit", file: "components/records/RecordsList.tsx", uses: "const canEdit = can('records.contribute')", before: () => true, now: p => p.can("records.contribute") },
@@ -75,10 +75,10 @@ const GATES: Gate[] = [
     { what: "requests: employee filters", file: ["components/requests/RequestsSection.tsx", D + "requests/history/RequestsHistoryClient.tsx"], uses: "const seesOthersRequests = useCan().can('requests.view')", before: r => r === "EMPLOYEE", now: p => !p.can("requests.view") },
 
     // --- Sidebar and dashboard --------------------------------------------------
-    { what: "sidebar: costs", file: "components/DashboardShell.tsx", uses: "costs: 'tasks.pay'", before: managers, now: p => p.can("tasks.pay") },
-    { what: "sidebar: employees", file: "components/DashboardShell.tsx", uses: "employees: 'employees.view'", before: managers, now: p => p.can("employees.view") },
-    { what: "sidebar: clients", file: "components/DashboardShell.tsx", uses: "clients: 'clients.view'", before: managers, now: p => p.can("clients.view") },
-    { what: "sidebar: payroll", file: "components/DashboardShell.tsx", uses: "const canSeePayroll = permissions.can('payroll.view')", before: admins, now: p => p.can("payroll.view") },
+    { what: "sidebar: costs", file: "lib/side-bar.ts", uses: "costs: 'tasks.pay'", before: managers, now: p => p.can("tasks.pay") },
+    { what: "sidebar: employees", file: "lib/side-bar.ts", uses: "employees: 'employees.view'", before: managers, now: p => p.can("employees.view") },
+    { what: "sidebar: clients", file: "lib/side-bar.ts", uses: "clients: 'clients.view'", before: managers, now: p => p.can("clients.view") },
+    { what: "sidebar: payroll", file: "lib/side-bar.ts", uses: "case 'payroll': return v.can('payroll.view')", before: admins, now: p => p.can("payroll.view") },
     { what: "dashboard: overview", file: D + "page.tsx", uses: "if (can(viewer, 'tasks.view'))", before: managers, now: p => p.can("tasks.view") },
     { what: "dashboard: team title", file: D + "page.tsx", uses: "grantFor(viewer, 'tasks.view') === 'TEAM'", before: r => r === "TEAM_LEADER", now: p => p.scope("tasks.view") === "TEAM" },
     { what: "dashboard: add employee (in the overview)", file: D + "page.tsx", uses: "can(viewer, 'employees.create') && <ButtonLink href=\"/dashboard/employees/new\"", before: r => managers(r) && r !== "TEAM_LEADER", now: p => p.can("tasks.view") && p.can("employees.create") },

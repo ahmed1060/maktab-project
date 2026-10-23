@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest"
 import {
-    MANAGEMENT_MODULES,
-    MENU_MODULES,
     MODULE_KEYS,
     MODULES,
     emptyToNull,
@@ -21,6 +19,7 @@ import { ar } from "@/lib/translations/ar"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
 import { resolveTitleKey } from "./page-title"
+import { COMPANY_GROUPS, PAGES } from "./side-bar"
 
 describe("the module registry", () => {
     it("covers the nine company-facing modules and no more", () => {
@@ -69,20 +68,22 @@ describe("the module registry", () => {
         // entries out. E2 made the sidebar read the registry, so the thing worth
         // guarding flipped: no module may reappear as a literal in the nav, or
         // renaming it would silently stop working for that one entry.
+        // Nor among the app's own pages in lib/side-bar.ts.
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
         for (const key of MODULE_KEYS) {
             const { href, labelKey } = MODULES[key]
             expect(shell, `${key}: sidebar hardcodes href ${href}`).not.toContain(`href: '${href}'`)
             expect(shell, `${key}: sidebar hardcodes label ${labelKey}`).not.toContain(`t('${labelKey}')`)
+            expect(Object.values(PAGES).map(p => p.href), `${key}: a page of the side bar's own`).not.toContain(href)
         }
     })
 
-    it("splits every module into exactly one sidebar group", () => {
-        // The Company Settings preview renders these same two arrays. A module
-        // missing from both would be invisible there and in the real sidebar;
-        // one in both would appear twice in each.
-        const grouped = [...MENU_MODULES, ...MANAGEMENT_MODULES]
-        expect(new Set(grouped).size, "a module is in both groups").toBe(grouped.length)
+    it("puts every module in exactly one side bar group", () => {
+        // The Company Settings preview draws these same groups. A module in
+        // none would be missing there and in the real side bar; one in two
+        // would appear twice in each.
+        const grouped = COMPANY_GROUPS.flatMap(g => g.items).filter(isModuleKey)
+        expect(new Set(grouped).size, "a module is in two groups").toBe(grouped.length)
         expect([...grouped].sort()).toEqual([...MODULE_KEYS].sort())
     })
 

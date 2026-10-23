@@ -205,27 +205,7 @@ export function moduleForTitleKey(titleKey: string | null | undefined): ModuleKe
     return BY_LABEL_KEY.get(titleKey) ?? null
 }
 
-/**
- * How the sidebar groups these. Here rather than in DashboardShell because the
- * Company Settings screen renders a preview of that sidebar, and two files
- * deciding the order independently is how a preview stops matching the thing it
- * previews.
- *
- * The split is by audience, not by subject: everything under MENU is visible to
- * everyone, each entry under MANAGEMENT only to those holding the permission
- * its page needs (MANAGEMENT_PERMISSION in DashboardShell); this is only the
- * order.
- */
-export const MENU_MODULES: readonly ModuleKey[] = [
-    'dashboard',
-    'tasks',
-    'obligations',
-    'requests',
-    'dayOff',
-    'records',
-]
-
-export const MANAGEMENT_MODULES: readonly ModuleKey[] = ['costs', 'employees', 'clients']
+/** How the side bar groups these, with the app's own pages, is lib/side-bar.ts. */
 
 /**
  * The resolvers, bound to one company's overrides.

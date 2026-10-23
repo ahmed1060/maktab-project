@@ -192,8 +192,9 @@ describe("text and controls the audit measured below AA (4 October 2026, H2)", (
 
     it("the sidebar's section headings use the sidebar's own text colour (were 1.2 to 3.7:1)", () => {
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        expect(shell).not.toContain("textTransform: 'uppercase', color: 'var(--text-faint)'")
-        expect(shell.split("textTransform: 'uppercase', color: 'var(--sidebar-fg)'").length - 1).toBe(3)
+        expect(shell).not.toContain("color: 'var(--text-faint)'")
+        // One heading, drawn for each of the side bar's groups (lib/side-bar.ts).
+        expect(shell.split("fontWeight: 600, color: 'var(--sidebar-fg)'").length - 1).toBe(1)
     })
 })
 

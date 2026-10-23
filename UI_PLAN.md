@@ -113,6 +113,12 @@ permissions allow, as today.
 | **Access** | Super Admins · Role changes · Access reviews · Who can |
 | **Operations** | Check-ins · Audit logs · System health · System settings |
 
+- **They come after the company's groups,** which the Super Admin sees for
+  the company they've picked, as today.
+- **Their Arabic names (Decided on 2026-10-22):** المشتركون (Customers), القوالب
+  (Templates), الصلاحيات (Access) and التشغيل (Operations). العملاء, the
+  word for a company's clients, would name two groups in the same side bar.
+
 ### 2.3 One Requests page
 
 - **Every kind of request in one place:** day off, permission hours,
@@ -326,7 +332,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
    - The side bar groups (§2.1, §2.2) land with step 0. Decided
      (2026-10-22): in a small PR straight after 0b, which makes Vendors
      Clients in code and leaves the screens as they were, with the Clients
-     list page rebuilt on the building blocks (`CLIENTS_PLAN.md` §8).
+     list page rebuilt on the building blocks (`CLIENTS_PLAN.md` §8). It's
+     built, and open for review in #93.
    - Every screen these steps create or rework uses the building blocks
      from the start: Clients, Locations, Records, the Costs tabs, Cash
      advances, and the task form's pickers.
@@ -850,3 +857,26 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   after 0b (§5).
 - **2026-10-23:** `CLIENTS_PLAN.md`'s 0a was merged in #82, and 0b opens
   for review in #92. Nothing looks different with it.
+- **2026-10-22:** The side bar groups and the Clients list page are built,
+  to open for review after 0b (§2, §5):
+  - the side bar is grouped as in §2.1 and §2.2, each item for those who
+    may use it, and a group with nothing in it left out
+    (`lib/side-bar.ts`). Group names are in sentence case. Attendance is
+    under People for someone who sees others' punches, and is My
+    attendance under Me for someone who sees only their own. Profile
+    requests joins the other request pages under People. The Company
+    Settings preview of the side bar shows the same groups;
+  - the Clients list is on the building blocks: search, a table on
+    computers and cards on phones, a page of 20 at a time, adding and
+    editing in a dialog, and the row menu. Someone who may not see clients
+    is told so, rather than that the list didn't load. Its buttons say
+    "Add client", or use the company's own name for its clients when it
+    has one;
+  - Proposed: the Super Admin's group names in Arabic (§2.2).
+- **2026-10-22:** Decided by the product owner: the Super Admin's group
+  names in Arabic are المشتركون, القوالب, الصلاحيات and التشغيل (§2.2).
+- **2026-10-23:** `CLIENTS_PLAN.md`'s 0b was merged in #92. The side bar
+  groups and the Clients list page open for review in #93.
+- **2026-10-23:** The Clients list says it's loading, not that there are
+  no clients, until the session says who's looking (seen in this PR's
+  screenshots).

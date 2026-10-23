@@ -23,7 +23,7 @@ const RUN_SERVICE = stripComments(readFileSync("lib/services/payroll-run.service
 const LIST_API = stripComments(readFileSync("app/api/users/[id]/payslips/route.ts", "utf8"))
 const REGISTER = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
 const MY_PAYSLIPS = readFileSync("app/(dashboard)/dashboard/documents/page.tsx", "utf8")
-const SHELL = readFileSync("components/DashboardShell.tsx", "utf8")
+const SIDE_BAR = readFileSync("lib/side-bar.ts", "utf8")
 
 describe("G1: a long-horizon copy can be taken on any day", () => {
     it("lets a run name its retention folder", () => {
@@ -111,8 +111,9 @@ describe("G5: a payslip can be reached", () => {
 
     it("and something in the product links to that list", () => {
         // The whole of G5: the page existed and nothing pointed at it.
-        expect(SHELL).toContain('href="/dashboard/documents"')
-        expect(SHELL).toContain("my_payslips")
+        // The side bar's own pages are listed in lib/side-bar.ts.
+        expect(SIDE_BAR).toContain("myPayslips: { href: '/dashboard/documents', labelKey: 'my_payslips'")
+        expect(SIDE_BAR).toMatch(/key: 'me',[^\n]*'myPayslips'/)
     })
 
     it("holds the list to the payslip document's own rules", () => {
