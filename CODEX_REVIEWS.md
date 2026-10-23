@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-23 08:46 UTC, against GitHub.
+Last checked: 2026-10-23 09:35 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -39,13 +39,16 @@ limits" reviews nothing.
 
 | PR | State | Last commit Codex reviewed | Not yet reviewed |
 | --- | --- | --- | --- |
-| #85 DESIGN.md: the top bar keeps its glass | Open | `d77de70` (2026-10-23 08:45 UTC) | Every commit after `d77de70` (below) |
+| #85 DESIGN.md: the top bar keeps its glass | Open | `70aae7d` (2026-10-23 09:31 UTC) | Every commit after `70aae7d` (below) |
 
-Codex's first review of #85 found three things in `DESIGN.md`, fixed in
-`b45884b`, `38b1e4d` and `e662f96`; its second, of `d77de70`, found one
-more. That fix hasn't been reviewed:
+Codex's first three reviews of #85 found eight things, each fixed in its
+own commit: three in `b45884b`, `38b1e4d` and `e662f96`, one in `cccb17e`,
+and the third review's three, after `70aae7d`, which haven't been
+reviewed:
 
-- `cccb17e` DESIGN.md: the glass top bar's dark shadow is the one exception
+- `51d0e6f` The design-token check holds the glass top bar's tokens to DESIGN.md
+- `871ad53` DESIGN.md: text on the glass top bar is ink, never helper grey
+- `7cbd9c0` DESIGN.md: the glass top bar takes the same room floating or not
 - this file's own commit
 
 ## Reviewed
