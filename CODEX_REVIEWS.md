@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-23 00:56 UTC, against GitHub.
+Last checked: 2026-10-23 01:16 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -37,24 +37,15 @@ limits" reviews nothing.
 
 ## Waiting for Codex
 
-| PR | State | Last commit Codex reviewed | Not yet reviewed |
-| --- | --- | --- | --- |
-| #83 Every table has Row Level Security on again | Open | `5e3527d` (2026-10-23 00:52 UTC) | Every commit after `5e3527d` (below) |
-
-Codex's first review of #83 found two things in `lib/rls-migrations.test.ts`.
-They're fixed in the commits after it, which haven't been reviewed:
-
-- `38afbf9` The RLS check reads a migration's statements in order, turning RLS off too
-- `fba7b11` The RLS check holds every migration the catch-all doesn't cover, by name or not
-- this file's own commit
+Nothing is waiting: every open and merged PR has been reviewed.
 
 ## Reviewed
 
-Every merged PR, #1 to #82, has been reviewed in full.
+Every merged PR, #1 to #83, has been reviewed in full.
 
 | PR | How |
 | --- | --- |
-| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#82 | At its last commit |
+| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#83 | At its last commit |
 | #1, #28, #29, #33, #35–#38, #45, #48, #73–#78 | After merging, on main containing its last commit |
 | #2 | Review-only #71 |
 | #3 | Review-only #69 |
