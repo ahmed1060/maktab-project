@@ -1,6 +1,25 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { grantFor, type Actor } from "@/lib/permissions/can"
 import { assignedToTeamWhere } from "@/lib/team-scope"
+
+/**
+ * A task in which this member's share of the cost is still to pay: more than
+ * nothing, and not marked paid (`shareOwed` in lib/cost-shares.ts). A share
+ * with no status is unpaid, and is asked for apart: to Postgres a missing
+ * key is no value at all, which "not paid" alone leaves out.
+ */
+export const unpaidShareOf = (userId: string) => ({
+    AND: [
+        { memberCosts: { path: [userId], gt: 0 } },
+        {
+            OR: [
+                { memberPaymentStatus: { path: [userId], not: "PAID" } },
+                { memberPaymentStatus: { path: [userId], equals: Prisma.DbNull } },
+            ],
+        },
+    ],
+})
 
 /** The Costs page's filters, as its address carries them. */
 export type CostFilters = {
@@ -53,7 +72,9 @@ export async function pendingCostsWhere(
     // every single-task payment route applies through verifyResourceAccess.
     if (grantFor(user, "tasks.pay") === "TEAM") where.AND.push(assignedToTeamWhere(user.id))
 
-    if (filters.employeeId) where.AND.push({ assignees: { some: { id: filters.employeeId } } })
+    // One employee's costs are their shares still to pay, as their cards
+    // show, and Mark all as paid pays those, not the rest of each task.
+    if (filters.employeeId) where.AND.push({ assignees: { some: { id: filters.employeeId } } }, unpaidShareOf(filters.employeeId))
     if (filters.search) where.AND.push({ title: { contains: filters.search, mode: "insensitive" } })
     if (filters.dateFrom) where.AND.push({ updatedAt: { gte: new Date(filters.dateFrom) } })
     if (filters.dateTo) {

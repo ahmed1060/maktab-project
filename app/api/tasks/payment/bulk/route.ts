@@ -20,6 +20,9 @@ export const POST = withStandardHandler(async (req, session, json) => {
     const teamOnly = scopesToTeam(session.user, "tasks.pay")
     const { taskIds, filters } = json
     let finalTaskIds = taskIds
+    // With one employee picked, the Costs page lists their shares, and only
+    // those are paid.
+    let memberId: string | undefined
 
     try {
         if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
@@ -33,6 +36,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
             const tasks = await prisma.task.findMany({ where, select: { id: true } })
             finalTaskIds = tasks.map(t => t.id)
+            if (filters.employeeId) memberId = String(filters.employeeId)
         } else if (userRole !== 'SUPER_ADMIN') {
             if (!userCompanyId) return ApiResponse.forbidden("No company assigned")
             const valid = await prisma.task.findMany({
@@ -52,7 +56,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
             return ApiResponse.success({ count: 0 })
         }
 
-        const result = await TaskService.bulkUpdatePayment(finalTaskIds, session)
+        const result = await TaskService.bulkUpdatePayment(finalTaskIds, session, memberId)
         return ApiResponse.success(result)
     } catch (error: any) {
         console.error("Bulk payment status update failed", error)

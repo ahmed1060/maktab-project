@@ -11,6 +11,7 @@ import { normalizeJsonInput } from "@/lib/json-input"
 import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
+import { shareOwed } from "@/lib/cost-shares"
 
 /**
  * TaskService
@@ -1144,12 +1145,21 @@ export class TaskService {
 
     /**
      * Bulk updates task payment status.
+     *
+     * With a member, pays only that member's share of each task, as the Costs
+     * page lists one employee's costs (CLIENTS_PLAN.md §1). A task is paid once
+     * no share of it is left to pay.
      */
-    static async bulkUpdatePayment(taskIds: string[], session: any) {
+    static async bulkUpdatePayment(taskIds: string[], session: any, memberId?: string) {
         const userId = session.user.id
         const userRole = session.user.role
 
         return await prisma.$transaction(async (tx) => {
+            // Held, in one order, until this commits: a share paid or a cost
+            // added meanwhile is read here, not overwritten with what was
+            // read before it.
+            await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ANY(${taskIds}) ORDER BY id FOR NO KEY UPDATE`
+
             const whereClause: any = {
                 id: { in: taskIds },
                 paymentStatus: 'PENDING_PAYMENT'
@@ -1164,15 +1174,38 @@ export class TaskService {
 
             const tasks = await tx.task.findMany({
                 where: whereClause,
-                select: { id: true, memberCosts: true } as any
+                select: { id: true, companyId: true, memberCosts: true, memberPaymentStatus: true, assignees: { select: { id: true, teamLeaderId: true } } } as any
             })
 
             if (tasks.length !== taskIds.length && userRole !== 'SUPER_ADMIN') {
                 throw new Error("SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED")
             }
 
-            for (const task of tasks) {
-                const mCosts: Record<string, number> = (task.memberCosts as any) || {}
+            let count = 0
+            for (const task of tasks as any[]) {
+                const mCosts: Record<string, number> = task.memberCosts || {}
+
+                if (memberId) {
+                    const member = task.assignees.find((a: any) => a.id === memberId)
+                    const payments: Record<string, string> = { ...(task.memberPaymentStatus || {}) }
+                    if (!member || !shareOwed(mCosts[memberId], payments[memberId])) continue
+                    // Within the payer's scope, as paying one person's share
+                    // from the task's page is.
+                    if (!can(session.user, "tasks.pay", { companyId: task.companyId, userId: member.id, teamLeaderId: member.teamLeaderId })) throw new Error("OUTSIDE_TEAM")
+
+                    payments[memberId] = 'PAID'
+                    const allPaid = Object.entries(mCosts).every(([uid, amount]) => !shareOwed(amount, payments[uid]))
+                    await tx.task.update({
+                        where: { id: task.id },
+                        data: {
+                            memberPaymentStatus: payments,
+                            ...(allPaid && { paymentStatus: 'PAID', status: 'COMPLETED' }),
+                            updatedAt: new Date()
+                        } as any
+                    })
+                    count++
+                    continue
+                }
 
                 // Mark all members as PAID
                 const newMemberPaymentStatus: Record<string, string> = {}
@@ -1181,7 +1214,7 @@ export class TaskService {
                 })
 
                 await tx.task.update({
-                    where: { id: (task as any).id },
+                    where: { id: task.id },
                     data: {
                         paymentStatus: 'PAID',
                         status: 'COMPLETED',
@@ -1189,6 +1222,7 @@ export class TaskService {
                         updatedAt: new Date() // Force timestamp update for history
                     } as any
                 })
+                count++
             }
 
             await tx.auditLog.create({
@@ -1198,11 +1232,11 @@ export class TaskService {
                     entityId: 'BULK',
                     userId: userRole === 'SUPER_ADMIN' ? null : userId,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: { taskIds, count: tasks.length, paymentStatus: 'PAID' }
+                    details: { taskIds, count, paymentStatus: 'PAID', ...(memberId && { targetUserId: memberId }) }
                 }
             })
 
-            return { count: tasks.length }
+            return { count }
         })
     }
 }

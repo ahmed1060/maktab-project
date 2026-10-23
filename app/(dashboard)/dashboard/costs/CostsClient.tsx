@@ -9,6 +9,7 @@ import { useHeader } from '@/context/HeaderContext'
 import { useEffect } from 'react'
 import Pagination from '@/components/Pagination'
 import { useCan } from '@/lib/useCan'
+import { shareOwed } from '@/lib/cost-shares'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
@@ -55,9 +56,11 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
             }]
         }
 
-        return userCosts.map(([uid, amount]) => {
+        const mPaymentStatus = typeof task.memberPaymentStatus === 'string' ? JSON.parse(task.memberPaymentStatus) : (task.memberPaymentStatus || {})
+        // Only the shares still to pay: one already paid, as one employee's
+        // costs are by Mark all as paid, isn't waiting any more.
+        return userCosts.filter(([uid, amount]) => shareOwed(amount, mPaymentStatus[uid])).map(([uid, amount]) => {
             const assignee = task.assignees?.find((a: any) => a.id === uid)
-            const mPaymentStatus = typeof task.memberPaymentStatus === 'string' ? JSON.parse(task.memberPaymentStatus) : (task.memberPaymentStatus || {})
 
             return {
                 ...task,

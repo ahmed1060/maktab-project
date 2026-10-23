@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { Prisma } from "@prisma/client"
 import { withGrants, stepUpConfirmed } from "./test-actors"
 
 /**
@@ -14,6 +15,10 @@ import { withGrants, stepUpConfirmed } from "./test-actors"
  * no company in its query for them, so Mark all as paid paid every company's
  * costs. The page and the route now share one query (lib/services/costs-query.ts).
  *
+ * With one employee picked, the page lists that employee's shares of each
+ * task's cost, and the button paid every task whole, the other members'
+ * shares too. It now pays that employee's shares only.
+ *
  * Each query the route and service make is applied to the fixture tasks below,
  * so what is asserted is which tasks, not how the query is spelled.
  */
@@ -25,12 +30,19 @@ const P: Record<string, Person> = {
     loner:  { id: "loner",  companyId: "c1", teamLeaderId: null },
     other:  { id: "other",  companyId: "c2", teamLeaderId: null },
 }
-const TASKS = [
-    { id: "t-team",  companyId: "c1", assignees: [P.emp] },     // the leader's team
-    { id: "t-own",   companyId: "c1", assignees: [P.tl] },      // the leader's own
-    { id: "t-loner", companyId: "c1", assignees: [P.loner] },   // someone outside the team
-    { id: "t-c2",    companyId: "c2", assignees: [P.other] },   // another company
-].map(t => ({ ...t, status: "APPROVED", totalCost: 10, paymentStatus: "PENDING_PAYMENT", memberCosts: {} }))
+type Task = {
+    id: string; companyId: string; assignees: Person[]; status: string; totalCost: number; paymentStatus: string
+    memberCosts: Record<string, number>; memberPaymentStatus: Record<string, string>
+}
+const TASKS: Task[] = ([
+    { id: "t-team",  companyId: "c1", assignees: [P.emp], memberCosts: { emp: 10 } },         // the leader's team
+    { id: "t-own",   companyId: "c1", assignees: [P.tl], memberCosts: { tl: 10 } },           // the leader's own
+    { id: "t-loner", companyId: "c1", assignees: [P.loner], memberCosts: { loner: 10 } },     // someone outside the team
+    { id: "t-c2",    companyId: "c2", assignees: [P.other], memberCosts: { other: 10 } },     // another company
+] as Pick<Task, "id" | "companyId" | "assignees" | "memberCosts">[]).map(t => ({ ...t, status: "APPROVED", totalCost: 10, paymentStatus: "PENDING_PAYMENT", memberPaymentStatus: {} }))
+// Shared by the leader's team and someone outside it, each with a share.
+const SHARED: Task = { id: "t-shared", companyId: "c1", assignees: [P.emp, P.loner], memberCosts: { emp: 100, loner: 50 }, status: "APPROVED", totalCost: 150, paymentStatus: "PENDING_PAYMENT", memberPaymentStatus: {} }
+const fixture = { tasks: TASKS }
 
 /** Enough of Prisma's where on Task and User for these queries; throws on anything else. */
 function matches(row: any, where: any): boolean {
@@ -38,6 +50,16 @@ function matches(row: any, where: any): boolean {
         if (key === "AND") { if (!value.every((w: any) => matches(row, w))) return false; continue }
         if (key === "OR") { if (!value.some((w: any) => matches(row, w))) return false; continue }
         if (key === "assignees") { if (!row.assignees.some((a: any) => matches(a, value.some))) return false; continue }
+        if (key === "NOT") { if (matches(row, value)) return false; continue }
+        // A Json field's key, as Postgres reads it: a missing key is no value
+        // at all, which "not" leaves out and DbNull finds.
+        if (value !== null && typeof value === "object" && "path" in value) {
+            const v = row[key]?.[value.path[0]]
+            if ("gt" in value) { if (!(typeof v === "number" && v > value.gt)) return false; continue }
+            if ("not" in value) { if (v === undefined || v === value.not) return false; continue }
+            if (value.equals === Prisma.DbNull) { if (v !== undefined) return false; continue }
+            throw new Error(`unsupported: ${key} ${JSON.stringify(value)}`)
+        }
         if (value !== null && typeof value === "object") {
             if ("in" in value) { if (!value.in.includes(row[key])) return false; continue }
             if ("gt" in value) { if (!(row[key] > value.gt)) return false; continue }
@@ -50,8 +72,8 @@ function matches(row: any, where: any): boolean {
     return true
 }
 
-const seen = { paid: [] as string[] }
-const findMany = async ({ where }: any) => TASKS.filter(t => matches(t, where)).map(t => ({ id: t.id, memberCosts: {} }))
+const seen = { paid: [] as string[], writes: {} as Record<string, any> }
+const findMany = async ({ where }: any) => fixture.tasks.filter(t => matches(t, where)).map(t => structuredClone(t))
 const state = { session: null as any }
 
 vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
@@ -62,10 +84,12 @@ vi.mock("@/lib/prisma", () => {
     const tx: any = {
         task: {
             findMany,
-            update: async ({ where }: any) => { seen.paid.push(where.id); return {} },
+            update: async ({ where, data }: any) => { seen.paid.push(where.id); seen.writes[where.id] = data; return {} },
             updateMany: async ({ where }: any) => { seen.paid.push(...(where.id?.in ?? [])); return { count: 0 } },
         },
         auditLog: { create: async () => ({}) },
+        // The rows it pays, locked first.
+        $queryRaw: async () => [],
     }
     // No settings row: step-up (§6.15) uses its default interval.
     const COMPANIES = [{ id: "c1", name: "Acme" }, { id: "c2", name: "Delta" }]
@@ -82,6 +106,7 @@ const ACTORS = {
 async function pay(actor: keyof typeof ACTORS, body: object) {
     state.session = { user: stepUpConfirmed(ACTORS[actor]) }
     seen.paid = []
+    seen.writes = {}
     const { POST } = await import("@/app/api/tasks/payment/bulk/route")
     await POST(new Request("https://nizmo.test/api/tasks/payment/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }))
     return [...new Set(seen.paid)].sort()
@@ -89,7 +114,7 @@ async function pay(actor: keyof typeof ACTORS, body: object) {
 
 const EVERY_ID = { taskIds: TASKS.map(t => t.id) }
 
-beforeEach(() => { seen.paid = [] })
+beforeEach(() => { seen.paid = []; seen.writes = {}; fixture.tasks = TASKS })
 
 describe("bulk mark paid reaches the payer's scope", () => {
     it("an Admin: every task in their company", async () => {
@@ -124,5 +149,42 @@ describe("a Super Admin's Mark all as paid pays the company the Costs page shows
 
     it("an Admin's company stays their own, whatever company the filters name", async () => {
         expect(await pay("admin", { filters: { company: "Delta" } })).toEqual(["t-loner", "t-own", "t-team"])
+    })
+})
+
+describe("with one employee picked, Mark all as paid pays that employee's shares only", () => {
+    beforeEach(() => { fixture.tasks = [...TASKS, SHARED] })
+
+    it("an Admin: their share of each task, and the rest of a shared task left to pay", async () => {
+        expect(await pay("admin", { filters: { employeeId: "emp" } })).toEqual(["t-shared", "t-team"])
+        // A shared task waits for its other member's share; one with no other is paid.
+        expect(seen.writes["t-shared"].memberPaymentStatus).toEqual({ emp: "PAID" })
+        expect(seen.writes["t-shared"].paymentStatus).toBeUndefined()
+        expect(seen.writes["t-team"]).toMatchObject({ memberPaymentStatus: { emp: "PAID" }, paymentStatus: "PAID", status: "COMPLETED" })
+    })
+
+    it("and the task is paid with its last share", async () => {
+        fixture.tasks = [{ ...SHARED, memberPaymentStatus: { loner: "PAID" } }]
+        expect(await pay("admin", { filters: { employeeId: "emp" } })).toEqual(["t-shared"])
+        expect(seen.writes["t-shared"]).toMatchObject({ memberPaymentStatus: { emp: "PAID", loner: "PAID" }, paymentStatus: "PAID", status: "COMPLETED" })
+    })
+
+    it("not a task where their share is paid already, or nothing", async () => {
+        fixture.tasks = [{ ...SHARED, memberPaymentStatus: { emp: "PAID" } }, { ...SHARED, id: "t-zero", memberCosts: { emp: 0, loner: 50 } }]
+        expect(await pay("admin", { filters: { employeeId: "emp" } })).toEqual([])
+    })
+
+    it("a share with no status is still to pay", async () => {
+        fixture.tasks = [{ ...SHARED, memberPaymentStatus: { loner: "PENDING_PAYMENT" } }]
+        expect(await pay("admin", { filters: { employeeId: "emp" } })).toEqual(["t-shared"])
+    })
+
+    it("a Team Leader: nothing for someone outside the team, on a task the team shares", async () => {
+        expect(await pay("leader", { filters: { employeeId: "loner" } })).toEqual([])
+    })
+
+    it("with no one picked, every share of every task, as before", async () => {
+        expect(await pay("admin", { filters: {} })).toEqual(["t-loner", "t-own", "t-shared", "t-team"])
+        expect(seen.writes["t-shared"]).toMatchObject({ memberPaymentStatus: { emp: "PAID", loner: "PAID" }, paymentStatus: "PAID" })
     })
 })

@@ -7,6 +7,9 @@ import { renderToStaticMarkup } from "react-dom/server"
  * that isn't split by member, as a task's was before memberCosts, is one card
  * for the task. That card was given `task.assignee`, which a task doesn't
  * have (it has assignees), so reading its id took the whole page down.
+ *
+ * A share already paid isn't waiting any more, as one employee's are once
+ * Mark all as paid pays them, so the page leaves it out.
  */
 
 const address = { query: "" }
@@ -59,5 +62,13 @@ describe("the Costs page's cards", () => {
         const picked = await costsPage([split], "employeeId=u2")
         expect(picked).toContain("Mona Adel")
         expect(picked).not.toContain("Ali Hassan")
+    })
+
+    it("shows only the shares still to pay: not one paid already, or one of nothing", async () => {
+        // Mona's share paid with her picked in the filter; Ali's removed down to nothing.
+        const html = await costsPage([task({ memberCosts: { u1: 0, u2: 200 }, memberPaymentStatus: { u2: "PAID" } }), task({ id: "t2", title: "Paint the lobby", memberCosts: { u1: 150 }, memberPaymentStatus: {} })])
+        expect(html).not.toContain("Fix the gate")
+        expect(html).toContain("Paint the lobby")
+        expect(html).toContain("150.00")
     })
 })
