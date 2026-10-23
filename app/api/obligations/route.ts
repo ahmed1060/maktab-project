@@ -63,8 +63,10 @@ export const GET = withStandardHandler(async (req, session) => {
         })
     }
 
-    // Days where the company is, not on the server's clock.
-    const updatedAt = await dayRangeIn(dateFrom, dateTo, whereClause.companyId)
+    // Days where the company is, not on the server's clock: one's own, or the
+    // one a Super Admin picks. An employee who sees only their own
+    // obligations has no company in the search, but they still have one.
+    const updatedAt = await dayRangeIn(dateFrom, dateTo, (session.user as any).companyId ?? whereClause.companyId)
     if (updatedAt) whereClause.updatedAt = updatedAt
 
     const { page, limit, skip } = parsePaging(searchParams, 10)
