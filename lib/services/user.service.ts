@@ -237,6 +237,11 @@ export class UserService {
         const person = regularUser ? { companyId: regularUser.companyId, userId: regularUser.id, teamLeaderId: regularUser.teamLeaderId } : null
         if (person && !isSelf && !can(session.user, "employees.edit", person)) throw new Error("FORBIDDEN")
 
+        // A person stays in the company they were added to, as the product
+        // owner decided (2026-10-23). The edit form shows it and can't change
+        // it; a request naming another one is refused, whoever sends it.
+        if (regularUser && companyId !== undefined && (companyId || null) !== regularUser.companyId) throw new Error("COMPANY_CHANGE_FORBIDDEN")
+
         // 1. Name Change Restrictions
         if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {
             if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)) {
@@ -306,13 +311,11 @@ export class UserService {
         if (regularUser && person) {
             if (roleId !== undefined && roleId !== regularUser.roleId) {
                 // A role of the company's, by id (ROLES_PLAN.md §6.4), through
-                // the rules for handing one out. The company is the one they
-                // will be in, if the Super Admin is moving them too.
+                // the rules for handing one out.
                 if (isSelf) throw new Error("OWN_ROLE")
                 if (!can(session.user, "employees.assign_role", person)) throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
                 RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, regularUser)
-                const toCompany = companyId !== undefined && userRole === 'SUPER_ADMIN' ? (companyId || null) : regularUser.companyId
-                Object.assign(updateData, await RoleAssignmentService.chosen(prisma, session.user, roleId, { companyId: toCompany, userId: id }))
+                Object.assign(updateData, await RoleAssignmentService.chosen(prisma, session.user, roleId, { companyId: regularUser.companyId, userId: id }))
             } else if (role && can(session.user, "employees.assign_role", person)) {
                 // By kind, as the form sent it before roles had ids. It sends
                 // the current kind with every save, so only a different one is
@@ -360,7 +363,6 @@ export class UserService {
                 }
             }
 
-            if (companyId !== undefined && userRole === 'SUPER_ADMIN') updateData.companyId = companyId || null
             // One rule for account status, here and on the status route: who
             // holds employees.change_status over the person may set them
             // ACTIVE, OFFLINE or SUSPENDED. Ending a contract and deleting are
@@ -388,14 +390,13 @@ export class UserService {
             let rehome: Rehome | null = null
 
             const nextRole = updateData.role ?? regularUser.role
-            const nextCompanyId = updateData.companyId !== undefined ? updateData.companyId : regularUser.companyId
 
             // A leader cannot be stripped out from under their team. Four
             // edits do it and three do not look like demotion — see
             // stripsLeadership. The refusal names the people it is about,
             // because "reassign them first" without saying who sends an Admin
             // hunting through a list.
-            if (stripsLeadership(regularUser, { role: updateData.role, companyId: updateData.companyId, status: updateData.status })) {
+            if (stripsLeadership(regularUser, { role: updateData.role, status: updateData.status })) {
                 rehome = await TeamHandOff.plan({ id, companyId: regularUser.companyId }, reassignReportsTo)
             }
 
@@ -409,7 +410,7 @@ export class UserService {
                     })
                     if (!leader) throw new Error("TEAM_LEADER_NOT_FOUND")
                     const verdict = checkTeamAssignment(
-                        { id, role: nextRole, companyId: nextCompanyId },
+                        { id, role: nextRole, companyId: regularUser.companyId },
                         leader,
                     )
                     if (!verdict.ok) throw new Error(verdict.refusal.code)
@@ -417,9 +418,9 @@ export class UserService {
                 }
             }
 
-            // The two below follow from a change already allowed above — a new
-            // role, a new company — rather than being changes of their own, so
-            // they run for whoever made that change. Tying them to the team
+            // The two below follow from a new role, a change already allowed
+            // above, rather than being changes of their own, so they run for
+            // whoever made that change. Tying them to the team
             // permission would let someone who may change a role but not assign
             // teams leave a Team Leader who is led.
 
@@ -431,39 +432,29 @@ export class UserService {
                 updateData.teamLeaderId = null
             }
 
-            // Moving somebody to another company strands them under a
-            // leader who can no longer see them.
-            if (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId) {
-                updateData.teamLeaderId = null
-            }
-
-            // A new role, or a new company — whose roles are different ones —
-            // takes its role and roleId from RoleAssignmentService, together.
-            // A role chosen by id has both already. One chosen by kind is that
-            // company's built-in role of the kind, handed out under the same
-            // rules; a move alone keeps the kind, in the new company.
-            if (updateData.roleId === undefined && (updateData.role !== undefined || (updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId))) {
-                const next = await RoleAssignmentService.builtIn(prisma, updateData.role ?? regularUser.role, nextCompanyId)
-                Object.assign(updateData, updateData.role !== undefined && next.roleId
-                    ? await RoleAssignmentService.chosen(prisma, session.user, next.roleId, { companyId: nextCompanyId, userId: id })
+            // A new role takes its role and roleId from RoleAssignmentService,
+            // together. A role chosen by id has both already. One chosen by
+            // kind is the company's built-in role of the kind, handed out
+            // under the same rules.
+            if (updateData.roleId === undefined && updateData.role !== undefined) {
+                const next = await RoleAssignmentService.builtIn(prisma, updateData.role, regularUser.companyId)
+                Object.assign(updateData, next.roleId
+                    ? await RoleAssignmentService.chosen(prisma, session.user, next.roleId, { companyId: regularUser.companyId, userId: id })
                     : next)
             }
 
             // An acting role (ROLES_PLAN.md §6.13): a role given until a date,
             // then back to the one they had. Given with a role change; alone,
             // it moves the end of a cover already running (null keeps the
-            // cover role for good). A move to another company ends it — the role they
-            // would return to is not one of that company's.
+            // cover role for good).
             const roleChanging = updateData.roleId !== undefined && updateData.roleId !== regularUser.roleId
-            const companyChanging = updateData.companyId !== undefined && updateData.companyId !== regularUser.companyId
             if (actingUntil !== undefined && !can(session.user, "employees.assign_role", person)) throw new Error("FORBIDDEN_ROLE_ASSIGNMENT")
             // A date from the form, or an instant a request already worked out.
             const until = actingUntil as string | Date | null | undefined
             const returnOn: Date | null | undefined = until
                 ? RoleAssignmentService.returnOn(until, (await prisma.company.findUnique({ where: { id: regularUser.companyId! }, select: { timezone: true } }))?.timezone ?? DEFAULT_TIME_ZONE)
                 : until === null ? null : undefined
-            if (roleChanging || companyChanging) {
-                if (actingUntil && companyChanging) throw new Error("ACTING_ACROSS_COMPANIES")
+            if (roleChanging) {
                 Object.assign(updateData, RoleAssignmentService.acting(regularUser, returnOn))
             } else if (actingUntil !== undefined) {
                 if (!regularUser.actingUntil) throw new Error("ACTING_NEEDS_ROLE")
@@ -472,35 +463,17 @@ export class UserService {
                     : { actingUntil: null, returnRoleId: null })
             }
 
-            // Their check-in phone was approved by the old company, and what a
-            // new one is holding is the old company's to judge (§9.3): both end
-            // with the move, in the same write. The new company approves afresh.
-            if (companyChanging) {
-                updateData.checkInPhones = { updateMany: { where: { status: { in: ["ACTIVE", "PENDING"] } }, data: { status: "REVOKED", decidedAt: new Date(), reason: "MOVED_COMPANY" } } }
-                updateData.attendancePunches = { updateMany: { where: { status: "PENDING_DEVICE" }, data: { status: "REJECTED" } } }
-                // Their session names the old company, and nothing refreshes it: kept, it would act in the old
-                // company with the new role's grants. Ended, they sign in to the new one (review on #21).
-                updateData.sessionVersion = { increment: 1 }
-            }
-
             // Never the company's last Admin at work (ROLES_PLAN.md §4.2, rule 8).
             await RoleAssignmentService.keepsAnAdmin(prisma, id, {
-                roleId: updateData.roleId, status: updateData.status, companyId: updateData.companyId,
+                roleId: updateData.roleId, status: updateData.status,
             })
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
-            const updated = rehome || companyChanging
+            const handOff = rehome
+            const updated = handOff
                 ? await prisma.$transaction(async (tx) => {
-                    if (rehome) await TeamHandOff.apply(tx, id, rehome, { id: session.user.id, role: userRole })
-                    const written = await tx.user.update({ where: { id }, data: updateData, select: writeSelect })
-                    // The places they could check in at with the app were the old
-                    // company's (ATTENDANCE_PLAN.md §8.5): none of them is theirs now,
-                    // and a move back must not quietly bring them back. Deleted after
-                    // the update has locked their row, so a change of a place's people
-                    // that read their old company has committed and its links go too,
-                    // or waits and then sees the new one (review on #67).
-                    if (companyChanging) await tx.userWorkLocation.deleteMany({ where: { userId: id } })
-                    return written
+                    await TeamHandOff.apply(tx, id, handOff, { id: session.user.id, role: userRole })
+                    return tx.user.update({ where: { id }, data: updateData, select: writeSelect })
                 })
                 : await prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
             // A role given directly settles any request still waiting for this
