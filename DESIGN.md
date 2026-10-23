@@ -290,7 +290,10 @@ One corner size for each level, so the level shows at a glance:
 | 2 | `0 8px 24px rgba(13,37,61,.12), 0 2px 6px rgba(13,37,61,.06)` | Menus, pop-ups, dialogs, toasts |
 
 - **In dark mode,** shadows don't show. Depth comes from `--panel-raised` and
-  the hairline edge instead.
+  the hairline edge instead. The one exception is the glass top bar
+  (§5.1), kept as it is today: its dark `--header-shadow` is deep enough
+  to show, and with its hairline edge it sets the bar off from the page
+  scrolling under it.
 - **No panel inside a panel.** Sections within a panel are split by
   hairlines, not by more cards with more shadows.
 - **No gradients as decoration.** The logo tile is solid `--brand`.
@@ -776,5 +779,6 @@ changed:
 - **2026-10-23:** From Codex's review of #85: the top bar's glass tokens
   are in the neutrals table (§2.2), and `--panel` no longer names the top
   bar; where the browser can't blur, the bar is solid `--panel`, as the
-  glass alone could leave helper text below 4.5:1; and its blur eases in
-  with the rest (§5.1).
+  glass alone could leave helper text below 4.5:1; its blur eases in
+  with the rest (§5.1); and its dark shadow is the one exception to dark
+  mode's depth without shadows (§4.3).
