@@ -818,3 +818,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-23:** From Codex's review of #85: where the browser can't blur,
   the glass top bar is solid instead, so its text keeps its contrast, and
   the blur eases in with the rest (`DESIGN.md` §5.1).
+- **2026-10-23:** From Codex's third review of #85: text on the glass top
+  bar is never the helper grey, which a dark map under it could make
+  unreadable, and the bar no longer moves the page 32px as it floats, as
+  today's does (`DESIGN.md` §5.1).

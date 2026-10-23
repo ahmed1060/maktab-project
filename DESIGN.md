@@ -329,14 +329,19 @@ These are built once, in the building-blocks PR, and every page uses them
     `--header-glass-bg` with a 20px blur and 160% saturation behind it, a
     hairline `--header-glass-border` edge and `--header-shadow`. The page
     scrolling under it shows through, blurred;
+  - the bar takes the same room in both: the inset, corners, glass, edge
+    and shadow are drawn on a layer inside it, so the page under it never
+    moves as it floats or settles. Today's bar grows its own margins
+    instead, which moves the page 32px at 10px of scroll; the rebuilt app
+    shell keeps the look and not that;
   - text and icons on the bar are `--ink` or `--ink-2`, never `--muted`.
     Whatever scrolls under it, a dark map say, the glass is at its darkest
     `#d1d1d1` in light mode and its lightest `#2a2e33` in dark mode, and
     `--muted` reads only 3.5:1 on the first; `--ink-2` reads 7.7:1 on both;
   - it eases between the two over 300ms, changing only its background,
     blur (`backdrop-filter` and `-webkit-backdrop-filter`), edge, shadow,
-    margins and corners, so the blur comes in with the rest rather than
-    at once. With "reduce motion" on, it changes at once;
+    inset and corners, so the blur comes in with the rest rather than at
+    once. With "reduce motion" on, it changes at once;
   - where the browser can't blur, supporting neither `backdrop-filter`
     nor `-webkit-backdrop-filter` (`@supports not`), it floats on solid
     `--panel` instead, with the same edge and shadow. Without the blur the
@@ -784,5 +789,8 @@ changed:
   are in the neutrals table (§2.2), and `--panel` no longer names the top
   bar; where the browser can't blur, the bar is solid `--panel`, as the
   glass alone could leave helper text below 4.5:1; its blur eases in
-  with the rest (§5.1); and its dark shadow is the one exception to dark
-  mode's depth without shadows (§4.3).
+  with the rest (§5.1); its dark shadow is the one exception to dark
+  mode's depth without shadows (§4.3); its text is `--ink` or `--ink-2`,
+  never `--muted`, which a dark backdrop under the glass can bring below
+  4.5:1; and it takes the same room floating or not, so the page doesn't
+  move.
