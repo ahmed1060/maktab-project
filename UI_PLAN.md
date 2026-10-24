@@ -896,3 +896,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     card's actions keep to its end when nothing is beside them.
 - **2026-10-23:** `CLIENTS_PLAN.md`'s step 0 is done (#95), and step 1's
   first PR, 1a, opens for review in #96.
+- **2026-10-24:** From Codex's review of #96: the client form shows its HQ
+  as it is, with no place search or map, to someone who may not manage
+  locations, and says who can. The Locations page shows a client's name
+  without a link to someone who can't open the client's page.

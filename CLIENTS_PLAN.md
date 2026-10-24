@@ -423,6 +423,9 @@ needs no data change.
   given either can see what it adds or manages.
 - **A task shows its own location** to anyone who can see the task, without
   See locations.
+- **Changing a client's HQ is Manage locations,** in the client form too.
+  Whoever may manage clients adds a client with its HQ, and gives one to a
+  client without one, but sees the HQ it has as it is.
 
 ### 2.10 Kept separate
 
@@ -1188,3 +1191,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   Clients on screen, in the code and in the database. Its migration ran
   with the app in maintenance mode from 22:35 to 22:46 UTC, and production
   had no errors after it. Step 1's first PR, 1a, opens for review in #96.
+- **2026-10-24:** From Codex's review of #96: a client's HQ changes only for
+  whoever may manage locations, in the client form too (§2.9). Whoever may
+  manage clients still edits the rest, adds a client with its HQ, and gives
+  one to a client without one. The Locations page links a location's
+  client only for whoever may open the client's page.
