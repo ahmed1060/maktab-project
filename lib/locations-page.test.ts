@@ -97,6 +97,16 @@ describe("the Locations page", () => {
         expect(html).toContain("locations_radius_value")
     })
 
+    it("links a location's client to its page only for whoever may open it", async () => {
+        state.rows = [row({})]
+        state.grants = new Set(["locations.view"])
+        const html = await page()
+        expect(html).toContain("<bdi>Acme</bdi>")
+        expect(html).not.toContain('href="/dashboard/clients/c1"')
+        state.grants = new Set(["locations.view", "records.view"])
+        expect(await page()).toContain('href="/dashboard/clients/c1"')
+    })
+
     it("offers the clients to filter by only to whoever may see them", async () => {
         await page()
         expect(state.keys).toContain("/api/clients")

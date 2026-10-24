@@ -150,10 +150,14 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const hq = (l: LocationItem) => l.isHq && <StatusBadge tone="neutral">{t('locations_hq')}</StatusBadge>
     const title = (l: LocationItem) => <><bdi>{l.name}</bdi>{hq(l)}</>
-    // Its client's page, or "Shared" for a place no client owns.
-    const owner = (l: LocationItem) => l.client
-        ? <Link href={`/dashboard/clients/${l.client.id}`} prefetch={false} className="ui-item-link"><bdi>{l.client.name}</bdi></Link>
-        : t('locations_shared')
+    // Its client's page for whoever may open it (clients/[id]), or "Shared"
+    // for a place no client owns.
+    const opensClient = can('clients.view') || can('records.view')
+    const owner = (l: LocationItem) => !l.client
+        ? t('locations_shared')
+        : opensClient
+            ? <Link href={`/dashboard/clients/${l.client.id}`} prefetch={false} className="ui-item-link"><bdi>{l.client.name}</bdi></Link>
+            : <bdi>{l.client.name}</bdi>
     const pin = (l: LocationItem) => l.latitude === null || l.longitude === null
         ? <StatusBadge tone="problem">{t('locations_needs_pin')}</StatusBadge>
         : <a href={googleMapsLink(l.latitude, l.longitude)} target="_blank" rel="noopener noreferrer" className="ui-item-link">{t('locations_view_map')}<span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
