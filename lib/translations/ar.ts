@@ -128,6 +128,7 @@ export const ar = {
         location_radius_invalid: "أدخل عددًا صحيحًا من ٢٠ إلى ٥٠٠٠، أو اتركه فارغًا.",
         client_hq: "المقر الرئيسي",
         client_hq_hint: "موقعه الرئيسي. تُضاف مواقعه الأخرى من صفحته.",
+        client_hq_locked: "لا يغيّر مقرّه إلا من يحق له إدارة المواقع.",
         perm_locations_view: "عرض المواقع",
         perm_locations_add: "إضافة المواقع",
         perm_locations_manage: "إدارة المواقع",

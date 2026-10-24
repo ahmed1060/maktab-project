@@ -205,12 +205,20 @@ export class LocationService {
      * A new client's HQ, in the transaction that adds the client
      * (ClientService.create), or a change to it when the client is edited.
      * The client's own location fields follow it.
+     *
+     * Whoever may manage clients gives a client its HQ, with the client or
+     * later for one without, but changing the one it has is changing a
+     * location: locations.manage, as on the Locations page.
      */
-    static async saveHq(tx: Tx, client: { id: string; companyId: string }, place: PlaceInput, byUser: string | null) {
-        const hq = await tx.location.findFirst({ where: { clientId: client.id, isHq: true }, select: { id: true } })
+    static async saveHq(tx: Tx, client: { id: string; companyId: string }, place: PlaceInput, session: Session) {
+        const hq = await tx.location.findFirst({ where: { clientId: client.id, isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } })
         const details = { name: place.name, latitude: place.latitude, longitude: place.longitude, radiusMeters: place.radiusMeters ?? null }
-        if (hq) await tx.location.update({ where: { id: hq.id }, data: details })
-        else await tx.location.create({ data: { ...details, companyId: client.companyId, clientId: client.id, isHq: true, createdById: byUser } })
+        if (hq) {
+            const changed = (Object.keys(details) as (keyof typeof details)[]).some(k => hq[k] !== details[k])
+            if (changed && !can(session.user as any, "locations.manage", { companyId: client.companyId })) throw new Error("TASK_LOCATION_FORBIDDEN")
+            await tx.location.update({ where: { id: hq.id }, data: details })
+        }
+        else await tx.location.create({ data: { ...details, companyId: client.companyId, clientId: client.id, isHq: true, createdById: actor(session).byUser } })
         await syncClientLocation(tx, client.id)
     }
 }

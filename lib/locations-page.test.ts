@@ -106,3 +106,20 @@ describe("the Locations page", () => {
         expect(state.keys).not.toContain("/api/clients")
     })
 })
+
+describe("the place fields", () => {
+    it("show a place someone may not change as it is, with no place search or map to move it", async () => {
+        const { default: PlaceFields } = await import("@/components/locations/PlaceFields")
+        const props = { draft: { name: "Main office", point: "30.0444, 31.2357", radius: "120" }, onChange: () => {}, errors: {} }
+        const open = renderToStaticMarkup(h(PlaceFields, props))
+        expect(open).toContain("location_search")
+        expect(open).toContain("att_loc_here")
+        expect(open.match(/<input[^>]*disabled=""/g)).toBeNull()
+
+        const locked = renderToStaticMarkup(h(PlaceFields, { ...props, locked: true }))
+        expect(locked).not.toContain("location_search")
+        expect(locked).not.toContain("att_loc_here")
+        expect(locked.match(/<input[^>]*disabled=""/g)).toHaveLength(3)
+        expect(locked).toContain('value="Main office"')
+    })
+})

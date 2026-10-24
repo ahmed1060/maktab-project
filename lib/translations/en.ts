@@ -132,6 +132,7 @@ export const en = {
         location_radius_invalid: "Enter a whole number from 20 to 5,000, or leave it empty.",
         client_hq: "HQ",
         client_hq_hint: "Its main location. Its other locations can be added on its page.",
+        client_hq_locked: "Only someone who may manage locations can change its HQ.",
         perm_locations_view: "See locations",
         perm_locations_add: "Add locations",
         perm_locations_manage: "Manage locations",

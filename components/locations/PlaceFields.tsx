@@ -13,7 +13,7 @@ import { pinOfLink, type PlaceDraft, type PlaceErrors } from '@/lib/place-draft'
  * the pin, the pin itself with "Use my current location" and "Pick on the
  * map", and its check radius. The same map as the check-in places.
  */
-export default function PlaceFields({ draft, onChange, errors, nameLabel, nameHint, disabled = false }: {
+export default function PlaceFields({ draft, onChange, errors, nameLabel, nameHint, disabled = false, locked = false }: {
     draft: PlaceDraft
     onChange: (draft: PlaceDraft) => void
     /** Shown once a save has been tried. */
@@ -21,11 +21,14 @@ export default function PlaceFields({ draft, onChange, errors, nameLabel, nameHi
     nameLabel?: string
     nameHint?: string
     disabled?: boolean
+    /** Shown as it is, for someone who may not change it: no place search or map either. */
+    locked?: boolean
 }) {
     const { t, locale } = useLanguage()
     const [search, setSearch] = useState({ name: '', link: '' })
     const set = (change: Partial<PlaceDraft>) => onChange({ ...draft, ...change })
     const radius = Number(draft.radius) || LOCATION_RADIUS_DEFAULT
+    const off = disabled || locked
 
     return (
         <>
@@ -34,8 +37,8 @@ export default function PlaceFields({ draft, onChange, errors, nameLabel, nameHi
                 label={nameLabel ?? t('location_name')}
                 hint={nameHint ?? t('location_name_hint')}
                 error={errors.name && t('location_name_required')}
-            >{p => <TextInput {...p} name="locationName" autoComplete="off" dir="auto" maxLength={LOCATION_NAME_MAX} value={draft.name} onChange={e => set({ name: e.target.value })} disabled={disabled} />}</Field>
-            <LocationSearchInput
+            >{p => <TextInput {...p} name="locationName" autoComplete="off" dir="auto" maxLength={LOCATION_NAME_MAX} value={draft.name} onChange={e => set({ name: e.target.value })} disabled={off} />}</Field>
+            {!locked && <LocationSearchInput
                 blocks
                 label={t('location_search')}
                 value={search}
@@ -48,21 +51,21 @@ export default function PlaceFields({ draft, onChange, errors, nameLabel, nameHi
                 }}
                 placeholder={t('location_search_placeholder')}
                 locale={locale}
-            />
+            />}
             <Field
                 label={t('location_pin')}
                 hint={t('att_loc_point_hint')}
                 error={errors.point === 'required' ? t('location_pin_required') : errors.point === 'invalid' ? t('att_loc_point_invalid') : undefined}
             >{p => (
-                <TextInput {...p} name="pin" autoComplete="off" dir="ltr" inputMode="decimal" placeholder="30.0444, 31.2357" value={draft.point} onChange={e => set({ point: e.target.value })} disabled={disabled} />
+                <TextInput {...p} name="pin" autoComplete="off" dir="ltr" inputMode="decimal" placeholder="30.0444, 31.2357" value={draft.point} onChange={e => set({ point: e.target.value })} disabled={off} />
             )}</Field>
-            <PointPicker blocks value={draft.point} radius={radius} onChange={point => set({ point })} />
+            {!locked && <PointPicker blocks value={draft.point} radius={radius} onChange={point => set({ point })} />}
             <Field
                 label={t('location_radius')}
                 hint={t('location_radius_hint')}
                 error={errors.radius && t('location_radius_invalid')}
             >{p => (
-                <TextInput {...p} name="radius" autoComplete="off" type="number" inputMode="numeric" min={LOCATION_RADIUS_MIN} max={LOCATION_RADIUS_MAX} step={10} placeholder={String(LOCATION_RADIUS_DEFAULT)} value={draft.radius} onChange={e => set({ radius: e.target.value })} disabled={disabled} />
+                <TextInput {...p} name="radius" autoComplete="off" type="number" inputMode="numeric" min={LOCATION_RADIUS_MIN} max={LOCATION_RADIUS_MAX} step={10} placeholder={String(LOCATION_RADIUS_DEFAULT)} value={draft.radius} onChange={e => set({ radius: e.target.value })} disabled={off} />
             )}</Field>
         </>
     )

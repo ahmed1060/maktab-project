@@ -40,7 +40,7 @@ export class ClientService {
                 }
             })
             // Its HQ, with it: no client is ever without one it was given.
-            await LocationService.saveHq(tx, client, hq, byUser)
+            await LocationService.saveHq(tx, client, hq, session)
 
             await AuditLogService.log('CREATE_VENDOR', 'VENDOR', client.id, {
                 tx,
@@ -69,8 +69,9 @@ export class ClientService {
         const { AuditLogService } = await import("./audit-log.service")
         return prisma.$transaction(async tx => {
             await tx.client.update({ where: { id }, data: details })
-            // Its HQ's details, and its own location fields with them.
-            if (hq) await LocationService.saveHq(tx, client, hq, userRole === 'SUPER_ADMIN' ? null : userId)
+            // Its HQ's details, and its own location fields with them: a
+            // change to the HQ it has needs locations.manage.
+            if (hq) await LocationService.saveHq(tx, client, hq, session)
 
             await AuditLogService.log('UPDATE_VENDOR', 'VENDOR', id, {
                 tx,

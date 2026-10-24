@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
+import { encodeGrants } from "@/lib/permissions/grants"
 
 /**
  * The places tasks happen at (CLIENTS_PLAN.md §2, step 1), against a real
@@ -208,6 +209,24 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
             await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k5', 'c1', 'Zeta', 'Rana', '0105', 'Typed later', now())`)
             await Clients.update({ id: "k5", hq: { name: "Aswan", latitude: 24.1, longitude: 32.9 } }, admin)
             expect(await hqOf("k5")).toEqual([{ name: "Aswan", latitude: 24.1, longitude: 32.9 }])
+        })
+
+        it("is changed only by whoever may manage locations, though whoever manages clients edits the rest, and gives one to a client without one", async () => {
+            const clerk = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "clients.view": "COMPANY", "clients.manage": "COMPANY" }) } } as any
+            const [epsilon] = (await db.query(`SELECT id FROM "Client" WHERE name = 'Epsilon'`)).rows
+            const asItIs = { name: "Luxor HQ", latitude: 25.7, longitude: 32.6 }
+            await expect(Clients.update({ id: epsilon.id, ownerName: "Hala", hq: { ...asItIs, name: "Moved" } }, clerk)).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
+            await expect(Clients.update({ id: epsilon.id, hq: { ...asItIs, radiusMeters: 500 } }, clerk)).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
+            expect(await hqOf(epsilon.id)).toEqual([asItIs])
+            expect((await db.query(`SELECT "ownerName" FROM "Client" WHERE id = $1`, [epsilon.id])).rows[0].ownerName).toBe("Hana")
+
+            await Clients.update({ id: epsilon.id, ownerName: "Hala", hq: asItIs }, clerk)
+            expect((await db.query(`SELECT "ownerName" FROM "Client" WHERE id = $1`, [epsilon.id])).rows[0].ownerName).toBe("Hala")
+            expect(await hqOf(epsilon.id)).toEqual([asItIs])
+
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k6', 'c1', 'Eta', 'Nour', '0106', 'Typed later', now())`)
+            await Clients.update({ id: "k6", hq: { name: "Qena", latitude: 26.2, longitude: 32.7 } }, clerk)
+            expect(await hqOf("k6")).toEqual([{ name: "Qena", latitude: 26.2, longitude: 32.7 }])
         })
 
         it("goes with its client, as do the client's other locations", async () => {

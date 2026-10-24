@@ -261,6 +261,7 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
 }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
+    const { can } = useCan()
     const formId = useId()
     const formRef = useRef<HTMLFormElement>(null)
     const [form, setForm] = useState<ClientFormState>(client
@@ -268,6 +269,8 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
         : emptyForm)
     const [opened] = useState<PlaceDraft>(() => (client ? hqDraft(client) : emptyPlace))
     const [hq, setHq] = useState<PlaceDraft>(opened)
+    // Changing the HQ it has is changing a location (LocationService.saveHq).
+    const hqLocked = !!client?.locations?.[0] && !can('locations.manage')
     const [hqErrors, setHqErrors] = useState<PlaceErrors>({})
     const [tried, setTried] = useState(false)
     const [chosenCompany, setChosenCompany] = useState('')
@@ -346,8 +349,9 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
                     onChange={d => { setHq(d); if (tried) setHqErrors(readPlace(d).errors) }}
                     errors={hqErrors}
                     nameLabel={t('client_hq')}
-                    nameHint={t('client_hq_hint')}
+                    nameHint={hqLocked ? t('client_hq_locked') : t('client_hq_hint')}
                     disabled={saving}
+                    locked={hqLocked}
                 />
             </form>
         </Dialog>
