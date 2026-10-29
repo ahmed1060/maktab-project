@@ -423,6 +423,9 @@ needs no data change.
   given either can see what it adds or manages.
 - **A task shows its own location** to anyone who can see the task, without
   See locations.
+- **Changing a client's HQ is Manage locations,** in the client form too.
+  Whoever may manage clients adds a client with its HQ, and gives one to a
+  client without one, but sees the HQ it has as it is.
 
 ### 2.10 Kept separate
 
@@ -759,9 +762,18 @@ balance first, automatically:
        list page looks as it did.
      - 0c, the stored names following the code, was merged in #94 on
        2026-10-23 (§0.3).
-     - 0d, the database's names following the code, is open for review in
-       #95 (§0.3), with its code. Its last commit, the migration, is pushed
-       in the maintenance window, at a time the product owner chooses.
+     - 0d, the database's names following the code, was merged in #95 on
+       2026-10-23 (§0.3), its migration run in a maintenance window of
+       about 8 minutes.
+     - Step 1, the Locations system, is open for review as PR 1a in #96
+       (§2). Proposed:
+       it ships as two PRs. 1b, opened once 1a is merged and live, gives
+       the companies already there their built-in roles' location
+       permissions (§2.9), and makes an HQ for any client the release
+       before added meanwhile. Given in 1a, the grants would reach the
+       live role editor, which doesn't know them yet and would drop them
+       when a role is saved. Until 1b is merged, only the Super Admin
+       sees the Locations page in those companies.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1154,3 +1166,33 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   stored under their new names, and the old clients table is gone. 0d
   opens for review in #95 with its code; its migration waits for the
   maintenance window.
+- **2026-10-22:** Step 1's first PR, 1a, is built (§2):
+  - **The locations:** each client's current location becomes its HQ,
+    with its pin when its map link has one, or marked "Needs a pin"
+    (§2.8). Each location has its own check radius, 20 to 5,000 m, or
+    the default 70 m (§2.5). The database keeps a client to one HQ, an
+    archived location from being one, and a pin whole and on the map.
+  - **The Locations page and each client's page** (§2.6): search, a filter
+    by client or shared, the archived ones, adding, editing, archiving and
+    restoring, and Make HQ. A client's HQ is replaced, never archived.
+  - **Add location asks whose it is each time:** a client's, or Shared.
+    It's never Shared by default, so a branch can't be left as no
+    client's.
+  - **The client form's HQ:** a new client is added with its HQ's name,
+    pin and radius. Editing a client leaves its HQ as it is unless it's
+    changed there, so a client whose HQ needs a pin can still have its
+    phone number corrected.
+  - **Permissions:** the three in §2.9. A new company's built-in roles get
+    the defaults: Admin all three, Team Leader See and Add.
+  - **Until step 2,** a client's own location fields follow its HQ, as the
+    task form still copies them into a new task.
+  - **Proposed:** step 1 ships as two PRs, 1a and 1b (§8).
+- **2026-10-23:** 0d was merged in #95, so step 0 is done: Vendors are
+  Clients on screen, in the code and in the database. Its migration ran
+  with the app in maintenance mode from 22:35 to 22:46 UTC, and production
+  had no errors after it. Step 1's first PR, 1a, opens for review in #96.
+- **2026-10-24:** From Codex's review of #96: a client's HQ changes only for
+  whoever may manage locations, in the client form too (§2.9). Whoever may
+  manage clients still edits the rest, adds a client with its HQ, and gives
+  one to a client without one. The Locations page links a location's
+  client only for whoever may open the client's page.

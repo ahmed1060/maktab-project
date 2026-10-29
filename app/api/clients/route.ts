@@ -5,6 +5,9 @@ import { createClientSchema, updateClientSchema } from "@/lib/validations/client
 import { ClientService } from "@/lib/services/client.service"
 import { can } from "@/lib/permissions/can"
 
+// Each client's HQ (CLIENTS_PLAN.md §2.2), for its details and its form.
+const HQ = { where: { isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } } as const
+
 // Read with clients.view — a Team Leader holds it (they pick a client when
 // creating a task) but not clients.manage; writes are checked per-method below.
 export const GET = withStandardHandler(async (req, session) => {
@@ -19,7 +22,7 @@ export const GET = withStandardHandler(async (req, session) => {
     const clientId = searchParams.get('id')
 
     if (clientId) {
-        const client = await prisma.client.findUnique({ where: { id: clientId } })
+        const client = await prisma.client.findUnique({ where: { id: clientId }, include: { locations: HQ } })
         if (!client) return ApiResponse.notFound("Client not found")
         if (!can(session.user, "clients.view", { companyId: client.companyId })) return ApiResponse.forbidden()
         return ApiResponse.success(client)
@@ -44,6 +47,7 @@ export const GET = withStandardHandler(async (req, session) => {
             // only targets User) — the frontend shows a generic "Super
             // Admin" label in that case rather than nothing.
             createdBy: { select: { firstName: true, lastName: true } },
+            locations: HQ,
             // Company name is only needed to label rows in the Super
             // Admin's aggregate ("all companies") view — a non-Super-Admin
             // request is always scoped to their own single company already.

@@ -23,7 +23,7 @@ describe("the side bar", () => {
         expect(shape(viewer("ADMIN", { companySettings: true }))).toEqual([
             "top: dashboard",
             "work: tasks, obligations",
-            "clients: clients, records",
+            "clients: clients, locations, records",
             "people: employees, attendance, requests, dayOff, roleRequests, profileRequests",
             "money: costs, payroll",
             "me: myPayslips",

@@ -281,6 +281,7 @@ model Company {
   tasks                Task[]
   users                User[]
   clients              Client[]
+  locations            Location[]
   roles                Role[]                    @relation("CompanyRoles")
   roleRequests         RoleRequest[]
   roleChangeRequests   RoleChangeRequest[]
@@ -481,6 +482,7 @@ model User {
   createdSections            RecordSection[]         @relation("SectionCreatedBy")
   editedSections             RecordSection[]         @relation("SectionEditedBy")
   createdClients             Client[]                @relation("ClientCreatedBy")
+  createdLocations           Location[]              @relation("LocationCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
   dayOffRequests             DayOffRequest[]
   notifications              Notification[]
@@ -1137,7 +1139,8 @@ model Client {
   mobileNumber String
   // Mirrors Task.location's {name, link} shape (stored there as JSON text)
   // so copying a client's location into a task at creation time is a direct
-  // field-to-field copy, no reshaping needed on either side.
+  // field-to-field copy, no reshaping needed on either side. Kept in step
+  // with its HQ (Location) until step 2 moves tasks onto locations.
   locationName String
   locationLink String?
   createdById  String?
@@ -1148,9 +1151,44 @@ model Client {
   tasks        Task[]
   /// Its records, in sections (CLIENTS_PLAN.md §0.2).
   recordSections RecordSection[]
+  /// Its places: its HQ, and its branches and sites (CLIENTS_PLAN.md §2).
+  locations      Location[]
 
   @@unique([name, companyId])
   @@index([companyId])
+}
+
+/// A place tasks happen at (CLIENTS_PLAN.md §2): a client's HQ, one of its
+/// branches or sites, or a shared place belonging to no client. Shown as
+/// "Client - Location", the client's name joined when shown, so renaming a
+/// client renames all its locations.
+///
+/// The database also holds what the schema can't say: a client has one HQ
+/// at most, an HQ belongs to a client and isn't archived, a pin is both
+/// coordinates or neither, and a radius is 20 to 5,000 m.
+model Location {
+  id           String    @id @default(uuid())
+  companyId    String
+  /// Its client; none for a shared location.
+  clientId     String?
+  name         String
+  isHq         Boolean   @default(false)
+  /// Its pin. Every location has one, but an HQ made from a client's old
+  /// typed location may not yet: "Needs a pin", and no task can use it.
+  latitude     Float?
+  longitude    Float?
+  /// Its own check radius; none for the default (LOCATION_RADIUS_DEFAULT).
+  radiusMeters Int?
+  archivedAt   DateTime?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client       Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy    User?     @relation("LocationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([clientId])
 }
 
 /// One row per scheduled job, rewritten on every run.

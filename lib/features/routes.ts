@@ -20,6 +20,7 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/api/obligations', 'OBLIGATIONS'],
     ['/api/records', 'RECORDS'],
     ['/api/clients', 'CLIENTS'],
+    ['/api/locations', 'CLIENTS'],      // a client's places, and the shared ones (CLIENTS_PLAN.md §2)
 
     // --- HR ---
     ['/api/day-off-requests', 'DAY_OFF'],
@@ -111,6 +112,7 @@ export const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/obligations', 'OBLIGATIONS'],
     ['/dashboard/records', 'RECORDS'],
     ['/dashboard/clients', 'CLIENTS'],
+    ['/dashboard/locations', 'CLIENTS'],
     ['/dashboard/costs', 'COSTS'],
     ['/dashboard/day-off-requests', 'DAY_OFF'],
     ['/dashboard/payroll', 'PAYROLL'],

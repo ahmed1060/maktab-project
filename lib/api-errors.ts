@@ -28,6 +28,14 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     RECORD_FORBIDDEN: { status: 403, message: "You don't have permission to do that." },
     CLIENT_NOT_FOUND: { status: 404, message: "Client not found." },
     CLIENT_HAS_RECORDS: { status: 409, message: "This client has records. Delete them on its page first." },
+    // The places tasks happen at (lib/services/location.service.ts); a
+    // check-in place's are LOCATION_*, below.
+    TASK_LOCATION_NOT_FOUND: { status: 404, message: "Location not found." },
+    TASK_LOCATION_FORBIDDEN: { status: 403, message: "You don't have permission to do that." },
+    TASK_LOCATION_IS_HQ: { status: 409, message: "This is its client's HQ. Make another of its locations the HQ first." },
+    TASK_LOCATION_SHARED: { status: 400, message: "A shared location belongs to no client, so it can't be an HQ." },
+    TASK_LOCATION_ARCHIVED: { status: 400, message: "This location is archived. Restore it first." },
+    COMPANY_SELECTION_REQUIRED: { status: 400, message: "Choose a company first." },
     SETTLEMENT_NOT_FOUND: { status: 404, message: "Settlement not found." },
     ONLY_PAID_SUPPORTED: { status: 400, message: "A payment can only be marked as paid." },
     UNKNOWN_SUBSCRIPTION_TYPE: { status: 400, message: "This payment's subscription type isn't one the system knows." },

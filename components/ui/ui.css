@@ -231,6 +231,15 @@
   outline-offset: 1px;
   border-color: var(--brand-text);
 }
+/* A field that can't be changed (DESIGN.md §5.3): on the page's colour,
+   its text still readable (--ink-2 on --page is one of the checked pairs). */
+.ui-input:disabled,
+.ui-select:disabled {
+  background: var(--page);
+  border-color: var(--rule);
+  color: var(--ink-2);
+  cursor: not-allowed;
+}
 .ui-input[aria-invalid="true"],
 .ui-select[aria-invalid="true"] {
   border-color: var(--problem-text);
@@ -1131,6 +1140,11 @@ a.ui-row:focus-visible {
   font-weight: 500;
   color: var(--ink);
 }
+/* A badge beside a name, as a client's HQ. */
+.ui-item-title > .ui-badge {
+  margin-inline-start: var(--space-2);
+  vertical-align: middle;
+}
 .ui-item-detail,
 .ui-meta {
   overflow-wrap: anywhere;
@@ -1181,6 +1195,10 @@ a.ui-row:focus-visible {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+/* A card's actions stay at its end, with or without words beside them. */
+.ui-list-card-foot > .ui-row-actions {
+  margin-inline-start: auto;
 }
 
 /* ── Pager ── */
