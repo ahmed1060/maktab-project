@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { pickIn } from "./saved-lists"
+import { costNamed, pickIn, titleNamed, withCostNamed } from "./saved-lists"
 
 /** The saved lists' rules both sides share (CLIENTS_PLAN.md §5). */
 
@@ -28,5 +28,20 @@ describe("a name picked from a company's list", () => {
         expect(src).toContain("const titleName = pickIn(titlePick, selectedCompanyId)")
         expect(src).toContain("setTitlePick({ name: next, company: selectedCompanyId })")
         expect(src).toContain("titleEntryId: titleName.entryId ?? undefined")
+    })
+})
+
+describe("a filter by a saved name (§5.9)", () => {
+    const transport = { id: "n1", name: "Transport", companyId: "c1" }
+
+    it("keeps what was picked as it, or typed the same, ignoring capitals, in its company", () => {
+        expect(titleNamed(transport)).toEqual({ companyId: "c1", OR: [{ titleEntryId: "n1" }, { title: { equals: "Transport", mode: "insensitive" } }] })
+        expect(costNamed(transport)).toEqual({ OR: [{ nameEntryId: "n1" }, { description: { equals: "Transport", mode: "insensitive" } }] })
+        expect(withCostNamed(transport)).toEqual({ companyId: "c1", costs: { some: costNamed(transport) } })
+    })
+
+    it("keeps nothing for a name its viewer's company hasn't", () => {
+        expect(titleNamed(null)).toEqual({ id: "__no_match__" })
+        expect(withCostNamed(null)).toEqual({ id: "__no_match__" })
     })
 })

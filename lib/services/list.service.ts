@@ -2,7 +2,7 @@ import { Prisma, type ListKind } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
-import { LIST_KINDS, LIST_NAME_LIMITS, listName, sameListName } from "@/lib/saved-lists"
+import { LIST_KINDS, LIST_NAME_LIMITS, listName, sameListName, type FilterName } from "@/lib/saved-lists"
 
 /**
  * A company's saved lists of cost names and task titles (CLIENTS_PLAN.md §5).
@@ -97,6 +97,30 @@ export class ListService {
             orderBy: [{ name: "asc" }, { id: "asc" }],
         })
         return rows.map(r => ({ id: r.id, name: r.name, archived: r.archivedAt !== null, uses: r._count.tasks + r._count.costs }))
+    }
+
+    /**
+     * A list as the filter bars offer it (§5.9): every name, archived ones
+     * too, as what was picked as them is still to be found. For anyone in
+     * the company, as a picker's suggestions are.
+     */
+    static async forFilters(session: Session, input: { kind: unknown; companyId?: string | null }): Promise<(ListName & { archived: boolean })[]> {
+        const kind = kindOf(input.kind)
+        const companyId = companyOf(session, input.companyId)
+        const rows = await prisma.listEntry.findMany({ where: { companyId, kind }, select: { id: true, name: true, archivedAt: true }, orderBy: [{ name: "asc" }, { id: "asc" }] })
+        return rows.map(r => ({ id: r.id, name: r.name, archived: r.archivedAt !== null }))
+    }
+
+    /**
+     * The name a filter's address carries (§5.9), in the company in view, or
+     * in any for a Super Admin who picked none. Another company's, or one
+     * gone, is none, and the filter matches nothing.
+     */
+    static async filterName(kind: ListKind, id: unknown, companyId: string | null): Promise<FilterName | null> {
+        if (typeof id !== "string" || !id) return null
+        const entry = await prisma.listEntry.findUnique({ where: { id }, select: { id: true, name: true, companyId: true, kind: true } })
+        if (!entry || entry.kind !== kind || (companyId && entry.companyId !== companyId)) return null
+        return { id: entry.id, name: entry.name, companyId: entry.companyId }
     }
 
     /**

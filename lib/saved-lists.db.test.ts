@@ -305,4 +305,87 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
             expect(log.details).toEqual({ name: "Transport", into: "TRAIN", uses: 1 })
         })
     })
+
+    describe("filters by a saved name (5c)", () => {
+        let prisma: typeof import("@/lib/prisma").prisma
+        let filters: typeof import("@/lib/saved-lists")
+        let costs: typeof import("@/lib/services/costs-query")
+
+        beforeAll(async () => {
+            prisma = (await import("@/lib/prisma")).prisma
+            filters = await import("@/lib/saved-lists")
+            costs = await import("@/lib/services/costs-query")
+            await db.query(`
+                INSERT INTO "ListEntry"(id, "companyId", kind, name, "archivedAt", "updatedAt") VALUES
+                 ('f-audit', 'c1', 'TASK_TITLE', 'Quarterly audit', NULL, now()),
+                 ('f-audit-c2', 'c2', 'TASK_TITLE', 'Quarterly audit', NULL, now()),
+                 ('f-old', 'c1', 'TASK_TITLE', 'Old checklist', now(), now()),
+                 ('f-diesel', 'c1', 'COST_NAME', 'Diesel', NULL, now())`)
+            const deadline = new Date(Date.now() + 86_400_000)
+            const made = (id: string, company: string, title: string, over: Record<string, unknown> = {}) => prisma.task.create({ data: { id, title, description: "d", deadline, status: "PENDING", companyId: company, ...over } as any })
+            await made("f1", "c1", "Quarterly audit", { titleEntryId: "f-audit" })
+            await made("f2", "c1", "quarterly AUDIT")
+            await made("f3", "c1", "Quarterly audit of the stores")
+            await made("f4", "c2", "Quarterly audit")
+            // Two costs waiting to be paid: Ehab's Diesel, picked and typed, beside a taxi.
+            const owed = { status: "APPROVED", paymentStatus: "PENDING_PAYMENT", assignees: { connect: [{ id: "e1" }] } }
+            await made("g1", "c1", "Generator run", { ...owed, totalCost: 82.5, memberCosts: { e1: 82.5 }, costs: { create: [
+                { authorId: "e1", amount: 40, description: "Diesel", nameEntryId: "f-diesel" },
+                { authorId: "e1", amount: 12.5, description: "diesel" },
+                { authorId: "e1", amount: 30, description: "Taxi" },
+            ] } })
+            await made("g2", "c1", "Site visit", { ...owed, totalCost: 20, memberCosts: { e1: 20 }, costs: { create: [{ authorId: "e1", amount: 20, description: "Taxi" }] } })
+        })
+
+        const titled = async (where: Record<string, unknown>) => (await prisma.task.findMany({ where: { AND: [where, { id: { startsWith: "f" } }] }, select: { id: true }, orderBy: { id: "asc" } })).map(t => t.id)
+
+        it("keeps the tasks picked as a title, or typed the same, ignoring capitals, in its company", async () => {
+            const audit = await Lists.filterName("TASK_TITLE", "f-audit", "c1")
+            expect(audit).toEqual({ id: "f-audit", name: "Quarterly audit", companyId: "c1" })
+            expect(await titled(filters.titleNamed(audit))).toEqual(["f1", "f2"])
+            // A Super Admin who picked no company: still the name's company only.
+            expect(await titled(filters.titleNamed(await Lists.filterName("TASK_TITLE", "f-audit", null)))).toEqual(["f1", "f2"])
+        })
+
+        it("keeps nothing for another company's name, or one from the other list", async () => {
+            expect(await Lists.filterName("TASK_TITLE", "f-audit", "c2")).toBeNull()
+            expect(await Lists.filterName("COST_NAME", "f-audit", "c1")).toBeNull()
+            expect(await titled(filters.titleNamed(null))).toEqual([])
+        })
+
+        it("offers every name for a filter, archived ones too, to anyone in the company", async () => {
+            const offered = await Lists.forFilters(employee, { kind: "TASK_TITLE" })
+            expect(offered).toEqual(expect.arrayContaining([{ id: "f-audit", name: "Quarterly audit", archived: false }, { id: "f-old", name: "Old checklist", archived: true }]))
+            expect(offered.map(n => n.id)).not.toContain("f-audit-c2")
+            await expect(Lists.forFilters(superAdmin, { kind: "TASK_TITLE" })).rejects.toMatchObject({ message: "COMPANY_SELECTION_REQUIRED" })
+        })
+
+        it("lists the costs waiting to be paid that have a cost of the name, and adds up those costs only", async () => {
+            const payer = admin.user
+            const where = await costs.pendingCostsWhere(payer, { costNameId: "f-diesel" })
+            const named = await costs.costNameOf(payer, { costNameId: "f-diesel" })
+            const rows = await prisma.task.findMany({ where: where!, select: { id: true, memberCosts: true, memberPaymentStatus: true, costs: { where: filters.costNamed(named!), select: { authorId: true, amount: true } } } })
+            expect(rows.map(r => r.id)).toEqual(["g1"])
+            const { namedParts } = await import("@/lib/costs-total")
+            expect(namedParts(rows as any)).toEqual([{ taskId: "g1", userId: "e1", amount: 52.5 }])
+            // Another company's payer: that name is none there.
+            expect(await costs.costNameOf(otherAdmin.user, { costNameId: "f-diesel" })).toBeNull()
+        })
+
+        it("saves an imported title as the saved one it names, ignoring capitals, never one the request names", async () => {
+            const made = await Tasks.bulkCreate([
+                task({ title: "  quarterly audit ", titleEntryId: "f-audit-c2" }),
+                task({ title: "Old checklist" }),
+                task({ title: "Something new", titleEntryId: "f-audit" }),
+            ], admin)
+            const saved = await prisma.task.findMany({ where: { id: { in: made.map((t: any) => t.id) } }, select: { title: true, titleEntryId: true }, orderBy: { title: "asc" } })
+            expect(saved).toEqual([
+                // Its title as typed, and the company's saved one.
+                { title: "  quarterly audit ", titleEntryId: "f-audit" },
+                // An archived name isn't offered, so isn't matched.
+                { title: "Old checklist", titleEntryId: null },
+                { title: "Something new", titleEntryId: null },
+            ])
+        })
+    })
 })

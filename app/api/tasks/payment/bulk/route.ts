@@ -37,6 +37,9 @@ export const POST = withStandardHandler(async (req, session, json) => {
             // Exactly what the person confirmed, "Pay 7 costs, 3,450 EGP", and
             // nothing else: if the list has changed since, they look again.
             if (typeof confirm?.digest !== "string") return refuse("PAYMENT_CONFIRMATION_REQUIRED")
+            // The list shows costs of one name, and a payment is a share of a
+            // whole task: it would pay more than the list adds up to (§5.9).
+            if (filters.costNameId) return refuse("PAYMENT_BY_COST_NAME")
             const where = await pendingCostsWhere(session.user, filters)
             if (!where) return ApiResponse.success({ count: 0 })
 
@@ -75,7 +78,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
     audit: { action: 'BULK_UPDATE_PAYMENT', entityType: 'TASK' }
 })
 
-function refuse(code: "PAYMENT_LIST_CHANGED" | "PAYMENT_CONFIRMATION_REQUIRED") {
+function refuse(code: "PAYMENT_LIST_CHANGED" | "PAYMENT_CONFIRMATION_REQUIRED" | "PAYMENT_BY_COST_NAME") {
     const { status, message } = KNOWN_REFUSALS[code]
     return ApiResponse.error(message, status)
 }

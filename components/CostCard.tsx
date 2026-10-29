@@ -17,9 +17,11 @@ interface CostCardProps {
         paymentStatus?: string
     }
     isHighlighted?: boolean
+    /** What the amount is, when it's not the whole cost: the cost name the list is filtered by (CLIENTS_PLAN.md §5.9). */
+    amountLabel?: string | null
 }
 
-export default function CostCard({ task, isHighlighted }: CostCardProps) {
+export default function CostCard({ task, isHighlighted, amountLabel }: CostCardProps) {
     const { t, locale } = useLanguage()
     const [isHovered, setIsHovered] = useState(false)
     const showVisualHighlight = useTemporaryHighlight(isHighlighted)
@@ -71,8 +73,9 @@ export default function CostCard({ task, isHighlighted }: CostCardProps) {
                     padding: '1rem',
                     textAlign: 'center'
                 }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', fontWeight: '600', marginBottom: '0.25rem' }}>
-                        {t('total_cost')}
+                    {/* A cost name, as typed, can be long: it wraps rather than run out of the box. */}
+                    <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', fontWeight: '600', marginBottom: '0.25rem', overflowWrap: 'anywhere' }}>
+                        {amountLabel || t('total_cost')}
                     </div>
                     <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--warn-fg)' }}>
                         {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(task.totalCost)} {t('egp')}

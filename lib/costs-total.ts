@@ -60,6 +60,34 @@ export function dueParts(tasks: { id: string; totalCost: number | string; member
 }
 
 /**
+ * With a cost name picked (§5.9), what's due of the costs of that name, in
+ * parts as dueParts has them: each member's costs of that name on a task,
+ * while their share is still owed, and those that are no one's share, the
+ * task's own part. With an employee picked, their costs of that name only.
+ * Each task's `costs` are those of the name (lib/saved-lists.ts costNamed).
+ */
+export function namedParts(
+    tasks: { id: string; memberCosts: unknown; memberPaymentStatus: unknown; costs: { authorId: string | null; amount: number | string | { toString(): string } }[] }[],
+    employeeId?: string | null,
+): DuePart[] {
+    const parts = new Map<string, DuePart>()
+    for (const task of tasks) {
+        const shares = asRecord(task.memberCosts)
+        const paid = asRecord(task.memberPaymentStatus)
+        for (const cost of task.costs) {
+            const member = cost.authorId && cost.authorId in shares ? cost.authorId : null
+            if ((employeeId && member !== employeeId) || (member && !shareOwed(shares[member], paid[member]))) continue
+            const key = `${task.id}:${member ?? "-"}`
+            const part = parts.get(key) ?? { taskId: task.id, userId: member, amount: 0 }
+            part.amount += Number(cost.amount)
+            parts.set(key, part)
+        }
+    }
+    // To the piastre, each part and so their sum.
+    return [...parts.values()].map(p => ({ ...p, amount: Math.round(p.amount * 100) / 100 })).filter(p => p.amount > 0)
+}
+
+/**
  * The parts as one line of text, the same whatever order they came in: what
  * a confirmation is checked against, so a part added, removed or changed
  * since shows (§4.1).

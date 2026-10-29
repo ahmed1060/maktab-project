@@ -6,6 +6,8 @@ import { dayRangeIn } from "@/lib/services/filter-zone"
 import { placeFilters } from "@/lib/place-filters"
 import { createHash } from "node:crypto"
 import { dueParts, partsLine } from "@/lib/costs-total"
+import { withCostNamed, type FilterName } from "@/lib/saved-lists"
+import { ListService } from "@/lib/services/list.service"
 
 /**
  * A task in which this member's share of the cost is still to pay: more than
@@ -37,6 +39,34 @@ export type CostFilters = {
     clientId?: string
     /** The tasks done at one location. */
     locationId?: string
+    /**
+     * The tasks with a cost of one saved name (CLIENTS_PLAN.md §5.9), and
+     * what those costs come to. Mark all as paid isn't offered with it: a
+     * payment is a person's share of a task, not one of its costs.
+     */
+    costNameId?: string
+}
+
+/**
+ * The company whose costs these are: the payer's own, or a Super Admin's
+ * chosen one, or every company (null) for a Super Admin who chose none.
+ * Undefined when there's nothing to list: no company, or a name that's none.
+ */
+async function companyInView(user: Actor & { id: string }, filters: CostFilters): Promise<string | null | undefined> {
+    if (user.role === "SUPER_ADMIN") {
+        if (!filters.company) return null
+        const company = await prisma.company.findUnique({ where: { name: filters.company }, select: { id: true } })
+        return company ? company.id : undefined
+    }
+    return user.companyId ?? undefined
+}
+
+/** The saved cost name `costNameId` picks, in the company in view; null for one that's none there. */
+export async function costNameOf(user: Actor & { id: string }, filters: CostFilters): Promise<FilterName | null> {
+    if (!filters.costNameId) return null
+    const companyId = await companyInView(user, filters)
+    if (companyId === undefined) return null
+    return ListService.filterName("COST_NAME", filters.costNameId, companyId)
 }
 
 /**
@@ -55,17 +85,8 @@ export async function pendingCostsWhere(
     user: Actor & { id: string },
     filters: CostFilters,
 ): Promise<{ AND: any[] } | null> {
-    let companyId: string | null = null
-    if (user.role === "SUPER_ADMIN") {
-        if (filters.company) {
-            const company = await prisma.company.findUnique({ where: { name: filters.company }, select: { id: true } })
-            if (!company) return null
-            companyId = company.id
-        }
-    } else {
-        if (!user.companyId) return null
-        companyId = user.companyId
-    }
+    const companyId = await companyInView(user, filters)
+    if (companyId === undefined) return null
 
     const where = {
         AND: [
@@ -89,6 +110,8 @@ export async function pendingCostsWhere(
     if (updatedAt) where.AND.push({ updatedAt })
     // So Mark all as paid pays only the client's, or the location's, shown.
     where.AND.push(...placeFilters(filters.clientId, filters.locationId))
+    // With a cost of the name, picked as it or typed the same (§5.9).
+    if (filters.costNameId) where.AND.push(withCostNamed(await ListService.filterName("COST_NAME", filters.costNameId, companyId)))
 
     return where
 }

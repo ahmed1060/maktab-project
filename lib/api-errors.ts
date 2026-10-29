@@ -58,6 +58,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     // Mark all as paid pays exactly what was confirmed (CLIENTS_PLAN.md §4.1).
     PAYMENT_LIST_CHANGED: { status: 409, message: "The costs to pay changed since you looked. Look at the list again, then pay." },
     PAYMENT_CONFIRMATION_REQUIRED: { status: 400, message: "Confirm what's paid first." },
+    // A payment is a person's share of a task, not one of its costs (CLIENTS_PLAN.md §5.9).
+    PAYMENT_BY_COST_NAME: { status: 400, message: "Payments are made per task. Clear the cost name filter to pay." },
     // A task whose costs are paid stays, with its payment record (§4.2).
     TASK_HAS_PAID_COSTS: { status: 409, message: "This task's costs are paid, so it can't be deleted." },
     SETTLEMENT_NOT_FOUND: { status: 404, message: "Settlement not found." },

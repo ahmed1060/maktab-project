@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { costsDue, dueParts, payWording } from "./costs-total"
+import { costsDue, dueParts, namedParts, payWording } from "./costs-total"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 
@@ -74,5 +74,29 @@ describe("Mark all as paid's name in Arabic", () => {
     // Said as paying one task is, "تحديد كمدفوع": it read "تحدد" ("you mark").
     it("starts as Mark as paid's does", () => {
         expect(ar.mark_all_as_paid.split(" ")[0]).toBe(ar.mark_as_paid.split(" ")[0])
+    })
+})
+
+describe("what's due of the costs of one name (CLIENTS_PLAN.md §5.9)", () => {
+    // Each task's costs here are those of the name, as the Costs page fetches them.
+    const tasks = [
+        // Sara's two Transport costs and Omar's, Omar's share paid already.
+        { id: "t1", memberCosts: { sara: 150, omar: 60 }, memberPaymentStatus: { omar: "PAID" }, costs: [{ authorId: "sara", amount: 40 }, { authorId: "sara", amount: "12.5" }, { authorId: "omar", amount: 20 }] },
+        // One from before costs had their person: the task's own.
+        { id: "t2", memberCosts: { sara: 30 }, memberPaymentStatus: {}, costs: [{ authorId: null, amount: 75.25 }, { authorId: "sara", amount: 0.1 }, { authorId: "sara", amount: 0.2 }] },
+    ]
+
+    it("is each person's costs of it while their share is owed, and those no one's", () => {
+        expect(namedParts(tasks)).toEqual([
+            { taskId: "t1", userId: "sara", amount: 52.5 },
+            { taskId: "t2", userId: null, amount: 75.25 },
+            // To the piastre, not 0.30000000000000004.
+            { taskId: "t2", userId: "sara", amount: 0.3 },
+        ])
+    })
+
+    it("is only theirs with an employee picked", () => {
+        expect(namedParts(tasks, "sara").map(p => [p.taskId, p.amount])).toEqual([["t1", 52.5], ["t2", 0.3]])
+        expect(namedParts(tasks, "omar")).toEqual([])
     })
 })

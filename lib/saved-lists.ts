@@ -41,3 +41,29 @@ export type CompanyPick = { name: { text: string; entryId: string | null }; comp
 export function pickIn(pick: CompanyPick, company: string | null): CompanyPick["name"] {
     return pick.company === company || !pick.name.entryId ? pick.name : { text: pick.name.text, entryId: null }
 }
+
+/** A saved name a filter picked, with its company (§5.9). */
+export type FilterName = { id: string; name: string; companyId: string }
+
+/** For a name filter whose name its viewer's company hasn't: nothing. */
+const NOTHING = { id: "__no_match__" }
+
+/**
+ * The tasks a title filter keeps (§5.9; decided 2026-10-29): those picked as
+ * the name, or typed the same, ignoring capitals, in the name's company.
+ */
+export function titleNamed(name: FilterName | null): Record<string, unknown> {
+    if (!name) return NOTHING
+    return { companyId: name.companyId, OR: [{ titleEntryId: name.id }, { title: { equals: name.name, mode: "insensitive" } }] }
+}
+
+/** A task's costs a cost name filter counts, picked as the name or typed the same. */
+export function costNamed(name: FilterName): Record<string, unknown> {
+    return { OR: [{ nameEntryId: name.id }, { description: { equals: name.name, mode: "insensitive" } }] }
+}
+
+/** The tasks with a cost a cost name filter counts, in the name's company. */
+export function withCostNamed(name: FilterName | null): Record<string, unknown> {
+    if (!name) return NOTHING
+    return { companyId: name.companyId, costs: { some: costNamed(name) } }
+}
