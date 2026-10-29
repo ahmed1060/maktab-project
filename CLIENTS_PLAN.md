@@ -775,13 +775,14 @@ balance first, automatically:
        when a role is saved. Until 1b is merged, only the Super Admin
        sees the Locations page in those companies. 1b was merged in #97
        on 2026-10-29, so step 1 is done.
-     - Step 2's first PR, 2a, is open for review in #98: tasks are done at
-       locations, made and edited with the client and location pickers
+     - Step 2's first PR, 2a, was merged in #98 on 2026-10-29: tasks are
+       done at locations, made and edited with the client and location pickers
        (§2.3, §2.4, §3.1).
        Proposed: step 2 ships as two PRs. 2b moves the bulk upload onto
        locations: the Excel Locations sheet and the review screen's
        pickers (§2.7). Until then, an uploaded task still takes its
-       client's own location fields, or its typed text. 2b is built too.
+       client's own location fields, or its typed text. 2b is open for
+       review in #99.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1264,3 +1265,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     picks the new client's HQ.
   - **Typed locations are gone** from bulk creation too. A refused
     location names its task, instead of failing the upload as a fault.
+- **2026-10-29:** 2a was merged in #98, with Codex's three findings fixed
+  in it: a bulk upload linked no location until 2b, saving a location from
+  a task's form saved only the location, and "+ New location" opened above
+  a task's edit window. Its migration ran on production as it opened, with
+  no errors after. Step 2's second PR, 2b, opens for review in #99.

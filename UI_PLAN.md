@@ -926,3 +926,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and location with the building blocks' selects, grouped as on the task
   form (`CLIENTS_PLAN.md` step 2, PR 2b). The rest of the screen is as it
   was, until its own turn.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 2a was merged in #98, and 2b opens
+  for review in #99, with the bulk upload's review screen picking each
+  row's client and location.
