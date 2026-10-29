@@ -1755,3 +1755,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   it was open, as on reconnecting, it sent the new list, so one with a
   charge swapped for another of the same amount was collected, not
   refused as changed (found by Codex).
+- **2026-10-29:** In 6d (#111), a client's charges count their days where
+  its company is for a Super Admin too, whichever company they picked.
+  On its page, they were counted where the platform is, so a charge near
+  midnight in a company in another zone fell on the wrong day, in the
+  totals and in what Mark collected took (found by Codex).

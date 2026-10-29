@@ -46,8 +46,10 @@ const BY_STATUS: Record<ChargeStatus, Prisma.TaskCostWhereInput> = {
  */
 export async function chargesWhere(user: Actor & { id: string }, filters: ChargeFilters): Promise<Prisma.TaskCostWhereInput | null> {
     if (!can(user, "charges.view")) return null
-    const companyId = user.role === "SUPER_ADMIN" ? filters.companyId || null : user.companyId
+    let companyId = user.role === "SUPER_ADMIN" ? filters.companyId || null : user.companyId
     if (companyId === undefined) return null
+    // One client's, as its page lists them: its company's, and its days, whichever a Super Admin picked.
+    if (companyId === null && filters.clientId) companyId = (await prisma.client.findUnique({ where: { id: filters.clientId }, select: { companyId: true } }))?.companyId ?? null
     const task: Prisma.TaskWhereInput = { clientId: filters.clientId || { not: null } }
     if (companyId) task.companyId = companyId
     if (grantFor(user, "charges.view") === "TEAM") Object.assign(task, assignedToTeamWhere(user.id))

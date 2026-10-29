@@ -317,6 +317,25 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         })
     })
 
+    describe("a Super Admin on a client's page (6d)", () => {
+        const superAdmin = { user: { id: "sa1", role: "SUPER_ADMIN", companyId: null } } as any
+
+        it("counts its days where the client's company is, whichever company they picked", async () => {
+            // One in New York: 19:30 on the 25th there, the 26th where the platform is (Cairo).
+            await db.query(`UPDATE "Company" SET timezone = 'America/New_York' WHERE id = 'c1'`)
+            await db.query(`INSERT INTO "TaskCost"(id, "taskId", "authorId", "authorName", amount, description, "createdAt") VALUES ('xz', 'k1', 'e1', 'Ehab One', 10, 'Late taxi', '2026-10-25T23:30:00Z')`)
+            try {
+                const day = { clientId: "noor", status: "all", dateFrom: "2026-10-25", dateTo: "2026-10-25" }
+                expect((await listed(superAdmin, day))!.ids).toEqual(["xz"])
+                // As the company's own Admin counts them.
+                expect((await listed(admin, day))!.ids).toEqual(["xz"])
+            } finally {
+                await db.query(`DELETE FROM "TaskCost" WHERE id = 'xz'`)
+                await db.query(`UPDATE "Company" SET timezone = 'Africa/Cairo' WHERE id = 'c1'`)
+            }
+        })
+    })
+
     describe("the companies already there (6c)", () => {
         const chargeGrants = async () => (await db.query(`
             SELECT r.id, r."companyId", r."builtIn", g.permission, g.scope FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id
