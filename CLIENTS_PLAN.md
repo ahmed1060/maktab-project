@@ -680,7 +680,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
     tick, and the three permissions (§6.6) for new companies' built-in
     roles (built);
   - 6c: the permissions for the companies already there, once 6b's role
-    editor is live, as for locations (§2.9) and lists (§5.10);
+    editor is live, as for locations (§2.9) and lists (§5.10) (built);
   - 6d: each client's page (§6.4): Due and Collected, the charges with
     their receipts, and Mark collected, with two-factor sign-in, for
     exactly the charges shown, as Mark all as paid confirms (§4.1).
@@ -713,6 +713,15 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   - **Mark charges collected is in the catalogue,** with two-factor
     sign-in, from 6b, so its grants are seeded with the others; nothing
     uses it until 6d.
+- **Proposed, as 6c builds it:** the companies already there get the
+  charges' permissions on their built-in Admin and Team Leader roles only,
+  as lib/permissions/built-in.ts has them, as they got locations' (§2.9).
+  Charges aren't Everyone's, so a company's own roles are given them in the
+  role editor; one that hands out the Team Leader role needs See charges
+  to keep doing so, as handing out a role takes everything it holds. A
+  role given one there since keeps it as it is. Production had only
+  built-in roles, and no charges grants, when 6c was built (checked
+  read-only, 2026-10-29).
 
 ---
 
@@ -1691,3 +1700,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   Charged to its client again while the task was being deleted, a cost
   was deleted with it, though the task couldn't be deleted with a charge
   (found by Codex).
+- **2026-10-29:** Step 6's third PR, 6c, is built (§6.6, §6.8): the
+  companies already there get See charges, Manage charges and Mark
+  charges collected on their built-in Admin roles, for the company, and
+  See charges on their built-in Team Leader roles, for their team's
+  tasks, as a new company's have them. Only the holders of a role given
+  one reload their grants.

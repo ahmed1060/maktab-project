@@ -1050,3 +1050,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   fee dialog where typing the fee or the total works out the other.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 6a was merged in #108, and 6b opens
   for review in #109.
+- **2026-10-29:** With `CLIENTS_PLAN.md`'s 6c, the Admins and Team
+  Leaders of the companies already there see the Costs page's Charged to
+  clients tab: an Admin every charge, with each one's menu, and a Team
+  Leader their team's tasks' charges, with none.
