@@ -1337,3 +1337,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **Proposed:** step 4 ships as three PRs, 4a, 4b and 4c (§8).
 - **2026-10-29:** In 4a, Mark all as paid's window says "Pay 1 cost" for
   one, not "Pay 1 costs", in English and Arabic (found by the audit).
+- **2026-10-29:** In 4a, Mark all as paid reads "تحديد الكل كمدفوع" in
+  Arabic, as Mark as paid's "تحديد كمدفوع" does; it read "تحدد" ("you
+  mark").

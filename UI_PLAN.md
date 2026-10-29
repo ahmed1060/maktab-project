@@ -960,3 +960,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   paid asks first, in the building blocks' confirm window, "Pay 7 costs,
   3,450.00 EGP?", and says one cost as "Pay 1 cost". A task whose costs
   are paid has no Delete button.
+- **2026-10-29:** In 4a, the Arabic for Mark all as paid is "تحديد الكل
+  كمدفوع", on the button and its window.

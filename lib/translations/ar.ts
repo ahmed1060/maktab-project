@@ -624,7 +624,7 @@ export const ar = {
         email_format_error: "يجب أن يكون البريد الإلكتروني بالتنسيق التالي: user(max 20)@domain(max 10).com",
         salary_limit_error: "لا يمكن أن يتجاوز الراتب مليار جنيه مصري",
         name_change_submitted: "تم تقديم طلب تغيير الاسم لموافقة المسؤول!",
-        mark_all_as_paid: "تحدد الكل كمدفوع",
+        mark_all_as_paid: "تحديد الكل كمدفوع",
         marking_as_paid: "جاري التحديث...",
         successfully_marked_paid: "تم تحديد المهام كمدفوعة بنجاح!",
         failed_update_payment_status: "فشل تحديث حالة الدفع",

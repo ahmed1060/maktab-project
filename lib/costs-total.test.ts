@@ -69,3 +69,10 @@ describe("what Mark all as paid's window says (CLIENTS_PLAN.md §4.1)", () => {
         expect(payWording(say(ar) as any, "ar", 1, 850).button).toBe("دفع تكلفة واحدة بقيمة ٨٥٠٫٠٠ ج.م")
     })
 })
+
+describe("Mark all as paid's name in Arabic", () => {
+    // Said as paying one task is, "تحديد كمدفوع": it read "تحدد" ("you mark").
+    it("starts as Mark as paid's does", () => {
+        expect(ar.mark_all_as_paid.split(" ")[0]).toBe(ar.mark_as_paid.split(" ")[0])
+    })
+})
