@@ -1345,3 +1345,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   fixed in it: the location filter left out archived locations, and Reset
   left a place filter in place for someone with no select for it. Step
   4's first PR, 4a, opens for review in #101.
+- **2026-10-29:** In 4a (#101), deleting a task holds it before reading
+  whether its costs are paid, as paying holds it: a payment recorded
+  while the delete waited was missed, and the paid task deleted (found by
+  Codex).

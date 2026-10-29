@@ -40,6 +40,7 @@ const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1", nam
 describe.skipIf(!ADMIN_URL)("payment safety, in Postgres", () => {
     const dbName = `payment_safety_test_${Date.now()}`
     let db: Client
+    let dbUrl: string
     let Tasks: typeof import("@/lib/services/task.service").TaskService
     let costs: typeof import("@/lib/services/costs-query")
 
@@ -50,7 +51,8 @@ describe.skipIf(!ADMIN_URL)("payment safety, in Postgres", () => {
         await a.end()
         const url = new URL(ADMIN_URL!)
         url.pathname = `/${dbName}`
-        db = new Client({ connectionString: url.toString() })
+        dbUrl = url.toString()
+        db = new Client({ connectionString: dbUrl })
         await db.connect()
         for (const m of MIGRATIONS) {
             await db.query(sql(m))
@@ -105,5 +107,30 @@ describe.skipIf(!ADMIN_URL)("payment safety, in Postgres", () => {
 
     it("then won't delete those either", async () => {
         await expect(Tasks.delete("due", admin)).rejects.toMatchObject({ message: "TASK_HAS_PAID_COSTS" })
+    })
+
+    it("won't delete a task paid while the delete waits for it", async () => {
+        await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "totalCost", "paymentStatus", "memberCosts", "memberPaymentStatus", "updatedAt")
+            VALUES ('racing', 'Racing', 'Paid as it is deleted', 'APPROVED', now(), 'c1', 40, 'PENDING_PAYMENT', '{"e1": 40}', '{"e1": "PENDING_PAYMENT"}', now())`)
+        await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('racing', 'e1')`)
+        // A payment holds the task, not yet committed, as paying one does.
+        const payer = new Client({ connectionString: dbUrl })
+        await payer.connect()
+        try {
+            await payer.query("BEGIN")
+            await payer.query(`UPDATE "Task" SET "paymentStatus" = 'PAID', status = 'COMPLETED', "memberPaymentStatus" = '{"e1": "PAID"}' WHERE id = 'racing'`)
+            const deleting = Tasks.delete("racing", admin).then(() => "deleted", e => e.message)
+            // The delete is waiting on the payment's hold before it commits.
+            for (let i = 0; i < 200; i++) {
+                const { rows } = await db.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`)
+                if (rows[0].n > 0) break
+                await new Promise(r => setTimeout(r, 50))
+            }
+            await payer.query("COMMIT")
+            expect(await deleting).toBe("TASK_HAS_PAID_COSTS")
+            expect((await db.query(`SELECT "paymentStatus" FROM "Task" WHERE id = 'racing'`)).rows).toEqual([{ paymentStatus: "PAID" }])
+        } finally {
+            await payer.end()
+        }
     })
 })

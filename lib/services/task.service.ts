@@ -773,6 +773,9 @@ export class TaskService {
         const userRole = session.user.role
 
         return await prisma.$transaction(async (tx) => {
+            // Held until it's gone, as paying holds it: a payment recorded
+            // meanwhile is read below, rather than deleted with the task.
+            await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
             const task = await tx.task.findUnique({
                 where: { id },
                 select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true, paymentStatus: true, memberPaymentStatus: true }
