@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { noticeRow } from "@/lib/notice-row"
 import { roleKindParam } from "@/lib/notice"
 import { can, canCompanyWide } from "@/lib/permissions/can"
@@ -41,6 +42,17 @@ function nameOf(text: string | null): string | null {
         if (parsed && typeof parsed.name === "string") return parsed.name
     } catch { /* plain text */ }
     return text
+}
+
+/**
+ * A task's client, held until the task is written, as archiving holds it
+ * (CLIENTS_PLAN.md §4.3): one archived meanwhile is seen here, and takes no
+ * new work.
+ */
+async function holdClientInUse(tx: Prisma.TransactionClient, clientId: string) {
+    const [held] = await tx.$queryRaw<{ archived: boolean }[]>`SELECT "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = ${clientId} FOR SHARE`
+    if (!held) throw new Error("CLIENT_NOT_FOUND")
+    if (held.archived) throw new Error("CLIENT_ARCHIVED")
 }
 
 /**
@@ -112,6 +124,7 @@ export class TaskService {
 
         // 3. Database Transaction
         return await prisma.$transaction(async (tx) => {
+            if (resolvedClientId) await holdClientInUse(tx, resolvedClientId)
             const place = await LocationService.forTask(tx, locationId, { companyId: targetCompanyId, clientId: resolvedClientId })
             const task = await tx.task.create({
                 data: {
@@ -273,6 +286,7 @@ export class TaskService {
         }
 
         return await prisma.$transaction(async (tx) => {
+            if (clientChanges && newClientId) await holdClientInUse(tx, newClientId)
             const task = await tx.task.update({
                 where: { id },
                 data: updateData
@@ -1116,6 +1130,9 @@ export class TaskService {
             const clientIds = Array.from(new Set(tasks.map(t => t.clientId).filter(Boolean)))
             const clientMap = new Map<string, { id: string, companyId: string, archivedAt: Date | null }>()
             if (clientIds.length > 0) {
+                // Held until the tasks are written, as archiving holds them, so
+                // one archived meanwhile is read as it is (CLIENTS_PLAN.md §4.3).
+                await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ANY(${clientIds}) ORDER BY id FOR SHARE`
                 const clients = await tx.client.findMany({
                     where: { id: { in: clientIds } },
                     select: { id: true, companyId: true, archivedAt: true }

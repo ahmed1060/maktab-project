@@ -294,6 +294,39 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
             expect((await RecordService.clients(recordAdmin, null, null)).clients.map(c => c.name)).not.toContain("Beta")
         })
 
+        it("takes no task being written to it as it's archived", async () => {
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k6', 'c1', 'Racing', 'Nour', '0106', 'Nowhere', now())`)
+            const moved = await Tasks.create(task({ title: "To move", locationId: "port" }) as any, admin)
+            const writes = [
+                () => Tasks.create(task({ title: "Racing new", clientId: "k6", locationId: "port" }) as any, admin),
+                () => Tasks.updateDetails(moved.id, { id: moved.id, clientId: "k6" } as any, admin),
+                () => Tasks.bulkCreate([task({ title: "Racing upload", clientId: "k6", locationId: "port" })], admin),
+            ]
+            for (const write of writes) {
+                await db.query(`UPDATE "Client" SET "archivedAt" = NULL WHERE id = 'k6'`)
+                // Archiving holds the client, as ClientService.delete does, and marks it, not yet committed.
+                const archiver = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+                await archiver.connect()
+                try {
+                    await archiver.query("BEGIN")
+                    await archiver.query(`SELECT id FROM "Client" WHERE id = 'k6' FOR UPDATE`)
+                    await archiver.query(`UPDATE "Client" SET "archivedAt" = now() WHERE id = 'k6'`)
+                    const writing = write().then(() => "written", e => e.message)
+                    // The write waits on the archive's hold before it commits.
+                    for (let i = 0; i < 200; i++) {
+                        const { rows } = await db.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`)
+                        if (rows[0].n > 0) break
+                        await new Promise(r => setTimeout(r, 50))
+                    }
+                    await archiver.query("COMMIT")
+                    expect(await writing).toMatch(/^CLIENT_ARCHIVED/)
+                } finally {
+                    await archiver.end()
+                }
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE "clientId" = 'k6'`)).rows[0].n).toBe(0)
+        })
+
         it("is in use again once restored", async () => {
             await Clients.restore("k2", admin)
             expect((await row((await Tasks.create(task({ clientId: "k2", locationId: "port" }) as any, admin)).id)).clientId).toBe("k2")

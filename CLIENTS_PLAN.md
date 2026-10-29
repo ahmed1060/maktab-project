@@ -1379,3 +1379,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   PR, 4b, opens for review in #102. Its migration adds `Client.archivedAt`,
   nullable, after production's latest, `20261111000000_task_locations`
   (checked read-only).
+- **2026-10-29:** In 4b (#102), creating, editing or uploading a task
+  holds its client while it writes it, as archiving holds it: a client
+  archived as a task was being written to it took it (found by Codex).
