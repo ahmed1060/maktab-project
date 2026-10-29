@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest"
-import { costsDue, dueParts } from "./costs-total"
+import { costsDue, dueParts, payWording } from "./costs-total"
+import { en } from "./translations/en"
+import { ar } from "./translations/ar"
 
 /**
  * The Costs page's total (CLIENTS_PLAN.md §3.5): what's still due across
@@ -52,5 +54,18 @@ describe("the parts Mark all as paid confirms (CLIENTS_PLAN.md §4.1)", () => {
 
     it("with an employee picked, are their shares only", () => {
         expect(dueParts([{ id: "t", totalCost: 25, memberCosts: { amal: 10, omar: 5 }, memberPaymentStatus: {} }], "omar")).toEqual([{ taskId: "t", userId: "omar", amount: 5 }])
+    })
+})
+
+describe("what Mark all as paid's window says (CLIENTS_PLAN.md §4.1)", () => {
+    const say = (dict: Record<string, string>) => (key: string) => dict[key]
+    it("counts the costs, and says one cost as one", () => {
+        expect(payWording(say(en) as any, "en", 7, 3450).button).toBe("Pay 7 costs, 3,450.00 EGP")
+        expect(payWording(say(en) as any, "en", 1, 850).button).toBe("Pay 1 cost, 850.00 EGP")
+        expect(payWording(say(en) as any, "en", 1, 850).question).toMatch(/^Pay 1 cost, 850\.00 EGP\? Only this is paid/)
+    })
+    it("in Arabic too, with Arabic numerals", () => {
+        expect(payWording(say(ar) as any, "ar", 7, 3450).button).toBe("دفع ٧ من التكاليف بقيمة ٣٬٤٥٠٫٠٠ ج.م")
+        expect(payWording(say(ar) as any, "ar", 1, 850).button).toBe("دفع تكلفة واحدة بقيمة ٨٥٠٫٠٠ ج.م")
     })
 })

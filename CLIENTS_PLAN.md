@@ -1335,3 +1335,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     deleted.** Its Delete button is gone, and a page from before is told
     why.
   - **Proposed:** step 4 ships as three PRs, 4a, 4b and 4c (§8).
+- **2026-10-29:** In 4a, Mark all as paid's window says "Pay 1 cost" for
+  one, not "Pay 1 costs", in English and Arabic (found by the audit).

@@ -956,3 +956,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In step 3 (#100), the Tasks and Costs pages' filter
   panel counts a client or location filter its viewer has no select for,
   set by a shared link, and Reset clears it.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4a: the Costs page's Mark all as
+  paid asks first, in the building blocks' confirm window, "Pay 7 costs,
+  3,450.00 EGP?", and says one cost as "Pay 1 cost". A task whose costs
+  are paid has no Delete button.

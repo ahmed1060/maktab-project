@@ -11,6 +11,7 @@ import Pagination from '@/components/Pagination'
 import { useCan } from '@/lib/useCan'
 import { shareOwed, unallocatedCost } from '@/lib/cost-shares'
 import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
+import { payWording } from '@/lib/costs-total'
 import ConfirmModal from '@/components/ConfirmModal'
 
 interface CostsClientProps {
@@ -178,7 +179,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
             setConfirming(false)
         }
     }
-    const money = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const wording = toPay ? payWording(t, locale, toPay.count, toPay.amount) : null
 
     useEffect(() => {
         setTitle(modules.label('costs'))
@@ -298,8 +299,8 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
             <ConfirmModal
                 isOpen={confirming && !!toPay}
                 title={t('mark_all_as_paid')}
-                message={toPay ? t('costs_pay_question').replace('{count}', toPay.count.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')).replace('{amount}', money(toPay.amount)) : ''}
-                confirmText={toPay ? t('costs_pay_button').replace('{count}', toPay.count.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')).replace('{amount}', money(toPay.amount)) : ''}
+                message={wording?.question ?? ''}
+                confirmText={wording?.button ?? ''}
                 cancelText={t('cancel')}
                 onConfirm={handleMarkAllAsPaid}
                 onCancel={() => setConfirming(false)}

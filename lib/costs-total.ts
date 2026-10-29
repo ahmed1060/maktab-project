@@ -1,4 +1,5 @@
 import { shareOwed, unallocatedCost } from "@/lib/cost-shares"
+import type { TranslationKey } from "@/lib/translations"
 
 /**
  * What the Costs page's list comes to (CLIENTS_PLAN.md §3.5): every page of
@@ -67,4 +68,16 @@ export function partsLine(parts: DuePart[]): string {
         .map(p => `${p.taskId}:${p.userId ?? "-"}:${p.amount.toFixed(2)}`)
         .sort()
         .join("|")
+}
+
+/**
+ * What Mark all as paid's window asks and its button says (§4.1): "Pay 7
+ * costs, 3,450.00 EGP", and "Pay 1 cost" for one, in the reader's numerals.
+ */
+export function payWording(t: (key: TranslationKey) => string, locale: string, count: number, amount: number) {
+    const number = (n: number, digits?: number) => n.toLocaleString(locale === "ar" ? "ar-EG" : "en-GB", digits === undefined ? undefined : { minimumFractionDigits: digits, maximumFractionDigits: digits })
+    const say = (key: TranslationKey) => t(key).replace("{count}", number(count)).replace("{amount}", number(amount, 2))
+    return count === 1
+        ? { question: say("costs_pay_question_one"), button: say("costs_pay_button_one") }
+        : { question: say("costs_pay_question"), button: say("costs_pay_button") }
 }
