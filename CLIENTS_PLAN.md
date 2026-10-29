@@ -673,7 +673,8 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   - 6a: a receipt photo for each cost (§6.2): taken in Add costs,
     optional, kept in the company's own folder and checked to be there
     when the cost is saved, shown with the cost on the task's page, and
-    removed with the cost or its task;
+    removed with the cost or its task (built). A receipt is on one cost
+    only, and the orphan sweep counts it as in use;
   - 6b: the charges (§6.1–6.5), the Costs page's Charged to Clients tab
     with its filters, totals, service fee and "Not charged to client"
     tick, and the three permissions (§6.6) for new companies' built-in
@@ -1612,3 +1613,13 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-29:** Decided by the product owner (§6.2): each cost has its
   own receipt photo, and it's optional. Step 6's split into 6a–6d is
   proposed (§6.8).
+- **2026-10-29:** Step 6's first PR, 6a, is built (§6.2, §6.8):
+  - **Add costs takes a receipt photo for each cost,** optional: a photo
+    or a PDF, up to 4 MB, picked before Add, uploaded to the company's
+    receipts folder when the task is saved. One that can't be uploaded
+    stops the save, rather than saving the cost without it.
+  - **The server keeps only a receipt uploaded for this company's costs**
+    and still in storage, on one cost only.
+  - **The task's page shows each cost's receipt,** opened in a new tab,
+    and removing the cost, or deleting the task, removes it from storage.
+    The orphan sweep counts receipts as in use.

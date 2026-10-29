@@ -1036,3 +1036,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   its pages is short of cards, or empty, for tasks with none.
 - **2026-10-29:** In 5c (#107), a saved name with `%` or `_` in it filters
   by what's typed exactly as it, ignoring capitals, and no other.
+- **2026-10-29:** With `CLIENTS_PLAN.md`'s 6a, Add costs has an "Attach
+  receipt" button under the cost's name and amount, for the next cost
+  added; each cost waiting to be saved shows its receipt's chip, and each
+  saved cost on the task's page a Receipt chip that opens it in a new tab.
