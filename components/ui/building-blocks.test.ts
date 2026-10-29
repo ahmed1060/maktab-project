@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { MapPinIcon, PlusIcon } from "@phosphor-icons/react/ssr"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
+import { dialogKeyDown } from "@/lib/focus-trap"
 
 /**
  * The building blocks (DESIGN.md §5), rendered to HTML: what they promise
@@ -180,6 +181,36 @@ describe("a name typed or picked from a saved list", () => {
         expect(html).toContain('aria-expanded="false"')
         expect(html).toContain('autoComplete="off"')
         expect(html).toMatch(new RegExp(`<ul id="${list}" role="listbox" class="ui-suggestions" hidden=""`))
+    })
+
+    it("closes its suggestions on Escape, and only them: the dialog around it stays open", () => {
+        const close = vi.fn()
+        const panel = { contains: () => true, querySelectorAll: () => [] }
+        const escape = (shown: boolean) => {
+            let stopped = false
+            const e = { key: "Escape", shiftKey: false, target: {}, preventDefault: () => {}, stopPropagation: () => { stopped = true } }
+            const did = ui.pickerKey(e, { shown, active: -1, count: 2 })
+            // React hands the key on to the dialog's panel unless the field stopped it.
+            if (!stopped) dialogKeyDown(e, panel, null, close)
+            return did
+        }
+        // In Edit task details, with title suggestions open.
+        expect(escape(true)).toEqual({ close: true })
+        expect(close).not.toHaveBeenCalled()
+        // With nothing suggested, Escape is the dialog's.
+        expect(escape(false)).toBeNull()
+        expect(close).toHaveBeenCalledTimes(1)
+        expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("const next = pickerKey(e, { shown, active, count })")
+    })
+
+    it("moves through its suggestions with the arrow keys, and Enter picks the one under them", () => {
+        const press = (key: string, active: number, shown = true) =>
+            ui.pickerKey({ key, preventDefault: () => {}, stopPropagation: () => {} }, { shown, active, count: 3 })
+        expect([press("ArrowDown", -1), press("ArrowDown", 2), press("ArrowUp", 0), press("ArrowUp", 2)])
+            .toEqual([{ move: 0 }, { move: 0 }, { move: 2 }, { move: 1 }])
+        expect(press("Enter", 1)).toEqual({ choose: 1 })
+        // With nothing under the keys, or nothing shown, Enter is the form's.
+        expect([press("Enter", -1), press("Enter", 1, false)]).toEqual([null, null])
     })
 })
 

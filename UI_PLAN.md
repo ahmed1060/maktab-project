@@ -1006,3 +1006,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   done, and 5a opens for review in #105: a task's title and a cost's name
   are typed or picked from a saved list, and the Saved lists page manages
   the lists.
+- **2026-10-29:** In 5a (#105), Escape with title suggestions open in Edit
+  task details closes the suggestions only; the next Escape closes the
+  window, as `DESIGN.md` §5.3 has it.

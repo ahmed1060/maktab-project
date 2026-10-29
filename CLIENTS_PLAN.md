@@ -1497,3 +1497,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   changed nothing there, as production had no costs. Step 5's first PR,
   5a, opens for review in #105. Its migration adds the lists' table and
   two empty links, and changes nothing already there.
+- **2026-10-29:** In 5a (#105), Escape with a picker's suggestions open
+  closes them and nothing else. In Edit task details it closed the whole
+  window too, and what had been typed in it (found by Codex).

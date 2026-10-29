@@ -23,6 +23,27 @@ function marked(name: string, typed: string): ReactNode {
     return <>{name.slice(0, at)}<strong>{name.slice(at, end)}</strong>{name.slice(end)}</>
 }
 
+type KeyPress = { key: string; preventDefault: () => void; stopPropagation: () => void }
+type KeyAction = { close: true } | { move: number } | { choose: number } | null
+
+/**
+ * What a key in the field does, with `count` suggestions and the one under
+ * the keys at `active` (-1 for none). Escape closes the suggestions, and
+ * only them: a dialog around the field gets the next one (Codex review of PR
+ * 105; it closed Edit task details too, and what was typed in it).
+ */
+export function pickerKey(e: KeyPress, { shown, active, count }: { shown: boolean; active: number; count: number }): KeyAction {
+    if (e.key === 'Escape' && shown) { e.preventDefault(); e.stopPropagation(); return { close: true } }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (!count) return { move: -1 }
+        return { move: e.key === 'ArrowDown' ? (active + 1) % count : (active <= 0 ? count - 1 : active - 1) }
+    }
+    // Enter picks what's under the keys; with nothing under them, it's the form's.
+    if (e.key === 'Enter' && shown && active >= 0) { e.preventDefault(); return { choose: active } }
+    return null
+}
+
 /**
  * A name typed or picked from a saved list (DESIGN.md §5.3), such as a task's
  * title or a cost's name (CLIENTS_PLAN.md §5): a text field that suggests the
@@ -92,15 +113,11 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
     const choose = (i: number) => (i < names.length ? pick(names[i]) : void add())
 
     const keys = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Escape' && shown) { e.preventDefault(); setOpen(false); return }
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            e.preventDefault()
-            setOpen(true)
-            if (count) setActive(a => (e.key === 'ArrowDown' ? (a + 1) % count : (a <= 0 ? count - 1 : a - 1)))
-            return
-        }
-        // Enter picks what's under the keys; with nothing under them, it's the form's.
-        if (e.key === 'Enter' && shown && active >= 0) { e.preventDefault(); choose(active) }
+        const next = pickerKey(e, { shown, active, count })
+        if (!next) return
+        if ('close' in next) setOpen(false)
+        else if ('move' in next) { setOpen(true); if (next.move >= 0) setActive(next.move) }
+        else choose(next.choose)
     }
 
     return (
