@@ -61,6 +61,8 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
     let Lists: typeof import("@/lib/services/list.service").ListService
     let Tasks: typeof import("@/lib/services/task.service").TaskService
     let versionsBefore: Record<string, number> = {}
+    // As 5b's migration left them, before later ones gave roles more.
+    let versionsAfter: Record<string, number> = {}
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -78,6 +80,7 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
                 await db.query(OWN_ROLES)
                 versionsBefore = Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
             }
+            if (m === LISTS_GRANTED) versionsAfter = Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
         }
         await db.query(PLACES)
         await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "isProtected", "updatedAt") VALUES ('sa1', 'sa@x', 'p', 'Sam', 'Admin', 'sa1', true, now())`)
@@ -146,11 +149,10 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
         })
 
         it("has the holders of a role given one reload their grants, and only them", async () => {
-            const now = await versions()
             expect(Object.keys(versionsBefore).length).toBeGreaterThan(2)
             for (const [id, before] of Object.entries(versionsBefore)) {
                 // Stores held Add list names already, so nothing changed for it.
-                expect(now[id], id).toBe(id === "own-stores" ? before : before + 1)
+                expect(versionsAfter[id], id).toBe(id === "own-stores" ? before : before + 1)
             }
         })
 

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
+import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 
 /**
  * Client charges (CLIENTS_PLAN.md §6, step 6b), against a real Postgres: a
@@ -57,6 +58,18 @@ INSERT INTO "TaskCost"(id, "taskId", "authorId", "authorName", amount, descripti
  ('x9', 'k9', NULL, 'Someone', 99, 'Theirs', false, NULL, NULL, '2026-10-24T09:00:00Z');
 `
 
+/**
+ * Before 6c's migration (CLIENTS_PLAN.md §6.8): a company's own role, and
+ * Two's built-in Team Leader, whom an Admin gave See charges for the whole
+ * company in the role editor already.
+ */
+const BEFORE_GRANTED = `
+INSERT INTO "Role"(id, "companyId", name, "baseRole", version, "updatedAt") VALUES ('own-desk', 'c1', 'Front desk', 'EMPLOYEE', 3, now());
+INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('own-desk', 'tasks.view', 'TEAM');
+INSERT INTO "RoleGrant"("roleId", permission, scope) SELECT id, 'charges.view', 'COMPANY' FROM "Role" WHERE "companyId" = 'c2' AND "builtIn" = 'TEAM_LEADER';
+`
+const CHARGES_GRANTED = "20261119000000_charges_granted"
+
 const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" }) } as any
 const leader = { user: withGrants({ id: "t1", role: "TEAM_LEADER", companyId: "c1", name: "Tamer One" }) } as any
 const employee = { user: withGrants({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" }) } as any
@@ -69,6 +82,7 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
     let charges: typeof import("@/lib/services/charge.service")
     let Tasks: typeof import("@/lib/services/task.service").TaskService
     let prisma: typeof import("@/lib/prisma").prisma
+    let rolesBefore: { id: string; companyId: string; builtIn: string | null; version: number }[] = []
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -83,6 +97,10 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         for (const m of MIGRATIONS) {
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
+            if (m === "20261118000000_client_charges") {
+                await db.query(BEFORE_GRANTED)
+                rolesBefore = (await db.query(`SELECT id, "companyId", "builtIn", version FROM "Role" ORDER BY id`)).rows
+            }
         }
         await db.query(CHARGES)
         process.env.POSTGRES_PRISMA_URL = url.toString()
@@ -212,5 +230,41 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         // With no client, its costs are no charges.
         await Tasks.delete("k3", admin)
         expect((await db.query(`SELECT id FROM "Task" WHERE id IN ('k1', 'k3', 'k4') ORDER BY id`)).rows.map(r => r.id)).toEqual(["k1"])
+    })
+
+    describe("the companies already there (6c)", () => {
+        const chargeGrants = async () => (await db.query(`
+            SELECT r.id, r."companyId", r."builtIn", g.permission, g.scope FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id
+            WHERE g.permission LIKE 'charges.%' ORDER BY r."companyId", r.id, g.permission`)).rows
+        const versions = async () => Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
+        const givenOne = (r: { companyId: string; builtIn: string | null }) =>
+            r.builtIn === "ADMIN" || (r.builtIn === "TEAM_LEADER" && r.companyId !== "c2")
+
+        it("gives the built-in Admin and Team Leader roles the charges' permissions a new company's have", async () => {
+            const rows = await chargeGrants()
+            for (const company of ["c1", "c2"]) {
+                for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
+                    const given = Object.fromEntries(rows.filter(r => r.companyId === company && r.builtIn === builtIn).map(r => [r.permission, r.scope]))
+                    const theirs = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => permission.startsWith("charges.")))
+                    // Two's Team Leader was given See charges for the company in the role editor, and keeps it.
+                    expect(given, `${company} ${builtIn}`).toEqual(company === "c2" && builtIn === "TEAM_LEADER" ? { "charges.view": "COMPANY" } : theirs)
+                }
+            }
+            // A company's own roles are given them in the role editor.
+            expect(rows.filter(r => r.builtIn === null)).toEqual([])
+        })
+
+        it("has the holders of a role given one reload their grants, and only them", async () => {
+            const now = await versions()
+            expect(rolesBefore.length).toBe(7)
+            for (const role of rolesBefore) expect(now[role.id], `${role.companyId} ${role.builtIn ?? role.id}`).toBe(givenOne(role) ? role.version + 1 : role.version)
+        })
+
+        it("changes nothing run again", async () => {
+            const [grants, before] = [await chargeGrants(), await versions()]
+            await db.query(sql(CHARGES_GRANTED))
+            expect(await chargeGrants()).toEqual(grants)
+            expect(await versions()).toEqual(before)
+        })
     })
 })
