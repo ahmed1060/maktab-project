@@ -54,7 +54,8 @@ export default function PlaceFields({ draft, onChange, errors, nameLabel, nameHi
             />}
             <Field
                 label={t('location_pin')}
-                hint={t('att_loc_point_hint')}
+                // It points to the buttons, which a locked place doesn't have.
+                hint={locked ? undefined : t('att_loc_point_hint')}
                 error={errors.point === 'required' ? t('location_pin_required') : errors.point === 'invalid' ? t('att_loc_point_invalid') : undefined}
             >{p => (
                 <TextInput {...p} name="pin" autoComplete="off" dir="ltr" inputMode="decimal" placeholder="30.0444, 31.2357" value={draft.point} onChange={e => set({ point: e.target.value })} disabled={off} />

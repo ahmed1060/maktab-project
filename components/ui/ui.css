@@ -231,6 +231,15 @@
   outline-offset: 1px;
   border-color: var(--brand-text);
 }
+/* A field that can't be changed (DESIGN.md §5.3): on the page's colour,
+   its text still readable (--ink-2 on --page is one of the checked pairs). */
+.ui-input:disabled,
+.ui-select:disabled {
+  background: var(--page);
+  border-color: var(--rule);
+  color: var(--ink-2);
+  cursor: not-allowed;
+}
 .ui-input[aria-invalid="true"],
 .ui-select[aria-invalid="true"] {
   border-color: var(--problem-text);

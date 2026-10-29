@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
 
 /**
  * The Locations page (CLIENTS_PLAN.md §2.4, DESIGN.md §5): who sees it, what
@@ -129,7 +130,18 @@ describe("the place fields", () => {
         const locked = renderToStaticMarkup(h(PlaceFields, { ...props, locked: true }))
         expect(locked).not.toContain("location_search")
         expect(locked).not.toContain("att_loc_here")
+        // Nor the pin's hint, which points to those buttons.
+        expect(locked).not.toContain("att_loc_point_hint")
         expect(locked.match(/<input[^>]*disabled=""/g)).toHaveLength(3)
         expect(locked).toContain('value="Main office"')
+    })
+
+    it("look like fields that can't be changed, on the page's colour with readable text (DESIGN.md §5.3)", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rule = css.match(/\.ui-input:disabled,\s*\.ui-select:disabled\s*\{([^}]*)\}/)?.[1] ?? ""
+        expect(rule).toContain("background: var(--page)")
+        expect(rule).toContain("border-color: var(--rule)")
+        expect(rule).toContain("color: var(--ink-2)")
+        expect(readFileSync("DESIGN.md", "utf8")).toContain("when it can't be changed, it's on `--page`, with a `--rule` edge and\n    `--ink-2` text, and its hint says why.")
     })
 })

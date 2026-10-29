@@ -373,7 +373,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - 6px corners and a 1px `--field-line` edge;
   - a visible label above every field. The placeholder is never the only
     label;
-  - when focused, a 2px `--brand-text` ring.
+  - when focused, a 2px `--brand-text` ring;
+  - when it can't be changed, it's on `--page`, with a `--rule` edge and
+    `--ink-2` text, and its hint says why.
 - **A text area** is a field for more than one line, at least 88px tall,
   with how many characters are left as its hint when there's a limit.
 - **A choice between a few options,** such as where a deduction comes
