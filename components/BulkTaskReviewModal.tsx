@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
-import LocationSearchInput from '@/components/LocationSearchInput'
+import { Field, Select, type SelectOption } from '@/components/ui'
+import { locationForClient, type BulkPlace } from '@/lib/bulk-locations'
 import { useHydrated } from '@/lib/useHydrated'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
@@ -24,14 +25,15 @@ interface BulkTaskReviewModalProps {
     setBulkTasks: (tasks: any[]) => void
     users: any[]
     clients: any[]
-    clientsName: string
+    /** The company's locations in use, which each row picks from (CLIENTS_PLAN.md §2.7). */
+    places: BulkPlace[]
     revalidateRow: (task: any) => any
     isSubmitting: boolean
     setIsSubmitting: (v: boolean) => void
 }
 
 export default function BulkTaskReviewModal({
-    isOpen, onClose, bulkTasks, setBulkTasks, users, clients, clientsName, revalidateRow, isSubmitting, setIsSubmitting
+    isOpen, onClose, bulkTasks, setBulkTasks, users, clients, places, revalidateRow, isSubmitting, setIsSubmitting
 }: BulkTaskReviewModalProps) {
     const { t, locale } = useLanguage()
     // The deadline floor offered to the picker, kept current while the form
@@ -46,10 +48,24 @@ export default function BulkTaskReviewModal({
     const [activeCellEdit, setActiveCellEdit] = useState<{ index: number, field: 'title' | 'description' | 'deadline' } | null>(null)
     const [editAnchorRect, setEditAnchorRect] = useState<DOMRect | null>(null)
     const [assigneeSearch, setAssigneeSearch] = useState('')
-    // Per-row toggle override — defaults to whatever the Excel parse
-    // resolved (client mode if it found a matching Client Name column),
-    // but stays independent per row once a person switches it manually.
-    const [locationModeOverride, setLocationModeOverride] = useState<Record<number, 'type' | 'client'>>({})
+    // A row's locations, as the task form's picker lists them (DESIGN.md
+    // §5.3): its client's, its HQ first, then the shared ones; one with no
+    // pin greyed, with why.
+    const optionOf = (p: BulkPlace): SelectOption => ({
+        value: p.id,
+        label: [p.name, p.isHq && t('locations_hq'), p.needsPin && t('task_location_needs_pin')].filter(Boolean).join(' · '),
+        disabled: p.needsPin,
+    })
+    const groupsFor = (clientId: string | null) => [
+        { label: t('task_location_client_group').replace('{name}', clients.find((c: any) => c.id === clientId)?.name ?? ''), options: clientId ? places.filter(p => p.clientId === clientId).map(optionOf) : [] },
+        { label: t('task_location_shared_group'), options: places.filter(p => !p.clientId).map(optionOf) },
+    ]
+    /** A row changed on this screen, checked again. */
+    const change = (idx: number, next: any) => {
+        const newTasks = [...bulkTasks]
+        newTasks[idx] = revalidateRow(next)
+        setBulkTasks(newTasks)
+    }
 
     // A dialog: focus in, Tab kept inside, Escape closes, focus back where it was (Codex review of #36).
     const dialog = useDialog(isOpen, onClose)
@@ -536,68 +552,23 @@ export default function BulkTaskReviewModal({
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ minWidth: '170px' }}>
-                                                {clients.length > 0 && (() => {
-                                                    const mode = locationModeOverride[idx] || (bt.clientId ? 'client' : 'type')
-                                                    return (
-                                                        <div style={{ display: 'flex', gap: '0.3rem', marginBottom: '0.4rem' }}>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setLocationModeOverride({ ...locationModeOverride, [idx]: 'type' })}
-                                                                className={mode === 'client' ? 'btn' : 'btn btn-primary'}
-                                                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
-                                                            >
-                                                                {t('type_location' as any) || 'Type'}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setLocationModeOverride({ ...locationModeOverride, [idx]: 'client' })}
-                                                                className={mode === 'client' ? 'btn btn-primary' : 'btn'}
-                                                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
-                                                            >
-                                                                {clientsName}
-                                                            </button>
-                                                        </div>
-                                                    )
-                                                })()}
-
-                                                {(locationModeOverride[idx] || (bt.clientId ? 'client' : 'type')) === 'client' ? (
-                                                    <select
-                                                        aria-label={t('client_label' as any)}
-                                                        value={bt.clientId || ''}
-                                                        onChange={(e) => {
-                                                            const client = clients.find((v: any) => v.id === e.target.value)
-                                                            const newTasks = [...bulkTasks]
-                                                            newTasks[idx].clientId = client?.id || null
-                                                            newTasks[idx].location = client?.locationName || ''
-                                                            newTasks[idx].locationLink = client?.locationLink || ''
-                                                            const updatedErrors = { ...(bt.validationErrors || {}) }
-                                                            delete updatedErrors.client
-                                                            newTasks[idx].validationErrors = updatedErrors
-                                                            newTasks[idx].isInvalid = Object.keys(updatedErrors).length > 0
-                                                            setBulkTasks(newTasks)
-                                                        }}
-                                                        className="input"
-                                                        style={{ width: '100%', fontSize: '0.8rem' }}
-                                                    >
-                                                        <option value="">{t('select_client_placeholder' as any) || 'Select...'}</option>
-                                                        {clients.map((v: any) => (
-                                                            <option key={v.id} value={v.id}>{v.name}</option>
-                                                        ))}
-                                                    </select>
-                                                ) : (
-                                                    <LocationSearchInput
-                                                        value={{ name: bt.location, link: bt.locationLink || '' }}
-                                                        onChange={(val) => {
-                                                            const newTasks = [...bulkTasks]
-                                                            newTasks[idx].location = val.name
-                                                            newTasks[idx].locationLink = val.link
-                                                            newTasks[idx].clientId = null
-                                                            setBulkTasks(newTasks)
-                                                        }}
-                                                        placeholder={t('location_name_placeholder')}
-                                                        locale={locale}
-                                                    />
-                                                )}
+                                                {/* Its client, and where it's done (CLIENTS_PLAN.md §2.3, §2.7). */}
+                                                <div className="ui-field-group" style={{ gap: 'var(--space-2)' }}>
+                                                    <Field label={t('location_client')} hideLabel>{p => (
+                                                        <Select {...p} value={bt.clientId || ''}
+                                                            onChange={e => {
+                                                                const clientId = e.target.value || null
+                                                                change(idx, { ...bt, clientId, locationId: locationForClient(bt.locationId, clientId, places) })
+                                                            }}
+                                                            options={[{ value: '', label: t('task_no_client') }, ...clients.map((v: any) => ({ value: v.id, label: v.name }))]} />
+                                                    )}</Field>
+                                                    {/* What's wrong with it, beside it and tied to it. */}
+                                                    <Field label={t('task_location')} hideLabel error={bt.validationErrors?.location?.join(' ')}>{p => (
+                                                        <Select {...p} value={bt.locationId || ''}
+                                                            onChange={e => change(idx, { ...bt, locationId: e.target.value || null })}
+                                                            options={[{ value: '', label: t('task_location_choose') }]} groups={groupsFor(bt.clientId || null)} />
+                                                    )}</Field>
+                                                </div>
                                                 {bt.validationErrors?.client && (
                                                     <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                         {bt.validationErrors.client.map((err: string, i: number) => (
@@ -655,8 +626,8 @@ export default function BulkTaskReviewModal({
                                 assigneeIds: bt.resolvedIds,
                                 deadline: bt.deadline,
                                 difficulty: bt.difficulty,
-                                location: bt.location ? JSON.stringify({ name: bt.location, link: bt.locationLink || '' }) : '',
-                                clientId: bt.clientId || undefined
+                                clientId: bt.clientId || undefined,
+                                locationId: bt.locationId
                             }))
 
                             try {

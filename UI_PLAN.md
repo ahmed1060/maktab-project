@@ -922,3 +922,19 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   task's edit window opens above it. A dialog that opens from an older
   page's modal sits above that modal (`DESIGN.md` §5.5). Saving the
   location there no longer saves the task too.
+- **2026-10-22:** The bulk upload's review screen picks each row's client
+  and location with the building blocks' selects, grouped as on the task
+  form (`CLIENTS_PLAN.md` step 2, PR 2b). The rest of the screen is as it
+  was, until its own turn.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 2a was merged in #98, and 2b opens
+  for review in #99, with the bulk upload's review screen picking each
+  row's client and location.
+- **2026-10-29:** In 2b (#99), the bulk upload's review screen gives a
+  row's location problem as its location field's error, tied to the
+  select, and spaces the row's client and location with `--space-2`. The
+  template's Locations sheet is left empty for someone who may not see the
+  locations.
+- **2026-10-29:** In 2b (#99), the review screen's location selects offer
+  every location in use, as the template's Locations sheet does.
+- **2026-10-29:** In 2b (#99), a location named as the Locations sheet's
+  heading is found on upload like any other.

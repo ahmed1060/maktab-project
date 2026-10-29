@@ -8,6 +8,8 @@ import { generateBulkTaskTemplate } from "@/lib/services/template-generator.serv
 import type { Locale } from "@/lib/translations"
 import { NextResponse } from "next/server"
 import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
+import { locationLabel, numberedLabels } from "@/lib/locations"
+import { can } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -46,7 +48,7 @@ export const GET = withStandardHandler(async (req, session) => {
         and(userWhere, teamMemberWhere(session.user.id))
     }
 
-    const [users, clients] = await Promise.all([
+    const [users, clients, places] = await Promise.all([
         prisma.user.findMany({
             where: userWhere,
             select: { firstName: true, lastName: true, username: true, role: true },
@@ -56,11 +58,23 @@ export const GET = withStandardHandler(async (req, session) => {
             where: { companyId: targetCompanyId! },
             select: { name: true, locationName: true },
             orderBy: { name: 'asc' }
-        })
+        }),
+        // The locations a task can be done at (CLIENTS_PLAN.md §2.7): in
+        // use, with their pin; each client's, its HQ first, then the shared.
+        // Only for someone who may see them, as the task form's picker is:
+        // creating tasks alone doesn't let a custom role list them.
+        can(session.user as any, "locations.view", { companyId: targetCompanyId })
+            ? prisma.location.findMany({
+                where: { companyId: targetCompanyId!, archivedAt: null, latitude: { not: null } },
+                select: { id: true, name: true, client: { select: { name: true } } },
+                orderBy: [{ client: { name: 'asc' } }, { isHq: 'desc' }, { name: 'asc' }, { id: 'asc' }],
+            })
+            : [],
     ])
+    const locations = numberedLabels(places.map(l => ({ id: l.id, label: locationLabel(l.name, l.client?.name), client: l.client?.name ?? null })))
 
     try {
-        const fileBuffer = await generateBulkTaskTemplate(baseBuffer, locale, users, clients)
+        const fileBuffer = await generateBulkTaskTemplate(baseBuffer, locale, users, clients, locations)
         return new NextResponse(fileBuffer as any, {
             status: 200,
             headers: {

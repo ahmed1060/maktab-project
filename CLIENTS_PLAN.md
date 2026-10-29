@@ -775,13 +775,14 @@ balance first, automatically:
        when a role is saved. Until 1b is merged, only the Super Admin
        sees the Locations page in those companies. 1b was merged in #97
        on 2026-10-29, so step 1 is done.
-     - Step 2's first PR, 2a, is open for review in #98: tasks are done at
-       locations, made and edited with the client and location pickers
+     - Step 2's first PR, 2a, was merged in #98 on 2026-10-29: tasks are
+       done at locations, made and edited with the client and location pickers
        (§2.3, §2.4, §3.1).
        Proposed: step 2 ships as two PRs. 2b moves the bulk upload onto
        locations: the Excel Locations sheet and the review screen's
        pickers (§2.7). Until then, an uploaded task still takes its
-       client's own location fields, or its typed text.
+       client's own location fields, or its typed text. 2b is open for
+       review in #99.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1247,3 +1248,39 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   location until its review screen picks them (2b), so it can't link
   another company's. Saving a location from a task's form saves only the
   location, and "+ New location" from a task's edit window opens above it.
+- **2026-10-22:** Step 2's second PR, 2b, is built (§2.7):
+  - **The Excel template** has a Locations sheet: each location a task
+    can use, by its name, "Client - Location" or a shared one's own, each
+    name once, numbered where two would read the same. A hidden column
+    keeps the location each name stands for. The main sheet has a
+    Location column after the others, a dropdown from that list.
+  - **The upload** finds each row's location through the file's own
+    Locations sheet, never by matching the name against the company's
+    locations. A name it doesn't find exactly once, another client's
+    location, or one with no pin is flagged, with what was written. A
+    row with no location takes its client's HQ. A template from before
+    has no Location column, so its rows take their client's HQ too.
+  - **The review screen** has each row's client and location as selects,
+    as on the task form: changing the client keeps a shared location or
+    picks the new client's HQ.
+  - **Typed locations are gone** from bulk creation too. A refused
+    location names its task, instead of failing the upload as a fault.
+- **2026-10-29:** 2a was merged in #98, with Codex's three findings fixed
+  in it: a bulk upload linked no location until 2b, saving a location from
+  a task's form saved only the location, and "+ New location" opened above
+  a task's edit window. Its migration ran on production as it opened, with
+  no errors after. Step 2's second PR, 2b, opens for review in #99.
+- **2026-10-29:** Two fixes in 2b (#99). The review screen ties what's
+  wrong with a row's location to its select, for a screen reader to read
+  with it (found by the audit). And the template lists the company's
+  locations only for someone who may see them, as the task form's picker
+  does: a custom role that may create tasks but not see the locations gets
+  it without them (found by Codex).
+- **2026-10-29:** In 2b (#99), the bulk upload's review screen lists
+  every location in use, as the template does, rather than the first
+  2,000: past those, a row naming a location the template offered was
+  refused (found by Codex).
+- **2026-10-29:** In 2b (#99), the upload reads the template's Locations
+  sheet below its heading: read as a location, the heading made a
+  location named "Name", or "الاسم", named twice, and refused (found by
+  Codex).

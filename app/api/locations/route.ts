@@ -16,6 +16,10 @@ export const GET = withStandardHandler(async (req, session) => {
     const id = searchParams.get("id")
     if (id) return ApiResponse.success(await LocationService.get(session, id))
     // What a task's location picker offers (CLIENTS_PLAN.md §2.3).
+    // And every one in use, with its client, for the bulk upload's review (§2.7).
+    if (searchParams.get("pick") === "all") {
+        return ApiResponse.success(await LocationService.pickableAll(session, { companyId: searchParams.get("companyId") }))
+    }
     if (searchParams.get("pick") === "1") {
         return ApiResponse.success(await LocationService.pickable(session, { companyId: searchParams.get("companyId"), clientId: searchParams.get("clientId") }))
     }
