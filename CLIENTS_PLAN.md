@@ -530,7 +530,7 @@ separate system. On screen they're renamed **Check-in places** (أماكن
       - 5a: the lists, the picker, the Saved lists page, the permissions
         for new companies, and the title and cost name fields (built);
       - 5b: the permissions for the companies already there, once 5a's
-        role editor is live, as for locations (§2.9);
+        role editor is live, as for locations (§2.9) (built);
       - 5c: the bulk import matching titles to the list, and the filters
         and totals by title and cost name (§5.8–5.9).
     - **What's saved** (§5.5): the text as typed, and the name it was
@@ -545,8 +545,8 @@ separate system. On screen they're renamed **Check-in places** (أماكن
       side bar under Company Settings, for whoever manages lists. Company
       Settings' own tabs depend on the Super Admin's switch, which an
       Admin's Manage lists doesn't.
-    - **Proposed:** 5b gives Add list names to every role in the
-      companies there already are, custom ones too, as Everyone has it
+    - **Decided (2026-10-29):** 5b gives Add list names to every role in
+      the companies there already are, custom ones too, as Everyone has it
       (§5.7). Taking over someone's account needs everything their role
       holds, so a custom role that manages Employees would otherwise lose
       that once Employees can add names.
@@ -834,7 +834,9 @@ balance first, automatically:
        (§4.4, §4.5), in #103, and 4d, which tidies up after it (§4.5), in
        #104. Step 4 is done.
      - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
-       and 5c (§5.10). 5a is built, and open for review in #105.
+       and 5c (§5.10). 5a was merged in #105 on 2026-10-29. 5b gives the
+       companies there before it the lists' permissions; it's built, and
+       open for review in #106.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1517,3 +1519,21 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   a title and then switched company sent the first company's name with
   the task, and the task was refused; the title now keeps its text only
   (found by Codex).
+- **2026-10-29:** Decided by the product owner: 5b gives Add list names
+  to every role in the companies there already are, their own roles too
+  (§5.10).
+- **2026-10-29:** Step 5's second PR, 5b, is built (§5.10). Its
+  migration gives the companies there before 5a the lists' permissions,
+  now that 5a's role editor is live:
+  - **Every role gets Add list names:** the built-in ones as a new
+    company's have it, and the companies' own roles too.
+  - **Only the built-in Admin gets Manage lists.**
+  - **A role given either in the role editor since keeps it as it is,**
+    and only the holders of a role given one reload their grants.
+- **2026-10-29:** 5a was merged in #105, with Codex's five findings, over
+  two reviews, fixed in it: all in the name picker, from Escape closing
+  Edit task details to a Super Admin's title keeping another company's
+  name. Its migration ran on production at 16:16 UTC, with no errors
+  after. Step 5's second PR, 5b, opens for review in #106; its migration
+  gives the 3 companies there the lists' permissions (12 grants on their
+  9 built-in roles; none has roles of its own yet, checked read-only).

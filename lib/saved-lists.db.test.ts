@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
+import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 
 /**
  * The saved lists of cost names and task titles (CLIENTS_PLAN.md §5), against
@@ -31,6 +32,19 @@ DELETE FROM "Location";
 INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "updatedAt") VALUES ('port', 'c1', NULL, 'Port gate', false, 31.18, 29.87, now());
 `
 
+/**
+ * A company's own roles before 5b's migration (CLIENTS_PLAN.md §5.10): one
+ * without the lists' permissions, and one an Admin gave Add list names in
+ * the role editor already.
+ */
+const OWN_ROLES = `
+INSERT INTO "Role"(id, "companyId", name, "baseRole", version, "updatedAt") VALUES
+ ('own-desk', 'c1', 'Front desk', 'EMPLOYEE', 3, now()),
+ ('own-stores', 'c2', 'Stores', 'EMPLOYEE', 5, now());
+INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('own-desk', 'tasks.view', 'TEAM'), ('own-stores', 'lists.add', 'COMPANY');
+`
+const LISTS_GRANTED = "20261116000000_lists_granted"
+
 const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" }) } as any
 const employee = { user: withGrants({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" }) } as any
 const otherAdmin = { user: withGrants({ id: "a2", role: "ADMIN", companyId: "c2", name: "Adel Two" }) } as any
@@ -46,6 +60,7 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
     let db: Client
     let Lists: typeof import("@/lib/services/list.service").ListService
     let Tasks: typeof import("@/lib/services/task.service").TaskService
+    let versionsBefore: Record<string, number> = {}
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -59,6 +74,10 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
         for (const m of MIGRATIONS) {
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
+            if (m === "20261115000000_saved_lists") {
+                await db.query(OWN_ROLES)
+                versionsBefore = Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
+            }
         }
         await db.query(PLACES)
         await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "isProtected", "updatedAt") VALUES ('sa1', 'sa@x', 'p', 'Sam', 'Admin', 'sa1', true, now())`)
@@ -95,6 +114,51 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
 
         it("leaves Row Level Security on, as on every table", async () => {
             expect((await db.query(`SELECT relrowsecurity FROM pg_class WHERE relname = 'ListEntry'`)).rows).toEqual([{ relrowsecurity: true }])
+        })
+    })
+
+    describe("the companies already there (5b)", () => {
+        const listGrants = async () => (await db.query(`
+            SELECT r.id, r."companyId", r."builtIn", g.permission, g.scope FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id
+            WHERE g.permission LIKE 'lists.%' ORDER BY r."companyId", r.id, g.permission`)).rows
+        const versions = async () => Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
+
+        it("gives each built-in role the lists' permissions a new company's has", async () => {
+            const rows = await listGrants()
+            for (const company of ["c1", "c2"]) {
+                for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
+                    const given = Object.fromEntries(rows.filter(r => r.companyId === company && r.builtIn === builtIn).map(r => [r.permission, r.scope]))
+                    const theirs = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => permission.startsWith("lists.")))
+                    expect(given, `${company} ${builtIn}`).toEqual(theirs)
+                }
+            }
+            // Only the built-in Admin manages the lists.
+            expect(rows.filter(r => r.permission === "lists.manage").map(r => r.builtIn)).toEqual(["ADMIN", "ADMIN"])
+        })
+
+        it("gives a company's own roles Add list names, as Everyone has it, and keeps what they held", async () => {
+            const own = (await db.query(`SELECT "roleId", permission, scope FROM "RoleGrant" WHERE "roleId" LIKE 'own-%' ORDER BY "roleId", permission`)).rows
+            expect(own).toEqual([
+                { roleId: "own-desk", permission: "lists.add", scope: "COMPANY" },
+                { roleId: "own-desk", permission: "tasks.view", scope: "TEAM" },
+                { roleId: "own-stores", permission: "lists.add", scope: "COMPANY" },
+            ])
+        })
+
+        it("has the holders of a role given one reload their grants, and only them", async () => {
+            const now = await versions()
+            expect(Object.keys(versionsBefore).length).toBeGreaterThan(2)
+            for (const [id, before] of Object.entries(versionsBefore)) {
+                // Stores held Add list names already, so nothing changed for it.
+                expect(now[id], id).toBe(id === "own-stores" ? before : before + 1)
+            }
+        })
+
+        it("changes nothing run again", async () => {
+            const [grants, before] = [await listGrants(), await versions()]
+            await db.query(sql(LISTS_GRANTED))
+            expect(await listGrants()).toEqual(grants)
+            expect(await versions()).toEqual(before)
         })
     })
 
