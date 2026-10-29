@@ -934,9 +934,10 @@ balance first, automatically:
      - Step 6, client charges (§6). Proposed: it ships as four PRs, 6a
        to 6d (§6.8). 6a, a receipt photo for each cost, was merged in
        #108 on 2026-10-29, and 6b, the charges, the Costs page's Charged
-       to clients tab and the permissions for new companies, in #109. 6c,
-       the permissions for the companies already there, is built, and
-       open for review in #110.
+       to clients tab and the permissions for new companies, in #109, and
+       6c, the permissions for the companies already there, in #110. 6d,
+       each client's page with Mark collected, is built, and open for
+       review in #111; with it, step 6 is done.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1744,3 +1745,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   the confirmation that sent the action. It opened under it, so its
   Confirm couldn't be clicked: Mark all as paid (§4.1) with no code
   entered in the hour couldn't go on, nor could Mark collected.
+- **2026-10-29:** 6c was merged in #110; Codex found nothing in it. Its
+  migration ran on production at 22:34 UTC: the 3 companies there hold
+  the charges' permissions (12 grants on their 6 built-in Admin and Team
+  Leader roles), with no errors after. Step 6's last PR, 6d, opens for
+  review in #111; it has no migration.

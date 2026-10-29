@@ -1065,3 +1065,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** The code prompt for a high-risk action opens above any
   dialog (`DESIGN.md` §5.5), so it can be answered from over the
   confirmation that sent the action, as Mark all as paid's.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 6c was merged in #110, and 6d opens
+  for review in #111.
