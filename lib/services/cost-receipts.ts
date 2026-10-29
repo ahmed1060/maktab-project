@@ -14,16 +14,25 @@ function receiptPath(url: string, companyId: string | null): string | null {
 }
 
 /**
+ * The address the upload gave for this path: one spelling for each file, so
+ * no file is on two costs under two spellings, and goes from storage with
+ * either.
+ */
+function uploadedAddress(url: string, path: string): string {
+    return `${new URL(url).origin}/storage/v1/object/public/app-assets/${encodeURI(path)}`
+}
+
+/**
  * Refuses receipts that aren't files uploaded here for this company's costs:
  * a link to anywhere else, another company's file, one of the company's
- * other files, a Super Admin's sent by anyone else, one no longer stored, or
- * one sent for two costs.
+ * other files, a Super Admin's sent by anyone else, one spelt otherwise than
+ * the upload gave it, one no longer stored, or one sent for two costs.
  */
 export async function checkReceipts(urls: readonly string[], companyId: string | null, superAdmin: boolean): Promise<void> {
     if (!urls.length) return
-    if (new Set(urls).size !== urls.length) throw new Error("COST_RECEIPT_INVALID")
     const paths = urls.map(url => receiptPath(url, companyId))
-    if (paths.some(path => !path || (path.startsWith("platform/") && !superAdmin))) throw new Error("COST_RECEIPT_INVALID")
+    if (paths.some((path, i) => !path || (path.startsWith("platform/") && !superAdmin) || uploadedAddress(urls[i], path) !== urls[i])) throw new Error("COST_RECEIPT_INVALID")
+    if (new Set(paths).size !== paths.length) throw new Error("COST_RECEIPT_INVALID")
     if (!supabase) return
     const storage = supabase.storage.from("app-assets")
     const stored = await Promise.all(paths.map(async path => (await storage.exists(path!)).data))

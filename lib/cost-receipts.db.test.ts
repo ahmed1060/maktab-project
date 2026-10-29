@@ -116,6 +116,8 @@ describe.skipIf(!ADMIN_URL)("costs' receipts, in Postgres", () => {
             [{ amount: 5, receiptUrl: BUCKET + "c1/receipts/7-gone.jpg" }],      // one no longer stored
             [{ amount: 5, receiptUrl: twice }, { amount: 6, receiptUrl: twice }], // one for two costs
             [{ amount: 5, receiptUrl: taken }],                                  // one on another cost already
+            [{ amount: 5, receiptUrl: taken.replace("1-taxi", "%31-taxi") }],    // the same, spelt another way (Codex on PR 108)
+            [{ amount: 5, receiptUrl: taken.replace("abc.supabase.co", "ABC.supabase.co") }],
             [{ amount: 5, receiptUrl: 42 }],                                     // not an address at all
         ]) {
             await expect(add(ehab, costs), JSON.stringify(costs)).rejects.toMatchObject({ message: "COST_RECEIPT_INVALID" })

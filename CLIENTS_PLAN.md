@@ -1630,3 +1630,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   it due, and a name's `%` and `_` taken as typed. It has no migration.
   Step 5 is done. Step 6's first PR, 6a, opens for review in #108; its
   migration adds each cost's receipt, none yet.
+- **2026-10-29:** In 6a (#108), a cost's receipt is taken only as the
+  address its upload gave. The same file spelt another way, such as
+  "%31" for "1", was another address, so it could be put on a second
+  cost, and removing either cost removed the other's receipt too (found
+  by Codex).
