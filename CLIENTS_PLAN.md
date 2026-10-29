@@ -683,7 +683,8 @@ The company never buys on credit, so nothing is tracked as owed to shops.
     editor is live, as for locations (§2.9) and lists (§5.10) (built);
   - 6d: each client's page (§6.4): Due and Collected, the charges with
     their receipts, and Mark collected, with two-factor sign-in, for
-    exactly the charges shown, as Mark all as paid confirms (§4.1).
+    exactly the charges shown, as Mark all as paid confirms (§4.1)
+    (built).
 - **Proposed:** a charge isn't stored apart from its cost. A cost on a
   task with a client is charged to it, so the charge follows the task's
   client (§6.5); the cost keeps its service fee, the "Not charged to
@@ -722,6 +723,22 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   role given one there since keeps it as it is. Production had only
   built-in roles, and no charges grants, when 6c was built (checked
   read-only, 2026-10-29).
+- **Proposed, as 6d builds it:**
+  - **A client's page has a Charges section** for whoever sees charges:
+    the Charged to clients list for that client alone, with its search,
+    status and dates, and Due and Collected tiles that don't change with
+    the status picked. A Team Leader sees their team's tasks' charges.
+  - **Mark collected collects the Due ones listed, every page of them,**
+    with the search and dates picked, as its confirmation says: "Collect
+    7 charges, 3,450.00 EGP, from Al Noor?". If any of them changed
+    meanwhile, nothing is collected and the list is shown again.
+  - **Mark uncollected is in a collected charge's menu,** on the client's
+    page and on the tab, for whoever may mark charges collected, with
+    its own confirmation and two-factor sign-in.
+  - **A collected charge shows the day it was collected.** Who collected
+    it is in the audit log.
+  - **A Super Admin sees a client's charges on its page whichever company
+    they picked,** as the page is the client's.
 
 ---
 
@@ -1714,3 +1731,16 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   6c, opens for review in #110; its migration gives the 3 companies there
   the charges' permissions (12 grants on their 6 built-in Admin and Team
   Leader roles).
+- **2026-10-29:** Step 6's fourth PR, 6d, is built (§6.4, §6.5, §6.8):
+  - **Each client's page shows its charges:** Due and Collected, and each
+    charge with what was bought, on which task, its receipt, and who
+    added it and when.
+  - **Mark collected collects exactly the Due ones listed,** as its
+    confirmation says, with two-factor sign-in, or nothing if the list
+    changed meanwhile. The audit log records it on the client.
+  - **Mark uncollected makes a collected charge due again,** so it can be
+    corrected, with two-factor sign-in; the audit log keeps both steps.
+- **2026-10-29:** In 6d, the code two-factor sign-in asks for opens above
+  the confirmation that sent the action. It opened under it, so its
+  Confirm couldn't be clicked: Mark all as paid (§4.1) with no code
+  entered in the hour couldn't go on, nor could Mark collected.
