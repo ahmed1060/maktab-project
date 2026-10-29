@@ -1512,3 +1512,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   details keeps what else was edited while it was added. The form was
   filled as it was when Add was pressed, so a description, deadline or
   location changed meanwhile went back (found by Codex).
+- **2026-10-29:** In 5a (#105), a title picked on New task stays linked to
+  its name only in the company it was picked in. A Super Admin who picked
+  a title and then switched company sent the first company's name with
+  the task, and the task was refused; the title now keeps its text only
+  (found by Codex).

@@ -1016,3 +1016,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   leaves the field as it is now; the name is on the list all the same.
 - **2026-10-29:** In 5a (#105), "+ Add" in Edit task details fills the title
   without undoing the other fields edited while the name was added.
+- **2026-10-29:** In 5a (#105), switching company on New task keeps the
+  title typed or picked, as text, and its suggestions come from the
+  company switched to.

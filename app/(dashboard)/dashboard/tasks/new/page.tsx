@@ -9,7 +9,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import TaskPlacePicker, { type TaskPlace } from '@/components/locations/TaskPlacePicker'
-import { NamePicker, type PickedName } from '@/components/ui'
+import { NamePicker } from '@/components/ui'
+import { pickIn, type CompanyPick } from '@/lib/saved-lists'
 import { useListNames } from '@/components/lists/useListNames'
 import { locationProblem, rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
 import type { TranslationKey } from '@/lib/translations'
@@ -34,9 +35,9 @@ export default function NewTaskPage() {
     // The deadline floor offered to the picker, kept current while the form
     // stays open. See lib/useNow.ts.
     const now = useNow()
-    // Its title as typed, and the name it was picked as from the list (CLIENTS_PLAN.md §5).
-    const [titleName, setTitleName] = useState<PickedName>({ text: '', entryId: null })
-    const title = titleName.text
+    // Its title as typed, and the name it was picked as from the list
+    // (CLIENTS_PLAN.md §5), in the company it was picked in.
+    const [titlePick, setTitlePick] = useState<CompanyPick>({ name: { text: '', entryId: null }, company: null })
     const [description, setDescription] = useState('')
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
@@ -54,6 +55,8 @@ export default function NewTaskPage() {
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
     const titleNames = useListNames('TASK_TITLE', selectedCompanyId)
+    const titleName = pickIn(titlePick, selectedCompanyId)
+    const title = titleName.text
     const userRole = (session?.user as any)?.role
     // The permission GET /api/clients checks: the bulk upload's rows are
     // matched to clients by name only for someone who may read the list.
@@ -558,7 +561,7 @@ export default function NewTaskPage() {
                         aria-invalid={fieldErrors.title ? true : undefined}
                         value={titleName}
                         onChange={next => {
-                            setTitleName(next)
+                            setTitlePick({ name: next, company: selectedCompanyId })
                             if (fieldErrors.title) setFieldErrors({ ...fieldErrors, title: '' })
                         }}
                         {...titleNames}

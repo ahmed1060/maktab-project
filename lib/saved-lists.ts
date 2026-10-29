@@ -27,3 +27,17 @@ export function listName(kind: ListKind, raw: unknown): string {
 export function sameListName(a: string, b: string): boolean {
     return a.trim().toLowerCase() === b.trim().toLowerCase()
 }
+
+/** A name typed or picked, and the company whose list it was picked from. */
+export type CompanyPick = { name: { text: string; entryId: string | null }; company: string | null }
+
+/**
+ * What a field picked from a company's list holds while `company` is the
+ * one chosen: the name as picked, in the company it was picked in, and in
+ * another its text only, as typed. A Super Admin who picks a title and then
+ * switches company keeps the title, not a link to the first company's name,
+ * which the task would be refused for (Codex review of PR 105).
+ */
+export function pickIn(pick: CompanyPick, company: string | null): CompanyPick["name"] {
+    return pick.company === company || !pick.name.entryId ? pick.name : { text: pick.name.text, entryId: null }
+}
