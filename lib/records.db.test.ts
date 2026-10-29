@@ -453,10 +453,14 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect((await db.query(`SELECT "notifiedDaysBefore" FROM "ClientNote" WHERE id = $1`, [licence])).rows[0].notifiedDaysBefore).toBe(true)
         })
 
-        it("won't delete a client that has records; its records go first", async () => {
-            await expect(Clients.delete("v2", admin)).rejects.toThrow("CLIENT_HAS_RECORDS")
+        it("archives a client that has records, keeping them, rather than deleting it (CLIENTS_PLAN.md §4.3)", async () => {
+            expect(await Clients.delete("v2", admin)).toMatchObject({ archived: true })
+            const { rows: [kept] } = await db.query(`SELECT "archivedAt" IS NOT NULL AS archived, (SELECT count(*)::int FROM "ClientNote" n JOIN "ClientSection" s ON s.id = n."sectionId" WHERE s."clientId" = 'v2') AS records FROM "Client" WHERE id = 'v2'`)
+            expect(kept).toEqual({ archived: true, records: 1 })
+            // Restored, and with its records gone, it's deleted.
+            await Clients.restore("v2", admin)
             await Records.delete(admin, note)
-            await Clients.delete("v2", admin)
+            expect(await Clients.delete("v2", admin)).toMatchObject({ archived: false })
             expect((await db.query(`SELECT count(*)::int AS n FROM "ClientSection" WHERE "clientId" = 'v2'`)).rows[0].n).toBe(0)
         })
 
@@ -546,7 +550,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             }
         })
 
-        it("won't delete a client while a record is being added to it", async () => {
+        it("archives, rather than deletes, a client a record is being added to meanwhile", async () => {
             await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('v4', 'c1', 'Delta', 'Nour', '0103', 'Suez', now())`)
             const section = (await Records.createSection(admin, { clientId: "v4", title: "Licences" })).id
             // The record is written and its transaction takes a moment to finish, as someone deletes the client.
@@ -558,7 +562,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 const deleting = Clients.delete("v4", admin)
                 const [added, deleted] = await Promise.allSettled([adding, deleting])
                 expect(added.status).toBe("fulfilled")
-                expect(deleted).toMatchObject({ status: "rejected", reason: { message: "CLIENT_HAS_RECORDS" } })
+                expect(deleted).toMatchObject({ status: "fulfilled", value: { archived: true } })
                 expect((await db.query(`SELECT count(*)::int AS n FROM "ClientNote" WHERE "sectionId" = $1`, [section])).rows[0].n).toBe(1)
             } finally {
                 await db.query(`DROP TRIGGER test_slow ON "ClientNote"; DROP FUNCTION test_slow()`)
@@ -796,11 +800,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("offers the company's clients to add a record to, by name, to whoever may add one", async () => {
             const names = (list: { clients: { name: string }[] }) => list.clients.map(c => c.name)
-            expect(names(await Records.clients(employee))).toEqual(["Acme", "Delta"])
+            // Delta is archived, as it had a record when it was deleted above (CLIENTS_PLAN.md §4.3).
+            expect(names(await Records.clients(employee))).toEqual(["Acme"])
             expect(names(await Records.clients(otherAdmin))).toEqual(["Gamma"])
             // A Super Admin's chosen company, or every company's, each named with its company.
             expect(names(await Records.clients(superAdmin, "c2"))).toEqual(["Gamma"])
-            expect((await Records.clients(superAdmin)).clients.map(c => `${c.name} ${c.company}`)).toEqual(["Acme One", "Delta One", "Gamma Two"])
+            expect((await Records.clients(superAdmin)).clients.map(c => `${c.name} ${c.company}`)).toEqual(["Acme One", "Gamma Two"])
             // Someone on a role without records.contribute.
             const without = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: "" } } as any
             await expect(Records.clients(without)).rejects.toThrow("RECORD_FORBIDDEN")

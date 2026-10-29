@@ -1151,6 +1151,13 @@ a.ui-row:focus-visible {
   font-weight: 500;
   color: var(--ink);
 }
+/* A page title with a badge beside it, as an archived client's. */
+.ui-title-with-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
 /* A badge beside a name, as a client's HQ. */
 .ui-item-title > .ui-badge {
   margin-inline-start: var(--space-2);

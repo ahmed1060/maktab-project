@@ -372,7 +372,8 @@ export class RecordService {
         const trimmed = search?.trim()
         const name = trimmed ? likeText(trimmed) : ""
         const clients = await prisma.client.findMany({
-            where: { ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
+            // An archived client isn't offered (CLIENTS_PLAN.md §4.3).
+            where: { archivedAt: null, ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
             select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true } } }) },
             orderBy: [{ name: "asc" }, { id: "asc" }],
             // One past what's listed, to say there are more to search for.
@@ -386,7 +387,7 @@ export class RecordService {
 
     /** A client's sections, with how many records each holds, and the client's name for the page. */
     static async sectionsOf(session: Session, clientId: string) {
-        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true } })
+        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true, archivedAt: true } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
         allow(session, "records.view", client.companyId, "CLIENT_NOT_FOUND")
         const sections = await prisma.recordSection.findMany({
@@ -395,7 +396,9 @@ export class RecordService {
             orderBy: { title: "asc" },
         })
         return {
-            client: { id: client.id, name: client.name },
+            // Archived, it takes nothing new (CLIENTS_PLAN.md §4.3), as its
+            // page says to whoever may add records but not see clients.
+            client: { id: client.id, name: client.name, archived: client.archivedAt !== null },
             sections: sections.map(s => ({ id: s.id, title: s.title, records: s._count.records })),
         }
     }
@@ -409,8 +412,10 @@ export class RecordService {
             return await prisma.$transaction(async tx => {
                 // The client's lock a first record takes to start a section by
                 // name (create), so the two don't both start one of a name.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${input.clientId} FOR NO KEY UPDATE`
+                const locked = await tx.$queryRaw<{ id: string; archived: boolean }[]>`SELECT id, "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = ${input.clientId} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
+                // An archived client takes nothing new (CLIENTS_PLAN.md §4.3).
+                if (locked[0].archived) throw new Error("CLIENT_ARCHIVED")
                 const section = await tx.recordSection.create({
                     data: { title: input.title, clientId: input.clientId, createdById: who.byUser },
                     select: { id: true, title: true },
@@ -510,8 +515,10 @@ export class RecordService {
                 sectionId = section.id
                 // Holds the client while the record is written, so it isn't
                 // deleted meanwhile with the record in it (ClientService.delete).
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${section.clientId} FOR SHARE`
+                const locked = await tx.$queryRaw<{ id: string; archived: boolean }[]>`SELECT id, "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = ${section.clientId} FOR SHARE`
                 if (!locked.length) throw new Error("RECORD_SECTION_NOT_FOUND")
+                // An archived client takes nothing new (CLIENTS_PLAN.md §4.3).
+                if (locked[0].archived) throw new Error("CLIENT_ARCHIVED")
                 // And the section, which isn't deleted meanwhile either (deleteSection).
                 const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE id = ${section.id} FOR SHARE`
                 if (!held.length) throw new Error("RECORD_SECTION_NOT_FOUND")
@@ -519,8 +526,9 @@ export class RecordService {
                 // One at a time per client, so two people naming the same new
                 // section at once start it once: the second finds the first's.
                 // It holds the client from being deleted meanwhile too.
-                const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${input.clientId!} FOR NO KEY UPDATE`
+                const locked = await tx.$queryRaw<{ id: string; archived: boolean }[]>`SELECT id, "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = ${input.clientId!} FOR NO KEY UPDATE`
                 if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
+                if (locked[0].archived) throw new Error("CLIENT_ARCHIVED")
                 // A section of that name already there is the one meant, held as above.
                 const [existing] = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientSection" WHERE "clientId" = ${input.clientId!} AND title = ${input.sectionTitle!} FOR SHARE`
                 if (existing) sectionId = existing.id

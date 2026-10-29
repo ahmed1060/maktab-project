@@ -65,7 +65,9 @@ export class ClientService {
             throw new Error("FORBIDDEN")
         }
 
-        const { hq, ...details } = rest
+        const { hq, ...fields } = rest
+        // Restoring is ClientService.restore's, never a side effect of an edit.
+        const details = { name: fields.name, ownerName: fields.ownerName, mobileNumber: fields.mobileNumber }
         const { AuditLogService } = await import("./audit-log.service")
         return prisma.$transaction(async tx => {
             await tx.client.update({ where: { id }, data: details })
@@ -83,7 +85,12 @@ export class ClientService {
         })
     }
 
-    static async delete(id: string, session: any) {
+    /**
+     * Deletes a client, or archives one with tasks or records (CLIENTS_PLAN.md
+     * §4.3). With `archive`, it's archived whatever it holds now: archiving is
+     * what was confirmed, and it can be undone where deleting can't.
+     */
+    static async delete(id: string, session: any, options: { archive?: boolean } = {}) {
         const userRole = session.user.role
         const userId = session.user.id
 
@@ -96,19 +103,28 @@ export class ClientService {
 
         const { AuditLogService } = await import("./audit-log.service")
         return prisma.$transaction(async tx => {
-            // Its records would go with it (CLIENTS_PLAN.md §0.2): licences,
-            // contracts and their files. Nobody loses those by deleting the
-            // business; they're deleted on its page first, one by one. Its
-            // row is held first, so a record being added meanwhile
-            // (RecordService.create) is counted, or finds the client gone.
+            // One with tasks or records is archived instead (CLIENTS_PLAN.md
+            // §4.3): its records would go with it, licences, contracts and
+            // their files, and its tasks would lose it. Its row is held first,
+            // so a record or task being added meanwhile is counted, or finds
+            // the client gone.
             const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${id} FOR UPDATE`
             if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
-            const records = await tx.clientRecord.count({ where: { section: { clientId: id } } })
-            if (records > 0) throw new Error("CLIENT_HAS_RECORDS")
+            const [records, tasks] = await Promise.all([
+                tx.clientRecord.count({ where: { section: { clientId: id } } }),
+                tx.task.count({ where: { clientId: id } }),
+            ])
+            if (records > 0 || tasks > 0 || options.archive) {
+                const archived = await tx.client.update({ where: { id }, data: { archivedAt: client.archivedAt ?? new Date() } })
+                await AuditLogService.log('ARCHIVE_VENDOR', 'VENDOR', id, {
+                    tx,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    details: { name: client.name, records, tasks }
+                })
+                return { ...archived, archived: true as const }
+            }
 
-            // Tasks that used this client keep their copied location text —
-            // Task.clientId just SetNulls (see the migration comment), no
-            // historical data loss.
             const result = await tx.client.delete({ where: { id } })
 
             await AuditLogService.log('DELETE_VENDOR', 'VENDOR', id, {
@@ -118,7 +134,25 @@ export class ClientService {
                 details: { name: client.name }
             })
 
-            return result
+            return { ...result, archived: false as const }
+        })
+    }
+
+    /** An archived client in use again (CLIENTS_PLAN.md §4.3). */
+    static async restore(id: string, session: any) {
+        const client = await prisma.client.findUnique({ where: { id } })
+        if (!client) throw new Error("CLIENT_NOT_FOUND")
+        if (!can(session.user, "clients.manage", { companyId: client.companyId })) throw new Error("FORBIDDEN")
+        const { AuditLogService } = await import("./audit-log.service")
+        return prisma.$transaction(async tx => {
+            const restored = await tx.client.update({ where: { id }, data: { archivedAt: null } })
+            await AuditLogService.log('RESTORE_VENDOR', 'VENDOR', id, {
+                tx,
+                userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
+                superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
+                details: { name: client.name }
+            })
+            return restored
         })
     }
 }

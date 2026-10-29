@@ -85,7 +85,11 @@ describe("record screens offer only what the server allows", () => {
         expect(LIST).toContain("<RecordForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} sections={clientId ? sections : undefined} onSaved={changed} />")
         expect(FORM).toContain("const choosing = !clientId && !editing")
         expect(FORM).not.toContain("router.push")
-        expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
+        // And never for an archived client, which takes nothing new (CLIENTS_PLAN.md §4.3).
+        expect(CLIENT).toContain("adding={!archived && adding && can('records.contribute')}")
+        // Archived, as its sections say, for whoever may add records but not see clients (Codex on #102);
+        // its details, once loaded, say it first, as Restore reloads them and not its sections.
+        expect(CLIENT).toContain("const archived = client ? !!client.archivedAt : !!sectionsBody?.data.client.archived")
         expect(CLIENT).not.toContain("params.get('add')")
     })
     it("loads the chosen client's sections before a record can be added to it, rather than starting a first one", () => {
@@ -114,7 +118,7 @@ describe("record screens offer only what the server allows", () => {
     it("on a client's page, says when its sections didn't load, rather than showing none and starting a first one", () => {
         const CLIENT = source("app/(dashboard)/dashboard/clients/[id]/page.tsx")
         expect(CLIENT).toContain("const sectionsFailed = seesRecords && !sectionsBody")
-        expect(CLIENT).toContain("action={seesRecords && !sectionsFailed && can('records.contribute') && <Button")
+        expect(CLIENT).toContain(": seesRecords && !sectionsFailed && can('records.contribute') && <Button")
         expect(CLIENT).toContain("{sectionsFailed && (")
         expect(CLIENT).toContain("title={t('records_load_failed')} action={<Button onClick={() => { void reloadSections() }}>{t('try_again')}</Button>}")
         expect(CLIENT).toContain("{seesRecords && !sectionsFailed && (")

@@ -46,7 +46,8 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
 
     const seesClients = can('clients.view') && !waits
     const seesLocations = can('locations.view') && !waits
-    const { data: clientsBody } = useSWR<{ data: { id: string; name: string }[] }>(seesClients ? `/api/clients${company ? `?${company}` : ''}` : null, fetcher)
+    // Archived clients too: a filter keeps them (CLIENTS_PLAN.md §4.3).
+    const { data: clientsBody } = useSWR<{ data: { id: string; name: string; archivedAt?: string | null }[] }>(seesClients ? `/api/clients?archived=all${company ? `&${company}` : ''}` : null, fetcher)
     const { data: placesBody } = useSWR<{ data: { locations: FilterPlace[] } }>(seesLocations ? `/api/locations?pick=filters${company ? `&${company}` : ''}` : null, fetcher)
     const clients = clientsBody?.data ?? []
     const places = placesBody?.data.locations ?? []
@@ -58,7 +59,7 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
             key: 'clientId',
             label: t('location_client'),
             value: picked.clientId,
-            options: [{ value: '', label: t('filter_all_clients') }, { value: NO_CLIENT, label: t('task_no_client') }, ...clients.map(c => ({ value: c.id, label: c.name }))],
+            options: [{ value: '', label: t('filter_all_clients') }, { value: NO_CLIENT, label: t('task_no_client') }, ...clients.map(c => ({ value: c.id, label: c.archivedAt ? `${c.name} · ${t('clients_archived_mark')}` : c.name }))],
         })
     }
     if (!seesClients && picked.clientId) filters.push({ key: 'clientId', label: t('location_client'), value: picked.clientId, options: [], hidden: true })

@@ -16,7 +16,7 @@ import type { SectionItem } from './types'
  * many records each holds: added with records.contribute, renamed with
  * records.edit, and deleted, with every record in them, with records.delete.
  */
-export default function SectionsCard({ clientId, sections, onChanged }: { clientId: string; sections: SectionItem[]; onChanged: () => void }) {
+export default function SectionsCard({ clientId, sections, archived = false, onChanged }: { clientId: string; sections: SectionItem[]; /** Its client archived, it takes no new section (CLIENTS_PLAN.md §4.3). */ archived?: boolean; onChanged: () => void }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { can } = useCan()
@@ -27,7 +27,7 @@ export default function SectionsCard({ clientId, sections, onChanged }: { client
     const [error, setError] = useState<string | undefined>()
     const [deleting, setDeleting] = useState<SectionItem | null>(null)
 
-    const canAdd = can('records.contribute')
+    const canAdd = can('records.contribute') && !archived
     const canRename = can('records.edit')
     const canDelete = can('records.delete')
 

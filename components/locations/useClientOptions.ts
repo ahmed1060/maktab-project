@@ -12,13 +12,17 @@ import type { ClientOption } from './types'
  * Super Admin picks another: a location could be added to the last one's
  * client.
  */
-export function useClientOptions(on: boolean) {
+export function useClientOptions(on: boolean, withArchived = false) {
     const { selectedCompanyId } = useCompany()
-    const url = selectedCompanyId ? `/api/clients?companyId=${encodeURIComponent(selectedCompanyId)}` : '/api/clients'
+    // A filter keeps archived clients; a form adds only to those in use (CLIENTS_PLAN.md §4.3).
+    const params = new URLSearchParams()
+    if (selectedCompanyId) params.set('companyId', selectedCompanyId)
+    if (withArchived) params.set('archived', 'all')
+    const url = `/api/clients${params.size ? `?${params}` : ''}`
     const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(on ? scopedKey(url, selectedCompanyId) : null, scopedFetcher)
     const failed = loadFailed(scoped, error, on ? url : null)
-    const rows = failed ? undefined : forScope<{ data: { id: string; name: string; company?: { name: string } }[] }>(scoped, selectedCompanyId)
-    const clients: ClientOption[] = (rows?.data ?? []).map(c => ({ id: c.id, name: c.name, company: c.company?.name }))
+    const rows = failed ? undefined : forScope<{ data: { id: string; name: string; company?: { name: string }; archivedAt?: string | null }[] }>(scoped, selectedCompanyId)
+    const clients: ClientOption[] = (rows?.data ?? []).map(c => ({ id: c.id, name: c.name, company: c.company?.name, archived: !!c.archivedAt }))
     return {
         clients,
         loading: on && isLoading && !rows,

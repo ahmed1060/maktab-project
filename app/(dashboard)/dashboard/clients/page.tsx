@@ -5,7 +5,7 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import {
-    BuildingsIcon, CheckSquareIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon, PhoneIcon, PlusIcon, StorefrontIcon, TrashIcon, UserIcon, WarningCircleIcon,
+    ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CheckSquareIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon, PhoneIcon, PlusIcon, StorefrontIcon, TrashIcon, UserIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -35,6 +35,9 @@ interface Client {
     locations: { id: string; name: string; latitude: number | null; longitude: number | null; radiusMeters: number | null }[]
     company?: { name: string }
     createdBy: { firstName: string, lastName: string } | null
+    archivedAt?: string | null
+    /** It has tasks or records, so deleting it archives it instead (CLIENTS_PLAN.md §4.3). */
+    inUse?: boolean
 }
 
 type ClientFormState = {
@@ -89,11 +92,16 @@ export default function ClientsPage() {
     const [adding, setAdding] = useState(false)
     const [editing, setEditing] = useState<Client | null>(null)
     const [toDelete, setToDelete] = useState<Client | null>(null)
+    // The archived ones, instead of those in use (CLIENTS_PLAN.md §4.3).
+    const [archived, setArchived] = useState(false)
 
     // A Super Admin who hasn't picked a company sees every company's clients,
     // each with its company named: names are only unique within a company.
     const everyCompany = superAdmin && !selectedCompanyId
-    const listUrl = superAdmin && selectedCompanyId ? `/api/clients?companyId=${encodeURIComponent(selectedCompanyId)}` : '/api/clients'
+    const listParams = new URLSearchParams()
+    if (superAdmin && selectedCompanyId) listParams.set('companyId', selectedCompanyId)
+    if (archived) listParams.set('archived', '1')
+    const listUrl = `/api/clients${listParams.size ? `?${listParams}` : ''}`
     const { data: result, error, isLoading, isValidating, mutate } = useSWR<{ data: Client[] }>(sees ? listUrl : null, fetcher)
     const failed = !result && !!error
     const all = result?.data ?? []
@@ -111,17 +119,35 @@ export default function ClientsPage() {
     const confirmDelete = async () => {
         if (!toDelete) return
         try {
-            const res = await fetch(`/api/clients?id=${encodeURIComponent(toDelete.id)}`, { method: 'DELETE' })
+            // Archived if that's what was confirmed, though its last task or record went meanwhile.
+            const res = await fetch(`/api/clients?id=${encodeURIComponent(toDelete.id)}${toDelete.inUse ? '&archive=1' : ''}`, { method: 'DELETE' })
+            const body = await res.json().catch(() => ({}))
             if (!res.ok) {
-                const body = await res.json().catch(() => ({}))
                 showToast(body.error || t('error_generic'), 'error')
                 return
             }
+            // Archived, as it has tasks or records, though it was asked to be deleted: said so.
+            showToast(t(!body?.data?.archived ? 'clients_deleted_done' : toDelete.inUse ? 'clients_archived_asked' : 'clients_archived_done'), 'success')
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
             setToDelete(null)
+        }
+    }
+
+    const restore = async (c: Client) => {
+        try {
+            const res = await fetch('/api/clients', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, restore: true }) })
+            const body = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                showToast(body.error || t('error_generic'), 'error')
+                return
+            }
+            showToast(t('clients_restored_done'), 'success')
+            void mutate()
+        } catch {
+            showToast(t('error_generic'), 'error')
         }
     }
 
@@ -135,10 +161,15 @@ export default function ClientsPage() {
     const menu = (c: Client): MenuItem[] => [
         // Its tasks, on the Tasks page filtered to it (CLIENTS_PLAN.md §3.6).
         { key: 'tasks', label: t('clients_view_tasks'), icon: CheckSquareIcon, href: `/dashboard/tasks?clientId=${encodeURIComponent(c.id)}` },
-        ...(canManage ? [
+        ...(!canManage ? [] : c.archivedAt ? [
+            { key: 'restore', label: t('clients_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void restore(c) } },
+        ] : [
             { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) },
-            { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(c) },
-        ] : []),
+            // One with tasks or records is archived instead, kept with them (§4.3).
+            c.inUse
+                ? { key: 'archive', label: t('clients_archive'), icon: ArchiveIcon, onSelect: () => setToDelete(c) }
+                : { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(c) },
+        ]),
     ]
     const actions = (c: Client) => (
         <span className="ui-row-actions">
@@ -160,7 +191,9 @@ export default function ClientsPage() {
         ? <EmptyState icon={WarningCircleIcon} title={t('clients_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
         : search
             ? <EmptyState icon={StorefrontIcon} title={t('clients_none_found')} action={<Button variant="quiet" onClick={() => setQuery('')}>{t('ui_reset_filters')}</Button>} />
-            : <EmptyState icon={StorefrontIcon} title={t('clients_none')} action={canManage ? <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button> : undefined} />
+            : archived
+                ? <EmptyState icon={ArchiveIcon} title={t('clients_none_archived')} action={<Button variant="quiet" onClick={() => setArchived(false)}>{t('ui_reset_filters')}</Button>} />
+                : <EmptyState icon={StorefrontIcon} title={t('clients_none')} action={canManage ? <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button> : undefined} />
 
     // Once the session is known: before it loads nobody holds anything. Not
     // "didn't load", which Try again would never fix.
@@ -176,8 +209,14 @@ export default function ClientsPage() {
 
             <FilterBar
                 search={<Field label={t('clients_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('clients_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
-                onReset={query ? () => setQuery('') : undefined}
-            />
+                activeCount={archived ? 1 : 0}
+                onReset={query || archived ? () => { setQuery(''); setArchived(false) } : undefined}
+            >
+                <Field label={t('clients_status')} hideLabel>{p => (
+                    <Select {...p} icon={CircleDashedIcon} value={archived ? 'archived' : ''} onChange={e => { setArchived(e.target.value === 'archived'); setPage(1) }}
+                        options={[{ value: '', label: t('clients_in_use') }, { value: 'archived', label: t('clients_archived_status') }]} />
+                )}</Field>
+            </FilterBar>
 
             {/* Loading, too, until the session says who's looking: before it, nobody
                 holds anything and nothing is asked for, which isn't "none". */}
@@ -234,13 +273,13 @@ export default function ClientsPage() {
             )}
             <ConfirmModal
                 isOpen={!!toDelete}
-                title={say('clients_delete', 'حذف {name}', 'Delete {name}')}
-                message={`${t('delete_client_warning')} ${toDelete?.name ?? ''}?`}
-                confirmText={t('delete')}
+                title={toDelete?.inUse ? t('clients_archive') : say('clients_delete', 'حذف {name}', 'Delete {name}')}
+                message={toDelete?.inUse ? t('clients_archive_question').replace('{name}', toDelete.name) : `${t('delete_client_warning')} ${toDelete?.name ?? ''}?`}
+                confirmText={toDelete?.inUse ? t('clients_archive') : t('delete')}
                 cancelText={t('cancel')}
                 onConfirm={confirmDelete}
                 onCancel={() => setToDelete(null)}
-                variant="danger"
+                variant={toDelete?.inUse ? 'warning' : 'danger'}
             />
         </Page>
     )

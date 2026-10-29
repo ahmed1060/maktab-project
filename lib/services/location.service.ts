@@ -141,6 +141,8 @@ export class LocationService {
                 companyId = client.companyId
                 allow(session, "locations.add", companyId)
                 await holdClient(tx, input.clientId)
+                // An archived client takes nothing new (CLIENTS_PLAN.md §4.3).
+                if ((await tx.client.findUnique({ where: { id: input.clientId }, select: { archivedAt: true } }))?.archivedAt) throw new Error("CLIENT_ARCHIVED")
                 isHq = !(await tx.location.findFirst({ where: { clientId: input.clientId, isHq: true }, select: { id: true } }))
             } else {
                 const company = isSuperAdmin(session) ? input.companyId : session.user.companyId

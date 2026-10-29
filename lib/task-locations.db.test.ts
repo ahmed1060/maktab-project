@@ -246,4 +246,96 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
         ])
         await expect(LocationService.forFilters(employee, {})).rejects.toThrow()
     })
+
+    describe("an archived client (CLIENTS_PLAN.md §4.3)", () => {
+        let Clients: typeof import("@/lib/services/client.service").ClientService
+
+        it("is what deleting one with tasks does; one with none is deleted", async () => {
+            Clients = (await import("@/lib/services/client.service")).ClientService
+            const theirs = await Tasks.create(task({ title: "Beta's job", clientId: "k2", locationId: "port" }) as any, admin)
+            expect(await Clients.delete("k2", admin)).toMatchObject({ archived: true })
+            expect((await db.query(`SELECT "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = 'k2'`)).rows[0].archived).toBe(true)
+            expect((await row(theirs.id)).clientId).toBe("k2")
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k7', 'c1', 'Unused', 'Rami', '0107', 'Nowhere', now())`)
+            expect(await Clients.delete("k7", admin)).toMatchObject({ archived: false })
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Client" WHERE id = 'k7'`)).rows[0].n).toBe(0)
+        })
+
+        it("is what's done when archiving was asked for, though nothing uses it any more", async () => {
+            // The list offered Archive while it had a task; the task went before Archive was confirmed.
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k8', 'c1', 'Once used', 'Hala', '0108', 'Nowhere', now())`)
+            expect(await Clients.delete("k8", admin, { archive: true })).toMatchObject({ archived: true })
+            expect((await db.query(`SELECT "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = 'k8'`)).rows[0]).toEqual({ archived: true })
+        })
+
+        it("takes no new task, nor an existing one moved to it, nor one uploaded for it", async () => {
+            await expect(Tasks.create(task({ clientId: "k2", locationId: "port" }) as any, admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            const other = await Tasks.create(task({ locationId: "port" }) as any, admin)
+            await expect(Tasks.updateDetails(other.id, { id: other.id, clientId: "k2" } as any, admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            await expect(Tasks.bulkCreate([task({ title: "For an archived one", clientId: "k2", locationId: "port" })], admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED: For an archived one" })
+        })
+
+        it("takes no new location, record or section on its page, until it's restored", async () => {
+            const { RecordService } = await import("@/lib/services/record.service")
+            const { LocationService } = await import("@/lib/services/location.service")
+            const recordAdmin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1" }) } as any
+            await expect(LocationService.create(recordAdmin, { clientId: "k2", name: "Beta's new site", latitude: 30.1, longitude: 31.2 } as any)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            await expect(RecordService.createSection(recordAdmin, { clientId: "k2", title: "Licences" })).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            await expect(RecordService.create(recordAdmin, { content: "A note", files: [], expiryDate: null, reminderDays: null, clientId: "k2", sectionTitle: "Notes" })).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            expect((await db.query(`SELECT (SELECT count(*)::int FROM "Location" WHERE "clientId" = 'k2' AND name = 'Beta''s new site') AS places, (SELECT count(*)::int FROM "ClientSection" WHERE "clientId" = 'k2') AS sections`)).rows[0]).toEqual({ places: 0, sections: 0 })
+        })
+
+        it("is said to be archived to whoever may add records to it but not see clients", async () => {
+            const { RecordService } = await import("@/lib/services/record.service")
+            expect((await RecordService.sectionsOf(employee, "k2")).client).toMatchObject({ id: "k2", archived: true })
+            expect((await RecordService.sectionsOf(employee, "k1")).client).toMatchObject({ id: "k1", archived: false })
+        })
+
+        it("keeps its own tasks editable, and isn't offered to add a record to", async () => {
+            const { rows: [mine] } = await db.query(`SELECT id FROM "Task" WHERE title = 'Beta''s job'`)
+            await Tasks.updateDetails(mine.id, { id: mine.id, title: "Beta's old job" } as any, admin)
+            expect((await db.query(`SELECT title, "clientId" FROM "Task" WHERE id = $1`, [mine.id])).rows[0]).toEqual({ title: "Beta's old job", clientId: "k2" })
+            const { RecordService } = await import("@/lib/services/record.service")
+            const recordAdmin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1" }) } as any
+            expect((await RecordService.clients(recordAdmin, null, null)).clients.map(c => c.name)).not.toContain("Beta")
+        })
+
+        it("takes no task being written to it as it's archived", async () => {
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k6', 'c1', 'Racing', 'Nour', '0106', 'Nowhere', now())`)
+            const moved = await Tasks.create(task({ title: "To move", locationId: "port" }) as any, admin)
+            const writes = [
+                () => Tasks.create(task({ title: "Racing new", clientId: "k6", locationId: "port" }) as any, admin),
+                () => Tasks.updateDetails(moved.id, { id: moved.id, clientId: "k6" } as any, admin),
+                () => Tasks.bulkCreate([task({ title: "Racing upload", clientId: "k6", locationId: "port" })], admin),
+            ]
+            for (const write of writes) {
+                await db.query(`UPDATE "Client" SET "archivedAt" = NULL WHERE id = 'k6'`)
+                // Archiving holds the client, as ClientService.delete does, and marks it, not yet committed.
+                const archiver = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+                await archiver.connect()
+                try {
+                    await archiver.query("BEGIN")
+                    await archiver.query(`SELECT id FROM "Client" WHERE id = 'k6' FOR UPDATE`)
+                    await archiver.query(`UPDATE "Client" SET "archivedAt" = now() WHERE id = 'k6'`)
+                    const writing = write().then(() => "written", e => e.message)
+                    // The write waits on the archive's hold before it commits.
+                    for (let i = 0; i < 200; i++) {
+                        const { rows } = await db.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`)
+                        if (rows[0].n > 0) break
+                        await new Promise(r => setTimeout(r, 50))
+                    }
+                    await archiver.query("COMMIT")
+                    expect(await writing).toMatch(/^CLIENT_ARCHIVED/)
+                } finally {
+                    await archiver.end()
+                }
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE "clientId" = 'k6'`)).rows[0].n).toBe(0)
+        })
+
+        it("is in use again once restored", async () => {
+            await Clients.restore("k2", admin)
+            expect((await row((await Tasks.create(task({ clientId: "k2", locationId: "port" }) as any, admin)).id)).clientId).toBe("k2")
+        })
+    })
 })

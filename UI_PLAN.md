@@ -965,3 +965,22 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** `CLIENTS_PLAN.md`'s step 3 was merged in #100, and 4a
   opens for review in #101, with the Costs page's Mark all as paid asking
   first.
+- **2026-10-22:** The Clients list gets In use and Archived, and its row
+  menu Archive or Restore (`CLIENTS_PLAN.md` step 4, PR 4b). An archived
+  client's page has an "Archived" badge beside its name and Restore in
+  its header. Costs' Mark all as paid asks first, in a confirmation
+  window (PR 4a).
+- **2026-10-29:** In 4b, Archive on the Clients list archives what it
+  says, and its toast says "Archived"; a Delete the server turns into an
+  archive still says why.
+- **2026-10-29:** In 4b, an archived client's page has no Add record, Add
+  section or Add location, in its header, its sections or their empty
+  states: only Restore, for whoever manages clients.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4a was merged in #101, and 4b opens
+  for review in #102, with the Clients list's In use and Archived.
+- **2026-10-29:** In 4b (#102), an archived client's page has its
+  "Archived" badge and no Add record or Add section for someone who may
+  add records but not see clients, too.
+- **2026-10-29:** In 4b (#102), Restore on a client's page takes its
+  "Archived" badge off and brings back Add record, Add section and Add
+  location at once.

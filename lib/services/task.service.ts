@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { noticeRow } from "@/lib/notice-row"
 import { roleKindParam } from "@/lib/notice"
 import { can, canCompanyWide } from "@/lib/permissions/can"
@@ -41,6 +42,17 @@ function nameOf(text: string | null): string | null {
         if (parsed && typeof parsed.name === "string") return parsed.name
     } catch { /* plain text */ }
     return text
+}
+
+/**
+ * A task's client, held until the task is written, as archiving holds it
+ * (CLIENTS_PLAN.md §4.3): one archived meanwhile is seen here, and takes no
+ * new work.
+ */
+async function holdClientInUse(tx: Prisma.TransactionClient, clientId: string) {
+    const [held] = await tx.$queryRaw<{ archived: boolean }[]>`SELECT "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = ${clientId} FOR SHARE`
+    if (!held) throw new Error("CLIENT_NOT_FOUND")
+    if (held.archived) throw new Error("CLIENT_ARCHIVED")
 }
 
 /**
@@ -102,14 +114,17 @@ export class TaskService {
         // one, each the task's company's.
         let resolvedClientId: string | null = null
         if (clientId) {
-            const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyId: true } })
+            const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyId: true, archivedAt: true } })
             if (!client) throw new Error("CLIENT_NOT_FOUND")
             if (client.companyId !== targetCompanyId) throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
+            // An archived client takes no new work (CLIENTS_PLAN.md §4.3).
+            if (client.archivedAt) throw new Error("CLIENT_ARCHIVED")
             resolvedClientId = client.id
         }
 
         // 3. Database Transaction
         return await prisma.$transaction(async (tx) => {
+            if (resolvedClientId) await holdClientInUse(tx, resolvedClientId)
             const place = await LocationService.forTask(tx, locationId, { companyId: targetCompanyId, clientId: resolvedClientId })
             const task = await tx.task.create({
                 data: {
@@ -185,9 +200,10 @@ export class TaskService {
         const clientChanges = clientId !== undefined && (clientId || null) !== existingTask.clientId
         const newClientId = clientChanges ? clientId || null : existingTask.clientId
         if (clientChanges) {
-            const client = newClientId ? await prisma.client.findUnique({ where: { id: newClientId }, select: { companyId: true, name: true } }) : null
+            const client = newClientId ? await prisma.client.findUnique({ where: { id: newClientId }, select: { companyId: true, name: true, archivedAt: true } }) : null
             if (newClientId && !client) throw new Error("CLIENT_NOT_FOUND")
             if (client && client.companyId !== existingTask.companyId) throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
+            if (client?.archivedAt) throw new Error("CLIENT_ARCHIVED")
             changes.client = { from: existingTask.client?.name ?? null, to: client?.name ?? null }
         }
         let place: Awaited<ReturnType<typeof LocationService.forTask>> | null = null
@@ -270,6 +286,7 @@ export class TaskService {
         }
 
         return await prisma.$transaction(async (tx) => {
+            if (clientChanges && newClientId) await holdClientInUse(tx, newClientId)
             const task = await tx.task.update({
                 where: { id },
                 data: updateData
@@ -1111,11 +1128,14 @@ export class TaskService {
             // safety net (same role as the deadline/attachment checks below),
             // not the primary check.
             const clientIds = Array.from(new Set(tasks.map(t => t.clientId).filter(Boolean)))
-            const clientMap = new Map<string, { id: string, companyId: string }>()
+            const clientMap = new Map<string, { id: string, companyId: string, archivedAt: Date | null }>()
             if (clientIds.length > 0) {
+                // Held until the tasks are written, as archiving holds them, so
+                // one archived meanwhile is read as it is (CLIENTS_PLAN.md §4.3).
+                await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ANY(${clientIds}) ORDER BY id FOR SHARE`
                 const clients = await tx.client.findMany({
                     where: { id: { in: clientIds } },
-                    select: { id: true, companyId: true }
+                    select: { id: true, companyId: true, archivedAt: true }
                 })
                 clients.forEach(v => clientMap.set(v.id, v))
             }
@@ -1153,6 +1173,7 @@ export class TaskService {
                     if (userRole === 'SUPER_ADMIN' && taskCompanyId && client.companyId !== taskCompanyId) {
                         throw new Error(`CROSS_COMPANY_CLIENT: ${task.title}`)
                     }
+                    if (client.archivedAt) throw new Error(`CLIENT_ARCHIVED: ${task.title}`)
                     resolvedClientId = client.id
                 }
                 const place = await LocationService.forTask(tx, String(locationId), { companyId: taskCompanyId ?? null, clientId: resolvedClientId })

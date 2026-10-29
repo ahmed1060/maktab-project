@@ -25,6 +25,8 @@ export const updateClientSchema = z.object({
     ownerName: z.string().min(1, "Owner name is required").max(100).optional(),
     mobileNumber: mobileNumberSchema.optional(),
     hq: placeSchema.optional(),
+    /** Back from the archive (CLIENTS_PLAN.md §4.3); nothing else changes with it. */
+    restore: z.literal(true).optional(),
 })
 
 export type CreateClientInput = z.infer<typeof createClientSchema>

@@ -4,8 +4,9 @@ import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { MapPinPlusIcon, PlusIcon, StorefrontIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { ArrowCounterClockwiseIcon, MapPinPlusIcon, PlusIcon, StorefrontIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { useToast } from '@/context/ToastContext'
 import AccessDenied from '@/components/AccessDenied'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { Button, Card, Details, EmptyState, Page, PageHeader, Section, SectionLink, StatusBadge } from '@/components/ui'
@@ -27,6 +28,8 @@ type Client = {
     locationLink: string | null
     /** Its HQ, if it has one yet. */
     locations: { id: string; name: string; latitude: number | null; longitude: number | null }[]
+    /** Archived, as it had tasks or records when it was deleted (CLIENTS_PLAN.md §4.3). */
+    archivedAt?: string | null
 }
 
 /**
@@ -49,10 +52,12 @@ export default function ClientPage() {
     const seesLocations = can('locations.view')
     const [adding, setAdding] = useState(false)
     const [addingLocation, setAddingLocation] = useState(false)
+    const [restoring, setRestoring] = useState(false)
+    const { showToast } = useToast()
     const { mutate } = useSWRConfig()
 
     const { data: clientBody, error: clientError, isLoading: clientLoading, mutate: reloadClient } = useSWR<{ data: Client }>(seesClient ? `/api/clients?id=${encodeURIComponent(id)}` : null, fetcher)
-    const { data: sectionsBody, error: sectionsError, isLoading: sectionsLoading, mutate: reloadSections } = useSWR<{ data: { client: { id: string; name: string }; sections: SectionItem[] } }>(
+    const { data: sectionsBody, error: sectionsError, isLoading: sectionsLoading, mutate: reloadSections } = useSWR<{ data: { client: { id: string; name: string; archived?: boolean }; sections: SectionItem[] } }>(
         seesRecords ? `/api/records/sections?clientId=${encodeURIComponent(id)}` : null, fetcher,
     )
 
@@ -76,6 +81,24 @@ export default function ClientPage() {
         if (hq.latitude === null || hq.longitude === null) return <><bdi>{hq.name}</bdi> <StatusBadge tone="problem">{t('locations_needs_pin')}</StatusBadge></>
         return <a href={googleMapsLink(hq.latitude, hq.longitude)} target="_blank" rel="noopener noreferrer"><bdi>{hq.name}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
     }
+    // Back in use, from its page (CLIENTS_PLAN.md §4.3).
+    const restore = async () => {
+        setRestoring(true)
+        try {
+            const res = await fetch('/api/clients', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restore: true }) })
+            const body = await res.json().catch(() => ({}))
+            if (!res.ok) showToast(body.error || t('error_generic'), 'error')
+            else { showToast(t('clients_restored_done'), 'success'); void reloadClient() }
+        } catch {
+            showToast(t('error_generic'), 'error')
+        } finally {
+            setRestoring(false)
+        }
+    }
+    // Archived as it had tasks or records when it was deleted: kept with them, and given nothing new.
+    // Its sections say so too, for whoever may add records but not see clients. Its details,
+    // once loaded, say it first: Restore reloads them, not its sections.
+    const archived = client ? !!client.archivedAt : !!sectionsBody?.data.client.archived
     const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') } : { href: '/dashboard/records', label: modules.label('records') }
 
     if (!name) {
@@ -95,9 +118,12 @@ export default function ClientPage() {
     return (
         <Page>
             <PageHeader
-                title={<bdi>{name}</bdi>}
+                title={archived ? <span className="ui-title-with-badge"><bdi>{name}</bdi><StatusBadge tone="neutral">{t('clients_archived_badge')}</StatusBadge></span> : <bdi>{name}</bdi>}
                 back={back}
-                action={seesRecords && !sectionsFailed && can('records.contribute') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('records_add')}</Button>}
+                // Archived, it takes nothing new (CLIENTS_PLAN.md §4.3): Restore, for whoever may.
+                action={archived
+                    ? can('clients.manage') && <Button variant="primary" icon={ArrowCounterClockwiseIcon} busy={restoring} onClick={() => { void restore() }}>{t('clients_restore')}</Button>
+                    : seesRecords && !sectionsFailed && can('records.contribute') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('records_add')}</Button>}
             />
 
             {client && (
@@ -123,13 +149,13 @@ export default function ClientPage() {
             {seesLocations && (
                 <Section
                     title={modules.label('locations')}
-                    action={can('locations.add') && <Button size="sm" icon={MapPinPlusIcon} onClick={() => setAddingLocation(true)}>{t('locations_add')}</Button>}
+                    action={!archived && can('locations.add') && <Button size="sm" icon={MapPinPlusIcon} onClick={() => setAddingLocation(true)}>{t('locations_add')}</Button>}
                 >
                     {client && client.locations.length === 0 && <p className="ui-hint">{t('locations_no_hq')}</p>}
                     <LocationsList
                         clientId={id}
-                        adding={addingLocation && can('locations.add')}
-                        onAddingChange={setAddingLocation}
+                        adding={!archived && addingLocation && can('locations.add')}
+                        onAddingChange={archived ? undefined : setAddingLocation}
                         // Its HQ, in its details, may have moved.
                         onChanged={() => { void reloadClient() }}
                     />
@@ -149,14 +175,14 @@ export default function ClientPage() {
                         <RecordsList
                             clientId={id}
                             sections={sections}
-                            adding={adding && can('records.contribute')}
-                            onAddingChange={setAdding}
+                            adding={!archived && adding && can('records.contribute')}
+                            onAddingChange={archived ? undefined : setAdding}
                             onChanged={() => { void reloadSections() }}
                             openRecordId={openRecordId}
                         />
                     </Section>
                     {/* A renamed or deleted section changes the records listed above too. */}
-                    <SectionsCard clientId={id} sections={sections} onChanged={() => {
+                    <SectionsCard clientId={id} sections={sections} archived={archived} onChanged={() => {
                         void reloadSections()
                         void mutate(key => Array.isArray(key) && typeof key[0] === 'string' && key[0].startsWith('/api/records?'))
                     }} />

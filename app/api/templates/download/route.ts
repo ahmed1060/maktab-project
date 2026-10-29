@@ -54,8 +54,9 @@ export const GET = withStandardHandler(async (req, session) => {
             select: { firstName: true, lastName: true, username: true, role: true },
             orderBy: { firstName: 'asc' }
         }),
+        // In use only (CLIENTS_PLAN.md §4.3).
         prisma.client.findMany({
-            where: { companyId: targetCompanyId! },
+            where: { companyId: targetCompanyId!, archivedAt: null },
             select: { name: true, locationName: true },
             orderBy: { name: 'asc' }
         }),
@@ -65,7 +66,7 @@ export const GET = withStandardHandler(async (req, session) => {
         // creating tasks alone doesn't let a custom role list them.
         can(session.user as any, "locations.view", { companyId: targetCompanyId })
             ? prisma.location.findMany({
-                where: { companyId: targetCompanyId!, archivedAt: null, latitude: { not: null } },
+                where: { companyId: targetCompanyId!, archivedAt: null, latitude: { not: null }, OR: [{ clientId: null }, { client: { archivedAt: null } }] },
                 select: { id: true, name: true, client: { select: { name: true } } },
                 orderBy: [{ client: { name: 'asc' } }, { isHq: 'desc' }, { name: 'asc' }, { id: 'asc' }],
             })
