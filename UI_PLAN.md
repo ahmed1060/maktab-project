@@ -900,3 +900,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   as it is, with no place search or map, to someone who may not manage
   locations, and says who can. The Locations page shows a client's name
   without a link to someone who can't open the client's page.
+- **2026-10-29:** A building block change, seen in the screenshots of that
+  fix: a field that can't be changed is on `--page`, with a `--rule` edge
+  and `--ink-2` text, and its hint says why (`DESIGN.md` §5.3). It looked
+  like one that could be typed in.
