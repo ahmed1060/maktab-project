@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest"
+import { readFileSync } from "node:fs"
+import { stripComments } from "@/lib/strip-comments"
 import { cents, costEntry, costLines, readDescription } from "@/lib/task-costs"
 
 /**
@@ -59,5 +61,17 @@ describe("a task's costs", () => {
         expect(cents(12.345)).toBe(12.35)
         expect(cents(0.004)).toBe(0)
         expect(cents(0.1 + 0.2)).toBe(0.3)
+    })
+})
+
+describe("removing a cost the server refuses for good (CLIENTS_PLAN.md §4.2)", () => {
+    // A cost whose person is paid stays, whatever's pressed again: the
+    // window closes, and the page shows the task as it is now.
+    const page = stripComments(readFileSync("app/(dashboard)/dashboard/tasks/[id]/client.tsx", "utf8"))
+    const remove = page.slice(page.indexOf("const confirmDeleteItem"), page.indexOf("const confirmDeleteLocation"))
+    const refused = remove.slice(remove.indexOf("if (!res.ok)"), remove.indexOf("return", remove.indexOf("if (!res.ok)")))
+
+    it("closes the window and shows the task again", () => {
+        expect(refused).toMatch(/res\.status === 409\)\s*\{\s*setItemToDelete\(null\);?\s*router\.refresh\(\)/)
     })
 })

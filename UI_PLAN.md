@@ -988,3 +988,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   (`CLIENTS_PLAN.md` step 4, PR 4c). The description field stops at 200
   characters, and a long one, a link among them, wraps inside its card.
   Removing a cost the server refuses, such as one already paid, says why.
+- **2026-10-29:** In 4c, a refused cost removal closes its window and
+  refreshes the task, as a refused task delete does (4a).

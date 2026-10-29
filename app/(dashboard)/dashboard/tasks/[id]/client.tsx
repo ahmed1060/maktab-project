@@ -804,6 +804,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 // Why, when the server says: a cost already paid stays.
                 const body = await res.json().catch(() => null)
                 showToast(body?.error || t('error_generic'), 'error')
+                // Refused for good: pressing Delete again can't change it, so
+                // the window closes and the page shows the task as it is now.
+                if (res.status === 409) { setItemToDelete(null); router.refresh() }
                 return
             }
             showToast(t('item_deleted_success') || 'Deleted successfully', 'success')

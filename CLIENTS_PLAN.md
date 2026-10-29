@@ -1421,3 +1421,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **Proposed:** PR 4d, once 4c is live, finishes the move (§4.5).
 - **2026-10-22:** Decided by the product owner: step 4 ships as three PRs,
   4a, 4b and 4c, and a small fourth, 4d, once 4c is live (§4.5, §8).
+- **2026-10-29:** In 4c, removing a cost the server refuses for good, one
+  whose person is paid, closes its window and shows the task as it is
+  now, rather than offering Delete again (found by the audit).
