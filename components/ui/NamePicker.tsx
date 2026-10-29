@@ -40,6 +40,17 @@ export function shownSuggestions(answer: Answer, under: { for: string; index: nu
     return { names, active: under.for === typed ? under.index : -1 }
 }
 
+/**
+ * Whether a name just added goes in the field: only while the field still
+ * holds what was added, unpicked, with the same list. Typed over while it
+ * was added, or a cost added and the next one begun, the field keeps
+ * what's in it now; the name is on the list all the same (Codex review of
+ * PR 105).
+ */
+export function addLands(asked: { text: string; by: unknown }, now: { value: PickedName; by: unknown }) {
+    return now.by === asked.by && !now.value.entryId && SAME(now.value.text, asked.text)
+}
+
 type KeyPress = { key: string; preventDefault: () => void; stopPropagation: () => void }
 type KeyAction = { close: true } | { move: number } | { choose: number } | null
 
@@ -93,6 +104,9 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
     const [problem, setProblem] = useState<string | null>(null)
     const asked = useRef(0)
     const typed = value.text.trim()
+    // What the field holds now, for an add that answers after it changed.
+    const latest = useRef({ value, onAdd })
+    useEffect(() => { latest.current = { value, onAdd } })
 
     // The list, asked a moment after the last key; an answer to an older
     // question than the last is dropped.
@@ -123,12 +137,14 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
     }
     const add = async () => {
         if (!onAdd || adding) return
+        const lands = () => addLands({ text: typed, by: onAdd }, { value: latest.current.value, by: latest.current.onAdd })
         setAdding(true)
         setProblem(null)
         try {
-            pick(await onAdd(typed))
+            const name = await onAdd(typed)
+            if (lands()) pick(name)
         } catch (e) {
-            setProblem(e instanceof Error && e.message ? e.message : failedLabel)
+            if (lands()) setProblem(e instanceof Error && e.message ? e.message : failedLabel)
         } finally {
             setAdding(false)
         }

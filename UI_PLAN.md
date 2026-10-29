@@ -1012,3 +1012,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 5a (#105), typing on while a picker's suggestions are
   open keeps only those that still match, and Enter keeps what's typed
   rather than picking the one highlighted for the text before.
+- **2026-10-29:** In 5a (#105), "+ Add" answering after the field changed
+  leaves the field as it is now; the name is on the list all the same.

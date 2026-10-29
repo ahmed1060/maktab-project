@@ -220,6 +220,22 @@ describe("a name typed or picked from a saved list", () => {
         expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("const { names, active } = shownSuggestions(answer, under, typed, suggest)")
     })
 
+    it("puts a name it added in the field only while the field still holds what was added", () => {
+        const add = async () => ({ id: "9", name: "Bolts and nuts" })
+        const asked = { text: "Bolts and nuts", by: add }
+        const now = (text: string, by: unknown = add) => ui.addLands(asked, { value: { text, entryId: null }, by })
+        expect(now("bolts and nuts ")).toBe(true)
+        // Typed over while it was added.
+        expect(now("Bolts")).toBe(false)
+        // On the task's page, the cost added meanwhile, and the next one begun.
+        expect([now(""), now("Nails")]).toEqual([false, false])
+        // Another company's list by then.
+        expect(now("Bolts and nuts", async () => ({ id: "1", name: "x" }))).toBe(false)
+        const src = readFileSync("components/ui/NamePicker.tsx", "utf8")
+        expect(src).toContain("if (lands()) pick(name)")
+        expect(src).toContain("if (lands()) setProblem(")
+    })
+
     it("moves through its suggestions with the arrow keys, and Enter picks the one under them", () => {
         const press = (key: string, active: number, shown = true) =>
             ui.pickerKey({ key, preventDefault: () => {}, stopPropagation: () => {} }, { shown, active, count: 3 })

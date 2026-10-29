@@ -17,4 +17,4 @@ export { PageHeader, Page, Columns, Section, SectionLink, Rows, Row, Panel, Card
 export { FileChip, FileChips, FilePicker } from './Files'
 export { ExpiryDate, ExpiryBadge } from './Expiry'
 export { RowMenu, type MenuItem } from './Menu'
-export { NamePicker, pickerKey, shownSuggestions, type PickedName, type ListedName } from './NamePicker'
+export { NamePicker, pickerKey, shownSuggestions, addLands, type PickedName, type ListedName } from './NamePicker'

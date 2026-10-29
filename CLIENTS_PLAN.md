@@ -1504,3 +1504,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   typed. Typed on before the list answered, it went on offering the last
   answer, and Enter picked the name under the keys for what was typed
   before, in place of what was typed since (found by Codex).
+- **2026-10-29:** In 5a (#105), a name added with "+ Add" fills the field
+  only while it still holds what was added. Over a slow connection, the
+  answer replaced what had been typed since, and on a task's page, the
+  next cost's name with the last one's (found by Codex).
