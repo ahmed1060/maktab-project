@@ -970,3 +970,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   client's page has an "Archived" badge beside its name and Restore in
   its header. Costs' Mark all as paid asks first, in a confirmation
   window (PR 4a).
+- **2026-10-29:** In 4b, Archive on the Clients list archives what it
+  says, and its toast says "Archived"; a Delete the server turns into an
+  archive still says why.

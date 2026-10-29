@@ -150,6 +150,7 @@ export const en = {
         clients_restore: "Restore",
         clients_archive_question: "Archive {name}? It has tasks or records, so it's kept with them: it's left out of what's picked from, and stays in filters and history. It can be restored.",
         clients_archived_done: "Archived: it has tasks or records",
+        clients_archived_asked: "Archived",
         clients_deleted_done: "Deleted",
         clients_restored_done: "Restored",
         clients_archived_badge: "Archived",

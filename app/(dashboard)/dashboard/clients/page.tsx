@@ -119,14 +119,15 @@ export default function ClientsPage() {
     const confirmDelete = async () => {
         if (!toDelete) return
         try {
-            const res = await fetch(`/api/clients?id=${encodeURIComponent(toDelete.id)}`, { method: 'DELETE' })
+            // Archived if that's what was confirmed, though its last task or record went meanwhile.
+            const res = await fetch(`/api/clients?id=${encodeURIComponent(toDelete.id)}${toDelete.inUse ? '&archive=1' : ''}`, { method: 'DELETE' })
             const body = await res.json().catch(() => ({}))
             if (!res.ok) {
                 showToast(body.error || t('error_generic'), 'error')
                 return
             }
             // Archived, as it has tasks or records, though it was asked to be deleted: said so.
-            showToast(t(body?.data?.archived ? 'clients_archived_done' : 'clients_deleted_done'), 'success')
+            showToast(t(!body?.data?.archived ? 'clients_deleted_done' : toDelete.inUse ? 'clients_archived_asked' : 'clients_archived_done'), 'success')
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')

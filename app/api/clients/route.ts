@@ -126,7 +126,8 @@ export const DELETE = withStandardHandler(async (req, session) => {
 
     try {
         // One with tasks or records is archived instead (CLIENTS_PLAN.md §4.3), and says so.
-        const result = await ClientService.delete(id, session)
+        // ?archive=1 archives it whatever it holds now: what the person confirmed.
+        const result = await ClientService.delete(id, session, { archive: searchParams.get('archive') === '1' })
         return ApiResponse.success({ success: true, id, archived: result.archived })
     } catch (error: any) {
         if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.notFound("Client not found")

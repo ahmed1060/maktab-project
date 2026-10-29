@@ -1365,3 +1365,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     filters list it, marked archived.
   - **The Clients list** has In use and Archived. An archived client's
     page says so, with Restore for whoever manages clients.
+- **2026-10-29:** In 4b, a client confirmed for archiving is archived,
+  even if its last task or record went before it was confirmed, rather
+  than deleted for good (found before review).

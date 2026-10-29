@@ -146,6 +146,7 @@ export const ar = {
         clients_restore: "استعادة",
         clients_archive_question: "أرشفة {name}؟ لديه مهام أو سجلات، لذلك يُحتفظ به معها: لا يظهر عند الاختيار، ويبقى في الفلاتر والسجل. يمكن استعادته.",
         clients_archived_done: "تمت الأرشفة: لديه مهام أو سجلات",
+        clients_archived_asked: "تمت الأرشفة",
         clients_deleted_done: "تم الحذف",
         clients_restored_done: "تمت الاستعادة",
         clients_archived_badge: "مؤرشف",

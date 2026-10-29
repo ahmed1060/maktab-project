@@ -261,6 +261,13 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
             expect((await db.query(`SELECT count(*)::int AS n FROM "Client" WHERE id = 'k7'`)).rows[0].n).toBe(0)
         })
 
+        it("is what's done when archiving was asked for, though nothing uses it any more", async () => {
+            // The list offered Archive while it had a task; the task went before Archive was confirmed.
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('k8', 'c1', 'Once used', 'Hala', '0108', 'Nowhere', now())`)
+            expect(await Clients.delete("k8", admin, { archive: true })).toMatchObject({ archived: true })
+            expect((await db.query(`SELECT "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = 'k8'`)).rows[0]).toEqual({ archived: true })
+        })
+
         it("takes no new task, nor an existing one moved to it, nor one uploaded for it", async () => {
             await expect(Tasks.create(task({ clientId: "k2", locationId: "port" }) as any, admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
             const other = await Tasks.create(task({ locationId: "port" }) as any, admin)

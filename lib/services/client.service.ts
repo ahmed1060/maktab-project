@@ -85,7 +85,12 @@ export class ClientService {
         })
     }
 
-    static async delete(id: string, session: any) {
+    /**
+     * Deletes a client, or archives one with tasks or records (CLIENTS_PLAN.md
+     * §4.3). With `archive`, it's archived whatever it holds now: archiving is
+     * what was confirmed, and it can be undone where deleting can't.
+     */
+    static async delete(id: string, session: any, options: { archive?: boolean } = {}) {
         const userRole = session.user.role
         const userId = session.user.id
 
@@ -109,7 +114,7 @@ export class ClientService {
                 tx.clientRecord.count({ where: { section: { clientId: id } } }),
                 tx.task.count({ where: { clientId: id } }),
             ])
-            if (records > 0 || tasks > 0) {
+            if (records > 0 || tasks > 0 || options.archive) {
                 const archived = await tx.client.update({ where: { id }, data: { archivedAt: client.archivedAt ?? new Date() } })
                 await AuditLogService.log('ARCHIVE_VENDOR', 'VENDOR', id, {
                     tx,
