@@ -1042,3 +1042,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   saved cost on the task's page a Receipt chip that opens it in a new tab.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 5c was merged in #107, so step 5 is
   done, and 6a opens for review in #108.
+- **2026-10-29:** With `CLIENTS_PLAN.md`'s 6b, the Costs page has two
+  tabs, Employee costs and Charged to clients, for whoever both pays costs
+  and sees charges; on Employee costs, not yet on the building blocks, the
+  tabs sit on a panel. Charged to clients is built on them: a filter bar,
+  three totals, a table that's a card per charge on a phone, and a service
+  fee dialog where typing the fee or the total works out the other.
