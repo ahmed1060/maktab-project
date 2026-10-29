@@ -19,6 +19,9 @@ vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.gran
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: null }) }))
+// The location form's dialog, drawn here: no portal in a page rendered to a string.
+vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
+vi.mock("react-dom", async importOriginal => ({ ...(await importOriginal<typeof import("react-dom")>()), createPortal: (children: unknown) => children }))
 vi.mock("swr", () => ({
     default: (key: string | [string, string] | null) => {
         const idle = { data: undefined, error: undefined, isLoading: false, isValidating: false, mutate: async () => {} }
@@ -96,6 +99,20 @@ describe("adding a location from a task's form", () => {
     // Its dialog is portalled out of the task's form, but React still passes
     // a submit up the components to it: saving the location would save the
     // task too, with the location picked before. (No DOM here to submit in.)
+    it("opens over the task's edit window, one of the older pages' modals, and under the toasts", async () => {
+        const { default: LocationForm } = await import("@/components/locations/LocationForm")
+        vi.stubGlobal("document", { body: {} })
+        const fromTask = renderToStaticMarkup(h(LocationForm, { open: true, onClose: () => {}, onSaved: () => {}, forTask: { clientId: "k1", clientName: "Acme" } }))
+        expect(fromTask).toContain('class="ui-dialog-backdrop is-over-modal"')
+        const onPage = renderToStaticMarkup(h(LocationForm, { open: true, onClose: () => {}, onSaved: () => {} }))
+        vi.unstubAllGlobals()
+        expect(onPage).toContain('class="ui-dialog-backdrop"')
+        const layer = (file: string, pattern: RegExp) => Number(readFileSync(file, "utf8").match(pattern)?.[1])
+        const over = layer("components/ui/ui.css", /\.ui-dialog-backdrop\.is-over-modal\s*\{[^}]*z-index:\s*(\d+)/)
+        expect(over).toBeGreaterThan(layer("components/Modal.tsx", /zIndex:\s*(\d+)/))
+        expect(over).toBeLessThan(layer("context/ToastContext.tsx", /zIndex:\s*(\d+)/))
+    })
+
     it("keeps its save to itself: the task's form around it isn't submitted too", () => {
         const src = readFileSync("components/locations/LocationForm.tsx", "utf8")
         const save = src.slice(src.indexOf("const save = async"))

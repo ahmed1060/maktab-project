@@ -321,6 +321,11 @@
   padding: var(--space-4);
   background: var(--scrim);
 }
+/* Opened from an older page's modal (components/Modal, 9999): above it, and
+   under the toasts (10001). */
+.ui-dialog-backdrop.is-over-modal {
+  z-index: 10000;
+}
 .ui-dialog {
   display: flex;
   flex-direction: column;

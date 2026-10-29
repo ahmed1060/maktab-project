@@ -141,6 +141,8 @@ function Form({ onClose, clientId, location, forTask, onSaved }: {
     return (
         <Dialog
             open
+            // From a task's edit window too, one of the older pages' modals.
+            overModal={!!forTask}
             onClose={() => { if (!saving) onClose() }}
             title={t(editing ? 'locations_edit' : 'locations_add')}
             actions={<>

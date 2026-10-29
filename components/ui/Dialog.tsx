@@ -13,19 +13,23 @@ import { useHydrated } from '@/lib/useHydrated'
  *
  * A dialog that is a form puts its buttons in DialogActions inside the form,
  * so Enter and the submit button are the form's.
+ *
+ * One that can open from an older page's modal (components/Modal), which sits
+ * above the building blocks, says so, to sit above it in turn.
  */
-export function Dialog({ open, onClose, title, children, actions }: {
+export function Dialog({ open, onClose, title, children, actions, overModal = false }: {
     open: boolean
     onClose: () => void
     title: ReactNode
     children: ReactNode
     actions?: ReactNode
+    overModal?: boolean
 }) {
     const dialog = useDialog(open, onClose)
     const mounted = useHydrated()
     if (!open || !mounted) return null
     return createPortal(
-        <div className="ui-dialog-backdrop">
+        <div className={overModal ? 'ui-dialog-backdrop is-over-modal' : 'ui-dialog-backdrop'}>
             <div {...dialog.panelProps} className="ui-dialog">
                 <h2 id={dialog.titleId} className="ui-dialog-title">{title}</h2>
                 <div className="ui-dialog-body">{children}</div>

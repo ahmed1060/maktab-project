@@ -490,6 +490,8 @@ These are built once, in the building-blocks PR, and every page uses them
   - The buttons are at the bottom on the end side, the main one last. On
     phones they stack full width, the main one on top.
   - Escape closes it, and focus goes back to what opened it.
+  - One that opens from an older page's modal, as "+ New location" from a
+    task's edit window, sits above that modal, and under the toasts.
 - **Selection bar:** when items in a list are picked with their
   checkboxes, a panel above the list says how many are picked and holds
   what can be done to all of them, with a quiet "Clear selection" on the
