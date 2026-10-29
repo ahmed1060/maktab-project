@@ -936,3 +936,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   locations.
 - **2026-10-29:** In 2b (#99), the review screen's location selects offer
   every location in use, as the template's Locations sheet does.
+- **2026-10-29:** In 2b (#99), a location named as the Locations sheet's
+  heading is found on upload like any other.

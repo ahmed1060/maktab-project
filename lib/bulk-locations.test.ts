@@ -44,6 +44,14 @@ describe("a row's location", () => {
         expect(rowLocation("Port gate", null, SHEET, PLACES)).toEqual({ locationId: "port", problem: null })
     })
 
+    it("is found by the sheet's rows below its heading, so one named as a heading is found too", () => {
+        // A shared location called "Name", or "الاسم" in an Arabic template.
+        for (const heading of [["Name", "Client", "Id"], ["الاسم", "العميل", "المعرف"]]) {
+            const sheet = sheetLocations([heading, [heading[0], "Shared", "named"]])
+            expect(sheet.get(heading[0])).toEqual(["named"])
+        }
+    })
+
     it("is flagged, never guessed, when the sheet doesn't have its name exactly once", () => {
         expect(rowLocation("Nasr City", "acme", SHEET, PLACES)).toEqual({ locationId: null, problem: "not_in_list" })
         expect(rowLocation("Twice", null, SHEET, PLACES)).toEqual({ locationId: null, problem: "not_in_list" })

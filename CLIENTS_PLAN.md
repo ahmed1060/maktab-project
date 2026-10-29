@@ -1280,3 +1280,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   every location in use, as the template does, rather than the first
   2,000: past those, a row naming a location the template offered was
   refused (found by Codex).
+- **2026-10-29:** In 2b (#99), the upload reads the template's Locations
+  sheet below its heading: read as a location, the heading made a
+  location named "Name", or "الاسم", named twice, and refused (found by
+  Codex).

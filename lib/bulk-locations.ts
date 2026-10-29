@@ -12,10 +12,14 @@ export type BulkPlace = { id: string; name: string; clientId: string | null; isH
 
 export type BulkLocationProblem = "required" | "not_in_list" | "other_client" | "needs_pin"
 
-/** The template's Locations sheet: each name and the locations it names. */
+/**
+ * The template's Locations sheet: each name and the locations it names. Its
+ * first row is its heading, which names none: read as one, a location named
+ * as the heading is ("Name", or "الاسم") named twice, and refused.
+ */
 export function sheetLocations(rows: unknown[][]): Map<string, string[]> {
     const names = new Map<string, string[]>()
-    for (const [name, , id] of rows) {
+    for (const [name, , id] of rows.slice(1)) {
         if (typeof name !== "string" || typeof id !== "string" || !name.trim() || !id.trim()) continue
         const key = name.trim()
         names.set(key, [...(names.get(key) ?? []), id.trim()])
