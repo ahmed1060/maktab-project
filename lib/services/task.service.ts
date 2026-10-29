@@ -302,6 +302,13 @@ export class TaskService {
 
         return await prisma.$transaction(async (tx) => {
             if (clientChanges && newClientId) await holdClientInUse(tx, newClientId)
+            // Its charges go to its client, and move with it, but not once
+            // one is collected: that one was the first client's (CLIENTS_PLAN.md
+            // §6.5). Held, so none is collected meanwhile.
+            if (clientChanges) {
+                await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
+                if (await tx.taskCost.count({ where: { taskId: id, collectedAt: { not: null } } })) throw new Error("CLIENT_HAS_COLLECTED_CHARGES")
+            }
             const task = await tx.task.update({
                 where: { id },
                 data: updateData
@@ -832,7 +839,7 @@ export class TaskService {
             await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
             const task = await tx.task.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true, paymentStatus: true, memberPaymentStatus: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, clientId: true, title: true, paymentStatus: true, memberPaymentStatus: true }
             })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
@@ -854,6 +861,8 @@ export class TaskService {
             // their payments read as the task's page reads them.
             const paidParts = Object.values(asRecord(task.memberPaymentStatus))
             if (task.paymentStatus === 'PAID' || paidParts.includes('PAID')) throw new Error("TASK_HAS_PAID_COSTS")
+            // Its costs charged to its client, it stays, as what the client owes (CLIENTS_PLAN.md §6.5).
+            if (task.clientId && await tx.taskCost.count({ where: { taskId: id, notCharged: false } })) throw new Error("TASK_HAS_CHARGES")
 
             if (Array.isArray(task.attachments)) {
                 try {
@@ -1118,6 +1127,8 @@ export class TaskService {
                 // would leave them paid more than they're owed (§4.2).
                 const paid: Record<string, string> = (task.memberPaymentStatus as any) || {}
                 if (isCost && (task.paymentStatus === 'PAID' || (item.authorId && paid[item.authorId] === 'PAID'))) throw new Error("COST_ALREADY_PAID")
+                // Its charge collected from the client, it stays (CLIENTS_PLAN.md §6.5).
+                if (isCost && typeof item.costId === 'string' && (await tx.taskCost.findFirst({ where: { id: item.costId, taskId: id }, select: { collectedAt: true } }))?.collectedAt) throw new Error("COST_CHARGE_COLLECTED")
 
                 if (index >= 0) updateData.comments = comments.filter((_, i) => i !== index)
 

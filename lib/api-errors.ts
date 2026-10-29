@@ -18,6 +18,16 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     COST_LIMIT_EXCEEDED: { status: 400, message: "Costs added at once can total at most 10,000." },
     // A task's costs, each a row of its own (CLIENTS_PLAN.md §4.4, §4.5).
     COST_DESCRIPTION_TOO_LONG: { status: 400, message: "A cost's description can be at most 200 characters." },
+    // Client charges (CLIENTS_PLAN.md §6).
+    CHARGE_NOT_FOUND: { status: 404, message: "That charge isn't there any more. Refresh the page to see the list as it is now." },
+    CHARGE_COLLECTED: { status: 409, message: "This charge has been collected from the client, so it can't be changed. Mark it uncollected first." },
+    CHARGE_NOT_CHARGED: { status: 409, message: "This cost isn't charged to the client. Charge it to the client first to set its service fee." },
+    CHARGE_FEE_INVALID: { status: 400, message: "A service fee is an amount from 0 to 1,000,000." },
+    CHARGE_TOTAL_BELOW_PAID: { status: 400, message: "The total can't be less than what was paid." },
+    CHARGE_TICK_INVALID: { status: 400, message: "Say whether the cost is charged to the client." },
+    CLIENT_HAS_COLLECTED_CHARGES: { status: 409, message: "Some of this task's charges were collected from its client, so its client can't change. Mark them uncollected first." },
+    COST_CHARGE_COLLECTED: { status: 409, message: "This cost's charge was collected from the client, so it can't be removed." },
+    TASK_HAS_CHARGES: { status: 409, message: "This task's costs are charged to its client, so it can't be deleted. Mark them not charged to the client first." },
     COST_RECEIPT_INVALID: { status: 400, message: "A cost's receipt couldn't be saved. Remove the cost, and add it again with its photo." },
     COST_ALREADY_PAID: { status: 409, message: "This person's costs on this task are paid, so this one can't be removed." },
     // The saved lists of cost names and task titles (CLIENTS_PLAN.md §5).

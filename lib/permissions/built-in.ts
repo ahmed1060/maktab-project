@@ -121,6 +121,14 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // second PR, once this release's role editor is live.
         "lists.add": "COMPANY",
         "lists.manage": "COMPANY",
+        // What a task's client owes for its costs: an Admin sees it, sets the
+        // service fees, leaves a cost off the bill and marks charges
+        // collected (CLIENTS_PLAN.md §6.6). Given to the companies there
+        // already are by step 6's third PR, once this release's role editor
+        // is live.
+        "charges.view": "COMPANY",
+        "charges.manage": "COMPANY",
+        "charges.collect": "COMPANY",
 
         // Settings: the company's own settings, but only the tabs the Super
         // Admin chooses to show it, and none until they switch that on
@@ -188,6 +196,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "locations.add": "COMPANY",
         // Everyone adds names to the saved lists (CLIENTS_PLAN.md §5.7).
         "lists.add": "COMPANY",
+        // What their team's tasks' clients owe for their costs, to see
+        // (CLIENTS_PLAN.md §6.6).
+        "charges.view": "TEAM",
     },
     // Everyone reads and adds to the company's records, and adds names to
     // the saved lists (CLIENTS_PLAN.md §5.7).

@@ -128,6 +128,12 @@ export const PERMISSIONS = {
     "locations.add":            { code: 56, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "locations.manage":         { code: 57, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY },
+    // A task's costs charged to its client (CLIENTS_PLAN.md §6.6): seeing
+    // them; managing them, which is the service fee and leaving one off the
+    // client's bill; and marking them collected, which moves money.
+    "charges.view":             { code: 60, module: "COSTS", scopes: TEAM_OR_COMPANY },
+    "charges.manage":           { code: 61, module: "COSTS", scopes: COMPANY, implies: ["charges.view"] },
+    "charges.collect":          { code: 62, module: "COSTS", scopes: COMPANY, implies: ["charges.view"], highRisk: MOVES_MONEY },
 
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },

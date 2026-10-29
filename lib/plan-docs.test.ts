@@ -23,7 +23,7 @@ describe("the roles plan", () => {
     it("lists every high-risk permission under step-up confirmation", () => {
         const stepUp = section(ROLES, "### 6.15", "- **Marked in the catalogue")
         const highRisk = Object.entries(PERMISSIONS).filter(([, d]) => (d as { highRisk?: string }).highRisk).map(([p]) => p)
-        expect(highRisk.length).toBe(11)
+        expect(highRisk.length).toBe(12)
         for (const p of highRisk) expect(stepUp, p).toContain(`\`${p}\``)
     })
 

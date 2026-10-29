@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import CostCard from '@/components/CostCard'
 import EmployeeFilter from '@/components/EmployeeFilter'
@@ -16,6 +16,8 @@ import { useNameFilter } from '@/components/lists/useNameFilter'
 import ConfirmModal from '@/components/ConfirmModal'
 
 interface CostsClientProps {
+    /** The page's tabs, for whoever also sees what clients are charged (CLIENTS_PLAN.md §6.4). */
+    tabs?: ReactNode
     tasksWithCosts: any[]
     total: number
     page: number
@@ -28,7 +30,7 @@ interface CostsClientProps {
     costName?: string | null
 }
 
-export default function CostsClient({ tasksWithCosts, total, page, totalPages, totalDue, toPay, costName }: CostsClientProps) {
+export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPages, totalDue, toPay, costName }: CostsClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
@@ -211,6 +213,8 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
 
     return (
         <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+            {/* On a panel, as this screen isn't on the building blocks yet and its background is its own. */}
+            {tabs && <div className="ui-panel" style={{ marginBottom: 'var(--space-4)', paddingInline: 'var(--space-4)' }}>{tabs}</div>}
             {showFeedback && (
                 <div style={{
                     position: 'fixed',

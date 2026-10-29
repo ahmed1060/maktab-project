@@ -27,6 +27,8 @@ export const DELETE = withStandardHandler(async (req, session, json, { params })
         if (error.message === 'SELF_DELETION_FORBIDDEN') return ApiResponse.forbidden("Admins cannot delete their own tasks")
         // Its costs paid, it stays (CLIENTS_PLAN.md §4.2): said, not logged as a fault.
         if (error.message === 'TASK_HAS_PAID_COSTS') return ApiResponse.error(KNOWN_REFUSALS.TASK_HAS_PAID_COSTS.message, 409)
+        // Its costs charged to its client, it stays (CLIENTS_PLAN.md §6.5).
+        if (error.message === 'TASK_HAS_CHARGES') return ApiResponse.error(KNOWN_REFUSALS.TASK_HAS_CHARGES.message, 409)
         console.error("Task deletion error:", error)
         return ApiResponse.error("Failed to delete task")
     }

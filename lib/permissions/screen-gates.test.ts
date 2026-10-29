@@ -62,7 +62,8 @@ const GATES: Gate[] = [
     { what: "record sections: rename", file: "components/records/SectionsCard.tsx", uses: "const canRename = can('records.edit')", before: managers, now: p => p.can("records.edit") },
     { what: "record sections: delete", file: "components/records/SectionsCard.tsx", uses: "const canDelete = can('records.delete')", before: admins, now: p => p.can("records.delete") },
     { what: "a client's page: add a record", file: D + "clients/[id]/page.tsx", uses: "can('records.contribute') && <Button", before: () => true, now: p => p.can("records.contribute") },
-    { what: "costs page: open", file: D + "costs/page.tsx", uses: "if (!can(session.user as any, 'tasks.pay'))", before: managers, now: p => p.can("tasks.pay") },
+    // Its tabs: Employee costs for paying them, Charged to clients for seeing charges (CLIENTS_PLAN.md §6.4).
+    { what: "costs page: open", file: D + "costs/page.tsx", uses: "if (!pays && !seesCharges)", before: managers, now: p => p.can("tasks.pay") || p.can("charges.view") },
     { what: "costs: employee layout", file: D + "costs/CostsClient.tsx", uses: "const isEmployee = !can('tasks.pay')", before: r => r === "EMPLOYEE", now: p => !p.can("tasks.pay") },
     { what: "costs: pay everything", file: D + "costs/CostsClient.tsx", uses: "companyWide('tasks.pay') && total > 0", before: admins, now: p => p.companyWide("tasks.pay") },
 
