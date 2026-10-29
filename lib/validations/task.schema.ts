@@ -23,11 +23,14 @@ export const createTaskSchema = z.object({
         .min(0).max(10)
         .optional()
         .default(0),
+    // Typed by hand before locations; ignored now (CLIENTS_PLAN.md §2.3).
+    // Still read by bulk import until its review screen picks locations too.
     location: z.any().optional(),
-    // Clients feature: when set, TaskService derives location from this
-    // client authoritatively — any location also present in the request is
-    // ignored. See TaskService.create/update.
+    // The task's client, if it has one, and where it's done: that client's
+    // location or a shared one. TaskService checks both against the task's
+    // company, and writes the location's name and map link as its text.
     clientId: z.string().optional().nullable(),
+    locationId: z.string().min(1).optional(),
     attachments: z.any().optional(), // Can be stringified JSON or array
 })
 

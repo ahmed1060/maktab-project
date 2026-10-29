@@ -33,6 +33,7 @@ export const PUT = withStandardHandler(async (req, session, json, { params }) =>
         if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("A task cannot be assigned outside its company")
         if (error.message === 'TL_CANNOT_ASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot assign tasks to Admins")
         if (error.message === 'TL_CANNOT_ASSIGN_OUTSIDE_TEAM') return ApiResponse.forbidden("Team Leaders can only assign tasks to their own team")
+        if (error.message === 'CROSS_COMPANY_CLIENT_FORBIDDEN') return ApiResponse.forbidden("Cannot use a client from a different company")
         throw error
     }
 })

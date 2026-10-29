@@ -20,6 +20,8 @@ import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
+import { locationLabel } from '@/lib/locations'
+import { googleMapsLink } from '@/lib/attendance/geo'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -54,10 +56,19 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         assigneeIds: src.assignees?.map((a: any) => a.id) || [],
         deadline: src.deadline,
         difficulty: src.difficulty,
-        location: parseLocation(src.location || '').name,
-        locationLink: parseLocation(src.location || '').link,
+        clientId: src.clientId ?? '',
+        locationId: src.locationId ?? '',
         attachments: attachmentsOf(src),
     })
+    // Where it's done: its location as it is now, or, from before locations,
+    // the text it was given.
+    const placeOf = (src: any): { name: string; link: string; ofClient: boolean } => src.place
+        ? {
+            name: locationLabel(src.place.name, src.place.client?.name),
+            link: src.place.latitude !== null && src.place.longitude !== null ? googleMapsLink(src.place.latitude, src.place.longitude) : '',
+            ofClient: !!src.place.client,
+        }
+        : { ...parseLocation(src.location || ''), ofClient: false }
     const [task, setTask] = useState(initialTask)
 
     // From the role the page passed down, so the first paint is complete.
@@ -93,7 +104,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
     const [editForm, setEditForm] = useState(() => editFormFrom(initialTask))
-    const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '' })
+    const [editFieldErrors, setEditFieldErrors] = useState({ title: '', description: '', locationId: '' })
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
     const [reviewDifficulty, setReviewDifficulty] = useState(initialTask.difficulty)
@@ -661,8 +672,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             assigneeIds: task.assignees?.map((a: any) => a.id) || [],
             deadline: task.deadline,
             difficulty: task.difficulty,
-            location: parseLocation(task.location || '').name,
-            locationLink: parseLocation(task.location || '').link,
+            clientId: task.clientId ?? '',
+            locationId: task.locationId ?? '',
             attachments: existingAttachments
         })
         setIsEditing(true)
@@ -671,7 +682,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const handleSaveDetails = async (e: React.FormEvent) => {
         e.preventDefault()
         let hasError = false
-        const errors = { title: '', description: '' }
+        const errors = { title: '', description: '', locationId: '' }
 
         if (!editForm.title.trim()) {
             errors.title = t('title_required')
@@ -682,17 +693,28 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             hasError = true
         }
 
+        // A new client leaves the task without its old client's location:
+        // another is picked (CLIENTS_PLAN.md §2.3). A task from before
+        // locations keeps its text until one is.
+        const clientChanged = editForm.clientId !== (task.clientId ?? '')
+        if (clientChanged && !editForm.locationId && task.locationId) {
+            errors.locationId = t('task_location_required')
+            hasError = true
+        }
+
         if (hasError) {
             setEditFieldErrors(errors)
             return
         }
 
         try {
+            const { clientId, locationId, ...details } = editForm
             const res = await fetch(`/api/tasks/${task.id}/details`, {
                 method: 'PUT',
                 body: JSON.stringify({
-                    ...editForm,
-                    location: editForm.location || editForm.locationLink ? JSON.stringify({ name: editForm.location, link: editForm.locationLink }) : ''
+                    ...details,
+                    ...(clientChanged ? { clientId: clientId || null } : {}),
+                    ...(locationId && locationId !== task.locationId ? { locationId } : {}),
                 }),
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -951,8 +973,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     )}
                 </div>
             </div>
-            {task.location && (() => {
-                const { name, link } = parseLocation(task.location)
+            {(task.place || task.location) && (() => {
+                const { name, link, ofClient } = placeOf(task)
                 return (
                     <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--info-fg)', fontSize: '0.95rem', fontWeight: '500' }}>
                         <span aria-hidden="true">📍</span>
@@ -963,7 +985,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                         ) : (
                             <span>{name}</span>
                         )}
-                        {(task as any).client?.name && (
+                        {/* A client's location is named with its client already. */}
+                        {(task as any).client?.name && !ofClient && (
                             <span style={{ color: 'var(--text-faint)', fontWeight: '400' }}>
                                 — {t('client_via_label' as any) || 'via'} {(task as any).client.name}
                             </span>

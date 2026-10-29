@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
 import { googleMapsLink } from "@/lib/attendance/geo"
+import { locationLabel } from "@/lib/locations"
 import type { CreateLocationInput, PlaceInput, UpdateLocationInput } from "@/lib/validations/location.schema"
 
 /**
@@ -45,6 +46,13 @@ const ROW = {
 } satisfies Prisma.LocationSelect
 
 export type LocationRow = Prisma.LocationGetPayload<{ select: typeof ROW }>
+
+const PICK = { id: true, name: true, isHq: true, latitude: true, clientId: true } satisfies Prisma.LocationSelect
+/** A location as a task's picker offers it; one with no pin is offered greyed (§2.8). */
+export type PickRow = { id: string; name: string; isHq: boolean; needsPin: boolean }
+const pickRow = (l: Prisma.LocationGetPayload<{ select: typeof PICK }>): PickRow => ({ id: l.id, name: l.name, isHq: l.isHq, needsPin: l.latitude === null })
+/** More than a picker should list; a company with more uses the Locations page's search. */
+const PICK_LIMIT = 500
 
 export type LocationListQuery = {
     /** A Super Admin's chosen company; ignored for anyone else, who sees their own. Unset for a Super Admin is every company. */
@@ -199,6 +207,54 @@ export class LocationService {
             })
         })
         return LocationService.get(session, input.id)
+    }
+
+    /**
+     * What a task's location picker offers (§2.3): the task client's
+     * locations in use, its HQ first, then the shared ones; only the shared
+     * ones for a task with no client. A Super Admin names the company.
+     */
+    static async pickable(session: Session, query: { companyId?: string | null; clientId?: string | null }) {
+        const companyId = isSuperAdmin(session) ? query.companyId || null : session.user.companyId ?? null
+        if (!companyId) throw new Error("COMPANY_SELECTION_REQUIRED")
+        allow(session, "locations.view", companyId)
+        if (query.clientId) {
+            const client = await prisma.client.findUnique({ where: { id: query.clientId }, select: { companyId: true } })
+            if (!client || client.companyId !== companyId) throw new Error("CLIENT_NOT_FOUND")
+        }
+        const [client, shared] = await Promise.all([
+            query.clientId
+                ? prisma.location.findMany({ where: { clientId: query.clientId, archivedAt: null }, select: PICK, orderBy: [{ isHq: "desc" }, { name: "asc" }, { id: "asc" }], take: PICK_LIMIT })
+                : [],
+            prisma.location.findMany({ where: { companyId, clientId: null, archivedAt: null }, select: PICK, orderBy: [{ name: "asc" }, { id: "asc" }], take: PICK_LIMIT }),
+        ])
+        return { client: client.map(pickRow), shared: shared.map(pickRow) }
+    }
+
+    /**
+     * The location a task is to be done at (§2.3), checked against the
+     * task: its company's, in use, its pin placed (§2.8), and its client's
+     * or a shared one; a task with no client takes a shared one. Returns
+     * what the task keeps: its id, and its name and map link as they are
+     * now, for the task's own location text.
+     */
+    static async forTask(db: Tx, locationId: string, task: { companyId: string | null; clientId: string | null }) {
+        const found = await db.location.findUnique({
+            where: { id: locationId },
+            select: { id: true, companyId: true, clientId: true, name: true, latitude: true, longitude: true, radiusMeters: true, archivedAt: true, client: { select: { name: true } } },
+        })
+        if (!found || found.companyId !== task.companyId) throw new Error("TASK_LOCATION_NOT_FOUND")
+        if (found.archivedAt) throw new Error("TASK_LOCATION_ARCHIVED")
+        if (found.latitude === null || found.longitude === null) throw new Error("TASK_LOCATION_NEEDS_PIN")
+        if (found.clientId && found.clientId !== task.clientId) throw new Error("TASK_LOCATION_OTHER_CLIENT")
+        const label = locationLabel(found.name, found.client?.name)
+        return {
+            id: found.id,
+            label,
+            text: JSON.stringify({ name: label, link: googleMapsLink(found.latitude, found.longitude) }),
+            // What the check measures from (§2.5).
+            place: { latitude: found.latitude, longitude: found.longitude, radiusMeters: found.radiusMeters },
+        }
     }
 
     /**

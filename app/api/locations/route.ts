@@ -7,14 +7,18 @@ import { LocationService } from "@/lib/services/location.service"
 /**
  * The places tasks happen at (CLIENTS_PLAN.md §2): the Locations page, and
  * one client's on its page (?clientId=), or the shared ones
- * (?clientId=shared). Each check is LocationService's, against the
- * location's company; the permission here only turns away someone who holds
- * none at all.
+ * (?clientId=shared); and what a task's picker offers (?pick=1). Each check
+ * is LocationService's, against the location's company; the permission here
+ * only turns away someone who holds none at all.
  */
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get("id")
     if (id) return ApiResponse.success(await LocationService.get(session, id))
+    // What a task's location picker offers (CLIENTS_PLAN.md §2.3).
+    if (searchParams.get("pick") === "1") {
+        return ApiResponse.success(await LocationService.pickable(session, { companyId: searchParams.get("companyId"), clientId: searchParams.get("clientId") }))
+    }
 
     const { page, limit } = parsePaging(searchParams, 20, 100)
     const result = await LocationService.list(session, {

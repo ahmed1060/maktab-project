@@ -63,9 +63,21 @@ const task = {
     aggregate: async () => ({ _sum: {}, _count: 0 }),
 }
 
+/**
+ * A shared location with its pin in each company, "loc-c1" and "loc-c2", for
+ * a new task to be done at (CLIENTS_PLAN.md §2.3).
+ */
+const location = {
+    findUnique: async ({ where }: any) => {
+        const companyId = ({ "loc-c1": "c1", "loc-c2": "c2" } as Record<string, string>)[where.id]
+        return companyId ? { id: where.id, companyId, clientId: null, name: "Head office", latitude: 30.0444, longitude: 31.2357, radiusMeters: null, archivedAt: null, client: null } : null
+    },
+}
+
 export const prismaMock: any = new Proxy({}, {
     get(_t, prop: string) {
         if (prop === "task") return task
+        if (prop === "location") return location
         if (prop === "$transaction") return async (fn: any) => typeof fn === "function" ? fn(prismaMock) : Promise.all(fn)
         // Bulk payment locks the tasks it pays first; there are no rows here to hold.
         if (prop === "$queryRaw") return async () => []

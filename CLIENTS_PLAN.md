@@ -773,8 +773,15 @@ balance first, automatically:
        before added meanwhile. Given in 1a, the grants would reach the
        live role editor, which doesn't know them yet and would drop them
        when a role is saved. Until 1b is merged, only the Super Admin
-       sees the Locations page in those companies. 1b is open for review
-       in #97, with its two migrations.
+       sees the Locations page in those companies. 1b was merged in #97
+       on 2026-10-29, so step 1 is done.
+     - Step 2's first PR, 2a, is open for review in #98: tasks are done at
+       locations, made and edited with the client and location pickers
+       (§2.3, §2.4, §3.1).
+       Proposed: step 2 ships as two PRs. 2b moves the bulk upload onto
+       locations: the Excel Locations sheet and the review screen's
+       pickers (§2.7). Until then, an uploaded task still takes its
+       client's own location fields, or its typed text.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1207,3 +1214,36 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   in it. 1b opens for review in #97. In production it gives the three
   companies' built-in Admin and Team Leader roles their 15 location grants,
   and makes no HQ, as there are no clients yet.
+- **2026-10-22:** Step 2's first PR, 2a, is built (§2.3–2.5, §3.1):
+  - **A task is done at a location:** its client's, or a shared one,
+    picked from the list, never typed. The client stays optional. The
+    location must be the task's company's, in use, with its pin placed,
+    and its client's or shared; a task with no client takes a shared one.
+    The task keeps the location's name and map link as its text too, so
+    the release before reads it as it did.
+  - **The pickers,** on creating a task and editing one: picking a client
+    picks its HQ. The locations are listed with the client's first, its
+    HQ marked, then the shared ones. One with no pin is listed greyed,
+    with why. "+ New location" adds one there and then, the client's or,
+    by choice, shared, and picks it. Picking needs See locations (§2.9);
+    someone without it is told to ask for it.
+  - **The check** measures from the location's pin, within its own
+    radius, or the system's when it has none (70 m unless the Super
+    Admin changes it). A pin corrected later applies to open tasks, as
+    the task links to its location (§2.5).
+  - **Edits** check a new client and location as creating does, and
+    record both by name in the task's history. A task from before
+    locations keeps its text until a location is picked for it.
+  - **A transferred task's copy** keeps the task's client and location.
+    It used to keep only the location's text.
+  - **The task page** shows the location as it is now, with its map
+    link.
+  - **Proposed:** step 2 ships as two PRs, 2a and 2b (§8).
+- **2026-10-29:** 1b was merged in #97, so step 1 is done. Its migrations
+  ran on production as it opened, giving the three companies' built-in
+  Admin and Team Leader roles their 15 location grants, and production
+  had no errors after them. Step 2's first PR, 2a, opens for review in #98.
+- **2026-10-29:** From Codex's review of #98: a bulk upload links no
+  location until its review screen picks them (2b), so it can't link
+  another company's. Saving a location from a task's form saves only the
+  location, and "+ New location" from a task's edit window opens above it.

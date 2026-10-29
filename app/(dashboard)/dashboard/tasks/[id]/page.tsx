@@ -24,9 +24,11 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
             assignees: {
                 select: { id: true, firstName: true, lastName: true, status: true, role: true }
             },
-            // Cosmetic only — location itself was already copied into
-            // task.location at creation time regardless of client.
-            client: { select: { name: true } }
+            client: { select: { name: true } },
+            // Where it's done (CLIENTS_PLAN.md §2.3): its name and pin as they
+            // are now, a pin corrected since included. A task from before
+            // locations has none, and shows its own text.
+            place: { select: { name: true, latitude: true, longitude: true, client: { select: { name: true } } } },
         }
     })
 
