@@ -915,3 +915,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   turn. Two building block changes: a select's options can come in
   groups, with an option that can't be picked greyed; and fields that go
   together are spaced as in a dialog wherever they are.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s step 1 is done (#97), and step 2's
+  first PR, 2a, opens for review in #98, with the task form's client and
+  location pickers.

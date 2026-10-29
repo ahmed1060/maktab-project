@@ -773,10 +773,11 @@ balance first, automatically:
        before added meanwhile. Given in 1a, the grants would reach the
        live role editor, which doesn't know them yet and would drop them
        when a role is saved. Until 1b is merged, only the Super Admin
-       sees the Locations page in those companies. 1b is open for review
-       in #97, with its two migrations.
-     - Step 2's first PR, 2a, is built: tasks are done at locations, made
-       and edited with the client and location pickers (§2.3, §2.4, §3.1).
+       sees the Locations page in those companies. 1b was merged in #97
+       on 2026-10-29, so step 1 is done.
+     - Step 2's first PR, 2a, is open for review in #98: tasks are done at
+       locations, made and edited with the client and location pickers
+       (§2.3, §2.4, §3.1).
        Proposed: step 2 ships as two PRs. 2b moves the bulk upload onto
        locations: the Excel Locations sheet and the review screen's
        pickers (§2.7). Until then, an uploaded task still takes its
@@ -1238,3 +1239,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **The task page** shows the location as it is now, with its map
     link.
   - **Proposed:** step 2 ships as two PRs, 2a and 2b (§8).
+- **2026-10-29:** 1b was merged in #97, so step 1 is done. Its migrations
+  ran on production as it opened, giving the three companies' built-in
+  Admin and Team Leader roles their 15 location grants, and production
+  had no errors after them. Step 2's first PR, 2a, opens for review in #98.
