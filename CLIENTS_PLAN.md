@@ -829,12 +829,12 @@ balance first, automatically:
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Decided (2026-10-22): it ships as three PRs, and a
        fourth, small one. 4a, payment safety (§4.1, §4.2), was merged in
-       #101 on 2026-10-29, 4b, archiving clients (§4.3), in #102, and 4c,
+       #101 on 2026-10-29, 4b, archiving clients (§4.3), in #102, 4c,
        which moves costs into their own table, with their descriptions
-       (§4.4, §4.5), in #103. 4d tidies up after it, now that 4c is live
-       (§4.5); it's built, and open for review in #104.
+       (§4.4, §4.5), in #103, and 4d, which tidies up after it (§4.5), in
+       #104. Step 4 is done.
      - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
-       and 5c (§5.10). 5a is built.
+       and 5c (§5.10). 5a is built, and open for review in #105.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1492,3 +1492,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **Proposed:** the split into 5a, 5b and 5c, an archived name refused
     by "+ Add", the page's place in the side bar, and 5b giving Add list
     names to every role (§5.10).
+- **2026-10-29:** 4d was merged in #104, so step 4 is done. Its
+  migration ran on production at 15:23 UTC, with no errors after, and
+  changed nothing there, as production had no costs. Step 5's first PR,
+  5a, opens for review in #105. Its migration adds the lists' table and
+  two empty links, and changes nothing already there.

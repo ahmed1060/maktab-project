@@ -1002,3 +1002,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   phone, Add costs' name takes its own line, the amount below it. A new
   page, Saved lists, has a tab for each list. Proposed: it sits in the side
   bar under Company Settings, for whoever manages lists.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4d was merged in #104, so step 4 is
+  done, and 5a opens for review in #105: a task's title and a cost's name
+  are typed or picked from a saved list, and the Saved lists page manages
+  the lists.
