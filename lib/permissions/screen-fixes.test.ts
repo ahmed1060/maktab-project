@@ -85,7 +85,8 @@ describe("record screens offer only what the server allows", () => {
         expect(LIST).toContain("<RecordForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} sections={clientId ? sections : undefined} onSaved={changed} />")
         expect(FORM).toContain("const choosing = !clientId && !editing")
         expect(FORM).not.toContain("router.push")
-        expect(CLIENT).toContain("adding={adding && can('records.contribute')}")
+        // And never for an archived client, which takes nothing new (CLIENTS_PLAN.md §4.3).
+        expect(CLIENT).toContain("adding={!archived && adding && can('records.contribute')}")
         expect(CLIENT).not.toContain("params.get('add')")
     })
     it("loads the chosen client's sections before a record can be added to it, rather than starting a first one", () => {

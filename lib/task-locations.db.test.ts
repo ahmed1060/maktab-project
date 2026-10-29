@@ -275,6 +275,16 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
             await expect(Tasks.bulkCreate([task({ title: "For an archived one", clientId: "k2", locationId: "port" })], admin)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED: For an archived one" })
         })
 
+        it("takes no new location, record or section on its page, until it's restored", async () => {
+            const { RecordService } = await import("@/lib/services/record.service")
+            const { LocationService } = await import("@/lib/services/location.service")
+            const recordAdmin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1" }) } as any
+            await expect(LocationService.create(recordAdmin, { clientId: "k2", name: "Beta's new site", latitude: 30.1, longitude: 31.2 } as any)).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            await expect(RecordService.createSection(recordAdmin, { clientId: "k2", title: "Licences" })).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            await expect(RecordService.create(recordAdmin, { content: "A note", files: [], expiryDate: null, reminderDays: null, clientId: "k2", sectionTitle: "Notes" })).rejects.toMatchObject({ message: "CLIENT_ARCHIVED" })
+            expect((await db.query(`SELECT (SELECT count(*)::int FROM "Location" WHERE "clientId" = 'k2' AND name = 'Beta''s new site') AS places, (SELECT count(*)::int FROM "ClientSection" WHERE "clientId" = 'k2') AS sections`)).rows[0]).toEqual({ places: 0, sections: 0 })
+        })
+
         it("keeps its own tasks editable, and isn't offered to add a record to", async () => {
             const { rows: [mine] } = await db.query(`SELECT id FROM "Task" WHERE title = 'Beta''s job'`)
             await Tasks.updateDetails(mine.id, { id: mine.id, title: "Beta's old job" } as any, admin)

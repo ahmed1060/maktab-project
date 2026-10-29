@@ -1368,3 +1368,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-29:** In 4b, a client confirmed for archiving is archived,
   even if its last task or record went before it was confirmed, rather
   than deleted for good (found before review).
+- **2026-10-29:** Decided by the product owner: an archived client takes
+  nothing new. In 4b, its page offers no Add record, Add section or Add
+  location, and the server refuses them (`CLIENT_ARCHIVED`), as it does a
+  new task; Restore brings them back.

@@ -973,3 +973,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 4b, Archive on the Clients list archives what it
   says, and its toast says "Archived"; a Delete the server turns into an
   archive still says why.
+- **2026-10-29:** In 4b, an archived client's page has no Add record, Add
+  section or Add location, in its header, its sections or their empty
+  states: only Restore, for whoever manages clients.
