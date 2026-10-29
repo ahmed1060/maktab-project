@@ -1386,3 +1386,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   offers no Add record or Add section, to whoever may add records but not
   see clients, as the Employee role: its sections now say it's archived
   (found by Codex).
+- **2026-10-29:** In 4b (#102), a client restored from its page is in
+  use there at once: its details, reloaded by Restore, say whether it's
+  archived ahead of its sections, which weren't reloaded and kept it
+  archived (found by Codex).

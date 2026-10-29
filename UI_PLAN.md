@@ -981,3 +981,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 4b (#102), an archived client's page has its
   "Archived" badge and no Add record or Add section for someone who may
   add records but not see clients, too.
+- **2026-10-29:** In 4b (#102), Restore on a client's page takes its
+  "Archived" badge off and brings back Add record, Add section and Add
+  location at once.

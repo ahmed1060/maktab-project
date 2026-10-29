@@ -96,8 +96,9 @@ export default function ClientPage() {
         }
     }
     // Archived as it had tasks or records when it was deleted: kept with them, and given nothing new.
-    // Its sections say so too, for whoever may add records but not see clients.
-    const archived = !!client?.archivedAt || !!sectionsBody?.data.client.archived
+    // Its sections say so too, for whoever may add records but not see clients. Its details,
+    // once loaded, say it first: Restore reloads them, not its sections.
+    const archived = client ? !!client.archivedAt : !!sectionsBody?.data.client.archived
     const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') } : { href: '/dashboard/records', label: modules.label('records') }
 
     if (!name) {
