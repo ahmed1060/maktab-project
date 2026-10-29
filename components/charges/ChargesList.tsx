@@ -199,7 +199,8 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     const added = (c: ChargeRow) => <span>{t('charges_added').replace('{name}', author(c)).split('{date}').flatMap((part, i) => i === 0 ? [part] : [<Fragment key={i}>{day(c)}</Fragment>, part])}</span>
     const addedCell = (c: ChargeRow) => <div className="ui-nowrap"><ItemTitle title={<bdi>{author(c)}</bdi>} detail={day(c)} /></div>
     const client = (c: ChargeRow) => c.task.client
-        ? (can('clients.view') || can('records.view')
+        // Its page shows whoever sees charges its charges, at least.
+        ? (can('clients.view') || can('records.view') || can('charges.view')
             ? <Link href={`/dashboard/clients/${c.task.client.id}`} prefetch={false} className="ui-item-link"><bdi>{c.task.client.name}</bdi></Link>
             : <bdi>{c.task.client.name}</bdi>)
         : null

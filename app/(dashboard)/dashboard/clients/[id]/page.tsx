@@ -38,7 +38,8 @@ type Client = {
  * whoever may see clients, its locations, for whoever may see locations, its
  * charges, for whoever may see charges (§6.4), and its records, for whoever
  * may see records. Someone who may see only records, as an ordinary employee
- * may, still gets the client's name and its records.
+ * may, still gets the client's name and its records; someone who may see
+ * only charges, its name and its charges, to mark them collected.
  */
 export default function ClientPage() {
     const { t } = useLanguage()
@@ -62,13 +63,18 @@ export default function ClientPage() {
     const { data: sectionsBody, error: sectionsError, isLoading: sectionsLoading, mutate: reloadSections } = useSWR<{ data: { client: { id: string; name: string; archived?: boolean }; sections: SectionItem[] } }>(
         seesRecords ? `/api/records/sections?clientId=${encodeURIComponent(id)}` : null, fetcher,
     )
+    // Its name, for someone who sees its charges and nothing else of it.
+    const chargesOnly = seesCharges && !seesClient && !seesRecords
+    const { data: chargesBody, isLoading: chargesLoading, mutate: reloadCharges } = useSWR<{ data: { client: { id: string; name: string } | null } }>(
+        chargesOnly ? `/api/charges?clientId=${encodeURIComponent(id)}&status=all&limit=1` : null, fetcher,
+    )
 
     if (!session?.user) return <LoadingSpinner />
-    if (!seesClient && !seesRecords) return <AccessDenied />
-    if ((clientLoading && !clientBody) || (sectionsLoading && !sectionsBody)) return <LoadingSpinner />
+    if (!seesClient && !seesRecords && !seesCharges) return <AccessDenied />
+    if ((clientLoading && !clientBody) || (sectionsLoading && !sectionsBody) || (chargesLoading && !chargesBody)) return <LoadingSpinner />
 
     const client = clientBody?.data
-    const name = client?.name ?? sectionsBody?.data.client.name
+    const name = client?.name ?? sectionsBody?.data.client.name ?? chargesBody?.data.client?.name
     const sections = sectionsBody?.data.sections ?? []
     // Its details didn't load, though its name came with its sections: said, not left out.
     const detailsFailed = seesClient && !clientBody
@@ -101,17 +107,21 @@ export default function ClientPage() {
     // Its sections say so too, for whoever may add records but not see clients. Its details,
     // once loaded, say it first: Restore reloads them, not its sections.
     const archived = client ? !!client.archivedAt : !!sectionsBody?.data.client.archived
-    const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') } : { href: '/dashboard/records', label: modules.label('records') }
+    const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') }
+        : seesRecords ? { href: '/dashboard/records', label: modules.label('records') }
+            : { href: '/dashboard/costs?tab=charges', label: t('costs_tab_charges') }
 
     if (!name) {
         const missing = (clientError as { status?: number } | undefined)?.status === 404 || (sectionsError as { status?: number } | undefined)?.status === 404
+            // Not one of their company's charges' clients.
+            || (chargesOnly && !!chargesBody && !chargesBody.data.client)
         return (
             <Page>
                 <PageHeader title={modules.label('clients')} back={back} />
                 <div className="ui-panel">
                     {missing
                         ? <EmptyState icon={StorefrontIcon} title={t('client_not_found')} />
-                        : <EmptyState icon={WarningCircleIcon} title={t('client_load_failed')} action={<Button onClick={() => { void reloadClient(); void reloadSections() }}>{t('try_again')}</Button>} />}
+                        : <EmptyState icon={WarningCircleIcon} title={t('client_load_failed')} action={<Button onClick={() => { void reloadClient(); void reloadSections(); void reloadCharges() }}>{t('try_again')}</Button>} />}
                 </div>
             </Page>
         )

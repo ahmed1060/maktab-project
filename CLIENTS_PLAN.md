@@ -1760,3 +1760,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   On its page, they were counted where the platform is, so a charge near
   midnight in a company in another zone fell on the wrong day, in the
   totals and in what Mark collected took (found by Codex).
+- **2026-10-29:** In 6d (#111), a client's page opens for whoever sees
+  its charges, with its name and its charges only, and the Charged to
+  clients tab links to it for them. A role with Mark charges collected
+  but neither See clients nor See records, such as a collector's, had no
+  way to the only place that marks charges collected (found by Codex).

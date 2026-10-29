@@ -1067,3 +1067,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   confirmation that sent the action, as Mark all as paid's.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 6c was merged in #110, and 6d opens
   for review in #111.
+- **2026-10-29:** In 6d (#111), someone who sees charges and nothing else
+  of clients opens a client's page from the Charged to clients tab: its
+  name and its Charges section, with a way back to the tab.

@@ -65,6 +65,18 @@ export async function chargesWhere(user: Actor & { id: string }, filters: Charge
 }
 
 /**
+ * The client a page's charges are for, by name, to whoever sees its
+ * company's charges (§6.4): someone who may see nothing else of clients
+ * still finds its page, to mark its charges collected.
+ */
+export async function chargeClient(user: Actor, clientId: string) {
+    if (!clientId || !can(user, "charges.view")) return null
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true } })
+    if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) return null
+    return { id: client.id, name: client.name }
+}
+
+/**
  * The list's totals, every page of it (§6.4): what was paid out and the
  * service fees on top, of the charges in it, what of them is still due, and
  * what was collected. One left off the bill counts in none.
