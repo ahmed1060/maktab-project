@@ -1009,3 +1009,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 5a (#105), Escape with title suggestions open in Edit
   task details closes the suggestions only; the next Escape closes the
   window, as `DESIGN.md` §5.3 has it.
+- **2026-10-29:** In 5a (#105), typing on while a picker's suggestions are
+  open keeps only those that still match, and Enter keeps what's typed
+  rather than picking the one highlighted for the text before.

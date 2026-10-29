@@ -23,6 +23,23 @@ function marked(name: string, typed: string): ReactNode {
     return <>{name.slice(0, at)}<strong>{name.slice(at, end)}</strong>{name.slice(end)}</>
 }
 
+/** The list's last answer: to what was typed, from which list. */
+export type Answer = { for: string; by: unknown; names: ListedName[] }
+
+/**
+ * The suggestions for what's typed now: the last answer while it's to this,
+ * else those of its names that still contain it, until the list answers;
+ * none from another list (another company's). The one under the keys counts
+ * only for what was typed when the keys moved to it, so typed over, Enter
+ * is the form's again rather than picking a name for what was typed before
+ * (Codex review of PR 105).
+ */
+export function shownSuggestions(answer: Answer, under: { for: string; index: number }, typed: string, by: unknown) {
+    if (answer.by !== by) return { names: [] as ListedName[], active: -1 }
+    const names = answer.for === typed ? answer.names : answer.names.filter(n => n.name.toLowerCase().includes(typed.toLowerCase()))
+    return { names, active: under.for === typed ? under.index : -1 }
+}
+
 type KeyPress = { key: string; preventDefault: () => void; stopPropagation: () => void }
 type KeyAction = { close: true } | { move: number } | { choose: number } | null
 
@@ -69,9 +86,9 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
 } & FieldControlProps) {
     const { t, locale } = useLanguage()
     const listId = useId()
-    const [names, setNames] = useState<ListedName[]>([])
+    const [answer, setAnswer] = useState<Answer>({ for: '', by: null, names: [] })
     const [open, setOpen] = useState(false)
-    const [active, setActive] = useState(-1)
+    const [under, setUnder] = useState({ for: '', index: -1 })
     const [adding, setAdding] = useState(false)
     const [problem, setProblem] = useState<string | null>(null)
     const asked = useRef(0)
@@ -83,11 +100,17 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
         if (!open || !typed || value.entryId) return
         const ask = ++asked.current
         const timer = setTimeout(() => {
-            suggest(typed).then(found => { if (ask === asked.current) { setNames(found); setActive(-1) } }, () => { if (ask === asked.current) setNames([]) })
+            const answered = (names: ListedName[]) => {
+                if (ask !== asked.current) return
+                setAnswer({ for: typed, by: suggest, names })
+                setUnder({ for: typed, index: -1 })
+            }
+            suggest(typed).then(answered, () => answered([]))
         }, ASK_AFTER_MS)
         return () => clearTimeout(timer)
     }, [typed, open, value.entryId, suggest])
 
+    const { names, active } = shownSuggestions(answer, under, typed, suggest)
     const offerAdd = !!onAdd && !!typed && !names.some(n => SAME(n.name, typed))
     const shown = open && !!typed && !value.entryId && (names.length > 0 || offerAdd)
     const count = names.length + (offerAdd ? 1 : 0)
@@ -116,7 +139,7 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
         const next = pickerKey(e, { shown, active, count })
         if (!next) return
         if ('close' in next) setOpen(false)
-        else if ('move' in next) { setOpen(true); if (next.move >= 0) setActive(next.move) }
+        else if ('move' in next) { setOpen(true); if (next.move >= 0) setUnder({ for: typed, index: next.move }) }
         else choose(next.choose)
     }
 

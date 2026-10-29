@@ -203,6 +203,23 @@ describe("a name typed or picked from a saved list", () => {
         expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("const next = pickerKey(e, { shown, active, count })")
     })
 
+    it("drops the suggestion under the keys once typed over, so Enter doesn't pick a name for what was typed before", () => {
+        const list = async () => []
+        const answer = { for: "mon", by: list, names: [{ id: "1", name: "Monthly inspection" }, { id: "2", name: "Monthly stock count" }, { id: "3", name: "Lemon" }] }
+        // The keys moved to "Monthly inspection" for "mon".
+        const under = { for: "mon", index: 0 }
+        expect(ui.shownSuggestions(answer, under, "mon", list)).toEqual({ names: answer.names, active: 0 })
+        // "month" typed before the list answers it: only the names still
+        // containing it, and none under the keys, so Enter is the form's.
+        const typedOn = ui.shownSuggestions(answer, under, "month", list)
+        expect(typedOn).toEqual({ names: answer.names.slice(0, 2), active: -1 })
+        expect(ui.pickerKey({ key: "Enter", preventDefault: () => {}, stopPropagation: () => {} }, { shown: true, active: typedOn.active, count: 3 })).toBeNull()
+        expect(ui.shownSuggestions(answer, under, "monk", list).names).toEqual([])
+        // Another list's answer, such as another company's: none of it.
+        expect(ui.shownSuggestions(answer, under, "mon", async () => [])).toEqual({ names: [], active: -1 })
+        expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("const { names, active } = shownSuggestions(answer, under, typed, suggest)")
+    })
+
     it("moves through its suggestions with the arrow keys, and Enter picks the one under them", () => {
         const press = (key: string, active: number, shown = true) =>
             ui.pickerKey({ key, preventDefault: () => {}, stopPropagation: () => {} }, { shown, active, count: 3 })

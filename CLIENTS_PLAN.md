@@ -1500,3 +1500,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-29:** In 5a (#105), Escape with a picker's suggestions open
   closes them and nothing else. In Edit task details it closed the whole
   window too, and what had been typed in it (found by Codex).
+- **2026-10-29:** In 5a (#105), a picker's suggestions follow what's
+  typed. Typed on before the list answered, it went on offering the last
+  answer, and Enter picked the name under the keys for what was typed
+  before, in place of what was typed since (found by Codex).
