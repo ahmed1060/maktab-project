@@ -14,6 +14,7 @@ import { isReviewed } from "@/lib/task-reviewed"
 import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
 import { LocationService } from "./location.service"
 import { snapshotOf } from "./costs-query"
+import { asRecord } from "@/lib/costs-total"
 
 /**
  * Where a task's check measures from (CLIENTS_PLAN.md §2.5): its location's
@@ -796,8 +797,9 @@ export class TaskService {
             }
 
             // Its costs paid, it stays, and its payment record with it
-            // (CLIENTS_PLAN.md §4.2): paid in full, or anyone's part of it.
-            const paidParts = Object.values((task.memberPaymentStatus as Record<string, unknown> | null) ?? {})
+            // (CLIENTS_PLAN.md §4.2): paid in full, or anyone's part of it,
+            // their payments read as the task's page reads them.
+            const paidParts = Object.values(asRecord(task.memberPaymentStatus))
             if (task.paymentStatus === 'PAID' || paidParts.includes('PAID')) throw new Error("TASK_HAS_PAID_COSTS")
 
             if (Array.isArray(task.attachments)) {

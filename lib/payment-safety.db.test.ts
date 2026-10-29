@@ -109,6 +109,14 @@ describe.skipIf(!ADMIN_URL)("payment safety, in Postgres", () => {
         await expect(Tasks.delete("due", admin)).rejects.toMatchObject({ message: "TASK_HAS_PAID_COSTS" })
     })
 
+    it("won't delete one paid in part whose shares' payments are stored as text, as the task's page reads them", async () => {
+        await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "totalCost", "paymentStatus", "memberCosts", "memberPaymentStatus", "updatedAt")
+            VALUES ('text', 'Text', 'Paid in part, stored as text', 'APPROVED', now(), 'c1', 50, 'PENDING_PAYMENT', '{"e1": 30, "e2": 20}', to_jsonb('{"e1": "PAID", "e2": "PENDING_PAYMENT"}'::text), now())`)
+        await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('text', 'e1'), ('text', 'e2')`)
+        await expect(Tasks.delete("text", admin)).rejects.toMatchObject({ message: "TASK_HAS_PAID_COSTS" })
+        expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE id = 'text'`)).rows[0].n).toBe(1)
+    })
+
     it("won't delete a task paid while the delete waits for it", async () => {
         await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "totalCost", "paymentStatus", "memberCosts", "memberPaymentStatus", "updatedAt")
             VALUES ('racing', 'Racing', 'Paid as it is deleted', 'APPROVED', now(), 'c1', 40, 'PENDING_PAYMENT', '{"e1": 40}', '{"e1": "PENDING_PAYMENT"}', now())`)

@@ -1349,3 +1349,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   whether its costs are paid, as paying holds it: a payment recorded
   while the delete waited was missed, and the paid task deleted (found by
   Codex).
+- **2026-10-29:** In 4a (#101), deleting a task reads its shares'
+  payments as the task's page does, stored as JSON text too, as older
+  tasks may have them: read as text, a share paid wasn't seen, and the
+  task was deleted while its page hid Delete (found by Codex).

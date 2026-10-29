@@ -26,7 +26,8 @@ export function costsDue(
     return Math.round(due * 100) / 100
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
+/** A task's shares or their payments, as stored: an object, or JSON text of one, as older tasks have. */
+export function asRecord(value: unknown): Record<string, unknown> {
     if (typeof value === "string") {
         try { return asRecord(JSON.parse(value)) } catch { return {} }
     }
