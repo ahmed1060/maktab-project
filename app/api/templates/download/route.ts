@@ -9,6 +9,7 @@ import type { Locale } from "@/lib/translations"
 import { NextResponse } from "next/server"
 import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
 import { locationLabel, numberedLabels } from "@/lib/locations"
+import { can } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -60,11 +61,15 @@ export const GET = withStandardHandler(async (req, session) => {
         }),
         // The locations a task can be done at (CLIENTS_PLAN.md §2.7): in
         // use, with their pin; each client's, its HQ first, then the shared.
-        prisma.location.findMany({
-            where: { companyId: targetCompanyId!, archivedAt: null, latitude: { not: null } },
-            select: { id: true, name: true, client: { select: { name: true } } },
-            orderBy: [{ client: { name: 'asc' } }, { isHq: 'desc' }, { name: 'asc' }, { id: 'asc' }],
-        })
+        // Only for someone who may see them, as the task form's picker is:
+        // creating tasks alone doesn't let a custom role list them.
+        can(session.user as any, "locations.view", { companyId: targetCompanyId })
+            ? prisma.location.findMany({
+                where: { companyId: targetCompanyId!, archivedAt: null, latitude: { not: null } },
+                select: { id: true, name: true, client: { select: { name: true } } },
+                orderBy: [{ client: { name: 'asc' } }, { isHq: 'desc' }, { name: 'asc' }, { id: 'asc' }],
+            })
+            : [],
     ])
     const locations = numberedLabels(places.map(l => ({ id: l.id, label: locationLabel(l.name, l.client?.name), client: l.client?.name ?? null })))
 
