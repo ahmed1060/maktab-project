@@ -9,6 +9,7 @@ import SearchableSelect from './SearchableSelect'
 import DateRangePicker from './DateRangePicker'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useDialog } from '@/lib/useDialog'
+import type { ExtraFilter } from '@/components/locations/usePlaceFilters'
 
 interface SortOption {
     label: string
@@ -16,13 +17,16 @@ interface SortOption {
 }
 
 interface EmployeeFilterProps {
-    onFilterChange: (filters: { employeeId: string; dateFrom: string; dateTo: string; status: string; search: string }) => void
+    /** The filters applied, with each of `extraFilters` by its key. */
+    onFilterChange: (filters: { employeeId: string; dateFrom: string; dateTo: string; status: string; search: string } & Record<string, string>) => void
     selectedEmployeeId: string
     dateFrom: string
     dateTo: string
     /** Left out while there's no count to give: still loading, or it didn't load. */
     totalCount?: number
     totalCost?: number
+    /** What the total is called; "Total cost" unless said. */
+    totalCostLabel?: string
     selectedStatus?: string
     searchQuery?: string
     placeholder?: string
@@ -56,7 +60,9 @@ interface EmployeeFilterProps {
     onCompanyChange?: (id: string) => void,
     companyOptions?: SortOption[],
     secondaryAction?: React.ReactNode,
-    toolkitAction?: React.ReactNode
+    toolkitAction?: React.ReactNode,
+    /** More selects in the panel, applied with the rest, such as a client and a location (CLIENTS_PLAN.md §3). */
+    extraFilters?: ExtraFilter[]
 }
 
 // Define interface for Employee data locally since it's just for display
@@ -74,6 +80,7 @@ export default function EmployeeFilter({
     dateTo,
     totalCount,
     totalCost,
+    totalCostLabel,
     selectedStatus = '',
     searchQuery = '',
     placeholder,
@@ -101,7 +108,8 @@ export default function EmployeeFilter({
     onCompanyChange,
     companyOptions,
     secondaryAction,
-    toolkitAction
+    toolkitAction,
+    extraFilters = []
 }: EmployeeFilterProps) {
     const [isPopupOpen, setIsPopupOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
@@ -120,6 +128,18 @@ export default function EmployeeFilter({
     const [searchTerm, setSearchTerm] = useState(searchQuery)
     const [localSortBy, setLocalSortBy] = useState(sortBy || '')
     const [localSortOrder, setLocalSortOrder] = useState<'asc' | 'desc'>(sortOrder || 'asc')
+    const appliedExtra = Object.fromEntries(extraFilters.map(f => [f.key, f.value]))
+    const [localExtra, setLocalExtra] = useState<Record<string, string>>(appliedExtra)
+    const optionsOf = (f: ExtraFilter, picked: Record<string, string>) => typeof f.options === 'function' ? f.options(picked) : f.options
+    // One picked, and any that follows it and no longer offers its own pick
+    // cleared. A hidden one offers none: it's kept until Reset.
+    const pickExtra = (key: string, value: string) => {
+        const next = { ...localExtra, [key]: value }
+        for (const f of extraFilters) {
+            if (!f.hidden && next[f.key] && !optionsOf(f, next).some(o => o.value === next[f.key])) next[f.key] = ''
+        }
+        setLocalExtra(next)
+    }
 
     const handleApplyFilters = useCallback(() => {
         onFilterChange({
@@ -127,7 +147,8 @@ export default function EmployeeFilter({
             dateFrom: localDateFrom,
             dateTo: localDateTo,
             status: localStatus,
-            search: searchTerm
+            search: searchTerm,
+            ...localExtra
         })
         if (onSortChange && localSortBy) {
             onSortChange(localSortBy, localSortOrder)
@@ -136,11 +157,12 @@ export default function EmployeeFilter({
         if (onTeamChange) onTeamChange(localTeam)
         if (onCompanyChange && showCompanyFilter) onCompanyChange(localCompanyId)
         setIsPopupOpen(false)
-    }, [onFilterChange, localEmployeeId, localDateFrom, localDateTo, localStatus, searchTerm, onSortChange, localSortBy, localSortOrder, onRoleChange, showRoleFilter, localRole, onCompanyChange, showCompanyFilter, localCompanyId, onTeamChange, localTeam])
+    }, [onFilterChange, localEmployeeId, localDateFrom, localDateTo, localStatus, searchTerm, localExtra, onSortChange, localSortBy, localSortOrder, onRoleChange, showRoleFilter, localRole, onCompanyChange, showCompanyFilter, localCompanyId, onTeamChange, localTeam])
 
     // Follow the parent when it changes the applied filters (a reset, a URL
     // change), in the same render rather than one render late.
-    useAdjustOnChange([selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder, selectedTeam], () => {
+    useAdjustOnChange([selectedEmployeeId, selectedStatus, selectedRole, selectedCompanyId, dateFrom, dateTo, searchQuery, sortBy, sortOrder, selectedTeam, JSON.stringify(appliedExtra)], () => {
+        setLocalExtra(appliedExtra)
         setLocalEmployeeId(selectedEmployeeId)
         setLocalStatus(selectedStatus)
         setLocalRole(selectedRole)
@@ -220,7 +242,9 @@ export default function EmployeeFilter({
         setLocalRole('')
         setLocalCompanyId('')
         setSearchTerm('')
-        onFilterChange({ employeeId: '', dateFrom: '', dateTo: '', status: '', search: '' })
+        const noExtra = Object.fromEntries(extraFilters.map(f => [f.key, '']))
+        setLocalExtra(noExtra)
+        onFilterChange({ employeeId: '', dateFrom: '', dateTo: '', status: '', search: '', ...noExtra })
         if (onSortChange && sortOptions?.[0]) {
             onSortChange(sortOptions[0].value, 'asc')
         }
@@ -250,7 +274,8 @@ export default function EmployeeFilter({
         (!hideDateFilter && (dateFrom || dateTo)) ? 1 : 0,
         (showRoleFilter && selectedRole) ? 1 : 0,
         selectedTeam ? 1 : 0,
-        (showCompanyFilter && selectedCompanyId) ? 1 : 0
+        (showCompanyFilter && selectedCompanyId) ? 1 : 0,
+        ...extraFilters.map(f => (f.value ? 1 : 0))
     ].reduce((a, b) => a + b, 0)
 
 
@@ -596,6 +621,41 @@ export default function EmployeeFilter({
                                         </div>
                                     )}
 
+                                    {extraFilters.filter(f => !f.hidden).map(f => (
+                                        <div key={f.key}>
+                                            <label htmlFor={`extra-filter-${f.key}`} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{f.label}</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <select id={`extra-filter-${f.key}`}
+                                                    value={localExtra[f.key] ?? ''}
+                                                    onChange={(e) => pickExtra(f.key, e.target.value)}
+                                                    className="input"
+                                                    style={{
+                                                        width: '100%',
+                                                        paddingInlineStart: '0.75rem',
+                                                        paddingInlineEnd: '2.25rem',
+                                                        borderRadius: '1.25rem',
+                                                        background: 'var(--surface)',
+                                                        border: '1px solid var(--border)',
+                                                        height: '48px',
+                                                        appearance: 'none',
+                                                        backgroundImage: 'none',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: '500',
+                                                        textAlign: 'start'
+                                                    }}
+                                                >
+                                                    {optionsOf(f, localExtra).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                                </select>
+                                                <div style={{ position: 'absolute', insetInlineEnd: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}>
+                                                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M6 9l6 6 6-6"></path>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
                                     {showCompanyFilter && companyOptions && Array.isArray(companyOptions) && (
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{t('company_label')}</label>
@@ -789,7 +849,7 @@ export default function EmployeeFilter({
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
                         </div>
-                        <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>{t('total_cost')}:</span>
+                        <span style={{ fontSize: '0.7rem', fontWeight: '800', opacity: 0.8, textTransform: 'uppercase' }}>{totalCostLabel ?? t('total_cost')}:</span>
                         <span style={{ fontSize: '1.125rem', fontWeight: '900' }}>
                             {totalCost.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2 })} <span style={{ fontSize: '0.75rem' }}>{locale === 'ar' ? 'ج.م' : 'EGP'}</span>
                         </span>

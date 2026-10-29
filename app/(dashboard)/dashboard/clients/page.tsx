@@ -5,7 +5,7 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import {
-    BuildingsIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon, PhoneIcon, PlusIcon, StorefrontIcon, TrashIcon, UserIcon, WarningCircleIcon,
+    BuildingsIcon, CheckSquareIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon, PhoneIcon, PlusIcon, StorefrontIcon, TrashIcon, UserIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -133,10 +133,14 @@ export default function ClientsPage() {
         ? <a href={c.locationLink} target="_blank" rel="noopener noreferrer" className="ui-item-link"><bdi>{c.locationName}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
         : <bdi>{c.locationName}</bdi>
     const menu = (c: Client): MenuItem[] => [
-        { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) },
-        { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(c) },
+        // Its tasks, on the Tasks page filtered to it (CLIENTS_PLAN.md §3.6).
+        { key: 'tasks', label: t('clients_view_tasks'), icon: CheckSquareIcon, href: `/dashboard/tasks?clientId=${encodeURIComponent(c.id)}` },
+        ...(canManage ? [
+            { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) },
+            { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(c) },
+        ] : []),
     ]
-    const actions = (c: Client) => canManage && (
+    const actions = (c: Client) => (
         <span className="ui-row-actions">
             <RowMenu label={t('ui_more_actions_for').replace('{name}', c.name)} tooltip={t('ui_more_actions')} items={menu(c)} />
         </span>
@@ -148,7 +152,7 @@ export default function ClientsPage() {
         { key: 'phone', header: t('clients_col_phone'), cell: phone },
         { key: 'location', header: t('clients_col_location'), cell: place },
         { key: 'added', header: t('clients_col_added'), cell: c => <span className="ui-item-detail">{addedBy(c)}</span> },
-        ...(canManage ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions }] : []),
+        { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions },
     ]
 
     const addLabel = say('clients_add', 'إضافة {name}', 'Add {name}')

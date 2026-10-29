@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
 import { can } from '@/lib/permissions/can'
 import { pendingCostsWhere } from '@/lib/services/costs-query'
+import { costsDue } from '@/lib/costs-total'
 
 export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
@@ -13,7 +14,9 @@ export default async function CostsPage(props: { searchParams: Promise<{
         employeeId?: string,
         dateFrom?: string,
         dateTo?: string,
-        search?: string
+        search?: string,
+        clientId?: string,
+        locationId?: string
     }> }) {
     // Next 15 hands a page its dynamic segments and query string as
     // promises rather than plain objects, so they are awaited here and
@@ -37,11 +40,11 @@ export default async function CostsPage(props: { searchParams: Promise<{
     // The same query "Mark all as paid" runs, so it pays the list shown.
     const where = await pendingCostsWhere(session.user as any, searchParams)
     if (!where) {
-        return <CostsClient tasksWithCosts={[]} total={0} page={1} totalPages={0} />
+        return <CostsClient tasksWithCosts={[]} total={0} page={1} totalPages={0} totalDue={0} />
     }
 
-    // Fetch tasks and total count
-    const [tasksWithCosts, total] = await Promise.all([
+    // Fetch tasks and total count, and what every page of them still owes.
+    const [tasksWithCosts, total, owed] = await Promise.all([
         (prisma.task as any).findMany({
             where,
             select: {
@@ -66,8 +69,10 @@ export default async function CostsPage(props: { searchParams: Promise<{
             skip,
             take: limit
         }),
-        (prisma.task as any).count({ where })
+        (prisma.task as any).count({ where }),
+        prisma.task.findMany({ where, select: { totalCost: true, memberCosts: true, memberPaymentStatus: true } }),
     ])
+    const totalDue = costsDue(owed.map(t => ({ ...t, totalCost: Number(t.totalCost) })), searchParams.employeeId)
 
     const totalPages = Math.ceil(total / limit)
 
@@ -86,6 +91,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
             total={total}
             page={page}
             totalPages={totalPages}
+            totalDue={totalDue}
         />
     )
 }

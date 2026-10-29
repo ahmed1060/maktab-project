@@ -33,15 +33,17 @@ const P: Record<string, Person> = {
 type Task = {
     id: string; companyId: string; assignees: Person[]; status: string; totalCost: number; paymentStatus: string
     memberCosts: Record<string, number>; memberPaymentStatus: Record<string, string>
+    clientId: string | null; locationId: string | null
 }
+// Each with its client, or none, and its location (CLIENTS_PLAN.md §3).
 const TASKS: Task[] = ([
-    { id: "t-team",  companyId: "c1", assignees: [P.emp], memberCosts: { emp: 10 } },         // the leader's team
-    { id: "t-own",   companyId: "c1", assignees: [P.tl], memberCosts: { tl: 10 } },           // the leader's own
-    { id: "t-loner", companyId: "c1", assignees: [P.loner], memberCosts: { loner: 10 } },     // someone outside the team
-    { id: "t-c2",    companyId: "c2", assignees: [P.other], memberCosts: { other: 10 } },     // another company
-] as Pick<Task, "id" | "companyId" | "assignees" | "memberCosts">[]).map(t => ({ ...t, status: "APPROVED", totalCost: 10, paymentStatus: "PENDING_PAYMENT", memberPaymentStatus: {} }))
+    { id: "t-team",  companyId: "c1", assignees: [P.emp],   memberCosts: { emp: 10 },   clientId: "acme", locationId: "acme-hq" },   // the leader's team
+    { id: "t-own",   companyId: "c1", assignees: [P.tl],    memberCosts: { tl: 10 },    clientId: null,   locationId: "port" },      // the leader's own
+    { id: "t-loner", companyId: "c1", assignees: [P.loner], memberCosts: { loner: 10 }, clientId: "acme", locationId: "acme-site" }, // someone outside the team
+    { id: "t-c2",    companyId: "c2", assignees: [P.other], memberCosts: { other: 10 }, clientId: "far",  locationId: "far-hq" },    // another company
+] as Pick<Task, "id" | "companyId" | "assignees" | "memberCosts" | "clientId" | "locationId">[]).map(t => ({ ...t, status: "APPROVED", totalCost: 10, paymentStatus: "PENDING_PAYMENT", memberPaymentStatus: {} }))
 // Shared by the leader's team and someone outside it, each with a share.
-const SHARED: Task = { id: "t-shared", companyId: "c1", assignees: [P.emp, P.loner], memberCosts: { emp: 100, loner: 50 }, status: "APPROVED", totalCost: 150, paymentStatus: "PENDING_PAYMENT", memberPaymentStatus: {} }
+const SHARED: Task = { id: "t-shared", companyId: "c1", assignees: [P.emp, P.loner], memberCosts: { emp: 100, loner: 50 }, status: "APPROVED", totalCost: 150, paymentStatus: "PENDING_PAYMENT", memberPaymentStatus: {}, clientId: "acme", locationId: "acme-hq" }
 const fixture = { tasks: TASKS }
 
 /** Enough of Prisma's where on Task and User for these queries; throws on anything else. */
@@ -186,5 +188,24 @@ describe("with one employee picked, Mark all as paid pays that employee's shares
     it("with no one picked, every share of every task, as before", async () => {
         expect(await pay("admin", { filters: {} })).toEqual(["t-loner", "t-own", "t-shared", "t-team"])
         expect(seen.writes["t-shared"]).toMatchObject({ memberPaymentStatus: { emp: "PAID", loner: "PAID" }, paymentStatus: "PAID" })
+    })
+})
+
+describe("Mark all as paid pays only the client's and the location's costs the Costs page shows", () => {
+    it("a client's", async () => {
+        expect(await pay("admin", { filters: { clientId: "acme" } })).toEqual(["t-loner", "t-team"])
+    })
+
+    it("those with no client", async () => {
+        expect(await pay("admin", { filters: { clientId: "none" } })).toEqual(["t-own"])
+    })
+
+    it("a location's, and a client's location with its client", async () => {
+        expect(await pay("admin", { filters: { locationId: "acme-site" } })).toEqual(["t-loner"])
+        expect(await pay("admin", { filters: { clientId: "acme", locationId: "port" } })).toEqual([])
+    })
+
+    it("never another company's client, whatever the filter names", async () => {
+        expect(await pay("admin", { filters: { clientId: "far" } })).toEqual([])
     })
 })

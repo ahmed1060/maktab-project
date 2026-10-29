@@ -938,3 +938,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   every location in use, as the template's Locations sheet does.
 - **2026-10-29:** In 2b (#99), a location named as the Locations sheet's
   heading is found on upload like any other.
+- **2026-10-22:** The Tasks and Costs pages' filter panel takes a client
+  and a location, as selects among the panel's own, until those pages get
+  their own turn on the building blocks (`CLIENTS_PLAN.md` step 3). The
+  Costs page's total chip is "Total due" now, and real. "View tasks" is in
+  the Clients list's row menu, which everyone who sees the list now has,
+  and on a client's page.
+- **2026-10-29:** A task's page shows its dates as the task list does
+  (`SafeDate`): the deadline as "3 Nov 2026, 9:03 am", and the comments',
+  attachments' and costs' the same way.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 2b was merged in #99, so step 2 is
+  done, and step 3 opens for review in #100, with the Tasks and Costs
+  pages' client and location filters.
+- **2026-10-29:** In step 3 (#100), the Tasks and Costs pages' location
+  filter lists the archived locations after the ones in use, each marked
+  "· archived", as 4b marks an archived client.
+- **2026-10-29:** In step 3 (#100), the Tasks and Costs pages' filter
+  panel counts a client or location filter its viewer has no select for,
+  set by a shared link, and Reset clears it.

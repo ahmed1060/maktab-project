@@ -10,15 +10,18 @@ import { useEffect } from 'react'
 import Pagination from '@/components/Pagination'
 import { useCan } from '@/lib/useCan'
 import { shareOwed, unallocatedCost } from '@/lib/cost-shares'
+import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
 
 interface CostsClientProps {
     tasksWithCosts: any[]
     total: number
     page: number
     totalPages: number
+    /** What the whole filtered list still owes, or the picked employee's share of it (CLIENTS_PLAN.md §3.5). */
+    totalDue: number
 }
 
-export default function CostsClient({ tasksWithCosts, total, page, totalPages }: CostsClientProps) {
+export default function CostsClient({ tasksWithCosts, total, page, totalPages, totalDue }: CostsClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
@@ -31,8 +34,12 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
         employeeId: searchParams.get('employeeId') || '',
         dateFrom: searchParams.get('dateFrom') || '',
         dateTo: searchParams.get('dateTo') || '',
-        search: searchParams.get('search') || ''
+        search: searchParams.get('search') || '',
+        // So Mark all as paid pays only the client's and location's shown (CLIENTS_PLAN.md §3.4).
+        clientId: searchParams.get('clientId') || '',
+        locationId: searchParams.get('locationId') || '',
     }
+    const placeFilters = usePlaceFilters({ clientId: filters.clientId, locationId: filters.locationId })
 
     const { can, companyWide } = useCan()
     const isEmployee = !can('tasks.pay')
@@ -107,6 +114,11 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
 
         if (newFilters.search) params.set('search', newFilters.search)
         else params.delete('search')
+
+        for (const key of ['clientId', 'locationId']) {
+            if (newFilters[key]) params.set(key, newFilters[key])
+            else params.delete(key)
+        }
 
         params.set('page', '1') // Reset to first page on filter change
         router.push(`/dashboard/costs?${params.toString()}`)
@@ -191,7 +203,9 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
                 dateFrom={filters.dateFrom}
                 dateTo={filters.dateTo}
                 totalCount={total}
-                totalCost={0} // We can't easily calculate total cost across all pages without another count or complex query
+                totalCost={totalDue}
+                totalCostLabel={t('costs_total_due')}
+                extraFilters={placeFilters}
                 isEmployee={isEmployee}
                 hideSearch={false}
                 searchQuery={filters.search}
@@ -235,7 +249,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages }:
             {sortedEntries.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-soft)' }}>
                     <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-                        {filters.employeeId || filters.dateFrom || filters.dateTo || filters.search
+                        {filters.employeeId || filters.dateFrom || filters.dateTo || filters.search || filters.clientId || filters.locationId
                             ? t('no_costs_found_filters')
                             : t('no_costs_found_yet')}
                     </p>

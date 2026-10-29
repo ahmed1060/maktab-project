@@ -24,6 +24,7 @@ vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: () => true, companyWide: 
 // Its filters and pages aren't what's checked here.
 vi.mock("@/components/EmployeeFilter", () => ({ default: () => null }))
 vi.mock("@/components/Pagination", () => ({ default: () => null }))
+vi.mock("@/components/locations/usePlaceFilters", () => ({ usePlaceFilters: () => [] }))
 
 const ali = { id: "u1", firstName: "Ali", lastName: "Hassan" }
 const mona = { id: "u2", firstName: "Mona", lastName: "Adel" }
@@ -35,7 +36,7 @@ const task = (fields: object) => ({
 async function costsPage(tasks: object[], query = "") {
     address.query = query
     const { default: CostsClient } = await import("@/app/(dashboard)/dashboard/costs/CostsClient")
-    return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: tasks, total: tasks.length, page: 1, totalPages: 1 }))
+    return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: tasks, total: tasks.length, page: 1, totalPages: 1, totalDue: 0 }))
 }
 
 describe("the Costs page's cards", () => {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { grantFor, type Actor } from "@/lib/permissions/can"
 import { assignedToTeamWhere } from "@/lib/team-scope"
 import { dayRangeIn } from "@/lib/services/filter-zone"
+import { placeFilters } from "@/lib/place-filters"
 
 /**
  * A task in which this member's share of the cost is still to pay: more than
@@ -30,6 +31,10 @@ export type CostFilters = {
     search?: string
     dateFrom?: string
     dateTo?: string
+    /** A client's tasks, or "none" for those with no client (CLIENTS_PLAN.md §3). */
+    clientId?: string
+    /** The tasks done at one location. */
+    locationId?: string
 }
 
 /**
@@ -80,6 +85,8 @@ export async function pendingCostsWhere(
     // Days where the company is, not on the server's clock.
     const updatedAt = await dayRangeIn(filters.dateFrom, filters.dateTo, companyId)
     if (updatedAt) where.AND.push({ updatedAt })
+    // So Mark all as paid pays only the client's, or the location's, shown.
+    where.AND.push(...placeFilters(filters.clientId, filters.locationId))
 
     return where
 }

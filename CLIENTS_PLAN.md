@@ -766,7 +766,7 @@ balance first, automatically:
        2026-10-23 (§0.3), its migration run in a maintenance window of
        about 8 minutes.
      - Step 1, the Locations system: PR 1a was merged in #96 on
-       2026-10-29 (§2). Proposed:
+       2026-10-29 (§2). Decided (2026-10-22):
        it ships as two PRs. 1b, opened once 1a is merged and live, gives
        the companies already there their built-in roles' location
        permissions (§2.9), and makes an HQ for any client the release
@@ -778,11 +778,15 @@ balance first, automatically:
      - Step 2's first PR, 2a, was merged in #98 on 2026-10-29: tasks are
        done at locations, made and edited with the client and location pickers
        (§2.3, §2.4, §3.1).
-       Proposed: step 2 ships as two PRs. 2b moves the bulk upload onto
-       locations: the Excel Locations sheet and the review screen's
-       pickers (§2.7). Until then, an uploaded task still takes its
-       client's own location fields, or its typed text. 2b is open for
-       review in #99.
+       Decided (2026-10-22): step 2 ships as two PRs. 2b moves the bulk
+       upload onto locations: the Excel Locations sheet and the review
+       screen's pickers (§2.7). Until then, an uploaded task still takes its
+       client's own location fields, or its typed text. 2b was merged in
+       #99 on 2026-10-29, so step 2 is done.
+     - Step 3, filters and totals, is built (§3), as one PR after 2b. It
+       stands on the fix that has Mark all as paid pay only the list shown,
+       and on the date filters counting the company's days, which come
+       before it in their own PRs. It's open for review in #100.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1284,3 +1288,37 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   sheet below its heading: read as a location, the heading made a
   location named "Name", or "الاسم", named twice, and refused (found by
   Codex).
+- **2026-10-22:** Step 3 is built (§3):
+  - **A client filter** on the Tasks and Costs pages, with "No client",
+    for whoever may see clients, and **a location filter** beside it for
+    whoever may see locations: the picked client's locations and the
+    shared ones. Both are kept in the address with the other filters.
+    The Costs page has the location filter too, so Mark all as paid can
+    apply it (§3.4).
+  - **Mark all as paid** pays only the client's and the location's costs
+    shown, with a test that it pays nothing else.
+  - **The Costs page's total** is what the whole filtered list still owes,
+    across every page, leaving out the parts paid; with an employee
+    picked, it's their share. It showed 0 before, whatever the list held.
+  - **"View tasks"** on each client, in the Clients list's row menu and on
+    its page, opens Tasks filtered to it.
+- **2026-10-22:** Decided by the product owner: step 1 ships as two PRs,
+  1a and 1b, and step 2 as two, 2a and 2b (§8).
+- **2026-10-29:** Found while preparing step 3: a task's page drew its
+  deadline, comments, attachments and costs' dates on the server, in its
+  time zone, so the browser drew them again in Cairo's and logged a
+  hydration failure on every task page. They're drawn once the browser
+  has the page now, as the task list's are.
+- **2026-10-29:** 2b was merged in #99, with Codex's three findings fixed
+  in it: the template listed the locations for someone who may not see
+  them, the review screen's list stopped at 2,000, and the upload read
+  the Locations sheet's heading as a location. So step 2 is done. Step 3
+  opens for review in #100.
+- **2026-10-29:** In step 3 (#100), the location filter offers the
+  archived locations too, after the ones in use and marked as archived:
+  a location archived after tasks were done there keeps them, and their
+  costs still due, to be found and paid (found by Codex).
+- **2026-10-29:** In step 3 (#100), a client or location a shared link
+  sets on the Tasks or Costs page, for someone who can't pick it, still
+  narrows the list, so it's counted on the Filters badge and Reset clears
+  it; before, Reset left it in place (found by Codex).

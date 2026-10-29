@@ -237,4 +237,13 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
         await expect(Tasks.bulkCreate([task({ title: "Bulk at theirs", locationId: "theirs" })], admin)).rejects.toMatchObject({ message: "TASK_LOCATION_NOT_FOUND: Bulk at theirs" })
         expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE title = 'Bulk at theirs'`)).rows[0].n).toBe(0)
     })
+
+    it("lists every location for the Tasks and Costs pages' filter, the archived ones too, marked", async () => {
+        const { LocationService } = await import("@/lib/services/location.service")
+        const { locations } = await LocationService.forFilters(admin, {})
+        expect(locations.map(l => [l.id, l.clientId, l.archived]).sort()).toEqual([
+            ["acme-hq", "k1", false], ["acme-site", "k1", false], ["beta-hq", "k2", false], ["old", null, true], ["port", null, false],
+        ])
+        await expect(LocationService.forFilters(employee, {})).rejects.toThrow()
+    })
 })

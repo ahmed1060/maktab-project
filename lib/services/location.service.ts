@@ -251,6 +251,23 @@ export class LocationService {
     }
 
     /**
+     * Every location in a company, archived ones too, with its client, for
+     * the Tasks and Costs pages' location filter (§3): an archived
+     * location's tasks and costs are still its own, to be found and paid.
+     */
+    static async forFilters(session: Session, query: { companyId?: string | null }) {
+        const companyId = isSuperAdmin(session) ? query.companyId || null : session.user.companyId ?? null
+        if (!companyId) throw new Error("COMPANY_SELECTION_REQUIRED")
+        allow(session, "locations.view", companyId)
+        const all = await prisma.location.findMany({
+            where: { companyId },
+            select: { ...PICK, archivedAt: true },
+            orderBy: [{ name: "asc" }, { id: "asc" }],
+        })
+        return { locations: all.map(l => ({ ...pickRow(l), clientId: l.clientId, archived: l.archivedAt !== null })) }
+    }
+
+    /**
      * The location a task is to be done at (§2.3), checked against the
      * task: its company's, in use, its pin placed (§2.8), and its client's
      * or a shared one; a task with no client takes a shared one. Returns

@@ -3,6 +3,7 @@ import { assignedToTeamWhere } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
 import { dayRange } from "@/lib/day-range"
 import { DEFAULT_TIME_ZONE } from "@/lib/time"
+import { placeFilters } from "@/lib/place-filters"
 
 export type TaskQuerySession = {
     user: {
@@ -107,6 +108,9 @@ export function buildTaskWhereClause(
     // Days where the company is, not on the server's clock.
     const updatedAt = dayRange(dateFrom, dateTo, timeZone)
     if (updatedAt) filters.push({ updatedAt })
+
+    // Its client, or none, and where it's done (CLIENTS_PLAN.md §3).
+    filters.push(...placeFilters(searchParams.get('clientId'), searchParams.get('locationId')))
 
     return { empty: false, whereClause: { AND: [...scope, ...filters] } }
 }

@@ -181,3 +181,26 @@ describe("filtering work by team", () => {
         expect(clauses).toContainEqual({ assignees: { some: { teamLeaderId: "tl-2" } } })
     })
 })
+
+describe("filtering work by client and location (CLIENTS_PLAN.md §3)", () => {
+    const admin = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: "co-1" }) }
+    const where = (session: any, query: Record<string, string>) => {
+        const result = buildTaskWhereClause(session, params(query), null)
+        if (result.empty) throw new Error("empty")
+        return result.whereClause.AND
+    }
+
+    it("asks for a client's tasks, or those with no client", () => {
+        expect(where(admin, { clientId: "k1" })).toContainEqual({ clientId: "k1" })
+        expect(where(admin, { clientId: "none" })).toContainEqual({ clientId: null })
+    })
+
+    it("asks for the tasks done at one location, with the client filter too", () => {
+        expect(where(admin, { clientId: "k1", locationId: "loc-1" })).toEqual([{ companyId: "co-1" }, { clientId: "k1" }, { locationId: "loc-1" }])
+    })
+
+    it("narrows an employee's own tasks, never widens them", () => {
+        const employee = { user: withGrants({ id: "emp-1", role: "EMPLOYEE", companyId: "co-1" }) }
+        expect(where(employee, { clientId: "k1" })).toEqual([{ assignees: { some: { id: "emp-1" } } }, { clientId: "k1" }])
+    })
+})
