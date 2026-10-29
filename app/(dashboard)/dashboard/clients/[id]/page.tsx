@@ -11,6 +11,7 @@ import AccessDenied from '@/components/AccessDenied'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { Button, Card, Details, EmptyState, Page, PageHeader, Section, SectionLink, StatusBadge } from '@/components/ui'
 import LocationsList from '@/components/locations/LocationsList'
+import ChargesList from '@/components/charges/ChargesList'
 import RecordsList from '@/components/records/RecordsList'
 import SectionsCard from '@/components/records/SectionsCard'
 import type { SectionItem } from '@/components/records/types'
@@ -34,10 +35,10 @@ type Client = {
 
 /**
  * A client's own page (CLIENTS_PLAN.md §0.2, §2.4): its details, for
- * whoever may see clients, its locations, for whoever may see locations, and
- * its records, for whoever may see records. Someone who may see only
- * records, as an ordinary employee may, still gets the client's name and its
- * records.
+ * whoever may see clients, its locations, for whoever may see locations, its
+ * charges, for whoever may see charges (§6.4), and its records, for whoever
+ * may see records. Someone who may see only records, as an ordinary employee
+ * may, still gets the client's name and its records.
  */
 export default function ClientPage() {
     const { t } = useLanguage()
@@ -50,6 +51,7 @@ export default function ClientPage() {
     const seesClient = can('clients.view')
     const seesRecords = can('records.view')
     const seesLocations = can('locations.view')
+    const seesCharges = can('charges.view')
     const [adding, setAdding] = useState(false)
     const [addingLocation, setAddingLocation] = useState(false)
     const [restoring, setRestoring] = useState(false)
@@ -161,6 +163,9 @@ export default function ClientPage() {
                     />
                 </Section>
             )}
+
+            {/* What it owes for its tasks' costs, and Mark collected (§6.4). */}
+            {seesCharges && <ChargesList client={{ id, name }} />}
 
             {sectionsFailed && (
                 <Section title={modules.label('records')}>

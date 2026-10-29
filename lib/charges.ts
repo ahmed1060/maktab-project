@@ -1,4 +1,6 @@
 import { cents } from "@/lib/task-costs"
+import { countOf } from "@/lib/plural"
+import type { TranslationKey } from "@/lib/translations"
 
 /**
  * Client charges (CLIENTS_PLAN.md §6), as the Charged to clients tab and the
@@ -32,4 +34,14 @@ export function feeFor(paid: number, total: number): number | null {
 export function chargeState(charge: { notCharged: boolean; collectedAt: string | Date | null }): "due" | "collected" | "not_charged" {
     if (charge.collectedAt) return "collected"
     return charge.notCharged ? "not_charged" : "due"
+}
+
+/**
+ * Mark collected's confirmation (§6.4): exactly what it collects, from whom,
+ * as "Collect 7 charges, 3,450.00 EGP, from Al Noor?".
+ */
+export function collectWording(t: (key: TranslationKey) => string, locale: string, count: number, amount: number, client: string) {
+    const money = amount.toLocaleString(locale === "ar" ? "ar-EG" : "en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const say = (key: TranslationKey) => t(key).replace("{charges}", countOf(t, locale, count, "charges")).replace("{amount}", money).replace("{client}", client)
+    return { question: say("charges_collect_question"), button: say("charges_collect_button") }
 }
