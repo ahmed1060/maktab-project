@@ -75,6 +75,8 @@ const CLIENT_NAMES = "20261107000000_client_names_stored"
 const LOCATIONS_GRANTED = "20261110000000_locations_granted"
 // Every role's lists.add, and the built-in Admin's lists.manage (CLIENTS_PLAN.md §5.10).
 const LISTS_GRANTED = "20261116000000_lists_granted"
+// The built-in Admin and Team Leader roles' charges.* (CLIENTS_PLAN.md §6.6, §6.8).
+const CHARGES_GRANTED = "20261119000000_charges_granted"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -132,6 +134,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(CLIENT_NAMES))
         await db.query(sql(LOCATIONS_GRANTED))
         await db.query(sql(LISTS_GRANTED))
+        await db.query(sql(CHARGES_GRANTED))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -164,11 +167,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    // The charges grants come to companies already there from a
-                    // later PR's migration (CLIENTS_PLAN.md §6.8; GRANTED_LATER
-                    // in roles-migration.test.ts).
-                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !permission.startsWith("charges.")))
-                    expect(grants, `${company} ${builtIn}`).toEqual(now)
+                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
                 }
             }
         })
@@ -179,8 +178,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // And one for every built-in role: clients.* became records.* (CLIENTS_PLAN.md §0.2).
             // And one for the Admin and Team Leader roles: locations.* (CLIENTS_PLAN.md §2.9).
             // And one for every built-in role: lists.* (CLIENTS_PLAN.md §5.10).
+            // And one for the Admin and Team Leader roles: charges.* (CLIENTS_PLAN.md §6.8).
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            const version = { ADMIN: 9, TEAM_LEADER: 4, EMPLOYEE: 3 } as Record<string, number>
+            const version = { ADMIN: 10, TEAM_LEADER: 5, EMPLOYEE: 3 } as Record<string, number>
             for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(version[role.builtIn])
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([
