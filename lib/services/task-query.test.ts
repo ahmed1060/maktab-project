@@ -43,6 +43,21 @@ describe("buildTaskWhereClause (F-03 tenancy scoping)", () => {
         expect(result.whereClause.AND).toContainEqual({ assignees: { some: { id: "emp-42" } } })
     })
 
+    it("narrows by a saved title, picked as it or typed the same, keeping the scope (CLIENTS_PLAN.md §5.9)", () => {
+        const session = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: "co-1" }) }
+        const audit = { id: "n1", name: "Quarterly audit", companyId: "co-1" }
+        const result = buildTaskWhereClause(session, params({ titleNameId: "n1" }), null, undefined, audit)
+        if (result.empty) throw new Error("expected a where clause")
+        expect(result.whereClause.AND).toEqual(expect.arrayContaining([
+            { companyId: "co-1" },
+            { companyId: "co-1", OR: [{ titleEntryId: "n1" }, { title: { equals: "Quarterly audit", mode: "insensitive" } }] },
+        ]))
+        // A name its company hasn't: nothing.
+        const none = buildTaskWhereClause(session, params({ titleNameId: "gone" }), null, undefined, null)
+        if (none.empty) throw new Error("expected a where clause")
+        expect(none.whereClause.AND).toContainEqual({ id: "__no_match__" })
+    })
+
     it("returns empty for an ADMIN with no companyId rather than scanning all companies", () => {
         const session = { user: withGrants({ id: "admin-1", role: "ADMIN", companyId: null }) }
         const result = buildTaskWhereClause(session, params(), null)

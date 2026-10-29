@@ -41,3 +41,39 @@ export type CompanyPick = { name: { text: string; entryId: string | null }; comp
 export function pickIn(pick: CompanyPick, company: string | null): CompanyPick["name"] {
     return pick.company === company || !pick.name.entryId ? pick.name : { text: pick.name.text, entryId: null }
 }
+
+/** A saved name a filter picked, with its company (§5.9). */
+export type FilterName = { id: string; name: string; companyId: string }
+
+/** For a name filter whose name its viewer's company hasn't: nothing. */
+const NOTHING = { id: "__no_match__" }
+
+/** Text for a LIKE pattern, its %, _ and \ taken as typed. */
+export const likeText = (text: string) => text.replace(/[\\%_]/g, c => `\\${c}`)
+
+/**
+ * Text typed the same as a name, ignoring capitals. Prisma matches an
+ * insensitive `equals` with ILIKE, so "Gate_2" would match "GateX2", and
+ * "%" everything.
+ */
+const typedAs = (name: string) => ({ equals: likeText(name), mode: "insensitive" })
+
+/**
+ * The tasks a title filter keeps (§5.9; decided 2026-10-29): those picked as
+ * the name, or typed the same, ignoring capitals, in the name's company.
+ */
+export function titleNamed(name: FilterName | null): Record<string, unknown> {
+    if (!name) return NOTHING
+    return { companyId: name.companyId, OR: [{ titleEntryId: name.id }, { title: typedAs(name.name) }] }
+}
+
+/** A task's costs a cost name filter counts, picked as the name or typed the same. */
+export function costNamed(name: FilterName): Record<string, unknown> {
+    return { OR: [{ nameEntryId: name.id }, { description: typedAs(name.name) }] }
+}
+
+/** The tasks with a cost a cost name filter counts, in the name's company. */
+export function withCostNamed(name: FilterName | null): Record<string, unknown> {
+    if (!name) return NOTHING
+    return { companyId: name.companyId, costs: { some: costNamed(name) } }
+}

@@ -8,8 +8,10 @@ import { grantFor } from '@/lib/permissions/can'
 import { shapeTask } from '@/lib/permissions/shape'
 import { dayRangeIn } from '@/lib/services/filter-zone'
 import { placeFilters } from '@/lib/place-filters'
+import { titleNamed } from '@/lib/saved-lists'
+import { ListService } from '@/lib/services/list.service'
 
-export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string, clientId?: string, locationId?: string }> }) {
+export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string, clientId?: string, locationId?: string, titleNameId?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
     // promises rather than plain objects, so they are awaited here and
     // the rest of the function reads them exactly as it did before.
@@ -108,6 +110,10 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
 
     // Its client, or none, and where it's done (CLIENTS_PLAN.md §3).
     for (const narrower of placeFilters(searchParams.clientId, searchParams.locationId)) and(whereClause, narrower)
+    // Picked as a saved title, or typed the same, in the company in view (§5.9).
+    if (searchParams.titleNameId) {
+        and(whereClause, titleNamed(await ListService.filterName('TASK_TITLE', searchParams.titleNameId, scope === 'ALL' ? companyId ?? null : userCompanyId ?? null)))
+    }
 
     const { dateFrom, dateTo } = searchParams as any
     // Days where the company is, not on the server's clock.

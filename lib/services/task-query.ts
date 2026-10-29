@@ -4,6 +4,7 @@ import { grantFor } from "@/lib/permissions/can"
 import { dayRange } from "@/lib/day-range"
 import { DEFAULT_TIME_ZONE } from "@/lib/time"
 import { placeFilters } from "@/lib/place-filters"
+import { titleNamed, type FilterName } from "@/lib/saved-lists"
 
 export type TaskQuerySession = {
     user: {
@@ -35,7 +36,9 @@ export function buildTaskWhereClause(
     searchParams: URLSearchParams,
     companyId: string | null,
     /** Where the date filter's days are counted: the company's zone (lib/services/filter-zone.ts). */
-    timeZone: string = DEFAULT_TIME_ZONE
+    timeZone: string = DEFAULT_TIME_ZONE,
+    /** The saved title `?titleNameId=` names (ListService.filterName), when it's set: null for one its viewer's company hasn't. */
+    titleName?: FilterName | null,
 ): TaskWhereResult {
     const userId = session.user.id
 
@@ -111,6 +114,8 @@ export function buildTaskWhereClause(
 
     // Its client, or none, and where it's done (CLIENTS_PLAN.md §3).
     filters.push(...placeFilters(searchParams.get('clientId'), searchParams.get('locationId')))
+    // Picked as a saved title, or typed the same (§5.9).
+    if (titleName !== undefined) filters.push(titleNamed(titleName))
 
     return { empty: false, whereClause: { AND: [...scope, ...filters] } }
 }

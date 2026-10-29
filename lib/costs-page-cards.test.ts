@@ -25,6 +25,7 @@ vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: () => true, companyWide: 
 vi.mock("@/components/EmployeeFilter", () => ({ default: () => null }))
 vi.mock("@/components/Pagination", () => ({ default: () => null }))
 vi.mock("@/components/locations/usePlaceFilters", () => ({ usePlaceFilters: () => [] }))
+vi.mock("@/components/lists/useNameFilter", () => ({ useNameFilter: () => [] }))
 
 const ali = { id: "u1", firstName: "Ali", lastName: "Hassan" }
 const mona = { id: "u2", firstName: "Mona", lastName: "Adel" }
@@ -33,10 +34,10 @@ const task = (fields: object) => ({
     totalCost: 300, memberCosts: null, memberPaymentStatus: null, assignees: [ali, mona], ...fields,
 })
 
-async function costsPage(tasks: object[], query = "") {
+async function costsPage(tasks: object[], query = "", costName: string | null = null) {
     address.query = query
     const { default: CostsClient } = await import("@/app/(dashboard)/dashboard/costs/CostsClient")
-    return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: tasks, total: tasks.length, page: 1, totalPages: 1, totalDue: 0, toPay: null }))
+    return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: tasks, total: tasks.length, page: 1, totalPages: 1, totalDue: 0, toPay: null, costName }))
 }
 
 describe("the Costs page's cards", () => {
@@ -81,5 +82,21 @@ describe("the Costs page's cards", () => {
         expect(html).toContain("100.00")
         // Not with an employee picked: it's no one's share.
         expect(await costsPage([task({ totalCost: 150, memberCosts: { u1: 50 }, memberPaymentStatus: {} })], "employeeId=u1")).not.toContain("Ali Hassan, Mona Adel")
+    })
+
+    it("with a cost name picked, shows what's due of the costs of that name, each person's and no one's (CLIENTS_PLAN.md §5.9)", async () => {
+        // Ali's 40 and 12.50 of Diesel, Mona's share paid, and 75 from before costs had their person.
+        const html = await costsPage([task({
+            totalCost: 400, memberCosts: { u1: 180, u2: 60 }, memberPaymentStatus: { u2: "PAID" },
+            costs: [{ authorId: "u1", amount: 40 }, { authorId: "u1", amount: 12.5 }, { authorId: "u2", amount: 20 }, { authorId: null, amount: 75 }],
+        })], "costNameId=n1", "Diesel")
+        expect(html).toContain("52.50")
+        // Each amount says it's the Diesel, not the task's total cost.
+        expect(html).toContain("Diesel")
+        expect(html).not.toContain("total_cost")
+        expect(html).toContain("75.00")
+        // Not each whole share, nor Mona's Diesel, her share being paid.
+        expect(html).not.toContain("180.00")
+        expect(html).not.toContain("20.00")
     })
 })

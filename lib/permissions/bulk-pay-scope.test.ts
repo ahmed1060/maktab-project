@@ -251,6 +251,12 @@ describe("Mark all as paid pays exactly what was confirmed (CLIENTS_PLAN.md §4.
         expect(await send("admin", { filters: {}, confirm: { digest } })).toEqual({ status: 409, paid: [] })
     })
 
+    it("pays nothing by a cost name, whose list adds up only those costs (CLIENTS_PLAN.md §5.9)", async () => {
+        // A payment is a person's share of a whole task, more than the list showed.
+        const digest = await shown("admin", {})
+        expect(await send("admin", { filters: { costNameId: "transport" }, confirm: { digest } })).toEqual({ status: 400, paid: [] })
+    })
+
     it("pays what was confirmed when nothing changed", async () => {
         expect(await send("admin", { filters: {}, confirm: { digest: await shown("admin", {}) } })).toEqual({ status: 200, paid: ["t-loner", "t-own", "t-team"] })
     })

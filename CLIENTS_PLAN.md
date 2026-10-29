@@ -525,6 +525,18 @@ separate system. On screen they're renamed **Check-in places** (أماكن
    - cost names: the Add cost form.
 9. **Filters and totals:** by cost name on the Costs page, and by title on
    the Tasks page.
+   - **Decided (2026-10-29):** a name's filter keeps what was picked as
+     it, and what was typed the same, ignoring capitals, in its company:
+     older tasks and costs count too.
+   - On the Costs page, the cards and the total are what's due of the
+     costs of that name: each person's on a task, while their share is
+     still to pay, and those that are no one's share.
+   - **Decided (2026-10-29):** Mark all as paid isn't offered with a cost
+     name picked. A payment is a person's share of a whole task, so it
+     would pay more than the list adds up to. A line says to clear the
+     cost name to pay, and the server refuses it too.
+   - The archived names are offered last, marked, as what was picked as
+     them is still to be found.
 10. **How it's built (step 5).**
     - **Proposed:** step 5 ships as three PRs:
       - 5a: the lists, the picker, the Saved lists page, the permissions
@@ -532,7 +544,10 @@ separate system. On screen they're renamed **Check-in places** (أماكن
       - 5b: the permissions for the companies already there, once 5a's
         role editor is live, as for locations (§2.9) (built);
       - 5c: the bulk import matching titles to the list, and the filters
-        and totals by title and cost name (§5.8–5.9).
+        and totals by title and cost name (§5.8–5.9) (built). An imported
+        title that is a saved one, ignoring capitals, is saved as picked
+        from it; an archived one isn't matched. The review screen is as it
+        was.
     - **What's saved** (§5.5): the text as typed, and the name it was
       picked as only while the text is that name, ignoring capitals. Typed
       over after picking, or renamed in the meantime, it's saved as typed.
@@ -834,9 +849,11 @@ balance first, automatically:
        (§4.4, §4.5), in #103, and 4d, which tidies up after it (§4.5), in
        #104. Step 4 is done.
      - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
-       and 5c (§5.10). 5a was merged in #105 on 2026-10-29. 5b gives the
-       companies there before it the lists' permissions; it's built, and
-       open for review in #106.
+       and 5c (§5.10). 5a was merged in #105 on 2026-10-29, and 5b, which
+       gives the companies there before it the lists' permissions, in
+       #106. 5c, the bulk import matching titles to the list and the
+       filters and totals by title and cost name, is built, and open for
+       review in #107.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1537,3 +1554,30 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   after. Step 5's second PR, 5b, opens for review in #106; its migration
   gives the 3 companies there the lists' permissions (12 grants on their
   9 built-in roles; none has roles of its own yet, checked read-only).
+- **2026-10-29:** Decided by the product owner (§5.9): a name's filter
+  keeps what was picked as it and what was typed the same, ignoring
+  capitals; and Mark all as paid isn't offered with a cost name picked.
+- **2026-10-29:** Step 5's third PR, 5c, is built (§5.8–5.9):
+  - **The Tasks page filters by a saved title,** and the Costs page by a
+    cost name, in the filter bar's panel, kept in the address.
+  - **With a cost name, the Costs page lists what's due of those costs:**
+    its cards say the name, and its total adds them up, one employee's
+    with an employee picked. Mark all as paid gives way to a line saying
+    to clear the cost name to pay, and the server refuses it too.
+  - **An imported title is saved as the saved one it names,** ignoring
+    capitals; never one the request names.
+- **2026-10-29:** 5b was merged in #106; Codex found nothing in it. Its
+  migration ran on production at 18:04 UTC: the 3 companies there hold
+  the lists' permissions (12 grants on their 9 built-in roles), with no
+  errors after. Step 5's third PR, 5c, opens for review in #107; it has
+  no migration.
+- **2026-10-29:** In 5c (#107), the Costs page with a cost name picked
+  lists and counts only the tasks with a cost of that name still due. A
+  task whose costs of it were all in shares paid already, or with an
+  employee picked, all someone else's, was counted and paged with no card
+  to show, and could fill a page while those due were on the next (found
+  by Codex).
+- **2026-10-29:** In 5c (#107), a name's filter takes its `%`, `_` and `\`
+  as typed. What was typed the same was matched as a pattern, so
+  "Cleaning_supplies" kept costs typed "Cleaning supplies", and "%" every
+  cost (found by Codex).

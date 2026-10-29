@@ -1024,3 +1024,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   their Admins see Saved lists in the side bar.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 5a was merged in #105, with the name
   picker's five review fixes, and 5b opens for review in #106.
+- **2026-10-29:** The filter bar's panel offers a saved title on the Tasks
+  page and a cost name on the Costs page (`CLIENTS_PLAN.md` step 5, PR 5c),
+  the archived names last, marked. With a cost name picked, each cost card
+  names it over its amount, and Mark all as paid gives way to a line saying
+  to clear the cost name to pay.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 5b was merged in #106, and 5c opens
+  for review in #107.
+- **2026-10-29:** In 5c (#107), the Costs page with a cost name picked
+  pages through only the tasks with a cost of it still to pay: none of
+  its pages is short of cards, or empty, for tasks with none.
+- **2026-10-29:** In 5c (#107), a saved name with `%` or `_` in it filters
+  by what's typed exactly as it, ignoring capitals, and no other.

@@ -10,6 +10,7 @@ import { useModules } from '@/lib/useModules'
 import { useHeader } from '@/context/HeaderContext'
 import { useCan } from '@/lib/useCan'
 import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
+import { useNameFilter } from '@/components/lists/useNameFilter'
 
 interface TasksClientProps {
     tasks: any[]
@@ -42,6 +43,8 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
     // Its client, or none, and where it's done (CLIENTS_PLAN.md §3), kept in
     // the address so a filtered link can be shared.
     const placeFilters = usePlaceFilters({ clientId: searchParams?.get('clientId') || '', locationId: searchParams?.get('locationId') || '' })
+    // A saved title: its tasks, picked as it or typed the same (§5.9).
+    const titleFilter = useNameFilter('TASK_TITLE', 'titleNameId', searchParams?.get('titleNameId') || '')
 
     const [sortBy, setSortBy] = useState(searchParams?.get('sortBy') || 'smart')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(searchParams?.get('sortOrder') as any || 'asc')
@@ -199,7 +202,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
                 totalCount={total}
                 selectedStatus={filters.status}
                 searchQuery={filters.search}
-                extraFilters={placeFilters}
+                extraFilters={[...placeFilters, ...titleFilter]}
                 placeholder={locale === 'ar' ? 'بحث في عنوان المهمة أو الوصف' : 'Search Task Title or Description'}
                 isEmployee={reach === null}
                 sortBy={sortBy}

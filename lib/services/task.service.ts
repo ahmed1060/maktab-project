@@ -1188,11 +1188,26 @@ export class TaskService {
                 clients.forEach(v => clientMap.set(v.id, v))
             }
 
+            // An imported title is the saved one it names, ignoring capitals,
+            // in its task's company (CLIENTS_PLAN.md §5.8): saved as picked
+            // from the list. An archived one isn't offered, so isn't matched.
+            const savedTitles = new Map<string, string>()
+            const titles = Array.from(new Set(tasks.map(t => t.title).filter((title): title is string => typeof title === 'string' && title.trim() !== '')))
+            if (titles.length > 0) {
+                const rows = await tx.$queryRaw<{ id: string; companyId: string; title: string }[]>`
+                    SELECT e.id, e."companyId", t.title FROM "ListEntry" e
+                    JOIN unnest(${titles}::text[]) AS t(title) ON lower(e.name) = lower(btrim(t.title))
+                    WHERE e.kind = 'TASK_TITLE' AND e."archivedAt" IS NULL`
+                for (const row of rows) savedTitles.set(`${row.companyId}\u0000${row.title}`, row.id)
+            }
+
             for (const task of tasks) {
                 // Each at a location picked on the review screen (CLIENTS_PLAN.md
                 // §2.7); a typed one is no more, and its text below takes the
-                // place of any the request carried.
+                // place of any the request carried. Its saved title is found
+                // here, never taken from the request.
                 const { assigneeIds, deadline, clientId, locationId, ...rest } = task
+                delete rest.titleEntryId
                 if (!locationId) throw new Error(`TASK_LOCATION_REQUIRED: ${task.title}`)
                 const deadlineDate = new Date(deadline)
                 const minDeadline = earliestDeadline()
@@ -1243,6 +1258,7 @@ export class TaskService {
                         difficulty: difficulty,
                         createdBy: userRole === 'SUPER_ADMIN' ? null : userId,
                         companyId: taskCompanyId,
+                        titleEntryId: taskCompanyId ? savedTitles.get(`${taskCompanyId}\u0000${task.title}`) ?? null : null,
                         assignees: {
                             connect: assigneeIds.map((id: string) => ({ id }))
                         }

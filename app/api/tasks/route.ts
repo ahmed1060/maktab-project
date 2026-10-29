@@ -7,6 +7,7 @@ import { parsePaging } from "@/lib/pagination"
 import { buildTaskWhereClause } from "@/lib/services/task-query"
 import { filterTimeZone } from "@/lib/services/filter-zone"
 import { shapeTask } from "@/lib/permissions/shape"
+import { ListService } from "@/lib/services/list.service"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -19,7 +20,11 @@ export const GET = withStandardHandler(async (req, session) => {
         if (comp) companyId = comp.id
     }
 
-    const result = buildTaskWhereClause(session, searchParams, companyId, await filterTimeZone(session.user.companyId ?? companyId))
+    // A saved title, in the company in view (CLIENTS_PLAN.md §5.9).
+    const titleName = searchParams.get('titleNameId')
+        ? await ListService.filterName('TASK_TITLE', searchParams.get('titleNameId'), session.user.role === 'SUPER_ADMIN' ? companyId : session.user.companyId ?? null)
+        : undefined
+    const result = buildTaskWhereClause(session, searchParams, companyId, await filterTimeZone(session.user.companyId ?? companyId), titleName)
     if (result.empty) {
         return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
     }

@@ -11,7 +11,8 @@ import Pagination from '@/components/Pagination'
 import { useCan } from '@/lib/useCan'
 import { shareOwed, unallocatedCost } from '@/lib/cost-shares'
 import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
-import { payWording } from '@/lib/costs-total'
+import { namedParts, payWording } from '@/lib/costs-total'
+import { useNameFilter } from '@/components/lists/useNameFilter'
 import ConfirmModal from '@/components/ConfirmModal'
 
 interface CostsClientProps {
@@ -21,11 +22,13 @@ interface CostsClientProps {
     totalPages: number
     /** What the whole filtered list still owes, or the picked employee's share of it (CLIENTS_PLAN.md §3.5). */
     totalDue: number
-    /** What Mark all as paid would pay, every part of every task in the list, as it's confirmed (§4.1). */
+    /** What Mark all as paid would pay, every part of every task in the list, as it's confirmed (§4.1); none with a cost name picked (§5.9). */
     toPay: { count: number; amount: number; digest: string } | null
+    /** The cost name the list is filtered by, which each card's amount is of. */
+    costName?: string | null
 }
 
-export default function CostsClient({ tasksWithCosts, total, page, totalPages, totalDue, toPay }: CostsClientProps) {
+export default function CostsClient({ tasksWithCosts, total, page, totalPages, totalDue, toPay, costName }: CostsClientProps) {
     const { t, locale } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
@@ -42,8 +45,11 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
         // So Mark all as paid pays only the client's and location's shown (CLIENTS_PLAN.md §3.4).
         clientId: searchParams.get('clientId') || '',
         locationId: searchParams.get('locationId') || '',
+        // The tasks with a cost of a saved name, and what those come to (CLIENTS_PLAN.md §5.9).
+        costNameId: searchParams.get('costNameId') || '',
     }
     const placeFilters = usePlaceFilters({ clientId: filters.clientId, locationId: filters.locationId })
+    const costNameFilter = useNameFilter('COST_NAME', 'costNameId', filters.costNameId)
 
     const { can, companyWide } = useCan()
     const isEmployee = !can('tasks.pay')
@@ -53,6 +59,19 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
     const [feedbackMessage, setFeedbackMessage] = useState('')
 
     const allCostEntries = tasksWithCosts.flatMap(task => {
+        // With a cost name picked, each card is what's due of the costs of
+        // that name: a person's on the task, or no one's (the task's own).
+        if (filters.costNameId && Array.isArray(task.costs)) {
+            const names = (task.assignees || []).map((a: any) => `${a.firstName} ${a.lastName}`.trim()).filter(Boolean)
+            return namedParts([task], filters.employeeId).map(part => ({
+                ...task,
+                displayCost: part.amount,
+                displayAssignee: part.userId
+                    ? task.assignees?.find((a: any) => a.id === part.userId) || { firstName: t('unknown_user' as any) || 'Unknown', lastName: '', id: part.userId }
+                    : { id: null, firstName: names.join(locale === 'ar' ? '، ' : ', ') || t('unknown_user'), lastName: '' },
+                individualPaymentStatus: 'PENDING_PAYMENT',
+            }))
+        }
         const mCosts = typeof task.memberCosts === 'string' ? JSON.parse(task.memberCosts) : (task.memberCosts || {})
         const userCosts = Object.entries(mCosts)
 
@@ -120,7 +139,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
         if (newFilters.search) params.set('search', newFilters.search)
         else params.delete('search')
 
-        for (const key of ['clientId', 'locationId']) {
+        for (const key of ['clientId', 'locationId', 'costNameId']) {
             if (newFilters[key]) params.set(key, newFilters[key])
             else params.delete(key)
         }
@@ -220,7 +239,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
                 totalCount={total}
                 totalCost={totalDue}
                 totalCostLabel={t('costs_total_due')}
-                extraFilters={placeFilters}
+                extraFilters={[...placeFilters, ...costNameFilter]}
                 isEmployee={isEmployee}
                 hideSearch={false}
                 searchQuery={filters.search}
@@ -234,6 +253,12 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
                     { label: t('amount_label'), value: 'amount' },
                 ]}
                 primaryAction={
+                    // With a cost name, the list adds up those costs, and a
+                    // payment is a person's share of a whole task: it says so
+                    // rather than pay more than it shows (§5.9).
+                    companyWide('tasks.pay') && total > 0 && filters.costNameId ? (
+                        <p style={{ margin: 0, maxWidth: '22rem', fontSize: 'var(--text-sm)', color: 'var(--text-soft)' }}>{t('costs_pay_by_name')}</p>
+                    ) :
                     // Paying everything at once is for those who pay across the
                     // company; a Team Leader pays their team's one at a time.
                     companyWide('tasks.pay') && total > 0 && toPay && toPay.count > 0 && (
@@ -264,7 +289,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
             {sortedEntries.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-soft)' }}>
                     <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>
-                        {filters.employeeId || filters.dateFrom || filters.dateTo || filters.search || filters.clientId || filters.locationId
+                        {filters.employeeId || filters.dateFrom || filters.dateTo || filters.search || filters.clientId || filters.locationId || filters.costNameId
                             ? t('no_costs_found_filters')
                             : t('no_costs_found_yet')}
                     </p>
@@ -285,6 +310,7 @@ export default function CostsClient({ tasksWithCosts, total, page, totalPages, t
                                 assignee: entry.displayAssignee,
                                 paymentStatus: entry.individualPaymentStatus // Pass individual status to card
                             }}
+                            amountLabel={filters.costNameId ? costName : null}
                         />
                     ))}
                 </div>
