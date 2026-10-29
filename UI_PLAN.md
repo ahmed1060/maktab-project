@@ -990,3 +990,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Removing a cost the server refuses, such as one already paid, says why.
 - **2026-10-29:** In 4c, a refused cost removal closes its window and
   refreshes the task, as a refused task delete does (4a).
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4b was merged in #102, and 4c opens
+  for review in #103, with each cost on a task's page showing what it was
+  for.

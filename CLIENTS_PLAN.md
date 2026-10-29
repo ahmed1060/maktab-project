@@ -801,10 +801,11 @@ balance first, automatically:
        and on the date filters counting the company's days, which come
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Decided (2026-10-22): it ships as three PRs, and a
-       fourth, small one. 4a, payment safety (§4.1, §4.2), is built, and
-       4b, archiving clients (§4.3). 4c moves costs into their own table,
-       with their descriptions (§4.4, §4.5), and is built too. 4d tidies up
-       after it, once 4c is live (§4.5).
+       fourth, small one. 4a, payment safety (§4.1, §4.2), was merged in
+       #101 on 2026-10-29, and 4b, archiving clients (§4.3), in #102. 4c
+       moves costs into their own table, with their descriptions (§4.4,
+       §4.5); it's built, and open for review in #103. 4d tidies up after
+       it, once 4c is live (§4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1424,3 +1425,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-29:** In 4c, removing a cost the server refuses for good, one
   whose person is paid, closes its window and shows the task as it is
   now, rather than offering Delete again (found by the audit).
+- **2026-10-29:** 4b was merged in #102, with Codex's three findings
+  fixed in it: a task written to a client as it was archived took it, an
+  archived client's page didn't say so to records-only viewers, and, from
+  that fix, Restore left its page archived. Its migration ran on
+  production at 13:58 UTC, with no errors after. Step 4's third PR, 4c,
+  opens for review in #103. Its migration adds `TaskCost` and gives each
+  cost entry its row; production has none yet (checked read-only).
