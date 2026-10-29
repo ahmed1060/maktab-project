@@ -553,7 +553,7 @@ export default function BulkTaskReviewModal({
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ minWidth: '170px' }}>
                                                 {/* Its client, and where it's done (CLIENTS_PLAN.md §2.3, §2.7). */}
-                                                <div className="ui-field-group" style={{ gap: '0.4rem' }}>
+                                                <div className="ui-field-group" style={{ gap: 'var(--space-2)' }}>
                                                     <Field label={t('location_client')} hideLabel>{p => (
                                                         <Select {...p} value={bt.clientId || ''}
                                                             onChange={e => {
@@ -562,19 +562,13 @@ export default function BulkTaskReviewModal({
                                                             }}
                                                             options={[{ value: '', label: t('task_no_client') }, ...clients.map((v: any) => ({ value: v.id, label: v.name }))]} />
                                                     )}</Field>
-                                                    <Field label={t('task_location')} hideLabel>{p => (
-                                                        <Select {...p} value={bt.locationId || ''} aria-invalid={bt.validationErrors?.location ? true : undefined}
+                                                    {/* What's wrong with it, beside it and tied to it. */}
+                                                    <Field label={t('task_location')} hideLabel error={bt.validationErrors?.location?.join(' ')}>{p => (
+                                                        <Select {...p} value={bt.locationId || ''}
                                                             onChange={e => change(idx, { ...bt, locationId: e.target.value || null })}
                                                             options={[{ value: '', label: t('task_location_choose') }]} groups={groupsFor(bt.clientId || null)} />
                                                     )}</Field>
                                                 </div>
-                                                {bt.validationErrors?.location && (
-                                                    <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                                                        {bt.validationErrors.location.map((err: string, i: number) => (
-                                                            <div key={i}>• {err}</div>
-                                                        ))}
-                                                    </div>
-                                                )}
                                                 {bt.validationErrors?.client && (
                                                     <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
                                                         {bt.validationErrors.client.map((err: string, i: number) => (
