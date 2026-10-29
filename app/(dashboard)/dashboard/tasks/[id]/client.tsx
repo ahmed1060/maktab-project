@@ -117,7 +117,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [diffField, setDiffField] = useState<'title' | 'description' | null>(null)
     const [isEditedPersistent, setIsEditedPersistent] = useState(initialTask.isEdited)
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
-    const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
+    const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
     const [isReverting, setIsReverting] = useState(false)
     const [showDeadlineModal, setShowDeadlineModal] = useState(false)
@@ -786,7 +786,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
     }
 
-    const handleDeleteItem = (type: 'ATTACHMENT' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => {
+    const handleDeleteItem = (type: 'ATTACHMENT' | 'COST' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => {
         setItemToDelete({ type, itemId })
     }
 
@@ -800,7 +800,15 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 headers: { 'Content-Type': 'application/json' }
             })
 
-            if (!res.ok) throw new Error('Delete failed')
+            if (!res.ok) {
+                // Why, when the server says: a cost already paid stays.
+                const body = await res.json().catch(() => null)
+                showToast(body?.error || t('error_generic'), 'error')
+                // Refused for good: pressing Delete again can't change it, so
+                // the window closes and the page shows the task as it is now.
+                if (res.status === 409) { setItemToDelete(null); router.refresh() }
+                return
+            }
             showToast(t('item_deleted_success') || 'Deleted successfully', 'success')
             setItemToDelete(null)
             router.refresh()

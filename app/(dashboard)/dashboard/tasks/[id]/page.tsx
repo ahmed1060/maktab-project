@@ -29,6 +29,9 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
             // are now, a pin corrected since included. A task from before
             // locations has none, and shows its own text.
             place: { select: { name: true, latitude: true, longitude: true, client: { select: { name: true } } } },
+            // Each cost's id and description (CLIENTS_PLAN.md §4.5); which
+            // costs it has, its comments say (lib/task-costs.ts).
+            costs: { select: { id: true, description: true } },
         }
     })
 

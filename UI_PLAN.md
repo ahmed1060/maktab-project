@@ -984,3 +984,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 4b (#102), Restore on a client's page takes its
   "Archived" badge off and brings back Add record, Add section and Add
   location at once.
+- **2026-10-22:** A task's costs show what they were for, as typed
+  (`CLIENTS_PLAN.md` step 4, PR 4c). The description field stops at 200
+  characters, and a long one, a link among them, wraps inside its card.
+  Removing a cost the server refuses, such as one already paid, says why.
+- **2026-10-29:** In 4c, a refused cost removal closes its window and
+  refreshes the task, as a refused task delete does (4a).
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4b was merged in #102, and 4c opens
+  for review in #103, with each cost on a task's page showing what it was
+  for.

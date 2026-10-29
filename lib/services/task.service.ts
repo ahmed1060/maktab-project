@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { noticeRow } from "@/lib/notice-row"
@@ -16,6 +17,7 @@ import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
 import { LocationService } from "./location.service"
 import { snapshotOf } from "./costs-query"
 import { asRecord } from "@/lib/costs-total"
+import { cents, costEntry, isCostEntry, readDescription } from "@/lib/task-costs"
 
 /**
  * Where a task's check measures from (CLIENTS_PLAN.md §2.5): its location's
@@ -321,9 +323,21 @@ export class TaskService {
     static async submit(id: string, userId: string, session: any, data: any) {
         const { newAttachments, note, isDraft, location, locationName } = data
         const inputCosts = data.costs || data.costEntries
-        const costValue = data.cost ? Number(data.cost) : 0
+        // Each cost with its description, kept to the cent; one of nothing
+        // isn't one. Refused before anything is read.
+        const costs: { amount: number; description: string | null }[] = []
+        const addCost = (amount: unknown, description: unknown) => {
+            const value = cents(Number(amount))
+            if (value > 0) costs.push({ amount: value, description: readDescription(description) })
+        }
+        if (data.cost) addCost(data.cost, data.costDescription)
+        if (Array.isArray(inputCosts)) for (const c of inputCosts) addCost(c?.amount, c?.description)
 
         return await prisma.$transaction(async (tx) => {
+            // Held while its comments are read and written back: two people
+            // saving at once each wrote the comments as they'd read them, so
+            // one's costs went from the list while their total stayed.
+            await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
             const currentTask = await tx.task.findUnique({
                 where: { id },
                 include: { assignees: true, company: { select: { autoVerifyLocation: true } }, place: PLACE }
@@ -375,29 +389,15 @@ export class TaskService {
             const comments: any[] = Array.isArray(currentTask.comments) ? currentTask.comments : []
             if (note) comments.push({ text: note, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'SUBMISSION_NOTE' })
 
-            let totalAdded = costValue
-            if (inputCosts && Array.isArray(inputCosts)) {
-                for (const c of inputCosts) {
-                    const cVal = Number(c.amount)
-                    if (cVal > 0) {
-                        totalAdded += cVal
-                    }
-                }
-            }
-
+            const totalAdded = cents(costs.reduce((sum, c) => sum + c.amount, 0))
             if (totalAdded > 10000) throw new Error("COST_LIMIT_EXCEEDED")
 
-            if (costValue > 0) {
-                comments.push({ text: `Added cost: ${costValue.toFixed(2)} EGP`, amount: costValue, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'COST_ADDITION' })
-            }
-
-            if (inputCosts && Array.isArray(inputCosts)) {
-                for (const c of inputCosts) {
-                    const cVal = Number(c.amount)
-                    if (cVal > 0) {
-                        comments.push({ text: `Added cost: ${cVal.toFixed(2)} EGP`, amount: cVal, author: session.user.name, authorId: userId, date: new Date().toISOString(), type: 'COST_ADDITION' })
-                    }
-                }
+            // Each cost a row (CLIENTS_PLAN.md §4.5) and an entry naming it,
+            // which the release before reads.
+            const addedAt = new Date().toISOString()
+            const rows = costs.map(c => ({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description }))
+            for (const r of rows) {
+                comments.push(costEntry({ id: r.id, amount: r.amount, description: r.description, author: r.authorName, authorId: userId, date: addedAt }))
             }
 
             if (location) {
@@ -439,7 +439,7 @@ export class TaskService {
                 const memberCosts: Record<string, number> = (currentTask.memberCosts as any) || {}
                 const memberPaymentStatus: Record<string, string> = (currentTask.memberPaymentStatus as any) || {}
 
-                memberCosts[userId] = (memberCosts[userId] || 0) + totalAdded
+                memberCosts[userId] = cents((memberCosts[userId] || 0) + totalAdded)
                 memberPaymentStatus[userId] = 'PENDING_PAYMENT'
 
                 updateData.memberCosts = memberCosts
@@ -448,6 +448,7 @@ export class TaskService {
             }
 
             const task = await tx.task.update({ where: { id }, data: updateData })
+            if (rows.length > 0) await tx.taskCost.createMany({ data: rows })
 
             if (!isDraft && task.createdBy) {
                 await tx.notification.create({
@@ -1004,6 +1005,9 @@ export class TaskService {
 
     /**
      * Deletes a specific item (attachment, cost, note, location) from a task.
+     * A cost is found by its row's id (CLIENTS_PLAN.md §4.5), or, sent as
+     * COST_ADDITION, by when it was added: a cost the release before added
+     * has no row, and a page from before sends that.
      */
     static async deleteItem(id: string, session: any, data: any) {
         const { type, itemId } = data
@@ -1011,6 +1015,8 @@ export class TaskService {
         const userRole = session.user.role
 
         return await prisma.$transaction(async (tx) => {
+            // Held while its comments are read and written back.
+            await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
             const task = await tx.task.findUnique({ where: { id } })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
@@ -1022,8 +1028,12 @@ export class TaskService {
             }
 
             if (task.status !== 'IN_PROGRESS') throw new Error("TASK_NOT_IN_PROGRESS")
+            // Without one, every entry with no time of its own matched, and
+            // all of them went.
+            if (typeof itemId !== 'string' || !itemId) throw new Error("ITEM_NOT_FOUND")
 
             const updateData: any = {}
+            let costRow: string | null = null
 
             if (type === 'ATTACHMENT') {
                 const attachments: any[] = Array.isArray(task.attachments) ? task.attachments : []
@@ -1043,30 +1053,44 @@ export class TaskService {
                 }
 
                 updateData.attachments = attachments.filter((a: any) => a.url !== itemId)
-            } else if (type === 'COST_ADDITION' || type === 'SUBMISSION_NOTE' || type === 'LOCATION_ADDED') {
+            } else if (type === 'COST' || type === 'COST_ADDITION' || type === 'SUBMISSION_NOTE' || type === 'LOCATION_ADDED') {
                 const comments: any[] = Array.isArray(task.comments) ? task.comments : []
-                const item = comments.find((c: any) => c.type === type && (c.date === itemId || c.timestamp === itemId))
-                if (!item) throw new Error("ITEM_NOT_FOUND")
+                const isCost = type === 'COST' || type === 'COST_ADDITION'
+                // Only the one found goes. Costs added together share the
+                // time they were added, and all of them used to go, with
+                // only the first one's amount taken off the totals.
+                const index = type === 'COST'
+                    ? comments.findIndex(c => isCostEntry(c) && c.costId === itemId)
+                    : comments.findIndex((c: any) => c?.type === type && (c.date === itemId || c.timestamp === itemId))
+                if (index < 0) throw new Error("ITEM_NOT_FOUND")
+                const item = comments[index]
 
                 const isAuthor = item.authorId === userId
                 const isAdmin = can(session.user, "tasks.edit")
                 if (!isAuthor && !isAdmin) throw new Error("UNAUTHORIZED_ITEM_DELETE")
 
-                updateData.comments = comments.filter((c: any) => !(c.type === type && (c.date === itemId || c.timestamp === itemId)))
+                // Its person's costs on this task are paid: taking one off
+                // would leave them paid more than they're owed (§4.2).
+                const paid: Record<string, string> = (task.memberPaymentStatus as any) || {}
+                if (isCost && (task.paymentStatus === 'PAID' || (item.authorId && paid[item.authorId] === 'PAID'))) throw new Error("COST_ALREADY_PAID")
 
-                if (type === 'COST_ADDITION' && item.amount) {
+                updateData.comments = comments.filter((_, i) => i !== index)
+
+                if (isCost && item.amount) {
                     updateData.totalCost = { decrement: item.amount }
                     const memberCosts: Record<string, number> = (task.memberCosts as any) || {}
                     if (item.authorId && memberCosts[item.authorId]) {
-                        memberCosts[item.authorId] = Math.max(0, memberCosts[item.authorId] - item.amount)
+                        memberCosts[item.authorId] = Math.max(0, cents(memberCosts[item.authorId] - item.amount))
                         updateData.memberCosts = memberCosts
                     }
                 }
+                if (isCost && typeof item.costId === 'string') costRow = item.costId
             } else {
                 throw new Error("INVALID_ITEM_TYPE")
             }
 
             const updated = await tx.task.update({ where: { id }, data: updateData })
+            if (costRow) await tx.taskCost.deleteMany({ where: { id: costRow, taskId: id } })
 
             // Audit Log
             await tx.auditLog.create({

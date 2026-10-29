@@ -602,6 +602,7 @@ model Task {
   place               Location?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]            @relation("MultipleAssignees")
+  costs               TaskCost[]
 
   @@index([createdBy])
   @@index([companyId])
@@ -1202,6 +1203,28 @@ model Location {
 
   @@index([companyId])
   @@index([clientId])
+}
+
+/// A cost an assignee paid for a task, to be paid back (CLIENTS_PLAN.md
+/// §4.5). Each is also an entry in its task's comments ("COST_ADDITION",
+/// naming this row as "costId"), which the release before reads and writes;
+/// while it may be live, the entries say which costs a task has, and these
+/// rows give each one its id and description.
+model TaskCost {
+  id          String   @id @default(uuid())
+  taskId      String
+  /// Who it's paid back to, as the task's memberCosts names them: a user,
+  /// or a Super Admin, so no relation.
+  authorId    String?
+  /// Their name when they added it.
+  authorName  String?
+  amount      Decimal  @db.Decimal(12, 2)
+  /// What it was for, up to 200 characters.
+  description String?
+  createdAt   DateTime @default(now())
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
 }
 
 /// One row per scheduled job, rewritten on every run.
