@@ -2,7 +2,7 @@ import { Prisma, type ListKind } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
-import { LIST_KINDS, LIST_NAME_LIMITS, listName, sameListName, type FilterName } from "@/lib/saved-lists"
+import { LIST_KINDS, LIST_NAME_LIMITS, likeText, listName, sameListName, type FilterName } from "@/lib/saved-lists"
 
 /**
  * A company's saved lists of cost names and task titles (CLIENTS_PLAN.md §5).
@@ -42,8 +42,6 @@ function audit(session: Session) {
     const sa = isSuperAdmin(session)
     return { userId: sa ? null : session.user.id, superAdminId: sa ? session.user.id : null }
 }
-
-const likeText = (text: string) => text.replace(/[\\%_]/g, c => `\\${c}`)
 
 /** How many a picker is offered as someone types (DESIGN.md §5.3). */
 export const SUGGESTION_LIMIT = 8

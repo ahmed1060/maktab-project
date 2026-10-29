@@ -1577,3 +1577,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   employee picked, all someone else's, was counted and paged with no card
   to show, and could fill a page while those due were on the next (found
   by Codex).
+- **2026-10-29:** In 5c (#107), a name's filter takes its `%`, `_` and `\`
+  as typed. What was typed the same was matched as a pattern, so
+  "Cleaning_supplies" kept costs typed "Cleaning supplies", and "%" every
+  cost (found by Codex).

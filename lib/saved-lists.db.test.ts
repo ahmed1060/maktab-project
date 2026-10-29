@@ -353,6 +353,23 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
             expect(await titled(filters.titleNamed(null))).toEqual([])
         })
 
+        it("takes a name's % and _ as typed, not as a pattern (Codex on PR 107)", async () => {
+            await db.query(`
+                INSERT INTO "ListEntry"(id, "companyId", kind, name, "archivedAt", "updatedAt") VALUES
+                 ('f-gate', 'c1', 'TASK_TITLE', 'Gate_2', NULL, now()),
+                 ('f-half', 'c1', 'COST_NAME', '50% advance', NULL, now())`)
+            await made("f5", "c1", "gate_2")
+            await made("f6", "c1", "GateX2")
+            expect(await titled(filters.titleNamed(await Lists.filterName("TASK_TITLE", "f-gate", "c1")))).toEqual(["f5"])
+            await made("g5", "c1", "Advances", { costs: { create: [
+                { authorId: "e1", amount: 10, description: "50% ADVANCE" },
+                { authorId: "e1", amount: 20, description: "50 and a half advance" },
+            ] } })
+            const half = (await Lists.filterName("COST_NAME", "f-half", "c1"))!
+            const counted = await prisma.taskCost.findMany({ where: { AND: [{ taskId: "g5" }, filters.costNamed(half)] }, select: { description: true } })
+            expect(counted.map(c => c.description)).toEqual(["50% ADVANCE"])
+        })
+
         it("offers every name for a filter, archived ones too, to anyone in the company", async () => {
             const offered = await Lists.forFilters(employee, { kind: "TASK_TITLE" })
             expect(offered).toEqual(expect.arrayContaining([{ id: "f-audit", name: "Quarterly audit", archived: false }, { id: "f-old", name: "Old checklist", archived: true }]))

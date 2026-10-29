@@ -1034,3 +1034,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 5c (#107), the Costs page with a cost name picked
   pages through only the tasks with a cost of it still to pay: none of
   its pages is short of cards, or empty, for tasks with none.
+- **2026-10-29:** In 5c (#107), a saved name with `%` or `_` in it filters
+  by what's typed exactly as it, ignoring capitals, and no other.

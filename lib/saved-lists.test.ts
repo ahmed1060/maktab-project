@@ -40,6 +40,12 @@ describe("a filter by a saved name (§5.9)", () => {
         expect(withCostNamed(transport)).toEqual({ companyId: "c1", costs: { some: costNamed(transport) } })
     })
 
+    it("takes a name's %, _ and \\ as typed: Prisma matches it with ILIKE", () => {
+        const odd = { id: "n2", name: "50%_off\\net", companyId: "c1" }
+        expect(costNamed(odd)).toEqual({ OR: [{ nameEntryId: "n2" }, { description: { equals: "50\\%\\_off\\\\net", mode: "insensitive" } }] })
+        expect(titleNamed(odd)).toMatchObject({ OR: [{ titleEntryId: "n2" }, { title: { equals: "50\\%\\_off\\\\net" } }] })
+    })
+
     it("keeps nothing for a name its viewer's company hasn't", () => {
         expect(titleNamed(null)).toEqual({ id: "__no_match__" })
         expect(withCostNamed(null)).toEqual({ id: "__no_match__" })
