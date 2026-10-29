@@ -953,3 +953,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In step 3 (#100), the Tasks and Costs pages' location
   filter lists the archived locations after the ones in use, each marked
   "· archived", as 4b marks an archived client.
+- **2026-10-29:** In step 3 (#100), the Tasks and Costs pages' filter
+  panel counts a client or location filter its viewer has no select for,
+  set by a shared link, and Reset clears it.

@@ -131,11 +131,12 @@ export default function EmployeeFilter({
     const appliedExtra = Object.fromEntries(extraFilters.map(f => [f.key, f.value]))
     const [localExtra, setLocalExtra] = useState<Record<string, string>>(appliedExtra)
     const optionsOf = (f: ExtraFilter, picked: Record<string, string>) => typeof f.options === 'function' ? f.options(picked) : f.options
-    // One picked, and any that follows it and no longer offers its own pick cleared.
+    // One picked, and any that follows it and no longer offers its own pick
+    // cleared. A hidden one offers none: it's kept until Reset.
     const pickExtra = (key: string, value: string) => {
         const next = { ...localExtra, [key]: value }
         for (const f of extraFilters) {
-            if (next[f.key] && !optionsOf(f, next).some(o => o.value === next[f.key])) next[f.key] = ''
+            if (!f.hidden && next[f.key] && !optionsOf(f, next).some(o => o.value === next[f.key])) next[f.key] = ''
         }
         setLocalExtra(next)
     }
@@ -620,7 +621,7 @@ export default function EmployeeFilter({
                                         </div>
                                     )}
 
-                                    {extraFilters.map(f => (
+                                    {extraFilters.filter(f => !f.hidden).map(f => (
                                         <div key={f.key}>
                                             <label htmlFor={`extra-filter-${f.key}`} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{f.label}</label>
                                             <div style={{ position: 'relative' }}>

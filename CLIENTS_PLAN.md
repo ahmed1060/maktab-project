@@ -1318,3 +1318,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   archived locations too, after the ones in use and marked as archived:
   a location archived after tasks were done there keeps them, and their
   costs still due, to be found and paid (found by Codex).
+- **2026-10-29:** In step 3 (#100), a client or location a shared link
+  sets on the Tasks or Costs page, for someone who can't pick it, still
+  narrows the list, so it's counted on the Filters badge and Reset clears
+  it; before, Reset left it in place (found by Codex).
