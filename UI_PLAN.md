@@ -1029,3 +1029,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the archived names last, marked. With a cost name picked, each cost card
   names it over its amount, and Mark all as paid gives way to a line saying
   to clear the cost name to pay.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 5b was merged in #106, and 5c opens
+  for review in #107.

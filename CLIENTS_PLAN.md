@@ -849,9 +849,11 @@ balance first, automatically:
        (§4.4, §4.5), in #103, and 4d, which tidies up after it (§4.5), in
        #104. Step 4 is done.
      - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
-       and 5c (§5.10). 5a was merged in #105 on 2026-10-29. 5b gives the
-       companies there before it the lists' permissions; it's built, and
-       open for review in #106.
+       and 5c (§5.10). 5a was merged in #105 on 2026-10-29, and 5b, which
+       gives the companies there before it the lists' permissions, in
+       #106. 5c, the bulk import matching titles to the list and the
+       filters and totals by title and cost name, is built, and open for
+       review in #107.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1564,3 +1566,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     to clear the cost name to pay, and the server refuses it too.
   - **An imported title is saved as the saved one it names,** ignoring
     capitals; never one the request names.
+- **2026-10-29:** 5b was merged in #106; Codex found nothing in it. Its
+  migration ran on production at 18:04 UTC: the 3 companies there hold
+  the lists' permissions (12 grants on their 9 built-in roles), with no
+  errors after. Step 5's third PR, 5c, opens for review in #107; it has
+  no migration.
