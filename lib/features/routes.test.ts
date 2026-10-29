@@ -19,6 +19,11 @@ describe("API paths resolve to the right module", () => {
         expect(moduleForApiPath('/api/clients')).toBe('CLIENTS')
     })
 
+    it("puts the client charges behind Costs, as their tab is", () => {
+        expect(moduleForApiPath('/api/charges')).toBe('COSTS')
+        expect(moduleForApiPath('/api/charges/abc-123')).toBe('COSTS')
+    })
+
     it("maps the HR surfaces", () => {
         expect(moduleForApiPath('/api/day-off-requests')).toBe('DAY_OFF')
         expect(moduleForApiPath('/api/admin/day-off-requests/abc/reevaluate')).toBe('DAY_OFF')

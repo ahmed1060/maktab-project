@@ -1682,3 +1682,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   Step 6's second PR, 6b, opens for review in #109; its migration adds
   each cost's service fee, "Not charged to client" tick and when it was
   collected, none yet.
+- **2026-10-29:** In 6b (#109), the charges are behind the Costs module
+  for the API as well as the page: a company whose package leaves Costs
+  out could still list its charges and set their fees through it (found
+  by Codex).
