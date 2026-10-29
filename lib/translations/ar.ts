@@ -102,6 +102,7 @@ export const ar = {
         locations_filter_status: "الحالة",
         locations_in_use: "قيد الاستخدام",
         locations_archived_status: "مؤرشفة",
+        locations_archived_mark: "مؤرشف",
         locations_set_hq: "تعيين كمقر رئيسي",
         locations_archive: "أرشفة",
         locations_restore: "استعادة",

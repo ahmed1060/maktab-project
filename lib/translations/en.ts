@@ -106,6 +106,7 @@ export const en = {
         locations_filter_status: "Status",
         locations_in_use: "In use",
         locations_archived_status: "Archived",
+        locations_archived_mark: "archived",
         locations_set_hq: "Make HQ",
         locations_archive: "Archive",
         locations_restore: "Restore",

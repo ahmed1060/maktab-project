@@ -7,7 +7,8 @@ import { LocationService } from "@/lib/services/location.service"
 /**
  * The places tasks happen at (CLIENTS_PLAN.md §2): the Locations page, and
  * one client's on its page (?clientId=), or the shared ones
- * (?clientId=shared); and what a task's picker offers (?pick=1). Each check
+ * (?clientId=shared); what a task's picker offers (?pick=1); and what the
+ * Tasks and Costs pages' location filter offers (?pick=filters). Each check
  * is LocationService's, against the location's company; the permission here
  * only turns away someone who holds none at all.
  */
@@ -19,6 +20,10 @@ export const GET = withStandardHandler(async (req, session) => {
     // And every one in use, with its client, for the bulk upload's review (§2.7).
     if (searchParams.get("pick") === "all") {
         return ApiResponse.success(await LocationService.pickableAll(session, { companyId: searchParams.get("companyId") }))
+    }
+    // Every one, archived ones too, for the Tasks and Costs pages' location filter (§3).
+    if (searchParams.get("pick") === "filters") {
+        return ApiResponse.success(await LocationService.forFilters(session, { companyId: searchParams.get("companyId") }))
     }
     if (searchParams.get("pick") === "1") {
         return ApiResponse.success(await LocationService.pickable(session, { companyId: searchParams.get("companyId"), clientId: searchParams.get("clientId") }))

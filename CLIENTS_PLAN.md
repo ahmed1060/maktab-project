@@ -1314,3 +1314,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   them, the review screen's list stopped at 2,000, and the upload read
   the Locations sheet's heading as a location. So step 2 is done. Step 3
   opens for review in #100.
+- **2026-10-29:** In step 3 (#100), the location filter offers the
+  archived locations too, after the ones in use and marked as archived:
+  a location archived after tasks were done there keeps them, and their
+  costs still due, to be found and paid (found by Codex).

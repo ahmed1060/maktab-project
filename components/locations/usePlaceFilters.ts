@@ -7,8 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { locationLabel } from '@/lib/locations'
-import { NO_CLIENT } from '@/lib/place-filters'
-import type { BulkPlace } from '@/lib/bulk-locations'
+import { NO_CLIENT, locationFilterChoices, type FilterPlace } from '@/lib/place-filters'
 
 type Option = { value: string; label: string }
 
@@ -26,7 +25,8 @@ export type ExtraFilter = {
  * Costs pages' filter bar, from the address's `clientId` and `locationId`:
  * the client filter for whoever may see clients, with "No client"; the
  * location filter for whoever may see locations, offering the picked
- * client's and the shared ones. A Super Admin picks a company first.
+ * client's and the shared ones, the archived ones last. A Super Admin
+ * picks a company first.
  */
 export function usePlaceFilters(picked: { clientId: string; locationId: string }): ExtraFilter[] {
     const { t } = useLanguage()
@@ -40,10 +40,9 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
     const seesClients = can('clients.view') && !waits
     const seesLocations = can('locations.view') && !waits
     const { data: clientsBody } = useSWR<{ data: { id: string; name: string }[] }>(seesClients ? `/api/clients${company ? `?${company}` : ''}` : null, fetcher)
-    const { data: placesBody } = useSWR<{ data: { locations: BulkPlace[] } }>(seesLocations ? `/api/locations?pick=all${company ? `&${company}` : ''}` : null, fetcher)
+    const { data: placesBody } = useSWR<{ data: { locations: FilterPlace[] } }>(seesLocations ? `/api/locations?pick=filters${company ? `&${company}` : ''}` : null, fetcher)
     const clients = clientsBody?.data ?? []
-    // A location with no pin has no task to find.
-    const places = (placesBody?.data.locations ?? []).filter(p => !p.needsPin)
+    const places = placesBody?.data.locations ?? []
     const clientName = (id: string | null) => (id ? clients.find(c => c.id === id)?.name : undefined)
 
     const filters: ExtraFilter[] = []
@@ -62,11 +61,7 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
             value: picked.locationId,
             options: chosen => [
                 { value: '', label: t('locations_filter_all') },
-                ...places
-                    // The picked client's and the shared ones; only the shared with "No client".
-                    .filter(p => !chosen.clientId || !p.clientId || p.clientId === chosen.clientId)
-                    .map(p => ({ value: p.id, label: locationLabel(p.name, clientName(p.clientId)) }))
-                    .sort((a, b) => a.label.localeCompare(b.label)),
+                ...locationFilterChoices(places, chosen.clientId ?? '', p => locationLabel(p.name, clientName(p.clientId)), l => `${l} · ${t('locations_archived_mark')}`),
             ],
         })
     }
