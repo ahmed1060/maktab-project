@@ -934,3 +934,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   select, and spaces the row's client and location with `--space-2`. The
   template's Locations sheet is left empty for someone who may not see the
   locations.
+- **2026-10-29:** In 2b (#99), the review screen's location selects offer
+  every location in use, as the template's Locations sheet does.

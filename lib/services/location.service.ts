@@ -240,11 +240,12 @@ export class LocationService {
         const companyId = isSuperAdmin(session) ? query.companyId || null : session.user.companyId ?? null
         if (!companyId) throw new Error("COMPANY_SELECTION_REQUIRED")
         allow(session, "locations.view", companyId)
+        // All of them, as the template's Locations sheet lists them: a row
+        // naming one past a cap was refused, though the sheet offered it.
         const all = await prisma.location.findMany({
             where: { companyId, archivedAt: null },
             select: PICK,
             orderBy: [{ isHq: "desc" }, { name: "asc" }, { id: "asc" }],
-            take: PICK_LIMIT * 4,
         })
         return { locations: all.map(l => ({ ...pickRow(l), clientId: l.clientId })) }
     }

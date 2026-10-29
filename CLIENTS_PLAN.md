@@ -1276,3 +1276,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   locations only for someone who may see them, as the task form's picker
   does: a custom role that may create tasks but not see the locations gets
   it without them (found by Codex).
+- **2026-10-29:** In 2b (#99), the bulk upload's review screen lists
+  every location in use, as the template does, rather than the first
+  2,000: past those, a row naming a location the template offered was
+  refused (found by Codex).

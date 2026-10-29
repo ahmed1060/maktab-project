@@ -211,6 +211,18 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
                 ["acme-hq", "k1", false], ["acme-site", "k1", false], ["beta-hq", "k2", true], ["port", null, false],
             ])
         })
+
+        it("lists them all, however many, as the template does: a row naming one is never refused for being past a cap", async () => {
+            const { LocationService } = await import("@/lib/services/location.service")
+            await db.query(`INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "radiusMeters", "updatedAt")
+                SELECT 'many-' || n, 'c1', NULL, 'Site ' || n, false, 30.0, 31.0, 100, now() FROM generate_series(1, 2001) AS n`)
+            try {
+                const { locations } = await LocationService.pickableAll(admin, {})
+                expect(locations).toHaveLength(4 + 2001)
+            } finally {
+                await db.query(`DELETE FROM "Location" WHERE id LIKE 'many-%'`)
+            }
+        })
     })
 
     it("keeps the client and location on a transferred task's copy", async () => {
