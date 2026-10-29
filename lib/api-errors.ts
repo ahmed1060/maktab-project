@@ -18,6 +18,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     COST_LIMIT_EXCEEDED: { status: 400, message: "Costs added at once can total at most 10,000." },
     // A task's costs, each a row of its own (CLIENTS_PLAN.md §4.4, §4.5).
     COST_DESCRIPTION_TOO_LONG: { status: 400, message: "A cost's description can be at most 200 characters." },
+    COST_RECEIPT_INVALID: { status: 400, message: "A cost's receipt couldn't be saved. Remove the cost, and add it again with its photo." },
     COST_ALREADY_PAID: { status: 409, message: "This person's costs on this task are paid, so this one can't be removed." },
     // The saved lists of cost names and task titles (CLIENTS_PLAN.md §5).
     LIST_KIND_INVALID: { status: 400, message: "That isn't one of the saved lists." },

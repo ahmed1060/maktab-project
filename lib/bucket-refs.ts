@@ -7,7 +7,7 @@
  * errs toward over-matching, deliberately.
  *
  * That is why it scans text for the bucket marker rather than parsing each
- * column's format. The six columns that can hold one of these disagree about
+ * column's format. The seven columns that can hold one of these disagree about
  * how: `User.avatar` and `Company.logoUrl` are a bare URL, `Task.attachments`
  * is real Json, `Obligation.attachments` is a JSON *string*, and
  * `ClientNote.attachment` is a JSON string holding either an array of objects,

@@ -63,7 +63,7 @@ vi.mock("@/lib/prisma", () => {
                 return page
             },
         },
-        task: none, obligation: none, clientRecord: none, superAdmin: none,
+        task: none, taskCost: none, obligation: none, clientRecord: none, superAdmin: none,
         $transaction: async (fn: any) => fn(tx),
     } }
 })

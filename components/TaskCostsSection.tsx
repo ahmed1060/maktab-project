@@ -7,6 +7,7 @@ import SafeDate from './SafeDate'
 import { useCan } from '@/lib/useCan'
 import { isReviewed } from '@/lib/task-reviewed'
 import { costLines } from '@/lib/task-costs'
+import { FileChip, FileChips } from '@/components/ui'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx (1834 lines before
 // this split). Purely presentational — no state of its own, just reads
@@ -50,6 +51,14 @@ function TaskCostsSectionBody({
                                         )}
                                     </div>
                                     <div style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--warn-fg-deep)' }}>{c.description || t('no_description')}</div>
+                                    {/* Its receipt's photo, opened in a new tab (CLIENTS_PLAN.md §6.2). */}
+                                    {c.receiptUrl && (
+                                        <div style={{ marginTop: 'var(--space-2)' }}>
+                                            <FileChips label={t('cost_receipt_of').replace('{name}', c.description || t('no_description'))}>
+                                                <FileChip name={t('cost_receipt')} href={c.receiptUrl} />
+                                            </FileChips>
+                                        </div>
+                                    )}
                                 </div>
                                 <div style={{ textAlign: 'center', background: 'var(--warn-bg)', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid var(--warn-border)' }}>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>

@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
-import { COST_DESCRIPTION_MAX } from '@/lib/task-costs'
-import { NamePicker, type PickedName } from '@/components/ui'
+import { COST_DESCRIPTION_MAX, RECEIPT_ACCEPT } from '@/lib/task-costs'
+import { FileChip, FileChips, FilePicker, NamePicker, type PickedName } from '@/components/ui'
 import { useListNames } from '@/components/lists/useListNames'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. `isDragging` is
@@ -26,6 +26,10 @@ interface TaskSubmissionFormProps {
     cost: string
     setCost: (v: string) => void
     onAddCost: () => void
+    /** The next cost's receipt photo, if one was picked (CLIENTS_PLAN.md §6.2). */
+    costReceipt: File | null
+    onCostReceipt: (files: File[]) => void
+    onClearCostReceipt: () => void
     costEntries: any[]
     onRemoveCostEntry: (index: number) => void
     note: string
@@ -40,7 +44,7 @@ interface TaskSubmissionFormProps {
 
 export default function TaskSubmissionForm({
     pendingFiles, onAddFiles, onRemoveFile, uploading,
-    costName, setCostName, companyId, cost, setCost, onAddCost, costEntries, onRemoveCostEntry,
+    costName, setCostName, companyId, cost, setCost, onAddCost, costReceipt, onCostReceipt, onClearCostReceipt, costEntries, onRemoveCostEntry,
     note, setNote,
     capturingLocation, locationStatus, onCaptureLocation,
     onSaveDraft, onSubmitRequest, loadingType
@@ -122,14 +126,30 @@ export default function TaskSubmissionForm({
                     <input type="number" aria-label={t('cost_amount_placeholder')} className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
                     <button onClick={onAddCost} disabled={!cost} className="btn" style={{ background: 'var(--border)', color: 'var(--info-fg)', fontWeight: '700', minWidth: '80px', opacity: 1, cursor: 'pointer' }}>{t('add_label')}</button>
                 </div>
+                {/* Its receipt, picked before Add, goes with the cost added next; picked again, it's replaced. */}
+                <div style={{ marginTop: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                    {costReceipt && (
+                        <FileChips label={t('cost_receipt')}>
+                            <FileChip name={costReceipt.name} size={costReceipt.size} onRemove={onClearCostReceipt} />
+                        </FileChips>
+                    )}
+                    <FilePicker label={t('cost_receipt_attach')} hint={t('cost_receipt_hint')} accept={RECEIPT_ACCEPT} onFiles={onCostReceipt} disabled={uploading} multiple={false} />
+                </div>
                 {costEntries.length > 0 && (
                     <div style={{ marginTop: '1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', overflow: 'hidden' }}>
                         {costEntries.map((e, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid var(--surface-sunk)' : 'none', flexDirection: 'row' }}>
-                                <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row' }}>
-                                    <span>{e.description || t('no_description')}</span>
-                                    <span style={{ color: 'var(--text-faint)' }}>•</span>
-                                    <span style={{ color: 'var(--warn-fg-mid)' }}>{e.amount.toFixed(2)} {t('egp')}</span>
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)', padding: '0.75rem 1rem', borderBottom: i < costEntries.length - 1 ? '1px solid var(--surface-sunk)' : 'none', flexDirection: 'row' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', minWidth: 0 }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', fontWeight: '500', flexDirection: 'row', overflowWrap: 'anywhere' }}>
+                                        <span>{e.description || t('no_description')}</span>
+                                        <span style={{ color: 'var(--text-faint)' }}>•</span>
+                                        <span style={{ color: 'var(--warn-fg-mid)', whiteSpace: 'nowrap' }}>{e.amount.toFixed(2)} {t('egp')}</span>
+                                    </div>
+                                    {e.receipt && (
+                                        <FileChips label={t('cost_receipt_of').replace('{name}', e.description || t('no_description'))}>
+                                            <FileChip name={e.receipt.name} size={e.receipt.size} />
+                                        </FileChips>
+                                    )}
                                 </div>
                                 <button aria-label={t('remove' as any)} onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-fg-strong)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
                             </div>
