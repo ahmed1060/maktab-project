@@ -1686,3 +1686,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   for the API as well as the page: a company whose package leaves Costs
   out could still list its charges and set their fees through it (found
   by Codex).
+- **2026-10-29:** In 6b (#109), setting a charge's fee or its "Not
+  charged to client" tick waits for its task, as deleting the task does.
+  Charged to its client again while the task was being deleted, a cost
+  was deleted with it, though the task couldn't be deleted with a charge
+  (found by Codex).

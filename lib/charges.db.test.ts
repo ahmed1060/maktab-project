@@ -65,6 +65,7 @@ const otherAdmin = { user: withGrants({ id: "a2", role: "ADMIN", companyId: "c2"
 describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
     const dbName = `charges_test_${Date.now()}`
     let db: Client
+    let dbUrl: string
     let charges: typeof import("@/lib/services/charge.service")
     let Tasks: typeof import("@/lib/services/task.service").TaskService
     let prisma: typeof import("@/lib/prisma").prisma
@@ -76,7 +77,8 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         await a.end()
         const url = new URL(ADMIN_URL!)
         url.pathname = `/${dbName}`
-        db = new Client({ connectionString: url.toString() })
+        dbUrl = url.toString()
+        db = new Client({ connectionString: dbUrl })
         await db.connect()
         for (const m of MIGRATIONS) {
             await db.query(sql(m))
@@ -181,6 +183,27 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         expect((await listed(admin, { clientId: "delta" }))!.ids).toEqual(["x1", "x2"])
         await Tasks.updateDetails("k1", { clientId: "noor" } as any, admin)
         expect((await listed(admin, { clientId: "noor" }))!.ids).toEqual(["x1", "x2"])
+    })
+
+    it("waits for its task while something else holds it, as deleting the task does", async () => {
+        // A delete that has read the task's charges as none holds the task
+        // until it's gone: charging one of its costs again meanwhile would
+        // have it deleted, charged.
+        const deleting = new Client({ connectionString: dbUrl })
+        await deleting.connect()
+        await deleting.query("BEGIN")
+        await deleting.query(`SELECT id FROM "Task" WHERE id = 'k4' FOR UPDATE`)
+        let charged = false
+        const charging = charges.ChargeService.setNotCharged(admin, "x6", false).then(() => { charged = true })
+        await new Promise(r => setTimeout(r, 500))
+        const chargedWhileHeld = charged
+        await deleting.query("ROLLBACK")
+        await deleting.end()
+        await charging
+        // As it was, for the delete below.
+        await charges.ChargeService.setNotCharged(admin, "x6", true)
+        expect(chargedWhileHeld).toBe(false)
+        expect(charged).toBe(true)
     })
 
     it("keeps a task whose costs are charged to its client, and deletes one whose costs are all left off", async () => {

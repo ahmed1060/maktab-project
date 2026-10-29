@@ -98,6 +98,13 @@ export class ChargeService {
      */
     private static async held(tx: Prisma.TransactionClient, session: Session, costId: string) {
         if (typeof costId !== "string" || !costId) throw new Error("CHARGE_NOT_FOUND")
+        // Its task first, then the cost, as deleting the task, changing its
+        // client and removing a cost hold the task: none of them reads its
+        // charges as they were while one changes. Charging a cost again
+        // while its task was deleted had it deleted, charged.
+        const [owner] = await tx.$queryRaw<{ taskId: string }[]>`SELECT "taskId" FROM "TaskCost" WHERE id = ${costId}`
+        if (!owner) throw new Error("CHARGE_NOT_FOUND")
+        await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${owner.taskId} FOR UPDATE`
         await tx.$queryRaw`SELECT id FROM "TaskCost" WHERE id = ${costId} FOR UPDATE`
         const cost = await tx.taskCost.findUnique({
             where: { id: costId },
