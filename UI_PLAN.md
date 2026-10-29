@@ -918,3 +918,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** `CLIENTS_PLAN.md`'s step 1 is done (#97), and step 2's
   first PR, 2a, opens for review in #98, with the task form's client and
   location pickers.
+- **2026-10-29:** From Codex's review of #98: "+ New location" from a
+  task's edit window opens above it. A dialog that opens from an older
+  page's modal sits above that modal (`DESIGN.md` §5.5). Saving the
+  location there no longer saves the task too.

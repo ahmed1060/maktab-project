@@ -1243,3 +1243,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   ran on production as it opened, giving the three companies' built-in
   Admin and Team Leader roles their 15 location grants, and production
   had no errors after them. Step 2's first PR, 2a, opens for review in #98.
+- **2026-10-29:** From Codex's review of #98: a bulk upload links no
+  location until its review screen picks them (2b), so it can't link
+  another company's. Saving a location from a task's form saves only the
+  location, and "+ New location" from a task's edit window opens above it.
