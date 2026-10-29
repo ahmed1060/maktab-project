@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { Prisma } from "@prisma/client"
 import { withGrants, stepUpConfirmed } from "./test-actors"
 
@@ -76,6 +76,8 @@ function matches(row: any, where: any): boolean {
 
 const seen = { paid: [] as string[], writes: {} as Record<string, any> }
 const findMany = async ({ where }: any) => fixture.tasks.filter(t => matches(t, where)).map(t => structuredClone(t))
+/** Run as a task is held for payment; a test sets it to change a task just then. */
+const onHold = { run: () => {} }
 const state = { session: null as any }
 
 vi.mock("next-auth", () => ({ getServerSession: async () => state.session }))
@@ -86,12 +88,13 @@ vi.mock("@/lib/prisma", () => {
     const tx: any = {
         task: {
             findMany,
+            count: async ({ where }: any) => (await findMany({ where })).length,
             update: async ({ where, data }: any) => { seen.paid.push(where.id); seen.writes[where.id] = data; return {} },
             updateMany: async ({ where }: any) => { seen.paid.push(...(where.id?.in ?? [])); return { count: 0 } },
         },
         auditLog: { create: async () => ({}) },
         // The rows it pays, locked first.
-        $queryRaw: async () => [],
+        $queryRaw: async () => { onHold.run(); return [] },
     }
     // No settings row: step-up (§6.15) uses its default interval.
     const COMPANIES = [{ id: "c1", name: "Acme" }, { id: "c2", name: "Delta" }]
@@ -105,13 +108,31 @@ const ACTORS = {
     superAdmin: withGrants({ id: "sa", role: "SUPER_ADMIN", companyId: null }),
 }
 
-async function pay(actor: keyof typeof ACTORS, body: object) {
+/**
+ * What the Costs page shows this payer for these filters, as Mark all as
+ * paid confirms it (CLIENTS_PLAN.md §4.1): the page's own, so a payment by
+ * filters is refused if the page and the button count it differently.
+ */
+async function shown(actor: keyof typeof ACTORS, filters: object) {
+    state.session = { user: stepUpConfirmed(ACTORS[actor]) }
+    const { default: CostsPage } = await import("@/app/(dashboard)/dashboard/costs/page")
+    const page: any = await CostsPage({ searchParams: Promise.resolve(filters as any) })
+    return page.props.toPay?.digest ?? "nothing"
+}
+
+async function send(actor: keyof typeof ACTORS, body: object) {
     state.session = { user: stepUpConfirmed(ACTORS[actor]) }
     seen.paid = []
     seen.writes = {}
     const { POST } = await import("@/app/api/tasks/payment/bulk/route")
-    await POST(new Request("https://nizmo.test/api/tasks/payment/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }))
-    return [...new Set(seen.paid)].sort()
+    const res = await POST(new Request("https://nizmo.test/api/tasks/payment/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }))
+    return { status: res.status, paid: [...new Set(seen.paid)].sort() }
+}
+
+/** Pays by ids, or by filters as confirmed on the page they show. */
+async function pay(actor: keyof typeof ACTORS, body: { taskIds?: string[]; filters?: object }) {
+    const confirm = body.filters ? { digest: await shown(actor, body.filters) } : undefined
+    return (await send(actor, { ...body, confirm })).paid
 }
 
 const EVERY_ID = { taskIds: TASKS.map(t => t.id) }
@@ -207,5 +228,30 @@ describe("Mark all as paid pays only the client's and the location's costs the C
 
     it("never another company's client, whatever the filter names", async () => {
         expect(await pay("admin", { filters: { clientId: "far" } })).toEqual([])
+    })
+})
+
+describe("Mark all as paid pays exactly what was confirmed (CLIENTS_PLAN.md §4.1)", () => {
+    afterEach(() => { onHold.run = () => {}; TASKS.forEach(t => { t.totalCost = 10; t.paymentStatus = "PENDING_PAYMENT" }) })
+
+    it("pays nothing without a confirmation of what's paid", async () => {
+        expect(await send("admin", { filters: {} })).toEqual({ status: 400, paid: [] })
+    })
+
+    it("pays nothing, and says to look again, when a cost changed since the list was shown", async () => {
+        const digest = await shown("admin", {})
+        TASKS.find(t => t.id === "t-loner")!.totalCost = 25
+        expect(await send("admin", { filters: {}, confirm: { digest } })).toEqual({ status: 409, paid: [] })
+    })
+
+    it("pays nothing when one was paid by someone else meanwhile, as the tasks are held", async () => {
+        const digest = await shown("admin", {})
+        // Between the check and the payment: the tasks are held, and checked again.
+        onHold.run = () => { TASKS.find(t => t.id === "t-own")!.paymentStatus = "PAID" }
+        expect(await send("admin", { filters: {}, confirm: { digest } })).toEqual({ status: 409, paid: [] })
+    })
+
+    it("pays what was confirmed when nothing changed", async () => {
+        expect(await send("admin", { filters: {}, confirm: { digest: await shown("admin", {}) } })).toEqual({ status: 200, paid: ["t-loner", "t-own", "t-team"] })
     })
 })

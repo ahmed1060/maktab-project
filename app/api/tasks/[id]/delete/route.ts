@@ -1,5 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { KNOWN_REFUSALS } from "@/lib/api-errors"
 import { can } from "@/lib/permissions/can"
 import { TaskService } from "@/lib/services/task.service"
 import { verifyResourceAccess } from "@/lib/security"
@@ -24,6 +25,8 @@ export const DELETE = withStandardHandler(async (req, session, json, { params })
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'SELF_DELETION_FORBIDDEN') return ApiResponse.forbidden("Admins cannot delete their own tasks")
+        // Its costs paid, it stays (CLIENTS_PLAN.md §4.2): said, not logged as a fault.
+        if (error.message === 'TASK_HAS_PAID_COSTS') return ApiResponse.error(KNOWN_REFUSALS.TASK_HAS_PAID_COSTS.message, 409)
         console.error("Task deletion error:", error)
         return ApiResponse.error("Failed to delete task")
     }

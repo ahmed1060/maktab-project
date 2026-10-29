@@ -786,7 +786,11 @@ balance first, automatically:
      - Step 3, filters and totals, is built (§3), as one PR after 2b. It
        stands on the fix that has Mark all as paid pay only the list shown,
        and on the date filters counting the company's days, which come
-       before it in their own PRs. It's open for review in #100.
+       before it in their own PRs. It was merged in #100 on 2026-10-29.
+     - Step 4 (§4). Proposed: it ships as three PRs. 4a, payment safety
+       (§4.1, §4.2), is built, and open for review in #101. 4b archives
+       clients (§4.3). 4c moves costs into their own table, with their
+       descriptions (§4.4, §4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1322,3 +1326,30 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   sets on the Tasks or Costs page, for someone who can't pick it, still
   narrows the list, so it's counted on the Filters badge and Reset clears
   it; before, Reset left it in place (found by Codex).
+- **2026-10-22:** Step 4's first PR, 4a, is built (§4.1, §4.2):
+  - **Mark all as paid** asks first, "Pay 7 costs, 3,450 EGP?", counting
+    each person's part still due. The page sends back a digest of exactly
+    those parts, and the server pays them only if the list still comes to
+    the same: the tasks are held while it checks. If anything changed, it
+    pays nothing and shows the list again as it is.
+  - **A task whose costs are paid, in full or in part, can't be
+    deleted.** Its Delete button is gone, and a page from before is told
+    why.
+  - **Proposed:** step 4 ships as three PRs, 4a, 4b and 4c (§8).
+- **2026-10-29:** In 4a, Mark all as paid's window says "Pay 1 cost" for
+  one, not "Pay 1 costs", in English and Arabic (found by the audit).
+- **2026-10-29:** In 4a, Mark all as paid reads "تحديد الكل كمدفوع" in
+  Arabic, as Mark as paid's "تحديد كمدفوع" does; it read "تحدد" ("you
+  mark").
+- **2026-10-29:** Step 3 was merged in #100, with Codex's two findings
+  fixed in it: the location filter left out archived locations, and Reset
+  left a place filter in place for someone with no select for it. Step
+  4's first PR, 4a, opens for review in #101.
+- **2026-10-29:** In 4a (#101), deleting a task holds it before reading
+  whether its costs are paid, as paying holds it: a payment recorded
+  while the delete waited was missed, and the paid task deleted (found by
+  Codex).
+- **2026-10-29:** In 4a (#101), deleting a task reads its shares'
+  payments as the task's page does, stored as JSON text too, as older
+  tasks may have them: read as text, a share paid wasn't seen, and the
+  task was deleted while its page hid Delete (found by Codex).

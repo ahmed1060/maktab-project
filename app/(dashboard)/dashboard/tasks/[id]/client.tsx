@@ -72,6 +72,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
         : { ...parseLocation(src.location || ''), ofClient: false }
     const [task, setTask] = useState(initialTask)
+    const hasPaidCosts = task.paymentStatus === 'PAID' || Object.values(getMemberPaymentStatus(task) ?? {}).includes('PAID')
 
     // From the role the page passed down, so the first paint is complete.
     // Someone without tasks.view acts on a task only as one of its assignees.
@@ -617,7 +618,13 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const handleDelete = async () => {
         try {
             const res = await fetch(`/api/tasks/${task.id}/delete`, { method: 'DELETE' })
-            if (!res.ok) throw new Error('Delete failed')
+            if (!res.ok) {
+                // Said as the server says it, such as a task whose costs were paid meanwhile.
+                const body = await res.json().catch(() => null)
+                showToast(body?.error || t('error_generic'), 'error')
+                if (res.status === 409) router.refresh()
+                return
+            }
             showToast(t('task_deleted_success'), 'success')
             router.push('/dashboard/tasks')
             router.refresh()
@@ -963,7 +970,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                     )}
                     <button onClick={() => { startNavigationProgress(); router.back() }} style={{ background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}>{t('close_button')}</button>
                     {!isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && mayManage('tasks.edit') && (<button onClick={handleEditClick} style={{ background: 'var(--info-bg)', color: 'var(--info-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
-                    {!isRestricted && mayManage('tasks.delete') && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
+                    {/* A task whose costs are paid, in full or in part, stays (CLIENTS_PLAN.md §4.2). */}
+                    {!isRestricted && mayManage('tasks.delete') && !hasPaidCosts && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
                 </div>
             </div>
 

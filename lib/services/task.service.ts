@@ -13,6 +13,8 @@ import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
 import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
 import { LocationService } from "./location.service"
+import { snapshotOf } from "./costs-query"
+import { asRecord } from "@/lib/costs-total"
 
 /**
  * Where a task's check measures from (CLIENTS_PLAN.md §2.5): its location's
@@ -772,9 +774,12 @@ export class TaskService {
         const userRole = session.user.role
 
         return await prisma.$transaction(async (tx) => {
+            // Held until it's gone, as paying holds it: a payment recorded
+            // meanwhile is read below, rather than deleted with the task.
+            await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
             const task = await tx.task.findUnique({
                 where: { id },
-                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true }
+                select: { status: true, difficulty: true, assignees: { select: { id: true } }, attachments: true, companyId: true, title: true, paymentStatus: true, memberPaymentStatus: true }
             })
             if (!task) throw new Error("TASK_NOT_FOUND")
 
@@ -790,6 +795,12 @@ export class TaskService {
             if (canCompanyWide(session.user, "tasks.delete") && isSelfAssigned) {
                 throw new Error("SELF_DELETION_FORBIDDEN")
             }
+
+            // Its costs paid, it stays, and its payment record with it
+            // (CLIENTS_PLAN.md §4.2): paid in full, or anyone's part of it,
+            // their payments read as the task's page reads them.
+            const paidParts = Object.values(asRecord(task.memberPaymentStatus))
+            if (task.paymentStatus === 'PAID' || paidParts.includes('PAID')) throw new Error("TASK_HAS_PAID_COSTS")
 
             if (Array.isArray(task.attachments)) {
                 try {
@@ -1206,8 +1217,12 @@ export class TaskService {
      * With a member, pays only that member's share of each task, as the Costs
      * page lists one employee's costs (CLIENTS_PLAN.md §1). A task is paid once
      * no share of it is left to pay.
+     *
+     * With `confirmed`, the digest of what the person was shown (§4.1), what
+     * the tasks owe is checked against it again while they're held, so
+     * nothing changed since is paid unseen.
      */
-    static async bulkUpdatePayment(taskIds: string[], session: any, memberId?: string) {
+    static async bulkUpdatePayment(taskIds: string[], session: any, memberId?: string, confirmed?: string) {
         const userId = session.user.id
         const userRole = session.user.role
 
@@ -1216,6 +1231,10 @@ export class TaskService {
             // added meanwhile is read here, not overwritten with what was
             // read before it.
             await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ANY(${taskIds}) ORDER BY id FOR NO KEY UPDATE`
+            if (confirmed !== undefined) {
+                const held = await tx.task.findMany({ where: { id: { in: taskIds }, paymentStatus: 'PENDING_PAYMENT' }, select: { id: true, totalCost: true, memberCosts: true, memberPaymentStatus: true } })
+                if (snapshotOf(held, memberId).digest !== confirmed) throw new Error("PAYMENT_LIST_CHANGED")
+            }
 
             const whereClause: any = {
                 id: { in: taskIds },
