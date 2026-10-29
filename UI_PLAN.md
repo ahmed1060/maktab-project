@@ -957,8 +957,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   panel counts a client or location filter its viewer has no select for,
   set by a shared link, and Reset clears it.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 4a: the Costs page's Mark all as
-  paid asks first, in the building blocks' confirm window, "Pay 7 costs,
-  3,450.00 EGP?", and says one cost as "Pay 1 cost". A task whose costs
-  are paid has no Delete button.
+  paid asks first, in the page's own confirm window (`ConfirmModal`, not
+  yet on the building blocks), "Pay 7 costs, 3,450.00 EGP?", and says one
+  cost as "Pay 1 cost". A task whose costs are paid has no Delete button.
 - **2026-10-29:** In 4a, the Arabic for Mark all as paid is "تحديد الكل
   كمدفوع", on the button and its window.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s step 3 was merged in #100, and 4a
+  opens for review in #101, with the Costs page's Mark all as paid asking
+  first.

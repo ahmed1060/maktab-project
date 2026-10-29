@@ -786,10 +786,11 @@ balance first, automatically:
      - Step 3, filters and totals, is built (§3), as one PR after 2b. It
        stands on the fix that has Mark all as paid pay only the list shown,
        and on the date filters counting the company's days, which come
-       before it in their own PRs. It's open for review in #100.
+       before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Proposed: it ships as three PRs. 4a, payment safety
-       (§4.1, §4.2), is built. 4b archives clients (§4.3). 4c moves costs
-       into their own table, with their descriptions (§4.4, §4.5).
+       (§4.1, §4.2), is built, and open for review in #101. 4b archives
+       clients (§4.3). 4c moves costs into their own table, with their
+       descriptions (§4.4, §4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1340,3 +1341,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-29:** In 4a, Mark all as paid reads "تحديد الكل كمدفوع" in
   Arabic, as Mark as paid's "تحديد كمدفوع" does; it read "تحدد" ("you
   mark").
+- **2026-10-29:** Step 3 was merged in #100, with Codex's two findings
+  fixed in it: the location filter left out archived locations, and Reset
+  left a place filter in place for someone with no select for it. Step
+  4's first PR, 4a, opens for review in #101.
