@@ -916,9 +916,10 @@ balance first, automatically:
        filters and totals by title and cost name, in #107. Step 5 is done.
      - Step 6, client charges (§6). Proposed: it ships as four PRs, 6a
        to 6d (§6.8). 6a, a receipt photo for each cost, was merged in
-       #108 on 2026-10-29. 6b, the charges, the Costs page's Charged to
-       clients tab and the permissions for new companies, is built, and
-       open for review in #109.
+       #108 on 2026-10-29, and 6b, the charges, the Costs page's Charged
+       to clients tab and the permissions for new companies, in #109. 6c,
+       the permissions for the companies already there, is built, and
+       open for review in #110.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1706,3 +1707,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   See charges on their built-in Team Leader roles, for their team's
   tasks, as a new company's have them. Only the holders of a role given
   one reload their grants.
+- **2026-10-29:** 6b was merged in #109, with Codex's two findings fixed
+  in it: the charges API behind the Costs module, and a charge's changes
+  waiting for its task. Its migration ran on production at 21:30 UTC,
+  with no errors after; production has no costs yet. Step 6's third PR,
+  6c, opens for review in #110; its migration gives the 3 companies there
+  the charges' permissions (12 grants on their 6 built-in Admin and Team
+  Leader roles).

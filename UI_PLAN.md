@@ -1054,3 +1054,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Leaders of the companies already there see the Costs page's Charged to
   clients tab: an Admin every charge, with each one's menu, and a Team
   Leader their team's tasks' charges, with none.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 6b was merged in #109, and 6c opens
+  for review in #110.
