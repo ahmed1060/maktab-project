@@ -906,8 +906,10 @@ balance first, automatically:
        #106, and 5c, the bulk import matching titles to the list and the
        filters and totals by title and cost name, in #107. Step 5 is done.
      - Step 6, client charges (§6). Proposed: it ships as four PRs, 6a
-       to 6d (§6.8). 6a, a receipt photo for each cost, is built, and
-       open for review in #108.
+       to 6d (§6.8). 6a, a receipt photo for each cost, was merged in
+       #108 on 2026-10-29. 6b, the charges, the Costs page's Charged to
+       clients tab and the permissions for new companies, is built, and
+       open for review in #109.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1674,3 +1676,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **See charges, Manage charges and Mark charges collected** are in the
     built-in roles for new companies: Admins hold all three for the
     company, Team Leaders See charges for their team's tasks.
+- **2026-10-29:** 6a was merged in #108, with Codex's finding fixed in
+  it: a receipt taken only as the address its upload gave. Its migration
+  ran on production with no errors after; production has no costs yet.
+  Step 6's second PR, 6b, opens for review in #109; its migration adds
+  each cost's service fee, "Not charged to client" tick and when it was
+  collected, none yet.

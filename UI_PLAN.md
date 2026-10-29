@@ -1048,3 +1048,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   tabs sit on a panel. Charged to clients is built on them: a filter bar,
   three totals, a table that's a card per charge on a phone, and a service
   fee dialog where typing the fee or the total works out the other.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 6a was merged in #108, and 6b opens
+  for review in #109.
