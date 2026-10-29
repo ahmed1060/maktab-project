@@ -596,6 +596,11 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   tab, a **"Not charged to client"** tick removes a cost from the client. It
   can be used until the charge is collected, and unticking it charges the
   cost again. It's covered by the **Manage charges** permission (§6.6).
+- **Decided (2026-10-29): each cost has its own receipt photo, and it's
+  optional.** Until step 6, a cost had none: photos were the task's. Each
+  cost added in Add costs takes one photo, which its charge shows; a cost
+  with no receipt, such as a taxi, is added without one, as is every cost
+  added before.
 
 ### 6.3 Service fee (Decided)
 
@@ -661,6 +666,30 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   possible.
 - **Suggested: leave it out now**, and add it later (§9) if you want totals
   per shop.
+
+### 6.8 How it's built (step 6)
+
+- **Proposed:** step 6 ships as four PRs:
+  - 6a: a receipt photo for each cost (§6.2): taken in Add costs,
+    optional, kept in the company's own folder and checked to be there
+    when the cost is saved, shown with the cost on the task's page, and
+    removed with the cost or its task (built). A receipt is on one cost
+    only, and the orphan sweep counts it as in use;
+  - 6b: the charges (§6.1–6.5), the Costs page's Charged to Clients tab
+    with its filters, totals, service fee and "Not charged to client"
+    tick, and the three permissions (§6.6) for new companies' built-in
+    roles;
+  - 6c: the permissions for the companies already there, once 6b's role
+    editor is live, as for locations (§2.9) and lists (§5.10);
+  - 6d: each client's page (§6.4): Due and Collected, the charges with
+    their receipts, and Mark collected, with two-factor sign-in, for
+    exactly the charges shown, as Mark all as paid confirms (§4.1).
+- **Proposed:** a charge isn't stored apart from its cost. A cost on a
+  task with a client is charged to it, so the charge follows the task's
+  client (§6.5); the cost keeps its service fee, the "Not charged to
+  client" tick and when it was collected, and by whom.
+- Production had no clients and no costs when step 6 began (checked
+  read-only, 2026-10-29), so no cost is charged on the way in.
 
 ---
 
@@ -849,11 +878,13 @@ balance first, automatically:
        (§4.4, §4.5), in #103, and 4d, which tidies up after it (§4.5), in
        #104. Step 4 is done.
      - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
-       and 5c (§5.10). 5a was merged in #105 on 2026-10-29, and 5b, which
+       and 5c (§5.10). 5a was merged in #105 on 2026-10-29, 5b, which
        gives the companies there before it the lists' permissions, in
-       #106. 5c, the bulk import matching titles to the list and the
-       filters and totals by title and cost name, is built, and open for
-       review in #107.
+       #106, and 5c, the bulk import matching titles to the list and the
+       filters and totals by title and cost name, in #107. Step 5 is done.
+     - Step 6, client charges (§6). Proposed: it ships as four PRs, 6a
+       to 6d (§6.8). 6a, a receipt photo for each cost, is built, and
+       open for review in #108.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1581,3 +1612,26 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   as typed. What was typed the same was matched as a pattern, so
   "Cleaning_supplies" kept costs typed "Cleaning supplies", and "%" every
   cost (found by Codex).
+- **2026-10-29:** Decided by the product owner (§6.2): each cost has its
+  own receipt photo, and it's optional. Step 6's split into 6a–6d is
+  proposed (§6.8).
+- **2026-10-29:** Step 6's first PR, 6a, is built (§6.2, §6.8):
+  - **Add costs takes a receipt photo for each cost,** optional: a photo
+    or a PDF, up to 4 MB, picked before Add, uploaded to the company's
+    receipts folder when the task is saved. One that can't be uploaded
+    stops the save, rather than saving the cost without it.
+  - **The server keeps only a receipt uploaded for this company's costs**
+    and still in storage, on one cost only.
+  - **The task's page shows each cost's receipt,** opened in a new tab,
+    and removing the cost, or deleting the task, removes it from storage.
+    The orphan sweep counts receipts as in use.
+- **2026-10-29:** 5c was merged in #107, with Codex's two findings fixed
+  in it: the Costs page with a cost name counting only tasks with some of
+  it due, and a name's `%` and `_` taken as typed. It has no migration.
+  Step 5 is done. Step 6's first PR, 6a, opens for review in #108; its
+  migration adds each cost's receipt, none yet.
+- **2026-10-29:** In 6a (#108), a cost's receipt is taken only as the
+  address its upload gave. The same file spelt another way, such as
+  "%31" for "1", was another address, so it could be put on a second
+  cost, and removing either cost removed the other's receipt too (found
+  by Codex).

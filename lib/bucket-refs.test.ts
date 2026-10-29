@@ -11,8 +11,8 @@ const AVATAR = "avatars/1768970955019-8pz2mm.jpeg"
 const TASK_FILE = "d9790ec4-0a73-4a27-858b-3003032c5cf3/misc/1788713706536-g3orvn.PNG"
 const OBLIGATION_FILE = "d9790ec4-0a73-4a27-858b-3003032c5cf3/misc/1788714774803-qsunum.PNG"
 
-describe("the five encodings these six columns actually use", () => {
-    it("a bare URL — User.avatar, SuperAdmin.avatar, Company.logoUrl", () => {
+describe("the five encodings these seven columns actually use", () => {
+    it("a bare URL — User.avatar, SuperAdmin.avatar, Company.logoUrl, TaskCost.receiptUrl", () => {
         expect(extractBucketPaths(BASE + AVATAR)).toEqual([AVATAR])
     })
 
@@ -153,13 +153,14 @@ describe("the reference set covers every column that can hold a bucket path", ()
         }
     )
 
-    it("gathers all six known sources by name", () => {
+    it("gathers all seven known sources by name", () => {
         // A hard floor independent of the heuristic.
         for (const source of [
             "prisma.user.findMany",
             "prisma.superAdmin.findMany",
             "prisma.company.findMany",
             "prisma.task.findMany",
+            "prisma.taskCost.findMany",
             "prisma.obligation.findMany",
             "prisma.clientRecord.findMany",
         ]) {

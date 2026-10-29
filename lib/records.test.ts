@@ -90,6 +90,15 @@ describe("a record's files", () => {
             "not a url",
         ]) expect(ownFilePath(url, "c1"), url).toBeNull()
     })
+
+    it("are checked as another folder's, such as costs' receipts, when it's named (CLIENTS_PLAN.md §6.2)", () => {
+        process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co"
+        expect(ownFilePath(`${BUCKET}/c1/receipts/1-a.jpg`, "c1", "receipts")).toBe("c1/receipts/1-a.jpg")
+        // A receipt isn't a record's file, nor a record's file a receipt.
+        expect(ownFilePath(`${BUCKET}/c1/receipts/1-a.jpg`, "c1")).toBeNull()
+        expect(ownFilePath(`${BUCKET}/c1/records/1-a.pdf`, "c1", "receipts")).toBeNull()
+        expect(ownFilePath(`${BUCKET}/c2/receipts/1-a.jpg`, "c1", "receipts")).toBeNull()
+    })
 })
 
 describe("a new or edited record", () => {

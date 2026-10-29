@@ -31,7 +31,7 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
             // locations has none, and shows its own text.
             place: { select: { name: true, latitude: true, longitude: true, client: { select: { name: true } } } },
             // Its costs, each with its description (CLIENTS_PLAN.md §4.4, §4.5).
-            costs: { select: { id: true, amount: true, description: true, authorId: true, authorName: true, createdAt: true } },
+            costs: { select: { id: true, amount: true, description: true, authorId: true, authorName: true, receiptUrl: true, createdAt: true } },
         }
     })
 

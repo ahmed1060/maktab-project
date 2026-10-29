@@ -47,13 +47,15 @@ export function FileChips({ label, children }: { label: string; children: ReactN
 /**
  * "Attach files": a secondary button that opens the file picker, and, on
  * computers, a place to drop files. `hint` says which kinds and how large.
+ * With `multiple` off, it picks one, such as a cost's receipt.
  */
-export function FilePicker({ label, hint, accept, onFiles, disabled = false }: {
+export function FilePicker({ label, hint, accept, onFiles, disabled = false, multiple = true }: {
     label: string
     hint: ReactNode
     accept: string
     onFiles: (files: File[]) => void
     disabled?: boolean
+    multiple?: boolean
 }) {
     const input = useRef<HTMLInputElement>(null)
     const [over, setOver] = useState(false)
@@ -72,7 +74,7 @@ export function FilePicker({ label, hint, accept, onFiles, disabled = false }: {
             onDrop={e => {
                 e.preventDefault()
                 setOver(false)
-                if (!disabled) onFiles([...e.dataTransfer.files])
+                if (!disabled) onFiles([...e.dataTransfer.files].slice(0, multiple ? undefined : 1))
             }}
         >
             <button type="button" className="ui-btn ui-btn-secondary" onClick={() => input.current?.click()} disabled={disabled}>
@@ -83,7 +85,7 @@ export function FilePicker({ label, hint, accept, onFiles, disabled = false }: {
             <input
                 ref={input}
                 type="file"
-                multiple
+                multiple={multiple}
                 accept={accept}
                 className="ui-visually-hidden"
                 tabIndex={-1}

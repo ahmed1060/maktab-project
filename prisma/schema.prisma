@@ -1236,6 +1236,9 @@ model TaskCost {
   description String?
   /// The name it was picked as from the company's list of cost names (§5).
   nameEntryId String?
+  /// Its receipt's photo, if one was taken (CLIENTS_PLAN.md §6.2): a file
+  /// in the company's receipts folder, on this cost only.
+  receiptUrl  String?  @unique
   createdAt   DateTime @default(now())
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   nameEntry   ListEntry? @relation(fields: [nameEntryId], references: [id], onDelete: SetNull)

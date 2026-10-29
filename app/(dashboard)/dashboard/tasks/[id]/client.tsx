@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
 // Its dates once the browser has the page: drawn on the server, they came out in its time zone.
@@ -25,6 +25,7 @@ import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import { locationLabel } from '@/lib/locations'
 import { googleMapsLink } from '@/lib/attendance/geo'
+import { RECEIPT_ACCEPT, RECEIPTS_FOLDER } from '@/lib/task-costs'
 
 export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
     const { t, locale } = useLanguage()
@@ -95,6 +96,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [cost, setCost] = useState('')
     // A cost's name as typed, and the name it was picked as from the list (CLIENTS_PLAN.md §5).
     const [costName, setCostName] = useState<PickedName>({ text: '', entryId: null })
+    // The next cost's receipt photo (CLIENTS_PLAN.md §6.2), and those already
+    // uploaded, so a save tried again doesn't upload them again.
+    const [costReceipt, setCostReceipt] = useState<File | null>(null)
+    const uploadedReceipts = useRef(new Map<File, string>())
     const [location, setLocation] = useState('')
     const [locationStatus, setLocationStatus] = useState('')
     const [uploading, setUploading] = useState(false)
@@ -280,6 +285,24 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         console.log('handleUpload started, isDraft:', isDraft)
 
         try {
+            // Each cost's receipt, as a file of its own, first: one not
+            // uploaded stops the save, rather than the cost saved without it.
+            const costs: any[] = []
+            for (const { receipt, ...entry } of costEntries) {
+                let receiptUrl: string | null = receipt ? uploadedReceipts.current.get(receipt) ?? null : null
+                if (receipt && !receiptUrl) {
+                    const formData = new FormData()
+                    formData.append('file', receipt)
+                    formData.append('folder', RECEIPTS_FOLDER)
+                    const res = await fetch('/api/upload', { method: 'POST', headers: isEmergency ? { 'X-Emergency-Save': 'true' } : undefined, body: formData }).catch(() => null)
+                    const result = res?.ok ? await res.json().catch(() => null) : null
+                    if (!result?.success || typeof result.data?.url !== 'string') throw new Error(t('cost_receipt_upload_failed'))
+                    receiptUrl = result.data.url as string
+                    uploadedReceipts.current.set(receipt, receiptUrl)
+                }
+                costs.push({ ...entry, receiptUrl })
+            }
+
             const uploadedUrls: string[] = []
             if (pendingFiles.length > 0) {
                 for (const file of pendingFiles) {
@@ -329,7 +352,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 body: JSON.stringify({
                     newAttachments: uploadedUrls,
                     note,
-                    costs: costEntries,
+                    costs,
                     location,
                     isDraft
                 }),
@@ -354,6 +377,8 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             setLocationStatus('')
             setPendingFiles([])
             setCostEntries([])
+            setCostReceipt(null)
+            uploadedReceipts.current.clear()
 
             showToast(isDraft ? t('draft_saved_success') : t('task_submitted_success'), 'success')
             router.refresh()
@@ -399,9 +424,26 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             showToast(t('cost_negative_error'), 'error')
             return
         }
-        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costName.text, nameEntryId: costName.entryId }])
+        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costName.text, nameEntryId: costName.entryId, receipt: costReceipt }])
         setCost('')
         setCostName({ text: '', entryId: null })
+        setCostReceipt(null)
+    }
+
+    // A photo or PDF the upload route takes, up to 4 MB.
+    const handleCostReceipt = (files: File[]) => {
+        const file = files[0]
+        if (!file) return
+        if (file.size > 4 * 1024 * 1024) {
+            showToast(t('cost_receipt_too_large'), 'error')
+            return
+        }
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+        if (!RECEIPT_ACCEPT.split(',').includes(ext)) {
+            showToast(t('cost_receipt_wrong_type'), 'error')
+            return
+        }
+        setCostReceipt(file)
     }
 
     const removeCostEntry = (index: number) => {
@@ -1119,6 +1161,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                 cost={cost}
                                 setCost={setCost}
                                 onAddCost={handleAddCost}
+                                costReceipt={costReceipt}
+                                onCostReceipt={handleCostReceipt}
+                                onClearCostReceipt={() => setCostReceipt(null)}
                                 costEntries={costEntries}
                                 onRemoveCostEntry={removeCostEntry}
                                 note={note}

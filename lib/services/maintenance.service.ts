@@ -130,7 +130,7 @@ export class MaintenanceService {
     /**
      * Every bucket path any live row refers to.
      *
-     * All six columns that can hold one, and the sweep deletes whatever is not
+     * All seven columns that can hold one, and the sweep deletes whatever is not
      * in here — so a column added later and forgotten here is a delayed data
      * loss. lib/bucket-refs.ts explains why each value is scanned rather than
      * parsed.
@@ -170,6 +170,18 @@ export class MaintenanceService {
                 orderBy: { id: 'asc' }, take: BATCH,
             })
             rows.forEach(r => add(r.attachments))
+            if (rows.length < BATCH) break
+            after = rows[rows.length - 1].id
+        }
+
+        // Costs' receipts (CLIENTS_PLAN.md §6.2), one a cost.
+        for (let after: string | undefined; ;) {
+            const rows = await prisma.taskCost.findMany({
+                where: { receiptUrl: { not: null }, ...(after && { id: { gt: after } }) },
+                select: { id: true, receiptUrl: true },
+                orderBy: { id: 'asc' }, take: BATCH,
+            })
+            rows.forEach(r => add(r.receiptUrl))
             if (rows.length < BATCH) break
             after = rows[rows.length - 1].id
         }
@@ -220,7 +232,7 @@ export class MaintenanceService {
      *
      * Reports by default and deletes only when told to. That is not timidity
      * about the code, it is the shape of the risk: the reference set is a
-     * hand-kept list of six queries that has to grow whenever a feature starts
+     * hand-kept list of seven queries that has to grow whenever a feature starts
      * storing a file, and nothing in a typecheck or a build notices when it
      * does not. So the first sweep of any backlog should be a list somebody
      * reads, and the threshold in lib/orphan-guard.ts stands between an

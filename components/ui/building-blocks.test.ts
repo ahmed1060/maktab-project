@@ -608,12 +608,19 @@ describe("a client's page and its records (DESIGN.md §5.5)", () => {
         expect(html).toMatch(/<input type="file" multiple="" accept=".pdf" class="ui-visually-hidden" tabindex="-1" aria-hidden="true"\/>/)
     })
 
+    it("the file picker picks one file with multiple off, such as a cost's receipt, dropped or picked", () => {
+        const html = render(h(ui.FilePicker, { label: "Attach receipt", hint: "Optional", accept: ".jpg", onFiles: () => {}, multiple: false }))
+        expect(html).toMatch(/<input type="file" accept=".jpg" class="ui-visually-hidden" tabindex="-1" aria-hidden="true"\/>/)
+        const source = readFileSync("components/ui/Files.tsx", "utf8")
+        expect(source.slice(source.indexOf("export function FilePicker"))).toContain("onFiles([...e.dataTransfer.files].slice(0, multiple ? undefined : 1))")
+    })
+
     it("the file picker takes a drop even while disabled, so the browser doesn't open the file in place of the page", () => {
         const source = readFileSync("components/ui/Files.tsx", "utf8")
         const picker = source.slice(source.indexOf("export function FilePicker"))
         expect(picker).not.toContain("if (disabled) return")
         expect(picker.match(/e\.preventDefault\(\)/g)).toHaveLength(2)
-        expect(picker).toContain("if (!disabled) onFiles([...e.dataTransfer.files])")
+        expect(picker).toContain("if (!disabled) onFiles([...e.dataTransfer.files]")
     })
 
     it("an expiry says Expired with the warning icon, or Expires soon, and nothing otherwise", () => {

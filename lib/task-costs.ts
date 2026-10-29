@@ -8,6 +8,12 @@
 
 export const COST_DESCRIPTION_MAX = 200
 
+/** The upload route's folder for costs' receipts (CLIENTS_PLAN.md §6.2). */
+export const RECEIPTS_FOLDER = 'receipts'
+
+/** What a receipt's picker offers: a photo, or a PDF, of what the upload route takes. */
+export const RECEIPT_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf'
+
 /** A cost entry in a task's comments, as the app writes it. */
 export type CostEntry = {
     type: 'COST_ADDITION'
@@ -28,6 +34,8 @@ export type CostRow = {
     description: string | null
     authorId: string | null
     authorName: string | null
+    /** Its receipt's photo, if one was taken (§6.2). */
+    receiptUrl: string | null
     /** When it was added, which costs added together share. */
     createdAt: string
 }
@@ -40,6 +48,7 @@ export type CostLine = {
     description: string | null
     author: string | null
     authorId: string | null
+    receiptUrl: string | null
 }
 
 export function isCostEntry(entry: unknown): entry is CostEntry {
@@ -71,6 +80,16 @@ export function readDescription(raw: unknown): string | null {
     return text
 }
 
+/**
+ * A cost's receipt as sent, or none. Which file it is, and whose, is checked
+ * where the cost is saved.
+ */
+export function readReceipt(raw: unknown): string | null {
+    if (raw === undefined || raw === null || raw === '') return null
+    if (typeof raw !== 'string') throw new Error('COST_RECEIPT_INVALID')
+    return raw
+}
+
 /** A cost's entry, naming its row, with its description for the release before to show. */
 export function costEntry(cost: { id: string; amount: number; description: string | null; author: string | null; authorId: string; date: string }): CostEntry {
     return {
@@ -96,5 +115,5 @@ export function costLines(rows: CostRow[], comments: unknown): CostLine[] {
     const at = (id: string) => place.get(id) ?? Number.MAX_SAFE_INTEGER
     return [...rows]
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || at(a.id) - at(b.id))
-        .map(r => ({ id: r.id, date: r.createdAt, amount: r.amount, description: r.description, author: r.authorName, authorId: r.authorId }))
+        .map(r => ({ id: r.id, date: r.createdAt, amount: r.amount, description: r.description, author: r.authorName, authorId: r.authorId, receiptUrl: r.receiptUrl ?? null }))
 }

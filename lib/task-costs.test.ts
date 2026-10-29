@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { stripComments } from "@/lib/strip-comments"
-import { cents, costEntry, costLines, readDescription } from "@/lib/task-costs"
+import { cents, costEntry, costLines, readDescription, readReceipt } from "@/lib/task-costs"
 
 /**
  * A task's costs (CLIENTS_PLAN.md §4.4, §4.5): its rows, each with its id
@@ -11,14 +11,23 @@ describe("a task's costs", () => {
     const at = "2026-10-22T10:00:00.000Z"
     const entry = (over: Record<string, unknown>) => ({ type: "COST_ADDITION", text: "Added cost: 1.00 EGP", amount: 1, author: "Ehab One", authorId: "e1", date: at, ...over })
 
-    const row = (id: string, over: Record<string, unknown> = {}) => ({ id, amount: 1, description: null, authorId: "e1", authorName: "Ehab One", createdAt: at, ...over })
+    const row = (id: string, over: Record<string, unknown> = {}) => ({ id, amount: 1, description: null, authorId: "e1", authorName: "Ehab One", receiptUrl: null, createdAt: at, ...over })
 
     it("are the task's rows, each with its description, in the order they were added", () => {
         const later = "2026-10-22T11:00:00.000Z"
         expect(costLines([row("r2", { amount: 25, createdAt: later, description: "Parking" }), row("r1", { amount: 150, description: "Taxi" })], [])).toEqual([
-            { id: "r1", date: at, amount: 150, description: "Taxi", author: "Ehab One", authorId: "e1" },
-            { id: "r2", date: later, amount: 25, description: "Parking", author: "Ehab One", authorId: "e1" },
+            { id: "r1", date: at, amount: 150, description: "Taxi", author: "Ehab One", authorId: "e1", receiptUrl: null },
+            { id: "r2", date: later, amount: 25, description: "Parking", author: "Ehab One", authorId: "e1", receiptUrl: null },
         ])
+    })
+
+    it("each with its receipt, if one was taken (CLIENTS_PLAN.md §6.2)", () => {
+        const receipt = "https://abc.supabase.co/storage/v1/object/public/app-assets/c1/receipts/1-a.jpg"
+        expect(costLines([row("r1", { receiptUrl: receipt })], []).map(c => c.receiptUrl)).toEqual([receipt])
+        // As sent: none, or the photo's address, which the server checks.
+        expect([undefined, null, ""].map(readReceipt)).toEqual([null, null, null])
+        expect(readReceipt(receipt)).toBe(receipt)
+        for (const odd of [42, {}, ["x"]]) expect(() => readReceipt(odd)).toThrow("COST_RECEIPT_INVALID")
     })
 
     it("put those added together in the order their entries are in", () => {

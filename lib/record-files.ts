@@ -79,9 +79,10 @@ export const RECORD_FILES_FOLDER = "records"
  * folder, and a Super Admin's under "platform", in the folder the form
  * names. Anything else, such as a link to another site, another company's
  * file, or one of the company's other files like a photo or its logo, isn't
- * a record's file, so a record can neither carry it nor delete it.
+ * a record's file, so a record can neither carry it nor delete it. Another
+ * folder's files, such as a cost's receipts, are checked as theirs.
  */
-export function ownFilePath(url: string, companyId: string): string | null {
+export function ownFilePath(url: string, companyId: string, folderName: string = RECORD_FILES_FOLDER): string | null {
     let parsed: URL
     try {
         parsed = new URL(url)
@@ -98,7 +99,7 @@ export function ownFilePath(url: string, companyId: string): string | null {
         return null
     }
     const [owner, folder, name, ...more] = path.split("/")
-    if (folder !== RECORD_FILES_FOLDER || !name || more.length || path.includes("..")) return null
+    if (folder !== folderName || !name || more.length || path.includes("..")) return null
     return owner === companyId || owner === "platform" ? path : null
 }
 

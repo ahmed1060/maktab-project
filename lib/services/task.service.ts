@@ -18,7 +18,8 @@ import { LocationService } from "./location.service"
 import { ListService } from "./list.service"
 import { snapshotOf } from "./costs-query"
 import { asRecord } from "@/lib/costs-total"
-import { cents, costEntry, isCostEntry, readDescription } from "@/lib/task-costs"
+import { cents, costEntry, isCostEntry, readDescription, readReceipt } from "@/lib/task-costs"
+import { checkReceipts, removeReceipts } from "./cost-receipts"
 
 /**
  * Where a task's check measures from (CLIENTS_PLAN.md §2.5): its location's
@@ -337,13 +338,22 @@ export class TaskService {
         const inputCosts = data.costs || data.costEntries
         // Each cost with its description, kept to the cent; one of nothing
         // isn't one. Refused before anything is read.
-        const costs: { amount: number; description: string | null; nameEntryId?: unknown }[] = []
-        const addCost = (amount: unknown, description: unknown, nameEntryId?: unknown) => {
+        const costs: { amount: number; description: string | null; nameEntryId?: unknown; receiptUrl: string | null }[] = []
+        const addCost = (amount: unknown, description: unknown, nameEntryId?: unknown, receipt?: unknown) => {
             const value = cents(Number(amount))
-            if (value > 0) costs.push({ amount: value, description: readDescription(description), nameEntryId })
+            if (value > 0) costs.push({ amount: value, description: readDescription(description), nameEntryId, receiptUrl: readReceipt(receipt) })
         }
         if (data.cost) addCost(data.cost, data.costDescription)
-        if (Array.isArray(inputCosts)) for (const c of inputCosts) addCost(c?.amount, c?.description, c?.nameEntryId)
+        if (Array.isArray(inputCosts)) for (const c of inputCosts) addCost(c?.amount, c?.description, c?.nameEntryId, c?.receiptUrl)
+
+        // Each receipt a photo taken here for this cost (CLIENTS_PLAN.md §6.2),
+        // asked of storage before the task is held.
+        const receipts = costs.flatMap(c => c.receiptUrl ? [c.receiptUrl] : [])
+        if (receipts.length) {
+            const owner = await prisma.task.findUnique({ where: { id }, select: { companyId: true } })
+            if (!owner) throw new Error("TASK_NOT_FOUND")
+            await checkReceipts(receipts, owner.companyId, session.user.role === 'SUPER_ADMIN')
+        }
 
         return await prisma.$transaction(async (tx) => {
             // Held while its comments are read and written back: two people
@@ -412,7 +422,7 @@ export class TaskService {
             for (const c of costs) {
                 // Its name as typed, and the name it was picked as (CLIENTS_PLAN.md §5.5).
                 const nameEntryId = await ListService.picked(tx, c.nameEntryId, c.description, { companyId: currentTask.companyId, kind: "COST_NAME" })
-                rows.push({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description, nameEntryId, createdAt: addedAt })
+                rows.push({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description, nameEntryId, receiptUrl: c.receiptUrl, createdAt: addedAt })
             }
             for (const r of rows) {
                 comments.push(costEntry({ id: r.id, amount: r.amount, description: r.description, author: r.authorName, authorId: userId, date: addedAt.toISOString() }))
@@ -466,7 +476,10 @@ export class TaskService {
             }
 
             const task = await tx.task.update({ where: { id }, data: updateData })
-            if (rows.length > 0) await tx.taskCost.createMany({ data: rows })
+            // A receipt on another cost already is that cost's (receiptUrl is unique).
+            if (rows.length > 0) await tx.taskCost.createMany({ data: rows }).catch((e: any) => {
+                throw e?.code === 'P2002' ? new Error("COST_RECEIPT_INVALID") : e
+            })
 
             if (!isDraft && task.createdBy) {
                 await tx.notification.create({
@@ -810,8 +823,10 @@ export class TaskService {
     static async delete(id: string, session: any) {
         const userId = session.user.id
         const userRole = session.user.role
+        // Its costs' receipts, removed from storage once it's gone (CLIENTS_PLAN.md §6.2).
+        let receipts: { urls: (string | null)[]; companyId: string | null } = { urls: [], companyId: null }
 
-        return await prisma.$transaction(async (tx) => {
+        const deleted = await prisma.$transaction(async (tx) => {
             // Held until it's gone, as paying holds it: a payment recorded
             // meanwhile is read below, rather than deleted with the task.
             await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
@@ -853,6 +868,8 @@ export class TaskService {
                 }
             }
 
+            const withReceipts = await tx.taskCost.findMany({ where: { taskId: id, receiptUrl: { not: null } }, select: { receiptUrl: true } })
+            receipts = { urls: withReceipts.map(c => c.receiptUrl), companyId: task.companyId }
             await tx.task.delete({ where: { id } })
 
             // Audit Log (Centralized)
@@ -871,6 +888,8 @@ export class TaskService {
 
             return { success: true, id }
         })
+        await removeReceipts(receipts.urls, receipts.companyId)
+        return deleted
     }
     /**
      * Reverts a task to IN_PROGRESS.
@@ -1033,8 +1052,10 @@ export class TaskService {
         const { type, itemId } = data
         const userId = session.user.id
         const userRole = session.user.role
+        // A cost's receipt, removed from storage once the cost is gone (CLIENTS_PLAN.md §6.2).
+        let receipt: string | null = null
 
-        return await prisma.$transaction(async (tx) => {
+        const updated = await prisma.$transaction(async (tx) => {
             // Held while its comments are read and written back.
             await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
             const task = await tx.task.findUnique({ where: { id } })
@@ -1114,7 +1135,10 @@ export class TaskService {
             }
 
             const updated = await tx.task.update({ where: { id }, data: updateData })
-            if (costRow) await tx.taskCost.deleteMany({ where: { id: costRow, taskId: id } })
+            if (costRow) {
+                receipt = (await tx.taskCost.findFirst({ where: { id: costRow, taskId: id }, select: { receiptUrl: true } }))?.receiptUrl ?? null
+                await tx.taskCost.deleteMany({ where: { id: costRow, taskId: id } })
+            }
 
             // Audit Log
             await tx.auditLog.create({
@@ -1130,6 +1154,8 @@ export class TaskService {
 
             return updated
         })
+        await removeReceipts([receipt], updated.companyId)
+        return updated
     }
 
     /**
