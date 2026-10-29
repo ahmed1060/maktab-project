@@ -3,6 +3,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import TrashIcon from '@/components/TrashIcon'
 import SectionBoundary from './SectionBoundary'
+import SafeDate from './SafeDate'
 import { useCan } from '@/lib/useCan'
 import { isReviewed } from '@/lib/task-reviewed'
 
@@ -62,7 +63,7 @@ function TaskCostsSectionBody({
                                     </span>
                                 )}
                                 {!((task.assignees?.length > 1)) && <span>{c.author}</span>}
-                                <span>• {new Date(c.date).toLocaleString(locale)}</span>
+                                <span>• <SafeDate date={c.date} locale={locale} /></span>
                             </div>
                         </div>
                     ))}

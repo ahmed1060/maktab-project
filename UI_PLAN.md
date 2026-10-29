@@ -944,3 +944,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Costs page's total chip is "Total due" now, and real. "View tasks" is in
   the Clients list's row menu, which everyone who sees the list now has,
   and on a client's page.
+- **2026-10-29:** A task's page shows its dates as the task list does
+  (`SafeDate`): the deadline as "3 Nov 2026, 9:03 am", and the comments',
+  attachments' and costs' the same way.

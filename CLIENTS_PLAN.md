@@ -1304,3 +1304,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     its page, opens Tasks filtered to it.
 - **2026-10-22:** Decided by the product owner: step 1 ships as two PRs,
   1a and 1b, and step 2 as two, 2a and 2b (§8).
+- **2026-10-29:** Found while preparing step 3: a task's page drew its
+  deadline, comments, attachments and costs' dates on the server, in its
+  time zone, so the browser drew them again in Cairo's and logged a
+  hydration failure on every task page. They're drawn once the browser
+  has the page now, as the task list's are.

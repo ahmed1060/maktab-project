@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Modal from '@/components/Modal'
+// Its dates once the browser has the page: drawn on the server, they came out in its time zone.
+import SafeDate from '@/components/SafeDate'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -996,7 +998,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             })()}
 
             <div style={{ marginTop: '1rem', color: 'var(--text-soft)', fontSize: '0.9rem' }}>
-                {t('assigned_by')}: <strong>{creatorName || t('role_super_admin')}</strong> | {t('deadline_label')}: <strong>{new Date(task.deadline).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(task.deadline).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                {t('assigned_by')}: <strong>{creatorName || t('role_super_admin')}</strong> | {t('deadline_label')}: <strong><SafeDate date={task.deadline} locale={locale} /></strong>
             </div>
             <div style={{ marginTop: '0.5rem', color: 'var(--text-soft)', fontSize: '0.9rem' }}>
                 {t('assignee_label')}: {task.assignees?.length > 0 ? (
@@ -1038,7 +1040,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                                                 </span>
                                             )}
                                             {!((task.assignees?.length > 1)) && <span>{att.uploadedBy}</span>}
-                                            <span> • {new Date(att.uploadedAt).toLocaleDateString(locale)}</span>
+                                            <span> • <SafeDate date={att.uploadedAt} locale={locale} format="dateOnly" /></span>
                                         </div>
                                     </div>
                                 </a>
@@ -1263,7 +1265,7 @@ function TaskCommentsLog({ task, userId, onDeleteNote }: {
                                             </button>
                                         )}
                                     </div>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{new Date(log.date || log.createdAt).toLocaleString(locale)}</span>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}><SafeDate date={log.date || log.createdAt} locale={locale} /></span>
                                 </div>
                                 <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap' }}>{log.text}</p>
                             </div>
