@@ -1040,3 +1040,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   receipt" button under the cost's name and amount, for the next cost
   added; each cost waiting to be saved shows its receipt's chip, and each
   saved cost on the task's page a Receipt chip that opens it in a new tab.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 5c was merged in #107, so step 5 is
+  done, and 6a opens for review in #108.
