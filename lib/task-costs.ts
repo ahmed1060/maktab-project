@@ -40,9 +40,16 @@ export function isCostEntry(entry: unknown): entry is CostEntry {
     return !!entry && typeof entry === 'object' && (entry as { type?: unknown }).type === 'COST_ADDITION'
 }
 
-/** An amount to the cent: what a cost's row keeps. */
+/**
+ * An amount to the cent: what a cost's row keeps. Half a cent goes up, by the
+ * amount's decimal digits, as Postgres's round() takes them: 1.005 is a hair
+ * under in binary, so times 100 it rounded down. Too small or too large to be
+ * written without an exponent, it has no half cent to lose.
+ */
 export function cents(amount: number): number {
-    return Math.round(amount * 100) / 100
+    if (/e/i.test(String(amount))) return Math.round(amount * 100) / 100
+    const sign = amount < 0 ? -1 : 1
+    return sign * Number(`${Math.round(Number(`${Math.abs(amount)}e2`))}e-2`)
 }
 
 /**

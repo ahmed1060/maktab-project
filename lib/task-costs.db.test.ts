@@ -141,11 +141,11 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
 
         it("keeps amounts to the cent", async () => {
             const id = await fresh("t-cents")
-            await Tasks.submit(id, "e1", ehab, { isDraft: true, costs: [{ amount: 12.345, description: "Tea" }, { amount: 0.004, description: "Rounds to nothing" }] })
-            expect((await costRows(id)).map(r => r.amount)).toEqual([12.35])
+            await Tasks.submit(id, "e1", ehab, { isDraft: true, costs: [{ amount: 12.345, description: "Tea" }, { amount: 0.004, description: "Rounds to nothing" }, { amount: 1.005, description: "Half a cent" }] })
+            expect((await costRows(id)).map(r => r.amount)).toEqual([12.35, 1.01])
             const { comments, memberCosts, totalCost } = await taskRow(id)
-            expect(comments.map((c: any) => c.amount)).toEqual([12.35])
-            expect([memberCosts, totalCost]).toEqual([{ e1: 12.35 }, 12.35])
+            expect(comments.map((c: any) => c.amount)).toEqual([12.35, 1.01])
+            expect([memberCosts, totalCost]).toEqual([{ e1: 13.36 }, 13.36])
         })
 
         it("refuses a description over 200 characters, and saves nothing", async () => {

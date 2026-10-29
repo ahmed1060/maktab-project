@@ -1432,3 +1432,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   production at 13:58 UTC, with no errors after. Step 4's third PR, 4c,
   opens for review in #103. Its migration adds `TaskCost` and gives each
   cost entry its row; production has none yet (checked read-only).
+- **2026-10-29:** In 4c (#103), a cost is kept to the cent with half a
+  cent going up, as Postgres rounds it: 1.005 was rounded down, being a
+  hair under in binary, and the totals owed with it (found by Codex).

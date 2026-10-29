@@ -61,6 +61,10 @@ describe("a task's costs", () => {
         expect(cents(12.345)).toBe(12.35)
         expect(cents(0.004)).toBe(0)
         expect(cents(0.1 + 0.2)).toBe(0.3)
+        // Half a cent up, by its decimal digits, as Postgres's round() takes it:
+        // 1.005 is a hair under in binary, and rounded down (Codex on #103).
+        expect([cents(1.005), cents(10.075), cents(2.675), cents(1.255)]).toEqual([1.01, 10.08, 2.68, 1.26])
+        expect([cents(1.004), cents(1e-7), cents(45.5)]).toEqual([1, 0, 45.5])
     })
 })
 
