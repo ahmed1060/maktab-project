@@ -834,7 +834,9 @@ balance first, automatically:
        (§4.4, §4.5), in #103, and 4d, which tidies up after it (§4.5), in
        #104. Step 4 is done.
      - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
-       and 5c (§5.10). 5a is built, and open for review in #105.
+       and 5c (§5.10). 5a was merged in #105 on 2026-10-29. 5b gives the
+       companies there before it the lists' permissions; it's built, and
+       open for review in #106.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1528,3 +1530,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **Only the built-in Admin gets Manage lists.**
   - **A role given either in the role editor since keeps it as it is,**
     and only the holders of a role given one reload their grants.
+- **2026-10-29:** 5a was merged in #105, with Codex's five findings, over
+  two reviews, fixed in it: all in the name picker, from Escape closing
+  Edit task details to a Super Admin's title keeping another company's
+  name. Its migration ran on production at 16:16 UTC, with no errors
+  after. Step 5's second PR, 5b, opens for review in #106; its migration
+  gives the 3 companies there the lists' permissions (12 grants on their
+  9 built-in roles; none has roles of its own yet, checked read-only).

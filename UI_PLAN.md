@@ -1022,3 +1022,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** With `CLIENTS_PLAN.md`'s 5b, everyone in the companies
   already there sees "+ Add" in a title or cost name's suggestions, and
   their Admins see Saved lists in the side bar.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 5a was merged in #105, with the name
+  picker's five review fixes, and 5b opens for review in #106.
