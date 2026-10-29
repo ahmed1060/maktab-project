@@ -596,6 +596,11 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   tab, a **"Not charged to client"** tick removes a cost from the client. It
   can be used until the charge is collected, and unticking it charges the
   cost again. It's covered by the **Manage charges** permission (§6.6).
+- **Decided (2026-10-29): each cost has its own receipt photo, and it's
+  optional.** Until step 6, a cost had none: photos were the task's. Each
+  cost added in Add costs takes one photo, which its charge shows; a cost
+  with no receipt, such as a taxi, is added without one, as is every cost
+  added before.
 
 ### 6.3 Service fee (Decided)
 
@@ -661,6 +666,29 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   possible.
 - **Suggested: leave it out now**, and add it later (§9) if you want totals
   per shop.
+
+### 6.8 How it's built (step 6)
+
+- **Proposed:** step 6 ships as four PRs:
+  - 6a: a receipt photo for each cost (§6.2): taken in Add costs,
+    optional, kept in the company's own folder and checked to be there
+    when the cost is saved, shown with the cost on the task's page, and
+    removed with the cost or its task;
+  - 6b: the charges (§6.1–6.5), the Costs page's Charged to Clients tab
+    with its filters, totals, service fee and "Not charged to client"
+    tick, and the three permissions (§6.6) for new companies' built-in
+    roles;
+  - 6c: the permissions for the companies already there, once 6b's role
+    editor is live, as for locations (§2.9) and lists (§5.10);
+  - 6d: each client's page (§6.4): Due and Collected, the charges with
+    their receipts, and Mark collected, with two-factor sign-in, for
+    exactly the charges shown, as Mark all as paid confirms (§4.1).
+- **Proposed:** a charge isn't stored apart from its cost. A cost on a
+  task with a client is charged to it, so the charge follows the task's
+  client (§6.5); the cost keeps its service fee, the "Not charged to
+  client" tick and when it was collected, and by whom.
+- Production had no clients and no costs when step 6 began (checked
+  read-only, 2026-10-29), so no cost is charged on the way in.
 
 ---
 
@@ -1581,3 +1609,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   as typed. What was typed the same was matched as a pattern, so
   "Cleaning_supplies" kept costs typed "Cleaning supplies", and "%" every
   cost (found by Codex).
+- **2026-10-29:** Decided by the product owner (§6.2): each cost has its
+  own receipt photo, and it's optional. Step 6's split into 6a–6d is
+  proposed (§6.8).
