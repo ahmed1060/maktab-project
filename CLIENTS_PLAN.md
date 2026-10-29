@@ -803,10 +803,11 @@ balance first, automatically:
        and on the date filters counting the company's days, which come
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Decided (2026-10-22): it ships as three PRs, and a
-       fourth, small one. 4a, payment safety (§4.1, §4.2), is built, and
-       4b, archiving clients (§4.3). 4c moves costs into their own table,
-       with their descriptions (§4.4, §4.5), and is built too. 4d tidies up
-       after it, once 4c is live (§4.5), and is built.
+       fourth, small one. 4a, payment safety (§4.1, §4.2), was merged in
+       #101 on 2026-10-29, 4b, archiving clients (§4.3), in #102, and 4c,
+       which moves costs into their own table, with their descriptions
+       (§4.4, §4.5), in #103. 4d tidies up after it, now that 4c is live
+       (§4.5); it's built, and open for review in #104.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1443,3 +1444,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
     rows say which costs a task has, and the task's page lists them.
   - **Like 4c's, its migration removes the helpers it makes:** a database
     set up from scratch runs every migration in one go.
+- **2026-10-29:** 4c was merged in #103, with Codex's finding fixed in
+  it: a cost with half a cent was rounded down. Its migration ran on
+  production at 14:30 UTC, with no errors after. Step 4's small fourth
+  PR, 4d, opens for review in #104, now that 4c is live. Production has
+  no costs yet, neither entries nor rows (checked read-only), so its
+  migration changes nothing there.
