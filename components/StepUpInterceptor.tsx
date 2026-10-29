@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import Modal from '@/components/Modal'
 import { stepUpWaiting } from '@/lib/step-up-waiting'
+import { LAYER } from '@/lib/layers'
 import { useLanguage } from '@/context/LanguageContext'
 
 /**
@@ -84,7 +85,7 @@ export default function StepUpInterceptor() {
     if (!ask) return null
     if (ask.kind === 'enrol') {
         return (
-            <Modal isOpen onClose={() => close(false)} title={t('step_up_enrol_title')}>
+            <Modal isOpen onClose={() => close(false)} title={t('step_up_enrol_title')} zIndex={LAYER.codePrompt}>
                 <p style={{ marginTop: 0 }}>{t('step_up_enrol_hint')}</p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                     <button type="button" className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }} onClick={() => close(false)}>{t('roles_cancel')}</button>
@@ -94,7 +95,8 @@ export default function StepUpInterceptor() {
         )
     }
     return (
-        <Modal isOpen onClose={() => close(false)} title={t('step_up_title')}>
+        // Over the confirmation that sent the action, which waits, open, for this answer.
+        <Modal isOpen onClose={() => close(false)} title={t('step_up_title')} zIndex={LAYER.codePrompt}>
             <form onSubmit={confirm}>
                 <p style={{ marginTop: 0 }}>{t('step_up_hint').replace('{minutes}', String(ask.minutes))}</p>
                 <label htmlFor="step-up-code" style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.85rem' }}>{t('step_up_code')}</label>

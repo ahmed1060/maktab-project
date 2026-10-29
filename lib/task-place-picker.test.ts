@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
+import { LAYER } from "@/lib/layers"
 
 /**
  * A task's client and location pickers (CLIENTS_PLAN.md §2.3, §2.4;
@@ -109,7 +110,7 @@ describe("adding a location from a task's form", () => {
         expect(onPage).toContain('class="ui-dialog-backdrop"')
         const layer = (file: string, pattern: RegExp) => Number(readFileSync(file, "utf8").match(pattern)?.[1])
         const over = layer("components/ui/ui.css", /\.ui-dialog-backdrop\.is-over-modal\s*\{[^}]*z-index:\s*(\d+)/)
-        expect(over).toBeGreaterThan(layer("components/Modal.tsx", /zIndex:\s*(\d+)/))
+        expect(over).toBeGreaterThan(LAYER.modal)
         expect(over).toBeLessThan(layer("context/ToastContext.tsx", /zIndex:\s*(\d+)/))
     })
 
