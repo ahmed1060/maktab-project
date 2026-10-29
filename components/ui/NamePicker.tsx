@@ -51,6 +51,32 @@ export function addLands(asked: { text: string; by: unknown }, now: { value: Pic
     return now.by === asked.by && !now.value.entryId && SAME(now.value.text, asked.text)
 }
 
+/** The field as it is now: what it holds, and its form's callbacks this render. */
+export type FieldNow = { value: PickedName; onAdd?: (name: string) => Promise<ListedName>; onChange: (value: PickedName) => void }
+
+/**
+ * "+ Add": adds what's typed, then fills the field with the name if it
+ * still holds what was added (addLands), through the form as it is by then:
+ * the onChange of that render, not of the one Add was pressed in, which put
+ * back what else the form held then, such as a description edited meanwhile
+ * in Edit task details (Codex review of PR 105). Whether it filled the field;
+ * an add that failed throws, while the field still holds what it was for.
+ */
+export async function addAndFill(typed: string, now: () => FieldNow): Promise<boolean> {
+    const by = now().onAdd
+    if (!by) return false
+    const lands = () => addLands({ text: typed, by }, { value: now().value, by: now().onAdd })
+    try {
+        const name = await by(typed)
+        if (!lands()) return false
+        now().onChange({ text: name.name, entryId: name.id })
+        return true
+    } catch (e) {
+        if (lands()) throw e
+        return false
+    }
+}
+
 type KeyPress = { key: string; preventDefault: () => void; stopPropagation: () => void }
 type KeyAction = { close: true } | { move: number } | { choose: number } | null
 
@@ -104,9 +130,9 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
     const [problem, setProblem] = useState<string | null>(null)
     const asked = useRef(0)
     const typed = value.text.trim()
-    // What the field holds now, for an add that answers after it changed.
-    const latest = useRef({ value, onAdd })
-    useEffect(() => { latest.current = { value, onAdd } })
+    // The field and its form as they are now, for an add that answers after they changed.
+    const latest = useRef<FieldNow>({ value, onAdd, onChange })
+    useEffect(() => { latest.current = { value, onAdd, onChange } })
 
     // The list, asked a moment after the last key; an answer to an older
     // question than the last is dropped.
@@ -137,14 +163,12 @@ export function NamePicker({ value, onChange, suggest, onAdd, addLabel, failedLa
     }
     const add = async () => {
         if (!onAdd || adding) return
-        const lands = () => addLands({ text: typed, by: onAdd }, { value: latest.current.value, by: latest.current.onAdd })
         setAdding(true)
         setProblem(null)
         try {
-            const name = await onAdd(typed)
-            if (lands()) pick(name)
+            if (await addAndFill(typed, () => latest.current)) setOpen(false)
         } catch (e) {
-            if (lands()) setProblem(e instanceof Error && e.message ? e.message : failedLabel)
+            setProblem(e instanceof Error && e.message ? e.message : failedLabel)
         } finally {
             setAdding(false)
         }

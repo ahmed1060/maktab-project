@@ -231,9 +231,35 @@ describe("a name typed or picked from a saved list", () => {
         expect([now(""), now("Nails")]).toEqual([false, false])
         // Another company's list by then.
         expect(now("Bolts and nuts", async () => ({ id: "1", name: "x" }))).toBe(false)
-        const src = readFileSync("components/ui/NamePicker.tsx", "utf8")
-        expect(src).toContain("if (lands()) pick(name)")
-        expect(src).toContain("if (lands()) setProblem(")
+        expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("await addAndFill(typed, () => latest.current)")
+    })
+
+    it("fills the field through the form as it is once the name is added, keeping what else was edited meanwhile", async () => {
+        let added!: (name: { id: string; name: string }) => void
+        const onAdd = () => new Promise<{ id: string; name: string }>(resolve => { added = resolve })
+        // Edit task details' onChange spreads the form it was drawn with.
+        const forms: Record<string, unknown>[] = []
+        const editing = (form: Record<string, unknown>) => ({
+            value: { text: "Monthly audit", entryId: null }, onAdd,
+            onChange: (next: { text: string; entryId: string | null }) => forms.push({ ...form, title: next.text, titleEntryId: next.entryId }),
+        })
+        let now = editing({ description: "Before" })
+        const done = ui.addAndFill("Monthly audit", () => now)
+        // The description edited while the name was added.
+        now = editing({ description: "Edited meanwhile" })
+        added({ id: "9", name: "Monthly audit" })
+        expect(await done).toBe(true)
+        expect(forms).toEqual([{ description: "Edited meanwhile", title: "Monthly audit", titleEntryId: "9" }])
+    })
+
+    it("says an add failed only while the field still holds what it was for", async () => {
+        const onAdd = async () => { throw new Error("That name is archived") }
+        const field = (text: string) => ({ value: { text, entryId: null }, onAdd, onChange: () => {} })
+        await expect(ui.addAndFill("Parking", () => field("Parking"))).rejects.toThrow("That name is archived")
+        let now = field("Parking")
+        const done = ui.addAndFill("Parking", () => now)
+        now = field("Parking fees")
+        expect(await done).toBe(false)
     })
 
     it("moves through its suggestions with the arrow keys, and Enter picks the one under them", () => {

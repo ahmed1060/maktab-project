@@ -1508,3 +1508,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   only while it still holds what was added. Over a slow connection, the
   answer replaced what had been typed since, and on a task's page, the
   next cost's name with the last one's (found by Codex).
+- **2026-10-29:** In 5a (#105), a name added with "+ Add" in Edit task
+  details keeps what else was edited while it was added. The form was
+  filled as it was when Add was pressed, so a description, deadline or
+  location changed meanwhile went back (found by Codex).
