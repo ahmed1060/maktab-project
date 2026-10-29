@@ -2,10 +2,12 @@
 import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { COST_DESCRIPTION_MAX } from '@/lib/task-costs'
+import { NamePicker, type PickedName } from '@/components/ui'
+import { useListNames } from '@/components/lists/useListNames'
 
 // F-23: extracted verbatim out of tasks/[id]/client.tsx. `isDragging` is
 // local (only ever read by this dropzone's own border style), but every
-// other piece of state here — pendingFiles, cost/costDescription,
+// other piece of state here — pendingFiles, cost/costName,
 // costEntries, note, capturingLocation/locationStatus, uploading/loadingType
 // — is also read by handlers that live in the parent (handleUpload,
 // handleAddCost, handleUploadRequest, handleCaptureLocation, and the
@@ -16,8 +18,11 @@ interface TaskSubmissionFormProps {
     onAddFiles: (files: File[]) => void
     onRemoveFile: (index: number) => void
     uploading: boolean
-    costDescription: string
-    setCostDescription: (v: string) => void
+    /** The cost's name, typed or picked from the company's cost names (CLIENTS_PLAN.md §5). */
+    costName: PickedName
+    setCostName: (v: PickedName) => void
+    /** The task's company, whose cost names are offered. */
+    companyId?: string | null
     cost: string
     setCost: (v: string) => void
     onAddCost: () => void
@@ -35,12 +40,13 @@ interface TaskSubmissionFormProps {
 
 export default function TaskSubmissionForm({
     pendingFiles, onAddFiles, onRemoveFile, uploading,
-    costDescription, setCostDescription, cost, setCost, onAddCost, costEntries, onRemoveCostEntry,
+    costName, setCostName, companyId, cost, setCost, onAddCost, costEntries, onRemoveCostEntry,
     note, setNote,
     capturingLocation, locationStatus, onCaptureLocation,
     onSaveDraft, onSubmitRequest, loadingType
 }: TaskSubmissionFormProps) {
     const { t, locale } = useLanguage()
+    const costNames = useListNames('COST_NAME', companyId)
     const [isDragging, setIsDragging] = useState(false)
 
     return (
@@ -98,10 +104,22 @@ export default function TaskSubmissionForm({
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
-                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    <input aria-label={t('add_costs_label')} type="text" className="input" placeholder={t('cost_description_placeholder')} value={costDescription} onChange={e => setCostDescription(e.target.value)} maxLength={COST_DESCRIPTION_MAX} style={{ flex: 1 }} />
-                    <input type="number" className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
+                <label htmlFor="cost-name" style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
+                {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
+                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                        <NamePicker
+                            id="cost-name"
+                            placeholder={t('cost_description_placeholder')}
+                            value={costName}
+                            onChange={setCostName}
+                            {...costNames}
+                            addLabel={t('lists_add_to_list')}
+                            failedLabel={t('lists_add_failed')}
+                            maxLength={COST_DESCRIPTION_MAX}
+                        />
+                    </div>
+                    <input type="number" aria-label={t('cost_amount_placeholder')} className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
                     <button onClick={onAddCost} disabled={!cost} className="btn" style={{ background: 'var(--border)', color: 'var(--info-fg)', fontWeight: '700', minWidth: '80px', opacity: 1, cursor: 'pointer' }}>{t('add_label')}</button>
                 </div>
                 {costEntries.length > 0 && (

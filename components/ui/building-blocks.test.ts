@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { MapPinIcon, PlusIcon } from "@phosphor-icons/react/ssr"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
+import { dialogKeyDown } from "@/lib/focus-trap"
 
 /**
  * The building blocks (DESIGN.md §5), rendered to HTML: what they promise
@@ -165,6 +166,110 @@ describe("text areas and choices", () => {
         expect(html).toContain('checked="" value="SALARY"')
         const warning = html.match(/<span id="([^"]+)" class="ui-error">Not enough credit<\/span>/)!
         expect(html).toContain(`<fieldset class="ui-choices" aria-describedby="${warning[1]}">`)
+    })
+})
+
+describe("a name typed or picked from a saved list", () => {
+    it("is a combobox tied to its list of suggestions, which stays hidden until something's typed", () => {
+        const html = render(h(ui.NamePicker, {
+            id: "title", value: { text: "", entryId: null }, onChange: () => {}, suggest: async () => [],
+            addLabel: "Add “{name}” to the list", failedLabel: "Couldn't add it", maxLength: 100,
+        }))
+        const list = html.match(/aria-controls="([^"]+)"/)?.[1]
+        expect(html).toContain('role="combobox"')
+        expect(html).toContain('aria-autocomplete="list"')
+        expect(html).toContain('aria-expanded="false"')
+        expect(html).toContain('autoComplete="off"')
+        expect(html).toMatch(new RegExp(`<ul id="${list}" role="listbox" class="ui-suggestions" hidden=""`))
+    })
+
+    it("closes its suggestions on Escape, and only them: the dialog around it stays open", () => {
+        const close = vi.fn()
+        const panel = { contains: () => true, querySelectorAll: () => [] }
+        const escape = (shown: boolean) => {
+            let stopped = false
+            const e = { key: "Escape", shiftKey: false, target: {}, preventDefault: () => {}, stopPropagation: () => { stopped = true } }
+            const did = ui.pickerKey(e, { shown, active: -1, count: 2 })
+            // React hands the key on to the dialog's panel unless the field stopped it.
+            if (!stopped) dialogKeyDown(e, panel, null, close)
+            return did
+        }
+        // In Edit task details, with title suggestions open.
+        expect(escape(true)).toEqual({ close: true })
+        expect(close).not.toHaveBeenCalled()
+        // With nothing suggested, Escape is the dialog's.
+        expect(escape(false)).toBeNull()
+        expect(close).toHaveBeenCalledTimes(1)
+        expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("const next = pickerKey(e, { shown, active, count })")
+    })
+
+    it("drops the suggestion under the keys once typed over, so Enter doesn't pick a name for what was typed before", () => {
+        const list = async () => []
+        const answer = { for: "mon", by: list, names: [{ id: "1", name: "Monthly inspection" }, { id: "2", name: "Monthly stock count" }, { id: "3", name: "Lemon" }] }
+        // The keys moved to "Monthly inspection" for "mon".
+        const under = { for: "mon", index: 0 }
+        expect(ui.shownSuggestions(answer, under, "mon", list)).toEqual({ names: answer.names, active: 0 })
+        // "month" typed before the list answers it: only the names still
+        // containing it, and none under the keys, so Enter is the form's.
+        const typedOn = ui.shownSuggestions(answer, under, "month", list)
+        expect(typedOn).toEqual({ names: answer.names.slice(0, 2), active: -1 })
+        expect(ui.pickerKey({ key: "Enter", preventDefault: () => {}, stopPropagation: () => {} }, { shown: true, active: typedOn.active, count: 3 })).toBeNull()
+        expect(ui.shownSuggestions(answer, under, "monk", list).names).toEqual([])
+        // Another list's answer, such as another company's: none of it.
+        expect(ui.shownSuggestions(answer, under, "mon", async () => [])).toEqual({ names: [], active: -1 })
+        expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("const { names, active } = shownSuggestions(answer, under, typed, suggest)")
+    })
+
+    it("puts a name it added in the field only while the field still holds what was added", () => {
+        const add = async () => ({ id: "9", name: "Bolts and nuts" })
+        const asked = { text: "Bolts and nuts", by: add }
+        const now = (text: string, by: unknown = add) => ui.addLands(asked, { value: { text, entryId: null }, by })
+        expect(now("bolts and nuts ")).toBe(true)
+        // Typed over while it was added.
+        expect(now("Bolts")).toBe(false)
+        // On the task's page, the cost added meanwhile, and the next one begun.
+        expect([now(""), now("Nails")]).toEqual([false, false])
+        // Another company's list by then.
+        expect(now("Bolts and nuts", async () => ({ id: "1", name: "x" }))).toBe(false)
+        expect(readFileSync("components/ui/NamePicker.tsx", "utf8")).toContain("await addAndFill(typed, () => latest.current)")
+    })
+
+    it("fills the field through the form as it is once the name is added, keeping what else was edited meanwhile", async () => {
+        let added!: (name: { id: string; name: string }) => void
+        const onAdd = () => new Promise<{ id: string; name: string }>(resolve => { added = resolve })
+        // Edit task details' onChange spreads the form it was drawn with.
+        const forms: Record<string, unknown>[] = []
+        const editing = (form: Record<string, unknown>) => ({
+            value: { text: "Monthly audit", entryId: null }, onAdd,
+            onChange: (next: { text: string; entryId: string | null }) => forms.push({ ...form, title: next.text, titleEntryId: next.entryId }),
+        })
+        let now = editing({ description: "Before" })
+        const done = ui.addAndFill("Monthly audit", () => now)
+        // The description edited while the name was added.
+        now = editing({ description: "Edited meanwhile" })
+        added({ id: "9", name: "Monthly audit" })
+        expect(await done).toBe(true)
+        expect(forms).toEqual([{ description: "Edited meanwhile", title: "Monthly audit", titleEntryId: "9" }])
+    })
+
+    it("says an add failed only while the field still holds what it was for", async () => {
+        const onAdd = async () => { throw new Error("That name is archived") }
+        const field = (text: string) => ({ value: { text, entryId: null }, onAdd, onChange: () => {} })
+        await expect(ui.addAndFill("Parking", () => field("Parking"))).rejects.toThrow("That name is archived")
+        let now = field("Parking")
+        const done = ui.addAndFill("Parking", () => now)
+        now = field("Parking fees")
+        expect(await done).toBe(false)
+    })
+
+    it("moves through its suggestions with the arrow keys, and Enter picks the one under them", () => {
+        const press = (key: string, active: number, shown = true) =>
+            ui.pickerKey({ key, preventDefault: () => {}, stopPropagation: () => {} }, { shown, active, count: 3 })
+        expect([press("ArrowDown", -1), press("ArrowDown", 2), press("ArrowUp", 0), press("ArrowUp", 2)])
+            .toEqual([{ move: 0 }, { move: 0 }, { move: 2 }, { move: 1 }])
+        expect(press("Enter", 1)).toEqual({ choose: 1 })
+        // With nothing under the keys, or nothing shown, Enter is the form's.
+        expect([press("Enter", -1), press("Enter", 1, false)]).toEqual([null, null])
     })
 })
 

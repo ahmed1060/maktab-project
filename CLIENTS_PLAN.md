@@ -525,6 +525,31 @@ separate system. On screen they're renamed **Check-in places** (أماكن
    - cost names: the Add cost form.
 9. **Filters and totals:** by cost name on the Costs page, and by title on
    the Tasks page.
+10. **How it's built (step 5).**
+    - **Proposed:** step 5 ships as three PRs:
+      - 5a: the lists, the picker, the Saved lists page, the permissions
+        for new companies, and the title and cost name fields (built);
+      - 5b: the permissions for the companies already there, once 5a's
+        role editor is live, as for locations (§2.9);
+      - 5c: the bulk import matching titles to the list, and the filters
+        and totals by title and cost name (§5.8–5.9).
+    - **What's saved** (§5.5): the text as typed, and the name it was
+      picked as only while the text is that name, ignoring capitals. Typed
+      over after picking, or renamed in the meantime, it's saved as typed.
+      A transfer's copy keeps its task's name.
+    - **Proposed:** an archived name can't be added again with "+ Add":
+      it's refused, saying whoever manages the lists can restore it, so an
+      Admin's archiving isn't undone by someone typing it. A task already
+      picked as it keeps it, and keeps it when edited.
+    - **Proposed:** the Saved lists page (`/dashboard/lists`) sits in the
+      side bar under Company Settings, for whoever manages lists. Company
+      Settings' own tabs depend on the Super Admin's switch, which an
+      Admin's Manage lists doesn't.
+    - **Proposed:** 5b gives Add list names to every role in the
+      companies there already are, custom ones too, as Everyone has it
+      (§5.7). Taking over someone's account needs everything their role
+      holds, so a custom role that manages Employees would otherwise lose
+      that once Employees can add names.
 
 ---
 
@@ -804,10 +829,12 @@ balance first, automatically:
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Decided (2026-10-22): it ships as three PRs, and a
        fourth, small one. 4a, payment safety (§4.1, §4.2), was merged in
-       #101 on 2026-10-29, 4b, archiving clients (§4.3), in #102, and 4c,
+       #101 on 2026-10-29, 4b, archiving clients (§4.3), in #102, 4c,
        which moves costs into their own table, with their descriptions
-       (§4.4, §4.5), in #103. 4d tidies up after it, now that 4c is live
-       (§4.5); it's built, and open for review in #104.
+       (§4.4, §4.5), in #103, and 4d, which tidies up after it (§4.5), in
+       #104. Step 4 is done.
+     - Step 5, saved lists (§5). Proposed: it ships as three PRs, 5a, 5b
+       and 5c (§5.10). 5a is built, and open for review in #105.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1450,3 +1477,43 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   PR, 4d, opens for review in #104, now that 4c is live. Production has
   no costs yet, neither entries nor rows (checked read-only), so its
   migration changes nothing there.
+- **2026-10-22:** Step 5's first PR, 5a, is built (§5):
+  - **Each company keeps two lists,** of cost names and of task titles. A
+    name is in a list once, ignoring capitals.
+  - **The title on a new task or an edited one, and a cost's name on the
+    task's page, are typed or picked:** names that contain what's typed
+    are suggested, those starting with it first, and "+ Add" adds what's
+    typed for whoever may add names, the only way one is added.
+  - **The Saved lists page** renames, merges and archives names, with how
+    often each was picked. Merging moves what was picked as one to the
+    other; what was typed stays.
+  - **Add list names (everyone) and Manage lists (Admin)** come to new
+    companies now, and to those already there with 5b.
+  - **Proposed:** the split into 5a, 5b and 5c, an archived name refused
+    by "+ Add", the page's place in the side bar, and 5b giving Add list
+    names to every role (§5.10).
+- **2026-10-29:** 4d was merged in #104, so step 4 is done. Its
+  migration ran on production at 15:23 UTC, with no errors after, and
+  changed nothing there, as production had no costs. Step 5's first PR,
+  5a, opens for review in #105. Its migration adds the lists' table and
+  two empty links, and changes nothing already there.
+- **2026-10-29:** In 5a (#105), Escape with a picker's suggestions open
+  closes them and nothing else. In Edit task details it closed the whole
+  window too, and what had been typed in it (found by Codex).
+- **2026-10-29:** In 5a (#105), a picker's suggestions follow what's
+  typed. Typed on before the list answered, it went on offering the last
+  answer, and Enter picked the name under the keys for what was typed
+  before, in place of what was typed since (found by Codex).
+- **2026-10-29:** In 5a (#105), a name added with "+ Add" fills the field
+  only while it still holds what was added. Over a slow connection, the
+  answer replaced what had been typed since, and on a task's page, the
+  next cost's name with the last one's (found by Codex).
+- **2026-10-29:** In 5a (#105), a name added with "+ Add" in Edit task
+  details keeps what else was edited while it was added. The form was
+  filled as it was when Add was pressed, so a description, deadline or
+  location changed meanwhile went back (found by Codex).
+- **2026-10-29:** In 5a (#105), a title picked on New task stays linked to
+  its name only in the company it was picked in. A Super Admin who picked
+  a title and then switched company sent the first company's name with
+  the task, and the task was refused; the title now keeps its text only
+  (found by Codex).

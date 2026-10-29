@@ -161,7 +161,11 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    // The lists grants come to companies already there from a
+                    // later PR's migration (CLIENTS_PLAN.md §5.7; GRANTED_LATER
+                    // in roles-migration.test.ts).
+                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !permission.startsWith("lists.")))
+                    expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
             }
         })
@@ -696,7 +700,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect(decodeGrants(acting.grants)).toMatchObject({ "dayoff.approve": "COMPANY" })
             const over = await RoleService.forToken("act1", prisma, new Date(until.getTime() + 1000))
             expect(over).toMatchObject({ roleId: cover, role: "EMPLOYEE", actingEnded: true })
-            expect(decodeGrants(over.grants)).toEqual(BUILT_IN_GRANTS.EMPLOYEE)
+            // Less the lists grants, which companies already there get later (GRANTED_LATER in roles-migration.test.ts).
+            expect(decodeGrants(over.grants)).toEqual(Object.fromEntries(Object.entries(BUILT_IN_GRANTS.EMPLOYEE).filter(([permission]) => !permission.startsWith("lists."))))
             // The day comes.
             expect(await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))).toMatchObject({ returned: 1 })
             expect(await row("act1")).toMatchObject({ roleId: employee, actingUntil: null, returnRoleId: null })

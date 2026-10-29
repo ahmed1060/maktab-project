@@ -10,6 +10,9 @@ export const createTaskSchema = z.object({
     title: z.string()
         .min(3, "Title must be at least 3 characters")
         .max(100, "Title cannot exceed 100 characters"),
+    // The name the title was picked as from the company's list of task titles
+    // (CLIENTS_PLAN.md §5.5); none for one typed. TaskService checks it.
+    titleEntryId: z.string().min(1).optional().nullable(),
     description: z.string()
         .min(10, "Description must be at least 10 characters")
         .max(1000, "Description cannot exceed 1000 characters"),

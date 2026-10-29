@@ -41,6 +41,12 @@ enum TaskStatus {
   COMPLETED
 }
 
+/// The saved lists a company keeps (CLIENTS_PLAN.md §5).
+enum ListKind {
+  COST_NAME
+  TASK_TITLE
+}
+
 enum TaskPaymentStatus {
   PENDING_PAYMENT
   PAID
@@ -282,6 +288,7 @@ model Company {
   users                User[]
   clients              Client[]
   locations            Location[]
+  listEntries          ListEntry[]
   roles                Role[]                    @relation("CompanyRoles")
   roleRequests         RoleRequest[]
   roleChangeRequests   RoleChangeRequest[]
@@ -483,6 +490,7 @@ model User {
   editedSections             RecordSection[]         @relation("SectionEditedBy")
   createdClients             Client[]                @relation("ClientCreatedBy")
   createdLocations           Location[]              @relation("LocationCreatedBy")
+  createdListEntries         ListEntry[]             @relation("ListEntryCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
   dayOffRequests             DayOffRequest[]
   notifications              Notification[]
@@ -597,9 +605,14 @@ model Task {
   // to open tasks. A location goes only with its client; its tasks keep
   // their text then. Tasks from before locations have none.
   locationId          String?
+  // The name its title was picked as from the company's list of task titles
+  // (CLIENTS_PLAN.md §5); `title` keeps it as it was typed. None for one typed
+  // without picking, and for every task from before the lists.
+  titleEntryId        String?
   company             Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   client              Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
   place               Location?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  titleEntry          ListEntry?        @relation(fields: [titleEntryId], references: [id], onDelete: SetNull)
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]            @relation("MultipleAssignees")
   costs               TaskCost[]
@@ -608,6 +621,7 @@ model Task {
   @@index([companyId])
   @@index([clientId])
   @@index([locationId])
+  @@index([titleEntryId])
   @@index([status])
   @@index([createdAt])
   @@index([paymentStatus])
@@ -1218,12 +1232,37 @@ model TaskCost {
   /// Their name when they added it.
   authorName  String?
   amount      Decimal  @db.Decimal(12, 2)
-  /// What it was for, up to 200 characters.
+  /// What it was for, up to 200 characters: its name, as typed.
   description String?
+  /// The name it was picked as from the company's list of cost names (§5).
+  nameEntryId String?
   createdAt   DateTime @default(now())
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  nameEntry   ListEntry? @relation(fields: [nameEntryId], references: [id], onDelete: SetNull)
 
   @@index([taskId])
+  @@index([nameEntryId])
+}
+
+/// A name in one of a company's saved lists (CLIENTS_PLAN.md §5): a cost's
+/// name or a task's title, to type or pick. Added only by "+ Add"; a name is
+/// in a list once, ignoring capitals (a unique index on lower(name) in the
+/// migration). Archived, it isn't offered, and keeps its links.
+model ListEntry {
+  id          String     @id @default(uuid())
+  companyId   String
+  kind        ListKind
+  name        String
+  archivedAt  DateTime?
+  createdById String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy   User?      @relation("ListEntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  tasks       Task[]
+  costs       TaskCost[]
+
+  @@index([companyId, kind])
 }
 
 /// One row per scheduled job, rewritten on every run.

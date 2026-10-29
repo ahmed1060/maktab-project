@@ -27,8 +27,14 @@ describe("the side bar", () => {
             "people: employees, attendance, requests, dayOff, roleRequests, profileRequests",
             "money: costs, payroll",
             "me: myPayslips",
-            "bottom: companySettings",
+            // The saved lists, for whoever manages them (CLIENTS_PLAN.md §5.6).
+            "bottom: companySettings, savedLists",
         ])
+    })
+
+    it("offers the saved lists only to whoever manages them", () => {
+        expect(shape(viewer("EMPLOYEE")).join(" ")).not.toContain("savedLists")
+        expect(shape(viewer("TEAM_LEADER")).join(" ")).not.toContain("savedLists")
     })
 
     it("hides a group an employee can see nothing in, and puts their own attendance under Me", () => {

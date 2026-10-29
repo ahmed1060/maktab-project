@@ -15,6 +15,7 @@ import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
 import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
 import { LocationService } from "./location.service"
+import { ListService } from "./list.service"
 import { snapshotOf } from "./costs-query"
 import { asRecord } from "@/lib/costs-total"
 import { cents, costEntry, isCostEntry, readDescription } from "@/lib/task-costs"
@@ -81,7 +82,7 @@ export class TaskService {
 
         // A typed location is no more (CLIENTS_PLAN.md §2.3): one is picked,
         // and its text below takes the place of any the request carried.
-        const { assigneeIds, deadline, clientId, locationId, ...rest } = input
+        const { assigneeIds, deadline, clientId, locationId, titleEntryId, ...rest } = input
         const deadlineDate = new Date(deadline)
         if (!locationId) throw new Error("TASK_LOCATION_REQUIRED")
 
@@ -128,9 +129,12 @@ export class TaskService {
         return await prisma.$transaction(async (tx) => {
             if (resolvedClientId) await holdClientInUse(tx, resolvedClientId)
             const place = await LocationService.forTask(tx, locationId, { companyId: targetCompanyId, clientId: resolvedClientId })
+            // Its title as typed, and the name it was picked as (CLIENTS_PLAN.md §5.5).
+            const titleEntry = await ListService.picked(tx, titleEntryId, input.title, { companyId: targetCompanyId, kind: "TASK_TITLE" })
             const task = await tx.task.create({
                 data: {
                     ...rest,
+                    titleEntryId: titleEntry,
                     // Its name and map link, as the releases before read them.
                     location: place.text,
                     locationId: place.id,
@@ -168,14 +172,14 @@ export class TaskService {
      * Updates task details with change tracking and coordinate verification.
      */
     static async updateDetails(id: string, input: UpdateTaskInput, session: any) {
-        const { title, description, assigneeIds, deadline, difficulty, clientId, locationId, attachments } = input
+        const { title, description, assigneeIds, deadline, difficulty, clientId, locationId, attachments, titleEntryId } = input
         const userRole = session.user.role
         const userName = session.user.name
 
         const existingTask = await prisma.task.findUnique({
             where: { id },
             select: {
-                title: true, description: true, location: true, attachments: true, comments: true, companyId: true,
+                title: true, titleEntryId: true, description: true, location: true, attachments: true, comments: true, companyId: true,
                 clientId: true, locationId: true, client: { select: { name: true } },
                 company: { select: { autoVerifyLocation: true } }
             }
@@ -193,6 +197,13 @@ export class TaskService {
 
         const changes: any = {}
         if (title && existingTask.title !== title) changes.title = { from: existingTask.title, to: title }
+        // The name its title is picked as (CLIENTS_PLAN.md §5.5): a new title
+        // takes the one sent with it, or none if typed; the same title keeps
+        // its own unless another is sent.
+        const titleChanges = !!changes.title || titleEntryId !== undefined
+        const newTitleEntryId = titleChanges
+            ? await ListService.picked(prisma, titleEntryId, title || existingTask.title, { companyId: existingTask.companyId, kind: "TASK_TITLE", current: existingTask.titleEntryId })
+            : existingTask.titleEntryId
         if (description && existingTask.description !== description) changes.description = { from: existingTask.description, to: description }
 
         // Its client and its location, picked again (CLIENTS_PLAN.md §2.3,
@@ -261,6 +272,7 @@ export class TaskService {
 
         const updateData: any = {
             ...(title && { title }),
+            ...(titleChanges && { titleEntryId: newTitleEntryId }),
             ...(description && { description }),
             ...(difficulty !== undefined && { difficulty }),
             ...(place && { location: place.text, locationId: place.id }),
@@ -325,13 +337,13 @@ export class TaskService {
         const inputCosts = data.costs || data.costEntries
         // Each cost with its description, kept to the cent; one of nothing
         // isn't one. Refused before anything is read.
-        const costs: { amount: number; description: string | null }[] = []
-        const addCost = (amount: unknown, description: unknown) => {
+        const costs: { amount: number; description: string | null; nameEntryId?: unknown }[] = []
+        const addCost = (amount: unknown, description: unknown, nameEntryId?: unknown) => {
             const value = cents(Number(amount))
-            if (value > 0) costs.push({ amount: value, description: readDescription(description) })
+            if (value > 0) costs.push({ amount: value, description: readDescription(description), nameEntryId })
         }
         if (data.cost) addCost(data.cost, data.costDescription)
-        if (Array.isArray(inputCosts)) for (const c of inputCosts) addCost(c?.amount, c?.description)
+        if (Array.isArray(inputCosts)) for (const c of inputCosts) addCost(c?.amount, c?.description, c?.nameEntryId)
 
         return await prisma.$transaction(async (tx) => {
             // Held while its comments are read and written back: two people
@@ -396,7 +408,12 @@ export class TaskService {
             // which the release before reads.
             // Each added when its entry says.
             const addedAt = new Date()
-            const rows = costs.map(c => ({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description, createdAt: addedAt }))
+            const rows = []
+            for (const c of costs) {
+                // Its name as typed, and the name it was picked as (CLIENTS_PLAN.md §5.5).
+                const nameEntryId = await ListService.picked(tx, c.nameEntryId, c.description, { companyId: currentTask.companyId, kind: "COST_NAME" })
+                rows.push({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description, nameEntryId, createdAt: addedAt })
+            }
             for (const r of rows) {
                 comments.push(costEntry({ id: r.id, amount: r.amount, description: r.description, author: r.authorName, authorId: userId, date: addedAt.toISOString() }))
             }
@@ -711,6 +728,8 @@ export class TaskService {
                 newTask = await (tx.task as any).create({
                     data: {
                         title: baseTitle + " (Transfer Copy)",
+                        // The same title, picked as the same name (CLIENTS_PLAN.md §5.5).
+                        titleEntryId: originalTask.titleEntryId,
                         description: originalTask.description,
                         companyId: originalTask.companyId,
                         assignees: { connect: newAssigneeIds.map((id: string) => ({ id })) },

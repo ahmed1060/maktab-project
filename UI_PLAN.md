@@ -996,3 +996,26 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 4c was merged in #103, and 4d opens
   for review in #104. A task's page looks as it did, its costs listed from
   their rows.
+- **2026-10-22:** A name typed or picked from a saved list (`DESIGN.md`
+  §5.3) is the title field on a new task and in Edit task details, and the
+  cost name field on a task's page (`CLIENTS_PLAN.md` step 5, PR 5a). On a
+  phone, Add costs' name takes its own line, the amount below it. A new
+  page, Saved lists, has a tab for each list. Proposed: it sits in the side
+  bar under Company Settings, for whoever manages lists.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4d was merged in #104, so step 4 is
+  done, and 5a opens for review in #105: a task's title and a cost's name
+  are typed or picked from a saved list, and the Saved lists page manages
+  the lists.
+- **2026-10-29:** In 5a (#105), Escape with title suggestions open in Edit
+  task details closes the suggestions only; the next Escape closes the
+  window, as `DESIGN.md` §5.3 has it.
+- **2026-10-29:** In 5a (#105), typing on while a picker's suggestions are
+  open keeps only those that still match, and Enter keeps what's typed
+  rather than picking the one highlighted for the text before.
+- **2026-10-29:** In 5a (#105), "+ Add" answering after the field changed
+  leaves the field as it is now; the name is on the list all the same.
+- **2026-10-29:** In 5a (#105), "+ Add" in Edit task details fills the title
+  without undoing the other fields edited while the name was added.
+- **2026-10-29:** In 5a (#105), switching company on New task keeps the
+  title typed or picked, as text, and its suggestions come from the
+  company switched to.
