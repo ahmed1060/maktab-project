@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
 
 /**
  * A task's client and location pickers (CLIENTS_PLAN.md §2.3, §2.4;
@@ -88,5 +89,16 @@ describe("a task's location picker", () => {
     it("keeps an edited task's location offered when it's no longer listed", async () => {
         const html = await picker({ clientId: "", locationId: "gone" }, { current: { id: "gone", label: "Old depot" } })
         expect(html).toContain('<option value="gone" selected="">Old depot</option>')
+    })
+})
+
+describe("adding a location from a task's form", () => {
+    // Its dialog is portalled out of the task's form, but React still passes
+    // a submit up the components to it: saving the location would save the
+    // task too, with the location picked before. (No DOM here to submit in.)
+    it("keeps its save to itself: the task's form around it isn't submitted too", () => {
+        const src = readFileSync("components/locations/LocationForm.tsx", "utf8")
+        const save = src.slice(src.indexOf("const save = async"))
+        expect(save.slice(0, save.indexOf("if (!ready"))).toContain("e.stopPropagation()")
     })
 })

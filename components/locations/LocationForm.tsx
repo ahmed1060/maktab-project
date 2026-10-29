@@ -93,6 +93,9 @@ function Form({ onClose, clientId, location, forTask, onSaved }: {
 
     const save = async (e: React.FormEvent) => {
         e.preventDefault()
+        // From a task's form, React passes the submit up to it through the
+        // dialog's portal: saving the location would save the task too.
+        e.stopPropagation()
         if (!ready || saving) return
         const { place, errors: found } = readPlace(draft)
         const missing = choosing && !forClient && !sharedChosen
