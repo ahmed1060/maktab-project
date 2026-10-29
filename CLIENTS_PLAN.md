@@ -1750,3 +1750,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   the charges' permissions (12 grants on their 6 built-in Admin and Team
   Leader roles), with no errors after. Step 6's last PR, 6d, opens for
   review in #111; it has no migration.
+- **2026-10-29:** In 6d (#111), Mark collected's confirmation sends the
+  list it showed, whatever happens to the page behind it. Reloaded while
+  it was open, as on reconnecting, it sent the new list, so one with a
+  charge swapped for another of the same amount was collected, not
+  refused as changed (found by Codex).

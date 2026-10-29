@@ -45,3 +45,14 @@ export function collectWording(t: (key: TranslationKey) => string, locale: strin
     const say = (key: TranslationKey) => t(key).replace("{charges}", countOf(t, locale, count, "charges")).replace("{amount}", money).replace("{client}", client)
     return { question: say("charges_collect_question"), button: say("charges_collect_button") }
 }
+
+/**
+ * Mark collected's confirmation as it opened (§6.4): what it says and what it
+ * sends, kept whatever the list does while it's open. A list reloaded behind
+ * it, as on reconnecting, is then refused as changed, not collected.
+ */
+export type CollectConfirmation = { count: number; amount: number; digest: string; filters: { clientId: string; dateFrom: string; dateTo: string; search: string } }
+
+export function confirmationOf(offer: { count: number; amount: number; digest: string }, filters: CollectConfirmation["filters"]): CollectConfirmation {
+    return { count: offer.count, amount: offer.amount, digest: offer.digest, filters: { ...filters } }
+}

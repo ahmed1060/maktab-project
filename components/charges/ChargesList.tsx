@@ -18,7 +18,7 @@ import {
     StatusBadge, TotalTiles, type Column, type MenuItem, type StatusTone,
 } from '@/components/ui'
 import { useClientOptions } from '@/components/locations/useClientOptions'
-import { chargeState, collectWording, type ChargeStatus } from '@/lib/charges'
+import { chargeState, collectWording, confirmationOf, type ChargeStatus, type CollectConfirmation } from '@/lib/charges'
 import { cents } from '@/lib/task-costs'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
@@ -61,7 +61,8 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     const [dateTo, setDateTo] = useState('')
     const [page, setPage] = useState(1)
     const [editing, setEditing] = useState<ChargeRow | null>(null)
-    const [collecting, setCollecting] = useState(false)
+    // Mark collected's confirmation, as it opened: its list, not one reloaded behind it.
+    const [confirming, setConfirming] = useState<CollectConfirmation | null>(null)
     const [uncollecting, setUncollecting] = useState<ChargeRow | null>(null)
 
     // The search is sent once typing pauses, not on every key.
@@ -96,7 +97,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
 
     const clients = useClientOptions(can('clients.view') && !onPage, true)
 
-    useAdjustOnChange([selectedCompanyId], () => { setPage(1); setClientId(''); setEditing(null); setCollecting(false); setUncollecting(null) })
+    useAdjustOnChange([selectedCompanyId], () => { setPage(1); setClientId(''); setEditing(null); setConfirming(null); setUncollecting(null) })
     useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
 
     const filtersOn = (clientId ? 1 : 0) + (status !== 'due' ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)
@@ -130,12 +131,12 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
      * or none, shown again, if they changed meanwhile (§6.4).
      */
     const collect = async () => {
-        if (!onPage || !offer) return
+        if (!confirming) return
         try {
             const res = await fetch('/api/charges/collect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filters: { clientId: onPage.id, dateFrom, dateTo, search }, digest: offer.digest }),
+                body: JSON.stringify({ filters: confirming.filters, digest: confirming.digest }),
             })
             const answer = await res.json().catch(() => null)
             if (res.status === 409) showToast(t('charges_collect_changed'), 'warning')
@@ -145,7 +146,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
-            setCollecting(false)
+            setConfirming(null)
         }
     }
 
@@ -231,7 +232,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
             ? <EmptyState icon={CoinsIcon} title={t('charges_none_found')} action={<Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>} />
             // Due as it opens: none due isn't none at all.
             : <EmptyState icon={CoinsIcon} title={t(onPage ? 'charges_none_client' : 'charges_none')} action={<Button variant="quiet" onClick={() => { setStatus('all'); setPage(1) }}>{t('charges_show_all')}</Button>} />
-    const wording = onPage && offer ? collectWording(t, locale, offer.count, offer.amount, onPage.name) : null
+    const wording = onPage && confirming ? collectWording(t, locale, confirming.count, confirming.amount, onPage.name) : null
 
     const list = (
         <>
@@ -307,13 +308,13 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
             />
             {onPage && (
                 <ConfirmModal
-                    isOpen={collecting && !!wording}
+                    isOpen={!!wording}
                     title={t('charges_mark_collected')}
                     message={wording?.question ?? ''}
                     confirmText={wording?.button ?? ''}
                     cancelText={t('cancel')}
                     onConfirm={collect}
-                    onCancel={() => setCollecting(false)}
+                    onCancel={() => setConfirming(null)}
                     variant="warning"
                 />
             )}
@@ -324,7 +325,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     return (
         <Section
             title={t('charges_section')}
-            action={canCollect && offer && <Button size="sm" icon={CheckCircleIcon} onClick={() => setCollecting(true)}>{t('charges_mark_collected')}</Button>}
+            action={canCollect && offer && <Button size="sm" icon={CheckCircleIcon} onClick={() => setConfirming(confirmationOf(offer, { clientId: onPage.id, dateFrom, dateTo, search }))}>{t('charges_mark_collected')}</Button>}
         >
             {list}
         </Section>

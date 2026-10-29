@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { chargeState, collectWording, feeFor, totalFor, SERVICE_FEE_MAX } from "./charges"
+import { chargeState, collectWording, confirmationOf, feeFor, totalFor, SERVICE_FEE_MAX } from "./charges"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 import { shows, type SideBarViewer } from "./side-bar"
@@ -44,6 +44,18 @@ describe("Mark collected's confirmation (§6.4)", () => {
         })
         expect(collectWording(say(en as any), "en", 1, 115, "Al Noor").button).toBe("Collect 1 charge, 115.00 EGP")
         expect(collectWording(say(ar as any), "ar", 2, 415, "النور").button).toBe("تحديد كمحصّل: مستحقان بقيمة ٤١٥٫٠٠ ج.م")
+    })
+})
+
+describe("Mark collected's confirmation, as it opened (§6.4)", () => {
+    it("sends the list it showed, whatever the list does while it's open", () => {
+        const offer = { count: 2, amount: 415, digest: "shown" }
+        const filters = { clientId: "noor", dateFrom: "2026-10-01", dateTo: "", search: "gate" }
+        const confirming = confirmationOf(offer, filters)
+        // The list reloads behind it, as on reconnecting, with a charge swapped for one of the same amount.
+        offer.digest = "reloaded"
+        filters.search = ""
+        expect(confirming).toEqual({ count: 2, amount: 415, digest: "shown", filters: { clientId: "noor", dateFrom: "2026-10-01", dateTo: "", search: "gate" } })
     })
 })
 
