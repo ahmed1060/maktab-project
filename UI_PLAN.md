@@ -947,3 +947,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** A task's page shows its dates as the task list does
   (`SafeDate`): the deadline as "3 Nov 2026, 9:03 am", and the comments',
   attachments' and costs' the same way.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 2b was merged in #99, so step 2 is
+  done, and step 3 opens for review in #100, with the Tasks and Costs
+  pages' client and location filters.

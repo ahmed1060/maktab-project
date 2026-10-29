@@ -781,12 +781,12 @@ balance first, automatically:
        Decided (2026-10-22): step 2 ships as two PRs. 2b moves the bulk
        upload onto locations: the Excel Locations sheet and the review
        screen's pickers (§2.7). Until then, an uploaded task still takes its
-       client's own location fields, or its typed text. 2b is open for
-       review in #99.
+       client's own location fields, or its typed text. 2b was merged in
+       #99 on 2026-10-29, so step 2 is done.
      - Step 3, filters and totals, is built (§3), as one PR after 2b. It
        stands on the fix that has Mark all as paid pay only the list shown,
        and on the date filters counting the company's days, which come
-       before it in their own PRs.
+       before it in their own PRs. It's open for review in #100.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1309,3 +1309,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   time zone, so the browser drew them again in Cairo's and logged a
   hydration failure on every task page. They're drawn once the browser
   has the page now, as the task list's are.
+- **2026-10-29:** 2b was merged in #99, with Codex's three findings fixed
+  in it: the template listed the locations for someone who may not see
+  them, the review screen's list stopped at 2,000, and the upload read
+  the Locations sheet's heading as a location. So step 2 is done. Step 3
+  opens for review in #100.
