@@ -929,3 +929,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 2a was merged in #98, and 2b opens
   for review in #99, with the bulk upload's review screen picking each
   row's client and location.
+- **2026-10-29:** In 2b (#99), the bulk upload's review screen gives a
+  row's location problem as its location field's error, tied to the
+  select, and spaces the row's client and location with `--space-2`. The
+  template's Locations sheet is left empty for someone who may not see the
+  locations.

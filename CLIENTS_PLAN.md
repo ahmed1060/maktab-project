@@ -1270,3 +1270,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   a task's form saved only the location, and "+ New location" opened above
   a task's edit window. Its migration ran on production as it opened, with
   no errors after. Step 2's second PR, 2b, opens for review in #99.
+- **2026-10-29:** Two fixes in 2b (#99). The review screen ties what's
+  wrong with a row's location to its select, for a screen reader to read
+  with it (found by the audit). And the template lists the company's
+  locations only for someone who may see them, as the task form's picker
+  does: a custom role that may create tasks but not see the locations gets
+  it without them (found by Codex).
