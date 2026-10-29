@@ -1206,10 +1206,9 @@ model Location {
 }
 
 /// A cost an assignee paid for a task, to be paid back (CLIENTS_PLAN.md
-/// §4.5). Each is also an entry in its task's comments ("COST_ADDITION",
-/// naming this row as "costId"), which the release before reads and writes;
-/// while it may be live, the entries say which costs a task has, and these
-/// rows give each one its id and description.
+/// §4.5): these rows say which costs a task has. Each is also an entry in its
+/// task's comments ("COST_ADDITION", naming this row as "costId"), still
+/// written for the release before, which lists the entries.
 model TaskCost {
   id          String   @id @default(uuid())
   taskId      String

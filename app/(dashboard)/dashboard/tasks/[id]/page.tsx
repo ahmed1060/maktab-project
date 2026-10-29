@@ -6,6 +6,7 @@ import AccessDenied from "@/components/AccessDenied"
 import TaskDetailClient from "./client"
 import { can } from '@/lib/permissions/can'
 import { shapeTask } from '@/lib/permissions/shape'
+import type { CostRow } from '@/lib/task-costs'
 
 export default async function TaskDetailPage(props: { params: Promise<{ id: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -29,9 +30,8 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
             // are now, a pin corrected since included. A task from before
             // locations has none, and shows its own text.
             place: { select: { name: true, latitude: true, longitude: true, client: { select: { name: true } } } },
-            // Each cost's id and description (CLIENTS_PLAN.md §4.5); which
-            // costs it has, its comments say (lib/task-costs.ts).
-            costs: { select: { id: true, description: true } },
+            // Its costs, each with its description (CLIENTS_PLAN.md §4.4, §4.5).
+            costs: { select: { id: true, amount: true, description: true, authorId: true, authorName: true, createdAt: true } },
         }
     })
 
@@ -91,6 +91,7 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
         ...task,
         totalCost: Number(task.totalCost),
         memberCosts: visibleMemberCosts,
+        costs: task.costs.map((c): CostRow => ({ ...c, amount: Number(c.amount), createdAt: c.createdAt.toISOString() })),
     }
 
     return <TaskDetailClient

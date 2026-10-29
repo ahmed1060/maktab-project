@@ -28,24 +28,23 @@ function TaskCostsSectionBody({
     const { can } = useCan()
     const modules = useModules()
 
-    if (!task.comments) return null
-        // Each with its description (CLIENTS_PLAN.md §4.4), from its row.
-        const costs = costLines(task.comments, task.costs ?? [])
+        // Each with its description (CLIENTS_PLAN.md §4.4, §4.5).
+        const costs = costLines(task.costs ?? [], task.comments)
         if (costs.length === 0) return null
 
         return (
             <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>{modules.label('costs')}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {costs.map((c, i) => (
-                        <div key={c.id ?? `${c.date}-${i}`} style={{ display: 'flex', flexDirection: 'column', background: 'var(--warn-bg-yellow-subtle)', border: '1px solid var(--warn-border-yellow)', borderRadius: '0.5rem', padding: '1rem' }}>
+                    {costs.map(c => (
+                        <div key={c.id} style={{ display: 'flex', flexDirection: 'column', background: 'var(--warn-bg-yellow-subtle)', border: '1px solid var(--warn-border-yellow)', borderRadius: '0.5rem', padding: '1rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
                                 {/* A description is up to 200 characters, a link among them: it wraps, however long its words. */}
                                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left', minWidth: 0, overflowWrap: 'anywhere' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
                                         {task.status === 'IN_PROGRESS' && (c.authorId === userId || can('tasks.edit')) && (
-                                            <button aria-label={t('delete_cost_title')} onClick={() => onDeleteItem(c.id ? 'COST' : 'COST_ADDITION', c.id ?? c.date)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
+                                            <button aria-label={t('delete_cost_title')} onClick={() => onDeleteItem('COST', c.id)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
                                                 <TrashIcon size={14} />
                                             </button>
                                         )}

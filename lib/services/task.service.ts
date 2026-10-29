@@ -394,10 +394,11 @@ export class TaskService {
 
             // Each cost a row (CLIENTS_PLAN.md §4.5) and an entry naming it,
             // which the release before reads.
-            const addedAt = new Date().toISOString()
-            const rows = costs.map(c => ({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description }))
+            // Each added when its entry says.
+            const addedAt = new Date()
+            const rows = costs.map(c => ({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description, createdAt: addedAt }))
             for (const r of rows) {
-                comments.push(costEntry({ id: r.id, amount: r.amount, description: r.description, author: r.authorName, authorId: userId, date: addedAt }))
+                comments.push(costEntry({ id: r.id, amount: r.amount, description: r.description, author: r.authorName, authorId: userId, date: addedAt.toISOString() }))
             }
 
             if (location) {
@@ -1005,9 +1006,9 @@ export class TaskService {
 
     /**
      * Deletes a specific item (attachment, cost, note, location) from a task.
-     * A cost is found by its row's id (CLIENTS_PLAN.md §4.5), or, sent as
-     * COST_ADDITION, by when it was added: a cost the release before added
-     * has no row, and a page from before sends that.
+     * A cost is found by its row's id (CLIENTS_PLAN.md §4.5), and its entry
+     * goes with it; sent as COST_ADDITION, from a page from before 4c, by
+     * when it was added.
      */
     static async deleteItem(id: string, session: any, data: any) {
         const { type, itemId } = data
@@ -1056,14 +1057,18 @@ export class TaskService {
             } else if (type === 'COST' || type === 'COST_ADDITION' || type === 'SUBMISSION_NOTE' || type === 'LOCATION_ADDED') {
                 const comments: any[] = Array.isArray(task.comments) ? task.comments : []
                 const isCost = type === 'COST' || type === 'COST_ADDITION'
+                // A cost is its row, which says the task has it.
+                const row = type === 'COST' ? await tx.taskCost.findFirst({ where: { id: itemId, taskId: id } }) : null
+                if (type === 'COST' && !row) throw new Error("ITEM_NOT_FOUND")
                 // Only the one found goes. Costs added together share the
                 // time they were added, and all of them used to go, with
                 // only the first one's amount taken off the totals.
                 const index = type === 'COST'
                     ? comments.findIndex(c => isCostEntry(c) && c.costId === itemId)
                     : comments.findIndex((c: any) => c?.type === type && (c.date === itemId || c.timestamp === itemId))
-                if (index < 0) throw new Error("ITEM_NOT_FOUND")
-                const item = comments[index]
+                if (type !== 'COST' && index < 0) throw new Error("ITEM_NOT_FOUND")
+                // Its entry, or, should it have none, the row as one.
+                const item = index >= 0 ? comments[index] : { authorId: row!.authorId, amount: Number(row!.amount), costId: row!.id }
 
                 const isAuthor = item.authorId === userId
                 const isAdmin = can(session.user, "tasks.edit")
@@ -1074,7 +1079,7 @@ export class TaskService {
                 const paid: Record<string, string> = (task.memberPaymentStatus as any) || {}
                 if (isCost && (task.paymentStatus === 'PAID' || (item.authorId && paid[item.authorId] === 'PAID'))) throw new Error("COST_ALREADY_PAID")
 
-                updateData.comments = comments.filter((_, i) => i !== index)
+                if (index >= 0) updateData.comments = comments.filter((_, i) => i !== index)
 
                 if (isCost && item.amount) {
                     updateData.totalCost = { decrement: item.amount }

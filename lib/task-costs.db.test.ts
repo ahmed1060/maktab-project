@@ -17,6 +17,7 @@ import { costLines } from "@/lib/task-costs"
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
 const TASK_COSTS = "20261113000000_task_costs"
+const MEANWHILE = "20261114000000_task_costs_meanwhile"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ remove: async () => ({ data: [], error: null }) }) } }, uploadToCloud: async () => { throw new Error("no uploads here") } }))
@@ -46,8 +47,18 @@ const TASKS_BEFORE = `
 INSERT INTO "Task"(id, title, description, status, deadline, "companyId", comments, "memberCosts", "totalCost", "updatedAt") VALUES
  ('t-old', 'Fix the door', 'It sticks', 'IN_PROGRESS', now() + interval '2 days', 'c1', '${JSON.stringify(BEFORE)}', '{"e1": 190.5, "e2": 25}', 215.5, now()),
  ('t-odd', 'Odd', 'Comments not a list', 'IN_PROGRESS', now() + interval '2 days', 'c1', '{"type": "COST_ADDITION", "amount": 5}', NULL, 0, now()),
- ('t-none', 'None', 'No comments', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, NULL, 0, now());
-INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('t-old', 'e1'), ('t-old', 'e2');
+ ('t-none', 'None', 'No comments', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, NULL, 0, now()),
+ ('t-gone', 'Gone', 'A cost removed meanwhile', 'IN_PROGRESS', now() + interval '2 days', 'c1', '${JSON.stringify([cost(30), cost(12.5)])}', '{"e1": 42.5}', 42.5, now());
+INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('t-old', 'e1'), ('t-old', 'e2'), ('t-gone', 'e1');
+`
+// What the release before 4c does while 4c waits for review, once 4c's
+// migration has run: it adds a cost with no row, to a task from before and to
+// a new one, and removes a cost's entry and leaves its row.
+const MEANWHILE_WRITES = `
+UPDATE "Task" SET comments = comments || '[${JSON.stringify(cost(60, "e2", "2026-10-21T12:00:00.000Z"))}]'::jsonb, "memberCosts" = '{"e1": 190.5, "e2": 85}', "totalCost" = 275.5 WHERE id = 't-old';
+INSERT INTO "Task"(id, title, description, status, deadline, "companyId", comments, "memberCosts", "totalCost", "updatedAt") VALUES
+ ('t-new', 'New', 'Added meanwhile', 'IN_PROGRESS', now() + interval '2 days', 'c1', '${JSON.stringify([cost(75)])}', '{"e1": 75}', 75, now());
+UPDATE "Task" SET comments = (SELECT jsonb_agg(e) FROM jsonb_array_elements(comments) e WHERE (e->>'amount')::numeric <> 30), "memberCosts" = '{"e1": 12.5}', "totalCost" = 12.5 WHERE id = 't-gone';
 `
 
 const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" }) } as any
@@ -70,6 +81,7 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
         await db.connect()
         for (const m of MIGRATIONS) {
             if (m === TASK_COSTS) await db.query(TASKS_BEFORE)
+            if (m === MEANWHILE) await db.query(MEANWHILE_WRITES)
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
@@ -88,7 +100,7 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
 
     const taskRow = async (id: string) => (await db.query(`SELECT comments, "memberCosts", "totalCost"::float AS "totalCost" FROM "Task" WHERE id = $1`, [id])).rows[0]
     const costRows = async (taskId: string) => (await db.query(`SELECT id, "authorId", "authorName", amount::float AS amount, description, "createdAt" FROM "TaskCost" WHERE "taskId" = $1 ORDER BY "createdAt", amount DESC`, [taskId])).rows
-    const listed = async (taskId: string) => costLines((await taskRow(taskId)).comments, await costRows(taskId))
+    const listed = async (taskId: string) => costLines((await costRows(taskId)).map(r => ({ ...r, createdAt: r.createdAt.toISOString() })), (await taskRow(taskId)).comments)
     /** A task of Ehab's and Eman's, with nothing on it yet. */
     const fresh = async (id: string) => {
         await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "updatedAt") VALUES ($1, 'Paint', 'The hall', 'IN_PROGRESS', now() + interval '2 days', 'c1', now())`, [id])
@@ -104,13 +116,15 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
                 { id: undefined, authorId: "e1", authorName: "Ehab One", amount: 150, description: null, createdAt: new Date(AT) },
                 { id: undefined, authorId: "e1", authorName: "Ehab One", amount: 40.5, description: null, createdAt: new Date(AT) },
                 { id: undefined, authorId: "e2", authorName: "Eman One", amount: 25, description: null, createdAt: new Date("2026-10-21T08:00:00.000Z") },
+                // Added meanwhile, given its row by 4d's.
+                { id: undefined, authorId: "e2", authorName: "Eman One", amount: 60, description: null, createdAt: new Date("2026-10-21T12:00:00.000Z") },
             ])
             expect(comments.filter((c: any) => c.costId).map((c: any) => [c.costId, c.amount])).toEqual(rows.map(r => [r.id, r.amount]))
         })
 
         it("leaves the rest as it was, in order: what isn't a cost, and comments that aren't a list", async () => {
             const { comments } = await taskRow("t-old")
-            expect(comments.map((c: any) => Object.fromEntries(Object.entries(c).filter(([key]) => key !== "costId")))).toEqual(BEFORE)
+            expect(comments.map((c: any) => Object.fromEntries(Object.entries(c).filter(([key]) => key !== "costId")))).toEqual([...BEFORE, cost(60, "e2", "2026-10-21T12:00:00.000Z")])
             expect((await taskRow("t-odd")).comments).toEqual({ type: "COST_ADDITION", amount: 5 })
             expect((await taskRow("t-none")).comments).toBeNull()
             expect(await costRows("t-odd")).toEqual([])
@@ -128,6 +142,19 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
         })
     })
 
+    describe("4d's migration, once 4c is live", () => {
+        it("gives the costs the release before added meanwhile their rows, on a new task too", async () => {
+            expect((await listed("t-new")).map(c => [c.amount, c.author])).toEqual([[75, "Ehab One"]])
+            const [entry] = (await taskRow("t-new")).comments
+            expect(entry.costId).toBe((await costRows("t-new"))[0].id)
+        })
+
+        it("removes the row of a cost the release before removed meanwhile, and keeps the rest", async () => {
+            expect((await listed("t-gone")).map(c => c.amount)).toEqual([12.5])
+            expect((await listed("t-old")).map(c => c.amount)).toEqual([150, 40.5, 25, 60])
+        })
+    })
+
     describe("adding costs", () => {
         it("keeps each one's description, trimmed, in its row and in its entry for the release before", async () => {
             const id = await fresh("t-add")
@@ -135,6 +162,8 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
             expect((await listed(id)).map(c => [c.amount, c.description, c.author])).toEqual([[150, "Taxi", "Ehab One"], [40.5, null, "Ehab One"]])
             const { comments, memberCosts, totalCost } = await taskRow(id)
             expect(comments.map((c: any) => c.description)).toEqual(["Taxi", undefined])
+            // Added when their entries say.
+            expect((await listed(id)).map(c => c.date)).toEqual(comments.map((c: any) => c.date))
             expect(memberCosts).toEqual({ e1: 190.5 })
             expect(totalCost).toBe(190.5)
         })
@@ -198,13 +227,15 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
             expect((await taskRow(id)).totalCost).toBe(190.5)
         })
 
-        it("removes one the release before added, with no row, by when it was added", async () => {
-            const id = await fresh("t-meanwhile")
-            await db.query(`UPDATE "Task" SET comments = $2, "memberCosts" = '{"e1": 75}', "totalCost" = 75 WHERE id = $1`, [id, JSON.stringify([cost(75)])])
-            expect((await listed(id)).map(c => [c.id, c.amount])).toEqual([[null, 75]])
-            await Tasks.deleteItem(id, ehab, { type: "COST_ADDITION", itemId: AT })
-            expect(await listed(id)).toEqual([])
-            expect((await taskRow(id)).totalCost).toBe(0)
+        it("removes it by its row, which says the task has it, should its entry be gone", async () => {
+            const id = await fresh("t-row")
+            await Tasks.submit(id, "e1", ehab, { isDraft: true, costs: [{ amount: 150, description: "Taxi" }, { amount: 40.5, description: "Parking" }] })
+            const [taxi] = await listed(id)
+            await db.query(`UPDATE "Task" SET comments = (SELECT jsonb_agg(e) FROM jsonb_array_elements(comments) e WHERE e->>'costId' <> $2) WHERE id = $1`, [id, taxi.id])
+            expect((await listed(id)).map(c => c.description).sort()).toEqual(["Parking", "Taxi"])
+            await Tasks.deleteItem(id, ehab, { type: "COST", itemId: taxi.id })
+            expect((await listed(id)).map(c => c.description)).toEqual(["Parking"])
+            expect((await taskRow(id)).totalCost).toBe(40.5)
         })
 
         it("isn't for someone else's cost, unless they may edit tasks", async () => {
@@ -227,12 +258,5 @@ describe.skipIf(!ADMIN_URL)("task costs, in Postgres", () => {
             expect((await taskRow(id)).totalCost).toBe(30)
         })
 
-        it("isn't found once the release before removed its entry, though its row is left", async () => {
-            const { comments } = await taskRow("t-old")
-            const twentyFive = comments.find((c: any) => c.amount === 25)
-            await db.query(`UPDATE "Task" SET comments = $1 WHERE id = 't-old'`, [JSON.stringify(comments.filter((c: any) => c.costId !== twentyFive.costId))])
-            expect((await listed("t-old")).map(c => c.amount)).toEqual([150, 40.5])
-            await expect(Tasks.deleteItem("t-old", admin, { type: "COST", itemId: twentyFive.costId })).rejects.toMatchObject({ message: "ITEM_NOT_FOUND" })
-        })
     })
 })

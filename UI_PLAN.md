@@ -993,3 +993,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 4b was merged in #102, and 4c opens
   for review in #103, with each cost on a task's page showing what it was
   for.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4c was merged in #103, and 4d opens
+  for review in #104. A task's page looks as it did, its costs listed from
+  their rows.

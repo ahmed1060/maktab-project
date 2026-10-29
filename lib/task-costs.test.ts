@@ -4,41 +4,31 @@ import { stripComments } from "@/lib/strip-comments"
 import { cents, costEntry, costLines, readDescription } from "@/lib/task-costs"
 
 /**
- * A task's costs (CLIENTS_PLAN.md §4.4, §4.5): which it has, its comments
- * say, as the release before reads and writes them; each one's id and
- * description are its row's.
+ * A task's costs (CLIENTS_PLAN.md §4.4, §4.5): its rows, each with its id
+ * and description, and an entry in its comments for the release before.
  */
 describe("a task's costs", () => {
     const at = "2026-10-22T10:00:00.000Z"
     const entry = (over: Record<string, unknown>) => ({ type: "COST_ADDITION", text: "Added cost: 1.00 EGP", amount: 1, author: "Ehab One", authorId: "e1", date: at, ...over })
 
-    it("are the cost entries, in order, each with its row's id and description", () => {
-        const comments = [
-            entry({ amount: 150, costId: "r1" }),
-            { type: "SUBMISSION_NOTE", text: "Done", date: at },
-            entry({ amount: 40.5, costId: "r2", description: "From the entry" }),
-        ]
-        expect(costLines(comments, [{ id: "r2", description: "Parking" }, { id: "r1", description: "Taxi" }])).toEqual([
+    const row = (id: string, over: Record<string, unknown> = {}) => ({ id, amount: 1, description: null, authorId: "e1", authorName: "Ehab One", createdAt: at, ...over })
+
+    it("are the task's rows, each with its description, in the order they were added", () => {
+        const later = "2026-10-22T11:00:00.000Z"
+        expect(costLines([row("r2", { amount: 25, createdAt: later, description: "Parking" }), row("r1", { amount: 150, description: "Taxi" })], [])).toEqual([
             { id: "r1", date: at, amount: 150, description: "Taxi", author: "Ehab One", authorId: "e1" },
-            { id: "r2", date: at, amount: 40.5, description: "Parking", author: "Ehab One", authorId: "e1" },
+            { id: "r2", date: later, amount: 25, description: "Parking", author: "Ehab One", authorId: "e1" },
         ])
     })
 
-    it("include one the release before added, with no row, to remove by when it was added", () => {
-        expect(costLines([entry({ amount: 75 })], [])).toEqual([{ id: null, date: at, amount: 75, description: null, author: "Ehab One", authorId: "e1" }])
+    it("put those added together in the order their entries are in", () => {
+        const comments = [{ type: "SUBMISSION_NOTE", text: "Done", date: at }, entry({ costId: "b" }), entry({ costId: "a" }), entry({ costId: "c" })]
+        expect(costLines([row("a"), row("c"), row("b")], comments).map(c => c.id)).toEqual(["b", "a", "c"])
     })
 
-    it("leave out a row whose entry the release before removed", () => {
-        expect(costLines([entry({ costId: "r1" })], [{ id: "r1", description: null }, { id: "gone", description: "Removed meanwhile" }]).map(c => c.id)).toEqual(["r1"])
-    })
-
-    it("are only entries for an amount above nothing, as the migration has it", () => {
-        expect(costLines([entry({ amount: 0 }), entry({ amount: "12" }), entry({ amount: 0.004 }), entry({ amount: 0.01 })], []).map(c => c.amount)).toEqual([0.01])
-    })
-
-    it("are none for comments that aren't a list", () => {
-        expect(costLines(null, [])).toEqual([])
-        expect(costLines({ type: "COST_ADDITION" }, [])).toEqual([])
+    it("are the rows, whatever the comments hold", () => {
+        expect(costLines([row("r1")], null).map(c => c.id)).toEqual(["r1"])
+        expect(costLines([], [entry({ costId: "gone" }), entry({ amount: 75 })])).toEqual([])
     })
 
     it("write each entry naming its row, with its description for the release before to show", () => {
