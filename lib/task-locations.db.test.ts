@@ -192,4 +192,9 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
         const { rows } = await db.query(`SELECT "clientId", "locationId" FROM "Task" WHERE title = 'Fix the door (Transfer Copy)'`)
         expect(rows).toEqual([{ clientId: "k1", locationId: "acme-hq" }])
     })
+
+    it("takes no location from a bulk upload until its review screen picks them, so none of another company's", async () => {
+        const [made] = await Tasks.bulkCreate([task({ title: "Bulk at theirs", locationId: "theirs" })], admin)
+        expect((await row(made.id)).locationId).toBeNull()
+    })
 })

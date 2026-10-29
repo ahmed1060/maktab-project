@@ -1111,6 +1111,10 @@ export class TaskService {
 
             for (const task of tasks) {
                 const { assigneeIds, deadline, clientId, location: requestedLocation, ...rest } = task
+                // No location yet: until its review screen picks them
+                // (CLIENTS_PLAN.md §2.7), an uploaded task keeps its client's
+                // or its typed text, and a locationId sent is never checked.
+                delete rest.locationId
                 const deadlineDate = new Date(deadline)
                 const minDeadline = earliestDeadline()
                 if (deadlineDate < minDeadline) throw new Error(`DEADLINE_TOO_SOON: ${task.title}`)
