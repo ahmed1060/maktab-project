@@ -678,7 +678,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   - 6b: the charges (§6.1–6.5), the Costs page's Charged to Clients tab
     with its filters, totals, service fee and "Not charged to client"
     tick, and the three permissions (§6.6) for new companies' built-in
-    roles;
+    roles (built);
   - 6c: the permissions for the companies already there, once 6b's role
     editor is live, as for locations (§2.9) and lists (§5.10);
   - 6d: each client's page (§6.4): Due and Collected, the charges with
@@ -690,6 +690,29 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   client" tick and when it was collected, and by whom.
 - Production had no clients and no costs when step 6 began (checked
   read-only, 2026-10-29), so no cost is charged on the way in.
+- **Proposed, as 6b builds them:**
+  - **The tab opens on Due.** Its status filter is Due, Collected, Not
+    charged to client, or all of them: a cost left off its client's bill
+    is a status of its own, so it can be found and charged again.
+  - **Its totals are every page's, of the charges listed:** Paid out and
+    Service fees of those still charged, and Total due of those not yet
+    collected. One left off the bill counts in none.
+  - **Each charge shows** what was bought, on which task, its receipt,
+    the client, who added it and when, Paid, Service fee, Total and its
+    status. Its menu sets the fee or leaves it off the bill; one left off
+    is charged again from it. A collected one has no menu: Mark
+    uncollected comes with the client's page (6d).
+  - **A service fee is at most 1,000,000 EGP,** so a mistyped one can't
+    run the total into the millions.
+  - **The Costs page opens for whoever pays costs or sees charges,** with
+    the two tabs for whoever does both. Employee costs is the screen it
+    was, its tabs on a panel until it's rebuilt.
+  - **A task with charges can't be deleted** (§6.5): with a client, and a
+    cost on it still charged. A client with tasks is already archived,
+    not deleted (§4.3).
+  - **Mark charges collected is in the catalogue,** with two-factor
+    sign-in, from 6b, so its grants are seeded with the others; nothing
+    uses it until 6d.
 
 ---
 
@@ -883,8 +906,10 @@ balance first, automatically:
        #106, and 5c, the bulk import matching titles to the list and the
        filters and totals by title and cost name, in #107. Step 5 is done.
      - Step 6, client charges (§6). Proposed: it ships as four PRs, 6a
-       to 6d (§6.8). 6a, a receipt photo for each cost, is built, and
-       open for review in #108.
+       to 6d (§6.8). 6a, a receipt photo for each cost, was merged in
+       #108 on 2026-10-29. 6b, the charges, the Costs page's Charged to
+       clients tab and the permissions for new companies, is built, and
+       open for review in #109.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1635,3 +1660,34 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   "%31" for "1", was another address, so it could be put on a second
   cost, and removing either cost removed the other's receipt too (found
   by Codex).
+- **2026-10-29:** Step 6's second PR, 6b, is built (§6.1–6.6, §6.8):
+  - **A task's costs are charged to its client:** each cost keeps its
+    service fee, whether it's left off the bill, and when it was
+    collected, and by whom. Its migration adds them, none yet.
+  - **The Costs page has a Charged to clients tab,** filtered by client,
+    the day a cost was added, status and search, with Paid out, Service
+    fees and Total due. Whoever manages charges sets a charge's service
+    fee, by the fee or the total, and leaves a cost off its client's bill
+    or charges it again. Each is in the audit log.
+  - **The rules hold from now:** a collected charge is locked; a task's
+    client can't change while any of its charges are collected; a cost
+    whose charge was collected can't be removed; a task with charges
+    can't be deleted.
+  - **See charges, Manage charges and Mark charges collected** are in the
+    built-in roles for new companies: Admins hold all three for the
+    company, Team Leaders See charges for their team's tasks.
+- **2026-10-29:** 6a was merged in #108, with Codex's finding fixed in
+  it: a receipt taken only as the address its upload gave. Its migration
+  ran on production with no errors after; production has no costs yet.
+  Step 6's second PR, 6b, opens for review in #109; its migration adds
+  each cost's service fee, "Not charged to client" tick and when it was
+  collected, none yet.
+- **2026-10-29:** In 6b (#109), the charges are behind the Costs module
+  for the API as well as the page: a company whose package leaves Costs
+  out could still list its charges and set their fees through it (found
+  by Codex).
+- **2026-10-29:** In 6b (#109), setting a charge's fee or its "Not
+  charged to client" tick waits for its task, as deleting the task does.
+  Charged to its client again while the task was being deleted, a cost
+  was deleted with it, though the task couldn't be deleted with a charge
+  (found by Codex).

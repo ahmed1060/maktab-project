@@ -124,6 +124,9 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
         case 'companySettings': return v.companySettings
         // For whoever manages the lists (CLIENTS_PLAN.md §5.7), in a company with Tasks.
         case 'savedLists': return v.can('lists.manage')
+        // Its tabs: Employee costs, for whoever pays them, and Charged to
+        // clients, for whoever sees charges (CLIENTS_PLAN.md §6.4).
+        case 'costs': return v.can('tasks.pay') || v.can('charges.view')
     }
     if (key in PAGES) return v.superAdmin
     const permission = MODULE_PERMISSION[key as ModuleKey]

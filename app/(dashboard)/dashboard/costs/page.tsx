@@ -7,6 +7,8 @@ import { can } from '@/lib/permissions/can'
 import { costNameOf, pendingCostsSnapshot, pendingCostsWhere } from '@/lib/services/costs-query'
 import { costsDue, namedParts } from '@/lib/costs-total'
 import { costNamed } from '@/lib/saved-lists'
+import CostsTabs from '@/components/charges/CostsTabs'
+import ChargesTab from '@/components/charges/ChargesTab'
 
 export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
@@ -18,7 +20,8 @@ export default async function CostsPage(props: { searchParams: Promise<{
         search?: string,
         clientId?: string,
         locationId?: string,
-        costNameId?: string
+        costNameId?: string,
+        tab?: string
     }> }) {
     // Next 15 hands a page its dynamic segments and query string as
     // promises rather than plain objects, so they are awaited here and
@@ -30,10 +33,15 @@ export default async function CostsPage(props: { searchParams: Promise<{
         redirect('/login')
     }
 
-    // The page is for paying task costs: those who hold tasks.pay.
-    if (!can(session.user as any, 'tasks.pay')) {
+    // Its tabs (CLIENTS_PLAN.md §6.4): Employee costs, for paying them, which
+    // takes tasks.pay; and Charged to clients, which takes charges.view.
+    const pays = can(session.user as any, 'tasks.pay')
+    const seesCharges = can(session.user as any, 'charges.view')
+    if (!pays && !seesCharges) {
         redirect('/dashboard')
     }
+    if (seesCharges && (searchParams.tab === 'charges' || !pays)) return <ChargesTab withTabs={pays} />
+    const tabs = seesCharges ? <CostsTabs current="employee" /> : null
 
     const page = parseInt(searchParams.page || '1')
     const limit = parseInt(searchParams.limit || '10')
@@ -42,7 +50,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
     // The same query "Mark all as paid" runs, so it pays the list shown.
     const where = await pendingCostsWhere(session.user as any, searchParams)
     if (!where) {
-        return <CostsClient tasksWithCosts={[]} total={0} page={1} totalPages={0} totalDue={0} toPay={null} />
+        return <CostsClient tabs={tabs} tasksWithCosts={[]} total={0} page={1} totalPages={0} totalDue={0} toPay={null} />
     }
 
     // A saved cost name (CLIENTS_PLAN.md §5.9): each task's costs of it, which
@@ -101,6 +109,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
 
     return (
         <CostsClient
+            tabs={tabs}
             tasksWithCosts={serializedTasks}
            
             total={total}

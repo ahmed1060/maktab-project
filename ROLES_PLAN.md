@@ -7,7 +7,7 @@ phase ([`ATTENDANCE_PLAN.md` §4](ATTENDANCE_PLAN.md#4-prerequisite-roles-and-pe
 Where the build settled something this plan left open, the PRs say so:
 - Acting roles end in the session at the return date, whatever the company's
   time zone; the nightly job then moves the person back (§6.13).
-- Step-up confirmation covers the 11 high-risk permissions; nobody is made to
+- Step-up confirmation covers the 12 high-risk permissions; nobody is made to
   enrol at sign-in, only when they first use one (§6.15).
 - `settings.view` and `settings.edit` open a company's own settings, the tabs
   the Super Admin shows it (attendance plan §5.2, #5); the built-in Admin role
@@ -726,8 +726,10 @@ the Super Admin. Clients with an auditor will be asked for exactly this record.
 A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 `tasks.penalize`, `tasks.delete`, `records.delete`, `salary.edit`,
 `salary_adjustments.manage`, `payroll.approve`, `payroll.mark_paid`,
-`debts.waive`, `employees.delete`, `employees.end_contract`. The catalogue
-(`lib/permissions/catalogue.ts`, `highRisk`) is the list the code checks.
+`debts.waive`, `employees.delete`, `employees.end_contract`, and
+`charges.collect`, marking a client's charges collected (`CLIENTS_PLAN.md`
+§6.6). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
+list the code checks.
 
 - **Marked in the catalogue as high-risk**, with the reason ("moves money",
   "cannot be undone"). The role editor shows the label — the "affects pay" label

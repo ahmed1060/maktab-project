@@ -1239,6 +1239,15 @@ model TaskCost {
   /// Its receipt's photo, if one was taken (CLIENTS_PLAN.md §6.2): a file
   /// in the company's receipts folder, on this cost only.
   receiptUrl  String?  @unique
+  /// On a task with a client, the cost is charged to that client (§6.1):
+  /// this on top of it, never negative (§6.3). The total is worked out.
+  serviceFee  Decimal  @default(0) @db.Decimal(12, 2)
+  /// "Not charged to client" (§6.2): left off the client's bill.
+  notCharged  Boolean  @default(false)
+  /// When its charge was collected from the client, and by whom: a user,
+  /// or a Super Admin, so no relation (§6.4, §6.5).
+  collectedAt   DateTime?
+  collectedById String?
   createdAt   DateTime @default(now())
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   nameEntry   ListEntry? @relation(fields: [nameEntryId], references: [id], onDelete: SetNull)

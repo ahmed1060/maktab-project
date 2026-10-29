@@ -164,7 +164,11 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    // The charges grants come to companies already there from a
+                    // later PR's migration (CLIENTS_PLAN.md §6.8; GRANTED_LATER
+                    // in roles-migration.test.ts).
+                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !permission.startsWith("charges.")))
+                    expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
             }
         })
