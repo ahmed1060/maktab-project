@@ -978,3 +978,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   states: only Restore, for whoever manages clients.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 4a was merged in #101, and 4b opens
   for review in #102, with the Clients list's In use and Archived.
+- **2026-10-29:** In 4b (#102), an archived client's page has its
+  "Archived" badge and no Add record or Add section for someone who may
+  add records but not see clients, too.

@@ -1382,3 +1382,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-29:** In 4b (#102), creating, editing or uploading a task
   holds its client while it writes it, as archiving holds it: a client
   archived as a task was being written to it took it (found by Codex).
+- **2026-10-29:** In 4b (#102), an archived client's page says so, and
+  offers no Add record or Add section, to whoever may add records but not
+  see clients, as the Employee role: its sections now say it's archived
+  (found by Codex).

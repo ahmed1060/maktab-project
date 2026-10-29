@@ -387,7 +387,7 @@ export class RecordService {
 
     /** A client's sections, with how many records each holds, and the client's name for the page. */
     static async sectionsOf(session: Session, clientId: string) {
-        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true } })
+        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true, archivedAt: true } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
         allow(session, "records.view", client.companyId, "CLIENT_NOT_FOUND")
         const sections = await prisma.recordSection.findMany({
@@ -396,7 +396,9 @@ export class RecordService {
             orderBy: { title: "asc" },
         })
         return {
-            client: { id: client.id, name: client.name },
+            // Archived, it takes nothing new (CLIENTS_PLAN.md §4.3), as its
+            // page says to whoever may add records but not see clients.
+            client: { id: client.id, name: client.name, archived: client.archivedAt !== null },
             sections: sections.map(s => ({ id: s.id, title: s.title, records: s._count.records })),
         }
     }

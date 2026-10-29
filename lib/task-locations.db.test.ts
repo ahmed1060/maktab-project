@@ -285,6 +285,12 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
             expect((await db.query(`SELECT (SELECT count(*)::int FROM "Location" WHERE "clientId" = 'k2' AND name = 'Beta''s new site') AS places, (SELECT count(*)::int FROM "ClientSection" WHERE "clientId" = 'k2') AS sections`)).rows[0]).toEqual({ places: 0, sections: 0 })
         })
 
+        it("is said to be archived to whoever may add records to it but not see clients", async () => {
+            const { RecordService } = await import("@/lib/services/record.service")
+            expect((await RecordService.sectionsOf(employee, "k2")).client).toMatchObject({ id: "k2", archived: true })
+            expect((await RecordService.sectionsOf(employee, "k1")).client).toMatchObject({ id: "k1", archived: false })
+        })
+
         it("keeps its own tasks editable, and isn't offered to add a record to", async () => {
             const { rows: [mine] } = await db.query(`SELECT id FROM "Task" WHERE title = 'Beta''s job'`)
             await Tasks.updateDetails(mine.id, { id: mine.id, title: "Beta's old job" } as any, admin)

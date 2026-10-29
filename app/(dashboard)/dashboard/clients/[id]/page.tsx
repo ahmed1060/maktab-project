@@ -57,7 +57,7 @@ export default function ClientPage() {
     const { mutate } = useSWRConfig()
 
     const { data: clientBody, error: clientError, isLoading: clientLoading, mutate: reloadClient } = useSWR<{ data: Client }>(seesClient ? `/api/clients?id=${encodeURIComponent(id)}` : null, fetcher)
-    const { data: sectionsBody, error: sectionsError, isLoading: sectionsLoading, mutate: reloadSections } = useSWR<{ data: { client: { id: string; name: string }; sections: SectionItem[] } }>(
+    const { data: sectionsBody, error: sectionsError, isLoading: sectionsLoading, mutate: reloadSections } = useSWR<{ data: { client: { id: string; name: string; archived?: boolean }; sections: SectionItem[] } }>(
         seesRecords ? `/api/records/sections?clientId=${encodeURIComponent(id)}` : null, fetcher,
     )
 
@@ -96,7 +96,8 @@ export default function ClientPage() {
         }
     }
     // Archived as it had tasks or records when it was deleted: kept with them, and given nothing new.
-    const archived = !!client?.archivedAt
+    // Its sections say so too, for whoever may add records but not see clients.
+    const archived = !!client?.archivedAt || !!sectionsBody?.data.client.archived
     const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') } : { href: '/dashboard/records', label: modules.label('records') }
 
     if (!name) {
@@ -116,7 +117,7 @@ export default function ClientPage() {
     return (
         <Page>
             <PageHeader
-                title={client?.archivedAt ? <span className="ui-title-with-badge"><bdi>{name}</bdi><StatusBadge tone="neutral">{t('clients_archived_badge')}</StatusBadge></span> : <bdi>{name}</bdi>}
+                title={archived ? <span className="ui-title-with-badge"><bdi>{name}</bdi><StatusBadge tone="neutral">{t('clients_archived_badge')}</StatusBadge></span> : <bdi>{name}</bdi>}
                 back={back}
                 // Archived, it takes nothing new (CLIENTS_PLAN.md §4.3): Restore, for whoever may.
                 action={archived

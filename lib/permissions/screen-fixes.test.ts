@@ -87,6 +87,8 @@ describe("record screens offer only what the server allows", () => {
         expect(FORM).not.toContain("router.push")
         // And never for an archived client, which takes nothing new (CLIENTS_PLAN.md §4.3).
         expect(CLIENT).toContain("adding={!archived && adding && can('records.contribute')}")
+        // Archived, as its sections say, for whoever may add records but not see clients (Codex on #102).
+        expect(CLIENT).toContain("const archived = !!client?.archivedAt || !!sectionsBody?.data.client.archived")
         expect(CLIENT).not.toContain("params.get('add')")
     })
     it("loads the chosen client's sections before a record can be added to it, rather than starting a first one", () => {
