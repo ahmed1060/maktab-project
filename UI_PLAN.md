@@ -976,3 +976,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 4b, an archived client's page has no Add record, Add
   section or Add location, in its header, its sections or their empty
   states: only Restore, for whoever manages clients.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 4a was merged in #101, and 4b opens
+  for review in #102, with the Clients list's In use and Archived.

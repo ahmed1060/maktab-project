@@ -788,8 +788,9 @@ balance first, automatically:
        and on the date filters counting the company's days, which come
        before it in their own PRs. It was merged in #100 on 2026-10-29.
      - Step 4 (§4). Proposed: it ships as three PRs. 4a, payment safety
-       (§4.1, §4.2), is built, and 4b, archiving clients (§4.3). 4c moves costs
-       into their own table, with their descriptions (§4.4, §4.5).
+       (§4.1, §4.2), was merged in #101 on 2026-10-29. 4b, archiving
+       clients (§4.3), is built, and open for review in #102. 4c moves
+       costs into their own table, with their descriptions (§4.4, §4.5).
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1372,3 +1373,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   nothing new. In 4b, its page offers no Add record, Add section or Add
   location, and the server refuses them (`CLIENT_ARCHIVED`), as it does a
   new task; Restore brings them back.
+- **2026-10-29:** 4a was merged in #101, with Codex's two findings fixed
+  in it: deleting a task didn't hold it before checking its costs were
+  paid, nor read its shares' payments stored as text. Step 4's second
+  PR, 4b, opens for review in #102. Its migration adds `Client.archivedAt`,
+  nullable, after production's latest, `20261111000000_task_locations`
+  (checked read-only).
