@@ -1031,3 +1031,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   to clear the cost name to pay.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 5b was merged in #106, and 5c opens
   for review in #107.
+- **2026-10-29:** In 5c (#107), the Costs page with a cost name picked
+  pages through only the tasks with a cost of it still to pay: none of
+  its pages is short of cards, or empty, for tasks with none.

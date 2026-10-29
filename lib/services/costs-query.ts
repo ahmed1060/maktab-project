@@ -5,8 +5,8 @@ import { assignedToTeamWhere } from "@/lib/team-scope"
 import { dayRangeIn } from "@/lib/services/filter-zone"
 import { placeFilters } from "@/lib/place-filters"
 import { createHash } from "node:crypto"
-import { dueParts, partsLine } from "@/lib/costs-total"
-import { withCostNamed, type FilterName } from "@/lib/saved-lists"
+import { dueParts, namedParts, partsLine } from "@/lib/costs-total"
+import { costNamed, withCostNamed, type FilterName } from "@/lib/saved-lists"
 import { ListService } from "@/lib/services/list.service"
 
 /**
@@ -110,10 +110,27 @@ export async function pendingCostsWhere(
     if (updatedAt) where.AND.push({ updatedAt })
     // So Mark all as paid pays only the client's, or the location's, shown.
     where.AND.push(...placeFilters(filters.clientId, filters.locationId))
-    // With a cost of the name, picked as it or typed the same (§5.9).
-    if (filters.costNameId) where.AND.push(withCostNamed(await ListService.filterName("COST_NAME", filters.costNameId, companyId)))
+    // With a cost of the name still due, picked as it or typed the same (§5.9).
+    if (filters.costNameId) where.AND.push(await namedDue(where, await ListService.filterName("COST_NAME", filters.costNameId, companyId), filters.employeeId))
 
     return where
+}
+
+/**
+ * Of a list's tasks, those with a cost of the name still due, as the Costs
+ * page's cards show them (namedParts), so it counts and pages only those. A
+ * task whose costs of it are all in shares paid already, or with an
+ * employee picked, all someone else's, has none. Whose share each cost is in
+ * is in the task's JSON, by person, which a Prisma filter can't match to
+ * each cost's author.
+ */
+async function namedDue(where: { AND: any[] }, name: FilterName | null, employeeId?: string) {
+    if (!name) return withCostNamed(null)
+    const tasks = await prisma.task.findMany({
+        where: { AND: [...where.AND, withCostNamed(name)] },
+        select: { id: true, memberCosts: true, memberPaymentStatus: true, costs: { where: costNamed(name), select: { authorId: true, amount: true } } },
+    })
+    return { id: { in: [...new Set(namedParts(tasks, employeeId).map(p => p.taskId))] } }
 }
 
 /**

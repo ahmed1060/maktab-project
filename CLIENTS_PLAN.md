@@ -1571,3 +1571,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   the lists' permissions (12 grants on their 9 built-in roles), with no
   errors after. Step 5's third PR, 5c, opens for review in #107; it has
   no migration.
+- **2026-10-29:** In 5c (#107), the Costs page with a cost name picked
+  lists and counts only the tasks with a cost of that name still due. A
+  task whose costs of it were all in shares paid already, or with an
+  employee picked, all someone else's, was counted and paged with no card
+  to show, and could fill a page while those due were on the next (found
+  by Codex).

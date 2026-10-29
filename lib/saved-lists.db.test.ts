@@ -310,6 +310,8 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
         let prisma: typeof import("@/lib/prisma").prisma
         let filters: typeof import("@/lib/saved-lists")
         let costs: typeof import("@/lib/services/costs-query")
+        const deadline = new Date(Date.now() + 86_400_000)
+        const made = (id: string, company: string, title: string, over: Record<string, unknown> = {}) => prisma.task.create({ data: { id, title, description: "d", deadline, status: "PENDING", companyId: company, ...over } as any })
 
         beforeAll(async () => {
             prisma = (await import("@/lib/prisma")).prisma
@@ -321,8 +323,6 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
                  ('f-audit-c2', 'c2', 'TASK_TITLE', 'Quarterly audit', NULL, now()),
                  ('f-old', 'c1', 'TASK_TITLE', 'Old checklist', now(), now()),
                  ('f-diesel', 'c1', 'COST_NAME', 'Diesel', NULL, now())`)
-            const deadline = new Date(Date.now() + 86_400_000)
-            const made = (id: string, company: string, title: string, over: Record<string, unknown> = {}) => prisma.task.create({ data: { id, title, description: "d", deadline, status: "PENDING", companyId: company, ...over } as any })
             await made("f1", "c1", "Quarterly audit", { titleEntryId: "f-audit" })
             await made("f2", "c1", "quarterly AUDIT")
             await made("f3", "c1", "Quarterly audit of the stores")
@@ -370,6 +370,30 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
             expect(namedParts(rows as any)).toEqual([{ taskId: "g1", userId: "e1", amount: 52.5 }])
             // Another company's payer: that name is none there.
             expect(await costs.costNameOf(otherAdmin.user, { costNameId: "f-diesel" })).toBeNull()
+        })
+
+        it("lists and counts only the tasks with a cost of the name still due (Codex on PR 107)", async () => {
+            const owed = { status: "APPROVED", paymentStatus: "PENDING_PAYMENT", assignees: { connect: [{ id: "e1" }, { id: "a1" }] } }
+            // Ehab's Diesel is paid, and Amal still has bolts to be paid for: no Diesel of it is due.
+            await made("g3", "c1", "Pump repair", { ...owed, totalCost: 70, memberCosts: { e1: 40, a1: 30 }, memberPaymentStatus: { e1: "PAID" }, costs: { create: [
+                { authorId: "e1", amount: 40, description: "Diesel", nameEntryId: "f-diesel" },
+                { authorId: "a1", amount: 30, description: "Bolts" },
+            ] } })
+            // Amal's Diesel and Ehab's taxi: Diesel is due, but none of Ehab's.
+            await made("g4", "c1", "Truck hire", { ...owed, totalCost: 85, memberCosts: { e1: 25, a1: 60 }, costs: { create: [
+                { authorId: "a1", amount: 60, description: "diesel" },
+                { authorId: "e1", amount: 25, description: "Taxi" },
+            ] } })
+            const listed = async (filters: Record<string, string>) => {
+                const where = (await costs.pendingCostsWhere(admin.user, { costNameId: "f-diesel", ...filters }))!
+                const ids = (await prisma.task.findMany({ where, select: { id: true }, orderBy: { id: "asc" } })).map(t => t.id)
+                // What the page counts, for its pages, is what it lists.
+                expect(await prisma.task.count({ where })).toBe(ids.length)
+                return ids
+            }
+            expect(await listed({})).toEqual(["g1", "g4"])
+            expect(await listed({ employeeId: "e1" })).toEqual(["g1"])
+            expect(await listed({ employeeId: "a1" })).toEqual(["g4"])
         })
 
         it("saves an imported title as the saved one it names, ignoring capitals, never one the request names", async () => {
