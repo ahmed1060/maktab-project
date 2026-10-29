@@ -904,3 +904,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   fix: a field that can't be changed is on `--page`, with a `--rule` edge
   and `--ink-2` text, and its hint says why (`DESIGN.md` §5.3). It looked
   like one that could be typed in.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 1a was merged in #96, and 1b opens
+  for review in #97. With it, the Admins and Team Leaders of the companies
+  already there are offered Locations in the side bar, as a new company's
+  are.
