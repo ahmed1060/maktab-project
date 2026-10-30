@@ -347,9 +347,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      fourth Create task, merged in #120 on 2026-10-30, and the fifth Add
      obligation, merged in #121 on 2026-10-30, and the sixth an
      obligation's page, merged in #122 on 2026-10-30. The seventh is a
-     task's page, in two parts: its page and dialogs, open for review in
-     #123, then its costs, location history, submission form and edit
-     dialog;
+     task's page, in two parts: its page and dialogs, merged in #123 on
+     2026-10-30, then its costs, location history, submission form and
+     edit dialog, open for review in #124;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1340,3 +1340,42 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   again as the page had been open, and one moved earlier, to a time already
   passed, wasn't shown as passed until the old wait was up (found by Codex
   on PR 123). A refresh's newer time from the server is taken too.
+- **2026-10-30:** A task's page, part 2 (§5 step 5): its costs, location
+  history, submission form and edit dialog move onto the building blocks.
+  - Its costs in a card: each a row with its description, who added it and
+    when, what came from a cash advance, its receipt as a chip and its
+    amount; its totals as tiles, each saying whether it's paid, someone on
+    a shared task seeing their own beside the task's; and each person's
+    share, with Mark as paid or unpaid, once it's reviewed.
+  - Its location history in a card: each check-in a link to the map that
+    says it opens a new tab, with who and when, and how it was checked as a
+    status in words. A reviewer marks it right or wrong, and the lateness
+    penalty is a dialog of its own.
+  - What whoever it's for hands in, in a card: its files picked or dropped
+    and shown as chips, its costs with their receipts, a note with its
+    count, and Check in, Submit task the one primary button. It isn't a
+    form, so Enter in a cost's amount hands nothing in.
+  - Its edit window a dialog of the building blocks, each field labelled,
+    its counts and errors under it, and who it's for pointing to Transfer
+    task.
+  - Its words are in sentence case, and say they're busy with an ellipsis.
+- **2026-10-30:** In #124, a task's lateness penalty goes through the task's
+  own penalty, for the person picked. It went to the pay adjustment of a
+  person, which asks for another permission, so whoever may penalise a
+  task but not adjust pay was refused; it fell on the first person the
+  task is for, whoever was late; and it wasn't tied to the task. One person
+  is picked already when the task is for only one. Found while moving it.
+- **2026-10-30:** A task's page, part 1, was merged in #123, and its part 2
+  opens for review in #124 (§5 step 5).
+- **2026-10-30:** In #124, Vercel's web interface audit of a task's page,
+  part 2: Mark as paid on one person's share shows it's being saved, and
+  isn't sent twice meanwhile; Save changes with a field to fix goes to it;
+  where whoever it's for checked in is said as it changes, its live region
+  there before it; each cost they'd take off is named in its Remove; and a
+  reviewer reads why a check-in needs review, which was only in a title
+  read on hover.
+- **2026-10-30:** In #124, found in the browser: on a phone, who added a
+  cost and when, and what came from a cash advance, wrap as words. Each
+  part was a column of its own beside the amount, so a word broke in two;
+  a check-in's date too. And a check-in's map link is the building blocks'
+  link, as the Locations list's are, rather than the browser's own blue.
