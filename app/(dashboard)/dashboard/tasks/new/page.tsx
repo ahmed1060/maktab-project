@@ -74,7 +74,7 @@ export default function NewTaskPage() {
     const usersKey = session
         ? `/api/users?${new URLSearchParams({ limit: '1000', ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) })}`
         : null
-    const { data: usersResult } = useSWR(usersKey, fetcher)
+    const { data: usersResult, error: usersError } = useSWR(usersKey, fetcher)
     const users: any[] = useMemo(() => {
         const usersList = usersResult?.data?.data || usersResult?.data || []
         if (!Array.isArray(usersList)) {
@@ -539,7 +539,7 @@ export default function NewTaskPage() {
                     {/* Who it's for: as many as it needs, found by name (DESIGN.md §5.3). */}
                     <AssigneeChecklist
                         id="field-assigneeIds"
-                        people={usersResult ? users : undefined}
+                        people={usersError ? null : usersResult ? users : undefined}
                         value={assigneeIds}
                         onChange={ids => { setAssigneeIds(ids); clearError('assigneeIds') }}
                         disabled={isSubmitting}

@@ -54,8 +54,13 @@ export default function NewObligationPage() {
         queryParams.set('limit', '1000')
         if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
 
+        // A server error, once tried again, is given back rather than thrown:
+        // read as an empty list, it said no one matched the search.
         fetchRetrying(`/api/users?${queryParams.toString()}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`Couldn't load the people (${res.status})`)
+                return res.json()
+            })
             .then(result => {
                 const usersList = result?.data?.data || []
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN

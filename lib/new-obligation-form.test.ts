@@ -62,6 +62,15 @@ describe("Add obligation", () => {
         expect(html).toContain("loading")
     })
 
+    it("says when the people couldn't be loaded, rather than that no one matches", () => {
+        // The list is tried again first (fetchRetrying), and its last answer
+        // given back: a server error is an answer, not a thrown one, and read
+        // as an empty list it said no one matched the search.
+        const page = readFileSync("app/(dashboard)/dashboard/obligations/new/page.tsx", "utf8")
+        expect(page).toMatch(/fetchRetrying\(`\/api\/users\?\$\{queryParams\.toString\(\)\}`\)\s*\.then\(res => \{\s*if \(!res\.ok\) throw/)
+        expect(page).toContain(".catch(() => setPeople('failed'))")
+    })
+
     it("has Create obligation as its one primary button, and Cancel back to the list", async () => {
         const html = await form()
         expect(html.match(/ui-btn-primary/g)?.length).toBe(1)

@@ -2042,3 +2042,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   picked from the saved list (§5) work as they did.
 - **2026-10-30:** Create task was merged in #120 (`UI_PLAN.md` §5), with its
   client and location picker and its saved title as they were.
+- **2026-10-30:** In #121, Create task says when the people who can be
+  assigned couldn't be loaded, rather than loading for good (`UI_PLAN.md`
+  §5).

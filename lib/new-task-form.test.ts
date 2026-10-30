@@ -22,12 +22,14 @@ vi.mock("@/components/lists/useListNames", () => ({ useListNames: () => ({ sugge
 vi.mock("@/components/locations/TaskPlacePicker", () => ({ default: () => null }))
 vi.mock("@/components/BulkTaskReviewModal", () => ({ default: () => null }))
 vi.mock("@/components/ManageTemplatesModal", () => ({ default: () => null }))
-const people = { list: [] as object[] | null }
+const people = { list: [] as object[] | null | "failed" }
 vi.mock("swr", () => ({
-    default: (key: string | null) => ({ data: key?.startsWith("/api/users") && people.list ? { data: { data: people.list } } : undefined }),
+    default: (key: string | null) => !key?.startsWith("/api/users") ? { data: undefined }
+        : people.list === "failed" ? { data: undefined, error: new Error("Request failed") }
+        : { data: people.list ? { data: { data: people.list } } : undefined },
 }))
 
-async function form(list: object[] | null = []) {
+async function form(list: object[] | null | "failed" = []) {
     people.list = list
     const { default: NewTaskPage } = await import("@/app/(dashboard)/dashboard/tasks/new/page")
     return renderToStaticMarkup(h(NewTaskPage))
@@ -75,6 +77,12 @@ describe("Create task", () => {
 
     it("says it's loading the people rather than that there are none", async () => {
         expect(await form(null)).toContain("loading")
+    })
+
+    it("says when the people couldn't be loaded, rather than loading forever", async () => {
+        const html = await form("failed")
+        expect(html).toContain("failed_load_employees")
+        expect(html).not.toContain('role="status"')
     })
 
     it("has Create task as its one primary button, and Cancel back to the list", async () => {

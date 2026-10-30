@@ -1234,3 +1234,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     something typed asks first.
 - **2026-10-30:** Create task was merged in #120, and Add obligation opens
   for review in #121 (§5 step 5).
+- **2026-10-30:** In #121, both forms say when the people who can be
+  assigned couldn't be loaded, once they've been tried again. Add
+  obligation read a server error as an empty list, so it said no one
+  matched the search; Create task (#120) never read its error, so it said
+  it was loading for good. Found by trying them with the list refused.
