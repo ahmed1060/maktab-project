@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
 import { PERMISSIONS, type Permission } from "@/lib/permissions/catalogue"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
+import { GRANTED_LATER } from "@/lib/permissions/test-actors"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
@@ -34,6 +34,6 @@ describe("asking for leave", () => {
     })
 
     it("reaches the companies already there in a later PR's migration, once this role editor is live", () => {
-        expect(readFileSync("lib/roles-migration.test.ts", "utf8")).toMatch(/GRANTED_LATER = \[[^\]]*"dayoff\.request"/)
+        expect(GRANTED_LATER).toContain(ASK)
     })
 })

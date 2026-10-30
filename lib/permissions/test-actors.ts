@@ -1,4 +1,18 @@
-import { BUILT_IN_GRANTS, builtInGrantsToken, isBuiltInRole } from "./built-in"
+import { BUILT_IN_GRANTS, builtInGrantsToken, isBuiltInRole, type BuiltInRole } from "./built-in"
+import type { Grants } from "./grants"
+
+/**
+ * Built-in grants a new company's roles get now, which the companies there
+ * already get from a later PR's migration (UI_PLAN.md §2.3, part 2b): it runs
+ * once this release, whose role editor knows them, is live, so no editor that
+ * doesn't know them can drop them meanwhile. That PR takes them off here.
+ */
+export const GRANTED_LATER: readonly string[] = ["dayoff.request"]
+
+/** A built-in role's grants as the migrations so far give the companies there already. */
+export function migratedGrants(role: BuiltInRole): Grants {
+    return Object.fromEntries(Object.entries(BUILT_IN_GRANTS[role]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
+}
 
 /**
  * A test's signed-in person as their session token would carry them: with the
