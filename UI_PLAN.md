@@ -1180,3 +1180,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Continue task or View task too, at the end of its last line. Phones show
   the cards, not the table, so whoever a task is for lost the button that
   says what's next there (found by Codex).
+- **2026-10-30:** The Obligations list moves onto the building blocks (§5
+  step 5), as the Tasks list did.
+  - Its page header, with Add obligation as its one primary button for
+    whoever manages obligations.
+  - A filter bar: the search, the employee, the status, the dates, and the
+    order within the page. Someone who sees only their own has the search,
+    as before.
+  - The obligations as a table on computers and cards on phones: how often
+    each recurs, who it's for, its deadline, overdue in words, its points,
+    its status and who decided it, and Start, Continue or View, on the
+    phone's cards too.
+  - A page past the last goes to the last there is.
