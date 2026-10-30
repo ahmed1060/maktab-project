@@ -1072,9 +1072,9 @@ balance first, automatically:
      - Step 7, cash advances (§7). Proposed: it ships as four PRs, 7a to
        7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
        My cash advance, was merged in #112 on 2026-10-30, and 7b, costs
-       paid from the advance, in #113. 7c, the permissions for the
-       companies already there, is built, and open for review in #114.
-       7d, a balance held on leaving becoming a debt, is built.
+       paid from the advance, in #113, and 7c, the permissions for the
+       companies already there, in #114. 7d, a balance held on leaving
+       becoming a debt, is built, and open for review in #115.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1985,3 +1985,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   takes their balance to nothing. The final settlement recovers it as it
   recovers other debts, and what it can't cover stays outstanding. End
   Contract says so before the contract is ended.
+- **2026-10-30:** 7c was merged in #114; Codex found nothing in it. Its
+  migration ran on production at 10:40 UTC, as its preview built, giving
+  the 3 companies there 9 grants on their 6 built-in Admin and Team Leader
+  roles, and production has had no errors since. 7d opens for review in
+  #115. Its migration only adds the entry kind Became a debt and its
+  check. Production's last migration is 7c's, none is unfinished, and it
+  has no cash advance entries, debts or settlements yet, and no company
+  allowed cash advances (checked read-only just before).
