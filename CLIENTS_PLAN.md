@@ -868,7 +868,7 @@ balance first, automatically:
     as paid pays only what's owed, and the money owed is offered at
     hand-over (§7.3) (built);
   - 7c: the permissions for the companies already there, once 7a's role
-    editor is live, as for charges (§6.8);
+    editor is live, as for charges (§6.8) (built);
   - 7d: leaving the company: a balance still held becomes a debt, its
     source a cash advance (§7.3).
 - **Proposed, as 7a builds it:**
@@ -951,6 +951,16 @@ balance first, automatically:
     paid pays their costs, exactly the list it said: if that changed
     meanwhile, the advance is given and nothing is paid, and it says to
     pay from the Costs page.
+- **Proposed, as 7c builds it:** the companies already there get the cash
+  advances' permissions on their built-in Admin and Team Leader roles only,
+  as lib/permissions/built-in.ts has them, as they got charges' (§6.8):
+  See cash advances and Give and settle cash advances for the Admin, for
+  the company, and See cash advances for the Team Leader, for their team.
+  Cash advances aren't Everyone's, so a company's own roles are given them
+  in the role editor. A role given one there since keeps it as it is. They
+  open nothing until the Super Admin allows a company cash advances
+  (§7.6). Production had only built-in roles, and no cash advances grants,
+  when 7c was built (checked read-only, 2026-10-30).
 
 ---
 
@@ -1040,7 +1050,8 @@ balance first, automatically:
      - Step 7, cash advances (§7). Proposed: it ships as four PRs, 7a to
        7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
        My cash advance, was merged in #112 on 2026-10-30, and 7b, costs
-       paid from the advance, is built, and open for review in #113.
+       paid from the advance, in #113. 7c, the permissions for the
+       companies already there, is built, and open for review in #114.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1930,3 +1941,18 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   spent was read through a connection of its own while its costs were
   being recorded; with every connection held by costs waiting on the same
   advance, none was free, and all of them failed (found by Codex).
+- **2026-10-30:** Step 7's third PR, 7c, is built (§7.7, §7.8): the
+  companies already there get See cash advances and Give and settle cash
+  advances on their built-in Admin roles, for the company, and See cash
+  advances on their built-in Team Leader roles, for their team, as a new
+  company's have them. Only the holders of a role given one reload their
+  grants, and nothing opens until the Super Admin allows a company cash
+  advances.
+- **2026-10-30:** 7b was merged in #113, with Codex's three findings fixed
+  in it. Its migration ran on production at 09:16 UTC, as its preview
+  built, and production has had no errors since. 7c opens for review in
+  #114; its migration gives the 3 companies there the cash advances'
+  permissions (9 grants on their 6 built-in Admin and Team Leader roles).
+  Production's last migration is 7b's, none is unfinished, it has no
+  roles of a company's own and no cash advances grants yet, and no
+  company is allowed cash advances (checked read-only just before).
