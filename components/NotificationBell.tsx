@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import useSWR from "swr"
-import { fetcher, fetchRetrying } from "@/lib/swr-fetcher"
+import { fetcher } from "@/lib/swr-fetcher"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
 import { renderNotice, type NoticeParam } from "@/lib/notice"
@@ -150,21 +150,9 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                 // leader's team list.
                 if (notification.relatedId.startsWith('/')) router.push(notification.relatedId)
             } else if (type.includes('REQUEST')) {
-                // Fetch the current status of the request to determine redirection
-                fetchRetrying(`/api/requests/${notification.relatedId}`)
-                    .then(res => res.json())
-                    .then(result => {
-                        const request = result.data
-                        const targetPage = request.status === 'COMPLETED' ? 'history' : ''
-                        const path = targetPage
-                            ? `/dashboard/requests/history?highlight=${notification.relatedId}`
-                            : `/dashboard/requests?highlight=${notification.relatedId}`
-                        router.push(path)
-                    })
-                    .catch(() => {
-                        // Fallback to active requests if fetch fails
-                        router.push(`/dashboard/requests?highlight=${notification.relatedId}`)
-                    })
+                // The Requests page opens it on its tab, and on Waiting or
+                // Done by its status, so there's nothing to ask first.
+                router.push(`/dashboard/requests?highlight=${notification.relatedId}`)
             }
         }
     }

@@ -134,6 +134,41 @@ permissions allow, as today.
 It's the largest change here, so it comes later (§5). Until then, the
 existing request pages sit together under People (§2.1).
 
+**How it's built (Decided on 2026-10-30):** in five parts, each a small PR.
+Each keeps every request working, and an old page sends people to the new
+one once its kind has moved in.
+
+1. **The page:** `/dashboard/requests` on the building blocks, with:
+   - Mine and To review;
+   - Waiting and Done;
+   - the kind filter, shown once there's more than one kind;
+   - one row for every kind: who asked, what for, when, its status, and
+     the buttons to decide it.
+
+   Its first kind is internal requests, which already live there, and their
+   history page folds in as Done. The rows come from one feed on the
+   server, which reads each kind through its own rules for who may see and
+   decide it.
+2. **Day off:** asked for and decided on the page; Day off requests sends
+   people there.
+3. **Permission hours and missing punches:** asked for and decided on the
+   page; Attendance's Requests tab points there.
+4. **Overtime, phones and flagged punches:** decided under To review.
+   Approving someone's phone and a flagged punch join too (Decided on
+   2026-10-30), so a manager has one queue for what waits on them.
+5. **Name changes and role requests:** decided on the page; their pages
+   send people there, and the side bar shows one Requests item under
+   People.
+
+- **To review** is everyone else's requests the person sees, with the
+  buttons where they may decide them. In the built-in roles, seeing and
+  deciding go together; a custom role that may see without deciding sees
+  them without buttons.
+- **The Super Admin's Role changes stay their own (Decided on
+  2026-10-30):** a company asking the Super Admin to change or add a role
+  isn't a request between the company's people. It stays under Access, and
+  on Roles for the company.
+
 ---
 
 ## 3. Names (Decided)
@@ -346,11 +381,12 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      third the Obligations list, merged in #119 on 2026-10-30, and the
      fourth Create task, merged in #120 on 2026-10-30, and the fifth Add
      obligation, merged in #121 on 2026-10-30, and the sixth an
-     obligation's page, merged in #122 on 2026-10-30. The seventh is a
+     obligation's page, merged in #122 on 2026-10-30. The seventh was a
      task's page, in two parts: its page and dialogs, merged in #123 on
      2026-10-30, then its costs, location history, submission form and
-     edit dialog, open for review in #124;
-   - the one Requests page (§2.3).
+     edit dialog, merged in #124 on 2026-10-30;
+   - the one Requests page (§2.3), in five parts. The first, the page with
+     internal requests, opens for review in #125.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -1379,3 +1415,45 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   part was a column of its own beside the amount, so a word broke in two;
   a check-in's date too. And a check-in's map link is the building blocks'
   link, as the Locations list's are, rather than the browser's own blue.
+- **2026-10-30:** A task's page, part 2, was merged in #124, and the one
+  Requests page is planned in five parts (§2.3): the page with internal
+  requests; day off; permission hours and missing punches; overtime,
+  phones and flagged punches; then name changes and role requests. Phones
+  and flagged punches join it, and the Super Admin's Role changes stay
+  their own. The first part opens for review in #125 (§5 step 5).
+- **2026-10-30:** In #125, the one Requests page, part 1 (§2.3):
+  - `/dashboard/requests` on the building blocks: its page header with New
+    request, Mine and To review, and a filter bar with the search, Waiting
+    or Done, who asked (on To review), and the kind (once there's more than
+    one).
+  - Every request is a row that reads the same way: what it's for, who
+    asked (on To review), when, its status as a badge in words, and its
+    next step for whoever may decide it (Start, then Mark as done). Its
+    details and Delete are in its More actions; its details open in a
+    dialog with when it was asked, started and done.
+  - Its rows come from one feed on the server (`lib/requests/feed.ts`),
+    which reads each kind through its own rules of who sees and decides
+    it, merges them newest first and pages them. Its first kind is
+    internal requests, by the request service's own rules: To review is
+    everyone else's a person sees, at their reach, and its buttons are
+    where they may decide.
+  - The history page folds in as Done: an old link lands there, with the
+    request it picked out. A notification opens its request on its tab,
+    with Waiting or Done by its status, without asking for its status
+    first.
+  - Asking for something is a dialog of labelled fields, with their counts,
+    each checked as the server checks it and the first to fix focused.
+- **2026-10-30:** In #125, found in the browser: when a request was asked
+  stays on one line, its time not broken from its day in a narrow column.
+- **2026-10-30:** In #125, the Requests page refuses a suspended or
+  archived account, a banned company's, one whose subscription has lapsed,
+  and anyone but the Super Admin under maintenance, as the requests API
+  does. The page reads the database itself, past the API's handler, so it
+  showed them their requests, and others' they see (found by Codex on PR
+  125). The rule is one function now, which the handler asks too.
+- **2026-10-30:** In #125, the feed reads each kind in the order the page
+  merges them in: newest first, then by id. Read in another order, two
+  requests asked at the same moment on a page's edge could each fall on
+  both pages, or on neither (found by Codex on PR 125). Done is in order of
+  when each was last changed, which is when it was done, as the old history
+  page had it: a request done before its completion time was kept has none.

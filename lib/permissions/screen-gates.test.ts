@@ -70,12 +70,11 @@ const GATES: Gate[] = [
     { what: "costs: pay everything", file: D + "costs/CostsClient.tsx", uses: "companyWide('tasks.pay') && total > 0", before: admins, now: p => p.companyWide("tasks.pay") },
 
     // --- Requests and name changes ---------------------------------------------
+    // The one Requests page (UI_PLAN.md §2.3) asks these on the server, in its feed, for each row.
+    { what: "requests: To review, others' requests", file: "lib/requests/feed.ts", uses: 'const reach = grantFor(v, "requests.view")', before: managers, now: p => p.can("requests.view") },
+    { what: "requests: decide one", file: "lib/requests/feed.ts", uses: 'can(v, "requests.view", target) && can(v, "requests.review", target)', before: managers, now: p => p.can("requests.view") && p.can("requests.review") },
     { what: "name changes: page", file: D + "profile-requests/page.tsx", uses: "const canReview = permissions.can('profile_requests.review')", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("profile_requests.review") },
     { what: "name changes: header counter", file: "components/DashboardHeader.tsx", uses: "permissionsOf(currentUser as any).can('profile_requests.review')", before: admins, now: p => p.can("profile_requests.review") },
-    { what: "request card: who raised it", file: "components/requests/RequestCard.tsx", uses: "const canSeeWho = can('requests.view')", before: managers, now: p => p.can("requests.view") },
-    { what: "request card: change status", file: "components/requests/RequestCard.tsx", uses: "const canReview = can('requests.review')", before: managers, now: p => p.can("requests.review") },
-    { what: "request modal: change status", file: "components/requests/ViewRequestModal.tsx", uses: "const canReview = useCan().can('requests.review')", before: managers, now: p => p.can("requests.review") },
-    { what: "requests: employee filters", file: ["components/requests/RequestsSection.tsx", D + "requests/history/RequestsHistoryClient.tsx"], uses: "const seesOthersRequests = useCan().can('requests.view')", before: r => r === "EMPLOYEE", now: p => !p.can("requests.view") },
 
     // --- Sidebar and dashboard --------------------------------------------------
     { what: "sidebar: costs", file: "lib/side-bar.ts", uses: "costs: 'tasks.pay'", before: managers, now: p => p.can("tasks.pay") },
