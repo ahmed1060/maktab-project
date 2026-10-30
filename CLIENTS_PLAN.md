@@ -997,12 +997,12 @@ balance first, automatically:
        to 6d (§6.8). 6a, a receipt photo for each cost, was merged in
        #108 on 2026-10-29, and 6b, the charges, the Costs page's Charged
        to clients tab and the permissions for new companies, in #109, and
-       6c, the permissions for the companies already there, in #110. 6d,
-       each client's page with Mark collected, is built, and open for
-       review in #111; with it, step 6 is done.
+       6c, the permissions for the companies already there, in #110, and
+       6d, each client's page with Mark collected, in #111. Step 6 is
+       done.
      - Step 7, cash advances (§7). Proposed: it ships as four PRs, 7a to
        7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
-       My cash advance, is built.
+       My cash advance, is built, and open for review in #112.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1849,3 +1849,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   - **See cash advances and Give and settle cash advances** are in new
     companies' built-in roles; the companies already there get them in
     7c.
+- **2026-10-30:** 6d was merged in #111, with Codex's three findings fixed
+  in it, so step 6 is done. It has no migration, and production has had no
+  errors since. Step 7's first PR, 7a, opens for review in #112. Its
+  migration only adds: the cash advances' table, and the two switches,
+  with cash advances not allowed for any company until the Super Admin
+  allows them. Production has no cash advances' table, kind or switches
+  yet, and no migration unfinished (checked read-only just before).

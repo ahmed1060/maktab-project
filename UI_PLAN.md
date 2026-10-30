@@ -1077,3 +1077,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   advance has its own page, and My cash advance joins Me in the side bar
   (§2.1), where the company uses cash advances. Company Settings' General
   tab has a Cash advances card, on the building blocks, for the switches.
+- **2026-10-30:** `CLIENTS_PLAN.md`'s 6d was merged in #111, and 7a opens
+  for review in #112.
