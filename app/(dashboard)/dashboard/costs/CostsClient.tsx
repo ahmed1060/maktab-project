@@ -87,7 +87,9 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
                 ...task,
                 displayCost: Number(amount),
                 displayAssignee: assignee || { firstName: t('unknown_user' as any) || 'Unknown', lastName: '', id: uid },
-                individualPaymentStatus: mPaymentStatus[uid] || 'PENDING_PAYMENT'
+                individualPaymentStatus: mPaymentStatus[uid] || 'PENDING_PAYMENT',
+                // What their cash advance paid of their costs on it (CLIENTS_PLAN.md §7.5).
+                fromAdvance: Number(task.memberAdvance?.[uid] ?? 0),
             }
         })
 

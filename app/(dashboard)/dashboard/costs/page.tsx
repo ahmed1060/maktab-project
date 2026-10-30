@@ -64,7 +64,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
     // A saved cost name (CLIENTS_PLAN.md §5.9): each task's costs of it, which
     // its cards and the total show, rather than every share.
     const named = searchParams.costNameId ? await costNameOf(session.user as any, searchParams) : null
-    const namedCosts = named ? { costs: { where: costNamed(named), select: { authorId: true, amount: true } } } : {}
+    const namedCosts = named ? { costs: { where: costNamed(named), select: { authorId: true, amount: true, fromAdvance: true } } } : {}
 
     // Fetch tasks and total count, and what every page of them still owes.
     const [tasksWithCosts, total, owed, ofName] = await Promise.all([
@@ -106,13 +106,24 @@ export default async function CostsPage(props: { searchParams: Promise<{
 
     const totalPages = Math.ceil(total / limit)
 
+    // What each person's cash advance paid of their costs on each task, shown beside what's to pay back (CLIENTS_PLAN.md §7.5).
+    const advanced = tasksWithCosts.length === 0 ? [] : await prisma.taskCost.groupBy({
+        by: ['taskId', 'authorId'],
+        where: { taskId: { in: tasksWithCosts.map((task: any) => task.id) }, fromAdvance: { gt: 0 } },
+        _sum: { fromAdvance: true },
+    })
+    const memberAdvance = (taskId: string) => Object.fromEntries(advanced
+        .filter(a => a.taskId === taskId && a.authorId)
+        .map(a => [a.authorId, Number(a._sum.fromAdvance ?? 0)]))
+
     // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
     // plain serializable values to Client Components, so this has to become
     // a plain number here rather than downstream in CostsClient.
     const serializedTasks = tasksWithCosts.map((task: any) => ({
         ...task,
         totalCost: Number(task.totalCost),
-        ...(task.costs ? { costs: task.costs.map((c: any) => ({ authorId: c.authorId, amount: Number(c.amount) })) } : {}),
+        memberAdvance: memberAdvance(task.id),
+        ...(task.costs ? { costs: task.costs.map((c: any) => ({ authorId: c.authorId, amount: Number(c.amount), fromAdvance: Number(c.fromAdvance) })) } : {}),
     }))
 
     return (

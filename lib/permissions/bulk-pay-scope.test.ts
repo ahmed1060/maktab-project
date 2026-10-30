@@ -93,6 +93,8 @@ vi.mock("@/lib/prisma", () => {
             updateMany: async ({ where }: any) => { seen.paid.push(...(where.id?.in ?? [])); return { count: 0 } },
         },
         auditLog: { create: async () => ({}) },
+        // What a cash advance paid of each cost (CLIENTS_PLAN.md §7.8): none here.
+        taskCost: { groupBy: async () => [] },
         // The rows it pays, locked first.
         $queryRaw: async () => { onHold.run(); return [] },
     }

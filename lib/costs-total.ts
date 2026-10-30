@@ -59,15 +59,19 @@ export function dueParts(tasks: { id: string; totalCost: number | string; member
     return parts
 }
 
+type Amount = number | string | { toString(): string }
+
 /**
  * With a cost name picked (§5.9), what's due of the costs of that name, in
  * parts as dueParts has them: each member's costs of that name on a task,
  * while their share is still owed, and those that are no one's share, the
  * task's own part. With an employee picked, their costs of that name only.
  * Each task's `costs` are those of the name (lib/saved-lists.ts costNamed).
+ * Of each, only what's to be paid back: never what a cash advance paid
+ * (CLIENTS_PLAN.md §7.8), as the shares count it.
  */
 export function namedParts(
-    tasks: { id: string; memberCosts: unknown; memberPaymentStatus: unknown; costs: { authorId: string | null; amount: number | string | { toString(): string } }[] }[],
+    tasks: { id: string; memberCosts: unknown; memberPaymentStatus: unknown; costs: { authorId: string | null; amount: Amount; fromAdvance?: Amount }[] }[],
     employeeId?: string | null,
 ): DuePart[] {
     const parts = new Map<string, DuePart>()
@@ -79,7 +83,7 @@ export function namedParts(
             if ((employeeId && member !== employeeId) || (member && !shareOwed(shares[member], paid[member]))) continue
             const key = `${task.id}:${member ?? "-"}`
             const part = parts.get(key) ?? { taskId: task.id, userId: member, amount: 0 }
-            part.amount += Number(cost.amount)
+            part.amount += Number(cost.amount) - Number(cost.fromAdvance ?? 0)
             parts.set(key, part)
         }
     }

@@ -99,4 +99,13 @@ describe("what's due of the costs of one name (CLIENTS_PLAN.md §5.9)", () => {
         expect(namedParts(tasks, "sara").map(p => [p.taskId, p.amount])).toEqual([["t1", 52.5], ["t2", 0.3]])
         expect(namedParts(tasks, "omar")).toEqual([])
     })
+
+    it("is only what's to be paid back of each, never what a cash advance paid (§7.8)", () => {
+        const fromAdvance = [
+            // Nadia's whole Transport cost from her advance: none of it is her share.
+            { id: "t3", memberCosts: { sara: 25 }, memberPaymentStatus: {}, costs: [{ authorId: "nadia", amount: 80, fromAdvance: 80 }, { authorId: "sara", amount: 40, fromAdvance: "15" }] },
+        ]
+        expect(namedParts(fromAdvance)).toEqual([{ taskId: "t3", userId: "sara", amount: 25 }])
+        expect(namedParts(fromAdvance, "nadia")).toEqual([])
+    })
 })

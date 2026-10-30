@@ -14,6 +14,7 @@ import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
 import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
+import { CashAdvanceService } from "@/lib/services/cash-advance.service"
 import { LocationService } from "./location.service"
 import { ListService } from "./list.service"
 import { snapshotOf } from "./costs-query"
@@ -434,6 +435,10 @@ export class TaskService {
             for (const r of rows) {
                 comments.push(costEntry({ id: r.id, amount: r.amount, description: r.description, author: r.authorName, authorId: userId, date: addedAt.toISOString() }))
             }
+            // Paid from their cash advance first (CLIENTS_PLAN.md §7.2): only
+            // the rest is theirs to be paid back, in their share and the total.
+            const fromAdvance = await CashAdvanceService.spendFor(tx, { id: userId, role: session.user.role }, currentTask.companyId, rows.map(r => r.amount))
+            const owedAdded = cents(totalAdded - fromAdvance.reduce((sum, part) => sum + part, 0))
 
             if (location) {
                 const userLocs = comments.filter((c: any) => c.type === 'LOCATION_ADDED' && c.authorId === userId)
@@ -470,23 +475,26 @@ export class TaskService {
                 comments: comments
             }
 
-            if (totalAdded > 0) {
+            if (owedAdded > 0) {
                 const memberCosts: Record<string, number> = (currentTask.memberCosts as any) || {}
                 const memberPaymentStatus: Record<string, string> = (currentTask.memberPaymentStatus as any) || {}
 
-                memberCosts[userId] = cents((memberCosts[userId] || 0) + totalAdded)
+                memberCosts[userId] = cents((memberCosts[userId] || 0) + owedAdded)
                 memberPaymentStatus[userId] = 'PENDING_PAYMENT'
 
                 updateData.memberCosts = memberCosts
                 updateData.memberPaymentStatus = memberPaymentStatus
-                updateData.totalCost = { increment: totalAdded }
+                updateData.totalCost = { increment: owedAdded }
             }
 
             const task = await tx.task.update({ where: { id }, data: updateData })
             // A receipt on another cost already is that cost's (receiptUrl is unique).
-            if (rows.length > 0) await tx.taskCost.createMany({ data: rows }).catch((e: any) => {
+            if (rows.length > 0) await tx.taskCost.createMany({ data: rows.map((r, i) => ({ ...r, fromAdvance: fromAdvance[i] })) }).catch((e: any) => {
                 throw e?.code === 'P2002' ? new Error("COST_RECEIPT_INVALID") : e
             })
+            if (currentTask.companyId) {
+                await CashAdvanceService.spent(tx, currentTask.companyId, id, rows.map((r, i) => ({ id: r.id, authorId: userId, part: fromAdvance[i] })), -1, { id: userId, name: session.user.name })
+            }
 
             if (!isDraft && task.createdBy) {
                 await tx.notification.create({
@@ -863,6 +871,12 @@ export class TaskService {
             if (task.paymentStatus === 'PAID' || paidParts.includes('PAID')) throw new Error("TASK_HAS_PAID_COSTS")
             // Its costs charged to its client, it stays, as what the client owes (CLIENTS_PLAN.md §6.5).
             if (task.clientId && await tx.taskCost.count({ where: { taskId: id, notCharged: false } })) throw new Error("TASK_HAS_CHARGES")
+            // What its costs took from cash advances goes back on them, as
+            // removing each would put it back (CLIENTS_PLAN.md §7.4).
+            if (task.companyId) {
+                const advanced = await tx.taskCost.findMany({ where: { taskId: id, fromAdvance: { gt: 0 } }, select: { id: true, authorId: true, fromAdvance: true } })
+                await CashAdvanceService.spent(tx, task.companyId, id, advanced.map(c => ({ id: c.id, authorId: c.authorId, part: Number(c.fromAdvance) })), 1, { id: userId, name: session.user.name })
+            }
 
             if (Array.isArray(task.attachments)) {
                 try {
@@ -1132,13 +1146,21 @@ export class TaskService {
 
                 if (index >= 0) updateData.comments = comments.filter((_, i) => i !== index)
 
-                if (isCost && item.amount) {
-                    updateData.totalCost = { decrement: item.amount }
+                // What of it came from its author's cash advance goes back on
+                // it, and only the rest comes off what's to be paid back
+                // (CLIENTS_PLAN.md §7.4).
+                const advanced = row ? Number(row.fromAdvance) : 0
+                const owed = cents(Number(item.amount || 0) - advanced)
+                if (isCost && owed > 0) {
+                    updateData.totalCost = { decrement: owed }
                     const memberCosts: Record<string, number> = (task.memberCosts as any) || {}
                     if (item.authorId && memberCosts[item.authorId]) {
-                        memberCosts[item.authorId] = Math.max(0, cents(memberCosts[item.authorId] - item.amount))
+                        memberCosts[item.authorId] = Math.max(0, cents(memberCosts[item.authorId] - owed))
                         updateData.memberCosts = memberCosts
                     }
+                }
+                if (row && advanced > 0 && task.companyId) {
+                    await CashAdvanceService.spent(tx, task.companyId, id, [{ id: row.id, authorId: row.authorId, part: advanced }], 1, { id: userId, name: session.user.name })
                 }
                 if (isCost && typeof item.costId === 'string') costRow = item.costId
             } else {

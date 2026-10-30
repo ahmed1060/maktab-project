@@ -623,6 +623,8 @@ model Task {
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]            @relation("MultipleAssignees")
   costs               TaskCost[]
+  /// Cash advance entries spent on its costs, and put back (CLIENTS_PLAN.md §7.4).
+  advanceEntries      CashAdvanceEntry[]
 
   @@index([createdBy])
   @@index([companyId])
@@ -1255,9 +1257,14 @@ model TaskCost {
   /// or a Super Admin, so no relation (§6.4, §6.5).
   collectedAt   DateTime?
   collectedById String?
+  /// The part of it paid from its author's cash advance as it was added
+  /// (CLIENTS_PLAN.md §7.2), never more than it: only the rest is paid back,
+  /// and only the rest is in the task's shares and total.
+  fromAdvance   Decimal  @default(0) @db.Decimal(12, 2)
   createdAt   DateTime @default(now())
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   nameEntry   ListEntry? @relation(fields: [nameEntryId], references: [id], onDelete: SetNull)
+  advanceEntries CashAdvanceEntry[]
 
   @@index([taskId])
   @@index([nameEntryId])
@@ -1651,17 +1658,26 @@ model CashAdvanceEntry {
   /// name then.
   recordedById   String
   recordedByName String?
+  /// For one spent, or put back: the cost, while it's there, and its task
+  /// (§7.4). Both are kept apart from the entry, which outlives them.
+  costId         String?
+  taskId         String?
   createdAt      DateTime             @default(now())
   company        Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cost           TaskCost?            @relation(fields: [costId], references: [id], onDelete: SetNull)
+  task           Task?                @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
   @@index([companyId, userId])
   @@index([userId, createdAt])
+  @@index([costId])
+  @@index([taskId])
 }
 
 enum CashAdvanceEntryKind {
   GIVEN
-  /// On a cost, from step 7b.
+  /// On a cost: taken from the balance as it's added, or put back as it's
+  /// removed (§7.4).
   SPENT
   RETURNED
   CORRECTION

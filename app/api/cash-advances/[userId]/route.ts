@@ -10,7 +10,8 @@ import { CashAdvanceService } from "@/lib/services/cash-advance.service"
  * whoever sees their cash advances.
  */
 export const GET = withStandardHandler(async (req, session, _json, { params }) => {
-    const paging = parsePaging(new URL(req.url).searchParams, 20)
+    const { searchParams } = new URL(req.url)
+    const paging = parsePaging(searchParams, 20)
     return ApiResponse.success(await CashAdvanceService.person(session.user as any, params.userId, paging))
 })
 
