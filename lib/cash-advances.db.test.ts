@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
+import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 
 /**
  * Cash advances (CLIENTS_PLAN.md §7, step 7a), against a real Postgres: the
@@ -34,6 +35,18 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e9', 'e9@x', 'p', 'Ezz', 'Two', 'EMPLOYEE', 2026, 'e9', 'c2', NULL, 'OFFLINE');
 `
 
+/**
+ * Before 7c's migration (CLIENTS_PLAN.md §7.8): a company's own role, and
+ * Two's built-in Team Leader, whom an Admin gave See cash advances for the
+ * whole company in the role editor already.
+ */
+const BEFORE_GRANTED = `
+INSERT INTO "Role"(id, "companyId", name, "baseRole", version, "updatedAt") VALUES ('own-desk', 'c1', 'Front desk', 'EMPLOYEE', 3, now());
+INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('own-desk', 'tasks.view', 'TEAM');
+INSERT INTO "RoleGrant"("roleId", permission, scope) SELECT id, 'cash_advances.view', 'COMPANY' FROM "Role" WHERE "companyId" = 'c2' AND "builtIn" = 'TEAM_LEADER';
+`
+const CASH_ADVANCES_GRANTED = "20261122000000_cash_advances_granted"
+
 const as = (user: Record<string, unknown>) => ({ user: { ...withGrants(user as any), mfaEnabled: true, stepUpAt: Date.now() } }) as any
 const admin = as({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" })
 const leader = as({ id: "t1", role: "TEAM_LEADER", companyId: "c1", name: "Tamer One" })
@@ -51,6 +64,9 @@ describe.skipIf(!ADMIN_URL)("cash advances, in Postgres", () => {
     let Advances: typeof import("@/lib/services/cash-advance.service").CashAdvanceService
     let Companies: typeof import("@/lib/services/company.service").CompanyService
     let prisma: typeof import("@/lib/prisma").prisma
+    let rolesBefore: { id: string; companyId: string; builtIn: string | null; version: number }[] = []
+    // As 7c's migration left them.
+    let versionsAfter: Record<string, number> = {}
     const today = new Date().toISOString().slice(0, 10)
     const give = (session: any, userId: string, amount: unknown, more: Record<string, unknown> = {}) =>
         Advances.record(session, userId, { kind: "GIVEN", amount, date: "2026-10-01", ...more })
@@ -69,6 +85,11 @@ describe.skipIf(!ADMIN_URL)("cash advances, in Postgres", () => {
         for (const m of MIGRATIONS) {
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
+            if (m === "20261121000000_advance_spending") {
+                await db.query(BEFORE_GRANTED)
+                rolesBefore = (await db.query(`SELECT id, "companyId", "builtIn", version FROM "Role" ORDER BY id`)).rows
+            }
+            if (m === CASH_ADVANCES_GRANTED) versionsAfter = Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
         }
         await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "updatedAt") VALUES ('sa', 'sa@x', 'p', 'Sam', 'Admin', 'sam', now())`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
@@ -309,6 +330,41 @@ describe.skipIf(!ADMIN_URL)("cash advances, in Postgres", () => {
             await deleting.query("COMMIT")
             await deleting.end()
             expect(await corrected).toBe("CASH_ADVANCE_NOT_FOUND")
+        })
+    })
+
+    describe("the companies already there (7c)", () => {
+        const advanceGrants = async () => (await db.query(`
+            SELECT r.id, r."companyId", r."builtIn", g.permission, g.scope FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id
+            WHERE g.permission LIKE 'cash\\_advances.%' ORDER BY r."companyId", r.id, g.permission`)).rows
+        const versions = async () => Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
+        const givenOne = (r: { companyId: string; builtIn: string | null }) =>
+            r.builtIn === "ADMIN" || (r.builtIn === "TEAM_LEADER" && r.companyId !== "c2")
+
+        it("gives the built-in Admin and Team Leader roles the cash advances' permissions a new company's have", async () => {
+            const rows = await advanceGrants()
+            for (const company of ["c1", "c2"]) {
+                for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
+                    const given = Object.fromEntries(rows.filter(r => r.companyId === company && r.builtIn === builtIn).map(r => [r.permission, r.scope]))
+                    const theirs = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => permission.startsWith("cash_advances.")))
+                    // Two's Team Leader was given See cash advances for the company in the role editor, and keeps it.
+                    expect(given, `${company} ${builtIn}`).toEqual(company === "c2" && builtIn === "TEAM_LEADER" ? { "cash_advances.view": "COMPANY" } : theirs)
+                }
+            }
+            // A company's own roles are given them in the role editor.
+            expect(rows.filter(r => r.builtIn === null)).toEqual([])
+        })
+
+        it("has the holders of a role given one reload their grants, and only them", async () => {
+            expect(rolesBefore.length).toBe(7)
+            for (const role of rolesBefore) expect(versionsAfter[role.id], `${role.companyId} ${role.builtIn ?? role.id}`).toBe(givenOne(role) ? role.version + 1 : role.version)
+        })
+
+        it("changes nothing run again", async () => {
+            const [grants, before] = [await advanceGrants(), await versions()]
+            await db.query(sql(CASH_ADVANCES_GRANTED))
+            expect(await advanceGrants()).toEqual(grants)
+            expect(await versions()).toEqual(before)
         })
     })
 })

@@ -85,6 +85,8 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
     let Tasks: typeof import("@/lib/services/task.service").TaskService
     let prisma: typeof import("@/lib/prisma").prisma
     let rolesBefore: { id: string; companyId: string; builtIn: string | null; version: number }[] = []
+    // As 6c's migration left them, before later ones gave roles more.
+    let versionsAfter: Record<string, number> = {}
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -103,6 +105,7 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
                 await db.query(BEFORE_GRANTED)
                 rolesBefore = (await db.query(`SELECT id, "companyId", "builtIn", version FROM "Role" ORDER BY id`)).rows
             }
+            if (m === CHARGES_GRANTED) versionsAfter = Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
         }
         await db.query(CHARGES)
         process.env.POSTGRES_PRISMA_URL = url.toString()
@@ -371,9 +374,8 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         })
 
         it("has the holders of a role given one reload their grants, and only them", async () => {
-            const now = await versions()
             expect(rolesBefore.length).toBe(7)
-            for (const role of rolesBefore) expect(now[role.id], `${role.companyId} ${role.builtIn ?? role.id}`).toBe(givenOne(role) ? role.version + 1 : role.version)
+            for (const role of rolesBefore) expect(versionsAfter[role.id], `${role.companyId} ${role.builtIn ?? role.id}`).toBe(givenOne(role) ? role.version + 1 : role.version)
         })
 
         it("changes nothing run again", async () => {
