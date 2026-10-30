@@ -1070,3 +1070,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-29:** In 6d (#111), someone who sees charges and nothing else
   of clients opens a client's page from the Charged to clients tab: its
   name and its Charges section, with a way back to the tab.
+- **2026-10-30:** With `CLIENTS_PLAN.md`'s 7a, the Costs page has a third
+  tab, Cash advances, built on the building blocks: a filter bar, three
+  totals, a table that's a card per person on a phone, and a dialog to
+  give an advance, record a return or correct a balance. Each person's
+  advance has its own page, and My cash advance joins Me in the side bar
+  (§2.1), where the company uses cash advances. Company Settings' General
+  tab has a Cash advances card, on the building blocks, for the switches.
