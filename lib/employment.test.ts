@@ -405,11 +405,13 @@ describe("ARCHIVED closes the door without erasing anybody", () => {
     })
 
     it("is restricted by the same API gate as a suspension", () => {
-        const utils = stripComments(readFileSync("lib/api-utils.ts", "utf8"))
-        const start = utils.indexOf("const isSuspendedOrBanned")
+        // The gate is one rule now, which the API handler and pages that read the database ask.
+        const rule = stripComments(readFileSync("lib/account-refusal.ts", "utf8"))
+        const start = rule.indexOf("const suspendedOrBanned")
         expect(start).toBeGreaterThan(-1)
-        const gate = utils.slice(start, utils.indexOf("\n", start))
-        expect(gate).toContain("userStatus === 'ARCHIVED'")
+        const gate = rule.slice(start, rule.indexOf("\n", start))
+        expect(gate).toContain('userStatus === "ARCHIVED"')
+        expect(stripComments(readFileSync("lib/api-utils.ts", "utf8"))).toContain("accountRefusal(session.user)")
     })
 
     it("is reported to the browser under its own name", () => {

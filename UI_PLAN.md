@@ -1445,3 +1445,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     each checked as the server checks it and the first to fix focused.
 - **2026-10-30:** In #125, found in the browser: when a request was asked
   stays on one line, its time not broken from its day in a narrow column.
+- **2026-10-30:** In #125, the Requests page refuses a suspended or
+  archived account, a banned company's, one whose subscription has lapsed,
+  and anyone but the Super Admin under maintenance, as the requests API
+  does. The page reads the database itself, past the API's handler, so it
+  showed them their requests, and others' they see (found by Codex on PR
+  125). The rule is one function now, which the handler asks too.

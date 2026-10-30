@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { askedPage, pageRedirect } from "@/lib/list-page"
+import { accountRefusal } from "@/lib/account-refusal"
+import AccessDenied from "@/components/AccessDenied"
 import { REQUEST_KINDS, requestFeed, tabsFor, type RequestKind, type RequestsShow, type RequestsTab, type Viewer } from "@/lib/requests/feed"
 import RequestsClient from "./RequestsClient"
 
@@ -17,6 +19,9 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     const session = await getServerSession(authOptions)
     if (!session) redirect("/login")
     const viewer = session.user as unknown as Viewer
+    // Refused as the requests API refuses it: suspended, banned, lapsed or
+    // under maintenance. This page reads the database itself, past the API.
+    if (accountRefusal(viewer)) return <AccessDenied />
     const superAdmin = viewer.role === "SUPER_ADMIN"
     const tabs = tabsFor(viewer)
 

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "./api-response"
 import { knownRefusal } from "./api-errors"
 import { BUNDLE_NAMES, moduleForApiPath, requireFeature } from "@/lib/features"
-import { isBlockedBySubscription } from "@/lib/billing/state"
+import { accountRefusal } from "@/lib/account-refusal"
 import { AuditLogService } from "./services/audit-log.service"
 import { isNextInternalError } from "./next-internal-error"
 import * as Sentry from "@sentry/nextjs"
@@ -238,17 +238,12 @@ export function withStandardHandler(
             // both of which were written after real incidents where a blocked
             // request silently discarded somebody's in-progress work.
             //
-            // The company's own Admin is never blocked — they are the person
-            // who has to see what is wrong and renew it. Super Admin likewise.
-            const subscriptionLocked = isBlockedBySubscription(
-                (session.user.subscription?.state ?? 'ACTIVE') as any,
-                session.user.role
-            ) && !isHeartbeat
-
-            const isSuspendedOrBanned = (session.user.userStatus === 'SUSPENDED' || session.user.userStatus === 'ARCHIVED' || session.user.companyBanned || subscriptionLocked) && !isHeartbeat
-            const isMaintenanceBlocked = !!session.user.maintenanceMode && session.user.role !== 'SUPER_ADMIN' && !isHeartbeat
-
-            const isRestricted = isSuspendedOrBanned || isMaintenanceBlocked
+            // The company's own Admin is never blocked by it — they are the
+            // person who has to see what is wrong and renew it. Super Admin
+            // likewise. The rule is lib/account-refusal.ts, which a page that
+            // reads the database itself asks too.
+            const refusal = isHeartbeat ? null : accountRefusal(session.user)
+            const isRestricted = refusal !== null
 
             if (isRestricted) {
                 const isEmergencySave = req.headers.get('x-emergency-save') === 'true'
@@ -272,8 +267,8 @@ export function withStandardHandler(
                 // Allow ONLY a one-time draft save during suspension/maintenance
                 if (!(isEmergencySave && isDraftUpload)) {
                     return ApiResponse.forbidden(
-                        isMaintenanceBlocked && !isSuspendedOrBanned ? "System is under maintenance"
-                            : subscriptionLocked ? "This company's subscription has expired. Please contact your administrator."
+                        refusal === 'MAINTENANCE' ? "System is under maintenance"
+                            : refusal === 'SUBSCRIPTION' ? "This company's subscription has expired. Please contact your administrator."
                                 : "Account suspended or company banned"
                     )
                 }
