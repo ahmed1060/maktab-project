@@ -1281,3 +1281,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** In #122, Vercel's web interface audit of an obligation's
   page: its messages end their sentences, and "Saving…" says it's busy
   with an ellipsis, in both languages.
+- **2026-10-30:** In #122, an obligation's page left open across its
+  deadline locks then: it keeps the server's time for its first paint and
+  moves it on just after the deadline. It held the server's time for good,
+  so adding files and saving a draft stayed open until a reload (found by
+  Codex on PR 122). In the browser, a deadline 30 seconds off locked the
+  page after it without a reload.
