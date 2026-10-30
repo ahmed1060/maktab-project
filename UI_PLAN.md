@@ -1278,3 +1278,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   their name, "By Hana Saad", on the Tasks list, the Obligations list and an
   obligation's page. It's saved with their role's code before it, and the
   three showed "By ADMIN Hana Saad".
+- **2026-10-30:** In #122, Vercel's web interface audit of an obligation's
+  page: its messages end their sentences, and "Saving…" says it's busy
+  with an ellipsis, in both languages.

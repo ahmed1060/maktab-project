@@ -183,6 +183,17 @@ describe("its words", () => {
         }
     })
 
+    it("end their sentences, and say they're busy with an ellipsis (web interface audit)", () => {
+        for (const key of ["overdue_obligation_alert_msg", "pending_confirmation_msg", "obligation_finalized_msg"] as const) {
+            expect(en[key], key).toMatch(/\.$/)
+            expect(ar[key], key).toMatch(/\.$/)
+        }
+        for (const key of ["saving", "submitting_obligation"] as const) {
+            expect(en[key], key).toMatch(/…$/)
+            expect(ar[key], key).toMatch(/…$/)
+        }
+    })
+
     it("speak of an obligation, not a task", () => {
         expect(en.obligation_assignee_deleted_msg).not.toMatch(/task/i)
         expect(ar.obligation_assignee_deleted_msg).not.toContain("مهمة")
