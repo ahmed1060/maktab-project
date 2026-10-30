@@ -347,9 +347,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      fourth Create task, merged in #120 on 2026-10-30, and the fifth Add
      obligation, merged in #121 on 2026-10-30, and the sixth an
      obligation's page, merged in #122 on 2026-10-30. The seventh is a
-     task's page, in two parts: its page and dialogs, open for review in
-     #123, then its costs, location history, submission form and edit
-     dialog;
+     task's page, in two parts: its page and dialogs, merged in #123 on
+     2026-10-30, then its costs, location history, submission form and
+     edit dialog, open for review in #124;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1365,3 +1365,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   task but not adjust pay was refused; it fell on the first person the
   task is for, whoever was late; and it wasn't tied to the task. One person
   is picked already when the task is for only one. Found while moving it.
+- **2026-10-30:** A task's page, part 1, was merged in #123, and its part 2
+  opens for review in #124 (§5 step 5).

@@ -2061,3 +2061,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-30:** A task's costs move onto the building blocks in its
   page's second part (`UI_PLAN.md` §5): each with its description, its
   receipt and what came from a cash advance (§4.5, §6.2, §7.5), as before.
+- **2026-10-30:** A task's page, part 1, was merged in #123 (`UI_PLAN.md`
+  §5), and its part 2, with its costs, opens in #124.
