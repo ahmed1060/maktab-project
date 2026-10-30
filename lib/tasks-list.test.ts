@@ -96,6 +96,15 @@ describe("the Tasks list", () => {
         expect(await tasksList([task()])).toContain("view_task")
     })
 
+    it("offers it on a phone's card too, where the table isn't shown (found by Codex on PR 118)", async () => {
+        const cards = (html: string) => html.slice(html.indexOf('<ul class="ui-cards"'))
+        const start = cards(await tasksList([task({ assignees: [me] })], { reach: null, view: "my" }))
+        expect(start).toContain("start_task")
+        expect(start).toContain('href="/dashboard/tasks/t1"')
+        expect(cards(await tasksList([task({ assignees: [me], status: "IN_PROGRESS" })], { reach: null, view: "my" }))).toContain("continue_task")
+        expect(cards(await tasksList([task()]))).toContain("view_task")
+    })
+
     it("shows each assignee their own cost on a shared task", async () => {
         const html = await tasksList([task({ assignees: [me, mona], memberCosts: { me: 150 } })], { reach: null, view: "my" })
         expect(html).toContain("tasks_my_cost")

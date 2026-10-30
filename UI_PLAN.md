@@ -1176,3 +1176,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** In #118, a deadline's digits line up with the rows
   above and below it, in the Tasks list and on the dashboard (Vercel's
   web interface audit).
+- **2026-10-30:** In #118, a task's card on a phone has Start task,
+  Continue task or View task too, at the end of its last line. Phones show
+  the cards, not the table, so whoever a task is for lost the button that
+  says what's next there (found by Codex).

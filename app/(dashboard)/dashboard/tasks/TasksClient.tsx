@@ -276,7 +276,9 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
                             ...(myCost(task) > 0 ? [{ icon: CoinsIcon, text: <span>{t('tasks_my_cost')}: <span className="ui-num">{money(myCost(task))}</span></span> }] : []),
                             ...(decidedBy(task) ? [{ icon: UserCheckIcon, text: <bdi>{decidedBy(task)}</bdi> }] : []),
                         ]}
-                        foot={<>{due(task)}{points(task)}</>}
+                        // What's next is on a phone's card too, where the
+                        // table isn't shown (found by Codex on PR 118).
+                        foot={<>{due(task)}<span className="ui-row-actions">{points(task)}{action(task)}</span></>}
                     />
                 )}
                 footer={<Pager page={page} pageCount={totalPages} onPage={p => go({ page: String(p) })} summary={countOf(t, locale, total, 'tasks')} />}
