@@ -1211,3 +1211,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Create task is the page's one primary button.
 - **2026-10-30:** The Obligations list was merged in #119, and Create task
   opens for review in #120 (§5 step 5).
+- **2026-10-30:** In #120, Create task's deadline shows its time as the
+  rest of the app does, "12:00 pm" rather than "12:00", and in Arabic the
+  title's and description's limits are written in Arabic digits, as the
+  obligation form's title limit is too.

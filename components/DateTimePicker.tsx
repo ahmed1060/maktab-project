@@ -183,7 +183,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
 
     // As a field, the date and time read in the page's language.
     const fieldLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
-    const fieldText = (date: Date) => `${date.toLocaleDateString(fieldLocale, { day: 'numeric', month: 'short', year: 'numeric' })}, ${date.toLocaleTimeString(fieldLocale, { hour: 'numeric', minute: '2-digit' })}`
+    const fieldText = (date: Date) => `${date.toLocaleDateString(fieldLocale, { day: 'numeric', month: 'short', year: 'numeric' })}, ${date.toLocaleTimeString(fieldLocale, { hour: 'numeric', minute: '2-digit', hour12: true })}`
 
     return (
         <div ref={containerRef} className={asField ? 'ui-field' : undefined} style={asField ? undefined : { position: 'relative', width: '100%', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
+import { ar } from "./translations/ar"
 
 /**
  * Create task on the building blocks (UI_PLAN.md §5 step 5): its page header
@@ -82,5 +84,18 @@ describe("Create task", () => {
         expect(html).toMatch(/href="\/dashboard\/tasks"[^>]*>cancel</)
         expect(html).not.toContain('class="card"')
         expect(html).not.toContain("veil-")
+    })
+})
+
+describe("Create task's words and numbers", () => {
+    it("writes the limits of a title and description in Arabic digits in Arabic", () => {
+        expect(ar.task_title_validation).toContain("٣ و ١٠٠")
+        expect(ar.task_description_validation).toContain("١٠ و ١٠٠٠")
+        expect(ar.task_title_validation + ar.task_description_validation).not.toMatch(/[0-9]/)
+    })
+
+    it("shows the deadline's time as the rest of the app does, 3:00 pm rather than 15:00", () => {
+        const picker = readFileSync("components/DateTimePicker.tsx", "utf8")
+        expect(picker).toContain("toLocaleTimeString(fieldLocale, { hour: 'numeric', minute: '2-digit', hour12: true })")
     })
 })
