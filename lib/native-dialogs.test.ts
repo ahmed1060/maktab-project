@@ -95,7 +95,7 @@ describe("the app draws its own dialogs", () => {
 
 describe("what replaced them says the same thing", () => {
     const PAYROLL = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
-    const REQUEST = readFileSync("components/requests/ViewRequestModal.tsx", "utf8")
+    const REQUEST = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
     const MODAL = readFileSync("components/ConfirmModal.tsx", "utf8")
 
     it("the payroll screen confirms through the themed modal", () => {
@@ -141,10 +141,10 @@ describe("what replaced them says the same thing", () => {
         }
     })
 
-    it("the request delete confirms in place", () => {
-        expect(REQUEST).toMatch(/<ConfirmModal[\s/>]/)
-        expect(REQUEST).toContain("import ConfirmModal from '@/components/ConfirmModal'")
-        expect(REQUEST).toContain("confirm_item_delete_title")
+    it("the request delete confirms in place, in a dialog of the building blocks (UI_PLAN.md §2.3)", () => {
+        expect(REQUEST).toContain("open={!!deleting}")
+        expect(REQUEST).toContain("title={t('requests_delete_title')}")
+        expect(REQUEST).not.toMatch(NATIVE)
     })
 })
 

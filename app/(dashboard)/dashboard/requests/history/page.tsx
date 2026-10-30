@@ -1,13 +1,10 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import RequestsHistoryClient from "./RequestsHistoryClient"
 
-export default async function RequestsHistoryPage() {
-    const session = await getServerSession(authOptions)
-    if (!session) redirect("/login")
-
-    const userRole = (session.user as any).role
-
-    return <RequestsHistoryClient userRole={userRole} />
+/**
+ * Done requests are on the Requests page now (UI_PLAN.md §2.3): an old link
+ * here lands on Done, with the request it picked out.
+ */
+export default async function RequestsHistoryPage(props: { searchParams: Promise<{ highlight?: string }> }) {
+    const { highlight } = await props.searchParams
+    redirect(`/dashboard/requests?${new URLSearchParams({ show: 'done', ...(highlight ? { highlight } : {}) })}`)
 }

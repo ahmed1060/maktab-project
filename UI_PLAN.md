@@ -1421,3 +1421,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   phones and flagged punches; then name changes and role requests. Phones
   and flagged punches join it, and the Super Admin's Role changes stay
   their own. The first part opens for review in #125 (§5 step 5).
+- **2026-10-30:** In #125, the one Requests page, part 1 (§2.3):
+  - `/dashboard/requests` on the building blocks: its page header with New
+    request, Mine and To review, and a filter bar with the search, Waiting
+    or Done, who asked (on To review), and the kind (once there's more than
+    one).
+  - Every request is a row that reads the same way: what it's for, who
+    asked (on To review), when, its status as a badge in words, and its
+    next step for whoever may decide it (Start, then Mark as done). Its
+    details and Delete are in its More actions; its details open in a
+    dialog with when it was asked, started and done.
+  - Its rows come from one feed on the server (`lib/requests/feed.ts`),
+    which reads each kind through its own rules of who sees and decides
+    it, merges them newest first and pages them. Its first kind is
+    internal requests, by the request service's own rules: To review is
+    everyone else's a person sees, at their reach, and its buttons are
+    where they may decide.
+  - The history page folds in as Done: an old link lands there, with the
+    request it picked out. A notification opens its request on its tab,
+    with Waiting or Done by its status, without asking for its status
+    first.
+  - Asking for something is a dialog of labelled fields, with their counts,
+    each checked as the server checks it and the first to fix focused.

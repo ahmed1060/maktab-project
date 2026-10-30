@@ -40,8 +40,6 @@ describe("list screens reset to page 1 during render, not in an effect", () => {
     // disagreed.
     const SCREENS = [
         "app/(dashboard)/dashboard/all-users/page.tsx",
-        "app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx",
-        "components/requests/RequestsSection.tsx",
     ]
     for (const path of SCREENS) {
         it(path, () => {

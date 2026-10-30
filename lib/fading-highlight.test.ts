@@ -35,8 +35,7 @@ describe("no screen goes back to copying it by hand", () => {
     const SCREENS = [
         "app/(dashboard)/dashboard/day-off-requests/page.tsx",
         "app/(dashboard)/dashboard/employees/[id]/history/page.tsx",
-        "app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx",
-        "components/requests/RequestsSection.tsx",
+        "app/(dashboard)/dashboard/requests/RequestsClient.tsx",
     ]
     for (const path of SCREENS) {
         it(path, () => {

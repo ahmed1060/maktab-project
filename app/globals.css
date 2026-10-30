@@ -137,7 +137,6 @@
   --info-border-indigo: #a5b4fc;
   --info-fg-deep: #075985;
   --info-fg-indigo: #1e40af;
-  --info-solid-sky-light: #38bdf8;
 
   --accent-solid: #a855f7;
   --accent-solid-deep: #7c3aed;
@@ -1220,7 +1219,6 @@ input::-webkit-credentials-auto-fill-button {
     --info-border-indigo: #3d4b7a;
     --info-fg-deep: #96d4f5;
     --info-fg-indigo: #9db4f0;
-    --info-solid-sky-light: #5ec0ed;
 
     --lifetime-fg: #c4a8f5;
     --accent-solid: #a86ef0;

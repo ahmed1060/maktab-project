@@ -58,15 +58,6 @@ describe("a list's rows, kept within one company", () => {
         const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
         expect(dayOff).toContain("const requestsFailed = loadFailed(scopedRequests, requestsError, requestsQuery)")
         expect(dayOff).toContain("<EmptyState icon={WarningCircleIcon} title={t('day_off_requests_load_failed')} action={<Button busy={requestsRetrying} onClick={() => { void fetchRequests() }}>{t('try_again')}</Button>} />")
-        for (const [file, url] of [["components/requests/RequestsSection.tsx", "requestsUrl"], ["app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx", "historyUrl"]]) {
-            const page = readFileSync(file, "utf8")
-            expect(page).toContain(`const failed = loadFailed(scoped, error, ${url})`)
-            expect(page).toContain("{t('requests_load_failed')}")
-            expect(page).toContain("{t('try_again')}")
-        }
-        // Nor does the Requests pages' total say 0 when there's no count.
-        expect(readFileSync("components/requests/RequestsSection.tsx", "utf8")).toContain("totalCount={listed ? total : undefined}")
-        expect(readFileSync("app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx", "utf8")).toContain("totalCount={!failed && result ? total : undefined}")
         expect(readFileSync("components/EmployeeFilter.tsx", "utf8")).toContain("{totalCount !== undefined && <div style={{")
     })
 
@@ -81,15 +72,13 @@ describe("a list's rows, kept within one company", () => {
         for (const page of [employees, dayOff]) expect(page).not.toMatch(/useSWR\([^)]*, fetcher, \{ keepPreviousData: true \}\)/)
     })
 
-    // The same on the other pages a Super Admin switches company on. Payroll
-    // keeps no other register at all (lib/settings-write.test.ts).
-    it("is how Requests and Requests history keep theirs", () => {
-        const requests = readFileSync("components/requests/RequestsSection.tsx", "utf8")
-        expect(requests).toContain("useSWR(scopedKey(requestsUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })")
-        expect(requests).toContain("const result = forScope(scoped, selectedCompanyId)")
-        const history = readFileSync("app/(dashboard)/dashboard/requests/history/RequestsHistoryClient.tsx", "utf8")
-        expect(history).toContain("useSWR(scopedKey(historyUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })")
-        expect(history).toContain("const result = forScope(scoped, selectedCompanyId)")
-        for (const page of [requests, history]) expect(page).not.toMatch(/useSWR\((requestsUrl|historyUrl), fetcher/)
+    // The Requests page is read on the server now (UI_PLAN.md §2.3): the
+    // Super Admin's company is in its address, so a page for another
+    // company is never kept, and only the Super Admin's reach moves with it.
+    it("is how the Requests page follows the Super Admin's company", () => {
+        const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+        expect(client).toContain("go({ companyId: selectedCompanyId ?? '' })")
+        const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
+        expect(server).toContain("companyId: superAdmin ? searchParams.companyId || null : null")
     })
 })
