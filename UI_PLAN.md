@@ -1117,3 +1117,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** `CLIENTS_PLAN.md`'s 7d was merged in #115, so its steps
   0–7 are done. Four small fixes open for review in #116, before the rest
   of this plan (§5 step 5).
+- **2026-10-30:** On a task's page, a cost's amount stays on one line, its
+  currency with it, as a total tile's does (`DESIGN.md` §5.5). On a phone,
+  "350.00 EGP" had "EGP" on a line of its own; the description beside it
+  wraps instead now.

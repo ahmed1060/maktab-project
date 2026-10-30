@@ -75,7 +75,8 @@ function TaskCostsSectionBody({
                                 </div>
                                 <div style={{ textAlign: 'center', background: 'var(--warn-bg)', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid var(--warn-border)' }}>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--warn-fg)' }}>{money(c.amount)}</div>
+                                    {/* An amount is never broken from its currency (DESIGN.md §5.5): the description beside it wraps instead. */}
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--warn-fg)', whiteSpace: 'nowrap' }}>{money(c.amount)}</div>
                                 </div>
                             </div>
                             {/* Part of it from the author's cash advance (CLIENTS_PLAN.md §7.5): a line of its own, so the amount's box stays narrow on a phone. */}
