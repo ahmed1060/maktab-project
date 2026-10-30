@@ -342,7 +342,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in a small PR (§4.5). After four small fixes, merged in #116 on
      2026-10-30, the first was the Costs page's Employee costs tab, beside
      the two tabs already on them, merged in #117 on 2026-10-30. The
-     second is the Tasks list, open for review in #118;
+     second was the Tasks list, merged in #118 on 2026-10-30. The third is
+     the Obligations list, open for review in #119;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1192,3 +1193,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     its status and who decided it, and Start, Continue or View, on the
     phone's cards too.
   - A page past the last goes to the last there is.
+- **2026-10-30:** The Tasks list was merged in #118, and the Obligations
+  list opens for review in #119 (§5 step 5).
