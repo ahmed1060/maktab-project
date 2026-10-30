@@ -1287,3 +1287,32 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   so adding files and saving a draft stayed open until a reload (found by
   Codex on PR 122). In the browser, a deadline 30 seconds off locked the
   page after it without a reload.
+- **2026-10-30:** A task's page moves onto the building blocks (§5 step 5),
+  in two parts. The first is the page and its dialogs; its costs, location
+  history, submission form and edit dialog keep their own blocks until the
+  second.
+  - Its page header: its title with its status, and once it's done, whether
+    its costs are paid; who decided it once it's decided; the way back to
+    the list. A manager decides one handed in from there, Approve the
+    primary button and Reject, and edits one being worked on.
+  - Its notices in cards: someone it was for was deleted, with Transfer
+    task; and it was changed since it was given, with I understand and,
+    for whoever it's for, how the title or description changed.
+  - Its details in a card: its description, where it's done (its map pin a
+    link that says it opens a new tab), its client, who assigned it, its
+    deadline (marked overdue while it's still to be done), its points and
+    who it's for. Transfer task, Mark as paid or pending, Return to in
+    progress (a Super Admin's) and Delete task are in its More actions.
+  - Its notes newest first, and its files as chips.
+  - Its dialogs on the building blocks: Delete, Approve or Reject (with
+    its points when it was transferred), Submit without adding anything,
+    Delete an item or a location, Return to in progress, and Transfer task
+    with the shared people checklist, asked for when it opens.
+  - Past its deadline, for whoever does it, each block is told it's locked:
+    the submission form says so, and adding files, costs, a location or a
+    draft, and taking files, notes, costs or locations off, are switched
+    off. A pop-up caught any click on the page by the words on what was
+    clicked. The deadline moves on while the page is open, as on an
+    obligation's page (lib/useDeadlineClock.ts).
+  - An address that isn't a task says so on a page with the way back.
+  - Its words are in sentence case, and its messages end their sentences.

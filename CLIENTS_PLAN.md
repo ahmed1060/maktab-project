@@ -2052,3 +2052,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   touches clients or locations.
 - **2026-10-30:** In #122, the Tasks list says who decided a task by their
   name, without the role's code saved before it (`UI_PLAN.md` §5).
+- **2026-10-30:** A task's page moves onto the building blocks, in two
+  parts (`UI_PLAN.md` §5). In the first, where it's done and its client
+  are among its details, its map pin a link; its costs and charges keep
+  their own block until the second.

@@ -54,7 +54,7 @@ describe("the bar", () => {
     })
 
     it("starts for the buttons that go back, which can't be links", () => {
-        for (const f of ["app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "app/(dashboard)/dashboard/profile-requests/page.tsx", "app/(dashboard)/dashboard/tasks/[id]/client.tsx", "components/EmployeeProfileForm.tsx"]) {
+        for (const f of ["app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "app/(dashboard)/dashboard/profile-requests/page.tsx", "components/EmployeeProfileForm.tsx"]) {
             expect(readFileSync(f, "utf8"), f).toMatch(/startNavigationProgress\(\); router\.back\(\)/)
         }
     })
@@ -78,6 +78,10 @@ describe("the bar", () => {
             expect(src, file).not.toContain(`onClick={() => router.push(${to})}`)
             expect(src, file).toContain(`<ButtonLink href={${to}}>`)
         }
+        // A task's page goes back to the list by its page header's back link, as an obligation's does.
+        const taskPage = readFileSync("app/(dashboard)/dashboard/tasks/[id]/client.tsx", "utf8")
+        expect(taskPage).not.toContain("router.back()")
+        expect(taskPage).toContain("back={{ href: '/dashboard/tasks', label: modules.label('tasks') }}")
         // An obligation's page goes back to the list by its page header's back link.
         const obligation = readFileSync("app/(dashboard)/dashboard/obligations/[id]/client.tsx", "utf8")
         expect(obligation).not.toContain("onClick={() => router.push('/dashboard/obligations')}")

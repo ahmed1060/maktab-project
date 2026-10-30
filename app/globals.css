@@ -105,7 +105,6 @@
      badge sat on an unusual ground, and each of those needs its own dark
      counterpart rather than being collapsed into the nearest neighbour. */
   --ok-bg-strong: #bbf7d0;
-  --ok-bg-faint: #d1fae5;
   --ok-fg-strong: #15803d;
   --ok-fg-deep: #065f46;
   --ok-solid-alt: #22c55e;
@@ -120,7 +119,6 @@
   --warn-bg-warm: #ffedd5;
   --warn-bg-warm-subtle: #fff7ed;
   --warn-border-warm: #fed7aa;
-  --warn-border-warm-firm: #fdba74;
   --warn-fg-warm: #9a3412;
   --warn-solid-warm: #fb923c;
 
@@ -154,9 +152,7 @@
      2.1 to 3.8:1. Each fill is the same hue darkened until white on it is at
      least 4.5:1 (lib/contrast.test.ts). */
   --ok-fill: #0b7b56;
-  --ok-fill-hover: #0e672f;
   --info-fill: #0b61ef;
-  --info-fill-hover: #134dce;
   --warn-fill: #966006;
   --warn-fill-warm: #ae5104;
   --danger-fill: #d71212;
@@ -1181,7 +1177,6 @@ input::-webkit-credentials-auto-fill-button {
     --ok-fg: #6fdc9b;
     --ok-solid: #2ebd77;
     --ok-bg-strong: #12402a;
-    --ok-bg-faint: #0d3320;
     --ok-fg-strong: #7ee3a6;
     --ok-fg-deep: #9beec0;
     --ok-solid-alt: #35c97f;
@@ -1205,7 +1200,6 @@ input::-webkit-credentials-auto-fill-button {
     --warn-bg-warm: #3a2110;
     --warn-bg-warm-subtle: #2a1809;
     --warn-border-warm: #6b3d1c;
-    --warn-border-warm-firm: #8a4f24;
     --warn-fg-warm: #f5b183;
     --warn-solid-warm: #e08a4e;
     --warn-bg-yellow: #35300d;
@@ -1248,9 +1242,7 @@ input::-webkit-credentials-auto-fill-button {
        at least 3:1 against the dark surfaces, so a badge doesn't sink into
        the card it sits on. */
     --ok-fill: #1f8051;
-    --ok-fill-hover: #1d7348;
     --info-fill: #1f76b2;
-    --info-fill-hover: #2d6994;
     --warn-fill: #936916;
     --warn-fill-warm: #ae5a1f;
     --danger-fill: #e11117;

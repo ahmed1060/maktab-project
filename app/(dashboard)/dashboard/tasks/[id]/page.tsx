@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { verifyResourceAccess } from "@/lib/security"
 import AccessDenied from "@/components/AccessDenied"
-import TaskDetailClient from "./client"
+import TaskDetailClient, { TaskNotFound } from "./client"
 import { can } from '@/lib/permissions/can'
 import { shapeTask } from '@/lib/permissions/shape'
 import type { CostRow } from '@/lib/task-costs'
@@ -35,7 +35,7 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
         }
     })
 
-    if (!task) return <div>Task not found</div>
+    if (!task) return <TaskNotFound />
 
     // Company isolation — without this, any logged-in user who knows (or
     // guesses/enumerates) a task ID from another company can view it, since
@@ -94,8 +94,11 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
         costs: task.costs.map((c): CostRow => ({ ...c, amount: Number(c.amount), fromAdvance: Number(c.fromAdvance), createdAt: c.createdAt.toISOString() })),
     }
 
+    // eslint-disable-next-line react-hooks/purity -- server-rendered once per request
+    const now = Date.now()
     return <TaskDetailClient
         task={serializedTask}
+        now={now}
         userRole={userRole}
         userId={userId}
         creatorName={creatorName}

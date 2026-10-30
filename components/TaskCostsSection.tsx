@@ -20,10 +20,12 @@ interface TaskCostsSectionProps {
     onPaymentStatusChange: (newStatus: string, targetUserId?: string) => void
     getMemberCosts: (taskObj: any) => Record<string, number>
     getMemberPaymentStatus: (taskObj: any) => Record<string, string>
+    /** Past its deadline, for whoever does it: a cost stays. */
+    locked?: boolean
 }
 
 function TaskCostsSectionBody({
-    task, userId, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus
+    task, userId, onDeleteItem, onPaymentStatusChange, getMemberCosts, getMemberPaymentStatus, locked = false
 }: TaskCostsSectionProps) {
     const { t, locale } = useLanguage()
     const { can } = useCan()
@@ -57,7 +59,7 @@ function TaskCostsSectionBody({
                                 <div style={{ textAlign: locale === 'ar' ? 'right' : 'left', minWidth: 0, overflowWrap: 'anywhere' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '0.25rem' }}>{t('cost_description_placeholder').split(' ')[0]}</div>
-                                        {task.status === 'IN_PROGRESS' && (c.authorId === userId || can('tasks.edit')) && (
+                                        {!locked && task.status === 'IN_PROGRESS' && (c.authorId === userId || can('tasks.edit')) && (
                                             <button aria-label={t('delete_cost_title')} onClick={() => onDeleteItem('COST', c.id)} style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', display: 'flex' }} title={t('delete_cost_title')}>
                                                 <TrashIcon size={14} />
                                             </button>
