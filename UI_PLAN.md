@@ -1215,3 +1215,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   rest of the app does, "12:00 pm" rather than "12:00", and in Arabic the
   title's and description's limits are written in Arabic digits, as the
   obligation form's title limit is too.
+- **2026-10-30:** In #120, reloading or closing Create task with something
+  typed asks first, rather than losing it; not once it's being sent
+  (Vercel's web interface audit).

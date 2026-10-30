@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useRouter } from 'next/navigation'
@@ -118,6 +118,16 @@ export default function NewTaskPage() {
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Reloading or closing the tab with something typed asks first, as it
+    // would lose it; not once it's being sent (Vercel's web interface audit).
+    const started = !!(title || description || assigneeIds.length || deadline || difficulty || place.clientId || place.locationId)
+    useEffect(() => {
+        if (!started || isSubmitting) return
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [started, isSubmitting])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

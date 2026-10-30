@@ -99,3 +99,11 @@ describe("Create task's words and numbers", () => {
         expect(picker).toContain("toLocaleTimeString(fieldLocale, { hour: 'numeric', minute: '2-digit', hour12: true })")
     })
 })
+
+describe("leaving Create task with something typed", () => {
+    it("asks first, unless it's being sent (web interface audit)", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/tasks/new/page.tsx", "utf8")
+        expect(page).toContain("window.addEventListener('beforeunload', warn)")
+        expect(page).toContain("if (!started || isSubmitting) return")
+    })
+})
