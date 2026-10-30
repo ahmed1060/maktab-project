@@ -1089,3 +1089,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   whether to pay what the person is owed in the same hand-over.
 - **2026-10-30:** `CLIENTS_PLAN.md`'s 7a was merged in #112, and 7b opens
   for review in #113.
+- **2026-10-30:** With `CLIENTS_PLAN.md`'s 7c, the Admins and Team
+  Leaders of the companies already there see the Costs page's Cash
+  advances tab once their company is allowed cash advances: an Admin
+  everyone, with Give advance, Record return and Correct balance, and a
+  Team Leader their team and themselves, with History only.
