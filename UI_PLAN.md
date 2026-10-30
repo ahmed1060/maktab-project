@@ -1269,3 +1269,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     back, not a bare line.
   - Its words are in sentence case, and speak of an obligation, not a
     task.
+- **2026-10-30:** In #122, a row menu that's open closes when the window
+  is resized, or a phone turned, as it does on a scroll. It threw instead:
+  it asked whether the window was inside the menu, and the window isn't
+  in the page. Found on an obligation's page, and the same in every list's
+  menu.

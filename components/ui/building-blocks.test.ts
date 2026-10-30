@@ -493,6 +493,18 @@ describe("the row menu", () => {
         expect(html).not.toContain('role="menu"')
     })
 
+    it("closes when the window is resized, which isn't a node in the page, without throwing (found on an obligation's page)", async () => {
+        const { movedAway } = await import("./Menu")
+        const inside = { nodeType: 1 }
+        // As the browser's contains() does, refusing anything that isn't a node.
+        const menu = { contains: (n: unknown) => { if (!n || typeof n !== "object" || !("nodeType" in n)) throw new TypeError("parameter 1 is not of type 'Node'"); return n === inside } }
+        const theWindow = {}
+        expect(() => movedAway(menu, theWindow as EventTarget)).not.toThrow()
+        expect(movedAway(menu, theWindow as EventTarget)).toBe(true)
+        expect(movedAway(menu, { nodeType: 1 } as unknown as EventTarget)).toBe(true)
+        expect(movedAway(menu, inside as unknown as EventTarget)).toBe(false)
+    })
+
     it("puts destructive items last, after a hairline", () => {
         const src = readFileSync("components/ui/Menu.tsx", "utf8")
         expect(src).toContain("const ordered = [...items.filter(i => !i.danger), ...items.filter(i => i.danger)]")
