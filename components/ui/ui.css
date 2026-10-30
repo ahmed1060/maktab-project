@@ -1176,6 +1176,7 @@ a.ui-row:focus-visible {
 }
 .ui-due {
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .ui-due[data-overdue="true"] {
   display: inline-flex;
@@ -1590,6 +1591,11 @@ a.ui-donut-row:focus-visible {
   font-size: var(--text-lg);
   line-height: var(--leading-lg);
   color: var(--ink-2);
+}
+/* Why it's empty, when that isn't plain, as a Team Leader with no team yet. */
+.ui-empty-detail {
+  margin: 0;
+  max-width: 48ch;
 }
 
 /* ── Arabic (§3.2, §7): never letter-spaced, a little more line height. ── */

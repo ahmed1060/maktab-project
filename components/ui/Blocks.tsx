@@ -313,11 +313,12 @@ export function TotalTiles({ items }: { items: Tile[] }) {
 }
 
 /** What's missing, and the button to add one: an empty list is a place to start. */
-export function EmptyState({ icon, title, action }: { icon: PhosphorIcon; title: ReactNode; action?: ReactNode }) {
+export function EmptyState({ icon, title, detail, action }: { icon: PhosphorIcon; title: ReactNode; detail?: ReactNode; action?: ReactNode }) {
     return (
         <div className="ui-empty">
             <Icon icon={icon} size={40} />
             <p className="ui-empty-title">{title}</p>
+            {detail && <p className="ui-empty-detail">{detail}</p>}
             {action}
         </div>
     )

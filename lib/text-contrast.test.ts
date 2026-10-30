@@ -61,9 +61,9 @@ describe("text contrast, light theme", () => {
     })
 
     it("small text isn't faded below 4.5:1", () => {
-        const task = readFileSync("components/TaskListItem.tsx", "utf8")
-        expect(task).not.toContain("fontSize: '0.75rem', opacity: 0.7")
-        // The dates sit on an overdue task's red card too.
+        // The dates sat on an overdue task's red card too. The Tasks list
+        // is on the building blocks now, its overdue rows marked with a red
+        // edge and the word "Overdue" (lib/tasks-list.test.ts).
         expect(ratio(token("text-soft"), token("danger-bg"))).toBeGreaterThanOrEqual(4.5)
 
         const audit = readFileSync("components/AuditLogFilter.tsx", "utf8")

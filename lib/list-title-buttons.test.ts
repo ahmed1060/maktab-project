@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs"
  * button, so the keyboard reaches it (accessibility audit, 4 October 2026,
  * L1). Before, the heading itself took the click, which only a mouse could do.
  */
-describe.each(["components/TaskListItem.tsx", "components/ObligationListItem.tsx"])("%s", f => {
+describe.each(["components/ObligationListItem.tsx"])("%s", f => {
     const src = readFileSync(f, "utf8")
 
     it("opens the quick view from a button in the heading", () => {

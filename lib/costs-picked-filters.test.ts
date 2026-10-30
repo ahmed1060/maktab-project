@@ -38,8 +38,12 @@ describe("what's picked, ahead of the address", () => {
     })
 
     it("is what the tab's filters show", () => {
+        // The list's address, shared by the lists whose filters are in theirs.
+        const list = stripComments(readFileSync("components/filters/useListAddress.ts", "utf8"))
+        expect(list).toContain("picked: new URLSearchParams(shown.latest)")
+        expect(list).toContain("setShown(p => changed(p, changes))")
         const tab = stripComments(readFileSync("app/(dashboard)/dashboard/costs/CostsClient.tsx", "utf8"))
-        expect(tab).toContain("const picked = new URLSearchParams(shown.latest)")
-        expect(tab).toContain("setShown(p => changed(p, changes))")
+        expect(tab).toContain("useListAddress('/dashboard/costs')")
+        expect(tab).toContain("const filters = filtersOf(picked)")
     })
 })

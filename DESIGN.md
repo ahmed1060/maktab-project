@@ -583,7 +583,9 @@ These are built once, in the building-blocks PR, and every page uses them
   dialog. The dialog shows all of it, with the actions the person may take
   on it.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
-  missing, and the button to add one.
+  missing, and the button to add one. When why it's empty isn't plain, a
+  second line says why, and who can change it: a Team Leader with no one
+  on their team yet sees an empty list that's right, and looks broken.
 - **A list that didn't load** says so in the same block: a warning icon,
   one line saying what didn't load, and Try again, which shows it's busy
   while it tries. It never says there's nothing, or offers to add one, when
@@ -865,3 +867,6 @@ changed:
   lines, so every tab shows (§5.5, Tabs). The Costs page's three ran past
   the edge in English, Cash advances cut off mid-word even when it was the
   one picked.
+- **2026-10-30:** An empty state can say why it's empty, on a second line,
+  when that isn't plain (§5.5, Empty state): the Tasks list's for a Team
+  Leader with no one on their team yet.

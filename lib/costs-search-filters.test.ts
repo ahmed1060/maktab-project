@@ -26,9 +26,12 @@ describe("the address a change is made to", () => {
     })
 
     it("is what the tab builds each change on, not the address of the render that made it", () => {
-        const tab = stripComments(readFileSync("app/(dashboard)/dashboard/costs/CostsClient.tsx", "utf8"))
         // Built on what's picked last, by an update whichever render's timer makes it (lib/costs-picked-filters.test.ts).
-        expect(tab).toContain("setShown(p => changed(p, changes))")
+        const list = stripComments(readFileSync("components/filters/useListAddress.ts", "utf8"))
+        expect(list).toContain("setShown(p => changed(p, changes))")
+        expect(list).toContain("go({ search: query.trim() })")
+        const tab = stripComments(readFileSync("app/(dashboard)/dashboard/costs/CostsClient.tsx", "utf8"))
+        expect(tab).toContain("useSearchField(filters.search, go)")
         expect(tab).not.toContain("new URLSearchParams(searchParams.toString())")
     })
 })

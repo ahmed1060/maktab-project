@@ -340,8 +340,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
 5. **The rest of this plan:**
    - the remaining old pages move to the building blocks one by one, each
      in a small PR (§4.5). After four small fixes, merged in #116 on
-     2026-10-30, the first is the Costs page's Employee costs tab, beside
-     the two tabs already on them, open for review in #117;
+     2026-10-30, the first was the Costs page's Employee costs tab, beside
+     the two tabs already on them, merged in #117 on 2026-10-30. The
+     second is the Tasks list, open for review in #118;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1158,3 +1159,24 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** In #117, the Costs page's subtitle no longer mentions
   salaries: "Monitor company expenses and financial logs". None of its
   three tabs has them, and it shows on all three now.
+- **2026-10-30:** The Tasks list moves onto the building blocks (§5 step
+  5), the second of the remaining old pages.
+  - Its page header, with Create new task as its one primary button, and
+    a Team Leader's two tabs, their own tasks and their team's.
+  - A filter bar: the search, the employee, the status, the client, the
+    location, the saved title, the dates, and the order within the page.
+    An employee, who sees only their own tasks, has the search, as before.
+  - The tasks as a table on computers and cards on phones: where each is
+    done, who gave it or who it's for, its deadline, overdue in words, its
+    points, its status and who decided it, and Start, Continue or View.
+  - Its address is handled as the Employee costs tab's is, by the same
+    hooks (`components/filters`), with the fixes Codex found on #117.
+- **2026-10-30:** The Employee costs tab was merged in #117, and the Tasks
+  list opens for review in #118 (§5 step 5).
+- **2026-10-30:** In #118, a deadline's digits line up with the rows
+  above and below it, in the Tasks list and on the dashboard (Vercel's
+  web interface audit).
+- **2026-10-30:** In #118, a task's card on a phone has Start task,
+  Continue task or View task too, at the end of its last line. Phones show
+  the cards, not the table, so whoever a task is for lost the button that
+  says what's next there (found by Codex).

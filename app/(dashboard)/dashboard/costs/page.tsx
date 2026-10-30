@@ -11,6 +11,7 @@ import CostsTabs, { type CostsTab } from '@/components/charges/CostsTabs'
 import ChargesTab from '@/components/charges/ChargesTab'
 import CashAdvancesTab from '@/components/cash-advances/CashAdvancesTab'
 import { CashAdvanceService } from '@/lib/services/cash-advance.service'
+import { askedPage, pageRedirect } from '@/lib/list-page'
 
 export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
@@ -51,9 +52,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
     if (tab === 'advances') return <CashAdvancesTab tabs={shown} />
     const tabs = shown.length > 1 ? <CostsTabs current="employee" tabs={shown} /> : null
 
-    // A page that's no page at all, as "0", is the first.
-    const asked = parseInt(searchParams.page || '1')
-    const page = asked >= 1 ? asked : 1
+    const { asked, page } = askedPage(searchParams.page)
     const limit = parseInt(searchParams.limit || '10')
     const skip = (page - 1) * limit
 
@@ -107,16 +106,9 @@ export default async function CostsPage(props: { searchParams: Promise<{
         : costsDue(owed.rows, searchParams.employeeId)
 
     const totalPages = Math.ceil(total / limit)
-    // A page past the last, as when its last task is paid elsewhere and the
-    // page is refreshed, goes to the last there is now, with the same
-    // filters: an empty list shows no pager to go back by (found by Codex
-    // on PR 117).
-    const last = Math.max(totalPages, 1)
-    if (page > last || page !== asked) {
-        const params = new URLSearchParams(Object.entries(searchParams).filter((e): e is [string, string] => typeof e[1] === 'string'))
-        params.set('page', String(Math.min(page, last)))
-        redirect(`/dashboard/costs?${params}`)
-    }
+    // A page past the last, as when its last task is paid elsewhere, goes to the last there is now.
+    const elsewhere = pageRedirect('/dashboard/costs', searchParams, asked, totalPages)
+    if (elsewhere) redirect(elsewhere)
 
     // What each person's cash advance paid of their costs on each task, shown beside what's to pay back (CLIENTS_PLAN.md §7.5).
     const advanced = tasksWithCosts.length === 0 ? [] : await prisma.taskCost.groupBy({
