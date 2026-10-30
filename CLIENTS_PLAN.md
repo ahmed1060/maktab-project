@@ -870,7 +870,7 @@ balance first, automatically:
   - 7c: the permissions for the companies already there, once 7a's role
     editor is live, as for charges (§6.8) (built);
   - 7d: leaving the company: a balance still held becomes a debt, its
-    source a cash advance (§7.3).
+    source a cash advance (§7.3) (built).
 - **Proposed, as 7a builds it:**
   - **Each entry keeps its amount signed,** so the balance is their sum:
     Given adds, Returned takes away, and a Correction does either. The
@@ -961,6 +961,28 @@ balance first, automatically:
   open nothing until the Super Admin allows a company cash advances
   (§7.6). Production had only built-in roles, and no cash advances grants,
   when 7c was built (checked read-only, 2026-10-30).
+- **Proposed, as 7d builds it:**
+  - **Leaving is ending the contract,** which is how the app records it,
+    with its final settlement. Whatever they still hold of a cash advance
+    becomes a debt then, in the same step: its source is the cash advance,
+    and it's due with the settlement.
+  - **An entry of its own, Became a debt,** takes the balance to nothing,
+    and the debt names it as its source, so the person's history says
+    where the money went.
+  - **The settlement takes it as it takes other debts** (as far as it
+    covers them, oldest first). What it can't cover stays outstanding, to
+    collect or write off; reinstated, they repay it through payroll as any
+    debt.
+  - **End Contract says so before it's ended:** "The 250 EGP of cash
+    advance they still hold becomes a debt", and the debt is counted with
+    the others it recovers.
+  - **A movement of the advance meanwhile** (a cost added, a return
+    recorded) after the settlement was worked out ends nothing: it says to
+    look again, as the statement would no longer add up.
+  - **Being suspended or deleted isn't leaving:** nobody is deleted for good
+    while they hold any (§7.4), and someone deleted, still holding money,
+    stays on the Cash advances tab for a return or a correction.
+  - **The debt shows as a cash advance** where a person's debts are listed.
 
 ---
 
@@ -1052,6 +1074,7 @@ balance first, automatically:
        My cash advance, was merged in #112 on 2026-10-30, and 7b, costs
        paid from the advance, in #113. 7c, the permissions for the
        companies already there, is built, and open for review in #114.
+       7d, a balance held on leaving becoming a debt, is built.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1956,3 +1979,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   Production's last migration is 7b's, none is unfinished, it has no
   roles of a company's own and no cash advances grants yet, and no
   company is allowed cash advances (checked read-only just before).
+- **2026-10-30:** Step 7's fourth PR, 7d, is built (§7.3, §7.8): ending
+  someone's contract turns what they still hold of a cash advance into a
+  debt, its source the advance, and an entry of its own, Became a debt,
+  takes their balance to nothing. The final settlement recovers it as it
+  recovers other debts, and what it can't cover stays outstanding. End
+  Contract says so before the contract is ended.
