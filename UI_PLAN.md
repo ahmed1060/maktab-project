@@ -1102,3 +1102,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and a person's debts list shows a cash advance's as one.
 - **2026-10-30:** `CLIENTS_PLAN.md`'s 7c was merged in #114, and 7d opens
   for review in #115.
+- **2026-10-30:** A task's costs show their amounts in the page's
+  language (`DESIGN.md` §3.3): Arabic-Indic digits in Arabic, and grouped
+  thousands in both, as every other amount. They were written out by hand,
+  in Latin digits either way.
