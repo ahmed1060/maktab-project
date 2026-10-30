@@ -75,7 +75,7 @@ export const en = {
         obligations_subtitle: "Manage recurring legal and financial company obligations",
         requests_subtitle: "Track and handle internal administrative requests",
         day_off_requests_subtitle: "Manage employee leave applications and absence records",
-        costs_subtitle: "Monitor company expenses, salaries, and financial logs",
+        costs_subtitle: "Monitor company expenses and financial logs",
         employees_subtitle: "Manage team profiles, performance, and salary settings",
         super_admins_subtitle: "High-level system administration and management",
         companies_subtitle: "Organization-level multi-company management",

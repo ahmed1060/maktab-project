@@ -1155,3 +1155,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   start just picked back from there for the end, and lost it (found by
   Codex). The selects showed what was picked only once the list came back,
   too.
+- **2026-10-30:** In #117, the Costs page's subtitle no longer mentions
+  salaries: "Monitor company expenses and financial logs". None of its
+  three tabs has them, and it shows on all three now.
