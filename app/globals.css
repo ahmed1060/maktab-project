@@ -280,7 +280,6 @@
                dark surface, not a faint white, or the content behind it reads
                straight through. */
   --veil-10: rgba(255, 255, 255, 0.1);
-  --veil-15: rgba(255, 255, 255, 0.15);
   --veil-20: rgba(255, 255, 255, 0.2);
   --veil-30: rgba(255, 255, 255, 0.3);
   --veil-40: rgba(255, 255, 255, 0.4);
@@ -1283,7 +1282,6 @@ input::-webkit-credentials-auto-fill-button {
     --chip-solid-fg: #f0f6fc;
 
     --veil-10: rgba(255, 255, 255, 0.04);
-    --veil-15: rgba(255, 255, 255, 0.05);
     --veil-20: rgba(255, 255, 255, 0.06);
     --veil-30: rgba(255, 255, 255, 0.07);
     --veil-40: rgba(255, 255, 255, 0.09);

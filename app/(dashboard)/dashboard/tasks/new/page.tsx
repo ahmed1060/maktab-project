@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useRouter } from 'next/navigation'
@@ -10,6 +10,7 @@ import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import TaskPlacePicker, { type TaskPlace } from '@/components/locations/TaskPlacePicker'
 import { NamePicker } from '@/components/ui'
+import { TASK_TITLE_MAX, TASK_DESCRIPTION_MAX, firstError } from '@/lib/new-task'
 import { pickIn, type CompanyPick } from '@/lib/saved-lists'
 import { useListNames } from '@/components/lists/useListNames'
 import { locationProblem, rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
@@ -26,12 +27,15 @@ import { cellToPrimitive } from '@/lib/xlsx-cell'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useCan } from '@/lib/useCan'
-import Link from 'next/link'
+import { useModules } from '@/lib/useModules'
+import { DownloadSimpleIcon, IdentificationCardIcon, UploadSimpleIcon } from '@phosphor-icons/react/ssr'
+import { Button, ButtonLink, Card, Field, Page, PageHeader, SearchInput, TextArea, TextInput } from '@/components/ui'
 
 const NO_CLIENTS: any[] = []
 
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
+    const modules = useModules()
     // The deadline floor offered to the picker, kept current while the form
     // stays open. See lib/useNow.ts.
     const now = useNow()
@@ -115,40 +119,50 @@ export default function NewTaskPage() {
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    // Reloading or closing the tab with something typed asks first, as it
+    // would lose it; not once it's being sent (Vercel's web interface audit).
+    const started = !!(title || description || assigneeIds.length || deadline || difficulty || place.clientId || place.locationId)
+    useEffect(() => {
+        if (!started || isSubmitting) return
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [started, isSubmitting])
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
         setError('')
         setFieldErrors({})
 
-        // Client-side Validation (matching server rules)
+        // Client-side Validation (matching server rules), in the order the
+        // fields are in, so the first one wrong is the first one found.
         const errors: { [key: string]: string } = {}
-        if (!title || title.length < 3 || title.length > 100) {
-            errors.title = t('task_title_validation' as any)
+        if (!title || title.length < 3 || title.length > TASK_TITLE_MAX) {
+            errors.title = t('task_title_validation')
         }
-        if (!description || description.length < 10 || description.length > 1000) {
-            errors.description = t('task_description_validation' as any)
-        }
-        if (!deadline) {
-            errors.deadline = t('select_deadline')
+        if (!description || description.length < 10 || description.length > TASK_DESCRIPTION_MAX) {
+            errors.description = t('task_description_validation')
         }
         if (!place.locationId) {
             errors.locationId = t('task_location_required')
         }
         if (assigneeIds.length === 0) {
-            errors.assigneeIds = t('select_employee_placeholder')
+            errors.assigneeIds = t('tasks_assignees_required')
+        }
+        if (!deadline) {
+            errors.deadline = t('tasks_deadline_required')
+        }
+        if (difficulty === '') {
+            errors.difficulty = t('tasks_points_required')
         }
 
-        if (Object.keys(errors).length > 0) {
+        const first = firstError(errors)
+        if (first) {
             setFieldErrors(errors)
             setIsSubmitting(false)
-
-            // Auto-scroll to first error
-            const firstErrorField = Object.keys(errors)[0]
-            const element = document.getElementById(`field-${firstErrorField}`)
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            }
+            // The first field that's wrong takes the focus, which brings it into view.
+            document.querySelector<HTMLElement>(`#field-${first} :is(input, textarea, select, button)`)?.focus()
             return
         }
 
@@ -446,11 +460,6 @@ export default function NewTaskPage() {
         }
     }
 
-    const containerStyle: React.CSSProperties = {
-        direction: locale === 'ar' ? 'rtl' : 'ltr',
-        textAlign: locale === 'ar' ? 'right' : 'left'
-    }
-
     const [searchTerm, setSearchTerm] = useState('')
 
     const filteredUsers = users.filter(u => {
@@ -458,268 +467,148 @@ export default function NewTaskPage() {
         return fullName.includes(searchTerm.toLowerCase())
     })
 
+    // The Excel upload's file, picked from its button in the header.
+    const fileInput = useRef<HTMLInputElement>(null)
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const used = (n: number, max: number) => t('ui_characters_used').replace('{used}', num(n)).replace('{max}', num(max))
+    const clearError = (field: string) => { if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: '' }) }
+
     return (
-        <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                <h1 style={{ margin: 0 }}>{t('create_new_task')}</h1>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '180px' }}>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (userRole === 'SUPER_ADMIN') setIsManageTemplatesOpen(true)
-                            else window.open(`/api/templates/download?locale=${locale}`, '_blank')
-                        }}
-                        className="btn"
-                        style={{
-                            background: 'var(--veil-40)',
-                            color: 'var(--text-main)',
-                            border: '1px solid var(--glass-border)',
-                            backdropFilter: 'blur(8px)',
-                            padding: '0.4rem 0.75rem',
-                            fontSize: '0.8rem',
-                            width: '100%',
-                            justifyContent: 'flex-start'
-                        }}
-                    >
-                        <span aria-hidden="true" style={{ fontSize: '1rem' }}>📥</span>
-                        {t('download_template')}
-                    </button>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button aria-label={t('view_usernames')}
-                            type="button"
-                            onClick={() => window.open('/dashboard/usernames', '_blank')}
-                            title={t('view_usernames')}
-                            style={{
-                                background: 'var(--veil-15)',
-                                color: 'var(--text-main)',
-                                border: '2.5px solid white',
-                                padding: '0',
-                                borderRadius: '50%',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '46px',
-                                height: '46px',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '0 4px 15px var(--shadow-faint)',
-                                backdropFilter: 'blur(4px)'
+        <Page>
+            <PageHeader
+                title={t('create_new_task')}
+                back={{ href: '/dashboard/tasks', label: modules.label('tasks') }}
+                // Many tasks at once, from Excel: its template, the
+                // usernames it takes, and the upload. A Super Admin manages
+                // the templates instead of downloading one.
+                action={(
+                    <>
+                        {userRole === 'SUPER_ADMIN'
+                            ? <Button icon={DownloadSimpleIcon} onClick={() => setIsManageTemplatesOpen(true)}>{t('download_template')}</Button>
+                            : <ButtonLink href={`/api/templates/download?locale=${locale}`} target="_blank" prefetch={false} icon={DownloadSimpleIcon}>{t('download_template')}</ButtonLink>}
+                        <ButtonLink href="/dashboard/usernames" target="_blank" prefetch={false} icon={IdentificationCardIcon}>{t('view_usernames')}</ButtonLink>
+                        <Button icon={UploadSimpleIcon} onClick={() => fileInput.current?.click()}>{t('upload_tasks_excel')}</Button>
+                        <input
+                            ref={fileInput}
+                            aria-label={t('upload_tasks_excel')}
+                            type="file"
+                            accept=".xlsx, .xls"
+                            hidden
+                            onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleBulkUpload(file)
+                                e.target.value = '' // Reset
                             }}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)';
-                                e.currentTarget.style.background = 'var(--veil-30)';
-                                e.currentTarget.style.boxShadow = '0 8px 25px var(--shadow-weak)';
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-                                e.currentTarget.style.background = 'var(--veil-15)';
-                                e.currentTarget.style.boxShadow = '0 4px 15px var(--shadow-faint)';
-                            }}
-                        >
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg>
-                        </button>
-                        <label
-                            className="btn btn-primary"
-                            style={{
-                                cursor: 'pointer',
-                                padding: '0.4rem 0.75rem',
-                                fontSize: '0.8rem',
-                                flex: 1,
-                                justifyContent: 'flex-start'
-                            }}
-                        >
-                            <span aria-hidden="true" style={{ fontSize: '1rem' }}>📤</span>
-                            {t('upload_tasks_excel')}
-                            <input
-                                type="file"
-                                accept=".xlsx, .xls"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0]
-                                    if (file) handleBulkUpload(file)
-                                    e.target.value = '' // Reset
+                        />
+                    </>
+                )}
+            />
+
+            <Card>
+                <form onSubmit={handleSubmit} noValidate className="ui-form">
+                    <div id="field-title">
+                        {/* Typed, or picked from the company's task titles (CLIENTS_PLAN.md §5). */}
+                        <Field label={t('title_label')} hint={used(title.length, TASK_TITLE_MAX)} error={fieldErrors.title || undefined}>{p => (
+                            <NamePicker
+                                {...p}
+                                value={titleName}
+                                onChange={next => {
+                                    setTitlePick({ name: next, company: selectedCompanyId })
+                                    clearError('title')
                                 }}
-                                style={{ display: 'none' }}
+                                {...titleNames}
+                                addLabel={t('lists_add_to_list')}
+                                failedLabel={t('lists_add_failed')}
+                                maxLength={TASK_TITLE_MAX}
+                                disabled={isSubmitting}
                             />
-                        </label>
+                        )}</Field>
                     </div>
-                </div>
-            </div>
-            {error && (
-                <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid var(--danger-border)' }}>
-                    {error}
-                </div>
-            )}
-            <form onSubmit={handleSubmit}>
-                <div id="field-title" style={{ marginBottom: '1.25rem' }}>
-                    <label htmlFor="task-title" style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
-                    {/* Typed, or picked from the company's task titles (CLIENTS_PLAN.md §5). */}
-                    <NamePicker
-                        id="task-title"
-                        aria-invalid={fieldErrors.title ? true : undefined}
-                        value={titleName}
-                        onChange={next => {
-                            setTitlePick({ name: next, company: selectedCompanyId })
-                            if (fieldErrors.title) setFieldErrors({ ...fieldErrors, title: '' })
-                        }}
-                        {...titleNames}
-                        addLabel={t('lists_add_to_list')}
-                        failedLabel={t('lists_add_failed')}
-                        maxLength={100}
-                    />
-                    {fieldErrors.title && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.title}
-                        </div>
-                    )}
-                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
-                        {title.length}/100
+                    <div id="field-description">
+                        <Field label={t('description_label')} hint={used(description.length, TASK_DESCRIPTION_MAX)} error={fieldErrors.description || undefined}>{p => (
+                            <TextArea {...p} value={description} rows={4} maxLength={TASK_DESCRIPTION_MAX} disabled={isSubmitting}
+                                onChange={e => { setDescription(e.target.value); clearError('description') }} />
+                        )}</Field>
                     </div>
-                </div>
-                <div id="field-description" style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
-                    <textarea aria-label={t('description_label' as any)}
-                        className="input"
-                        value={description}
-                        onChange={e => {
-                            setDescription(e.target.value)
-                            if (fieldErrors.description) setFieldErrors({ ...fieldErrors, description: '' })
-                        }}
-                        style={fieldErrors.description ? { borderColor: 'var(--danger-solid)' } : {}}
-                        rows={4}
-                        required
-                        maxLength={1000}
-                    />
-                    {fieldErrors.description && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.description}
-                        </div>
-                    )}
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 1000 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
-                        {description.length}/1000
+                    {/* Where it's done: its client, if it has one, and a location
+                        picked from the list (CLIENTS_PLAN.md §2.3). */}
+                    <div id="field-locationId">
+                        <TaskPlacePicker
+                            value={place}
+                            onChange={next => { setPlace(next); clearError('locationId') }}
+                            companyId={userRole === 'SUPER_ADMIN' ? selectedCompanyId : null}
+                            error={fieldErrors.locationId || undefined}
+                            disabled={isSubmitting}
+                        />
                     </div>
-                </div>
-                {/* Where it's done: its client, if it has one, and a location
-                    picked from the list (CLIENTS_PLAN.md §2.3). */}
-                <div id="field-locationId" style={{ marginBottom: '1.25rem' }}>
-                    <TaskPlacePicker
-                        value={place}
-                        onChange={next => {
-                            setPlace(next)
-                            if (fieldErrors.locationId) setFieldErrors({ ...fieldErrors, locationId: '' })
-                        }}
-                        companyId={userRole === 'SUPER_ADMIN' ? selectedCompanyId : null}
-                        error={fieldErrors.locationId || undefined}
-                        disabled={isSubmitting}
-                    />
-                </div>
-                <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <input aria-label={t('assignee_label')}
-                        type="text"
-                        className="input"
-                        placeholder={t('search_placeholder')}
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
-                    />
-                    <div style={{
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        border: '1px solid var(--border)',
-                        borderRadius: '0.5rem',
-                        padding: '0.75rem',
-                        background: 'var(--surface)'
-                    }}>
-                        {filteredUsers.length > 0 ? filteredUsers.map(u => (
-                            <label key={u.id} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                marginBottom: '0.5rem',
-                                cursor: 'pointer',
-                                padding: '0.25rem',
-                                borderRadius: '0.25rem',
-                                background: assigneeIds.includes(u.id) ? 'var(--info-bg-sky)' : 'transparent'
-                            }}>
-                                <input
-                                    type="checkbox"
-                                    checked={assigneeIds.includes(u.id)}
-                                    onChange={e => {
-                                        if (e.target.checked) {
-                                            setAssigneeIds([...assigneeIds, u.id])
-                                        } else {
-                                            setAssigneeIds(assigneeIds.filter(id => id !== u.id))
-                                        }
-                                        if (fieldErrors.assigneeIds) setFieldErrors({ ...fieldErrors, assigneeIds: '' })
-                                    }}
-                                />
-                                <span style={{ fontSize: '0.9rem' }}>
-                                    {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
-                                </span>
-                            </label>
-                        )) : (
-                            <div style={{ color: 'var(--text-soft)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
-                                {t('no_data_available')}
-                            </div>
-                        )}
+                    {/* Who it's for: as many as it needs, found by name (DESIGN.md §5.3). */}
+                    <fieldset id="field-assigneeIds" className="ui-field ui-fieldset" aria-describedby={fieldErrors.assigneeIds ? 'assignees-error' : undefined}>
+                        <legend className="ui-label">{t('assignees_label')}</legend>
+                        <Field label={t('tasks_assignee_search')} hideLabel>{p => (
+                            <SearchInput {...p} autoComplete="off" placeholder={t('tasks_assignee_search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                        )}</Field>
+                        <div className="ui-checklist">
+                            {!usersResult
+                                ? <p className="ui-hint" role="status">{t('loading')}</p>
+                                : filteredUsers.length === 0
+                                    ? <p className="ui-hint">{t('tasks_no_people_match')}</p>
+                                    : filteredUsers.map(u => (
+                                        <label key={u.id} className="ui-choice">
+                                            <input
+                                                type="checkbox"
+                                                className="ui-check"
+                                                checked={assigneeIds.includes(u.id)}
+                                                disabled={isSubmitting}
+                                                onChange={e => {
+                                                    setAssigneeIds(e.target.checked ? [...assigneeIds, u.id] : assigneeIds.filter(id => id !== u.id))
+                                                    clearError('assigneeIds')
+                                                }}
+                                            />
+                                            <bdi>{u.firstName} {u.lastName}</bdi>
+                                            <span className="ui-hint">{t(`role_${String(u.role).toLowerCase()}` as TranslationKey)}</span>
+                                        </label>
+                                    ))}
+                        </div>
+                        {fieldErrors.assigneeIds && <span id="assignees-error" className="ui-error">{fieldErrors.assigneeIds}</span>}
+                    </fieldset>
+                    <div id="field-deadline">
+                        <DateTimePicker
+                            asField
+                            label={t('deadline_label')}
+                            value={deadline}
+                            onChange={v => { setDeadline(v); clearError('deadline') }}
+                            min={earliestDeadline(now).toISOString()}
+                            error={fieldErrors.deadline || undefined}
+                        />
                     </div>
-                    {fieldErrors.assigneeIds && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.assigneeIds}
-                        </div>
-                    )}
-                </div>
-                <div id="field-deadline" style={{ marginBottom: '1.25rem' }}>
-                    <DateTimePicker
-                        label={t('deadline_label')}
-                        value={deadline}
-                        onChange={v => { setDeadline(v); if (fieldErrors.deadline) setFieldErrors({ ...fieldErrors, deadline: '' }) }}
-                        min={earliestDeadline(now).toISOString()}
-                    />
-                    {fieldErrors.deadline && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.deadline}
-                        </div>
-                    )}
-                </div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>
-                    <input aria-label={t('difficulty')}
-                        type="number"
-                        className="input"
-                        value={difficulty}
-                        onChange={e => {
-                            const val = e.target.value
-                            if (val === '') {
-                                setDifficulty('')
-                            } else {
-                                const num = parseInt(val)
-                                setDifficulty(Math.min(Math.max(num, 0), 10).toString())
-                            }
-                        }}
-                        min="0"
-                        max="10"
-                        placeholder={locale === 'ar' ? '٠-١٠' : '0-10'}
-                        required
-                    />
-                </div>
+                    <div id="field-difficulty">
+                        <Field label={t('difficulty')} hint={t('tasks_points_hint')} error={fieldErrors.difficulty || undefined}>{p => (
+                            <TextInput
+                                {...p}
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                max={10}
+                                value={difficulty}
+                                disabled={isSubmitting}
+                                onChange={e => {
+                                    const val = e.target.value
+                                    setDifficulty(val === '' ? '' : Math.min(Math.max(parseInt(val), 0), 10).toString())
+                                    clearError('difficulty')
+                                }}
+                            />
+                        )}</Field>
+                    </div>
 
-
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                        {isSubmitting ? t('creating') : t('create_task_button' as any)}
-                    </button>
-                    <Link href={'/dashboard/tasks'}
-                        className="btn"
-                        style={{ textDecoration: 'none', background: 'var(--border)', color: 'var(--text-strong)' }}
-                    >
-                        {t('cancel')}
-                    </Link>
-                </div>
-            </form>
+                    {error && <p className="ui-error" role="alert">{error}</p>}
+                    <div className="ui-form-actions">
+                        <Button type="submit" variant="primary" busy={isSubmitting}>
+                            {isSubmitting ? t('creating') : t('create_task_button')}
+                        </Button>
+                        <ButtonLink href={'/dashboard/tasks'}>{t('cancel')}</ButtonLink>
+                    </div>
+                </form>
+            </Card>
 
             <BulkTaskReviewModal
                 isOpen={isBulkModalOpen}
@@ -738,7 +627,6 @@ export default function NewTaskPage() {
                 isOpen={isManageTemplatesOpen}
                 onClose={() => setIsManageTemplatesOpen(false)}
             />
-
-        </div >
+        </Page>
     )
 }

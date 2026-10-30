@@ -342,8 +342,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in a small PR (§4.5). After four small fixes, merged in #116 on
      2026-10-30, the first was the Costs page's Employee costs tab, beside
      the two tabs already on them, merged in #117 on 2026-10-30. The
-     second was the Tasks list, merged in #118 on 2026-10-30. The third is
-     the Obligations list, open for review in #119;
+     second was the Tasks list, merged in #118 on 2026-10-30, and the
+     third the Obligations list, merged in #119 on 2026-10-30. The fourth
+     is Create task, open for review in #120;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1197,3 +1198,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   list opens for review in #119 (§5 step 5).
 - **2026-10-30:** In #119, an obligation that doesn't recur says "One
   time", in sentence case, on the list, its page and its form.
+- **2026-10-30:** Create task moves onto the building blocks (§5 step 5).
+  - Its page header, with the way back to the Tasks list, and the Excel
+    tools beside it as secondary buttons: the template, the usernames and
+    the upload.
+  - The form in one panel: each field with its visible label, its hint
+    and its error below it. The title and description say how much of
+    them is used; the deadline is a field like the others, in the page's
+    language; the assignees are checkboxes below a search, with their
+    roles. Submitting with something wrong puts the focus on the first
+    field that is, in the form's order.
+  - Create task is the page's one primary button.
+- **2026-10-30:** The Obligations list was merged in #119, and Create task
+  opens for review in #120 (§5 step 5).
+- **2026-10-30:** In #120, Create task's deadline shows its time as the
+  rest of the app does, "12:00 pm" rather than "12:00", and in Arabic the
+  title's and description's limits are written in Arabic digits, as the
+  obligation form's title limit is too.
+- **2026-10-30:** In #120, reloading or closing Create task with something
+  typed asks first, rather than losing it; not once it's being sent
+  (Vercel's web interface audit).
