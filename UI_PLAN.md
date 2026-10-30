@@ -342,7 +342,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in a small PR (§4.5). After four small fixes, merged in #116 on
      2026-10-30, the first was the Costs page's Employee costs tab, beside
      the two tabs already on them, merged in #117 on 2026-10-30. The
-     second is the Tasks list, open for review in #118;
+     second was the Tasks list, merged in #118 on 2026-10-30. The third is
+     the Obligations list, open for review in #119;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1180,3 +1181,19 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Continue task or View task too, at the end of its last line. Phones show
   the cards, not the table, so whoever a task is for lost the button that
   says what's next there (found by Codex).
+- **2026-10-30:** The Obligations list moves onto the building blocks (§5
+  step 5), as the Tasks list did.
+  - Its page header, with Add obligation as its one primary button for
+    whoever manages obligations.
+  - A filter bar: the search, the employee, the status, the dates, and the
+    order within the page. Someone who sees only their own has the search,
+    as before.
+  - The obligations as a table on computers and cards on phones: how often
+    each recurs, who it's for, its deadline, overdue in words, its points,
+    its status and who decided it, and Start, Continue or View, on the
+    phone's cards too.
+  - A page past the last goes to the last there is.
+- **2026-10-30:** The Tasks list was merged in #118, and the Obligations
+  list opens for review in #119 (§5 step 5).
+- **2026-10-30:** In #119, an obligation that doesn't recur says "One
+  time", in sentence case, on the list, its page and its form.

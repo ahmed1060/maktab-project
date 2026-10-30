@@ -2035,3 +2035,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   moves onto the building blocks in #118 (`UI_PLAN.md` §5): its filters by
   client, location and saved title (§3, §5.9) work as they did, and each
   task shows where it's done, "Client - Location", under its title.
+- **2026-10-30:** The Tasks list was merged in #118 (`UI_PLAN.md` §5), with
+  where each task is done under its title.

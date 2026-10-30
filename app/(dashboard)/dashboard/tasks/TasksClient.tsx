@@ -58,13 +58,13 @@ interface TasksClientProps {
 
 /** How the list is ordered, within the page shown. */
 const SORTS = {
-    smart_asc: 'tasks_sort_smart',
-    deadline_asc: 'tasks_sort_deadline_soonest',
-    deadline_desc: 'tasks_sort_deadline_latest',
-    difficulty_desc: 'tasks_sort_hardest',
-    difficulty_asc: 'tasks_sort_easiest',
-    createdAt_desc: 'tasks_sort_newest',
-    createdAt_asc: 'tasks_sort_oldest',
+    smart_asc: 'list_sort_smart',
+    deadline_asc: 'list_sort_deadline_soonest',
+    deadline_desc: 'list_sort_deadline_latest',
+    difficulty_desc: 'list_sort_hardest',
+    difficulty_asc: 'list_sort_easiest',
+    createdAt_desc: 'list_sort_newest',
+    createdAt_asc: 'list_sort_oldest',
 } as const satisfies Record<string, TranslationKey>
 type SortKey = keyof typeof SORTS
 
@@ -170,7 +170,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
     const badge = (task: TaskRow) => <StatusBadge tone={taskStatusTone(task.status)}>{t(`status_${task.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
     // Who approved, completed or rejected it.
     const decidedBy = (task: TaskRow) => ['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && task.lastStatusUpdateBy
-        ? t('tasks_status_by').replace('{name}', task.lastStatusUpdateBy)
+        ? t('list_status_by').replace('{name}', task.lastStatusUpdateBy)
         : null
     const due = (task: TaskRow) => <DueDate overdue={overdue(task)}><SafeDate date={task.deadline} locale={locale} format="short" /></DueDate>
     const points = (task: TaskRow) => <span className="ui-chip">{countOf(t, locale, task.difficulty ?? 0, 'pts')}</span>

@@ -874,23 +874,6 @@ html[dir="rtl"] select.input {
   filter: drop-shadow(0 0 1px var(--map-halo));
 }
 
-/* A title that opens something (a task's or obligation's quick view): looks
-   like the heading it sits in, works as a button (audit L1). */
-.title-button {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.title-button:hover {
-  color: var(--info-solid-hover);
-}
-
 /* Modern Buttons */
 .btn {
   display: inline-flex;
