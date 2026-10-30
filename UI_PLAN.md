@@ -343,8 +343,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-10-30, the first was the Costs page's Employee costs tab, beside
      the two tabs already on them, merged in #117 on 2026-10-30. The
      second was the Tasks list, merged in #118 on 2026-10-30, and the
-     third the Obligations list, merged in #119 on 2026-10-30. The fourth
-     is Create task, open for review in #120;
+     third the Obligations list, merged in #119 on 2026-10-30, and the
+     fourth Create task, merged in #120 on 2026-10-30. The fifth is Add
+     obligation, open for review in #121;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1231,3 +1232,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     that's wrong.
   - Create obligation is the page's one primary button, and leaving with
     something typed asks first.
+- **2026-10-30:** Create task was merged in #120, and Add obligation opens
+  for review in #121 (§5 step 5).
