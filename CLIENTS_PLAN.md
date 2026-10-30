@@ -1856,3 +1856,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   with cash advances not allowed for any company until the Super Admin
   allows them. Production has no cash advances' table, kind or switches
   yet, and no migration unfinished (checked read-only just before).
+- **2026-10-30:** In 7a (#112), deleting someone for good waits for any
+  cash advance entry being recorded for them, and sees it, as each entry
+  is recorded under the same hold on their advance. A correction recorded
+  for someone deleted could commit after the check that they held
+  nothing, and the delete then took it with them; and one recorded as
+  they were deleted failed as an error, not as nobody there (found by
+  Codex).

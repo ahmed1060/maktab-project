@@ -902,7 +902,15 @@ export class UserService {
                 } catch (e) { console.error('[USER_DELETE_AVATAR_FAIL]', e) }
             }
 
-            result = await prisma.user.delete({ where: { id } })
+            // Under the lock each cash advance entry is recorded under, so
+            // none is recorded between the check and the delete, and goes with them.
+            result = await prisma.$transaction(async tx => {
+                if (user.companyId) {
+                    await CashAdvanceService.lockPerson(tx, id)
+                    if (await CashAdvanceService.heldBy(user.companyId, id, tx) > 0) throw new Error("CASH_ADVANCE_STILL_HELD")
+                }
+                return tx.user.delete({ where: { id } })
+            })
         } else {
             // Soft Delete: We also cleanup avatar
             if (user.avatar) {

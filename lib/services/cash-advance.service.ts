@@ -206,7 +206,9 @@ export class CashAdvanceService {
                 // person's balance, one entry at a time.
                 await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
                 await inUse(companyId, tx)
-                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`cash-advance:${person.id}`}, 0))::text`
+                await CashAdvanceService.lockPerson(tx, person.id)
+                // Deleted for good while this waited: nothing is theirs any more.
+                if (!(await tx.user.findUnique({ where: { id: person.id }, select: { id: true } }))) throw new Error("CASH_ADVANCE_NOT_FOUND")
                 const before = await balanceOf(tx, companyId, person.id)
                 const after = balanceAfter(before, amount)
                 if (after === null) throw new Error(kind === "RETURNED" ? "CASH_ADVANCE_MORE_THAN_HELD" : "CASH_ADVANCE_BELOW_ZERO")
@@ -266,8 +268,17 @@ export class CashAdvanceService {
     }
 
     /** What one person holds, which keeps them from being deleted for good (§7.4). */
-    static async heldBy(companyId: string, userId: string): Promise<number> {
-        return balanceOf(prisma, companyId, userId)
+    static async heldBy(companyId: string, userId: string, db: Db = prisma): Promise<number> {
+        return balanceOf(db, companyId, userId)
+    }
+
+    /**
+     * Holds one person's advance until the transaction ends: each entry is
+     * recorded under it, and deleting the person for good takes it too, so
+     * what they hold is what's seen.
+     */
+    static async lockPerson(tx: Prisma.TransactionClient, userId: string) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`cash-advance:${userId}`}, 0))::text`
     }
 
     /** What a company's people hold between them: what the switches' card shows (§7.6). */

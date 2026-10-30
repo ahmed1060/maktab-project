@@ -278,5 +278,37 @@ describe.skipIf(!ADMIN_URL)("cash advances, in Postgres", () => {
             await Users.delete("e2", superAdmin, true)
             expect((await db.query(`SELECT count(*)::int AS n FROM "CashAdvanceEntry" WHERE "userId" = 'e2'`)).rows[0].n).toBe(0)
         })
+
+        it("isn't, either, while a correction for them is being recorded: it waits for it, and sees it", async () => {
+            const Users = (await import("@/lib/services/user.service")).UserService
+            await db.query(`UPDATE "User" SET status = 'DELETED' WHERE id = 's1'`)
+            // A correction being recorded, as CashAdvanceService.record holds it, not yet committed.
+            const recording = new Client({ connectionString: dbUrl })
+            await recording.connect()
+            await recording.query("BEGIN")
+            await recording.query(`SELECT pg_advisory_xact_lock(hashtextextended('cash-advance:s1', 0))::text`)
+            await recording.query(`INSERT INTO "CashAdvanceEntry"(id, "companyId", "userId", kind, amount, date, "recordedById") VALUES ('late', 'c1', 's1', 'CORRECTION', 75, '2026-10-08', 'a1')`)
+            const deleted = Users.delete("s1", superAdmin, true).then(() => "deleted", (e: Error) => e.message)
+            await new Promise(r => setTimeout(r, 300))
+            await recording.query("COMMIT")
+            await recording.end()
+            expect(await deleted).toBe("CASH_ADVANCE_STILL_HELD")
+            expect((await db.query(`SELECT count(*)::int AS n FROM "CashAdvanceEntry" WHERE id = 'late'`)).rows[0].n).toBe(1)
+        })
+
+        it("and a correction recorded as they're deleted waits, then finds nobody", async () => {
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", status, "roleId") SELECT 'g1', 'g1@x', 'p', 'Gone', 'One', 'EMPLOYEE', 2026, 'g1', 'c1', 'DELETED', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+            // Deleted for good, as UserService.delete holds it, not yet committed.
+            const deleting = new Client({ connectionString: dbUrl })
+            await deleting.connect()
+            await deleting.query("BEGIN")
+            await deleting.query(`SELECT pg_advisory_xact_lock(hashtextextended('cash-advance:g1', 0))::text`)
+            await deleting.query(`DELETE FROM "User" WHERE id = 'g1'`)
+            const corrected = Advances.record(admin, "g1", { kind: "CORRECTION", amount: 20, date: "2026-10-08", note: "Found in the drawer" }).then(() => "recorded", (e: Error) => e.message)
+            await new Promise(r => setTimeout(r, 300))
+            await deleting.query("COMMIT")
+            await deleting.end()
+            expect(await corrected).toBe("CASH_ADVANCE_NOT_FOUND")
+        })
     })
 })
