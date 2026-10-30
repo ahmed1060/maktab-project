@@ -1483,3 +1483,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   leave still gives somebody a role that may (`ROLES_PLAN.md` §4.2, rule
   4). Nothing asks for it yet: the companies there get it first (§2.3,
   part 2b).
+- **2026-10-30:** Ask for leave was merged in #126 (§2.3, part 2a), and
+  the companies there get it in #127, after which asking needs it.
