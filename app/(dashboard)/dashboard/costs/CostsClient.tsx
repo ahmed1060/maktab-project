@@ -1,28 +1,24 @@
 'use client'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import useSWR from 'swr'
-import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { CheckCircleIcon, CoinsIcon, SortAscendingIcon, UserIcon, WalletIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import { useCompany } from '@/context/CompanyContext'
 import { useCan } from '@/lib/useCan'
-import { fetcher } from '@/lib/swr-fetcher'
 import { shareOwed, unallocatedCost } from '@/lib/cost-shares'
 import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
 import { namedParts, payWording } from '@/lib/costs-total'
 import { useNameFilter } from '@/components/lists/useNameFilter'
 import { countOf } from '@/lib/plural'
-import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
 import ConfirmModal from '@/components/ConfirmModal'
 import DateRangePicker from '@/components/DateRangePicker'
 import CostsHeader from '@/components/charges/CostsHeader'
 import ExtraFilterSelects from '@/components/filters/ExtraFilterSelects'
 import { pickExtra } from '@/components/filters/extra-filters'
-import { arrived, changed, type Picked } from '@/components/filters/address'
+import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
+import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import {
     Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, Pager, SearchInput, Select, StatusBadge, TotalTiles,
     taskStatusTone, type Column,
@@ -64,8 +60,6 @@ const SORTS = {
 } as const satisfies Record<string, TranslationKey>
 type SortKey = keyof typeof SORTS
 
-type Person = { id: string; firstName: string; lastName: string; role: string }
-
 /**
  * The Costs page's Employee costs tab (CLIENTS_PLAN.md §3, §4.1): each
  * person's share of a reviewed task's costs still to pay, with what the list
@@ -77,30 +71,8 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const { data: session } = useSession()
-    const { selectedCompanyId } = useCompany()
-
-    // What's picked shows at once, and the address follows: it changes only
-    // once its navigation lands. The date range picker reads its start back
-    // for its end, so it lost the start picked just before (found by Codex on
-    // PR 117). Each change builds on the last, so the search, sent once
-    // typing pauses, keeps a filter picked meanwhile.
-    const committed = searchParams.toString()
-    const [shown, setShown] = useState<Picked>({ latest: committed, sent: [] })
-    useAdjustOnChange([committed], () => setShown(p => arrived(p, committed)))
-    const [made, setMade] = useState(0)
-    const pushed = useRef(0)
-    useEffect(() => {
-        if (made === pushed.current) return
-        pushed.current = made
-        router.push(`/dashboard/costs?${shown.latest}`)
-    }, [made, shown.latest, router])
-    /** The list with these changed in the address, from its first page unless it's the page that changes. */
-    const go = (changes: Record<string, string>) => {
-        setShown(p => changed(p, changes))
-        setMade(n => n + 1)
-    }
+    // What's picked shows at once, and the address follows (useListAddress).
+    const { picked, listed: committed, go } = useListAddress('/dashboard/costs')
 
     const filtersOf = (address: URLSearchParams) => ({
         // A Super Admin's chosen company, so Mark all as paid pays its costs only.
@@ -115,11 +87,10 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
         // The tasks with a cost of a saved name, and what those come to (CLIENTS_PLAN.md §5.9).
         costNameId: address.get('costNameId') || '',
     })
-    const picked = new URLSearchParams(shown.latest)
     // What the filters show, and what the list shown is of: the server's,
     // for its address, which Mark all as paid's confirmation counted.
     const filters = filtersOf(picked)
-    const listed = filtersOf(searchParams)
+    const listed = filtersOf(committed)
     const placeFilters = usePlaceFilters({ clientId: filters.clientId, locationId: filters.locationId })
     const costNameFilter = useNameFilter('COST_NAME', 'costNameId', filters.costNameId)
     const extraFilters = [...placeFilters, ...costNameFilter]
@@ -128,16 +99,8 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     const [isUpdating, setIsUpdating] = useState(false)
     const [confirming, setConfirming] = useState(false)
 
-    // The people whose costs it can show: the server keeps a Team Leader's to
-    // their team. A Super Admin's are the company they're looking at.
-    const superAdmin = (session?.user as { role?: string } | undefined)?.role === 'SUPER_ADMIN'
-    const { data: peopleResult } = useSWR(session ? `/api/users?limit=1000${superAdmin && selectedCompanyId ? `&companyId=${selectedCompanyId}` : ''}` : null, fetcher)
-    const people: Person[] = peopleResult?.data?.data || []
-    const employeeOptions = [
-        { value: '', label: t('all_employees') },
-        // Admins add no costs of their own to pay.
-        ...people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN').map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName}`.trim() })),
-    ]
+    // The people whose costs it can show.
+    const employeeOptions = useEmployeeOptions()
 
     const allCostEntries: Entry[] = tasksWithCosts.flatMap(task => {
         // With a cost name picked, each card is what's due of the costs of
@@ -192,24 +155,8 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
-    // The search is sent once typing pauses, not on every key. The field
-    // follows the search picked only when something else changed it, as
-    // going back does: not when it's the search this sent, while more is
-    // typed.
-    const [query, setQuery] = useState(filters.search)
-    const [sent, setSent] = useState(filters.search)
-    useAdjustOnChange([filters.search], () => {
-        if (filters.search !== sent) setQuery(filters.search)
-        setSent(filters.search)
-    })
-    useEffect(() => {
-        if (query.trim() === sent) return
-        const timer = setTimeout(() => {
-            setSent(query.trim())
-            go({ search: query.trim() })
-        }, 400)
-        return () => clearTimeout(timer)
-    }, [query, sent])
+    // Sent once typing pauses.
+    const { query, setQuery, clear } = useSearchField(filters.search, go)
 
     const pickFilter = (key: string, value: string) => {
         const values = Object.fromEntries(extraFilters.map(f => [f.key, f.value]))
@@ -217,8 +164,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     }
     const filtersOn = (filters.employeeId ? 1 : 0) + (filters.dateFrom || filters.dateTo ? 1 : 0) + extraFilters.filter(f => f.value).length
     const resetFilters = () => {
-        setQuery('')
-        setSent('')
+        clear()
         go({ employeeId: '', dateFrom: '', dateTo: '', search: '', clientId: '', locationId: '', costNameId: '', sortBy: '', sortOrder: '' })
     }
 

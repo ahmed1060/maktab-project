@@ -124,8 +124,8 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     // lib/billing/state.ts
     ["lib/billing/state.ts", "if (role === 'SUPER_ADMIN' || role === 'ADMIN') return false", ADMIN_ROLE],
 
-    // app/(dashboard)/dashboard/costs/CostsClient.tsx
-    ["app/(dashboard)/dashboard/costs/CostsClient.tsx", "...people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN').map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName}`.trim() })),", THE_PERSON],
+    // components/filters/useEmployeeOptions.ts
+    ["components/filters/useEmployeeOptions.ts", "...people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN').map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName}`.trim() })),", THE_PERSON],
 
     // components/EmployeeFilter.tsx
     ["components/EmployeeFilter.tsx", ".filter(emp => emp.role !== 'ADMIN' && emp.role !== 'SUPER_ADMIN')", THE_PERSON],
