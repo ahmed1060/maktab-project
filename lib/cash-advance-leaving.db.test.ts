@@ -28,7 +28,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
  ('e4', 'e4@x', 'p', 'Enas', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
  ('e5', 'e5@x', 'p', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL),
- ('e6', 'e6@x', 'p', 'Eid', 'One', 'EMPLOYEE', 2026, 'e6', 'c1', NULL);
+ ('e6', 'e6@x', 'p', 'Eid', 'One', 'EMPLOYEE', 2026, 'e6', 'c1', NULL),
+ ('e7', 'e7@x', 'p', 'Emad', 'One', 'EMPLOYEE', 2026, 'e7', 'c1', NULL);
 `
 // Hired in January. Ehab and Essam earn 9,300 a month, Eman 310: a
 // settlement of 6,000 for twenty days of October, or 200. Enas holds nothing.
@@ -203,6 +204,32 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
         expect(await held("e6")).toBe(0)
         expect((await debtsOf("e6")).map(d => d.amount)).toEqual([100, 30])
     })
+
+    it("reads whether they've left under the hold on their advance, as an ending may commit while it waits", async () => {
+        // Emad's ending, holding his advance as it archives him: what's given or corrected meanwhile waits for it, and sees it.
+        const ending = async (record: () => Promise<unknown>) => {
+            const archiving = new Client({ connectionString: dbUrl })
+            await archiving.connect()
+            await archiving.query("BEGIN")
+            await archiving.query(`SELECT pg_advisory_xact_lock(hashtextextended('cash-advance:e7', 0))`)
+            await archiving.query(`UPDATE "User" SET status = 'ARCHIVED' WHERE id = 'e7'`)
+            const recording = record().then(() => "recorded", (e: Error) => e.message)
+            for (let i = 0; i < 100; i++) {
+                if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`)).rows[0].n > 0) break
+                await new Promise(r => setTimeout(r, 100))
+            }
+            await archiving.query("COMMIT")
+            await archiving.end()
+            return recording
+        }
+        expect(await ending(() => give("e7", 100))).toBe("CASH_ADVANCE_NOT_AT_WORK")
+        expect(await held("e7")).toBe(0)
+
+        await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id = 'e7'`)
+        expect(await ending(() => Advances.record(admin, "e7", { kind: "CORRECTION", amount: 40, date: "2026-10-25", note: "Counted short" }))).toBe("recorded")
+        expect(await held("e7")).toBe(0)
+        expect((await debtsOf("e7")).map(d => [d.amount, d.status])).toEqual([[40, "OUTSTANDING"]])
+    }, 60_000)
 
     it("holds a debt's entry to taking the balance down, in the database too", async () => {
         await expect(db.query(`INSERT INTO "CashAdvanceEntry"(id, "companyId", "userId", kind, amount, date, "recordedById") VALUES ('z', 'c1', 'e1', 'DEBT', 5, '2026-10-01', 'a1')`)).rejects.toThrow(/CashAdvanceEntry_amount_check/)

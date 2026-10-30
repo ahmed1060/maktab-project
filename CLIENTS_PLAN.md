@@ -2010,3 +2010,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   removed, or a correction finding they held more. It went back on their
   balance, and only an ending taking effect turned a balance into a debt,
   so it stayed with them (found by Codex).
+- **2026-10-30:** In 7d (#115), an advance given, or a correction
+  recorded, reads whether the person is at work, or gone, under the hold
+  on their advance. It was read before it waited for the hold, so an
+  ending that committed meanwhile went unseen: an advance could be given
+  to someone gone, and a correction for them stay on their balance (found
+  by Codex).

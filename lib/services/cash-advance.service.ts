@@ -223,7 +223,11 @@ export class CashAdvanceService {
                 await inUse(companyId, tx)
                 await CashAdvanceService.lockPerson(tx, person.id)
                 // Deleted for good while this waited: nothing is theirs any more.
-                if (!(await tx.user.findUnique({ where: { id: person.id }, select: { id: true } }))) throw new Error("CASH_ADVANCE_NOT_FOUND")
+                // And whether they're at work, or gone, as it is now: an ending
+                // may have been recorded while this waited (§7.3).
+                const now = await tx.user.findUnique({ where: { id: person.id }, select: { status: true } })
+                if (!now) throw new Error("CASH_ADVANCE_NOT_FOUND")
+                if (kind === "GIVEN" && !(AT_WORK as readonly string[]).includes(now.status)) throw new Error("CASH_ADVANCE_NOT_AT_WORK")
                 const before = await balanceOf(tx, companyId, person.id)
                 const after = balanceAfter(before, amount)
                 if (after === null) throw new Error(kind === "RETURNED" ? "CASH_ADVANCE_MORE_THAN_HELD" : "CASH_ADVANCE_BELOW_ZERO")
@@ -244,7 +248,7 @@ export class CashAdvanceService {
                 })
                 // Someone whose contract has ended holds nothing: a correction
                 // finding they held more makes it a debt, as at their leaving (§7.3).
-                if (person.status === GONE && after > 0) {
+                if (now.status === GONE && after > 0) {
                     await CashAdvanceService.toDebt(tx, companyId, person.id, null, { dueDate: new Date(), by: { id: session.user.id, name: session.user.name } })
                     return { entry: entryOf(entry), balance: 0 }
                 }
