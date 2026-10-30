@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
@@ -22,6 +22,7 @@ import DateRangePicker from '@/components/DateRangePicker'
 import CostsHeader from '@/components/charges/CostsHeader'
 import ExtraFilterSelects from '@/components/filters/ExtraFilterSelects'
 import { pickExtra } from '@/components/filters/extra-filters'
+import { withChanges } from '@/components/filters/address'
 import {
     Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, Pager, SearchInput, Select, StatusBadge, TotalTiles,
     taskStatusTone, type Column,
@@ -165,15 +166,16 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
+    // The address as last changed, which each change builds on: the search,
+    // sent once typing pauses, keeps a filter picked meanwhile, which the
+    // render that started its timer hadn't seen (found by Codex on PR 117).
+    // It follows the address when it changes some other way, as going back.
+    const address = useRef(searchParams.toString())
+    useEffect(() => { address.current = searchParams.toString() }, [searchParams])
     /** The list with these changed in the address, from its first page unless it's the page that changes. */
     const go = (changes: Record<string, string>) => {
-        const params = new URLSearchParams(searchParams.toString())
-        for (const [key, value] of Object.entries(changes)) {
-            if (value) params.set(key, value)
-            else params.delete(key)
-        }
-        if (!('page' in changes)) params.set('page', '1')
-        router.push(`/dashboard/costs?${params.toString()}`)
+        address.current = withChanges(address.current, changes)
+        router.push(`/dashboard/costs?${address.current}`)
     }
 
     // The search is sent once typing pauses, not on every key. The field
@@ -193,7 +195,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
             go({ search: query.trim() })
         }, 400)
         return () => clearTimeout(timer)
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- `go` reads the address as it is when it fires.
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- `go` builds on the address as last changed, whichever render made it.
     }, [query, sent])
 
     const pickFilter = (key: string, value: string) => {

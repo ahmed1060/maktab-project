@@ -1141,3 +1141,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** The four small fixes were merged in #116, and the Costs
   page's Employee costs tab opens for review in #117, the first of the
   remaining old pages (§5 step 5).
+- **2026-10-30:** In #117, a filter picked on Employee costs while the
+  search waits to be sent stays picked. The search's timer sent the address
+  as the render that started it saw it, without the filter, and so undid it
+  (found by Codex).
