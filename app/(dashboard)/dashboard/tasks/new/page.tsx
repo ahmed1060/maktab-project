@@ -480,6 +480,7 @@ export default function NewTaskPage() {
                         <Button icon={UploadSimpleIcon} onClick={() => fileInput.current?.click()}>{t('upload_tasks_excel')}</Button>
                         <input
                             ref={fileInput}
+                            aria-label={t('upload_tasks_excel')}
                             type="file"
                             accept=".xlsx, .xls"
                             hidden
