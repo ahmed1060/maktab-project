@@ -1485,3 +1485,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   part 2b).
 - **2026-10-30:** Ask for leave was merged in #126 (§2.3, part 2a), and
   the companies there get it in #127, after which asking needs it.
+- **2026-10-30:** In #127, the companies already there get Ask for leave,
+  at Own: their built-in Employee and Team Leader, who ask today, and every
+  role of their own, whatever its base. Not the built-in Admin, who doesn't
+  ask today either. A role given it in the role editor since 2a keeps it as
+  it is, and only the holders of a role given it reload their grants.
