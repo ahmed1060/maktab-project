@@ -9,6 +9,7 @@ import { countOf } from '@/lib/plural'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import type { TranslationKey } from '@/lib/translations'
+import { decidedByName } from '@/lib/decided-by'
 import SafeDate from '@/components/SafeDate'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
@@ -129,7 +130,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
     const badge = (o: ObligationRow) => <StatusBadge tone={taskStatusTone(o.status)}>{t(`status_${o.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
     // Who approved, completed or rejected it.
     const decidedBy = (o: ObligationRow) => DECIDED.includes(o.status) && o.lastStatusUpdateBy
-        ? t('list_status_by').replace('{name}', o.lastStatusUpdateBy)
+        ? t('list_status_by').replace('{name}', decidedByName(o.lastStatusUpdateBy))
         : null
     const due = (o: ObligationRow) => <DueDate overdue={overdue(o)}><SafeDate date={o.deadline} locale={locale} format="short" /></DueDate>
     const points = (o: ObligationRow) => <span className="ui-chip">{countOf(t, locale, o.difficulty ?? 0, 'pts')}</span>

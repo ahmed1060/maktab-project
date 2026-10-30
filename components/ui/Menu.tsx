@@ -30,6 +30,15 @@ export type MenuItem = {
  * move through it, Escape closes it and returns to the button, and Tab, a
  * scroll or a click elsewhere closes it.
  */
+/**
+ * Whether a scroll or a resize leaves the menu behind: a scroll inside it
+ * doesn't. A resize's target is the window, not a node in the page, and
+ * contains() throws on it, so it's asked only of a node.
+ */
+export function movedAway(menu: { contains(node: Node): boolean } | null, target: EventTarget | null): boolean {
+    return !(target && 'nodeType' in target && menu?.contains(target as Node))
+}
+
 export function RowMenu({ label, items, tooltip }: {
     /** The button's name, saying whose actions they are: "More actions for Sara Hassan". */
     label: string
@@ -77,7 +86,7 @@ export function RowMenu({ label, items, tooltip }: {
             const target = e.target as Node
             if (!menu.current?.contains(target) && !button.current?.contains(target)) close(false)
         }
-        const scrolled = (e: Event) => { if (!menu.current?.contains(e.target as Node)) close(false) }
+        const scrolled = (e: Event) => { if (movedAway(menu.current, e.target)) close(false) }
         document.addEventListener('pointerdown', outside)
         window.addEventListener('scroll', scrolled, true)
         window.addEventListener('resize', scrolled)

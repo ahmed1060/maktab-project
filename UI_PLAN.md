@@ -344,8 +344,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the two tabs already on them, merged in #117 on 2026-10-30. The
      second was the Tasks list, merged in #118 on 2026-10-30, and the
      third the Obligations list, merged in #119 on 2026-10-30, and the
-     fourth Create task, merged in #120 on 2026-10-30. The fifth is Add
-     obligation, open for review in #121;
+     fourth Create task, merged in #120 on 2026-10-30, and the fifth Add
+     obligation, merged in #121 on 2026-10-30. The sixth is an
+     obligation's page, open for review in #122;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1245,3 +1246,44 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     tries;
   - the fields have names, autofill is kept out of them, and a title or
     description runs in the direction of its own language.
+- **2026-10-30:** Add obligation was merged in #121, and an obligation's
+  page opens for review in #122 (§5 step 5).
+- **2026-10-30:** An obligation's page moves onto the building blocks (§5
+  step 5).
+  - Its page header: its title with its status, who decided it once it's
+    decided, and the way back to the list. A manager decides one handed
+    in from there: Approve, the primary button, and Reject.
+  - Its details in a card: its description, who assigned it, its deadline
+    (marked overdue while it's still to be done), how often it comes
+    round, its points and who it's for. Return to in progress (a Super
+    Admin's) and Delete obligation are in its More actions.
+  - Its files as chips that open them. Taking one off asks first.
+  - Its assignee's submission: Attach files, the files picked, Submit
+    obligation and Save draft. Past its deadline it says so, and adding
+    files and saving a draft are switched off, rather than a pop-up caught
+    from any click on the page that matched the buttons' words.
+  - Someone it was for was deleted: a card says so and offers Reassign,
+    with the shared people checklist, Mark as completed, which did nothing
+    before, and Delete.
+  - An address that isn't an obligation says so on a page with the way
+    back, not a bare line.
+  - Its words are in sentence case, and speak of an obligation, not a
+    task.
+- **2026-10-30:** In #122, a row menu that's open closes when the window
+  is resized, or a phone turned, as it does on a scroll. It threw instead:
+  it asked whether the window was inside the menu, and the window isn't
+  in the page. Found on an obligation's page, and the same in every list's
+  menu.
+- **2026-10-30:** In #122, who decided a task or an obligation is said by
+  their name, "By Hana Saad", on the Tasks list, the Obligations list and an
+  obligation's page. It's saved with their role's code before it, and the
+  three showed "By ADMIN Hana Saad".
+- **2026-10-30:** In #122, Vercel's web interface audit of an obligation's
+  page: its messages end their sentences, and "Saving…" says it's busy
+  with an ellipsis, in both languages.
+- **2026-10-30:** In #122, an obligation's page left open across its
+  deadline locks then: it keeps the server's time for its first paint and
+  moves it on just after the deadline. It held the server's time for good,
+  so adding files and saving a draft stayed open until a reload (found by
+  Codex on PR 122). In the browser, a deadline 30 seconds off locked the
+  page after it without a reload.

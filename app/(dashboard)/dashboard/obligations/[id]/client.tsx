@@ -1,19 +1,89 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Modal from '@/components/Modal'
+import { useRouter } from 'next/navigation'
+import { ArrowCounterClockwiseIcon, CheckIcon, PushPinIcon, TrashIcon, UserSwitchIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { useToast } from '@/context/ToastContext'
 import SafeDate from '@/components/SafeDate'
+import AssigneeChecklist, { type Assignable } from '@/components/forms/AssigneeChecklist'
+import { Button, Card, Details, Dialog, DueDate, EmptyState, FileChip, FileChips, FilePicker, Page, PageHeader, RowMenu, StatusBadge, taskStatusTone, type MenuItem } from '@/components/ui'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
+import { countOf } from '@/lib/plural'
 import { useCan } from '@/lib/useCan'
+import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
-import Link from 'next/link'
 import { fetchRetrying } from '@/lib/swr-fetcher'
+import type { TranslationKey } from '@/lib/translations'
+import { decidedByName } from '@/lib/decided-by'
 
+const FILE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
+const FILE_MAX_BYTES = 4 * 1024 * 1024
+/** Done with: nothing more is handed in, and an assignee who was deleted no longer matters. */
+const DECIDED = ['APPROVED', 'COMPLETED', 'REJECTED']
 
-export default function ObligationDetailClient({ obligation, userRole, userId, userName, creatorName, creatorUnknown }: { obligation: any, userRole: string, userId: string, userName: string, creatorName: string | null, creatorUnknown: boolean }) {
+type Attachment = { name?: string; url: string; uploadedById?: string }
+
+/** Its files, from however they were saved: a list, one object, or a bare address from before. */
+function attachmentsOf(saved: string | null | undefined): Attachment[] {
+    if (!saved) return []
+    try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) return parsed.map(a => typeof a === 'string' ? { url: a } : a)
+        if (parsed?.url) return [parsed]
+        return []
+    } catch {
+        return saved.startsWith('http') ? [{ url: saved }] : []
+    }
+}
+
+const fileName = (a: Attachment) => a.name || a.url.split('/').pop() || a.url
+
+/** The longest a timer waits: setTimeout fires at once past it. */
+const LONGEST_WAIT = 2 ** 31 - 1
+
+/**
+ * How long until the page looks at its deadline again: just after it, or
+ * as long as a timer can wait, to look again then. Null once it's passed.
+ */
+export function untilDeadline(deadlineAt: number, now: number): number | null {
+    if (now > deadlineAt) return null
+    return Math.min(deadlineAt - now + 500, LONGEST_WAIT)
+}
+
+/** An address that isn't an obligation, or no longer is: said on a page with the way back. */
+export function ObligationNotFound() {
+    const { t } = useLanguage()
+    const modules = useModules()
+    return (
+        <Page>
+            <PageHeader title={modules.label('obligations')} back={{ href: '/dashboard/obligations', label: modules.label('obligations') }} />
+            <div className="ui-panel">
+                <EmptyState icon={PushPinIcon} title={t('obligation_not_found')} />
+            </div>
+        </Page>
+    )
+}
+
+/**
+ * An obligation's page (DESIGN.md §5.5): its header, with its status and a
+ * manager's decision; its details; its files; and what its assignee hands in.
+ */
+export default function ObligationDetailClient({ obligation, now, userRole, userId, userName, creatorName, creatorUnknown }: {
+    obligation: any
+    /** When the server drew it, so its deadline reads the same on the server and here. */
+    now: number
+    userRole: string
+    userId: string
+    userName: string
+    creatorName: string | null
+    creatorUnknown: boolean
+}) {
     const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const modules = useModules()
+    const router = useRouter()
+    const action = useBusyAction()
     // From the role the page passed down, so the first paint is complete.
     // Someone without obligations.view acts on an obligation only as its
     // assignee. Deciding or deleting one you are assigned to is refused to a
@@ -24,181 +94,112 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
     const canManage = can('obligations.manage')
     const teamReach = scope('obligations.view') === 'TEAM'
     const mayManageThis = canManage && (scope('obligations.manage') === 'TEAM' || !obligation.assignees?.some((a: any) => a.id === userId))
-    const [uploading, setUploading] = useState(false)
-    const [loadingType, setLoadingType] = useState<'DRAFT' | 'SUBMIT' | null>(null)
-    const [pendingFiles, setPendingFiles] = useState<File[]>([])
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-    const action = useBusyAction()
-    const [showFeedback, setShowFeedback] = useState(false)
-    const [feedbackMessage, setFeedbackMessage] = useState('')
-    // This banner (rendered below) was previously always green-bordered,
-    // even for a failure — visually indistinguishable from a success
-    // confirmation. Tracked alongside the message now so it can match the
-    // shared Toast component's red/green convention.
-    const [feedbackType, setFeedbackType] = useState<'success' | 'error'>('success')
-    const notify = (message: string, type: 'success' | 'error' = 'success') => {
-        setFeedbackMessage(message)
-        setFeedbackType(type)
-        setShowFeedback(true)
-    }
-    const [isReverting, setIsReverting] = useState(false)
-    const [showRevertConfirm, setShowRevertConfirm] = useState(false)
-    const [showDeadlineModal, setShowDeadlineModal] = useState(false)
-    const router = useRouter()
-    const searchParams = useSearchParams()
-    const highlightId = searchParams.get('highlight')
-    const shouldHighlight = highlightId === obligation.id
-    const recurrenceStyle = obligation.recurrence ? RECURRENCE_STYLE[obligation.recurrence] : undefined
 
-    const isOverdue = new Date(obligation.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(obligation.status)
-
-
-
+    // The time it's drawn at: the server's to begin with, so the first paint
+    // matches, then moved on just after the deadline (found by Codex on PR
+    // 122), so a page left open across it locks then, not at the next reload.
+    const deadlineAt = new Date(obligation.deadline).getTime()
+    const [clock, setClock] = useState(now)
     useEffect(() => {
-        const isUserAssignee = obligation.assignees?.some((a: any) => a.id === userId)
-        const isRestrictedRole = !seesOthers || (teamReach && isUserAssignee)
+        const wait = untilDeadline(deadlineAt, clock)
+        if (wait === null) return
+        const timer = setTimeout(() => setClock(Date.now()), wait)
+        return () => clearTimeout(timer)
+    }, [deadlineAt, clock])
+    const isOverdue = deadlineAt < clock && ['PENDING', 'IN_PROGRESS'].includes(obligation.status)
+    // Past its deadline, whoever does it can't add to it any more, nor take
+    // files off it, and is told to see whoever assigned it.
+    const isUserAssignee = obligation.assignees?.some((a: any) => a.id === userId)
+    const isRestrictedRole = !seesOthers || (teamReach && isUserAssignee)
+    const locked = isRestrictedRole && isOverdue
 
-        if (!isRestrictedRole || !isOverdue) return
+    const [pendingFiles, setPendingFiles] = useState<File[]>([])
+    const [sending, setSending] = useState<'DRAFT' | 'SUBMIT' | null>(null)
+    const [deleting, setDeleting] = useState(false)
+    const [reverting, setReverting] = useState(false)
+    const [removing, setRemoving] = useState<Attachment | null>(null)
+    const [reassigning, setReassigning] = useState(false)
 
-        const handleLocalClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement
-
-            // Ignore clicks inside the deadline modal
-            if (target.closest('#deadline-modal-content')) {
-                return
-            }
-
-            // Target buttons, links, labels, and inputs
-            const closestClickable = target.closest('button, a, label, input, [role="button"]')
-
-            if (closestClickable) {
-                // Helper to strip common emojis and normalize for robust matching
-                const clean = (str: string) => {
-                    if (!str) return ''
-                    return str.replace(/[\u1F60-\u1F64]|[\u2702-\u27B0]|[\u1F68-\u1F6C]|[\u1F30-\u1F70]|[\u2600-\u26ff]|[\uD83C-\uDBFF\uDC00-\uDFFF]/g, '')
-                        .trim()
-                        .toLowerCase()
-                }
-
-                const targetText = clean(closestClickable.textContent || '')
-                const targetTitle = clean(closestClickable.getAttribute('title') || '')
-
-                // Block ONLY these actions if overdue (they modify the submission state)
-                const isBlockedAction = [
-                    t('save_draft_obligation_button' as any) || 'save draft',
-                    t('upload_drag_files_msg' as any) || 'upload',
-                    t('delete') || 'delete',
-                    t('delete_note_title' as any) || 'delete note',
-                    t('delete_cost_title' as any) || 'delete cost',
-                    t('delete_attachment_title' as any) || 'delete attachment'
-                ].some(keyword => {
-                    const cleanKeyword = clean(keyword)
-                    if (!cleanKeyword) return false
-
-                    // Exact match for the generic "Delete" to avoid blocking "Delete Obligation"
-                    if (cleanKeyword === clean(t('delete') || 'delete')) {
-                        return targetText === cleanKeyword || targetTitle === cleanKeyword
-                    }
-
-                    return targetText.includes(cleanKeyword) || targetTitle.includes(cleanKeyword)
-                })
-
-                const isFileInput = closestClickable.tagName === 'INPUT' && (closestClickable as HTMLInputElement).type === 'file'
-
-                if (isBlockedAction || isFileInput) {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setShowDeadlineModal(true)
-                }
-            }
+    const fail = useCallback(async (res: Response, fallback: string) => {
+        if (res.status === 401) {
+            showToast(SESSION_EXPIRED_MESSAGE, 'error')
+            redirectAfterSessionExpiry(router)
+            return
         }
-
-
-        document.addEventListener('click', handleLocalClick, true)
-        return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, isOverdue, t, userId, obligation.assignees, seesOthers, teamReach])
+        const data = await res.json().catch(() => ({}))
+        showToast(data.error || fallback, 'error')
+    }, [router, showToast])
 
     const handleUpload = useCallback(async (isDraft: boolean, isEmergency?: boolean) => {
-        setUploading(true)
-        setLoadingType(isDraft ? 'DRAFT' : 'SUBMIT')
+        setSending(isDraft ? 'DRAFT' : 'SUBMIT')
         const uploadedAttachments: any[] = []
-
+        const notSent: File[] = []
         try {
-            // Upload all pending files
             for (const file of pendingFiles) {
                 const formData = new FormData()
                 formData.append('file', file)
-
                 try {
                     // Emergency saves need this on the upload step too, not
-                    // just the final PUT below — the server now exempts
-                    // POST /api/upload the same way when this header is
-                    // present (see lib/api-utils.ts), otherwise a suspended/
-                    // banned user's attachment never makes it in even though
-                    // their note/status does.
+                    // just the final PUT below: the server exempts POST
+                    // /api/upload the same way when this header is present
+                    // (see lib/api-utils.ts), or a suspended or banned user's
+                    // attachment never makes it in though their status does.
                     const res = await fetch('/api/upload', {
                         method: 'POST',
                         headers: isEmergency ? { 'X-Emergency-Save': 'true' } : undefined,
                         body: formData
                     })
                     const result = await res.json()
-                    const data = result.data
-                    if (result.success && data.url) {
+                    if (result.success && result.data?.url) {
                         uploadedAttachments.push({
                             name: file.name,
-                            url: data.url,
+                            url: result.data.url,
                             type: file.type,
                             uploadedBy: userName,
                             uploadedById: userId,
                             uploadedAt: new Date().toISOString()
                         })
+                    } else {
+                        notSent.push(file)
                     }
                 } catch (err) {
-                    console.error("Upload error", err)
+                    console.error('Upload error', err)
+                    notSent.push(file)
                 }
             }
 
-            const headers: any = { 'Content-Type': 'application/json' }
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' }
             if (isEmergency) headers['X-Emergency-Save'] = 'true'
-
             const res = await fetch(`/api/obligations/${obligation.id}`, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify({
                     status: isDraft ? 'IN_PROGRESS' : 'PENDING_CONFIRMATION',
-                    newAttachments: uploadedAttachments // Send only new ones
+                    newAttachments: uploadedAttachments
                 })
             })
-
             if (!res.ok) {
-                if (res.status === 401) {
-                    notify(SESSION_EXPIRED_MESSAGE, 'error')
-                    redirectAfterSessionExpiry(router)
-                    return
-                }
-                const data = await res.json().catch(() => ({}))
-                throw new Error(data.error || 'Update failed')
+                await fail(res, t('failed_save_generic'))
+                return
             }
-
-            setPendingFiles([])
+            // A file that didn't go up stays, to be sent again.
+            setPendingFiles(notSent)
             router.refresh()
-            notify(isDraft ? t('draft_saved_success') : t('obligation_submitted_success' as any), 'success')
-            setTimeout(() => setShowFeedback(false), 3000)
+            if (notSent.length) showToast(t('failed_upload_files'), 'error')
+            else showToast(isDraft ? t('draft_saved_success') : t('obligation_submitted_success'), 'success')
         } catch (error: any) {
-            console.error("Update failed", error)
-            notify(error.message || t('failed_save_generic'), 'error')
+            console.error('Update failed', error)
+            showToast(error.message || t('failed_save_generic'), 'error')
         } finally {
-            setUploading(false)
-            setLoadingType(null)
+            setSending(null)
         }
-    }, [pendingFiles, obligation.id, router, t, userId, userName])
+    }, [pendingFiles, obligation.id, router, t, userId, userName, fail, showToast, setPendingFiles])
 
     // Listen for suspension auto-save event
     useEffect(() => {
         const handleSuspendSave = async () => {
-            console.log('Suspension detected, auto-saving obligation progress...')
             try {
-                // Only auto-save if employee interaction is active and not already submitted or finalized
+                // Only auto-save while its assignee is working on it.
                 if (!seesOthers && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)) {
                     await handleUpload(true, true)
                 }
@@ -212,656 +213,306 @@ export default function ObligationDetailClient({ obligation, userRole, userId, u
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
         return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [obligation.status, userRole, handleUpload, seesOthers])
+    }, [obligation.status, handleUpload, seesOthers])
 
-    // Helper to parse existing attachments
-    const existingAttachments = obligation.attachments ? (() => {
-        try {
-            const parsed = JSON.parse(obligation.attachments)
-            if (Array.isArray(parsed)) return parsed
-            if (parsed.url) return [parsed] // Legacy
-            return []
-        } catch {
-            // Backward compatibility for single URL strings
-            if (typeof obligation.attachments === 'string' && obligation.attachments.startsWith('http')) {
-                return [{ url: obligation.attachments, name: obligation.attachments.split('/').pop() || 'File' }]
-            }
-            return []
-        }
-    })() : []
+    const attachments = attachmentsOf(obligation.attachments)
+    // Taking a file off is for whoever manages it: their own files, or
+    // anyone's for those who manage company-wide.
+    const mayRemove = (att: Attachment) => !locked && canManage && (att.uploadedById === userId || companyWide('obligations.manage'))
 
-    const handleRemoveExistingAttachment = async (itemToRemove: any) => {
-        if (!canManage) return
-
-        const updatedAttachments = existingAttachments.filter((att: any) =>
-            (typeof att === 'string' ? att : att.url) !== (typeof itemToRemove === 'string' ? itemToRemove : itemToRemove.url)
-        )
-
+    const handleRemoveAttachment = async (gone: Attachment) => {
         try {
             const res = await fetch(`/api/obligations/${obligation.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    attachments: updatedAttachments // API handles stringification
-                })
+                body: JSON.stringify({ attachments: attachmentsOf(obligation.attachments).filter(a => a.url !== gone.url) })
             })
-
-            if (res.ok) {
-                router.refresh()
-                notify(t('item_deleted_success' as any) || 'Attachment removed', 'success')
-            }
+            if (!res.ok) return fail(res, t('failed_save_generic'))
+            setRemoving(null)
+            router.refresh()
+            showToast(t('obligation_file_removed'), 'success')
         } catch (error) {
             console.error('Failed to remove attachment', error)
+            showToast(t('failed_save_generic'), 'error')
         }
     }
-
-    const [inputKey, setInputKey] = useState(0)
-
-    const [isDragging, setIsDragging] = useState(false)
 
     const handleFiles = (files: File[]) => {
-        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
-        const validFiles: File[] = []
-        let hasError = false
-        let errorMsg = ''
-
-        files.forEach(file => {
-            // 1. Check Size
-            if (file.size > 4 * 1024 * 1024) {
-                hasError = true
-                errorMsg = t('failed_upload_files') || `File ${file.name} is too large (max 4MB)`
-            }
-            // 2. Check Extension
-            else {
-                const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
-                if (!allowedExtensions.includes(ext)) {
-                    hasError = true
-                    errorMsg = `${t('error_generic') || 'Invalid file type'}: ${file.name}`
-                } else {
-                    validFiles.push(file)
-                }
-            }
-        })
-
-        if (hasError) {
-            notify(errorMsg, 'error')
+        const fits: File[] = []
+        for (const file of files) {
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+            if (file.size > FILE_MAX_BYTES) showToast(t('obligation_file_too_large').replace('{name}', file.name), 'error')
+            else if (!FILE_TYPES.includes(ext)) showToast(t('obligation_file_wrong_type').replace('{name}', file.name), 'error')
+            else fits.push(file)
         }
-
-        setPendingFiles(prev => [...prev, ...validFiles])
-        setInputKey(prev => prev + 1)
+        setPendingFiles(prev => [...prev, ...fits])
     }
 
-    const removePendingFile = (index: number) => {
-        setPendingFiles(prev => prev.filter((_, i) => i !== index))
-    }
-
-
-    const handleApprove = async () => {
+    const decide = async (status: 'APPROVED' | 'REJECTED') => {
         try {
             const res = await fetch(`/api/obligations/${obligation.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'APPROVED' })
+                body: JSON.stringify({ status })
             })
-            if (res.ok) {
-                router.refresh()
-                notify(t('obligation_approved_success' as any), 'success')
-            }
-        } catch (error) { console.error(error) }
+            if (!res.ok) return fail(res, t('failed_save_generic'))
+            router.refresh()
+            showToast(t(status === 'APPROVED' ? 'obligation_approved_success' : 'obligation_rejected_success'), 'success')
+        } catch (error) {
+            console.error(error)
+            showToast(t('failed_save_generic'), 'error')
+        }
     }
-
-    const handleReject = async () => {
-        try {
-            const res = await fetch(`/api/obligations/${obligation.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'REJECTED' })
-            })
-            if (res.ok) {
-                router.refresh()
-                notify(t('obligation_rejected_success' as any), 'success')
-            }
-        } catch (error) { console.error(error) }
-    }
+    const handleApprove = () => decide('APPROVED')
+    const handleReject = () => decide('REJECTED')
 
     const handleDelete = async () => {
         try {
-            const res = await fetch(`/api/obligations/${obligation.id}`, {
-                method: 'DELETE'
-            })
-            if (res.ok) {
-                router.push('/dashboard/obligations')
-                router.refresh()
-            } else if (res.status === 401) {
-                notify(SESSION_EXPIRED_MESSAGE, 'error')
-                redirectAfterSessionExpiry(router)
-            } else {
-                const data = await res.json().catch(() => ({}))
-                notify(data.error || t('failed_save_generic'), 'error')
-            }
+            const res = await fetch(`/api/obligations/${obligation.id}`, { method: 'DELETE' })
+            if (!res.ok) return fail(res, t('failed_save_generic'))
+            router.push('/dashboard/obligations')
+            router.refresh()
         } catch (error: any) {
             console.error('Delete error:', error)
-            notify(error.message || t('failed_save_generic'), 'error')
+            showToast(error.message || t('failed_save_generic'), 'error')
         }
-        setShowDeleteConfirm(false)
     }
 
-    const [allUsers, setAllUsers] = useState<any[]>([])
-    const [isReassigning, setIsReassigning] = useState(false)
+    // Who it can be handed to, asked for when Reassign opens: undefined
+    // while they load, null if they couldn't be.
+    const [loaded, setLoaded] = useState<Assignable[] | null | undefined>(undefined)
+    const [tries, setTries] = useState(0)
+    const [retrying, setRetrying] = useState(false)
     const [newAssigneeIds, setNewAssigneeIds] = useState<string[]>(obligation.assignees?.map((a: any) => a.id) || [])
-
-    const loadUsers = async () => {
-        if (allUsers.length > 0) return
+    useEffect(() => {
+        if (!reassigning) return
         const queryParams = new URLSearchParams()
         queryParams.set('limit', '1000')
         if (obligation.companyId) queryParams.set('companyId', obligation.companyId)
-
-        const res = await fetchRetrying(`/api/users?${queryParams.toString()}`)
-        if (res.ok) {
-            const result = await res.json()
-            const data = result.data
-            const usersList = data.data || []
-            // A team-scoped manager is not offered the company's Admins.
-            const filtered = canManage && !companyWide('obligations.manage') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
-            setAllUsers(filtered)
-        }
-    }
+        fetchRetrying(`/api/users?${queryParams.toString()}`)
+            .then(res => {
+                if (!res.ok) throw new Error(`Couldn't load the people (${res.status})`)
+                return res.json()
+            })
+            .then(result => setLoaded(result?.data?.data || []))
+            .catch(() => setLoaded(null))
+            .finally(() => setRetrying(false))
+    }, [reassigning, tries, obligation.companyId])
+    const usersList: any[] = loaded ?? []
+    // A team-scoped manager is not offered the company's Admins.
+    const filtered = canManage && !companyWide('obligations.manage') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
+    const people = loaded === undefined || loaded === null ? loaded : filtered
 
     const handleReassign = async () => {
         if (newAssigneeIds.length === 0) return
         try {
-            await fetch(`/api/obligations/${obligation.id}`, {
+            const res = await fetch(`/api/obligations/${obligation.id}`, {
                 method: 'PUT',
                 body: JSON.stringify({ assigneeIds: newAssigneeIds }),
                 headers: { 'Content-Type': 'application/json' }
             })
-            setIsReassigning(false)
+            if (!res.ok) return fail(res, t('failed_save_generic'))
+            setReassigning(false)
             router.refresh()
-            notify(t('task_transfer_success'), 'success')
-            setTimeout(() => setShowFeedback(false), 3000)
+            showToast(t('obligation_reassigned'), 'success')
         } catch (error) {
             console.error('Reassign error', error)
+            showToast(t('failed_save_generic'), 'error')
         }
     }
 
+    // Someone it was for was deleted, and a manager settles it as done.
     const handleForceComplete = async () => {
-        // ... (existing code)
+        try {
+            const res = await fetch(`/api/obligations/${obligation.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'COMPLETED' })
+            })
+            if (!res.ok) return fail(res, t('failed_save_generic'))
+            router.refresh()
+            showToast(t('obligation_completed_success'), 'success')
+        } catch (error) {
+            console.error(error)
+            showToast(t('failed_save_generic'), 'error')
+        }
     }
 
     const handleRevert = async () => {
-        setIsReverting(true)
-        setShowRevertConfirm(false)
         try {
             const res = await fetch(`/api/obligations/${obligation.id}/revert`, { method: 'POST' })
-            if (!res.ok) {
-                if (res.status === 401) {
-                    notify(SESSION_EXPIRED_MESSAGE, 'error')
-                    redirectAfterSessionExpiry(router)
-                    return
-                }
-                const data = await res.json().catch(() => ({}))
-                throw new Error(data.error || 'Revert failed')
-            }
-            notify(t('obligation_reverted_success'), 'success')
+            if (!res.ok) return fail(res, t('failed_revert_obligation'))
+            setReverting(false)
+            showToast(t('obligation_reverted_success'), 'success')
             router.refresh()
         } catch (e: any) {
             console.error(e)
-            notify(e.message || t('failed_revert_obligation'), 'error')
-        } finally {
-            setIsReverting(false)
+            showToast(e.message || t('failed_revert_obligation'), 'error')
         }
     }
 
-    const containerStyle: React.CSSProperties = {
-        direction: locale === 'ar' ? 'rtl' : 'ltr',
-        textAlign: locale === 'ar' ? 'right' : 'left'
-    }
+    const recurrence = obligation.recurrence ? RECURRENCE_STYLE[obligation.recurrence] : undefined
+    const decidedBy = DECIDED.includes(obligation.status) && obligation.lastStatusUpdateBy
+        ? t('list_status_by').replace('{name}', decidedByName(obligation.lastStatusUpdateBy))
+        : undefined
+    const names = (obligation.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
+    const deleted = (obligation.assignees ?? []).filter((a: any) => a.status === 'DELETED')
+    const working = !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)
+
+    const menu: MenuItem[] = [
+        ...(userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status)
+            ? [{ key: 'revert', icon: ArrowCounterClockwiseIcon, label: t('return_to_in_progress'), onSelect: () => setReverting(true) }]
+            : []),
+        ...(mayManageThis
+            ? [{ key: 'delete', icon: TrashIcon, label: t('delete_obligation_button'), danger: true, onSelect: () => setDeleting(true) }]
+            : []),
+    ]
 
     return (
-        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={{
-            ...containerStyle,
-            background: isOverdue ? 'var(--danger-bg-tint)' : (shouldHighlight ? undefined : 'var(--surface)'),
-            borderColor: isOverdue ? 'var(--danger-border)' : undefined
-        }}>
-
-            {/* Deleted Assignee Alert */}
-            {obligation.assignees?.some((a: any) => a.status === 'DELETED') && canManage && (
-                <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg)', padding: '1.5rem', borderRadius: '0.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🚫</span>
-                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            <strong>{t('assignee_deleted_alert')}</strong>
-                            <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                {t('assignee_deleted_msg').replace('{name}', obligation.assignees.filter((a: any) => a.status === 'DELETED').map((a: any) => `${a.firstName} ${a.lastName}`).join(', '))}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => action.run('complete', handleForceComplete)} disabled={action.running} aria-busy={action.is('complete')} className="btn" style={{ background: 'var(--ok-fg)', color: 'var(--text-on-accent)' }}>{t('mark_as_completed')}</button>
-                        <button onClick={() => { setIsReassigning(true); loadUsers() }} className="btn" style={{ background: 'var(--info-fill-hover)', color: 'var(--text-on-accent)' }}>{t('reassign_button')}</button>
-                        <button onClick={() => setShowDeleteConfirm(true)} className="btn" style={{ background: 'var(--danger-fg-strong)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
-                        <Link href={'/dashboard/obligations'} className="btn" style={{ textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--danger-fg-strong)', color: 'var(--danger-fg-strong)' }}>{t('dismiss_decide_later')}</Link>
-                    </div>
-                </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexDirection: 'row', flexWrap: 'wrap' }}>
-                    <h1 style={{ margin: 0 }}>{obligation.title}</h1>
-                    <span style={{
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
-                        background: obligation.status === 'COMPLETED' ? 'var(--ok-bg)' : obligation.status === 'REJECTED' || obligation.status === 'APPROVED' ? (obligation.status === 'APPROVED' ? 'var(--ok-bg)' : 'var(--danger-bg)') : 'var(--surface-sunk)',
-                        color: obligation.status === 'COMPLETED' ? 'var(--ok-fg)' : obligation.status === 'REJECTED' || obligation.status === 'APPROVED' ? (obligation.status === 'APPROVED' ? 'var(--ok-fg)' : 'var(--danger-fg)') : 'var(--text-muted)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem'
-                    }}>
-                        {t(`status_${obligation.status.toLowerCase()}` as any)}
-                        {obligation.lastStatusUpdateBy && (['APPROVED', 'REJECTED', 'COMPLETED'].includes(obligation.status)) && (
-                            <span style={{ fontWeight: 'normal', opacity: 0.8, fontSize: '0.7rem' }}>
-                                • {obligation.lastStatusUpdateBy}
-                            </span>
-                        )}
+        <Page>
+            <PageHeader
+                title={(
+                    <span className="ui-title-with-badge">
+                        <bdi>{obligation.title}</bdi>
+                        <StatusBadge tone={taskStatusTone(obligation.status)}>{t(`status_${obligation.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
                     </span>
-                    <span style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
-                        background: 'var(--info-fill)',
-                        color: 'var(--text-on-accent)',
-                        fontWeight: 'bold',
-                        fontSize: '0.9rem',
-                        display: 'inline-flex',
-                        alignItems: 'center'
-                    }}>
-                        {obligation.difficulty} {t('points_label_plural')}
-                    </span>
-                    {recurrenceStyle && (
-                        <span
-                            title={t('recurrence_label')}
-                            style={{
-                                padding: '0.25rem 0.75rem',
-                                borderRadius: '9999px',
-                                background: recurrenceStyle.bg,
-                                color: recurrenceStyle.color,
-                                fontWeight: 'bold',
-                                fontSize: '0.75rem',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            {t(recurrenceStyle.labelKey as any)}
-                        </span>
-                    )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    <Link href={'/dashboard/obligations'}
-                        style={{ textDecoration: 'none', background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}
-                    >
-                        {t('close_button')}
-                    </Link>
-                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status) && (
-                        <button
-                            onClick={() => setShowRevertConfirm(true)}
-                            style={{
-                                background: 'var(--surface-subtle)',
-                                color: 'var(--text-muted)',
-                                border: '1px solid var(--border-firm)',
-                                borderRadius: '0.25rem',
-                                padding: '0.5rem 1rem',
-                                cursor: 'pointer',
-                                fontWeight: '600'
-                            }}
-                        >
-                            {isReverting ? t('reverting') : t('return_to_in_progress')}
-                        </button>
-                    )}
-                    {mayManageThis && (
-                        <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}
-                        >
-                            {t('delete_obligation_button' as any)}
-                        </button>
-                    )}
-                </div>
-            </div>
-            <p style={{ fontSize: '1.1rem', margin: '1rem 0' }}>{obligation.description}</p>
-
-            <div style={{ marginTop: '1rem', color: 'var(--text-soft)' }}>
-                {t('assigned_by')}: <strong>{creatorName || (creatorUnknown ? t('assigned_by_unknown') : t('role_super_admin'))}</strong> | {t('deadline_label')}: <SafeDate date={obligation.deadline} locale={locale} showTime />
-            </div>
-
-            {/* Existing Attachments */}
-            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                <h3>{t('attachments_label' as any)}</h3>
-                {existingAttachments.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.75rem' }}>
-                        {existingAttachments.map((att: any, index: number) => {
-                            const url = typeof att === 'string' ? att : att.url
-                            const name = typeof att === 'string' ? url.split('/').pop() : att.name
-                            return (
-                                <div key={index} style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    background: 'var(--surface)',
-                                    border: '1px solid var(--border)',
-                                    padding: '0.5rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    boxShadow: '0 1px 2px var(--shadow-faint)'
-                                }}>
-                                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📎</span>
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <a href={url} target="_blank" rel="noopener noreferrer" style={{
-                                            color: 'var(--info-solid-hover)',
-                                            textDecoration: 'none',
-                                            fontSize: '0.9rem',
-                                            fontWeight: '500',
-                                            maxWidth: '150px',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            {name || t('view_photo')}
-                                        </a>
-                                        {att.uploadedAt && (
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-soft)' }}>
-                                                <SafeDate date={att.uploadedAt} locale={locale} showTime />
-                                            </span>
-                                        )}
-                                    </div>
-                                    {canManage && (att.uploadedById === userId || companyWide('obligations.manage')) && (
-                                        <button aria-label={t('remove' as any)}
-                                            onClick={() => action.run(`remove-${url}`, () => handleRemoveExistingAttachment(att))}
-                                            disabled={action.running}
-                                            aria-busy={action.is(`remove-${url}`)}
-                                            style={{
-                                                marginLeft: locale === 'ar' ? '0' : '0.5rem',
-                                                marginRight: locale === 'ar' ? '0.5rem' : '0',
-                                                color: 'var(--danger-fg-strong)',
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                fontSize: '1.1rem',
-                                                padding: '0.2rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}
-                                            title={t('delete')}
-                                        >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M18 6L6 18M6 6l12 12"></path>
-                                            </svg>
-                                        </button>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </div>
-                ) : (
-                    <span style={{ color: 'var(--text-soft)', fontStyle: 'italic' }}>{t('no_attachments_msg')}</span>
                 )}
-            </div>
+                subtitle={decidedBy}
+                back={{ href: '/dashboard/obligations', label: modules.label('obligations') }}
+                // Handed in: the manager's decision.
+                action={mayManageThis && obligation.status === 'PENDING_CONFIRMATION' && (
+                    <>
+                        <Button icon={XIcon} onClick={() => action.run('reject', handleReject)} disabled={action.running} busy={action.is('reject')}>{t('reject_button')}</Button>
+                        <Button variant="primary" icon={CheckIcon} onClick={() => action.run('approve', handleApprove)} disabled={action.running} busy={action.is('approve')}>{t('approve_button')}</Button>
+                    </>
+                )}
+            />
 
-            {!seesOthers && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
-                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                    <h3>{t('attachments_optional_label').split(' ')[0]}</h3>
-                    <div
-                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-                        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
-                        onDrop={(e) => {
-                            e.preventDefault()
-                            setIsDragging(false)
-                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                handleFiles(Array.from(e.dataTransfer.files))
-                            }
-                        }}
-                        style={{
-                            marginTop: '0.5rem',
-                            border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`,
-                            borderRadius: '0.5rem',
-                            padding: '2rem',
-                            textAlign: 'center',
-                            background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer',
-                            position: 'relative'
-                        }}
-                    >
-                        <input
-                            key={inputKey}
-                            aria-label={t('attachments_label' as any)}
-                            type="file"
-                            multiple
-                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-                            onChange={(e) => {
-                                if (e.target.files) {
-                                    handleFiles(Array.from(e.target.files))
-                                    e.target.value = ''
-                                }
-                            }}
-                            disabled={uploading}
-                            style={{
-                                opacity: 0,
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: '100%',
-                                cursor: 'pointer'
-                            }}
-                        />
-                        <div style={{ pointerEvents: 'none' }}>
-                            <div aria-hidden="true" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>☁️</div>
-                            <p style={{ margin: 0, fontWeight: '600', color: 'var(--text-muted)' }}>
-                                {t('upload_drag_files_msg')}
-                            </p>
-                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-faint)' }}>
-                                {t('upload_allowed_types_msg')}
-                            </p>
-                        </div>
+            {/* Someone it's for was deleted: a manager settles it. */}
+            {deleted.length > 0 && canManage && !DECIDED.includes(obligation.status) && (
+                <Card title={t('assignee_deleted_alert')}>
+                    <p>{t('obligation_assignee_deleted_msg').replace('{name}', deleted.map((a: any) => `${a.firstName} ${a.lastName}`).join(locale === 'ar' ? '، ' : ', '))}</p>
+                    <div className="ui-form-actions">
+                        <Button variant="primary" icon={UserSwitchIcon} onClick={() => setReassigning(true)}>{t('reassign_button')}</Button>
+                        <Button icon={CheckIcon} onClick={() => action.run('complete', handleForceComplete)} disabled={action.running} busy={action.is('complete')}>{t('mark_as_completed')}</Button>
+                        {mayManageThis && <Button icon={TrashIcon} onClick={() => setDeleting(true)}>{t('delete_obligation_button')}</Button>}
                     </div>
+                </Card>
+            )}
 
-                    {/* Pending Files List */}
-                    {pendingFiles.length > 0 && (
-                        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {pendingFiles.map((file, i) => (
-                                <div key={i} style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '0.75rem',
-                                    background: 'var(--surface)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '0.5rem',
-                                    boxShadow: '0 1px 2px 0 var(--shadow-faint)',
-                                    flexDirection: 'row'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                                        <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📄</span>
-                                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-body)' }}>{file.name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => removePendingFile(i)}
-                                        style={{
-                                            color: 'var(--danger-fg-strong)',
-                                            background: 'var(--danger-bg-subtle)',
-                                            border: 'none',
-                                            borderRadius: '0.25rem',
-                                            padding: '0.25rem 0.5rem',
-                                            cursor: 'pointer',
-                                            fontSize: '0.875rem',
-                                            fontWeight: '500',
-                                            transition: 'background 0.2s'
-                                        }}
-                                        disabled={uploading}
-                                    >
-                                        {t('delete')}
-                                    </button>
-                                </div>
+            <Card
+                title={t('obligation_details')}
+                actions={menu.length > 0 && <RowMenu label={t('ui_more_actions_for').replace('{name}', obligation.title)} tooltip={t('ui_more_actions')} items={menu} />}
+            >
+                {obligation.description && <p className="ui-prose" dir="auto">{obligation.description}</p>}
+                <Details items={[
+                    { label: t('assigned_by'), value: creatorName ? <bdi>{creatorName}</bdi> : creatorUnknown ? t('assigned_by_unknown') : t('role_super_admin') },
+                    { label: t('deadline_label'), value: <DueDate overdue={isOverdue}><SafeDate date={obligation.deadline} locale={locale} showTime /></DueDate> },
+                    ...(recurrence ? [{ label: t('recurrence_label'), value: t(recurrence.labelKey as TranslationKey) }] : []),
+                    { label: t('points_label_plural'), value: countOf(t, locale, obligation.difficulty ?? 0, 'pts') },
+                    { label: t('assignees_label'), value: <bdi>{new Intl.ListFormat(locale === 'ar' ? 'ar' : 'en', { type: 'conjunction' }).format(names)}</bdi> },
+                ]} />
+            </Card>
+
+            <Card title={t('attachments_label')}>
+                {attachments.length > 0
+                    ? (
+                        <FileChips label={t('attachments_label')}>
+                            {attachments.map(att => (
+                                <FileChip key={att.url} name={fileName(att)} href={att.url} onRemove={mayRemove(att) ? () => setRemoving(att) : undefined} />
                             ))}
-                        </div>
-                    )}
+                        </FileChips>
+                    )
+                    : <p className="ui-hint">{t('no_attachments_msg')}</p>}
+            </Card>
 
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexDirection: 'row' }}>
-                        <button
-                            className="btn"
-                            style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
-                            onClick={() => handleUpload(true)}
-                            disabled={uploading}
-                        >
-                            {loadingType === 'DRAFT' ? t('saving') : t('save_draft_obligation_button' as any)}
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => handleUpload(false)}
-                            disabled={uploading}
-                        >
-                            {loadingType === 'SUBMIT' ? t('submitting_obligation' as any) : t('submit_obligation' as any)}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Finalized/Pending Message for Employees */}
-            {!seesOthers && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED'].includes(obligation.status) && (
-                <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', textAlign: 'center' }}>
-                    <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: '500' }}>
-                        {obligation.status === 'PENDING_CONFIRMATION'
-                            ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
-                            : t('obligation_finalized_msg' as any) || "This obligation has been finalized and cannot be modified."}
-                    </p>
-                </div>
-            )}
-
-            {/* Approve/Reject Buttons (Admins only) */}
-            {mayManageThis && obligation.status === 'PENDING_CONFIRMATION' && (
-                <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
-                    <button onClick={() => action.run('approve', handleApprove)} disabled={action.running} aria-busy={action.is('approve')} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                    <button onClick={() => action.run('reject', handleReject)} disabled={action.running} aria-busy={action.is('reject')} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
-                </div>
-            )}
-
-            {/* Feedback Modal */}
-            {showFeedback && (
-                <div style={{
-                    position: 'fixed',
-                    top: '20px',
-                    [locale === 'ar' ? 'left' : 'right']: '20px',
-                    background: 'var(--surface)',
-                    padding: '1rem',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px var(--shadow-weak)',
-                    zIndex: 2000,
-                    [locale === 'ar' ? 'borderRight' : 'borderLeft']: `4px solid ${feedbackType === 'error' ? 'var(--danger-solid)' : 'var(--ok-solid-alt)'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    direction: locale === 'ar' ? 'rtl' : 'ltr'
-                }}>
-                    <span>{feedbackMessage}</span>
-                    <button aria-label={t('close')} onClick={() => setShowFeedback(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
-                </div>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t('delete_obligation_title' as any)} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('delete_obligation_warning' as any)}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowDeleteConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={() => action.run('delete', handleDelete)} disabled={action.running} aria-busy={action.is('delete')} className="btn" style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)' }}>{t('delete')}</button>
-                    </div>
-                </div>
-            </Modal>
-            {/* Reassign Modal */}
-            <Modal isOpen={isReassigning} onClose={() => setIsReassigning(false)} title={t('reassign_button')} hideFooter={true}>
-                <div style={{ padding: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ marginBottom: '1.25rem' }}>{t('transfer_task_msg')}</p>
-
-                    <div style={{
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        border: '1px solid var(--border)',
-                        borderRadius: '0.5rem',
-                        padding: '0.75rem',
-                        background: 'var(--surface-subtle)',
-                        marginBottom: '1.5rem'
-                    }}>
-                        {allUsers.length > 0 ? (
-                            allUsers.map(u => (
-                                <label key={u.id} style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    marginBottom: '0.5rem',
-                                    cursor: 'pointer',
-                                    padding: '0.25rem'
-                                }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={newAssigneeIds.includes(u.id)}
-                                        onChange={e => {
-                                            if (e.target.checked) {
-                                                setNewAssigneeIds([...newAssigneeIds, u.id])
-                                            } else {
-                                                setNewAssigneeIds(newAssigneeIds.filter(id => id !== u.id))
-                                            }
-                                        }}
-                                    />
-                                    <span style={{ fontSize: '0.9rem' }}>
-                                        {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)' }}>({u.role})</small>
-                                    </span>
-                                </label>
-                            ))
-                        ) : (
-                            <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)', textAlign: 'center' }}>{locale === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+            {/* What its assignee hands in, while they're working on it. */}
+            {!seesOthers && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
+                <Card title={t('obligation_your_submission')}>
+                    <div className="ui-form">
+                        {locked && <p className="ui-error" role="status">{t('overdue_obligation_alert_msg')}</p>}
+                        <FilePicker label={t('ui_attach_files')} hint={t('obligation_files_hint')} accept={FILE_TYPES.join(',')} onFiles={handleFiles} disabled={locked || sending !== null} />
+                        {pendingFiles.length > 0 && (
+                            <FileChips label={t('ui_attach_files')}>
+                                {pendingFiles.map((file, i) => (
+                                    <FileChip key={`${file.name}-${i}`} name={file.name} size={file.size} onRemove={locked || sending ? undefined : () => setPendingFiles(prev => prev.filter((_, at) => at !== i))} />
+                                ))}
+                            </FileChips>
                         )}
+                        <div className="ui-form-actions">
+                            <Button variant="primary" onClick={() => handleUpload(false)} disabled={sending !== null} busy={sending === 'SUBMIT'}>
+                                {sending === 'SUBMIT' ? t('submitting_obligation') : t('submit_obligation')}
+                            </Button>
+                            <Button onClick={() => handleUpload(true)} disabled={locked || sending !== null} busy={sending === 'DRAFT'}>
+                                {sending === 'DRAFT' ? t('saving') : t('save_draft_obligation_button')}
+                            </Button>
+                        </div>
                     </div>
+                </Card>
+            )}
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button className="btn" style={{ background: 'var(--border)' }} onClick={() => setIsReassigning(false)}>{t('cancel')}</button>
-                        <button className="btn btn-primary" onClick={() => action.run('reassign', handleReassign)} disabled={newAssigneeIds.length === 0 || action.running} aria-busy={action.is('reassign')}>
-                            {t('confirm_transfer_button')}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-            {/* Revert Confirmation Modal */}
-            <Modal isOpen={showRevertConfirm} onClose={() => setShowRevertConfirm(false)} title={t('return_to_in_progress')} hideFooter>
-                <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p>{t('confirm_action_button') + '?'}</p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowRevertConfirm(false)} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                        <button onClick={handleRevert} className="btn" style={{ background: 'var(--info-fill-hover)', color: 'var(--text-on-accent)' }}>
-                            {isReverting ? '...' : t('confirm_action_button')}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            {/* Handed in or done with: its assignee is told where it stands. */}
+            {!seesOthers && !working && obligation.status !== 'REJECTED' && (
+                <Card title={t('obligation_your_submission')}>
+                    <p className="ui-hint">{obligation.status === 'PENDING_CONFIRMATION' ? t('pending_confirmation_msg') : t('obligation_finalized_msg')}</p>
+                </Card>
+            )}
 
-            {/* Deadline Passed Modal */}
-            <Modal isOpen={showDeadlineModal} onClose={() => setShowDeadlineModal(false)} title={t('deadline_passed_title' as any) || (locale === 'ar' ? 'انتهى الموعد النهائي' : 'Deadline Passed')} hideFooter hideCloseButton={true}>
-                <div id="deadline-modal-content" style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                        {t('overdue_obligation_alert_msg' as any) || t('overdue_task_alert_msg' as any)}
-                    </p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                        <button onClick={() => setShowDeadlineModal(false)} className="btn btn-primary" style={{ minWidth: '100px' }}>
-                            {t('confirm_action_button')}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
-        </div>
+            <Dialog
+                open={deleting}
+                onClose={() => setDeleting(false)}
+                title={t('delete_obligation_title')}
+                actions={<>
+                    <Button onClick={() => setDeleting(false)}>{t('cancel')}</Button>
+                    <Button variant="danger" onClick={() => action.run('delete', handleDelete)} disabled={action.running} busy={action.is('delete')}>{t('delete')}</Button>
+                </>}
+            >
+                <p>{t('delete_obligation_warning')}</p>
+            </Dialog>
+
+            <Dialog
+                open={removing !== null}
+                onClose={() => setRemoving(null)}
+                title={removing ? t('ui_remove_file').replace('{name}', fileName(removing)) : ''}
+                actions={<>
+                    <Button onClick={() => setRemoving(null)}>{t('cancel')}</Button>
+                    <Button variant="danger" onClick={() => removing && action.run('remove-file', () => handleRemoveAttachment(removing))} disabled={action.running} busy={action.is('remove-file')}>{t('remove')}</Button>
+                </>}
+            >
+                <p>{t('obligation_remove_file_body')}</p>
+            </Dialog>
+
+            <Dialog
+                open={reverting}
+                onClose={() => setReverting(false)}
+                title={t('return_to_in_progress')}
+                actions={<>
+                    <Button onClick={() => setReverting(false)}>{t('cancel')}</Button>
+                    <Button variant="primary" onClick={() => action.run('revert', handleRevert)} disabled={action.running} busy={action.is('revert')}>{t('return_to_in_progress')}</Button>
+                </>}
+            >
+                <p>{t('obligation_revert_body')}</p>
+            </Dialog>
+
+            <Dialog
+                open={reassigning}
+                onClose={() => setReassigning(false)}
+                title={t('reassign_button')}
+                actions={<>
+                    <Button onClick={() => setReassigning(false)}>{t('cancel')}</Button>
+                    <Button variant="primary" onClick={() => action.run('reassign', handleReassign)} disabled={newAssigneeIds.length === 0 || action.running} busy={action.is('reassign')}>{t('reassign_button')}</Button>
+                </>}
+            >
+                <p>{t('obligation_reassign_msg')}</p>
+                <AssigneeChecklist
+                    people={people}
+                    value={newAssigneeIds}
+                    onChange={setNewAssigneeIds}
+                    onRetry={() => { setRetrying(true); setTries(n => n + 1) }}
+                    retrying={retrying}
+                />
+            </Dialog>
+        </Page>
     )
 }
+

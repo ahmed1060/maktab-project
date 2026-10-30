@@ -2047,3 +2047,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   §5).
 - **2026-10-30:** In #121, Create task offers Try again when the people who
   can be assigned couldn't be loaded (`UI_PLAN.md` §5).
+- **2026-10-30:** Add obligation was merged in #121 (`UI_PLAN.md` §5), and
+  an obligation's page moves onto the building blocks in #122. Neither
+  touches clients or locations.
+- **2026-10-30:** In #122, the Tasks list says who decided a task by their
+  name, without the role's code saved before it (`UI_PLAN.md` §5).

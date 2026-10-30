@@ -66,7 +66,6 @@ describe("the bar", () => {
             ["app/(dashboard)/dashboard/companies/page.tsx", "/settings`"],
             ["app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", "'/dashboard/companies'"],
             ["app/(dashboard)/dashboard/employees/new/page.tsx", "'/dashboard/employees'"],
-            ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", "'/dashboard/obligations'"],
         ]
         for (const [file, to] of was) {
             const src = readFileSync(file, "utf8")
@@ -79,6 +78,10 @@ describe("the bar", () => {
             expect(src, file).not.toContain(`onClick={() => router.push(${to})}`)
             expect(src, file).toContain(`<ButtonLink href={${to}}>`)
         }
+        // An obligation's page goes back to the list by its page header's back link.
+        const obligation = readFileSync("app/(dashboard)/dashboard/obligations/[id]/client.tsx", "utf8")
+        expect(obligation).not.toContain("onClick={() => router.push('/dashboard/obligations')}")
+        expect(obligation).toContain("back={{ href: '/dashboard/obligations', label: modules.label('obligations') }}")
     })
 })
 

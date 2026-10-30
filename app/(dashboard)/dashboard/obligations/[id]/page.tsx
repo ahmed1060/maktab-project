@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { verifyResourceAccess } from "@/lib/security"
 import AccessDenied from "@/components/AccessDenied"
-import ObligationDetailClient from "./client"
+import ObligationDetailClient, { ObligationNotFound } from "./client"
 
 export default async function ObligationDetailPage(props: { params: Promise<{ id: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -27,7 +27,7 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
         }
     })
 
-    if (!obligation) return <div>Obligation not found</div>
+    if (!obligation) return <ObligationNotFound />
 
     // Company isolation — this page previously had no access check at all,
     // not even the employee-assignment restriction Task's page has.
@@ -65,8 +65,11 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
         obligation.status = 'IN_PROGRESS'
     }
 
+    // eslint-disable-next-line react-hooks/purity -- server-rendered once per request
+    const now = Date.now()
     return <ObligationDetailClient
         obligation={obligation}
+        now={now}
         userRole={(session?.user as any)?.role}
         userId={userId || ''}
         userName={(session?.user as any)?.name || ''}
