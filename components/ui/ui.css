@@ -1176,6 +1176,7 @@ a.ui-row:focus-visible {
 }
 .ui-due {
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .ui-due[data-overdue="true"] {
   display: inline-flex;

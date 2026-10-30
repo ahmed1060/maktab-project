@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
 
 /**
  * The Tasks list on the building blocks (UI_PLAN.md §5 step 5): its page
@@ -129,5 +130,13 @@ describe("the Tasks list", () => {
         expect(filtered).toContain("tasks_empty_filters")
         expect(filtered).toContain("ui_reset_filters")
         expect(await tasksList([])).toContain("tasks_empty")
+    })
+})
+
+describe("a deadline", () => {
+    it("lines up its digits with the rows above and below (web interface audit)", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rule = css.slice(css.indexOf(".ui-due {"), css.indexOf("}", css.indexOf(".ui-due {")))
+        expect(rule).toContain("font-variant-numeric: tabular-nums")
     })
 })

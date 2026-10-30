@@ -1173,3 +1173,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     hooks (`components/filters`), with the fixes Codex found on #117.
 - **2026-10-30:** The Employee costs tab was merged in #117, and the Tasks
   list opens for review in #118 (§5 step 5).
+- **2026-10-30:** In #118, a deadline's digits line up with the rows
+  above and below it, in the Tasks list and on the dashboard (Vercel's
+  web interface audit).
