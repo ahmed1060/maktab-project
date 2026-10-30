@@ -9,6 +9,7 @@ import { countOf } from '@/lib/plural'
 import { placeLine } from '@/lib/task-place'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import type { TranslationKey } from '@/lib/translations'
+import { decidedByName } from '@/lib/decided-by'
 import SafeDate from '@/components/SafeDate'
 import DateRangePicker from '@/components/DateRangePicker'
 import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
@@ -170,7 +171,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
     const badge = (task: TaskRow) => <StatusBadge tone={taskStatusTone(task.status)}>{t(`status_${task.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
     // Who approved, completed or rejected it.
     const decidedBy = (task: TaskRow) => ['APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && task.lastStatusUpdateBy
-        ? t('list_status_by').replace('{name}', task.lastStatusUpdateBy)
+        ? t('list_status_by').replace('{name}', decidedByName(task.lastStatusUpdateBy))
         : null
     const due = (task: TaskRow) => <DueDate overdue={overdue(task)}><SafeDate date={task.deadline} locale={locale} format="short" /></DueDate>
     const points = (task: TaskRow) => <span className="ui-chip">{countOf(t, locale, task.difficulty ?? 0, 'pts')}</span>

@@ -1274,3 +1274,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   it asked whether the window was inside the menu, and the window isn't
   in the page. Found on an obligation's page, and the same in every list's
   menu.
+- **2026-10-30:** In #122, who decided a task or an obligation is said by
+  their name, "By Hana Saad", on the Tasks list, the Obligations list and an
+  obligation's page. It's saved with their role's code before it, and the
+  three showed "By ADMIN Hana Saad".

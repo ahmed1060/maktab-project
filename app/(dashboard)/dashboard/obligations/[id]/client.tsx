@@ -15,6 +15,7 @@ import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
+import { decidedByName } from '@/lib/decided-by'
 
 const FILE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
 const FILE_MAX_BYTES = 4 * 1024 * 1024
@@ -329,7 +330,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
 
     const recurrence = obligation.recurrence ? RECURRENCE_STYLE[obligation.recurrence] : undefined
     const decidedBy = DECIDED.includes(obligation.status) && obligation.lastStatusUpdateBy
-        ? t('list_status_by').replace('{name}', obligation.lastStatusUpdateBy)
+        ? t('list_status_by').replace('{name}', decidedByName(obligation.lastStatusUpdateBy))
         : undefined
     const names = (obligation.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
     const deleted = (obligation.assignees ?? []).filter((a: any) => a.status === 'DELETED')
