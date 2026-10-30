@@ -1158,3 +1158,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** In #117, the Costs page's subtitle no longer mentions
   salaries: "Monitor company expenses and financial logs". None of its
   three tabs has them, and it shows on all three now.
+- **2026-10-30:** The Tasks list moves onto the building blocks (§5 step
+  5), the second of the remaining old pages.
+  - Its page header, with Create new task as its one primary button, and
+    a Team Leader's two tabs, their own tasks and their team's.
+  - A filter bar: the search, the employee, the status, the client, the
+    location, the saved title, the dates, and the order within the page.
+    An employee, who sees only their own tasks, has the search, as before.
+  - The tasks as a table on computers and cards on phones: where each is
+    done, who gave it or who it's for, its deadline, overdue in words, its
+    points, its status and who decided it, and Start, Continue or View.
+  - Its address is handled as the Employee costs tab's is, by the same
+    hooks (`components/filters`), with the fixes Codex found on #117.

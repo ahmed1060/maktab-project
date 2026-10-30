@@ -60,10 +60,15 @@ describe("at phone width", () => {
     })
 
     it("the task list's cards fit the screen", () => {
-        // The list is a grid whose one column was sized to its widest card's
-        // content: 380px of cards in a 326px space.
+        // The list was a grid whose one column was sized to its widest card's
+        // content: 380px of cards in a 326px space. It's the building
+        // blocks' list now, whose phone cards are the screen's width and wrap
+        // what doesn't fit.
         const list = readFileSync("app/(dashboard)/dashboard/tasks/TasksClient.tsx", "utf8")
-        expect(list).toContain("display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem'")
+        expect(list).toContain("<DataList")
+        expect(list).not.toContain("gridTemplateColumns")
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-item-detail,\n\.ui-meta \{\n  overflow-wrap: anywhere;/)
     })
 
     it("the dashboard's grids never ask for more than the screen has", () => {

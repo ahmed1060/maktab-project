@@ -24,6 +24,7 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import { locationLabel } from '@/lib/locations'
+import { parseTaskLocation } from '@/lib/task-place'
 import { googleMapsLink } from '@/lib/attendance/geo'
 import { RECEIPT_ACCEPT, RECEIPTS_FOLDER } from '@/lib/task-costs'
 
@@ -42,16 +43,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         try {
             return typeof taskObj.memberPaymentStatus === 'string' ? JSON.parse(taskObj.memberPaymentStatus) : taskObj.memberPaymentStatus
         } catch (e) { console.error('[MEMBER_PAYMENT_STATUS_PARSE_FAIL]', e); return {} }
-    }
-    const parseLocation = (locStr: string) => {
-        if (!locStr) return { name: '', link: '' }
-        try {
-            if (locStr.startsWith('{')) {
-                const parsed = JSON.parse(locStr)
-                return { name: parsed.name || '', link: parsed.link || '' }
-            }
-        } catch (e) { console.error('[LOCATION_PARSE_FAIL]', e) }
-        return { name: locStr, link: '' }
     }
     const attachmentsOf = (src: any): any[] => Array.isArray(src.attachments) ? src.attachments : []
     const editFormFrom = (src: any) => ({
@@ -74,7 +65,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             link: src.place.latitude !== null && src.place.longitude !== null ? googleMapsLink(src.place.latitude, src.place.longitude) : '',
             ofClient: !!src.place.client,
         }
-        : { ...parseLocation(src.location || ''), ofClient: false }
+        : { ...parseTaskLocation(src.location || ''), ofClient: false }
     const [task, setTask] = useState(initialTask)
     const hasPaidCosts = task.paymentStatus === 'PAID' || Object.values(getMemberPaymentStatus(task) ?? {}).includes('PAID')
 

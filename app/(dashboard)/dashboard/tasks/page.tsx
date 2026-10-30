@@ -10,6 +10,8 @@ import { dayRangeIn } from '@/lib/services/filter-zone'
 import { placeFilters } from '@/lib/place-filters'
 import { titleNamed } from '@/lib/saved-lists'
 import { ListService } from '@/lib/services/list.service'
+import { redirect } from 'next/navigation'
+import { askedPage, pageRedirect } from '@/lib/list-page'
 
 export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string, clientId?: string, locationId?: string, titleNameId?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -18,10 +20,15 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
     const searchParams = await props.searchParams
 
     const session = await getServerSession(authOptions)
-    const page = parseInt(searchParams.page || '1')
+    const { asked, page } = askedPage(searchParams.page)
     const limit = 10
     const skip = (page - 1) * limit
     const userId = (session?.user as any)?.id // Define userId here for all cases
+    // The time a task is overdue by, so the page and the browser's first
+    // render agree on which are. A Server Component renders once per
+    // request, so there's no later render for the clock to disagree with.
+    // eslint-disable-next-line react-hooks/purity -- server-rendered once per request
+    const now = Date.now()
 
     let companyId: string | undefined = undefined
     if (searchParams.company) {
@@ -71,7 +78,7 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         }
     } else if (scope === 'COMPANY') {
         // An Admin still sees all company tasks
-        if (!userCompanyId) return <TasksClient tasks={[]} total={0} page={page} totalPages={0} currentUserId={userId} view={view} />
+        if (!userCompanyId) return <TasksClient tasks={[]} total={0} page={1} totalPages={0} currentUserId={userId} view={view} now={now} />
         whereClause.companyId = userCompanyId
     } else {
         // Super Admin can filter by company or see everything
@@ -123,9 +130,18 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
     const [tasks, total] = await Promise.all([
         (prisma.task as any).findMany({
             where: whereClause,
-            include: {
+            // What the list shows, and nothing else of the row.
+            select: {
+                id: true, title: true, status: true, deadline: true, difficulty: true,
+                createdAt: true, updatedAt: true, lastStatusUpdateBy: true, memberCosts: true,
                 assignees: { select: { id: true, firstName: true, lastName: true } },
-                creator: { select: { firstName: true, lastName: true } }
+                creator: { select: { firstName: true, lastName: true } },
+                // Where it's done, the line under its title (DESIGN.md §5.4):
+                // its location as it is now, or, from before locations, the
+                // text it was given.
+                client: { select: { name: true } },
+                place: { select: { name: true, client: { select: { name: true } } } },
+                location: true,
             },
             orderBy: { createdAt: 'desc' },
             skip,
@@ -133,6 +149,11 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         }),
         (prisma.task as any).count({ where: whereClause })
     ])
+
+    const totalPages = Math.ceil(total / limit)
+    // A page past the last, as when its last task is deleted, goes to the last there is now.
+    const elsewhere = pageRedirect('/dashboard/tasks', searchParams, asked, totalPages)
+    if (elsewhere) redirect(elsewhere)
 
     // Each task as this viewer may see it: someone without tasks.view — an
     // employee — gets only their own line of what each assignee is paid.
@@ -143,11 +164,8 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
         return shapeTask(viewer, { memberCosts: raw }).memberCosts
     }
 
-    // totalCost is a Prisma.Decimal (F-07) — Server Components can only pass
-    // plain serializable values to Client Components.
     const serializedTasks = tasks.map((task: any) => ({
         ...task,
-        totalCost: Number(task.totalCost),
         memberCosts: visibleMemberCosts(task.memberCosts),
     }))
 
@@ -156,10 +174,10 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
             tasks={serializedTasks}
             total={total}
             page={page}
-            totalPages={Math.ceil(total / limit)}
-           
+            totalPages={totalPages}
             currentUserId={userId}
             view={view}
+            now={now}
         />
     )
 }

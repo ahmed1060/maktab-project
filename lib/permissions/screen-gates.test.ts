@@ -137,7 +137,7 @@ const GATES: Gate[] = [
     { what: "task list: company", file: D + "tasks/page.tsx", uses: "} else if (scope === 'COMPANY') {", before: r => r === "ADMIN", now: p => p.scope("tasks.view") === "COMPANY" },
     { what: "task page: sees others' tasks", file: D + "tasks/[id]/page.tsx", uses: "const seesOthersTasks = can(viewer, 'tasks.view')", before: r => r !== "EMPLOYEE", now: p => p.can("tasks.view") },
     { what: "tasks: tabs", file: D + "tasks/TasksClient.tsx", uses: "{reach === 'TEAM' && (", before: r => r === "TEAM_LEADER", now: p => p.scope("tasks.view") === "TEAM" },
-    { what: "tasks: employee filters", file: D + "tasks/TasksClient.tsx", uses: "isEmployee={reach === null}", before: r => r === "EMPLOYEE", now: p => p.scope("tasks.view") === null },
+    { what: "tasks: employee filters", file: D + "tasks/TasksClient.tsx", uses: "const ownTasksOnly = reach === null", before: r => r === "EMPLOYEE", now: p => p.scope("tasks.view") === null },
     { what: "tasks: create", file: D + "tasks/TasksClient.tsx", uses: "can('tasks.create') && (", before: managers, now: p => p.can("tasks.create") },
     { what: "task: overdue lock (flag: on the task)", file: TASK, uses: "const isRestrictedRole = !seesOthersTasks || (teamReach && isUserAssignee)", before: (r, on) => r === "EMPLOYEE" || (r === "TEAM_LEADER" && on), now: (p, on) => !p.can("tasks.view") || (p.scope("tasks.view") === "TEAM" && on) },
     { what: "task: acts as assignee (flag: on the task)", file: TASK, uses: "(!seesOthersTasks || isOnTask)", before: (r, on) => r === "EMPLOYEE" || on, now: (p, on) => !p.can("tasks.view") || on },
