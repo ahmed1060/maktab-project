@@ -2572,6 +2572,7 @@ export const ar = {
         perm_dayoff_view: "عرض طلبات الإجازة",
         perm_dayoff_approve: "الموافقة على الإجازات",
         perm_dayoff_adjust_credit: "تعديل أرصدة الإجازات",
+        perm_dayoff_request: "طلب إجازة",
         perm_salary_view: "عرض الرواتب",
         perm_salary_edit: "تعديل الرواتب",
         perm_salary_adjustments_manage: "إضافة المكافآت والخصومات",

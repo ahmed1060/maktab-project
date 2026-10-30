@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
+import { migratedGrants } from "@/lib/permissions/test-actors"
 import { isPermission } from "@/lib/permissions/catalogue"
 
 /**
@@ -66,7 +66,7 @@ describe("the roles migration seeds the built-in grants", () => {
     it("exactly as lib/permissions/built-in.ts has them", () => {
         const fromSql = seeded()
         for (const role of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-            expect(fromSql[role] ?? {}, role).toEqual(BUILT_IN_GRANTS[role])
+            expect(fromSql[role] ?? {}, role).toEqual(migratedGrants(role))
         }
     })
 

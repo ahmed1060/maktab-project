@@ -243,6 +243,7 @@ them, as today.
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |
 | | `dayoff.adjust_credit` | Change someone's leave balance | `PUT /users` (credit fields) |
+| | `dayoff.request` | Ask for leave of one's own: granted at Own only, and personal, so it's no access over anybody (§4.2, rule 4). Held by the built-in Employee and Team Leader, not the Admin (`UI_PLAN.md` §2.3, part 2) | `POST /day-off-requests` (from part 2b) |
 | **Salaries** | `salary.view` | See salary figures anywhere (decided: one permission) | `users/[id]/salary-history`, profile, payroll |
 | | `salary.edit` | Change a salary — implies view | `PUT /users` (salary) |
 | | `salary_adjustments.manage` | Bonus / deduction, reverse, roll back | `users/[id]/bonus\|deduction\|adjustments/*` |
@@ -427,7 +428,11 @@ a role (§4.1). The remaining rules:
    role that can assign (a "Deputy Admin", or HR requesting) from provisioning
    payroll, salary or audit access it does not itself hold, and stops two such
    people from escalating each other. Checked on the server at assignment and
-   again at approval of a request.
+   again at approval of a request. A **personal** permission, one only ever
+   about oneself, isn't asked for: it's no access over anybody. Asking for
+   one's own leave (`dayoff.request`) is the one, so an Admin, whose
+   built-in role doesn't hold it, still makes somebody an Employee, who does
+   (`UI_PLAN.md` §2.3, part 2a).
 5. **Nobody approves their own request**, whatever their permission — leave,
    overtime, a missing punch, a salary change. Enforced in `can` for every
    approval-type permission, not in each route.

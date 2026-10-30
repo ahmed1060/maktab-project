@@ -2577,6 +2577,7 @@ export const en = {
         perm_dayoff_view: "See leave requests",
         perm_dayoff_approve: "Approve leave",
         perm_dayoff_adjust_credit: "Adjust leave balances",
+        perm_dayoff_request: "Ask for leave",
         perm_salary_view: "See salaries",
         perm_salary_edit: "Change salaries",
         perm_salary_adjustments_manage: "Add bonuses and deductions",

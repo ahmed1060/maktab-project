@@ -150,7 +150,21 @@ one once its kind has moved in.
    server, which reads each kind through its own rules for who may see and
    decide it.
 2. **Day off:** asked for and decided on the page; Day off requests sends
-   people there.
+   people there. Who may ask is a role's permission, Ask for leave (Decided
+   on 2026-10-30): the built-in Employee and Team Leader hold it, as they
+   ask today, and so does every custom role there already. The built-in
+   Admin doesn't, and its role is locked (`ROLES_PLAN.md` §4.2, rule 7),
+   so a company whose Admins ask for leave gives them an Admin-based role
+   of its own that holds it. Their leave balance is a donut on Mine, above
+   the list. In three PRs, so no release that doesn't know the permission can
+   drop it from a role:
+   1. **2a:** Ask for leave in the permissions and the role editor, and in
+      a new company's built-in roles. Nothing checks it yet.
+   2. **2b:** the companies there already get it, by a migration, once 2a
+      is live; then asking for leave needs it.
+   3. **2c:** day off on the page: asked for in a dialog, decided under To
+      review with the days to take off and from what, and Day off requests
+      sends people there.
 3. **Permission hours and missing punches:** asked for and decided on the
    page; Attendance's Requests tab points there.
 4. **Overtime, phones and flagged punches:** decided under To review.
@@ -1457,3 +1471,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   both pages, or on neither (found by Codex on PR 125). Done is in order of
   when each was last changed, which is when it was done, as the old history
   page had it: a request done before its completion time was kept has none.
+- **2026-10-30:** The one Requests page, part 1, was merged in #125, and
+  its part 2, day off, is planned in three PRs (§2.3): Ask for leave
+  becomes a role's permission, the companies there get it, then day off
+  moves onto the page. The built-in Employee and Team Leader may ask, and
+  every custom role there already; the built-in Admin may not, as today.
+  Their balance is on Mine. The first opens for review in #126.
+- **2026-10-30:** In #126, Ask for leave is a permission in the role
+  editor's Day off group, at Own, and a new company's built-in Employee
+  and Team Leader hold it. It's personal, so an Admin who may not ask for
+  leave still gives somebody a role that may (`ROLES_PLAN.md` §4.2, rule
+  4). Nothing asks for it yet: the companies there get it first (§2.3,
+  part 2b).

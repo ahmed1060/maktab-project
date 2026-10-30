@@ -8,6 +8,7 @@ import { decodeGrants, encodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
+import { migratedGrants } from "@/lib/permissions/test-actors"
 import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleRequestService } from "@/lib/services/role-request.service"
 import { RoleChangeRequestService } from "@/lib/services/role-change-request.service"
@@ -170,7 +171,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    expect(grants, `${company} ${builtIn}`).toEqual(migratedGrants(builtIn))
                 }
             }
         })
@@ -365,7 +366,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // …and the change is audited, before and after.
             const [audit] = (await auditOf(employee.id)).filter(a => a.action === "UPDATE_ROLE")
             // Its built-in grants, before.
-            expect(audit.details.before.grants).toHaveLength(Object.keys(BUILT_IN_GRANTS.EMPLOYEE).length)
+            expect(audit.details.before.grants).toHaveLength(Object.keys(migratedGrants("EMPLOYEE")).length)
             expect(audit.details.after.grants).toEqual([{ permission: "records.view", scope: "COMPANY" }])
             expect(audit.details.holders).toBe(1)
         })
@@ -709,7 +710,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect(decodeGrants(acting.grants)).toMatchObject({ "dayoff.approve": "COMPANY" })
             const over = await RoleService.forToken("act1", prisma, new Date(until.getTime() + 1000))
             expect(over).toMatchObject({ roleId: cover, role: "EMPLOYEE", actingEnded: true })
-            expect(decodeGrants(over.grants)).toEqual(BUILT_IN_GRANTS.EMPLOYEE)
+            expect(decodeGrants(over.grants)).toEqual(migratedGrants("EMPLOYEE"))
             // The day comes.
             expect(await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))).toMatchObject({ returned: 1 })
             expect(await row("act1")).toMatchObject({ roleId: employee, actingUntil: null, returnRoleId: null })

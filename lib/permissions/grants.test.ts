@@ -27,6 +27,7 @@ describe("permission codes", () => {
         "lists.add": 58, "lists.manage": 59,
         "charges.view": 60, "charges.manage": 61, "charges.collect": 62,
         "cash_advances.view": 63, "cash_advances.give": 64,
+        "dayoff.request": 65,
         "attendance.view_team": 49, "attendance.correct": 50, "attendance.approve_overtime": 51, "attendance.approve_permissions": 52,
         "attendance.approve_devices": 53,
         "attendance.approve_face": 54,
