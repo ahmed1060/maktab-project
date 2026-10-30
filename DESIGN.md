@@ -431,6 +431,17 @@ These are built once, in the building-blocks PR, and every page uses them
     one under the keys is shaded;
   - the field says which name it's linked to only by the suggestion
     picked: typing again unlinks it.
+- **A pick of several from a long list,** such as a task's assignees, is
+  a group under its visible label:
+  - a search field, which narrows the list as it's typed;
+  - below it, the list as checkboxes in a box that scrolls within itself,
+    240px tall, each 36px (44px on phones), with what tells two apart,
+    such as a person's role, on the end side;
+  - its error below the box, as a field's is.
+- **A form on a page of its own,** such as Create task, is one panel: its
+  fields one under the other, at most 640px wide, then its buttons, the
+  one primary button first. Submitting with something wrong shows each
+  error under its field and puts the focus on the first one.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -870,3 +881,5 @@ changed:
 - **2026-10-30:** An empty state can say why it's empty, on a second line,
   when that isn't plain (§5.5, Empty state): the Tasks list's for a Team
   Leader with no one on their team yet.
+- **2026-10-30:** A pick of several from a long list, and a form on a page
+  of its own (§5.3), for Create task.

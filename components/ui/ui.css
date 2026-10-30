@@ -241,7 +241,9 @@
   cursor: not-allowed;
 }
 .ui-input[aria-invalid="true"],
-.ui-select[aria-invalid="true"] {
+.ui-select[aria-invalid="true"],
+/* A picker's button, which can't be invalid itself: its error is described. */
+.ui-date-trigger[data-invalid="true"] {
   border-color: var(--problem-text);
 }
 
@@ -297,7 +299,8 @@
   color: var(--muted);
   cursor: not-allowed;
 }
-.ui-radio {
+.ui-radio,
+.ui-check {
   flex: none;
   width: 18px;
   height: 18px;
@@ -305,7 +308,8 @@
   accent-color: var(--brand);
   cursor: inherit;
 }
-.ui-radio:focus-visible {
+.ui-radio:focus-visible,
+.ui-check:focus-visible {
   outline: 2px solid var(--brand-text);
   outline-offset: 2px;
 }
@@ -369,6 +373,44 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+/* A form on a page of its own, such as Create task: its fields one under
+   the other at a width that reads, then its buttons. */
+.ui-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 640px;
+}
+.ui-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* A group of fields under one label, such as a task's assignees, with no
+   frame of its own. */
+.ui-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ui-fieldset > legend {
+  padding: 0;
+}
+/* A pick of several from a long list, such as a task's assignees (§5.3):
+   below its search, a box of checkboxes that scrolls within itself. */
+.ui-checklist {
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius-field);
+  background: var(--panel);
+}
+.ui-checklist .ui-choice > .ui-hint {
+  margin-inline-start: auto;
 }
 .ui-dialog-actions {
   display: flex;

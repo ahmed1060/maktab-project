@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom'
 import { useHydrated } from '@/lib/useHydrated'
 import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
 import { isoOf } from '@/lib/calendar-keys'
+import { CalendarBlankIcon } from '@phosphor-icons/react/ssr'
+import { Icon } from '@/components/ui/Icon'
 
 interface DateTimePickerProps {
     value: string
@@ -12,9 +14,16 @@ interface DateTimePickerProps {
     label?: string
     min?: string
     customTrigger?: React.ReactNode
+    /**
+     * As a field of a form on the building blocks (DESIGN.md §5.3): its
+     * label above it, the date and time in the page's language, and its
+     * error below it.
+     */
+    asField?: boolean
+    error?: string
 }
 
-export default function DateTimePicker({ value, onChange, label, min, customTrigger }: DateTimePickerProps) {
+export default function DateTimePicker({ value, onChange, label, min, customTrigger, asField = false, error }: DateTimePickerProps) {
 
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
@@ -34,6 +43,7 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
     }, [])
 
     const openerId = useId()
+    const errorId = `${openerId}-error`
     // A day can't be chosen once all of it is before `min`.
     const isDayDisabled = (iso: string) => {
         if (!min) return false
@@ -171,10 +181,24 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
     const currentH12 = currentH24 % 12 || 12
     const currentPeriod = currentH24 >= 12 ? 'PM' : 'AM'
 
+    // As a field, the date and time read in the page's language.
+    const fieldLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const fieldText = (date: Date) => `${date.toLocaleDateString(fieldLocale, { day: 'numeric', month: 'short', year: 'numeric' })}, ${date.toLocaleTimeString(fieldLocale, { hour: 'numeric', minute: '2-digit' })}`
+
     return (
-        <div ref={containerRef} style={{ position: 'relative', width: '100%', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            {label && <label htmlFor={customTrigger ? undefined : openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', textAlign: locale === 'ar' ? 'right' : 'left' }}>{label}</label>}
-            {customTrigger ? (
+        <div ref={containerRef} className={asField ? 'ui-field' : undefined} style={asField ? undefined : { position: 'relative', width: '100%', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
+            {label && (asField
+                ? <label htmlFor={openerId} className="ui-label">{label}</label>
+                : <label htmlFor={customTrigger ? undefined : openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', textAlign: locale === 'ar' ? 'right' : 'left' }}>{label}</label>)}
+            {asField ? (
+                <span className="ui-control has-start-icon">
+                    <Icon icon={CalendarBlankIcon} size={16} />
+                    <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} data-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined}
+                        onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={selectedDate ? undefined : true}>
+                        {selectedDate ? fieldText(selectedDate) : t('select_deadline')}
+                    </button>
+                </span>
+            ) : customTrigger ? (
                 <div onClick={toggleOpen}>
                     {customTrigger}
                 </div>
@@ -211,6 +235,8 @@ export default function DateTimePicker({ value, onChange, label, min, customTrig
                     <span aria-hidden="true" style={{ color: 'var(--brand-primary-text)', fontSize: '1.2rem' }}>📅</span>
                 </button>
             )}
+
+            {asField && error && <span id={errorId} className="ui-error">{error}</span>}
 
             {isOpen && mounted && createPortal(
                 <div

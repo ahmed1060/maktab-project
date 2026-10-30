@@ -67,7 +67,6 @@ describe("the bar", () => {
             ["app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", "'/dashboard/companies'"],
             ["app/(dashboard)/dashboard/employees/new/page.tsx", "'/dashboard/employees'"],
             ["app/(dashboard)/dashboard/obligations/new/page.tsx", "'/dashboard/obligations'"],
-            ["app/(dashboard)/dashboard/tasks/new/page.tsx", "'/dashboard/tasks'"],
             ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", "'/dashboard/obligations'"],
         ]
         for (const [file, to] of was) {
@@ -75,6 +74,10 @@ describe("the bar", () => {
             expect(src, file).not.toContain(`onClick={() => router.push(${to.startsWith("/") ? "`/dashboard/companies/${company.id}" + to : to})}`)
             expect(src, file).toContain(`<Link href={${to.startsWith("/") ? "`/dashboard/companies/${company.id}" + to : to}}`)
         }
+        // Create task's Cancel is the building blocks' link that looks like a button.
+        const newTask = readFileSync("app/(dashboard)/dashboard/tasks/new/page.tsx", "utf8")
+        expect(newTask).not.toContain("onClick={() => router.push('/dashboard/tasks')}")
+        expect(newTask).toContain("<ButtonLink href={'/dashboard/tasks'}>")
     })
 })
 

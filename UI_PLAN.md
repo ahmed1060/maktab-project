@@ -1197,3 +1197,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   list opens for review in #119 (§5 step 5).
 - **2026-10-30:** In #119, an obligation that doesn't recur says "One
   time", in sentence case, on the list, its page and its form.
+- **2026-10-30:** Create task moves onto the building blocks (§5 step 5).
+  - Its page header, with the way back to the Tasks list, and the Excel
+    tools beside it as secondary buttons: the template, the usernames and
+    the upload.
+  - The form in one panel: each field with its visible label, its hint
+    and its error below it. The title and description say how much of
+    them is used; the deadline is a field like the others, in the page's
+    language; the assignees are checkboxes below a search, with their
+    roles. Submitting with something wrong puts the focus on the first
+    field that is, in the form's order.
+  - Create task is the page's one primary button.
