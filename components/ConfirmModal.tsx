@@ -6,6 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useDialog } from '@/lib/useDialog'
+import { LAYER } from '@/lib/layers'
 
 interface ConfirmModalProps {
     isOpen: boolean
@@ -127,7 +128,7 @@ export default function ConfirmModal({
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 10000,
+            zIndex: LAYER.confirm,
             animation: 'fadeIn 0.2s ease-out'
         }}>
             <div

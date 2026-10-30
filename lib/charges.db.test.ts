@@ -74,6 +74,8 @@ const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1", nam
 const leader = { user: withGrants({ id: "t1", role: "TEAM_LEADER", companyId: "c1", name: "Tamer One" }) } as any
 const employee = { user: withGrants({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" }) } as any
 const otherAdmin = { user: withGrants({ id: "a2", role: "ADMIN", companyId: "c2", name: "Adel Two" }) } as any
+/** As each of them, with a two-factor code entered just now (ROLES_PLAN.md §6.15). */
+const confirmed = (session: any, over: Record<string, unknown> = {}) => ({ user: { ...session.user, mfaEnabled: true, stepUpAt: Date.now(), ...over } }) as any
 
 describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
     const dbName = `charges_test_${Date.now()}`
@@ -127,9 +129,9 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
     }
 
     it("lists the company's charges, the Due ones as the tab opens, and adds them up", async () => {
-        expect(await listed(admin)).toEqual({ ids: ["x1", "x2"], totals: { paidOut: 350.5, serviceFees: 0, totalDue: 350.5 } })
+        expect(await listed(admin)).toEqual({ ids: ["x1", "x2"], totals: { paidOut: 350.5, serviceFees: 0, totalDue: 350.5, collected: 0 } })
         // Every status: the one left off the bill counts in no total, and the collected one isn't due.
-        expect(await listed(admin, { status: "all" })).toEqual({ ids: ["x1", "x2", "x3", "x4", "x6"], totals: { paidOut: 390.5, serviceFees: 0, totalDue: 350.5 } })
+        expect(await listed(admin, { status: "all" })).toEqual({ ids: ["x1", "x2", "x3", "x4", "x6"], totals: { paidOut: 390.5, serviceFees: 0, totalDue: 350.5, collected: 40 } })
         expect((await listed(admin, { status: "collected" }))!.ids).toEqual(["x4"])
         expect((await listed(admin, { status: "not_charged" }))!.ids).toEqual(["x3", "x6"])
         // A status that isn't one is Due.
@@ -157,7 +159,7 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         for (const serviceFee of [-1, "abc", null, 2_000_000, Infinity]) {
             await expect(charges.ChargeService.setServiceFee(admin, "x1", { serviceFee }), String(serviceFee)).rejects.toMatchObject({ message: "CHARGE_FEE_INVALID" })
         }
-        expect((await listed(admin))!.totals).toEqual({ paidOut: 350.5, serviceFees: 64.5, totalDue: 415 })
+        expect((await listed(admin))!.totals).toEqual({ paidOut: 350.5, serviceFees: 64.5, totalDue: 415, collected: 0 })
         const logged = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'SET_SERVICE_FEE' ORDER BY "createdAt"`)).rows.map(r => r.details)
         expect(logged).toEqual([{ costId: "x1", from: 0, to: 15 }, { costId: "x2", from: 0, to: 49.5 }])
     })
@@ -230,6 +232,120 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         // With no client, its costs are no charges.
         await Tasks.delete("k3", admin)
         expect((await db.query(`SELECT id FROM "Task" WHERE id IN ('k1', 'k3', 'k4') ORDER BY id`)).rows.map(r => r.id)).toEqual(["k1"])
+    })
+
+    describe("collecting (6d)", () => {
+        const noor = { clientId: "noor", status: "due" }
+        const offer = async (session: any, filters: Record<string, string> = noor) =>
+            charges.toCollect(session.user, filters, (await charges.chargesWhere(session.user, filters))!)
+        const collectedRows = async () => (await db.query(`SELECT id, "collectedById" FROM "TaskCost" WHERE "collectedAt" IS NOT NULL ORDER BY id`)).rows
+
+        it("offers a client's Due charges as listed, every page, to whoever may mark them collected", async () => {
+            // Taxi 100 + 15 and Gate parts 250.50 + 49.50, as their fees were set above.
+            expect(await offer(admin)).toEqual({ count: 2, amount: 415, digest: expect.stringMatching(/^[0-9a-f]{64}$/) })
+            // See charges isn't Mark charges collected, and it's for one client's Due ones only.
+            expect(await offer(leader)).toBeNull()
+            expect(await offer(admin, { clientId: "noor", status: "all" })).toBeNull()
+            expect(await offer(admin, { status: "due" })).toBeNull()
+            // Delta Foods has none due: one left off the bill, one collected.
+            expect(await offer(admin, { clientId: "delta", status: "due" })).toBeNull()
+        })
+
+        it("asks for two-factor sign-in, a client and the confirmation", async () => {
+            const { digest } = (await offer(admin))!
+            const refusal = (session: any, filters: any, sent: unknown = digest) => charges.ChargeService.collect(session, filters, sent).then(() => "collected", e => e.message)
+            expect(await refusal(admin, { clientId: "noor" })).toBe("MFA_ENROL_REQUIRED")
+            expect(await refusal(confirmed(admin, { stepUpAt: Date.now() - 2 * 3_600_000 }), { clientId: "noor" })).toBe("STEP_UP_REQUIRED")
+            expect(await refusal(confirmed(admin), {})).toBe("CHARGE_CLIENT_REQUIRED")
+            expect(await refusal(confirmed(admin), { clientId: "noor" }, null)).toBe("CHARGE_CONFIRMATION_REQUIRED")
+            expect(await refusal(confirmed(leader), { clientId: "noor" })).toBe("CHARGE_NOT_FOUND")
+            // Another company's Admin, with this one's confirmation, finds none of theirs to collect.
+            expect(await refusal(confirmed(otherAdmin), { clientId: "noor" })).toBe("CHARGE_LIST_CHANGED")
+            expect(await collectedRows()).toEqual([{ id: "x4", collectedById: "a1" }])
+        })
+
+        it("collects exactly what was confirmed, and nothing once the list has changed", async () => {
+            const before = (await offer(admin))!
+            await charges.ChargeService.setServiceFee(admin, "x1", { serviceFee: 20 })
+            await expect(charges.ChargeService.collect(confirmed(admin), { clientId: "noor" }, before.digest)).rejects.toMatchObject({ message: "CHARGE_LIST_CHANGED" })
+            expect(await collectedRows()).toEqual([{ id: "x4", collectedById: "a1" }])
+
+            const now = (await offer(admin))!
+            expect(now).toMatchObject({ count: 2, amount: 420 })
+            expect(await charges.ChargeService.collect(confirmed(admin), { clientId: "noor" }, now.digest)).toEqual({ count: 2, amount: 420 })
+            expect(await collectedRows()).toEqual([{ id: "x1", collectedById: "a1" }, { id: "x2", collectedById: "a1" }, { id: "x4", collectedById: "a1" }])
+            const logged = (await db.query(`SELECT "entityType", "entityId", "userId", details FROM "AuditLog" WHERE action = 'COLLECT_CHARGES'`)).rows
+            expect(logged).toEqual([{ entityType: "CLIENT", entityId: "noor", userId: "a1", details: { count: 2, amount: 420, costIds: ["x1", "x2"] } }])
+            // Nothing is left to collect, so the same confirmation collects nothing again.
+            expect(await offer(admin)).toBeNull()
+            await expect(charges.ChargeService.collect(confirmed(admin), { clientId: "noor" }, now.digest)).rejects.toMatchObject({ message: "CHARGE_LIST_CHANGED" })
+            expect((await listed(admin, { clientId: "noor", status: "all" }))!.totals).toEqual({ paidOut: 350.5, serviceFees: 69.5, totalDue: 0, collected: 420 })
+        })
+
+        it("keeps a collected charge until it's marked uncollected, and logs both steps", async () => {
+            await expect(charges.ChargeService.setServiceFee(admin, "x1", { serviceFee: 1 })).rejects.toMatchObject({ message: "CHARGE_COLLECTED" })
+            const refusal = (session: any, id = "x1") => charges.ChargeService.uncollect(session, id).then(() => "uncollected", e => e.message)
+            expect(await refusal(confirmed(admin, { stepUpAt: 0 }))).toBe("STEP_UP_REQUIRED")
+            expect(await refusal(confirmed(leader))).toBe("CHARGE_NOT_FOUND")
+            expect(await refusal(confirmed(otherAdmin))).toBe("CHARGE_NOT_FOUND")
+            expect(await refusal(confirmed(admin), "x3")).toBe("CHARGE_NOT_COLLECTED")
+
+            expect(await refusal(confirmed(admin))).toBe("uncollected")
+            expect(await refusal(confirmed(admin))).toBe("CHARGE_NOT_COLLECTED")
+            expect((await listed(admin, { clientId: "noor" }))!.ids).toEqual(["x1"])
+            const logged = (await db.query(`SELECT "entityId", details FROM "AuditLog" WHERE action = 'UNCOLLECT_CHARGE'`)).rows
+            expect(logged).toEqual([{ entityId: "k1", details: { costId: "x1", collectedAt: expect.any(String) } }])
+            // Due again, it's changed as any other.
+            expect(await charges.ChargeService.setServiceFee(admin, "x1", { serviceFee: 15 })).toMatchObject({ serviceFee: 15 })
+        })
+
+        it("waits for the charges' tasks while something else holds one, as a task's own changes do", async () => {
+            const deleting = new Client({ connectionString: dbUrl })
+            await deleting.connect()
+            await deleting.query("BEGIN")
+            await deleting.query(`SELECT id FROM "Task" WHERE id = 'k1' FOR UPDATE`)
+            const { digest } = (await offer(admin))!
+            let collected = false
+            const collecting = charges.ChargeService.collect(confirmed(admin), { clientId: "noor" }, digest).then(() => { collected = true })
+            await new Promise(r => setTimeout(r, 500))
+            const collectedWhileHeld = collected
+            await deleting.query("ROLLBACK")
+            await deleting.end()
+            await collecting
+            expect(collectedWhileHeld).toBe(false)
+            expect(collected).toBe(true)
+        })
+    })
+
+    describe("the client a page's charges are for (6d)", () => {
+        it("is named to whoever sees its company's charges, and to nobody else", async () => {
+            expect(await charges.chargeClient(admin.user, "noor")).toEqual({ id: "noor", name: "Al Noor" })
+            expect(await charges.chargeClient(leader.user, "noor")).toEqual({ id: "noor", name: "Al Noor" })
+            expect(await charges.chargeClient({ id: "sa1", role: "SUPER_ADMIN", companyId: null } as any, "theirs")).toEqual({ id: "theirs", name: "Their client" })
+            // Another company's, one not there, and someone who sees no charges.
+            expect(await charges.chargeClient(admin.user, "theirs")).toBeNull()
+            expect(await charges.chargeClient(admin.user, "gone")).toBeNull()
+            expect(await charges.chargeClient(employee.user, "noor")).toBeNull()
+        })
+    })
+
+    describe("a Super Admin on a client's page (6d)", () => {
+        const superAdmin = { user: { id: "sa1", role: "SUPER_ADMIN", companyId: null } } as any
+
+        it("counts its days where the client's company is, whichever company they picked", async () => {
+            // One in New York: 19:30 on the 25th there, the 26th where the platform is (Cairo).
+            await db.query(`UPDATE "Company" SET timezone = 'America/New_York' WHERE id = 'c1'`)
+            await db.query(`INSERT INTO "TaskCost"(id, "taskId", "authorId", "authorName", amount, description, "createdAt") VALUES ('xz', 'k1', 'e1', 'Ehab One', 10, 'Late taxi', '2026-10-25T23:30:00Z')`)
+            try {
+                const day = { clientId: "noor", status: "all", dateFrom: "2026-10-25", dateTo: "2026-10-25" }
+                expect((await listed(superAdmin, day))!.ids).toEqual(["xz"])
+                // As the company's own Admin counts them.
+                expect((await listed(admin, day))!.ids).toEqual(["xz"])
+            } finally {
+                await db.query(`DELETE FROM "TaskCost" WHERE id = 'xz'`)
+                await db.query(`UPDATE "Company" SET timezone = 'Africa/Cairo' WHERE id = 'c1'`)
+            }
+        })
     })
 
     describe("the companies already there (6c)", () => {

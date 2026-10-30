@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHydrated } from '@/lib/useHydrated'
 import { useDialog } from '@/lib/useDialog'
+import { LAYER } from '@/lib/layers'
 
 interface ModalProps {
     isOpen: boolean
@@ -12,9 +13,11 @@ interface ModalProps {
     children: React.ReactNode
     hideFooter?: boolean
     hideCloseButton?: boolean
+    /** Its layer (lib/layers.ts): an older page's modal's, unless it opens over others. */
+    zIndex?: number
 }
 
-export default function Modal({ isOpen, onClose, title, children, hideFooter = true, hideCloseButton = false }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, hideFooter = true, hideCloseButton = false, zIndex = LAYER.modal }: ModalProps) {
     const { t } = useLanguage()
     const mounted = useHydrated()
     // Escape closes it, unless it has no close button (a step that must be finished).
@@ -39,7 +42,7 @@ export default function Modal({ isOpen, onClose, title, children, hideFooter = t
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999, // Increased z-index
+            zIndex,
             animation: 'fadeIn 0.2s ease-out'
         }} onClick={() => !hideCloseButton && onClose()}>
             <div

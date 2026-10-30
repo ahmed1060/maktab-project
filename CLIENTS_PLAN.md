@@ -683,7 +683,8 @@ The company never buys on credit, so nothing is tracked as owed to shops.
     editor is live, as for locations (§2.9) and lists (§5.10) (built);
   - 6d: each client's page (§6.4): Due and Collected, the charges with
     their receipts, and Mark collected, with two-factor sign-in, for
-    exactly the charges shown, as Mark all as paid confirms (§4.1).
+    exactly the charges shown, as Mark all as paid confirms (§4.1)
+    (built).
 - **Proposed:** a charge isn't stored apart from its cost. A cost on a
   task with a client is charged to it, so the charge follows the task's
   client (§6.5); the cost keeps its service fee, the "Not charged to
@@ -722,6 +723,22 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   role given one there since keeps it as it is. Production had only
   built-in roles, and no charges grants, when 6c was built (checked
   read-only, 2026-10-29).
+- **Proposed, as 6d builds it:**
+  - **A client's page has a Charges section** for whoever sees charges:
+    the Charged to clients list for that client alone, with its search,
+    status and dates, and Due and Collected tiles that don't change with
+    the status picked. A Team Leader sees their team's tasks' charges.
+  - **Mark collected collects the Due ones listed, every page of them,**
+    with the search and dates picked, as its confirmation says: "Collect
+    7 charges, 3,450.00 EGP, from Al Noor?". If any of them changed
+    meanwhile, nothing is collected and the list is shown again.
+  - **Mark uncollected is in a collected charge's menu,** on the client's
+    page and on the tab, for whoever may mark charges collected, with
+    its own confirmation and two-factor sign-in.
+  - **A collected charge shows the day it was collected.** Who collected
+    it is in the audit log.
+  - **A Super Admin sees a client's charges on its page whichever company
+    they picked,** as the page is the client's.
 
 ---
 
@@ -917,9 +934,10 @@ balance first, automatically:
      - Step 6, client charges (§6). Proposed: it ships as four PRs, 6a
        to 6d (§6.8). 6a, a receipt photo for each cost, was merged in
        #108 on 2026-10-29, and 6b, the charges, the Costs page's Charged
-       to clients tab and the permissions for new companies, in #109. 6c,
-       the permissions for the companies already there, is built, and
-       open for review in #110.
+       to clients tab and the permissions for new companies, in #109, and
+       6c, the permissions for the companies already there, in #110. 6d,
+       each client's page with Mark collected, is built, and open for
+       review in #111; with it, step 6 is done.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1714,3 +1732,36 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   6c, opens for review in #110; its migration gives the 3 companies there
   the charges' permissions (12 grants on their 6 built-in Admin and Team
   Leader roles).
+- **2026-10-29:** Step 6's fourth PR, 6d, is built (§6.4, §6.5, §6.8):
+  - **Each client's page shows its charges:** Due and Collected, and each
+    charge with what was bought, on which task, its receipt, and who
+    added it and when.
+  - **Mark collected collects exactly the Due ones listed,** as its
+    confirmation says, with two-factor sign-in, or nothing if the list
+    changed meanwhile. The audit log records it on the client.
+  - **Mark uncollected makes a collected charge due again,** so it can be
+    corrected, with two-factor sign-in; the audit log keeps both steps.
+- **2026-10-29:** In 6d, the code two-factor sign-in asks for opens above
+  the confirmation that sent the action. It opened under it, so its
+  Confirm couldn't be clicked: Mark all as paid (§4.1) with no code
+  entered in the hour couldn't go on, nor could Mark collected.
+- **2026-10-29:** 6c was merged in #110; Codex found nothing in it. Its
+  migration ran on production at 22:34 UTC: the 3 companies there hold
+  the charges' permissions (12 grants on their 6 built-in Admin and Team
+  Leader roles), with no errors after. Step 6's last PR, 6d, opens for
+  review in #111; it has no migration.
+- **2026-10-29:** In 6d (#111), Mark collected's confirmation sends the
+  list it showed, whatever happens to the page behind it. Reloaded while
+  it was open, as on reconnecting, it sent the new list, so one with a
+  charge swapped for another of the same amount was collected, not
+  refused as changed (found by Codex).
+- **2026-10-29:** In 6d (#111), a client's charges count their days where
+  its company is for a Super Admin too, whichever company they picked.
+  On its page, they were counted where the platform is, so a charge near
+  midnight in a company in another zone fell on the wrong day, in the
+  totals and in what Mark collected took (found by Codex).
+- **2026-10-29:** In 6d (#111), a client's page opens for whoever sees
+  its charges, with its name and its charges only, and the Charged to
+  clients tab links to it for them. A role with Mark charges collected
+  but neither See clients nor See records, such as a collector's, had no
+  way to the only place that marks charges collected (found by Codex).

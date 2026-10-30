@@ -1056,3 +1056,17 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Leader their team's tasks' charges, with none.
 - **2026-10-29:** `CLIENTS_PLAN.md`'s 6b was merged in #109, and 6c opens
   for review in #110.
+- **2026-10-29:** With `CLIENTS_PLAN.md`'s 6d, a client's page has a
+  Charges section, between Locations and Records: the charges list for
+  that client, Due and Collected tiles, and Mark collected on the end of
+  its heading. A collected charge shows the day it was collected under its
+  status, and its menu has Mark uncollected. An empty Due list says
+  nothing is due, with Show every status.
+- **2026-10-29:** The code prompt for a high-risk action opens above any
+  dialog (`DESIGN.md` §5.5), so it can be answered from over the
+  confirmation that sent the action, as Mark all as paid's.
+- **2026-10-29:** `CLIENTS_PLAN.md`'s 6c was merged in #110, and 6d opens
+  for review in #111.
+- **2026-10-29:** In 6d (#111), someone who sees charges and nothing else
+  of clients opens a client's page from the Charged to clients tab: its
+  name and its Charges section, with a way back to the tab.

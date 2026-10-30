@@ -508,6 +508,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - Escape closes it, and focus goes back to what opened it.
   - One that opens from an older page's modal, as "+ New location" from a
     task's edit window, sits above that modal, and under the toasts.
+  - The code a high-risk action asks for (two-factor sign-in) sits above
+    every other dialog: the confirmation that sent the action, such as
+    "Pay 7 costs, 3,450 EGP", stays open until the code is answered.
 - **Selection bar:** when items in a list are picked with their
   checkboxes, a panel above the list says how many are picked and holds
   what can be done to all of them, with a quiet "Clear selection" on the
@@ -847,3 +850,7 @@ changed:
   below the select.
 - **2026-10-22:** A name typed or picked from a saved list (§5.3), for task
   titles and cost names (`CLIENTS_PLAN.md` §5).
+- **2026-10-29:** The code a high-risk action asks for sits above every
+  other dialog (§5.5, Dialog). Drawn under the confirmation that sent the
+  action, as "Pay 7 costs" or "Collect 7 charges" stays open until it's
+  answered, its Confirm couldn't be clicked.
