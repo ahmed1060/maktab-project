@@ -2058,3 +2058,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   their own block until the second.
 - **2026-10-30:** An obligation's page was merged in #122 (`UI_PLAN.md` §5),
   and a task's page opens in #123.
+- **2026-10-30:** A task's costs move onto the building blocks in its
+  page's second part (`UI_PLAN.md` §5): each with its description, its
+  receipt and what came from a cash advance (§4.5, §6.2, §7.5), as before.

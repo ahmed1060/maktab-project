@@ -1,5 +1,5 @@
 'use client'
-import Modal from '@/components/Modal'
+import { useId } from 'react'
 import DateTimePicker from '@/components/DateTimePicker'
 import TaskPlacePicker from '@/components/locations/TaskPlacePicker'
 import { useLanguage } from '@/context/LanguageContext'
@@ -7,13 +7,12 @@ import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { locationLabel } from '@/lib/locations'
-import { NamePicker } from '@/components/ui'
+import { Button, Dialog, DialogActions, Field, NamePicker, TextArea, TextInput } from '@/components/ui'
 import { useListNames } from '@/components/lists/useListNames'
 
-// F-23: extracted verbatim out of tasks/[id]/client.tsx. editForm/
-// editFieldErrors stay owned by the parent (handleSaveDetails and
-// handleEditClick, which populates the form when the modal opens, both
-// live there), so this component is purely the form's JSX.
+// A task's edit window, a dialog of the building blocks. Its form's values
+// and errors live with the page, which fills them as it opens and sends
+// them, so it's the form alone.
 interface TaskEditDetailsModalProps {
     isOpen: boolean
     onClose: () => void
@@ -40,16 +39,18 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
     const now = useNow()
     const action = useBusyAction()
     const titleNames = useListNames('TASK_TITLE', task.companyId)
+    const formId = useId()
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const used = (n: number, max: number) => t('ui_characters_used').replace('{used}', num(n)).replace('{max}', num(max))
+    const names = (task.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={t('edit_task_details_title')} hideFooter>
-            <form onSubmit={e => { e.preventDefault(); void action.run('save', () => onSubmit(e)) }} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                <div style={{ marginBottom: '1.25rem' }}>
-                    <label className="label" htmlFor="edit-task-title">{t('name_label')}</label>
-                    {/* Typed, or picked from the company's task titles (CLIENTS_PLAN.md §5). */}
+        <Dialog open={isOpen} onClose={onClose} title={t('edit_task_details_title')}>
+            <form id={formId} className="ui-form" noValidate onSubmit={e => { e.preventDefault(); void action.run('save', () => onSubmit(e)) }}>
+                {/* Typed, or picked from the company's task titles (CLIENTS_PLAN.md §5). */}
+                <Field label={t('title_label')} hint={used(editForm.title.length, 100)} error={editFieldErrors.title || undefined}>{p => (
                     <NamePicker
-                        id="edit-task-title"
-                        aria-invalid={editFieldErrors.title ? true : undefined}
+                        {...p}
                         value={{ text: editForm.title, entryId: editForm.titleEntryId }}
                         onChange={next => { setEditForm({ ...editForm, title: next.text, titleEntryId: next.entryId }); setEditFieldErrors({ ...editFieldErrors, title: '' }) }}
                         {...titleNames}
@@ -57,89 +58,37 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                         failedLabel={t('lists_add_failed')}
                         maxLength={100}
                     />
-                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.title.length}/100</div>
-                </div>
-                <div style={{ marginBottom: '1.25rem' }}>
-                    <label className="label">{t('description_changes_title').split(' ')[0]}</label>
-                    <textarea aria-label={t('description_changes_title').split(' ')[0]} className="input" rows={4} value={editForm.description} onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }); }} style={{ borderColor: editFieldErrors.description ? 'var(--danger-solid)' : undefined }} maxLength={1000} required />
-                    <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.25rem' }}>{editForm.description.length}/1000</div>
-                </div>
+                )}</Field>
+                <Field label={t('description_label')} hint={used(editForm.description.length, 1000)} error={editFieldErrors.description || undefined}>{p => (
+                    <TextArea {...p} name="description" dir="auto" rows={4} maxLength={1000} value={editForm.description}
+                        onChange={e => { setEditForm({ ...editForm, description: e.target.value }); setEditFieldErrors({ ...editFieldErrors, description: '' }) }} />
+                )}</Field>
                 {/* Its client and its location, picked again (CLIENTS_PLAN.md §2.3, §3.1). */}
-                <div style={{ marginBottom: '1.25rem' }}>
-                    <TaskPlacePicker
-                        value={{ clientId: editForm.clientId, locationId: editForm.locationId }}
-                        onChange={next => { setEditForm({ ...editForm, ...next }); setEditFieldErrors({ ...editFieldErrors, locationId: '' }) }}
-                        companyId={task.companyId}
-                        current={task.place && task.locationId ? { id: task.locationId, label: locationLabel(task.place.name, task.place.client?.name) } : null}
-                        currentClient={task.client && task.clientId ? { id: task.clientId, name: task.client.name } : null}
-                        error={editFieldErrors.locationId || undefined}
-                    />
+                <TaskPlacePicker
+                    value={{ clientId: editForm.clientId, locationId: editForm.locationId }}
+                    onChange={next => { setEditForm({ ...editForm, ...next }); setEditFieldErrors({ ...editFieldErrors, locationId: '' }) }}
+                    companyId={task.companyId}
+                    current={task.place && task.locationId ? { id: task.locationId, label: locationLabel(task.place.name, task.place.client?.name) } : null}
+                    currentClient={task.client && task.clientId ? { id: task.clientId, name: task.client.name } : null}
+                    error={editFieldErrors.locationId || undefined}
+                />
+                {/* Who it's for changes with Transfer task, not here. */}
+                <div className="ui-field">
+                    <span className="ui-label">{t('assignees_label')}</span>
+                    <p><bdi>{names.length ? new Intl.ListFormat(locale === 'ar' ? 'ar' : 'en', { type: 'conjunction' }).format(names) : t('no_assignee')}</bdi></p>
+                    <span className="ui-hint">{t('transfer_notice')}</span>
                 </div>
-                <div style={{ marginBottom: '1.25rem' }}>
-                    <label className="label">{t('assignee_label')}</label>
-                    <div style={{
-                        maxHeight: '150px',
-                        overflowY: 'auto',
-                        border: '1px solid var(--border)',
-                        borderRadius: '0.5rem',
-                        padding: '1rem',
-                        background: 'var(--surface-subtle)',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '0.5rem'
-                    }}>
-                        {task.assignees && task.assignees.length > 0 ? (
-                            task.assignees.map((u: any) => (
-                                <div key={u.id} style={{
-                                    background: 'var(--surface)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '2rem',
-                                    padding: '0.4rem 1rem',
-                                    fontSize: '0.9rem',
-                                    color: 'var(--text-body)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    boxShadow: '0 1px 2px var(--shadow-faint)'
-                                }}>
-                                    {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)', marginLeft: locale === 'ar' ? 0 : '0.4rem', marginRight: locale === 'ar' ? '0.4rem' : 0 }}>({t(`role_${u.role?.toLowerCase()}` as any)})</small>
-                                </div>
-                            ))
-                        ) : (
-                            <div style={{
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '2rem',
-                                padding: '0.5rem 1rem',
-                                fontSize: '0.9rem',
-                                fontWeight: '600'
-                            }}>
-                                {task.assignees?.map((a: any) => `${a.firstName} ${a.lastName}`).join(', ')}
-                            </div>
-                        )}
-                    </div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', marginTop: '0.5rem' }}>
-                        {t('transfer_notice' as any) || (locale === 'ar' ? 'يرجى استخدام زر "التحويل" لتغيير الموظفين.' : 'Please use the "Transfer" button to change employees.')}
-                    </p>
-                </div>
-                <div style={{ marginBottom: '1.25rem' }}>
-                    {/* Backend requires the deadline be at least 3h out
-                        (task.service.ts's updateDetails) — this min matches
-                        that, same as the create-task form already does.
-                        Previously just blocked the past, which let you pick
-                        e.g. "10 minutes from now" here and get an unhandled
-                        500 back. */}
-                    <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={earliestDeadline(now).toISOString()} />
-                </div>
-
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <label className="label">{t('difficulty')}</label>
-                    <input aria-label={t('difficulty')} type="number" className="input" value={editForm.difficulty} onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} min={0} max={10} required />
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                    <button type="button" onClick={onClose} className="btn" style={{ background: 'var(--border)' }}>{t('cancel')}</button>
-                    <button type="submit" className="btn btn-primary" disabled={action.running} aria-busy={action.is('save')}>{t('save_changes_button')}</button>
-                </div>
+                {/* At least 3 hours out, as the server needs (TaskService.updateDetails), as Create task's is. */}
+                <DateTimePicker asField label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={earliestDeadline(now).toISOString()} />
+                <Field label={t('difficulty')} hint={t('points_hint')}>{p => (
+                    <TextInput {...p} type="number" inputMode="numeric" name="difficulty" autoComplete="off" min={0} max={10} value={editForm.difficulty}
+                        onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} />
+                )}</Field>
+                <DialogActions>
+                    <Button onClick={onClose}>{t('cancel')}</Button>
+                    <Button type="submit" variant="primary" disabled={action.running} busy={action.is('save')}>{t('save_changes_button')}</Button>
+                </DialogActions>
             </form>
-        </Modal>
+        </Dialog>
     )
 }

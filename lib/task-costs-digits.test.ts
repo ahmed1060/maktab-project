@@ -54,8 +54,8 @@ describe("a task's costs", () => {
     it("keeps each cost's amount on one line, its currency with it", async () => {
         const html = await costsSection("en")
         for (const amount of ["1,500.50 egp", "250.00 egp"]) {
-            const box = html.match(new RegExp(`<div style="([^"]*)">${amount}</div>`))?.[1]
-            expect(box).toContain("white-space:nowrap")
+            const box = html.match(new RegExp(`<span class="([^"]*)">${amount}</span>`))?.[1]
+            expect(box).toContain("ui-nowrap")
         }
     })
 })

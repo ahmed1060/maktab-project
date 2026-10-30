@@ -936,6 +936,39 @@ a.ui-row:focus-visible {
   overflow-wrap: anywhere;
 }
 /* Text kept as it was written, line breaks too, such as a record's. */
+/* Rows inside a card line up with the card's own text. */
+.ui-card .ui-rows > li > .ui-row {
+  padding-inline: 0;
+}
+/* A titled part inside a card, such as a task's costs paid person by person. */
+.ui-subsection {
+  margin-block-start: var(--space-6);
+}
+.ui-subsection-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+/* A cost's name, its amount and Add on a line, the name taking what's
+   left; on a phone the name takes the line, its suggestions needing it. */
+.ui-cost-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.ui-cost-entry > :first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.ui-cost-entry > :nth-child(2) {
+  flex: 0 1 140px;
+}
+/* A task's costs, above their totals. */
+.ui-cost-rows {
+  margin-block-end: var(--space-4);
+}
+
 /* A task's notes, newest first: who and when, above what they wrote. */
 .ui-notes {
   list-style: none;

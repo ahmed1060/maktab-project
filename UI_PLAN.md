@@ -1340,3 +1340,22 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   again as the page had been open, and one moved earlier, to a time already
   passed, wasn't shown as passed until the old wait was up (found by Codex
   on PR 123). A refresh's newer time from the server is taken too.
+- **2026-10-30:** A task's page, part 2 (§5 step 5): its costs, location
+  history, submission form and edit dialog move onto the building blocks.
+  - Its costs in a card: each a row with its description, who added it and
+    when, what came from a cash advance, its receipt as a chip and its
+    amount; its totals as tiles, each saying whether it's paid, someone on
+    a shared task seeing their own beside the task's; and each person's
+    share, with Mark as paid or unpaid, once it's reviewed.
+  - Its location history in a card: each check-in a link to the map that
+    says it opens a new tab, with who and when, and how it was checked as a
+    status in words. A reviewer marks it right or wrong, and the lateness
+    penalty is a dialog of its own.
+  - What whoever it's for hands in, in a card: its files picked or dropped
+    and shown as chips, its costs with their receipts, a note with its
+    count, and Check in, Submit task the one primary button. It isn't a
+    form, so Enter in a cost's amount hands nothing in.
+  - Its edit window a dialog of the building blocks, each field labelled,
+    its counts and errors under it, and who it's for pointing to Transfer
+    task.
+  - Its words are in sentence case, and say they're busy with an ellipsis.
