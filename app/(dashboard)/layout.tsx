@@ -12,6 +12,7 @@ import { visibleSettingsTabs } from "@/lib/company-settings-access"
 import { cookies } from "next/headers"
 import { brandStyleSheet } from "@/lib/brand-colour"
 import { ownColour } from "@/lib/page-brand-colour"
+import { cashAdvancesInUse } from "@/lib/cash-advances"
 
 import { Suspense } from "react"
 import DashboardErrorBoundary from "@/components/DashboardErrorBoundary"
@@ -72,6 +73,8 @@ export default async function DashboardLayout({
     // behind and signing in brings it. Null leaves the root layout's default.
     // It comes with the company row read just above, so it costs no read.
     const ownBrand = ownColour(user, exposure?.brandColour)
+    // Whether the company uses cash advances, for My cash advance (CLIENTS_PLAN.md §7.5), from the same row.
+    const cashAdvances = cashAdvancesInUse(exposure)
 
     return (
         <>
@@ -82,7 +85,7 @@ export default async function DashboardLayout({
         {/* Who is looking, grants included, for every screen's useCan() on
             its first paint — before the session hook has loaded. */}
         <ViewerProvider viewer={user as any}>
-        <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName} showCompanySettings={showCompanySettings}>
+        <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName} showCompanySettings={showCompanySettings} cashAdvances={cashAdvances}>
             <UserHeartbeat />
             <DashboardErrorBoundary>
                 <Suspense fallback={<div className="p-8 text-center opacity-50">Loading section...</div>}>

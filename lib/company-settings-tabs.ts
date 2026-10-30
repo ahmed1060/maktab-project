@@ -27,7 +27,13 @@ export type CompanySettingsTab = {
 }
 
 export const COMPANY_SETTINGS_TABS = [
-    { key: "general", labelKey: "settings_tab_general", adminEligible: true, fields: ["autoVerifyLocation"] },
+    {
+        key: "general", labelKey: "settings_tab_general", adminEligible: true,
+        fields: ["autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesOn"],
+        // Cash advances (CLIENTS_PLAN.md §7.6): the Super Admin allows them,
+        // and the company's Admin switches them off and on again.
+        superAdminOnly: ["cashAdvancesAllowed"],
+    },
     // The logo has its own endpoint (app/api/companies/logo), which asks the
     // same question of this entry. The brand colour is saved here
     // (UI_PLAN.md §4.6), so it follows the logo's rule.

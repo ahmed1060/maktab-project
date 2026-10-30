@@ -14,7 +14,7 @@ import { ar } from "./translations/ar"
 
 const viewer = (role: string, flags: Partial<SideBarViewer> = {}): SideBarViewer => {
     const p = permissionsOf(withGrants({ id: "u1", role, companyId: role === "SUPER_ADMIN" ? null : "c1" }) as any)
-    return { superAdmin: role === "SUPER_ADMIN", can: p.can, companyWide: p.companyWide, attendance: true, checkIn: false, companySettings: false, ...flags }
+    return { superAdmin: role === "SUPER_ADMIN", can: p.can, companyWide: p.companyWide, attendance: true, checkIn: false, companySettings: false, cashAdvances: false, ...flags }
 }
 const shape = (v: SideBarViewer) => sideBarFor(v).map(g => `${g.key}: ${g.items.join(", ")}`)
 
@@ -30,6 +30,22 @@ describe("the side bar", () => {
             // The saved lists, for whoever manages them (CLIENTS_PLAN.md §5.6).
             "bottom: companySettings, savedLists",
         ])
+    })
+
+    it("puts My cash advance under Me, only where the company uses cash advances (CLIENTS_PLAN.md §7.5)", () => {
+        expect(shape(viewer("EMPLOYEE", { cashAdvances: true }))).toContain("me: myAttendance, myPayslips, myCashAdvance")
+        expect(shape(viewer("EMPLOYEE")).join(" ")).not.toContain("myCashAdvance")
+        expect(shape(viewer("SUPER_ADMIN", { cashAdvances: true })).join(" ")).not.toContain("myCashAdvance")
+    })
+
+    it("opens Costs to whoever sees cash advances, where they're used", () => {
+        const sees = (cashAdvances: boolean) => {
+            const p = permissionsOf(withGrants({ id: "u1", role: "EMPLOYEE", companyId: "c1" }) as any)
+            const can = (permission: string) => permission === "cash_advances.view" || p.can(permission as any)
+            return shape({ ...viewer("EMPLOYEE"), can, cashAdvances }).join(" ")
+        }
+        expect(sees(true)).toContain("money: costs")
+        expect(sees(false)).not.toContain("costs")
     })
 
     it("offers the saved lists only to whoever manages them", () => {

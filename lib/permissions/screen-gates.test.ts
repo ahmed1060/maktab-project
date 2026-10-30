@@ -65,7 +65,8 @@ const GATES: Gate[] = [
     { what: "a client's page: open", file: D + "clients/[id]/page.tsx", uses: "if (!seesClient && !seesRecords && !seesCharges) return <AccessDenied />", before: () => true, now: p => p.can("clients.view") || p.can("records.view") || p.can("charges.view") },
     { what: "a client's page: add a record", file: D + "clients/[id]/page.tsx", uses: "can('records.contribute') && <Button", before: () => true, now: p => p.can("records.contribute") },
     // Its tabs: Employee costs for paying them, Charged to clients for seeing charges (CLIENTS_PLAN.md §6.4).
-    { what: "costs page: open", file: D + "costs/page.tsx", uses: "if (!pays && !seesCharges)", before: managers, now: p => p.can("tasks.pay") || p.can("charges.view") },
+    // And Cash advances, for seeing them, in a company that uses them (§7.5).
+    { what: "costs page: open", file: D + "costs/page.tsx", uses: "if (!pays && !seesCharges && !seesAdvances)", before: managers, now: p => p.can("tasks.pay") || p.can("charges.view") || p.can("cash_advances.view") },
     { what: "costs: employee layout", file: D + "costs/CostsClient.tsx", uses: "const isEmployee = !can('tasks.pay')", before: r => r === "EMPLOYEE", now: p => !p.can("tasks.pay") },
     { what: "costs: pay everything", file: D + "costs/CostsClient.tsx", uses: "companyWide('tasks.pay') && total > 0", before: admins, now: p => p.companyWide("tasks.pay") },
 

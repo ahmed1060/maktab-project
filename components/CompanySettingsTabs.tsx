@@ -12,6 +12,7 @@ import CompanyAttendanceCard from '@/components/CompanyAttendanceCard'
 import CompanyRolesCard from '@/components/CompanyRolesCard'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
+import CashAdvancesCard from '@/components/cash-advances/CashAdvancesCard'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
 import { UnsavedChangesProvider, useGuardLinks, useUnsavedState } from '@/lib/useUnsavedChanges'
@@ -32,6 +33,10 @@ export type CompanySettings = {
     id: string
     name: string
     autoVerifyLocation: boolean
+    /** Cash advances' switches, and what's held (CLIENTS_PLAN.md §7.6). */
+    cashAdvancesAllowed?: boolean
+    cashAdvancesOn?: boolean
+    cashAdvancesHeld?: number
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
@@ -94,7 +99,21 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
 
             <UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>
                 {tab === 'general' && (
-                    <CompanyGeneralCard companyId={companyId} autoVerifyLocation={company.autoVerifyLocation} onSaved={onSaved} readOnly={readOnly} />
+                    <>
+                        <CompanyGeneralCard companyId={companyId} autoVerifyLocation={company.autoVerifyLocation} onSaved={onSaved} readOnly={readOnly} />
+                        {/* The company's Admin sees them once the Super Admin allows them. */}
+                        {(superAdmin || company.cashAdvancesAllowed) && (
+                            <CashAdvancesCard
+                                companyId={companyId}
+                                allowed={!!company.cashAdvancesAllowed}
+                                on={company.cashAdvancesOn ?? true}
+                                held={company.cashAdvancesHeld ?? 0}
+                                superAdmin={superAdmin}
+                                readOnly={readOnly}
+                                onSaved={onSaved}
+                            />
+                        )}
+                    </>
                 )}
 
                 {tab === 'branding' && (

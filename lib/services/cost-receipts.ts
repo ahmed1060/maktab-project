@@ -9,8 +9,8 @@ import { RECEIPTS_FOLDER } from "@/lib/task-costs"
  */
 
 /** Where a receipt is in the bucket, if it's one of this company's, or a Super Admin's. */
-function receiptPath(url: string, companyId: string | null): string | null {
-    return ownFilePath(url, companyId ?? "platform", RECEIPTS_FOLDER)
+function receiptPath(url: string, companyId: string | null, folder: string = RECEIPTS_FOLDER): string | null {
+    return ownFilePath(url, companyId ?? "platform", folder)
 }
 
 /**
@@ -29,14 +29,24 @@ function uploadedAddress(url: string, path: string): string {
  * the upload gave it, one no longer stored, or one sent for two costs.
  */
 export async function checkReceipts(urls: readonly string[], companyId: string | null, superAdmin: boolean): Promise<void> {
-    if (!urls.length) return
-    const paths = urls.map(url => receiptPath(url, companyId))
-    if (paths.some((path, i) => !path || (path.startsWith("platform/") && !superAdmin) || uploadedAddress(urls[i], path) !== urls[i])) throw new Error("COST_RECEIPT_INVALID")
-    if (new Set(paths).size !== paths.length) throw new Error("COST_RECEIPT_INVALID")
-    if (!supabase) return
+    if (!(await uploadedHere(urls, companyId, superAdmin, RECEIPTS_FOLDER))) throw new Error("COST_RECEIPT_INVALID")
+}
+
+/**
+ * Whether these are files uploaded here, to this company's folder of this
+ * name, as checkReceipts asks of receipts: each spelt as the upload gave it,
+ * still stored, and none twice. Also a cash advance's hand-over photo
+ * (CLIENTS_PLAN.md §7.3).
+ */
+export async function uploadedHere(urls: readonly string[], companyId: string | null, superAdmin: boolean, folder: string): Promise<boolean> {
+    if (!urls.length) return true
+    const paths = urls.map(url => receiptPath(url, companyId, folder))
+    if (paths.some((path, i) => !path || (path.startsWith("platform/") && !superAdmin) || uploadedAddress(urls[i], path) !== urls[i])) return false
+    if (new Set(paths).size !== paths.length) return false
+    if (!supabase) return true
     const storage = supabase.storage.from("app-assets")
     const stored = await Promise.all(paths.map(async path => (await storage.exists(path!)).data))
-    if (stored.some(found => !found)) throw new Error("COST_RECEIPT_INVALID")
+    return stored.every(found => found)
 }
 
 /**

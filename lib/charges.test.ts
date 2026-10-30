@@ -61,7 +61,7 @@ describe("Mark collected's confirmation, as it opened (§6.4)", () => {
 
 describe("the Costs page in the side bar", () => {
     const only = (granted: string[]): SideBarViewer => ({
-        superAdmin: false, can: p => granted.includes(p), companyWide: p => granted.includes(p), attendance: true, checkIn: false, companySettings: false,
+        superAdmin: false, can: p => granted.includes(p), companyWide: p => granted.includes(p), attendance: true, checkIn: false, companySettings: false, cashAdvances: false,
     })
     it("is for whoever pays costs, or sees what clients are charged", () => {
         expect(shows("costs", only(["tasks.pay"]))).toBe(true)

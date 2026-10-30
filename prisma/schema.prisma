@@ -248,6 +248,12 @@ model Company {
   /// where the argument finally comes from. Validated, not merely stored — see
   /// lib/timezone.ts for why the accepted set is narrower than the IANA list.
   timezone             String                    @default("Africa/Cairo")
+  /// Cash advances (CLIENTS_PLAN.md §7.6): the Super Admin allows them for
+  /// the company, and its Admin switches them off and on again; they're used
+  /// while both are on. Neither goes off while anyone holds advance money.
+  cashAdvancesAllowed  Boolean                   @default(false)
+  cashAdvancesOn       Boolean                   @default(true)
+  cashAdvanceEntries   CashAdvanceEntry[]
   payrollRuns          PayrollRun[]
   workSchedules        WorkSchedule[]
   attendancePolicies   AttendancePolicy[]
@@ -508,6 +514,7 @@ model User {
   payslips                   Payslip[]
   finalSettlements           FinalSettlement[]
   debts                      Debt[]
+  cashAdvanceEntries         CashAdvanceEntry[]
   /// The role this person holds (ROLES_PLAN.md §3.1): what they may do comes
   /// from its grants. `role` above is its base role, copied from it whenever a
   /// role is assigned — RoleAssignmentService is the only writer of either,
@@ -1618,6 +1625,46 @@ enum DebtStatus {
   OUTSTANDING
   SETTLED
   WAIVED
+}
+
+/// A movement of an employee's cash advance (CLIENTS_PLAN.md §7.4). Never
+/// edited: a mistake is put right with a correction. The balance is always
+/// the sum of the amounts, never a stored number that could drift.
+model CashAdvanceEntry {
+  id             String               @id @default(uuid())
+  companyId      String
+  /// Whose advance it is.
+  userId         String
+  kind           CashAdvanceEntryKind
+  /// Signed: an advance given adds to the balance, one spent or returned
+  /// takes from it, and a correction does either.
+  amount         Decimal              @db.Decimal(12, 2)
+  /// The day the money changed hands, as recorded.
+  date           DateTime             @db.Date
+  note           String?
+  /// A photo of the signed hand-over, for an advance given (§7.3): a file
+  /// in the company's cash advances folder, on this entry only.
+  photoUrl       String?              @unique
+  /// When the employee confirmed they received it, for an advance given.
+  confirmedAt    DateTime?
+  /// Who recorded it: a user, or a Super Admin, so no relation; and their
+  /// name then.
+  recordedById   String
+  recordedByName String?
+  createdAt      DateTime             @default(now())
+  company        Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, userId])
+  @@index([userId, createdAt])
+}
+
+enum CashAdvanceEntryKind {
+  GIVEN
+  /// On a cost, from step 7b.
+  SPENT
+  RETURNED
+  CORRECTION
 }
 
 /// How far a grant reaches: the person's own records, their team's, or the

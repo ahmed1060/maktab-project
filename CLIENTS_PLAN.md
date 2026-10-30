@@ -853,6 +853,68 @@ balance first, automatically:
 - **Team Leaders don't give advances by default.** Because it's a
   permission, it can be given to any role.
 
+### 7.8 How it's built (step 7)
+
+- **Proposed:** step 7 ships as four PRs:
+  - 7a: the ledger (§7.4), with Given, Returned and Correction entries;
+    the Super Admin's and the Admin's switches (§7.6); the two
+    permissions (§7.7) for new companies' built-in roles; the Costs
+    page's Cash advances tab, with each person's balance, Give advance,
+    Record return, Correction and their history, and the total held
+    (§7.5); and My cash advance, with Confirm receipt (§7.3) (built);
+  - 7b: costs paid from the advance (§7.2, §7.4): Add cost shows the
+    balance, each cost added makes its Spent entry, each cost shows From
+    advance and To pay back, removing a cost puts its part back, Mark all
+    as paid pays only what's owed, and the money owed is offered at
+    hand-over (§7.3);
+  - 7c: the permissions for the companies already there, once 7a's role
+    editor is live, as for charges (§6.8);
+  - 7d: leaving the company: a balance still held becomes a debt, its
+    source a cash advance (§7.3).
+- **Proposed, as 7a builds it:**
+  - **Each entry keeps its amount signed,** so the balance is their sum:
+    Given adds, Returned takes away, and a Correction does either. The
+    database refuses a Given or a Returned the wrong way round, and a
+    Correction of nothing. Spent entries come with 7b.
+  - **An entry is at most 1,000,000 EGP,** as a service fee is (§6.8).
+  - **Give advance takes** the amount, the day it was handed over (today
+    or before, where the company is), a note, and optionally a photo of
+    the signed hand-over, kept in the company's own folder as receipts
+    are (§6.2).
+  - **Record return takes** the amount, the day and a note, and can't be
+    more than the balance. **A correction takes** an amount to add or
+    take away, the day, and why, which is required; it can't take the
+    balance below zero.
+  - **Nobody gives, returns or corrects their own advance,** whatever
+    their role, as nobody sets their own pay (`ROLES_PLAN.md` §4.2). The
+    Super Admin may for anyone.
+  - **An advance is given only to someone at work in the company:** not
+    suspended, deleted or gone. A return or a correction is still
+    recorded for someone who left holding money, until 7d makes it a
+    debt. Nobody is deleted for good while they hold advance money: their
+    advance would go with them, so its return is recorded first.
+  - **Confirm receipt is the employee's own,** on My cash advance, once
+    for each advance, and it's in the audit log. The balance counts an
+    advance from the moment it's given (§7.3).
+  - **See cash advances is for a team or the company.** Seeing one's own
+    is everyone's, on My cash advance, so it isn't a permission (§7.7:
+    "their own only"), as a person's own payslips aren't.
+  - **The switches are on Company Settings' General tab.** Allowing cash
+    advances switches them on; the Admin switches them off and on again
+    there, when the Super Admin shows them the tab (`ATTENDANCE_PLAN.md`
+    §5.2). Neither switch goes off while anyone holds advance money
+    (§7.6), and the card says how much is held.
+  - **The Cash advances tab lists everyone at work in the company,** and
+    anyone else still holding money, with their balance, what's awaiting
+    confirmation and their last movement. It's searched by name and
+    filtered to those holding an advance. Its tiles are the total held,
+    what's awaiting confirmation, and how many hold an advance. A Team
+    Leader sees their team and themselves.
+  - **Each person's advance has its own page:** their balance and every
+    entry, newest first, with who recorded it. Give advance, Record
+    return and Correction are on it for whoever may.
+  - **A Super Admin picks a company first,** as for lists (§5).
+
 ---
 
 ## 8. Build order (Decided)
@@ -935,9 +997,12 @@ balance first, automatically:
        to 6d (§6.8). 6a, a receipt photo for each cost, was merged in
        #108 on 2026-10-29, and 6b, the charges, the Costs page's Charged
        to clients tab and the permissions for new companies, in #109, and
-       6c, the permissions for the companies already there, in #110. 6d,
-       each client's page with Mark collected, is built, and open for
-       review in #111; with it, step 6 is done.
+       6c, the permissions for the companies already there, in #110, and
+       6d, each client's page with Mark collected, in #111. Step 6 is
+       done.
+     - Step 7, cash advances (§7). Proposed: it ships as four PRs, 7a to
+       7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
+       My cash advance, is built, and open for review in #112.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1765,3 +1830,36 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   clients tab links to it for them. A role with Mark charges collected
   but neither See clients nor See records, such as a collector's, had no
   way to the only place that marks charges collected (found by Codex).
+- **2026-10-30:** Step 7, cash advances, is split into four PRs, 7a to
+  7d (§7.8), and its first, 7a, is built (§7.3–§7.7):
+  - **The ledger:** each movement is an entry, given, returned or a
+    correction, and never edited. A balance is the entries' sum, and
+    never goes below zero.
+  - **The switches:** the Super Admin allows cash advances for a company,
+    which switches them on, and its Admin switches them off and on again
+    on Company Settings' General tab. Neither goes off while anyone holds
+    advance money.
+  - **The Costs page's Cash advances tab:** everyone at work in the
+    company, and anyone else still holding money, with their balance,
+    what's awaiting their confirmation and their last movement, and the
+    total held. Give advance, Record return and Correction ask for
+    two-factor sign-in; each person's history is on their own page.
+  - **My cash advance,** under Me in the side bar: the balance, its
+    history, and Confirm receipt on each advance given.
+  - **See cash advances and Give and settle cash advances** are in new
+    companies' built-in roles; the companies already there get them in
+    7c.
+- **2026-10-30:** 6d was merged in #111, with Codex's three findings fixed
+  in it, so step 6 is done. It has no migration, and production has had no
+  errors since. Step 7's first PR, 7a, opens for review in #112. Its
+  migration only adds: the cash advances' table, and the two switches,
+  with cash advances not allowed for any company until the Super Admin
+  allows them. Production has no cash advances' table, kind or switches
+  yet, and no migration unfinished (checked read-only just before).
+- **2026-10-30:** In 7a (#112), deleting someone for good waits for any
+  cash advance entry being recorded for them, and sees it, as each entry
+  is recorded under the same hold on their advance. A correction recorded
+  for someone deleted could commit after the check that they held
+  nothing, and the delete then took it with them; and one recorded as
+  they were deleted failed as an error, not as nobody there (found by
+  Codex).

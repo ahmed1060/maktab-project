@@ -5,6 +5,7 @@ import { createCompanySchema, updateCompanySchema } from "@/lib/validations/comp
 import { CompanyService } from "@/lib/services/company.service"
 import { parsePaging } from "@/lib/pagination"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
+import { CashAdvanceService } from "@/lib/services/cash-advance.service"
 
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
@@ -16,7 +17,7 @@ export const GET = withStandardHandler(async (req, session) => {
         const company = await prisma.company.findUnique({
             where: { id },
             select: {
-                id: true, name: true, isBanned: true, autoVerifyLocation: true,
+                id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
@@ -25,8 +26,13 @@ export const GET = withStandardHandler(async (req, session) => {
             }
         })
         if (!company) return ApiResponse.notFound("Company not found")
-        // What the Branding tab's "Use the default" goes back to (UI_PLAN.md §4.6).
-        return ApiResponse.success({ ...company, defaultBrandColour: (await SystemSettingsService.get()).brandColour })
+        // What the Branding tab's "Use the default" goes back to (UI_PLAN.md §4.6),
+        // and what's held, which keeps cash advances on (CLIENTS_PLAN.md §7.6).
+        return ApiResponse.success({
+            ...company,
+            defaultBrandColour: (await SystemSettingsService.get()).brandColour,
+            cashAdvancesHeld: await CashAdvanceService.heldIn(company.id),
+        })
     }
 
     const { page, limit } = parsePaging(searchParams, 10, 1000)

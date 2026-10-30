@@ -7,6 +7,7 @@ import { settingsTab } from "@/lib/company-settings-tabs"
 import { maySetField, maySettings, visibleSettingsTabs } from "@/lib/company-settings-access"
 import { can } from "@/lib/permissions/can"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
+import { CashAdvanceService } from "@/lib/services/cash-advance.service"
 
 /**
  * A company's settings, tab by tab (ATTENDANCE_PLAN.md §5), for the Super
@@ -30,7 +31,7 @@ export const GET = withStandardHandler(async (req, session) => {
         select: {
             id: true, name: true, adminSettingsEnabled: true, adminSettingsTabs: true,
             package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
-            autoVerifyLocation: true, logoUrl: true, brandColour: true,
+            autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
         },
     })
@@ -42,6 +43,8 @@ export const GET = withStandardHandler(async (req, session) => {
     // Only what the shown tabs hold: a hidden tab's values stay hidden too.
     const shown: Record<string, unknown> = { id: company.id, name: company.name }
     for (const key of tabs) for (const field of settingsTab(key)!.fields) shown[field] = (company as Record<string, unknown>)[field]
+    // What its people hold, which keeps the cash advances' switches on (CLIENTS_PLAN.md §7.6).
+    if (tabs.includes("general")) shown.cashAdvancesHeld = await CashAdvanceService.heldIn(company.id)
     if (tabs.includes("branding")) {
         shown.logoUrl = company.logoUrl
         // What "Use the default" goes back to (UI_PLAN.md §4.6).

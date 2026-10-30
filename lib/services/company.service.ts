@@ -231,7 +231,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour } = input
+        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -245,28 +245,37 @@ export class CompanyService {
             throw new Error("CANNOT_RENAME_SHSD")
         }
 
-        const updated = await prisma.company.update({
-            where: { id },
-            data: {
-                ...(name && { name }),
-                ...(isBanned !== undefined && { isBanned }),
-                ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
-                ...(nextLabels !== undefined && { moduleLabels: nextLabels ?? Prisma.DbNull }),
-                ...(nextIcons !== undefined && { moduleIcons: nextIcons ?? Prisma.DbNull }),
-                // Payroll policy. The schema validates all three before they
-                // reach here — the zone in particular, because its refusal
-                // carries a reason the form needs to show.
-                ...(payrollDay !== undefined && { payrollDay }),
-                ...(payslipsVisible !== undefined && { payslipsVisible }),
-                ...(timezone !== undefined && { timezone }),
-                ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent }),
-                // Which of its settings the company's own people see (§5.2).
-                ...(adminSettingsEnabled !== undefined && { adminSettingsEnabled }),
-                ...(adminSettingsTabs !== undefined && { adminSettingsTabs }),
-                // Null goes back to the system's default (UI_PLAN.md §4.6).
-                ...(brandColour !== undefined && { brandColour })
-            }
-        })
+        const data: Prisma.CompanyUpdateInput = {
+            ...(name && { name }),
+            ...(isBanned !== undefined && { isBanned }),
+            ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
+            ...(nextLabels !== undefined && { moduleLabels: nextLabels ?? Prisma.DbNull }),
+            ...(nextIcons !== undefined && { moduleIcons: nextIcons ?? Prisma.DbNull }),
+            // Payroll policy. The schema validates all three before they
+            // reach here — the zone in particular, because its refusal
+            // carries a reason the form needs to show.
+            ...(payrollDay !== undefined && { payrollDay }),
+            ...(payslipsVisible !== undefined && { payslipsVisible }),
+            ...(timezone !== undefined && { timezone }),
+            ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent }),
+            // Which of its settings the company's own people see (§5.2).
+            ...(adminSettingsEnabled !== undefined && { adminSettingsEnabled }),
+            ...(adminSettingsTabs !== undefined && { adminSettingsTabs }),
+            // Null goes back to the system's default (UI_PLAN.md §4.6).
+            ...(brandColour !== undefined && { brandColour }),
+            // Cash advances (CLIENTS_PLAN.md §7.6).
+            ...(cashAdvancesAllowed !== undefined && { cashAdvancesAllowed }),
+            ...(cashAdvancesOn !== undefined && { cashAdvancesOn }),
+        }
+        // Switching cash advances off waits for any advance being recorded,
+        // and is refused while anyone holds advance money (§7.6).
+        const updated = cashAdvancesAllowed === false || cashAdvancesOn === false
+            ? await prisma.$transaction(async tx => {
+                const { CashAdvanceService } = await import("./cash-advance.service")
+                await CashAdvanceService.assertNoneHeld(tx, id)
+                return tx.company.update({ where: { id }, data })
+            })
+            : await prisma.company.update({ where: { id }, data })
 
         // Audit Log (Centralized)
         const changes: any = {}
@@ -308,6 +317,12 @@ export class CompanyService {
         if (brandColour !== undefined && brandColour !== existing.brandColour) {
             changes.brandColour = { old: existing.brandColour, new: brandColour }
         }
+        if (cashAdvancesAllowed !== undefined && cashAdvancesAllowed !== existing.cashAdvancesAllowed) {
+            changes.cashAdvancesAllowed = { old: existing.cashAdvancesAllowed, new: cashAdvancesAllowed }
+        }
+        if (cashAdvancesOn !== undefined && cashAdvancesOn !== existing.cashAdvancesOn) {
+            changes.cashAdvancesOn = { old: existing.cashAdvancesOn, new: cashAdvancesOn }
+        }
 
         if (Object.keys(changes).length > 0) {
             const { AuditLogService } = await import("./audit-log.service")
@@ -345,6 +360,9 @@ export class CompanyService {
                 // The company's own brand colour, for the dashboard layout,
                 // which reads this row on every page anyway (UI_PLAN.md §4.6).
                 brandColour: true,
+                // Whether it uses cash advances, for My cash advance in the
+                // side bar (CLIENTS_PLAN.md §7.5), read with it.
+                cashAdvancesAllowed: true, cashAdvancesOn: true,
                 // A tab tied to a module exists only for a company holding it.
                 package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
             },

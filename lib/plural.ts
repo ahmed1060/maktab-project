@@ -8,7 +8,7 @@ import type { TranslationKey } from '@/lib/translations'
  * other; Arabic uses all six, and writes one and two without the digit.
  * A negative count (points can go below nothing) always shows its digits.
  */
-export type CountWord = 'days' | 'pts' | 'employees' | 'requests' | 'records' | 'files' | 'clients' | 'locations' | 'names' | 'times' | 'charges'
+export type CountWord = 'days' | 'pts' | 'employees' | 'requests' | 'records' | 'files' | 'clients' | 'locations' | 'names' | 'times' | 'charges' | 'entries'
 
 export function countOf(t: (key: TranslationKey) => string, locale: string, n: number, word: CountWord): string {
     const lang = locale === 'ar' ? 'ar' : 'en'

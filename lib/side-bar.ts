@@ -14,7 +14,7 @@ import type { TranslationKey } from './translations'
 
 /** One of the app's own pages, which a company can't rename, unlike its modules (lib/modules.ts). */
 type PageKey =
-    | 'checkIn' | 'attendance' | 'myAttendance' | 'roleRequests' | 'profileRequests' | 'payroll' | 'myPayslips' | 'companySettings' | 'savedLists'
+    | 'checkIn' | 'attendance' | 'myAttendance' | 'roleRequests' | 'profileRequests' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
     | 'companies' | 'packages' | 'allUsers'
     | 'roleTemplates' | 'policyTemplates' | 'publicHolidays'
     | 'superAdmins' | 'roleChanges' | 'accessReviews' | 'whoCan'
@@ -32,6 +32,8 @@ export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey; ic
     profileRequests: { href: '/dashboard/profile-requests', labelKey: 'nav_profile_requests', icon: '📝' },
     payroll: { href: '/dashboard/payroll', labelKey: 'payroll', icon: '🧾' },
     myPayslips: { href: '/dashboard/documents', labelKey: 'my_payslips', icon: '📄' },
+    // Everyone's own cash advance (CLIENTS_PLAN.md §7.5).
+    myCashAdvance: { href: '/dashboard/cash-advances/mine', labelKey: 'my_cash_advance', icon: '💵' },
     companySettings: { href: '/dashboard/settings', labelKey: 'company_settings_title', icon: '⚙️' },
     // The saved lists of cost names and task titles (CLIENTS_PLAN.md §5.6).
     savedLists: { href: '/dashboard/lists', labelKey: 'saved_lists_title', icon: '📋' },
@@ -58,7 +60,7 @@ export type SideBarGroup = {
     items: SideBarItemKey[]
 }
 
-/** A company's people's side bar (§2.1), in order. My cash advance joins when it's built. */
+/** A company's people's side bar (§2.1), in order. */
 export const COMPANY_GROUPS: readonly SideBarGroup[] = [
     { key: 'top', labelKey: null, items: ['dashboard', 'checkIn'] },
     { key: 'work', labelKey: 'nav_group_work', items: ['tasks', 'obligations'] },
@@ -66,7 +68,7 @@ export const COMPANY_GROUPS: readonly SideBarGroup[] = [
     // The request pages sit together here until the one Requests page (§2.3).
     { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests', 'dayOff', 'roleRequests', 'profileRequests'] },
     { key: 'money', labelKey: 'nav_group_money', items: ['costs', 'payroll'] },
-    { key: 'me', labelKey: 'nav_group_me', items: ['myAttendance', 'myPayslips'] },
+    { key: 'me', labelKey: 'nav_group_me', items: ['myAttendance', 'myPayslips', 'myCashAdvance'] },
     { key: 'bottom', labelKey: null, items: ['companySettings', 'savedLists'] },
 ]
 
@@ -89,6 +91,8 @@ export type SideBarViewer = {
     checkIn: boolean
     /** This person sees their company's settings (ATTENDANCE_PLAN.md §5.2). */
     companySettings: boolean
+    /** Their company uses cash advances (CLIENTS_PLAN.md §7.6). */
+    cashAdvances: boolean
 }
 
 /**
@@ -121,12 +125,15 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
         case 'payroll': return v.can('payroll.view')
         // The Super Admin is nobody's employee, and has no payslips.
         case 'myPayslips': return !v.superAdmin
+        // Everyone's own, where the company uses cash advances (CLIENTS_PLAN.md §7.5).
+        case 'myCashAdvance': return !v.superAdmin && v.cashAdvances
         case 'companySettings': return v.companySettings
         // For whoever manages the lists (CLIENTS_PLAN.md §5.7), in a company with Tasks.
         case 'savedLists': return v.can('lists.manage')
-        // Its tabs: Employee costs, for whoever pays them, and Charged to
-        // clients, for whoever sees charges (CLIENTS_PLAN.md §6.4).
-        case 'costs': return v.can('tasks.pay') || v.can('charges.view')
+        // Its tabs: Employee costs, for whoever pays them, Charged to
+        // clients, for whoever sees charges (CLIENTS_PLAN.md §6.4), and Cash
+        // advances, for whoever sees them where they're used (§7.5).
+        case 'costs': return v.can('tasks.pay') || v.can('charges.view') || (v.cashAdvances && v.can('cash_advances.view'))
     }
     if (key in PAGES) return v.superAdmin
     const permission = MODULE_PERMISSION[key as ModuleKey]

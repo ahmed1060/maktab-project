@@ -35,11 +35,14 @@ interface DashboardShellProps {
     // Whether this person sees their company's settings: resolved in the
     // layout from the company's switch and their role (ATTENDANCE_PLAN.md §5.2).
     showCompanySettings?: boolean
+    // Whether their company uses cash advances, for My cash advance and the
+    // Costs page's tab (CLIENTS_PLAN.md §7.5): resolved there too.
+    cashAdvances?: boolean
 }
 
 const subscribeNever = () => () => {}
 
-export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false }: DashboardShellProps) {
+export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false, cashAdvances: advancesOnFirstPaint = false }: DashboardShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
@@ -60,7 +63,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const { data: settingsEntry, mutate: recheckSettings } = useSWR(
         user?.role && user.role !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null,
         fetcher,
-        { fallbackData: { data: { visible: settingsOnFirstPaint } }, revalidateOnMount: false, revalidateOnFocus: true },
+        { fallbackData: { data: { visible: settingsOnFirstPaint, cashAdvances: advancesOnFirstPaint } }, revalidateOnMount: false, revalidateOnFocus: true },
     )
     useEffect(() => { recheckSettings() }, [pathname, recheckSettings])
     const showCompanySettings = !!settingsEntry?.data?.visible
@@ -73,6 +76,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         // where the phone can prove where it is.
         checkIn: inApp && hasBundle(features.access, 'ATTENDANCE_MOBILE'),
         companySettings: showCompanySettings,
+        cashAdvances: !!settingsEntry?.data?.cashAdvances,
     })
     // The mark follows the same scope as the names beside it — a Super Admin
     // looking at one company sees that company's logo, not a default mark over

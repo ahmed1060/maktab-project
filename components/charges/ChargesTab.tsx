@@ -5,11 +5,11 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import { Page } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
-import CostsTabs from './CostsTabs'
+import CostsTabs, { type CostsTab } from './CostsTabs'
 import ChargesList from './ChargesList'
 
-/** The Costs page on its Charged to clients tab (CLIENTS_PLAN.md §6.4), with the tabs for whoever also pays costs. */
-export default function ChargesTab({ withTabs }: { withTabs: boolean }) {
+/** The Costs page on its Charged to clients tab (CLIENTS_PLAN.md §6.4), with the others for whoever sees them too. */
+export default function ChargesTab({ tabs }: { tabs: CostsTab[] }) {
     const { t } = useLanguage()
     const { setTitle, setSubtitle } = useHeader()
     const modules = useModules()
@@ -20,7 +20,7 @@ export default function ChargesTab({ withTabs }: { withTabs: boolean }) {
     }, [setTitle, setSubtitle, t, modules])
     return (
         <Page>
-            {withTabs && <CostsTabs current="charges" />}
+            {tabs.length > 1 && <CostsTabs current="charges" tabs={tabs} />}
             <ChargesList />
         </Page>
     )
