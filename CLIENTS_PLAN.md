@@ -2056,3 +2056,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   parts (`UI_PLAN.md` §5). In the first, where it's done and its client
   are among its details, its map pin a link; its costs and charges keep
   their own block until the second.
+- **2026-10-30:** An obligation's page was merged in #122 (`UI_PLAN.md` §5),
+  and a task's page opens in #123.

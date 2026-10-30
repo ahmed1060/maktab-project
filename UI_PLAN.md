@@ -345,8 +345,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      second was the Tasks list, merged in #118 on 2026-10-30, and the
      third the Obligations list, merged in #119 on 2026-10-30, and the
      fourth Create task, merged in #120 on 2026-10-30, and the fifth Add
-     obligation, merged in #121 on 2026-10-30. The sixth is an
-     obligation's page, open for review in #122;
+     obligation, merged in #121 on 2026-10-30, and the sixth an
+     obligation's page, merged in #122 on 2026-10-30. The seventh is a
+     task's page, in two parts: its page and dialogs, open for review in
+     #123, then its costs, location history, submission form and edit
+     dialog;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1316,3 +1319,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     obligation's page (lib/useDeadlineClock.ts).
   - An address that isn't a task says so on a page with the way back.
   - Its words are in sentence case, and its messages end their sentences.
+- **2026-10-30:** An obligation's page was merged in #122, and a task's page
+  opens for review in #123 (§5 step 5).
