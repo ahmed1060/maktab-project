@@ -2066,3 +2066,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-30:** A task's page, part 2, was merged in #124 (`UI_PLAN.md`
   §5), and the one Requests page opens in #125. It doesn't touch clients or
   locations.
+- **2026-10-30:** The one Requests page, part 1, was merged in #125
+  (`UI_PLAN.md` §2.3), and Ask for leave becomes a role's permission in
+  #126. Neither touches clients or locations.
