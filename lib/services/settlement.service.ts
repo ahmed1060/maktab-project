@@ -9,6 +9,7 @@ import { EmploymentService } from "./employment.service"
 import { SalaryHistoryService } from "./salary-history.service"
 import { TeamHandOff } from "./team-handoff.service"
 import { notifyTeamMoves } from "./team-notify.service"
+import { CASH_ADVANCE_DEBT, CashAdvanceService } from "./cash-advance.service"
 
 /**
  * Producing the statement that ends an employment.
@@ -114,7 +115,7 @@ export class SettlementService {
      * document can stop carrying a blanket caveat.
      */
     static async preview(userId: string, lastWorkingDay: string) {
-        const { payrollDay, timeZone } = await this.policyFor(userId)
+        const { companyId, payrollDay, timeZone } = await this.policyFor(userId)
         const endsAt = endOfContractInstant(lastWorkingDay, timeZone)
         const { year, month } = calendarParts(endsAt, timeZone)
 
@@ -147,7 +148,15 @@ export class SettlementService {
         // debt, which is a thing somebody can chase or write off, rather than a
         // figure on a final statement telling a departing employee they owe
         // money.
-        const debts = await this.recoverableDebtsFor(userId)
+        const dueDate = nextPaydayOnOrAfter(endsAt, payrollDay, timeZone)
+        // What they still hold of a cash advance becomes a debt as the contract
+        // ends (CLIENTS_PLAN.md §7.3), due with the settlement, and is recovered
+        // from it as the debts already there are.
+        const heldMinor = companyId ? toMinor((await CashAdvanceService.heldBy(companyId, userId)).toFixed(2)) : 0
+        const debts = [
+            ...await this.recoverableDebtsFor(userId),
+            ...(heldMinor > 0 ? [{ id: CASH_ADVANCE_DEBT, outstandingMinor: heldMinor, dueDate }] : []),
+        ]
         const recovery = planFinalRecovery({ netMinor: Math.max(0, preview.netMinor), debts })
 
         return {
@@ -166,7 +175,9 @@ export class SettlementService {
             // for that month sits unpaid — the last being the one somebody
             // should resolve before signing anything.
             paidSource: paid.source,
-            dueDate: nextPaydayOnOrAfter(endsAt, payrollDay, timeZone),
+            dueDate,
+            /** What they still hold of a cash advance, which becomes a debt; in debtsOutstandingMinor too. */
+            cashAdvanceHeldMinor: heldMinor,
             // The debt picture, reported separately from the employment
             // arithmetic above so the statement's own sums still add up.
             debtsOutstandingMinor: debts.reduce((sum, d) => sum + d.outstandingMinor, 0),
@@ -207,6 +218,8 @@ export class SettlementService {
         createdById?: string | null
         /** Role of whoever is ending it, for the hand-off's audit entry. */
         actorRole?: string | null
+        /** Their name, on the cash advance entry that becomes a debt. */
+        actorName?: string | null
         /**
          * Where their team goes if they lead one: absent until somebody has
          * answered (refused with LEADER_HAS_REPORTS), null to leave them
@@ -261,12 +274,21 @@ export class SettlementService {
                 },
             })
 
+            // What they still hold of a cash advance becomes a debt (CLIENTS_PLAN.md
+            // §7.3), as much as the preview counted, and is paid down below as
+            // its plan has it.
+            const advanceDebt = await CashAdvanceService.toDebt(tx, companyId, input.userId, toMajor(preview.cashAdvanceHeldMinor), {
+                dueDate: preview.dueDate,
+                by: { id: input.createdById ?? input.userId, name: input.actorName },
+            })
+
             // The debts this settlement paid down, closed here rather than left
             // for a recovery that will never come — the person has no next
             // month. Driven off the plan the preview produced, so the figure on
             // the statement and the figure taken are the same one.
             for (const allocation of preview.debtAllocations) {
-                const existing = await tx.debt.findUnique({ where: { id: allocation.debtId } })
+                const debtId = allocation.debtId === CASH_ADVANCE_DEBT ? advanceDebt?.id : allocation.debtId
+                const existing = debtId ? await tx.debt.findUnique({ where: { id: debtId } }) : null
                 // Vanished or closed since the preview. Skipped rather than
                 // failed: the settlement's own figures are already correct, and
                 // refusing to end somebody's contract over a stale row helps
@@ -303,7 +325,7 @@ export class SettlementService {
                 })
                 : null
 
-            return { event, settlement, debt, preview }
+            return { event, settlement, debt, advanceDebt, preview }
         })
 
         // News, after the commit, as every other hand-off does it.

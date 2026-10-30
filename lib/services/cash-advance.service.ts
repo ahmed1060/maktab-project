@@ -20,6 +20,12 @@ import {
  * and a balance is always the sum of its person's entries (§7.4).
  */
 
+/** Whose contract has ended: they hold no advance money, so what comes back to them is a debt (§7.3). */
+const GONE = "ARCHIVED"
+
+/** A debt's source when it's what someone still held on leaving (§7.3). */
+export const CASH_ADVANCE_DEBT = "CASH_ADVANCE"
+
 /** At work: not suspended, deleted or gone, so an advance may be given (§7.4). */
 const AT_WORK = ["ACTIVE", "OFFLINE"] as const
 
@@ -217,7 +223,11 @@ export class CashAdvanceService {
                 await inUse(companyId, tx)
                 await CashAdvanceService.lockPerson(tx, person.id)
                 // Deleted for good while this waited: nothing is theirs any more.
-                if (!(await tx.user.findUnique({ where: { id: person.id }, select: { id: true } }))) throw new Error("CASH_ADVANCE_NOT_FOUND")
+                // And whether they're at work, or gone, as it is now: an ending
+                // may have been recorded while this waited (§7.3).
+                const now = await tx.user.findUnique({ where: { id: person.id }, select: { status: true } })
+                if (!now) throw new Error("CASH_ADVANCE_NOT_FOUND")
+                if (kind === "GIVEN" && !(AT_WORK as readonly string[]).includes(now.status)) throw new Error("CASH_ADVANCE_NOT_AT_WORK")
                 const before = await balanceOf(tx, companyId, person.id)
                 const after = balanceAfter(before, amount)
                 if (after === null) throw new Error(kind === "RETURNED" ? "CASH_ADVANCE_MORE_THAN_HELD" : "CASH_ADVANCE_BELOW_ZERO")
@@ -236,6 +246,12 @@ export class CashAdvanceService {
                         details: { entryId: entry.id, amount, date, balance: after, ...(note && { note }) },
                     },
                 })
+                // Someone whose contract has ended holds nothing: a correction
+                // finding they held more makes it a debt, as at their leaving (§7.3).
+                if (now.status === GONE && after > 0) {
+                    await CashAdvanceService.toDebt(tx, companyId, person.id, null, { dueDate: new Date(), by: { id: session.user.id, name: session.user.name } })
+                    return { entry: entryOf(entry), balance: 0 }
+                }
                 return { entry: entryOf(entry), balance: after }
             })
         } catch (error) {
@@ -308,15 +324,17 @@ export class CashAdvanceService {
     static async spent(tx: Prisma.TransactionClient, companyId: string, taskId: string, costs: readonly { id: string; authorId: string | null; part: number }[], way: -1 | 1, by: { id: string; name?: string | null }) {
         let parts = costs.filter((c): c is { id: string; authorId: string; part: number } => !!c.authorId && c.part > 0)
         if (!parts.length) return
+        let gone: string[] = []
         if (way === 1) {
             // Each person's advance held, in one order, so two removals don't wait on each other.
             const authors = [...new Set(parts.map(c => c.authorId))].sort()
             for (const authorId of authors) await CashAdvanceService.lockPerson(tx, authorId)
             // Someone deleted for good since has no advance to put it back on:
             // theirs went with them, held at nothing (UserService.delete).
-            const here = new Set((await tx.user.findMany({ where: { id: { in: authors } }, select: { id: true } })).map(u => u.id))
-            parts = parts.filter(c => here.has(c.authorId))
+            const here = await tx.user.findMany({ where: { id: { in: authors } }, select: { id: true, status: true } })
+            parts = parts.filter(c => here.some(u => u.id === c.authorId))
             if (!parts.length) return
+            gone = here.filter(u => u.status === GONE).map(u => u.id)
         }
         const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
         await tx.cashAdvanceEntry.createMany({
@@ -324,6 +342,41 @@ export class CashAdvanceService {
                 companyId, userId: c.authorId, kind: "SPENT" as const, amount: cents(way * c.part), date,
                 costId: c.id, taskId, recordedById: by.id, recordedByName: by.name ?? null,
             })),
+        })
+        // Someone whose contract has ended holds nothing: what's put back on
+        // theirs becomes a debt at once, as at their leaving (§7.3).
+        for (const userId of gone) await CashAdvanceService.toDebt(tx, companyId, userId, null, { dueDate: new Date(), by })
+    }
+
+    /**
+     * Leaving the company (§7.3): what they still hold becomes a debt,
+     * recovered as other debts are. An entry of its own takes the balance to
+     * nothing, and the debt names it as its source. Under the hold on their
+     * advance each entry is recorded under; `counted` is what the settlement
+     * counted, and anything else since is refused, as the statement would no
+     * longer add up. Null counts whatever they hold, as an ending dated ahead
+     * takes effect. Null when nothing is held.
+     */
+    static async toDebt(
+        tx: Prisma.TransactionClient,
+        companyId: string,
+        userId: string,
+        counted: number | null,
+        debt: { dueDate: Date; by: { id: string; name?: string | null } },
+    ) {
+        await CashAdvanceService.lockPerson(tx, userId)
+        const held = await balanceOf(tx, companyId, userId)
+        if (counted !== null && held !== cents(counted)) throw new Error("CASH_ADVANCE_CHANGED")
+        if (held <= 0) return null
+        const entry = await tx.cashAdvanceEntry.create({
+            data: {
+                companyId, userId, kind: "DEBT", amount: -held, date: new Date(`${await todayIn(companyId, tx)}T00:00:00Z`),
+                recordedById: debt.by.id, recordedByName: debt.by.name ?? null,
+            },
+            select: { id: true },
+        })
+        return tx.debt.create({
+            data: { userId, companyId, amount: held, source: CASH_ADVANCE_DEBT, sourceId: entry.id, dueDate: debt.dueDate },
         })
     }
 

@@ -58,6 +58,9 @@ vi.mock("@/lib/prisma", () => ({
                 employmentEvent: { create: async ({ data }: any) => ({ id: "ev-1", ...data }) },
                 finalSettlement: { create: async ({ data }: any) => { db.settled = true; return { id: "st-1", ...data } } },
                 debt: { findUnique: async () => null, update: async () => ({}), create: async () => ({ id: "d-1" }) },
+                // Their cash advance, held while it's read (CLIENTS_PLAN.md §7.3): none here.
+                $queryRaw: async () => [],
+                cashAdvanceEntry: { aggregate: async () => ({ _sum: { amount: null } }) },
             })
         },
     },
@@ -65,7 +68,7 @@ vi.mock("@/lib/prisma", () => ({
 
 const preview = {
     endsAt: PAST, earnedMinor: 0, paidMinor: 0, netMinor: 0, debtRecoveredMinor: 0,
-    dueDate: PAST, debtAllocations: [],
+    dueDate: PAST, debtAllocations: [], cashAdvanceHeldMinor: 0,
 }
 
 async function end(reassignReportsTo?: string | null, extra: any = {}) {

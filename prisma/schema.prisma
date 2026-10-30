@@ -1681,6 +1681,9 @@ enum CashAdvanceEntryKind {
   SPENT
   RETURNED
   CORRECTION
+  /// What was still held on leaving the company, which became a debt
+  /// recovered as other debts are (§7.3). Debt.sourceId names it.
+  DEBT
 }
 
 /// How far a grant reaches: the person's own records, their team's, or the

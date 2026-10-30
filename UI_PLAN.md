@@ -1096,3 +1096,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Team Leader their team and themselves, with History only.
 - **2026-10-30:** `CLIENTS_PLAN.md`'s 7b was merged in #113, and 7c opens
   for review in #114.
+- **2026-10-30:** With `CLIENTS_PLAN.md`'s 7d, End Contract's settlement
+  says when the person still holds a cash advance, which becomes a debt it
+  recovers as the others. A cash advance's history shows Became a debt,
+  and a person's debts list shows a cash advance's as one.
+- **2026-10-30:** `CLIENTS_PLAN.md`'s 7c was merged in #114, and 7d opens
+  for review in #115.
