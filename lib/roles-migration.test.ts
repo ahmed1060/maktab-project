@@ -60,11 +60,20 @@ function seeded(): Record<string, Record<string, string>> {
     return out
 }
 
+/**
+ * Built-in grants a new company's roles get now, which the companies there
+ * already are get from a later PR's migration (CLIENTS_PLAN.md §7.8): it runs
+ * once this release, whose role editor knows them, is live, so no editor that
+ * doesn't know them can drop them meanwhile.
+ */
+const GRANTED_LATER = ["cash_advances.view", "cash_advances.give"]
+
 describe("the roles migration seeds the built-in grants", () => {
     it("exactly as lib/permissions/built-in.ts has them", () => {
         const fromSql = seeded()
         for (const role of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-            expect(fromSql[role] ?? {}, role).toEqual(BUILT_IN_GRANTS[role])
+            const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[role]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
+            expect(fromSql[role] ?? {}, role).toEqual(now)
         }
     })
 

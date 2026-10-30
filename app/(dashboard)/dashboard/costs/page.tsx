@@ -7,8 +7,10 @@ import { can } from '@/lib/permissions/can'
 import { costNameOf, pendingCostsSnapshot, pendingCostsWhere } from '@/lib/services/costs-query'
 import { costsDue, namedParts } from '@/lib/costs-total'
 import { costNamed } from '@/lib/saved-lists'
-import CostsTabs from '@/components/charges/CostsTabs'
+import CostsTabs, { type CostsTab } from '@/components/charges/CostsTabs'
 import ChargesTab from '@/components/charges/ChargesTab'
+import CashAdvancesTab from '@/components/cash-advances/CashAdvancesTab'
+import { CashAdvanceService } from '@/lib/services/cash-advance.service'
 
 export default async function CostsPage(props: { searchParams: Promise<{
         company?: string,
@@ -33,15 +35,21 @@ export default async function CostsPage(props: { searchParams: Promise<{
         redirect('/login')
     }
 
-    // Its tabs (CLIENTS_PLAN.md §6.4): Employee costs, for paying them, which
-    // takes tasks.pay; and Charged to clients, which takes charges.view.
+    // Its tabs (CLIENTS_PLAN.md §6.4, §7.5): Employee costs, for paying them,
+    // which takes tasks.pay; Charged to clients, which takes charges.view;
+    // and Cash advances, which takes cash_advances.view, in a company that
+    // uses them.
     const pays = can(session.user as any, 'tasks.pay')
     const seesCharges = can(session.user as any, 'charges.view')
-    if (!pays && !seesCharges) {
+    const seesAdvances = can(session.user as any, 'cash_advances.view') && await CashAdvanceService.usedBy(session.user as any)
+    if (!pays && !seesCharges && !seesAdvances) {
         redirect('/dashboard')
     }
-    if (seesCharges && (searchParams.tab === 'charges' || !pays)) return <ChargesTab withTabs={pays} />
-    const tabs = seesCharges ? <CostsTabs current="employee" /> : null
+    const shown: CostsTab[] = [...(pays ? ['employee' as const] : []), ...(seesCharges ? ['charges' as const] : []), ...(seesAdvances ? ['advances' as const] : [])]
+    const tab = shown.find(x => x !== 'employee' && x === searchParams.tab) ?? shown[0]
+    if (tab === 'charges') return <ChargesTab tabs={shown} />
+    if (tab === 'advances') return <CashAdvancesTab tabs={shown} />
+    const tabs = shown.length > 1 ? <CostsTabs current="employee" tabs={shown} /> : null
 
     const page = parseInt(searchParams.page || '1')
     const limit = parseInt(searchParams.limit || '10')

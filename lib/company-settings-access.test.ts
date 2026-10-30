@@ -27,7 +27,7 @@ vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: asy
 
 const C1 = {
     id: "c1", name: "One", isBanned: false,
-    autoVerifyLocation: false, logoUrl: "https://example.test/logo.png",
+    autoVerifyLocation: false, cashAdvancesAllowed: false, cashAdvancesOn: true, logoUrl: "https://example.test/logo.png",
     payrollDay: 25, payslipsVisible: false, timezone: "Africa/Cairo", debtRecoveryPercent: 100,
     moduleLabels: null, moduleIcons: null,
     adminSettingsEnabled: true, adminSettingsTabs: ["general", "payroll"],
@@ -35,10 +35,14 @@ const C1 = {
     package: null as null | { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean },
 }
 let company: typeof C1
+/** What the company's people hold in cash advances (CLIENTS_PLAN.md §7.6). */
+let held = 0
 
 beforeEach(() => {
     company = { ...C1, adminSettingsTabs: [...C1.adminSettingsTabs] }
     audited.length = 0
+    held = 0
+    prismaMock.cashAdvanceEntry.aggregate = async () => ({ _sum: { amount: held } })
     prismaMock.company.findUnique = async ({ where }: any) => where.id === "c1" ? { ...company } : null
     prismaMock.company.update = async ({ data }: any) => { state.written.push({ ...data }); company = { ...company, ...data }; return company }
 })
@@ -127,7 +131,9 @@ describe("the company settings API", () => {
         const { data } = await res.json()
         expect(data.tabs).toEqual(["general", "payroll"])
         expect(data.canEdit).toBe(true)
-        expect(Object.keys(data.company).sort()).toEqual(["autoVerifyLocation", "debtRecoveryPercent", "id", "name", "payrollDay", "payslipsVisible", "timezone"])
+        expect(Object.keys(data.company).sort()).toEqual([
+            "autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesHeld", "cashAdvancesOn", "debtRecoveryPercent", "id", "name", "payrollDay", "payslipsVisible", "timezone",
+        ])
     })
 
     it("answers nothing while the switch is off, or to someone without settings.view", async () => {
@@ -174,6 +180,30 @@ describe("the company settings API", () => {
         onRole({ "settings.edit": "COMPANY", "settings.view": "COMPANY" })
         expect((await put({ tab: "general", autoVerifyLocation: true })).status).toBe(200)
         expect(state.written).toEqual([{ autoVerifyLocation: true }])
+    })
+
+    it("lets the Admin switch cash advances off and on, and only the Super Admin allow them (CLIENTS_PLAN.md §7.6)", async () => {
+        as("admin")
+        expect((await put({ tab: "general", cashAdvancesAllowed: true })).status).toBe(403)
+        expect((await put({ tab: "general", cashAdvancesOn: false })).status).toBe(200)
+        expect(state.written).toEqual([{ cashAdvancesOn: false }])
+        as("superAdmin")
+        expect((await put({ companyId: "c1", tab: "general", cashAdvancesAllowed: true, cashAdvancesOn: true })).status).toBe(200)
+        expect(state.written).toEqual([{ cashAdvancesAllowed: true, cashAdvancesOn: true }])
+    })
+
+    it("keeps cash advances on while anyone holds advance money, and says how much", async () => {
+        held = 250
+        as("admin")
+        const res = await put({ tab: "general", cashAdvancesOn: false })
+        expect(res.status).toBe(409)
+        expect((await res.json()).code).toBe("CASH_ADVANCES_HELD")
+        expect((await (await get()).json()).data.company.cashAdvancesHeld).toBe(250)
+        as("superAdmin")
+        expect((await put({ companyId: "c1", tab: "general", cashAdvancesAllowed: false })).status).toBe(409)
+        const { PUT } = await import("@/app/api/companies/route")
+        expect((await PUT(withBody("PUT", "/api/companies", { id: "c1", cashAdvancesOn: false }))).status).toBe(409)
+        expect(state.written).toEqual([])
     })
 
     it("lets the Super Admin save any tab's fields, the debt cap included", async () => {
@@ -233,14 +263,22 @@ describe("the menu entry", () => {
 
     it("is offered by the same rule, asked afresh", async () => {
         as("admin")
-        expect((await visible()).data).toEqual({ visible: true })
+        expect((await visible()).data).toEqual({ visible: true, cashAdvances: false })
         company.adminSettingsEnabled = false
-        expect((await visible()).data).toEqual({ visible: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
         company.adminSettingsEnabled = true
         as("employee")
-        expect((await visible()).data).toEqual({ visible: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
         as("superAdmin")
-        expect((await visible()).data).toEqual({ visible: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+    })
+
+    it("says, with it, whether the company uses cash advances, for My cash advance (CLIENTS_PLAN.md §7.5)", async () => {
+        as("employee")
+        company.cashAdvancesAllowed = true
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: true })
+        company.cashAdvancesOn = false
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
     })
 
     it("is asked again as the person moves around, since the layout does not re-render", () => {

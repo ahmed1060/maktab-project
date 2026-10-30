@@ -153,7 +153,7 @@ describe("the reference set covers every column that can hold a bucket path", ()
         }
     )
 
-    it("gathers all seven known sources by name", () => {
+    it("gathers all eight known sources by name", () => {
         // A hard floor independent of the heuristic.
         for (const source of [
             "prisma.user.findMany",
@@ -161,6 +161,7 @@ describe("the reference set covers every column that can hold a bucket path", ()
             "prisma.company.findMany",
             "prisma.task.findMany",
             "prisma.taskCost.findMany",
+            "prisma.cashAdvanceEntry.findMany",
             "prisma.obligation.findMany",
             "prisma.clientRecord.findMany",
         ]) {

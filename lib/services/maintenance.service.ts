@@ -186,6 +186,18 @@ export class MaintenanceService {
             after = rows[rows.length - 1].id
         }
 
+        // Cash advances' photos of their signed hand-overs (CLIENTS_PLAN.md §7.3), one an advance.
+        for (let after: string | undefined; ;) {
+            const rows = await prisma.cashAdvanceEntry.findMany({
+                where: { photoUrl: { not: null }, ...(after && { id: { gt: after } }) },
+                select: { id: true, photoUrl: true },
+                orderBy: { id: 'asc' }, take: BATCH,
+            })
+            rows.forEach(r => add(r.photoUrl))
+            if (rows.length < BATCH) break
+            after = rows[rows.length - 1].id
+        }
+
         for (let after: string | undefined; ;) {
             const rows = await prisma.obligation.findMany({
                 where: { attachments: { not: null }, ...(after && { id: { gt: after } }) },

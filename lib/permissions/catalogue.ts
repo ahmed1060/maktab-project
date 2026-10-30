@@ -134,6 +134,13 @@ export const PERMISSIONS = {
     "charges.view":             { code: 60, module: "COSTS", scopes: TEAM_OR_COMPANY },
     "charges.manage":           { code: 61, module: "COSTS", scopes: COMPANY, implies: ["charges.view"] },
     "charges.collect":          { code: 62, module: "COSTS", scopes: COMPANY, implies: ["charges.view"], highRisk: MOVES_MONEY },
+    // An employee's cash advance (CLIENTS_PLAN.md §7.7): seeing their team's
+    // or the company's, and giving and settling them, with returns and
+    // corrections, which moves money. Everyone sees their own, on My cash
+    // advance, so that isn't a permission; nobody gives or settles their own
+    // (§7.8).
+    "cash_advances.view":       { code: 63, module: "COSTS", scopes: TEAM_OR_COMPANY },
+    "cash_advances.give":       { code: 64, module: "COSTS", scopes: COMPANY, implies: ["cash_advances.view"], highRisk: MOVES_MONEY, notOnOwn: true },
 
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },

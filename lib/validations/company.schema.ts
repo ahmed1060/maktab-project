@@ -110,6 +110,12 @@ export const updateCompanySchema = z.object({
         .refine((tabs) => new Set(tabs).size === tabs.length, { message: "A tab is listed twice" })
         .optional(),
 
+    // Cash advances (CLIENTS_PLAN.md §7.6): the Super Admin's allowing them,
+    // and the Admin's switch. Neither goes off while anyone holds advance
+    // money, which CompanyService.update checks.
+    cashAdvancesAllowed: z.boolean().optional(),
+    cashAdvancesOn: z.boolean().optional(),
+
     // Trial extension, in days, added on top of whichever preset was chosen.
     // A delta rather than a new total: "give them another week" is how the
     // request always arrives, and the column only ever grows.

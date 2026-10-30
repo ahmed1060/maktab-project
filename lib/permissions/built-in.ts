@@ -129,6 +129,11 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "charges.view": "COMPANY",
         "charges.manage": "COMPANY",
         "charges.collect": "COMPANY",
+        // Cash advances: an Admin sees everyone's, gives them and settles
+        // them (CLIENTS_PLAN.md §7.7). Given to the companies there already
+        // are by step 7's third PR, once this release's role editor is live.
+        "cash_advances.view": "COMPANY",
+        "cash_advances.give": "COMPANY",
 
         // Settings: the company's own settings, but only the tabs the Super
         // Admin chooses to show it, and none until they switch that on
@@ -199,6 +204,8 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // What their team's tasks' clients owe for their costs, to see
         // (CLIENTS_PLAN.md §6.6).
         "charges.view": "TEAM",
+        // Their team's cash advances, and their own, to see (§7.7).
+        "cash_advances.view": "TEAM",
     },
     // Everyone reads and adds to the company's records, and adds names to
     // the saved lists (CLIENTS_PLAN.md §5.7).

@@ -23,6 +23,7 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/api/locations', 'CLIENTS'],      // a client's places, and the shared ones (CLIENTS_PLAN.md §2)
     ['/api/lists', 'TASKS'],            // the saved lists of cost names and task titles (CLIENTS_PLAN.md §5)
     ['/api/charges', 'COSTS'],          // a task's costs as its client's charges, as their Costs tab is (CLIENTS_PLAN.md §6)
+    ['/api/cash-advances', 'COSTS'],    // employees' cash advances, which pay task costs, as their Costs tab is (CLIENTS_PLAN.md §7)
 
     // --- HR ---
     ['/api/day-off-requests', 'DAY_OFF'],

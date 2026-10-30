@@ -889,6 +889,10 @@ export class UserService {
         let result: any
         if (isPermanent) {
             if (user.status !== 'DELETED') throw new Error("MUST_SOFT_DELETE_FIRST")
+            // Their cash advance goes with them, so not while they still hold
+            // any of it (CLIENTS_PLAN.md §7.4): its return is recorded first.
+            const { CashAdvanceService } = await import("./cash-advance.service")
+            if (user.companyId && await CashAdvanceService.heldBy(user.companyId, id) > 0) throw new Error("CASH_ADVANCE_STILL_HELD")
 
             // Avatar Cleanup (Strict)
             if (user.avatar) {
