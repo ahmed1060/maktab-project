@@ -1102,3 +1102,22 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and a person's debts list shows a cash advance's as one.
 - **2026-10-30:** `CLIENTS_PLAN.md`'s 7c was merged in #114, and 7d opens
   for review in #115.
+- **2026-10-30:** A task's costs show their amounts in the page's
+  language (`DESIGN.md` §3.3): Arabic-Indic digits in Arabic, and grouped
+  thousands in both, as every other amount. They were written out by hand,
+  in Latin digits either way.
+- **2026-10-30:** On phones, a total tile's value stays on one line
+  (`DESIGN.md` §5.5). Two tiles to a row put an amount's currency on a line
+  of its own, as on the Costs page's Charged to clients and Cash advances
+  tabs; a tile whose value needs more than half the row takes the row now.
+- **2026-10-30:** On phones, the tabs share the row, a long label on two
+  lines, so every tab shows (`DESIGN.md` §5.5). The Costs page's three ran
+  past the edge in English, Cash advances cut off mid-word even when it
+  was the one picked. Saved lists' two now share the row too.
+- **2026-10-30:** `CLIENTS_PLAN.md`'s 7d was merged in #115, so its steps
+  0–7 are done. Four small fixes open for review in #116, before the rest
+  of this plan (§5 step 5).
+- **2026-10-30:** On a task's page, a cost's amount stays on one line, its
+  currency with it, as a total tile's does (`DESIGN.md` §5.5). On a phone,
+  "350.00 EGP" had "EGP" on a line of its own; the description beside it
+  wraps instead now.

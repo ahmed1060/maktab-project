@@ -36,7 +36,9 @@ function TaskCostsSectionBody({
         // its shares and total count only what's to be paid back.
         const advanced = (of?: string) => cents(costs.filter(c => !of || c.authorId === of).reduce((sum, c) => sum + (c.fromAdvance ?? 0), 0))
         const spentOn = (of?: string) => cents(costs.filter(c => !of || c.authorId === of).reduce((sum, c) => sum + c.amount, 0))
-        const money = (n: number) => `${n.toFixed(2)} ${t('egp')}`
+        // With Intl, in the page's language's digits (DESIGN.md §3.3).
+        const amounts = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        const money = (n: number) => `${amounts.format(n)} ${t('egp')}`
         // A total that's what's to be paid back, once part of it came from an advance.
         const owedNote = (of?: string) => advanced(of) > 0 && (
             <div style={{ fontSize: 'var(--text-xs)', opacity: 0.9, marginTop: 'var(--space-1)' }}>
@@ -73,7 +75,8 @@ function TaskCostsSectionBody({
                                 </div>
                                 <div style={{ textAlign: 'center', background: 'var(--warn-bg)', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: '1px solid var(--warn-border)' }}>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', textTransform: 'uppercase', fontWeight: '600' }}>{t('amount_label')}</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--warn-fg)' }}>{c.amount.toFixed(2)} {t('egp')}</div>
+                                    {/* An amount is never broken from its currency (DESIGN.md §5.5): the description beside it wraps instead. */}
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--warn-fg)', whiteSpace: 'nowrap' }}>{money(c.amount)}</div>
                                 </div>
                             </div>
                             {/* Part of it from the author's cash advance (CLIENTS_PLAN.md §7.5): a line of its own, so the amount's box stays narrow on a phone. */}
@@ -105,7 +108,7 @@ function TaskCostsSectionBody({
                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
                                     <div style={{ flex: 1, minWidth: '150px', background: 'var(--info-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)', position: 'relative' }}>
                                         <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{advanced(userId) > 0 ? t('advances_to_pay_back') : t('my_total_cost' as any)}</div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(getMemberCosts(task)[userId] || 0).toFixed(2)} {t('egp')}</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{money(getMemberCosts(task)[userId] || 0)}</div>
                                         {owedNote(userId)}
                                         <div style={{
                                             marginTop: '0.5rem',
@@ -123,7 +126,7 @@ function TaskCostsSectionBody({
                                     </div>
                                     <div style={{ flex: 1, minWidth: '150px', background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
                                         <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{advanced() > 0 ? t('advances_to_pay_back') : t('grand_total_cost' as any)}</div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{money(task.totalCost || 0)}</div>
                                         {owedNote()}
                                         <div style={{
                                             marginTop: '0.5rem',
@@ -146,7 +149,7 @@ function TaskCostsSectionBody({
                         return (
                             <div style={{ background: 'var(--warn-fill)', color: 'var(--text-on-accent)', padding: '1.25rem', borderRadius: '1rem', textAlign: 'center', boxShadow: '0 4px 6px -1px var(--shadow-weak)' }}>
                                 <div style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>{advanced() > 0 ? t('advances_to_pay_back') : t('total_cost')}</div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{(task.totalCost || 0).toFixed(2)} {t('egp')}</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{money(task.totalCost || 0)}</div>
                                 {owedNote()}
                                 <div style={{
                                     marginTop: '0.5rem',
@@ -185,7 +188,7 @@ function TaskCostsSectionBody({
                                                 </div>
                                                 <div>
                                                     <div style={{ fontWeight: '700', color: 'var(--text-body)', fontSize: '0.875rem' }}>{assignee.firstName} {assignee.lastName}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', fontWeight: '600' }}>{amount.toFixed(2)} {t('egp')}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', fontWeight: '600' }}>{money(amount)}</div>
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

@@ -518,8 +518,9 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Status badge:** a pill, `--text-xs`, weight 500, with the background and
   text colours from §2.3.
 - **Tabs:** text tabs with a 2px `--brand` line under the selected one, and
-  a hairline under the whole row. On phones, the row scrolls sideways
-  within itself.
+  a hairline under the whole row. On phones, the tabs share the row, a
+  long label on two lines, so every tab shows; a row of more than fit
+  scrolls sideways within itself.
 - **Total tiles:**
   - a label in `--text-sm` and `--muted`, above the value in `--text-2xl`
     and weight 600 with even-width digits;
@@ -527,7 +528,9 @@ These are built once, in the building-blocks PR, and every page uses them
     as "This month" or "40% completed";
   - a tile can be a link to the list it counts. Its label is then in
     `--brand-text`, and the whole tile is the target;
-  - up to 4 in a row on computers, 2 on phones.
+  - up to 4 in a row on computers, 2 on phones while their values fit
+    half the row. A value is never broken, an amount from its currency
+    least of all: a tile whose value needs more takes the row.
 - **Donut chart:** a ring for how a whole splits into a few parts, such as
   tasks by status or day off credit used and left.
   - The ring is 160px across and thin, a tenth of that. Its parts have
@@ -854,3 +857,11 @@ changed:
   other dialog (§5.5, Dialog). Drawn under the confirmation that sent the
   action, as "Pay 7 costs" or "Collect 7 charges" stays open until it's
   answered, its Confirm couldn't be clicked.
+- **2026-10-30:** On phones, a total tile's value is never broken (§5.5,
+  Total tiles). Two tiles to a row left half the row for each, so an
+  amount such as "6,355.50 EGP" had its currency on a line of its own. A
+  tile whose value needs more than half takes the row.
+- **2026-10-30:** On phones, the tabs share the row, a long label on two
+  lines, so every tab shows (§5.5, Tabs). The Costs page's three ran past
+  the edge in English, Cash advances cut off mid-word even when it was the
+  one picked.
