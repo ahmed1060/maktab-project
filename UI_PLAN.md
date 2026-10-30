@@ -339,7 +339,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      advances, and the task form's pickers.
 5. **The rest of this plan:**
    - the remaining old pages move to the building blocks one by one, each
-     in a small PR (§4.5);
+     in a small PR (§4.5). After four small fixes, merged in #116 on
+     2026-10-30, the first is the Costs page's Employee costs tab, beside
+     the two tabs already on them, open for review in #117;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1121,3 +1123,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   currency with it, as a total tile's does (`DESIGN.md` §5.5). On a phone,
   "350.00 EGP" had "EGP" on a line of its own; the description beside it
   wraps instead now.
+- **2026-10-30:** The first of the remaining old pages moves onto the
+  building blocks (§5 step 5): the Costs page's Employee costs tab, beside
+  the two already on them.
+  - The Costs page has its page header on every tab, its title and
+    subtitle, with Mark all as paid as Employee costs' one primary button.
+    The old top bar's title gives way to it, as on the other pages with
+    one.
+  - A filter bar: the search, the employee, the client, the location, the
+    cost name, the dates, and the order within the page.
+  - The tasks to pay and the total due as tiles. With a cost name picked,
+    the total's tile says payments are made per task, where Mark all as
+    paid would be.
+  - The list as a table on computers and cards on phones: each person's
+    share of a task still to pay, what their cash advance paid of it, and
+    the task's status. Mark all as paid still asks first, as in 4a.
+- **2026-10-30:** The four small fixes were merged in #116, and the Costs
+  page's Employee costs tab opens for review in #117, the first of the
+  remaining old pages (§5 step 5).
+- **2026-10-30:** In #117, a filter picked on Employee costs while the
+  search waits to be sent stays picked. The search's timer sent the address
+  as the render that started it saw it, without the filter, and so undid it
+  (found by Codex).
+- **2026-10-30:** In #117, Employee costs on a page past its last, as when
+  its last task is paid elsewhere and it's refreshed, goes to the last page
+  there is, with its filters. The list showed only its empty state, saying
+  there were no costs, with no pager to go back by (found by Codex).
+- **2026-10-30:** In #117, Employee costs' filters show what's picked at
+  once, and the address follows. They were read from the address, which
+  changes only once its navigation lands, so the date range picker read the
+  start just picked back from there for the end, and lost it (found by
+  Codex). The selects showed what was picked only once the list came back,
+  too.
+- **2026-10-30:** In #117, the Costs page's subtitle no longer mentions
+  salaries: "Monitor company expenses and financial logs". None of its
+  three tabs has them, and it shows on all three now.

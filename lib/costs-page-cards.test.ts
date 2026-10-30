@@ -21,9 +21,11 @@ vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en"
 vi.mock("@/context/HeaderContext", () => ({ useHeader: () => ({ setTitle: () => {}, setSubtitle: () => {} }) }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Costs" }) }))
 vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: () => true, companyWide: () => true }) }))
-// Its filters and pages aren't what's checked here.
-vi.mock("@/components/EmployeeFilter", () => ({ default: () => null }))
-vi.mock("@/components/Pagination", () => ({ default: () => null }))
+vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
+vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: null }) }))
+vi.mock("next-auth/react", () => ({ useSession: () => ({ data: null }) }))
+// Its filters aren't what's checked here.
+vi.mock("@/components/DateRangePicker", () => ({ default: () => null }))
 vi.mock("@/components/locations/usePlaceFilters", () => ({ usePlaceFilters: () => [] }))
 vi.mock("@/components/lists/useNameFilter", () => ({ useNameFilter: () => [] }))
 
@@ -98,5 +100,46 @@ describe("the Costs page's cards", () => {
         // Not each whole share, nor Mona's Diesel, her share being paid.
         expect(html).not.toContain("180.00")
         expect(html).not.toContain("20.00")
+    })
+})
+
+/**
+ * The tab on the building blocks (UI_PLAN.md §5): the Costs page's header,
+ * with Mark all as paid as its one main button, a filter bar, the totals as
+ * tiles, and the list as a table on computers and cards on phones.
+ */
+describe("the Employee costs tab", () => {
+    const toPay = { count: 2, amount: 300, digest: "d1" }
+    async function tab(query = "", pay: typeof toPay | null = toPay) {
+        address.query = query
+        const { default: CostsClient } = await import("@/app/(dashboard)/dashboard/costs/CostsClient")
+        return renderToStaticMarkup(h(CostsClient, { tasksWithCosts: [task({})], total: 1, page: 1, totalPages: 1, totalDue: 300, toPay: pay, costName: query.includes("costNameId") ? "Diesel" : null }))
+    }
+    const header = (html: string) => html.match(/<header class="ui-page-header">[\s\S]*?<\/header>/)?.[0] ?? ""
+
+    it("has Mark all as paid in the page header, as its one primary button", async () => {
+        const html = await tab()
+        expect(header(html)).toContain("costs_subtitle")
+        expect(header(html)).toContain("mark_all_as_paid")
+        expect(header(html)).toContain("ui-btn-primary")
+        expect(html.match(/ui-btn-primary/g)).toHaveLength(1)
+    })
+
+    it("offers nothing to pay when there's nothing to, and with a cost name says why in the total's tile", async () => {
+        expect(header(await tab("", null))).not.toContain("mark_all_as_paid")
+        const named = await tab("costNameId=n1")
+        expect(header(named)).not.toContain("mark_all_as_paid")
+        expect(named).toMatch(/<dd class="ui-tile-note">costs_pay_by_name<\/dd>/)
+    })
+
+    it("shows the tasks to pay and the total due as tiles, the list as a table and as cards", async () => {
+        const html = await tab()
+        expect(html).toContain('<dl class="ui-tiles">')
+        expect(html).toContain("costs_total_tasks")
+        expect(html).toMatch(/costs_total_due<\/dt><dd>300\.00 egp<\/dd>/)
+        expect(html).toContain('<table class="ui-table">')
+        expect(html).toContain("ui-list-card")
+        // The old cards and their own colours are gone.
+        expect(html).not.toContain("--warn-solid")
     })
 })
