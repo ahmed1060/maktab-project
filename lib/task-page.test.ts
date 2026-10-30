@@ -110,6 +110,15 @@ describe("a task's page", () => {
         expect(html.indexOf("Still sticks.")).toBeLessThan(html.indexOf("Oiled the hinge."))
         expect(await page(task())).toContain("no_attachments_msg")
     })
+
+    it("says an edit in its notes in words, and closes the changes it shows with a button (web interface audit)", async () => {
+        const html = await page(task({ comments: [{ type: "TASK_EDITED", author: "Hana Saad", date: "2026-10-29T09:00:00Z", changes: {} }] }))
+        expect(html).toMatch(/class="ui-note-text[^"]*"[^>]*>task_log_edited</)
+        const src = client()
+        const diff = src.slice(src.indexOf("open={!!diffField}"), src.indexOf("<TaskEditDetailsModal"))
+        expect(diff).toContain("actions={<Button onClick={() => setDiffField(null)}>{t('close')}</Button>}")
+        expect(en.comments_notes_title).toBe("Notes")
+    })
 })
 
 describe("its assignee", () => {

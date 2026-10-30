@@ -1030,7 +1030,12 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                 </>
             )}
 
-            <Dialog open={!!diffField} onClose={() => setDiffField(null)} title={diffField === 'title' ? t('title_changes_title') : t('description_changes_title')}>
+            <Dialog
+                open={!!diffField}
+                onClose={() => setDiffField(null)}
+                title={diffField === 'title' ? t('title_changes_title') : t('description_changes_title')}
+                actions={<Button onClick={() => setDiffField(null)}>{t('close')}</Button>}
+            >
                 {diffField && latestChanges && latestChanges[diffField] && (
                     <div dir="auto">
                         <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
@@ -1126,7 +1131,10 @@ function TaskCommentsLog({ task, userId, locked, onDeleteNote }: {
                                 <Button size="sm" variant="quiet" icon={TrashIcon} onClick={() => onDeleteNote(log.date)}>{t('delete')}</Button>
                             )}
                         </div>
-                        {log.text && <p className="ui-note-text" dir="auto">{log.text}</p>}
+                        {/* An edit has no words of its own: it's said as one. */}
+                        {log.text
+                            ? <p className="ui-note-text" dir="auto">{log.text}</p>
+                            : log.type === 'TASK_EDITED' && <p className="ui-note-text ui-hint">{t('task_log_edited')}</p>}
                     </li>
                 ))}
             </ol>

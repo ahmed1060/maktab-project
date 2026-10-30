@@ -1325,3 +1325,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   that its assignee has seen it. It posted to a route that isn't there:
   the 404 was let pass, the notice hid itself, and it was back at the next
   visit. Found by trying it in the browser.
+- **2026-10-30:** In #123, Vercel's web interface audit of a task's page:
+  how its title or description changed closes with a button as well as
+  Escape; an edit in its notes is said in words rather than as a name and
+  a date with nothing under them; and its notes are headed Notes.
