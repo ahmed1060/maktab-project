@@ -119,6 +119,15 @@ describe("a task's location history", () => {
         expect(await places(task({ comments: [checkIn()] }), { userId: "admin" })).not.toContain("task_penalty_button")
         expect(readFileSync("components/TaskLocationHistorySection.tsx", "utf8")).toContain("<Dialog")
     })
+
+    it("puts the penalty on the task, for the person picked, through the task's own penalty", () => {
+        const src = readFileSync("components/TaskLocationHistorySection.tsx", "utf8")
+        // It went to the salary route, which asks for another permission, and to the first assignee whoever was late.
+        expect(src).toContain("fetch(`/api/tasks/${task.id}/penalty`")
+        expect(src).not.toContain("/deduction")
+        expect(src).not.toContain("task.assignees?.[0]?.id")
+        expect(src).toContain("legend={t('task_penalty_who')}")
+    })
 })
 
 async function form(fields: object = {}) {

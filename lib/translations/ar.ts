@@ -64,6 +64,7 @@ export const ar = {
         task_penalty_button: "خصم تأخير",
         task_penalty_title: "خصم تأخير",
         task_penalty_body: "يُخصم من أجر من تأخر في هذه المهمة.",
+        task_penalty_who: "من تأخر",
         task_penalty_amount: "المقدار",
         task_penalty_quarter: "ربع أجر يوم",
         task_penalty_half: "نصف أجر يوم",

@@ -50,6 +50,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
     const features = useFeatures()
 
     const [penalising, setPenalising] = useState(false)
+    const [penaltyFor, setPenaltyFor] = useState('')
     const [penalty, setPenalty] = useState('')
     const [applyingPenalty, setApplyingPenalty] = useState(false)
     const [verifyingLocation, setVerifyingLocation] = useState<string | null>(null)
@@ -60,22 +61,22 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
 
     // The penalty writes into payroll, so it belongs to HR even though it
     // lives on a task: hidden without the feature, rather than shown locked
-    // in a page the company owns.
+    // in a page the company owns. The task's own penalty route takes it, for
+    // the person picked (lib/features/routes.ts routes it to SALARY_ADJUSTMENTS).
     const mayPenalise = features.has('SALARY_ADJUSTMENTS') && can('tasks.penalize') && !['PENDING', 'IN_PROGRESS'].includes(task.status)
     const openPenalty = () => {
+        setPenaltyFor(task.assignees?.length === 1 ? task.assignees[0].id : '')
         setPenalty('')
         setPenalising(true)
     }
     const applyPenalty = async () => {
-        if (!penalty || applyingPenalty) return
+        if (!penaltyFor || !penalty || applyingPenalty) return
         setApplyingPenalty(true)
         try {
-            // Usually these penalties are specific to who is late.
-            const targetUserId = task.assignees?.[0]?.id
-            const res = await fetch(`/api/users/${targetUserId}/deduction`, {
+            const res = await fetch(`/api/tasks/${task.id}/penalty`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: Number(penalty), userId: targetUserId }),
+                body: JSON.stringify({ amount: Number(penalty), userId: penaltyFor }),
             })
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
@@ -175,10 +176,17 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                 title={t('task_penalty_title')}
                 actions={<>
                     <Button onClick={() => setPenalising(false)}>{t('cancel')}</Button>
-                    <Button variant="danger" onClick={() => { void applyPenalty() }} disabled={!penalty} busy={applyingPenalty}>{t('task_penalty_apply')}</Button>
+                    <Button variant="danger" onClick={() => { void applyPenalty() }} disabled={!penaltyFor || !penalty} busy={applyingPenalty}>{t('task_penalty_apply')}</Button>
                 </>}
             >
                 <p>{t('task_penalty_body')}</p>
+                <Choice
+                    legend={t('task_penalty_who')}
+                    name="penalty-for"
+                    value={penaltyFor}
+                    onChange={setPenaltyFor}
+                    options={(task.assignees ?? []).map((a: any) => ({ value: a.id, label: `${a.firstName} ${a.lastName}` }))}
+                />
                 <Choice
                     legend={t('task_penalty_amount')}
                     name="penalty-amount"

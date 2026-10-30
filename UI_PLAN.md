@@ -1359,3 +1359,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     its counts and errors under it, and who it's for pointing to Transfer
     task.
   - Its words are in sentence case, and say they're busy with an ellipsis.
+- **2026-10-30:** In #124, a task's lateness penalty goes through the task's
+  own penalty, for the person picked. It went to the pay adjustment of a
+  person, which asks for another permission, so whoever may penalise a
+  task but not adjust pay was refused; it fell on the first person the
+  task is for, whoever was late; and it wasn't tied to the task. One person
+  is picked already when the task is for only one. Found while moving it.

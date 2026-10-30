@@ -68,6 +68,7 @@ export const en = {
         task_penalty_button: "Lateness penalty",
         task_penalty_title: "Lateness penalty",
         task_penalty_body: "Deducted from the pay of whoever was late with this task.",
+        task_penalty_who: "Who was late",
         task_penalty_amount: "How much",
         task_penalty_quarter: "A quarter of a day's pay",
         task_penalty_half: "Half a day's pay",
