@@ -1921,3 +1921,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   only what's owed comes off what's to be paid back. Only a cost removed
   by its id did: by its time, the whole cost came off, and its part from
   the advance was lost (found by Codex).
+- **2026-10-30:** In 7b (#113), a cost whose author was deleted for good
+  since is removed, and its task deleted, with nothing put back: their
+  advance went with them. Putting it back on an advance no longer there
+  failed, and the cost or task stayed (found by Codex).

@@ -196,6 +196,25 @@ describe.skipIf(!ADMIN_URL)("costs paid from cash advances, in Postgres", () => 
         expect(await task("k2")).toMatchObject({ total: before.total, shares: before.shares })
     })
 
+    it("removes a cost, and deletes a task, whose author was deleted for good since, putting nothing back for them", async () => {
+        await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", status, "roleId") SELECT 'e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', 'ACTIVE', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
+        await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "locationId", "updatedAt") VALUES ('k5', 'Fix the fence', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now())`)
+        await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('k5', 'e3')`)
+        const essam = as({ id: "e3", role: "EMPLOYEE", companyId: "c1", name: "Essam One" })
+        await Advances.record(admin, "e3", { kind: "GIVEN", amount: 100, date: "2026-10-03" })
+        await add("k5", essam, 60, 40)
+        // All of it spent, so nothing held: they may be deleted for good, and their entries go with them.
+        await db.query(`UPDATE "User" SET status = 'DELETED' WHERE id = 'e3'`)
+        const Users = (await import("@/lib/services/user.service")).UserService
+        await Users.delete("e3", admin, true)
+
+        const [cost] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'k5' AND amount = 60`)).rows
+        await Tasks.deleteItem("k5", admin, { type: "COST", itemId: cost.id })
+        await Tasks.delete("k5", admin)
+        expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE id = 'k5'`)).rows[0].n).toBe(0)
+        expect((await db.query(`SELECT count(*)::int AS n FROM "CashAdvanceEntry" WHERE "userId" = 'e3'`)).rows[0].n).toBe(0)
+    })
+
     it("holds a cost's part to the cost, in the database too", async () => {
         const [row] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'k2' LIMIT 1`)).rows
         await expect(db.query(`UPDATE "TaskCost" SET "fromAdvance" = amount + 1 WHERE id = '${row.id}'`)).rejects.toThrow(/TaskCost_fromAdvance_check/)

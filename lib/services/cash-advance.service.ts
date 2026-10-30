@@ -302,10 +302,18 @@ export class CashAdvanceService {
      * still uses cash advances: the money is the person's again.
      */
     static async spent(tx: Prisma.TransactionClient, companyId: string, taskId: string, costs: readonly { id: string; authorId: string | null; part: number }[], way: -1 | 1, by: { id: string; name?: string | null }) {
-        const parts = costs.filter((c): c is { id: string; authorId: string; part: number } => !!c.authorId && c.part > 0)
+        let parts = costs.filter((c): c is { id: string; authorId: string; part: number } => !!c.authorId && c.part > 0)
         if (!parts.length) return
-        // Each person's advance held, in one order, so two removals don't wait on each other.
-        if (way === 1) for (const authorId of [...new Set(parts.map(c => c.authorId))].sort()) await CashAdvanceService.lockPerson(tx, authorId)
+        if (way === 1) {
+            // Each person's advance held, in one order, so two removals don't wait on each other.
+            const authors = [...new Set(parts.map(c => c.authorId))].sort()
+            for (const authorId of authors) await CashAdvanceService.lockPerson(tx, authorId)
+            // Someone deleted for good since has no advance to put it back on:
+            // theirs went with them, held at nothing (UserService.delete).
+            const here = new Set((await tx.user.findMany({ where: { id: { in: authors } }, select: { id: true } })).map(u => u.id))
+            parts = parts.filter(c => here.has(c.authorId))
+            if (!parts.length) return
+        }
         const date = new Date(`${await todayIn(companyId)}T00:00:00Z`)
         await tx.cashAdvanceEntry.createMany({
             data: parts.map(c => ({
