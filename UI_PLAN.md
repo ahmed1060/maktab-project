@@ -1334,3 +1334,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the whole server's waiting locks, and the other database tests, running
   beside them, ended the wait early: "ends nothing when the advance
   changed" failed in a full run and passed on its own.
+- **2026-10-30:** In #123, a deadline changed while its page is open locks
+  the page at the new deadline. The page waited from the time it was drawn
+  at, not the time it is now, so a deadline moved later locked it as late
+  again as the page had been open, and one moved earlier, to a time already
+  passed, wasn't shown as passed until the old wait was up (found by Codex
+  on PR 123). A refresh's newer time from the server is taken too.
