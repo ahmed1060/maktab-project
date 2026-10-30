@@ -72,12 +72,11 @@ function TaskCostsSectionBody({
                             <span className="ui-row-main">
                                 {/* A description is up to 200 characters, a link among them: it wraps, however long its words. */}
                                 <span className="ui-item-title"><bdi>{c.description || t('no_description')}</bdi></span>
-                                <span className="ui-item-detail"><bdi>{c.author}</bdi> · <SafeDate date={c.date} locale={locale} /></span>
+                                {/* One span: a detail line lays its children side by side, so each part would wrap as a column of its own. */}
+                                <span className="ui-item-detail"><span><bdi>{c.author}</bdi> · <SafeDate date={c.date} locale={locale} /></span></span>
                                 {/* Part of it from the author's cash advance (CLIENTS_PLAN.md §7.5). */}
                                 {(c.fromAdvance ?? 0) > 0 && (
-                                    <span className="ui-item-detail">
-                                        {t('advances_from_advance')}: <span className="ui-num ui-nowrap">{money(c.fromAdvance ?? 0)}</span> · {t('advances_to_pay_back')}: <span className="ui-num ui-nowrap">{money(cents(c.amount - (c.fromAdvance ?? 0)))}</span>
-                                    </span>
+                                    <span className="ui-item-detail"><span>{t('advances_from_advance')}: <span className="ui-num ui-nowrap">{money(c.fromAdvance ?? 0)}</span> · {t('advances_to_pay_back')}: <span className="ui-num ui-nowrap">{money(cents(c.amount - (c.fromAdvance ?? 0)))}</span></span></span>
                                 )}
                                 {/* Its receipt's photo, opened in a new tab (CLIENTS_PLAN.md §6.2). */}
                                 {c.receiptUrl && (

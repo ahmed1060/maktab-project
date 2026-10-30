@@ -54,6 +54,13 @@ describe("a task's costs", () => {
         noStyles(html)
     })
 
+    it("say who and when as one line of text, which a phone wraps as words, not as squeezed pieces", async () => {
+        // A detail line lays its children side by side (an icon and its text): each part was a column of its own.
+        expect(await costs(task({ costs: [{ ...task().costs[0], fromAdvance: 50 }] }))).toMatch(/class="ui-item-detail"><span><bdi>Mona Adel<\/bdi> · /)
+        expect(await costs(task({ costs: [{ ...task().costs[0], fromAdvance: 50 }] }))).toMatch(/class="ui-item-detail"><span>advances_from_advance: /)
+        expect(await places(task({ comments: [checkIn()] }))).toMatch(/class="ui-item-detail"><span><bdi>Mona Adel<\/bdi> · /)
+    })
+
     it("total as a tile, with whether it's paid", async () => {
         const html = await costs(task())
         expect(html).toContain('<dl class="ui-tiles">')
@@ -101,6 +108,8 @@ describe("a task's location history", () => {
         expect(html).toContain('class="ui-panel ui-card"')
         expect(html).toContain("location_history_title")
         expect(html).toContain('href="https://www.google.com/maps?q=30.05,31.23"')
+        // A link of the building blocks, as the Locations list's map links are, not the browser's own blue.
+        expect(html).toMatch(/<a href="https:\/\/www\.google\.com\/maps[^"]*"[^>]*class="ui-item-link"/)
         expect(html).toContain("ui_opens_new_tab")
         expect(html).toContain("Tahrir Square")
         noStyles(html)

@@ -143,10 +143,11 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                 <span className="ui-row-main">
                                     <span className="ui-item-title">
                                         {mapsLink
-                                            ? <a href={mapsLink} target="_blank" rel="noopener noreferrer"><bdi>{displayLoc}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
+                                            ? <a href={mapsLink} target="_blank" rel="noopener noreferrer" className="ui-item-link"><bdi>{displayLoc}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
                                             : <bdi>{displayLoc}</bdi>}
                                     </span>
-                                    <span className="ui-item-detail"><bdi>{loc.author}</bdi> · <SafeDate date={loc.date} locale={locale} /></span>
+                                    {/* One span: a detail line lays its children side by side, so each part would wrap as a column of its own. */}
+                                    <span className="ui-item-detail"><span><bdi>{loc.author}</bdi> · <SafeDate date={loc.date} locale={locale} /></span></span>
                                     {/* Why, for whoever settles it: a title is only read on hover, never on a phone. */}
                                     {canVerify && loc.verificationStatus === 'UNVERIFIED' && <span className="ui-item-detail">{t('verified_unclear_hint')}</span>}
                                 </span>

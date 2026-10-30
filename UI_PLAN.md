@@ -1374,3 +1374,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   there before it; each cost they'd take off is named in its Remove; and a
   reviewer reads why a check-in needs review, which was only in a title
   read on hover.
+- **2026-10-30:** In #124, found in the browser: on a phone, who added a
+  cost and when, and what came from a cash advance, wrap as words. Each
+  part was a column of its own beside the amount, so a word broke in two;
+  a check-in's date too. And a check-in's map link is the building blocks'
+  link, as the Locations list's are, rather than the browser's own blue.
