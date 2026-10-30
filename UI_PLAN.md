@@ -1443,3 +1443,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     first.
   - Asking for something is a dialog of labelled fields, with their counts,
     each checked as the server checks it and the first to fix focused.
+- **2026-10-30:** In #125, found in the browser: when a request was asked
+  stays on one line, its time not broken from its day in a narrow column.

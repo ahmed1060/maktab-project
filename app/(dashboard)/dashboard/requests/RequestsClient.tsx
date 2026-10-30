@@ -134,7 +134,8 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
         const s = STATUS[r.status]
         return s ? <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge> : null
     }
-    const asked = (r: FeedRow) => <SafeDate date={r.asked} locale={locale} format="short" />
+    // Its day and time together: a narrow column broke "9:25 pm" from its day.
+    const asked = (r: FeedRow) => <span className="ui-nowrap"><SafeDate date={r.asked} locale={locale} format="short" /></span>
     const next = (r: FeedRow) => {
         const step = r.mayDecide ? NEXT[r.status] : undefined
         if (!step) return null

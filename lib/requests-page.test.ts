@@ -78,6 +78,11 @@ describe("the Requests page", () => {
         expect(await page({ tab: "mine" })).not.toContain("requests_col_who")
     })
 
+    it("keeps when it was asked on one line, its time not broken from its day (found in the browser)", () => {
+        const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+        expect(client).toContain('<span className="ui-nowrap"><SafeDate date={r.asked} locale={locale} format="short" /></span>')
+    })
+
     it("offers the next step to whoever may decide it: Start, then Mark as done", async () => {
         expect(await page()).not.toContain("requests_start")
         expect(await page({ rows: [row({ mayDecide: true })] })).toMatch(/<button[^>]*>.*requests_start/)
