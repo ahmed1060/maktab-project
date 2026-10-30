@@ -1050,8 +1050,8 @@ balance first, automatically:
      - Step 7, cash advances (§7). Proposed: it ships as four PRs, 7a to
        7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
        My cash advance, was merged in #112 on 2026-10-30, and 7b, costs
-       paid from the advance, is built, and open for review in #113. 7c,
-       the permissions for the companies already there, is built.
+       paid from the advance, in #113. 7c, the permissions for the
+       companies already there, is built, and open for review in #114.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1948,3 +1948,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   company's have them. Only the holders of a role given one reload their
   grants, and nothing opens until the Super Admin allows a company cash
   advances.
+- **2026-10-30:** 7b was merged in #113, with Codex's three findings fixed
+  in it. Its migration ran on production at 09:16 UTC, as its preview
+  built, and production has had no errors since. 7c opens for review in
+  #114; its migration gives the 3 companies there the cash advances'
+  permissions (9 grants on their 6 built-in Admin and Team Leader roles).
+  Production's last migration is 7b's, none is unfinished, it has no
+  roles of a company's own and no cash advances grants yet, and no
+  company is allowed cash advances (checked read-only just before).

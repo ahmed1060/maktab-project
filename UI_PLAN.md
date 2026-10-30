@@ -1094,3 +1094,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   advances tab once their company is allowed cash advances: an Admin
   everyone, with Give advance, Record return and Correct balance, and a
   Team Leader their team and themselves, with History only.
+- **2026-10-30:** `CLIENTS_PLAN.md`'s 7b was merged in #113, and 7c opens
+  for review in #114.
