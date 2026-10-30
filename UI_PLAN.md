@@ -1245,3 +1245,24 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     tries;
   - the fields have names, autofill is kept out of them, and a title or
     description runs in the direction of its own language.
+- **2026-10-30:** An obligation's page moves onto the building blocks (§5
+  step 5).
+  - Its page header: its title with its status, who decided it once it's
+    decided, and the way back to the list. A manager decides one handed
+    in from there: Approve, the primary button, and Reject.
+  - Its details in a card: its description, who assigned it, its deadline
+    (marked overdue while it's still to be done), how often it comes
+    round, its points and who it's for. Return to in progress (a Super
+    Admin's) and Delete obligation are in its More actions.
+  - Its files as chips that open them. Taking one off asks first.
+  - Its assignee's submission: Attach files, the files picked, Submit
+    obligation and Save draft. Past its deadline it says so, and adding
+    files and saving a draft are switched off, rather than a pop-up caught
+    from any click on the page that matched the buttons' words.
+  - Someone it was for was deleted: a card says so and offers Reassign,
+    with the shared people checklist, Mark as completed, which did nothing
+    before, and Delete.
+  - An address that isn't an obligation says so on a page with the way
+    back, not a bare line.
+  - Its words are in sentence case, and speak of an obligation, not a
+    task.
