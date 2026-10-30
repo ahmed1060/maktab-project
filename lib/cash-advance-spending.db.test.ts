@@ -215,6 +215,18 @@ describe.skipIf(!ADMIN_URL)("costs paid from cash advances, in Postgres", () => 
         expect((await db.query(`SELECT count(*)::int AS n FROM "CashAdvanceEntry" WHERE "userId" = 'e3'`)).rows[0].n).toBe(0)
     })
 
+    it("takes more costs at once than there are connections, without one waiting on another's", async () => {
+        const tasks = ["k6", "k7", "k8", "k9", "k10", "k11"]
+        await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "locationId", "updatedAt") SELECT k, 'Task ' || k, 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now() FROM unnest($1::text[]) k`, [tasks])
+        await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") SELECT k, 'e2' FROM unnest($1::text[]) k`, [tasks])
+        await Advances.record(admin, "e2", { kind: "GIVEN", amount: 500, date: "2026-10-03" })
+        // Six at once, one person's, each waiting on her advance: the one holding
+        // it records its entries without needing a connection the others hold.
+        const results = await Promise.allSettled(tasks.map(k => add(k, eman, 100)))
+        expect(results.filter(r => r.status === "rejected").map(r => String((r as PromiseRejectedResult).reason))).toEqual([])
+        expect(await balance("e2")).toBe(0)
+    }, 60_000)
+
     it("holds a cost's part to the cost, in the database too", async () => {
         const [row] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'k2' LIMIT 1`)).rows
         await expect(db.query(`UPDATE "TaskCost" SET "fromAdvance" = amount + 1 WHERE id = '${row.id}'`)).rejects.toThrow(/TaskCost_fromAdvance_check/)

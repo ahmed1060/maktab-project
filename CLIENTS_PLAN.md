@@ -1925,3 +1925,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   since is removed, and its task deleted, with nothing put back: their
   advance went with them. Putting it back on an advance no longer there
   failed, and the cost or task stayed (found by Codex).
+- **2026-10-30:** In 7b (#113), more costs added at once than the app has
+  database connections are each recorded in turn. The day each part was
+  spent was read through a connection of its own while its costs were
+  being recorded; with every connection held by costs waiting on the same
+  advance, none was free, and all of them failed (found by Codex).

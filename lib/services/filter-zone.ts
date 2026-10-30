@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveTimeZone } from "@/lib/timezone"
 import { dayRange } from "@/lib/day-range"
@@ -7,10 +8,10 @@ import { dayRange } from "@/lib/day-range"
  * platform's default (System Settings) for a Super Admin looking at every
  * company.
  */
-export async function filterTimeZone(companyId: string | null | undefined): Promise<string> {
+export async function filterTimeZone(companyId: string | null | undefined, db: Prisma.TransactionClient | typeof prisma = prisma): Promise<string> {
     const [company, settings] = await Promise.all([
-        companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) : null,
-        prisma.systemSettings.findUnique({ where: { id: "default" }, select: { defaultTimezone: true } }),
+        companyId ? db.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) : null,
+        db.systemSettings.findUnique({ where: { id: "default" }, select: { defaultTimezone: true } }),
     ])
     return resolveTimeZone(company?.timezone, settings?.defaultTimezone)
 }

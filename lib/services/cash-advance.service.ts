@@ -83,9 +83,13 @@ async function balancesIn(companyId: string) {
     }]))
 }
 
-/** Today, where the company is: the last day an entry may be recorded on. */
-async function todayIn(companyId: string): Promise<string> {
-    return calendarDateStr(new Date(), await filterTimeZone(companyId))
+/**
+ * Today, where the company is: the last day an entry may be recorded on.
+ * Inside a transaction, read through it: one waiting for a connection the
+ * others hold, while they wait on its hold on an advance, never gets one.
+ */
+async function todayIn(companyId: string, db: Db = prisma): Promise<string> {
+    return calendarDateStr(new Date(), await filterTimeZone(companyId, db))
 }
 
 /** A name's words, each in the first or last name. */
@@ -314,7 +318,7 @@ export class CashAdvanceService {
             parts = parts.filter(c => here.has(c.authorId))
             if (!parts.length) return
         }
-        const date = new Date(`${await todayIn(companyId)}T00:00:00Z`)
+        const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
         await tx.cashAdvanceEntry.createMany({
             data: parts.map(c => ({
                 companyId, userId: c.authorId, kind: "SPENT" as const, amount: cents(way * c.part), date,
