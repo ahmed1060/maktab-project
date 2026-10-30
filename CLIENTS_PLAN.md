@@ -983,6 +983,9 @@ balance first, automatically:
     advance, or have a cost's part put back, after the settlement. What
     they hold when it takes effect becomes a debt too, as they're
     archived, recorded as by whoever recorded the ending.
+  - **Someone whose contract has ended holds nothing:** what comes back to
+    them afterwards becomes a debt at once, whether a cost's part put back
+    as it's removed or a correction finding they held more.
   - **Being suspended or deleted isn't leaving:** nobody is deleted for good
     while they hold any (§7.4), and someone deleted, still holding money,
     stays on the Cash advances tab for a return or a correction.
@@ -2002,3 +2005,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   what they held when the ending was recorded did: an advance given them
   as they worked on, or a cost's part put back, stayed with them after
   they'd gone (found by Codex).
+- **2026-10-30:** In 7d (#115), what comes back to someone whose contract
+  has ended becomes a debt at once: a cost's part put back as it's
+  removed, or a correction finding they held more. It went back on their
+  balance, and only an ending taking effect turned a balance into a debt,
+  so it stayed with them (found by Codex).

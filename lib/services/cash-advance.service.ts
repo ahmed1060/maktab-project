@@ -20,6 +20,9 @@ import {
  * and a balance is always the sum of its person's entries (§7.4).
  */
 
+/** Whose contract has ended: they hold no advance money, so what comes back to them is a debt (§7.3). */
+const GONE = "ARCHIVED"
+
 /** A debt's source when it's what someone still held on leaving (§7.3). */
 export const CASH_ADVANCE_DEBT = "CASH_ADVANCE"
 
@@ -239,6 +242,12 @@ export class CashAdvanceService {
                         details: { entryId: entry.id, amount, date, balance: after, ...(note && { note }) },
                     },
                 })
+                // Someone whose contract has ended holds nothing: a correction
+                // finding they held more makes it a debt, as at their leaving (§7.3).
+                if (person.status === GONE && after > 0) {
+                    await CashAdvanceService.toDebt(tx, companyId, person.id, null, { dueDate: new Date(), by: { id: session.user.id, name: session.user.name } })
+                    return { entry: entryOf(entry), balance: 0 }
+                }
                 return { entry: entryOf(entry), balance: after }
             })
         } catch (error) {
@@ -311,15 +320,17 @@ export class CashAdvanceService {
     static async spent(tx: Prisma.TransactionClient, companyId: string, taskId: string, costs: readonly { id: string; authorId: string | null; part: number }[], way: -1 | 1, by: { id: string; name?: string | null }) {
         let parts = costs.filter((c): c is { id: string; authorId: string; part: number } => !!c.authorId && c.part > 0)
         if (!parts.length) return
+        let gone: string[] = []
         if (way === 1) {
             // Each person's advance held, in one order, so two removals don't wait on each other.
             const authors = [...new Set(parts.map(c => c.authorId))].sort()
             for (const authorId of authors) await CashAdvanceService.lockPerson(tx, authorId)
             // Someone deleted for good since has no advance to put it back on:
             // theirs went with them, held at nothing (UserService.delete).
-            const here = new Set((await tx.user.findMany({ where: { id: { in: authors } }, select: { id: true } })).map(u => u.id))
-            parts = parts.filter(c => here.has(c.authorId))
+            const here = await tx.user.findMany({ where: { id: { in: authors } }, select: { id: true, status: true } })
+            parts = parts.filter(c => here.some(u => u.id === c.authorId))
             if (!parts.length) return
+            gone = here.filter(u => u.status === GONE).map(u => u.id)
         }
         const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
         await tx.cashAdvanceEntry.createMany({
@@ -328,6 +339,9 @@ export class CashAdvanceService {
                 costId: c.id, taskId, recordedById: by.id, recordedByName: by.name ?? null,
             })),
         })
+        // Someone whose contract has ended holds nothing: what's put back on
+        // theirs becomes a debt at once, as at their leaving (§7.3).
+        for (const userId of gone) await CashAdvanceService.toDebt(tx, companyId, userId, null, { dueDate: new Date(), by })
     }
 
     /**

@@ -27,7 +27,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
  ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
  ('e4', 'e4@x', 'p', 'Enas', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
- ('e5', 'e5@x', 'p', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL);
+ ('e5', 'e5@x', 'p', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL),
+ ('e6', 'e6@x', 'p', 'Eid', 'One', 'EMPLOYEE', 2026, 'e6', 'c1', NULL);
 `
 // Hired in January. Ehab and Essam earn 9,300 a month, Eman 310: a
 // settlement of 6,000 for twenty days of October, or 200. Enas holds nothing.
@@ -35,11 +36,17 @@ const SALARIES = `
 INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES
  ('h1', 'e1', 'HIRED', '2026-01-01T00:00:00Z'), ('h2', 'e2', 'HIRED', '2026-01-01T00:00:00Z'),
  ('h3', 'e3', 'HIRED', '2026-01-01T00:00:00Z'), ('h4', 'e4', 'HIRED', '2026-01-01T00:00:00Z'),
- ('h5', 'e5', 'HIRED', '2026-01-01T00:00:00Z');
+ ('h5', 'e5', 'HIRED', '2026-01-01T00:00:00Z'), ('h6', 'e6', 'HIRED', '2026-01-01T00:00:00Z');
 INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES
  ('s1', 'e1', 9300, '2026-01-01T00:00:00Z'), ('s2', 'e2', 310, '2026-01-01T00:00:00Z'),
  ('s3', 'e3', 9300, '2026-01-01T00:00:00Z'), ('s4', 'e4', 9300, '2026-01-01T00:00:00Z'),
- ('s5', 'e5', 9300, '2026-01-01T00:00:00Z');
+ ('s5', 'e5', 9300, '2026-01-01T00:00:00Z'), ('s6', 'e6', 9300, '2026-01-01T00:00:00Z');
+`
+// A task Eid works on, whose cost his advance pays.
+const TASK = `
+INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "updatedAt") VALUES ('port', 'c1', NULL, 'Port gate', false, 31.18, 29.87, now());
+INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "locationId", "updatedAt") VALUES ('k1', 'Fix the gate', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now());
+INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('k1', 'e6');
 `
 // Before the payday, so nothing of October was paid yet.
 const LAST_DAY = "2026-10-20"
@@ -53,6 +60,7 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
     let db: Client
     let Advances: typeof import("@/lib/services/cash-advance.service").CashAdvanceService
     let Settlements: typeof import("@/lib/services/settlement.service").SettlementService
+    let Tasks: typeof import("@/lib/services/task.service").TaskService
     let prisma: typeof import("@/lib/prisma").prisma
 
     const give = (userId: string, amount: number) => Advances.record(admin, userId, { kind: "GIVEN", amount, date: "2026-10-01" })
@@ -75,10 +83,12 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
         await db.query(SALARIES)
+        await db.query(TASK)
         await db.query(`UPDATE "Company" SET "cashAdvancesAllowed" = true WHERE id = 'c1'`)
         process.env.POSTGRES_PRISMA_URL = dbUrl
         Advances = (await import("@/lib/services/cash-advance.service")).CashAdvanceService
         Settlements = (await import("@/lib/services/settlement.service")).SettlementService
+        Tasks = (await import("@/lib/services/task.service")).TaskService
         prisma = (await import("@/lib/prisma")).prisma
     }, 180_000)
 
@@ -170,6 +180,28 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
         expect(debts.map(d => [d.amount, d.status, d.source])).toEqual([[300, "SETTLED", "CASH_ADVANCE"], [200, "OUTSTANDING", "CASH_ADVANCE"]])
         const { rows } = await db.query(`SELECT kind, amount::float, "recordedById", "recordedByName" FROM "CashAdvanceEntry" WHERE id = $1`, [debts[1].sourceId])
         expect(rows).toEqual([{ kind: "DEBT", amount: -200, recordedById: "a1", recordedByName: "Amal One" }])
+    })
+
+    it("turns what comes back to someone gone into a debt at once: a cost's part put back, or a correction", async () => {
+        // Eid's advance pays his 100 cost, so he holds nothing as he leaves.
+        const eid = as({ id: "e6", role: "EMPLOYEE", companyId: "c1", name: "Eid One" })
+        await give("e6", 100)
+        await Tasks.submit("k1", "e6", eid, { isDraft: true, costs: [{ amount: 100, description: "Gate parts" }] })
+        expect(await held("e6")).toBe(0)
+        await end("e6")
+        expect((await db.query(`SELECT status FROM "User" WHERE id = 'e6'`)).rows[0].status).toBe("ARCHIVED")
+        expect(await debtsOf("e6")).toEqual([])
+
+        // The cost is removed after he's gone: its 100 comes back to him, and is a debt.
+        const [cost] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'k1'`)).rows
+        await Tasks.deleteItem("k1", admin, { type: "COST", itemId: cost.id })
+        expect(await held("e6")).toBe(0)
+        expect((await debtsOf("e6")).map(d => [d.amount, d.status, d.source])).toEqual([[100, "OUTSTANDING", "CASH_ADVANCE"]])
+
+        // So is a correction finding he held more.
+        await Advances.record(admin, "e6", { kind: "CORRECTION", amount: 30, date: "2026-10-25", note: "Counted short on the hand-over" })
+        expect(await held("e6")).toBe(0)
+        expect((await debtsOf("e6")).map(d => d.amount)).toEqual([100, 30])
     })
 
     it("holds a debt's entry to taking the balance down, in the database too", async () => {
