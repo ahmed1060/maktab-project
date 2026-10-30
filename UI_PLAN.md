@@ -1110,3 +1110,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   (`DESIGN.md` §5.5). Two tiles to a row put an amount's currency on a line
   of its own, as on the Costs page's Charged to clients and Cash advances
   tabs; a tile whose value needs more than half the row takes the row now.
+- **2026-10-30:** On phones, the tabs share the row, a long label on two
+  lines, so every tab shows (`DESIGN.md` §5.5). The Costs page's three ran
+  past the edge in English, Cash advances cut off mid-word even when it
+  was the one picked. Saved lists' two now share the row too.

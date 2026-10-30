@@ -518,8 +518,9 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Status badge:** a pill, `--text-xs`, weight 500, with the background and
   text colours from §2.3.
 - **Tabs:** text tabs with a 2px `--brand` line under the selected one, and
-  a hairline under the whole row. On phones, the row scrolls sideways
-  within itself.
+  a hairline under the whole row. On phones, the tabs share the row, a
+  long label on two lines, so every tab shows; a row of more than fit
+  scrolls sideways within itself.
 - **Total tiles:**
   - a label in `--text-sm` and `--muted`, above the value in `--text-2xl`
     and weight 600 with even-width digits;
@@ -860,3 +861,7 @@ changed:
   Total tiles). Two tiles to a row left half the row for each, so an
   amount such as "6,355.50 EGP" had its currency on a line of its own. A
   tile whose value needs more than half takes the row.
+- **2026-10-30:** On phones, the tabs share the row, a long label on two
+  lines, so every tab shows (§5.5, Tabs). The Costs page's three ran past
+  the edge in English, Cash advances cut off mid-word even when it was the
+  one picked.

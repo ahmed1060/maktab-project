@@ -1394,6 +1394,21 @@ a.ui-row:focus-visible {
   }
 }
 
+/* On phones, the tabs share the row, a long label on two lines, so every
+   tab shows. A row of more than fit still scrolls within itself. */
+@media (max-width: 767px) {
+  .ui-tabs,
+  .ui-tablinks {
+    gap: var(--space-3);
+  }
+  .ui-tab {
+    flex: 1 1 auto;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+}
+
 /* ── Donut chart (§5.5) ── */
 .ui-donut {
   display: flex;
