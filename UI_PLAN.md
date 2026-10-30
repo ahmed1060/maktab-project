@@ -340,8 +340,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
 5. **The rest of this plan:**
    - the remaining old pages move to the building blocks one by one, each
      in a small PR (§4.5). After four small fixes, merged in #116 on
-     2026-10-30, the first is the Costs page's Employee costs tab, beside
-     the two tabs already on them, open for review in #117;
+     2026-10-30, the first was the Costs page's Employee costs tab, beside
+     the two tabs already on them, merged in #117 on 2026-10-30. The
+     second is the Tasks list, open for review in #118;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1170,3 +1171,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     points, its status and who decided it, and Start, Continue or View.
   - Its address is handled as the Employee costs tab's is, by the same
     hooks (`components/filters`), with the fixes Codex found on #117.
+- **2026-10-30:** The Employee costs tab was merged in #117, and the Tasks
+  list opens for review in #118 (§5 step 5).
