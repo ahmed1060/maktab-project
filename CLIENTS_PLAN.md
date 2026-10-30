@@ -2029,3 +2029,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-30:** The Costs page's Employee costs tab moves onto the
   building blocks (`UI_PLAN.md` §5). What it lists, its totals, its
   filters (§3, §5.9) and Mark all as paid (§4.1) work as they did.
+- **2026-10-30:** The four small fixes were merged in #116, and the Costs
+  page's Employee costs tab opens for review in #117 (`UI_PLAN.md` §5).

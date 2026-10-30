@@ -339,7 +339,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      advances, and the task form's pickers.
 5. **The rest of this plan:**
    - the remaining old pages move to the building blocks one by one, each
-     in a small PR (§4.5);
+     in a small PR (§4.5). After four small fixes, merged in #116 on
+     2026-10-30, the first is the Costs page's Employee costs tab, beside
+     the two tabs already on them, open for review in #117;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1136,3 +1138,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The list as a table on computers and cards on phones: each person's
     share of a task still to pay, what their cash advance paid of it, and
     the task's status. Mark all as paid still asks first, as in 4a.
+- **2026-10-30:** The four small fixes were merged in #116, and the Costs
+  page's Employee costs tab opens for review in #117, the first of the
+  remaining old pages (§5 step 5).
