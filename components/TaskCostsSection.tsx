@@ -5,6 +5,7 @@ import { useModules } from '@/lib/useModules'
 import SectionBoundary from './SectionBoundary'
 import SafeDate from './SafeDate'
 import { useCan } from '@/lib/useCan'
+import { useBusyAction } from '@/lib/useBusyAction'
 import { isReviewed } from '@/lib/task-reviewed'
 import { cents, costLines } from '@/lib/task-costs'
 import { Button, Card, FileChip, FileChips, StatusBadge, TotalTiles, type Tile } from '@/components/ui'
@@ -16,7 +17,7 @@ interface TaskCostsSectionProps {
     task: any
     userId: string
     onDeleteItem: (type: 'ATTACHMENT' | 'COST' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string) => void
-    onPaymentStatusChange: (newStatus: string, targetUserId?: string) => void
+    onPaymentStatusChange: (newStatus: string, targetUserId?: string) => Promise<void> | void
     getMemberCosts: (taskObj: any) => Record<string, number>
     getMemberPaymentStatus: (taskObj: any) => Record<string, string>
     /** Past its deadline, for whoever does it: a cost stays. */
@@ -29,6 +30,8 @@ function TaskCostsSectionBody({
     const { t, locale } = useLanguage()
     const { can } = useCan()
     const modules = useModules()
+    // One share saved at a time, the one clicked showing it.
+    const action = useBusyAction()
 
     // Each with its description (CLIENTS_PLAN.md §4.4, §4.5).
     const costs = costLines(task.costs ?? [], task.comments)
@@ -112,7 +115,7 @@ function TaskCostsSectionBody({
                                         </span>
                                         <span className="ui-row-end">
                                             {paidBadge(isPaid)}
-                                            <Button size="sm" onClick={() => onPaymentStatusChange(isPaid ? 'PENDING_PAYMENT' : 'PAID', uid)}>
+                                            <Button size="sm" onClick={() => { void action.run(uid, () => onPaymentStatusChange(isPaid ? 'PENDING_PAYMENT' : 'PAID', uid)) }} disabled={action.running} busy={action.is(uid)}>
                                                 {isPaid ? t('mark_as_unpaid') : t('mark_as_paid')}
                                             </Button>
                                         </span>

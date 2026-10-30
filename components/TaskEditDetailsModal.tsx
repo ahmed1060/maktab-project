@@ -1,5 +1,5 @@
 'use client'
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 import DateTimePicker from '@/components/DateTimePicker'
 import TaskPlacePicker from '@/components/locations/TaskPlacePicker'
 import { useLanguage } from '@/context/LanguageContext'
@@ -16,7 +16,7 @@ import { useListNames } from '@/components/lists/useListNames'
 interface TaskEditDetailsModalProps {
     isOpen: boolean
     onClose: () => void
-    onSubmit: (e: React.FormEvent) => void
+    onSubmit: (e: React.FormEvent) => Promise<void> | void
     editForm: {
         title: string
         titleEntryId: string | null
@@ -40,13 +40,21 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
     const action = useBusyAction()
     const titleNames = useListNames('TASK_TITLE', task.companyId)
     const formId = useId()
+    const form = useRef<HTMLFormElement>(null)
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const used = (n: number, max: number) => t('ui_characters_used').replace('{used}', num(n)).replace('{max}', num(max))
     const names = (task.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
 
     return (
         <Dialog open={isOpen} onClose={onClose} title={t('edit_task_details_title')}>
-            <form id={formId} className="ui-form" noValidate onSubmit={e => { e.preventDefault(); void action.run('save', () => onSubmit(e)) }}>
+            <form ref={form} id={formId} className="ui-form" noValidate onSubmit={e => {
+                e.preventDefault()
+                void action.run('save', async () => {
+                    await onSubmit(e)
+                    // To the first field that needs fixing, once it's marked; saved, the dialog is gone.
+                    requestAnimationFrame(() => form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+                })
+            }}>
                 {/* Typed, or picked from the company's task titles (CLIENTS_PLAN.md §5). */}
                 <Field label={t('title_label')} hint={used(editForm.title.length, 100)} error={editFieldErrors.title || undefined}>{p => (
                     <NamePicker

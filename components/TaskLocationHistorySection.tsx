@@ -147,6 +147,8 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                             : <bdi>{displayLoc}</bdi>}
                                     </span>
                                     <span className="ui-item-detail"><bdi>{loc.author}</bdi> · <SafeDate date={loc.date} locale={locale} /></span>
+                                    {/* Why, for whoever settles it: a title is only read on hover, never on a phone. */}
+                                    {canVerify && loc.verificationStatus === 'UNVERIFIED' && <span className="ui-item-detail">{t('verified_unclear_hint')}</span>}
                                 </span>
                                 <span className="ui-row-end">
                                     {verified && (

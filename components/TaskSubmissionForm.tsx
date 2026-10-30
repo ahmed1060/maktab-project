@@ -121,7 +121,7 @@ export default function TaskSubmissionForm({
                                         </span>
                                         <span className="ui-row-end">
                                             <span className="ui-num">{money(e.amount)}</span>
-                                            {!locked && <Button size="sm" variant="quiet" icon={XIcon} onClick={() => onRemoveCostEntry(i)}>{t('remove')}</Button>}
+                                            {!locked && <Button size="sm" variant="quiet" icon={XIcon} aria-label={t('ui_remove_file').replace('{name}', e.description || t('no_description'))} onClick={() => onRemoveCostEntry(i)}>{t('remove')}</Button>}
                                         </span>
                                     </div>
                                 </li>
@@ -140,7 +140,8 @@ export default function TaskSubmissionForm({
                         <Button icon={MapPinIcon} onClick={onCaptureLocation} disabled={capturingLocation || uploading || locked} busy={capturingLocation}>
                             {capturingLocation ? t('capturing_location_button') : t('capture_location_button')}
                         </Button>
-                        {locationStatus && <span className="ui-hint" role="status">{locationStatus}</span>}
+                        {/* There before it's said, or a screen reader may not say it. */}
+                        <span className="ui-hint" role="status">{locationStatus}</span>
                     </div>
                 </div>
 

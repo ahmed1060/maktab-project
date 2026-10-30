@@ -72,6 +72,10 @@ describe("a task's costs", () => {
         const html = await costs(task({ status: "COMPLETED", assignees: [mona, sami], memberCosts: { u2: 150, u3: 0 } }), { userId: "admin" })
         expect(html).toContain("individual_settlements")
         expect(html).toMatch(/<button[^>]*class="ui-btn[^"]*"[^>]*>.*mark_as_paid/)
+        // Each shows it's being saved, and none is clicked again meanwhile (lib/busy-action.test.ts).
+        const src = readFileSync("components/TaskCostsSection.tsx", "utf8")
+        expect(src).toContain("action.run(uid, () => onPaymentStatusChange(")
+        expect(src).toContain("busy={action.is(uid)}")
     })
 
     it("can be taken off by whoever may, while it's worked on and not locked", async () => {
@@ -112,6 +116,9 @@ describe("a task's location history", () => {
         const html = await places(task({ status: "PENDING_CONFIRMATION", comments: [checkIn()] }), { userId: "admin" })
         expect(html).toContain("mark_correct_title")
         expect(html).toContain("mark_wrong_title")
+        // Why one needs review is read, not only hovered (web interface audit).
+        const unclear = await places(task({ status: "PENDING_CONFIRMATION", comments: [checkIn({ verificationStatus: "UNVERIFIED" })] }), { userId: "admin" })
+        expect(unclear).toMatch(/class="ui-item-detail"[^>]*>verified_unclear_hint</)
     })
 
     it("offers a lateness penalty, in a dialog, once the task is handed in", async () => {
@@ -153,7 +160,14 @@ describe("what whoever it's for hands in", () => {
             expect(html).toMatch(new RegExp(`class="ui-label"[^>]*>${label}<`))
         }
         expect(html).toContain("ui_characters_used")
+        // Where they are is said as it changes: the live region is there before it (web interface audit).
+        expect(html).toContain('class="ui-hint" role="status"')
         noStyles(html)
+    })
+
+    it("names each cost it would take off (web interface audit)", async () => {
+        const html = await form({ costEntries: [{ amount: 5, description: "Tea", receipt: null }] })
+        expect(html).toContain('aria-label="ui_remove_file"')
     })
 
     it("is handed in with Submit task, the one primary button, or kept as a draft", async () => {
@@ -181,5 +195,7 @@ describe("its edit window", () => {
         expect(src).toContain("<Field label={t('description_label')}")
         expect(src).toContain("asField")
         expect(src).not.toContain("style=")
+        // Save with a field to fix goes to it (web interface audit).
+        expect(src).toContain(`querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()`)
     })
 })

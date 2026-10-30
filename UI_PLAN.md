@@ -1367,3 +1367,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   is picked already when the task is for only one. Found while moving it.
 - **2026-10-30:** A task's page, part 1, was merged in #123, and its part 2
   opens for review in #124 (§5 step 5).
+- **2026-10-30:** In #124, Vercel's web interface audit of a task's page,
+  part 2: Mark as paid on one person's share shows it's being saved, and
+  isn't sent twice meanwhile; Save changes with a field to fix goes to it;
+  where whoever it's for checked in is said as it changes, its live region
+  there before it; each cost they'd take off is named in its Remove; and a
+  reviewer reads why a check-in needs review, which was only in a title
+  read on hover.
