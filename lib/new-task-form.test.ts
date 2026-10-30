@@ -22,12 +22,14 @@ vi.mock("@/components/lists/useListNames", () => ({ useListNames: () => ({ sugge
 vi.mock("@/components/locations/TaskPlacePicker", () => ({ default: () => null }))
 vi.mock("@/components/BulkTaskReviewModal", () => ({ default: () => null }))
 vi.mock("@/components/ManageTemplatesModal", () => ({ default: () => null }))
-const people = { list: [] as object[] | null }
+const people = { list: [] as object[] | null | "failed" }
 vi.mock("swr", () => ({
-    default: (key: string | null) => ({ data: key?.startsWith("/api/users") && people.list ? { data: { data: people.list } } : undefined }),
+    default: (key: string | null) => !key?.startsWith("/api/users") ? { data: undefined }
+        : people.list === "failed" ? { data: undefined, error: new Error("Request failed"), mutate: () => {}, isValidating: false }
+        : { data: people.list ? { data: { data: people.list } } : undefined },
 }))
 
-async function form(list: object[] | null = []) {
+async function form(list: object[] | null | "failed" = []) {
     people.list = list
     const { default: NewTaskPage } = await import("@/app/(dashboard)/dashboard/tasks/new/page")
     return renderToStaticMarkup(h(NewTaskPage))
@@ -52,7 +54,13 @@ describe("Create task", () => {
             expect(html).toMatch(new RegExp(`class="ui-label"[^>]*>${label}<`))
         }
         expect(html.match(/ui_characters_used/g)?.length).toBe(2)
-        expect(html).toContain("tasks_points_hint")
+        expect(html).toContain("points_hint")
+    })
+
+    it("names its fields, keeps autofill out of them, and lets a description run in its own direction (web interface audit)", async () => {
+        const html = await form()
+        expect(html.match(/<textarea[^>]*name="description"[^>]*>/)?.[0]).toContain('dir="auto"')
+        expect(html.match(/<input[^>]*name="difficulty"[^>]*>/)?.[0]).toMatch(/autocomplete="off"/i)
     })
 
     it("picks the deadline from a field like the others", async () => {
@@ -70,11 +78,18 @@ describe("Create task", () => {
         expect(html.match(/type="checkbox"/g)?.length).toBe(2)
         expect(html).toContain("Mona Adel")
         expect(html).toContain("role_team_leader")
-        expect(html).toContain("tasks_assignee_search")
+        expect(html).toContain("assignees_search")
     })
 
     it("says it's loading the people rather than that there are none", async () => {
         expect(await form(null)).toContain("loading")
+    })
+
+    it("says when the people couldn't be loaded, rather than loading forever", async () => {
+        const html = await form("failed")
+        expect(html).toContain("failed_load_employees")
+        expect(html).toContain("try_again")
+        expect(html).not.toContain('role="status"')
     })
 
     it("has Create task as its one primary button, and Cancel back to the list", async () => {

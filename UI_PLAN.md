@@ -343,8 +343,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-10-30, the first was the Costs page's Employee costs tab, beside
      the two tabs already on them, merged in #117 on 2026-10-30. The
      second was the Tasks list, merged in #118 on 2026-10-30, and the
-     third the Obligations list, merged in #119 on 2026-10-30. The fourth
-     is Create task, open for review in #120;
+     third the Obligations list, merged in #119 on 2026-10-30, and the
+     fourth Create task, merged in #120 on 2026-10-30. The fifth is Add
+     obligation, open for review in #121;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1218,3 +1219,29 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** In #120, reloading or closing Create task with something
   typed asks first, rather than losing it; not once it's being sent
   (Vercel's web interface audit).
+- **2026-10-30:** Add obligation moves onto the building blocks (§5 step
+  5), as Create task did, with the pieces they now share
+  (`components/forms/AssigneeChecklist.tsx`, `lib/form-errors.ts`).
+  - Its page header, with the way back to the Obligations list.
+  - The form in one panel: each field with its visible label, its hint
+    and its error below it. How often it recurs is a choice of radio
+    buttons (DESIGN.md §5.3), one time to begin with.
+  - Who it's for and its deadline are checked before it's sent, as the
+    server needs them, so each says so under its field rather than the
+    server's refusal above the form. The focus goes to the first field
+    that's wrong.
+  - Create obligation is the page's one primary button, and leaving with
+    something typed asks first.
+- **2026-10-30:** Create task was merged in #120, and Add obligation opens
+  for review in #121 (§5 step 5).
+- **2026-10-30:** In #121, both forms say when the people who can be
+  assigned couldn't be loaded, once they've been tried again. Add
+  obligation read a server error as an empty list, so it said no one
+  matched the search; Create task (#120) never read its error, so it said
+  it was loading for good. Found by trying them with the list refused.
+- **2026-10-30:** In #121, Vercel's web interface audit of both forms:
+  - the people who couldn't be loaded are said as a list that didn't load
+    is (DESIGN.md §5.5): a warning, the line, and Try again, busy while it
+    tries;
+  - the fields have names, autofill is kept out of them, and a title or
+    description runs in the direction of its own language.

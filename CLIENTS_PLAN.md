@@ -2040,3 +2040,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-30:** Create task moves onto the building blocks in #120
   (`UI_PLAN.md` §5). Its client and location picker (§2.3) and its title
   picked from the saved list (§5) work as they did.
+- **2026-10-30:** Create task was merged in #120 (`UI_PLAN.md` §5), with its
+  client and location picker and its saved title as they were.
+- **2026-10-30:** In #121, Create task says when the people who can be
+  assigned couldn't be loaded, rather than loading for good (`UI_PLAN.md`
+  §5).
+- **2026-10-30:** In #121, Create task offers Try again when the people who
+  can be assigned couldn't be loaded (`UI_PLAN.md` §5).
