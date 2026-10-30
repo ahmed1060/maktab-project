@@ -26,17 +26,20 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL),
  ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
  ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
- ('e4', 'e4@x', 'p', 'Enas', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL);
+ ('e4', 'e4@x', 'p', 'Enas', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
+ ('e5', 'e5@x', 'p', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL);
 `
 // Hired in January. Ehab and Essam earn 9,300 a month, Eman 310: a
 // settlement of 6,000 for twenty days of October, or 200. Enas holds nothing.
 const SALARIES = `
 INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES
  ('h1', 'e1', 'HIRED', '2026-01-01T00:00:00Z'), ('h2', 'e2', 'HIRED', '2026-01-01T00:00:00Z'),
- ('h3', 'e3', 'HIRED', '2026-01-01T00:00:00Z'), ('h4', 'e4', 'HIRED', '2026-01-01T00:00:00Z');
+ ('h3', 'e3', 'HIRED', '2026-01-01T00:00:00Z'), ('h4', 'e4', 'HIRED', '2026-01-01T00:00:00Z'),
+ ('h5', 'e5', 'HIRED', '2026-01-01T00:00:00Z');
 INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES
  ('s1', 'e1', 9300, '2026-01-01T00:00:00Z'), ('s2', 'e2', 310, '2026-01-01T00:00:00Z'),
- ('s3', 'e3', 9300, '2026-01-01T00:00:00Z'), ('s4', 'e4', 9300, '2026-01-01T00:00:00Z');
+ ('s3', 'e3', 9300, '2026-01-01T00:00:00Z'), ('s4', 'e4', 9300, '2026-01-01T00:00:00Z'),
+ ('s5', 'e5', 9300, '2026-01-01T00:00:00Z');
 `
 // Before the payday, so nothing of October was paid yet.
 const LAST_DAY = "2026-10-20"
@@ -149,6 +152,25 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
         await end("e3")
         expect(await debtsOf("e3")).toEqual([expect.objectContaining({ amount: 900, recovered: 900, status: "SETTLED" })])
     }, 60_000)
+
+    it("turns what's held when a future ending takes effect into a debt too, as they're archived", async () => {
+        // Ezz leaves in December, so works on meanwhile, and is given another advance after the ending is recorded.
+        await give("e5", 300)
+        await Settlements.settleAndEnd({ userId: "e5", lastWorkingDay: "2026-12-10", createdById: "a1", actorRole: "ADMIN", actorName: "Amal One" })
+        expect(await held("e5")).toBe(0)
+        await give("e5", 200)
+        expect(await held("e5")).toBe(200)
+
+        const Employment = (await import("@/lib/services/employment.service")).EmploymentService
+        await Employment.applyDueEvents(new Date("2026-12-20T12:00:00Z"))
+        expect((await db.query(`SELECT status FROM "User" WHERE id = 'e5'`)).rows[0].status).toBe("ARCHIVED")
+        expect(await held("e5")).toBe(0)
+        // Recorded as the ending was: by whoever recorded it.
+        const debts = await debtsOf("e5")
+        expect(debts.map(d => [d.amount, d.status, d.source])).toEqual([[300, "SETTLED", "CASH_ADVANCE"], [200, "OUTSTANDING", "CASH_ADVANCE"]])
+        const { rows } = await db.query(`SELECT kind, amount::float, "recordedById", "recordedByName" FROM "CashAdvanceEntry" WHERE id = $1`, [debts[1].sourceId])
+        expect(rows).toEqual([{ kind: "DEBT", amount: -200, recordedById: "a1", recordedByName: "Amal One" }])
+    })
 
     it("holds a debt's entry to taking the balance down, in the database too", async () => {
         await expect(db.query(`INSERT INTO "CashAdvanceEntry"(id, "companyId", "userId", kind, amount, date, "recordedById") VALUES ('z', 'c1', 'e1', 'DEBT', 5, '2026-10-01', 'a1')`)).rejects.toThrow(/CashAdvanceEntry_amount_check/)

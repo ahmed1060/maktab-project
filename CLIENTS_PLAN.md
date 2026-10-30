@@ -979,6 +979,10 @@ balance first, automatically:
   - **A movement of the advance meanwhile** (a cost added, a return
     recorded) after the settlement was worked out ends nothing: it says to
     look again, as the statement would no longer add up.
+  - **An ending dated ahead:** they work on until it, so may be given an
+    advance, or have a cost's part put back, after the settlement. What
+    they hold when it takes effect becomes a debt too, as they're
+    archived, recorded as by whoever recorded the ending.
   - **Being suspended or deleted isn't leaving:** nobody is deleted for good
     while they hold any (§7.4), and someone deleted, still holding money,
     stays on the Cash advances tab for a return or a correction.
@@ -1993,3 +1997,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   check. Production's last migration is 7c's, none is unfinished, and it
   has no cash advance entries, debts or settlements yet, and no company
   allowed cash advances (checked read-only just before).
+- **2026-10-30:** In 7d (#115), an ending dated ahead turns what's held
+  when it takes effect into a debt too, as the person is archived. Only
+  what they held when the ending was recorded did: an advance given them
+  as they worked on, or a cost's part put back, stayed with them after
+  they'd gone (found by Codex).

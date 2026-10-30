@@ -336,18 +336,19 @@ export class CashAdvanceService {
      * nothing, and the debt names it as its source. Under the hold on their
      * advance each entry is recorded under; `counted` is what the settlement
      * counted, and anything else since is refused, as the statement would no
-     * longer add up. Null when nothing is held.
+     * longer add up. Null counts whatever they hold, as an ending dated ahead
+     * takes effect. Null when nothing is held.
      */
     static async toDebt(
         tx: Prisma.TransactionClient,
         companyId: string,
         userId: string,
-        counted: number,
+        counted: number | null,
         debt: { dueDate: Date; by: { id: string; name?: string | null } },
     ) {
         await CashAdvanceService.lockPerson(tx, userId)
         const held = await balanceOf(tx, companyId, userId)
-        if (held !== cents(counted)) throw new Error("CASH_ADVANCE_CHANGED")
+        if (counted !== null && held !== cents(counted)) throw new Error("CASH_ADVANCE_CHANGED")
         if (held <= 0) return null
         const entry = await tx.cashAdvanceEntry.create({
             data: {

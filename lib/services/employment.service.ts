@@ -16,6 +16,7 @@ import { TeamHandOff } from "./team-handoff.service"
 import { notifyTeamMoves } from "./team-notify.service"
 import { calendarParts } from "@/lib/time"
 import { RoleAssignmentService } from "./role-assignment.service"
+import { CashAdvanceService } from "./cash-advance.service"
 
 /**
  * The one writer for what happened to somebody's employment.
@@ -38,6 +39,13 @@ const STATUS_AFTER: Record<EmploymentEventType, UserStatus> = {
     UNSUSPENDED: "ACTIVE",
     CONTRACT_ENDED: "ARCHIVED",
     REINSTATED: "ACTIVE",
+}
+
+/** Whoever recorded something, with their name: a company's person or the Super Admin. */
+async function recorderOf(tx: Prisma.TransactionClient, id: string) {
+    const who = await tx.user.findUnique({ where: { id }, select: { firstName: true, lastName: true } })
+        ?? await tx.superAdmin.findUnique({ where: { id }, select: { firstName: true, lastName: true } })
+    return { id, name: who ? `${who.firstName} ${who.lastName}`.trim() : null }
 }
 
 export class EmploymentService {
@@ -200,9 +208,10 @@ export class EmploymentService {
                 id: true,
                 status: true,
                 role: true,
+                companyId: true,
                 EmploymentEvent: {
                     orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
-                    select: { type: true, effectiveFrom: true, createdAt: true, deductSuspension: true, reason: true },
+                    select: { type: true, effectiveFrom: true, createdAt: true, deductSuspension: true, reason: true, createdById: true },
                 },
             },
         })
@@ -236,9 +245,16 @@ export class EmploymentService {
             // A leader archived today may have been given somebody after the
             // contract end was recorded (their team was moved then, but they
             // kept working). Released together with the archive, or not at all.
-            const released = next === "ARCHIVED" && user.role === "TEAM_LEADER"
+            // So is a cash advance given them, or put back on theirs, since:
+            // it becomes a debt as their settlement's did (CLIENTS_PLAN.md
+            // §7.3), recorded as by whoever recorded the ending.
+            const released = next === "ARCHIVED"
                 ? await prisma.$transaction(async (tx) => {
-                    const rehome = await TeamHandOff.unassignRemaining(tx, user.id)
+                    const rehome = user.role === "TEAM_LEADER" ? await TeamHandOff.unassignRemaining(tx, user.id) : null
+                    if (user.companyId) {
+                        const ended = [...user.EmploymentEvent].reverse().find(e => e.type === "CONTRACT_ENDED")
+                        await CashAdvanceService.toDebt(tx, user.companyId, user.id, null, { dueDate: now, by: await recorderOf(tx, ended?.createdById ?? user.id) })
+                    }
                     await tx.user.update({ where: { id: user.id }, data: { status: next } })
                     return rehome
                 })

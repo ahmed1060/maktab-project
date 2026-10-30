@@ -84,7 +84,7 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["lib/services/assignee-guard.ts", "if (assignees.some(a => [\"ADMIN\", \"SUPER_ADMIN\"].includes(a.role))) {", THE_PERSON],
 
     // lib/services/employment.service.ts
-    ["lib/services/employment.service.ts", "const released = next === \"ARCHIVED\" && user.role === \"TEAM_LEADER\"", THE_PERSON],
+    ["lib/services/employment.service.ts", "const rehome = user.role === \"TEAM_LEADER\" ? await TeamHandOff.unassignRemaining(tx, user.id) : null", THE_PERSON],
 
     // lib/services/role-assignment.service.ts — rule 8: a company keeps someone at work on its built-in Admin role
     ["lib/services/role-assignment.service.ts", "if (!user?.roleId || user.assignedRole?.builtIn !== \"ADMIN\") return", ADMIN_ROLE],
