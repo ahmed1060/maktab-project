@@ -132,7 +132,7 @@ describe("its assignee", () => {
 
 describe("a page left open across its deadline (found by Codex on PR 122)", () => {
     it("looks again at the deadline, so adding files and saving a draft lock then, not at the next reload", async () => {
-        const { untilDeadline } = await import("@/app/(dashboard)/dashboard/obligations/[id]/client")
+        const { untilDeadline } = await import("@/lib/useDeadlineClock")
         const deadline = Date.parse("2026-10-30T12:05:00Z")
         // Five minutes to go: it looks again just after the deadline.
         expect(untilDeadline(deadline, NOW)).toBe(5 * 60_000 + 500)
@@ -141,8 +141,9 @@ describe("a page left open across its deadline (found by Codex on PR 122)", () =
         // Months away: no further than a timer can wait, and it looks again then.
         expect(untilDeadline(NOW + 90 * 86_400_000, NOW)).toBe(2 ** 31 - 1)
         const client = readFileSync("app/(dashboard)/dashboard/obligations/[id]/client.tsx", "utf8")
+        expect(client).toContain("const clock = useDeadlineClock(deadlineAt, now)")
         expect(client).toContain("const isOverdue = deadlineAt < clock")
-        expect(client).toContain("setTimeout(() => setClock(Date.now()), wait)")
+        expect(readFileSync("lib/useDeadlineClock.ts", "utf8")).toContain("setTimeout(() => setClock(Date.now()), wait)")
     })
 })
 
