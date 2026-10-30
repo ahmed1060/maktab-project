@@ -41,6 +41,11 @@ interface TaskSubmissionFormProps {
     onSaveDraft: () => void
     onSubmitRequest: () => void
     loadingType: 'DRAFT' | 'SUBMIT' | null
+    /**
+     * Past its deadline: it says so, and nothing more is added to it or taken
+     * from it, files, costs, a location or a draft. It can still be handed in.
+     */
+    locked?: boolean
 }
 
 export default function TaskSubmissionForm({
@@ -48,7 +53,7 @@ export default function TaskSubmissionForm({
     costName, setCostName, companyId, cost, setCost, onAddCost, costReceipt, onCostReceipt, onClearCostReceipt, costEntries, onRemoveCostEntry,
     note, setNote,
     capturingLocation, locationStatus, onCaptureLocation,
-    onSaveDraft, onSubmitRequest, loadingType
+    onSaveDraft, onSubmitRequest, loadingType, locked = false
 }: TaskSubmissionFormProps) {
     const { t, locale } = useLanguage()
     const costNames = useListNames('COST_NAME', companyId)
@@ -59,13 +64,14 @@ export default function TaskSubmissionForm({
             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
                 <span aria-hidden="true">📤</span> {t('submit_task_title')}
             </h3>
+            {locked && <p className="ui-error" role="status">{t('overdue_task_alert_msg')}</p>}
 
             <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('attachments_optional_label')}</label>
                 <div
                     onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
-                    onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) onAddFiles(Array.from(e.dataTransfer.files)); }}
+                    onDrop={e => { e.preventDefault(); setIsDragging(false); if (!locked && e.dataTransfer.files.length) onAddFiles(Array.from(e.dataTransfer.files)); }}
                     style={{ border: `2px dashed ${isDragging ? 'var(--info-solid)' : 'var(--border-firm)'}`, borderRadius: '0.75rem', padding: '2.5rem', textAlign: 'center', background: isDragging ? 'var(--info-bg-subtle)' : 'var(--surface-subtle)', transition: 'all 0.2s', cursor: 'pointer', position: 'relative' }}
                 >
                     <input
@@ -81,7 +87,7 @@ export default function TaskSubmissionForm({
                             }
                         }}
                         style={{ opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer' }}
-                        disabled={uploading}
+                        disabled={uploading || locked}
                     />
                     <div style={{ pointerEvents: 'none' }}>
                         <div aria-hidden="true" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
@@ -101,7 +107,7 @@ export default function TaskSubmissionForm({
                                         <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>{(f.size / 1024 / 1024).toFixed(2)} MB</div>
                                     </div>
                                 </div>
-                                <button onClick={() => onRemoveFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'var(--danger-bg-subtle)', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>
+                                {!locked && <button onClick={() => onRemoveFile(i)} style={{ color: 'var(--danger-fg-strong)', background: 'var(--danger-bg-subtle)', border: 'none', borderRadius: '0.375rem', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>{t('delete')}</button>}
                             </div>
                         ))}
                     </div>
@@ -127,16 +133,16 @@ export default function TaskSubmissionForm({
                         />
                     </div>
                     <input type="number" aria-label={t('cost_amount_placeholder')} className="input" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} style={{ width: '120px' }} />
-                    <button onClick={onAddCost} disabled={!cost} className="btn" style={{ background: 'var(--border)', color: 'var(--info-fg)', fontWeight: '700', minWidth: '80px', opacity: 1, cursor: 'pointer' }}>{t('add_label')}</button>
+                    <button onClick={onAddCost} disabled={!cost || locked} className="btn" style={{ background: 'var(--border)', color: 'var(--info-fg)', fontWeight: '700', minWidth: '80px', opacity: 1, cursor: 'pointer' }}>{t('add_label')}</button>
                 </div>
                 {/* Its receipt, picked before Add, goes with the cost added next; picked again, it's replaced. */}
                 <div style={{ marginTop: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                     {costReceipt && (
                         <FileChips label={t('cost_receipt')}>
-                            <FileChip name={costReceipt.name} size={costReceipt.size} onRemove={onClearCostReceipt} />
+                            <FileChip name={costReceipt.name} size={costReceipt.size} onRemove={locked ? undefined : onClearCostReceipt} />
                         </FileChips>
                     )}
-                    <FilePicker label={t('cost_receipt_attach')} hint={t('cost_receipt_hint')} accept={RECEIPT_ACCEPT} onFiles={onCostReceipt} disabled={uploading} multiple={false} />
+                    <FilePicker label={t('cost_receipt_attach')} hint={t('cost_receipt_hint')} accept={RECEIPT_ACCEPT} onFiles={onCostReceipt} disabled={uploading || locked} multiple={false} />
                 </div>
                 {costEntries.length > 0 && (
                     <div style={{ marginTop: '1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', overflow: 'hidden' }}>
@@ -154,7 +160,7 @@ export default function TaskSubmissionForm({
                                         </FileChips>
                                     )}
                                 </div>
-                                <button aria-label={t('remove' as any)} onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-fg-strong)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
+                                {!locked && <button aria-label={t('remove' as any)} onClick={() => onRemoveCostEntry(i)} style={{ color: 'var(--danger-fg-strong)', padding: '0.25rem', cursor: 'pointer', border: 'none', background: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>}
                             </div>
                         ))}
                     </div>
@@ -170,7 +176,7 @@ export default function TaskSubmissionForm({
             <div style={{ marginBottom: '2rem' }}>
                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('current_location_label')}</label>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexDirection: 'row' }}>
-                    <button onClick={onCaptureLocation} disabled={capturingLocation || uploading} className="btn" style={{ background: capturingLocation ? 'var(--border)' : 'var(--info-fill)', color: capturingLocation ? 'var(--text-soft)' : 'var(--surface)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <button onClick={onCaptureLocation} disabled={capturingLocation || uploading || locked} className="btn" style={{ background: capturingLocation ? 'var(--border)' : 'var(--info-fill)', color: capturingLocation ? 'var(--text-soft)' : 'var(--surface)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                         {capturingLocation ? t('capturing_location_button').replace('📍', '') : t('capture_location_button').replace('📍', '')}
                     </button>
                     <span style={{ fontSize: '0.875rem', fontWeight: '500', color: locationStatus.includes('✓') ? 'var(--ok-solid-hover)' : locationStatus.includes('Failed') ? 'var(--danger-solid-hover)' : 'var(--text-soft)' }}>{locationStatus}</span>
@@ -178,7 +184,7 @@ export default function TaskSubmissionForm({
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                <button onClick={onSaveDraft} disabled={uploading} className="btn" style={{ background: 'var(--border)', color: 'var(--text-main)', fontWeight: '600', flex: 1, opacity: 1, cursor: 'pointer' }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
+                <button onClick={onSaveDraft} disabled={uploading || locked} className="btn" style={{ background: 'var(--border)', color: 'var(--text-main)', fontWeight: '600', flex: 1, opacity: 1, cursor: 'pointer' }}>{loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}</button>
                 <button onClick={onSubmitRequest} disabled={uploading} className="btn btn-primary" style={{ fontWeight: '700', flex: 2, opacity: 1, cursor: 'pointer' }}>{loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}</button>
             </div>
         </div>

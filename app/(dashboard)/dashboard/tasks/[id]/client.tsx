@@ -1,35 +1,70 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Modal from '@/components/Modal'
+import { useRouter } from 'next/navigation'
+import { ArrowCounterClockwiseIcon, CheckIcon, CheckSquareIcon, CurrencyCircleDollarIcon, PencilSimpleIcon, TrashIcon, UserSwitchIcon, XIcon } from '@phosphor-icons/react/ssr'
 // Its dates once the browser has the page: drawn on the server, they came out in its time zone.
 import SafeDate from '@/components/SafeDate'
 import DiffViewer from '@/components/DiffViewer'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
-import TrashIcon from '@/components/TrashIcon'
 import TaskCostsSection from '@/components/TaskCostsSection'
 import TaskLocationHistorySection from '@/components/TaskLocationHistorySection'
 import TaskSubmissionForm from '@/components/TaskSubmissionForm'
-import type { PickedName } from '@/components/ui'
 import TaskEditDetailsModal from '@/components/TaskEditDetailsModal'
 import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
+import type { Assignable } from '@/components/forms/AssigneeChecklist'
+import { Button, Card, Details, Dialog, DueDate, EmptyState, FileChip, FileChips, Page, PageHeader, RowMenu, StatusBadge, taskStatusTone, type MenuItem, type PickedName } from '@/components/ui'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import SectionBoundary from '@/components/SectionBoundary'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useCan } from '@/lib/useCan'
+import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
-import { startNavigationProgress } from '@/components/NavigationProgress'
+import { useDeadlineClock } from '@/lib/useDeadlineClock'
 import { fetchRetrying } from '@/lib/swr-fetcher'
+import { decidedByName } from '@/lib/decided-by'
+import { countOf } from '@/lib/plural'
 import { locationLabel } from '@/lib/locations'
 import { parseTaskLocation } from '@/lib/task-place'
 import { googleMapsLink } from '@/lib/attendance/geo'
 import { RECEIPT_ACCEPT, RECEIPTS_FOLDER } from '@/lib/task-costs'
+import type { TranslationKey } from '@/lib/translations'
 
-export default function TaskDetailClient({ task: initialTask, userRole, userId, creatorName, isRestricted }: { task: any, userRole: string, userId: string, creatorName: string | null, currentUserName: string, isRestricted: boolean }) {
+/** Done with: decided, and nothing more is handed in. */
+const DECIDED = ['APPROVED', 'COMPLETED', 'REJECTED']
+
+/** An address that isn't a task, or no longer is: said on a page with the way back. */
+export function TaskNotFound() {
+    const { t } = useLanguage()
+    const modules = useModules()
+    return (
+        <Page>
+            <PageHeader title={modules.label('tasks')} back={{ href: '/dashboard/tasks', label: modules.label('tasks') }} />
+            <div className="ui-panel">
+                <EmptyState icon={CheckSquareIcon} title={t('task_not_found')} />
+            </div>
+        </Page>
+    )
+}
+
+/**
+ * A task's page (DESIGN.md §5.5): its header, with its status and a manager's
+ * decision; what needs saying about it; its details, notes and files; then
+ * its costs, location history and what its assignee hands in.
+ */
+export default function TaskDetailClient({ task: initialTask, now, userRole, userId, creatorName, isRestricted }: {
+    task: any
+    /** When the server drew it, so its deadline reads the same on the server and here. */
+    now: number
+    userRole: string
+    userId: string
+    creatorName: string | null
+    currentUserName: string
+    isRestricted: boolean
+}) {
     const { t, locale } = useLanguage()
+    const modules = useModules()
 
     // Parse member costs and payment status
     const getMemberCosts = (taskObj: any) => {
@@ -100,8 +135,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [costEntries, setCostEntries] = useState<any[]>([])
     const [transferAssigneeIds, setTransferAssigneeIds] = useState<string[]>([])
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
-    const [allUsers, setAllUsers] = useState<any[]>([])
-    const [userFetchError, setUserFetchError] = useState(false)
     const [transferring, setTransferring] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showRevertConfirm, setShowRevertConfirm] = useState(false)
@@ -120,17 +153,10 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
     const [itemToDelete, setItemToDelete] = useState<{ type: 'ATTACHMENT' | 'COST' | 'COST_ADDITION' | 'SUBMISSION_NOTE', itemId: string } | null>(null)
     const [locationToDelete, setLocationToDelete] = useState<{ index?: number, date?: string } | null>(null)
     const [isReverting, setIsReverting] = useState(false)
-    const [showDeadlineModal, setShowDeadlineModal] = useState(false)
     const action = useBusyAction()
 
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const highlightId = searchParams.get('highlight')
-    const shouldHighlight = highlightId === task.id
-    const { showToast } = useToast() // Added this line
-
-    // The userRole prop is already passed to the component, so no need to derive it from session here.
-    // const userRole = (session?.user as any)?.role // Removed this line as userRole is a prop
+    const { showToast } = useToast()
 
     // Re-seed local state when the server sends a fresh task (after
     // router.refresh), in the same render rather than one render late.
@@ -150,123 +176,60 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         return lastEdit?.changes ?? null
     }, [task.comments])
 
+    // Past its deadline and not yet done. Moved on at the deadline, so a page
+    // left open across it locks then (lib/useDeadlineClock.ts).
+    const deadlineAt = new Date(task.deadline).getTime()
+    const clock = useDeadlineClock(deadlineAt, now)
+    const isOverdue = deadlineAt < clock && ['PENDING', 'IN_PROGRESS'].includes(task.status)
+    // Past it, whoever does it adds nothing more to it and takes nothing off
+    // it, and is told to see whoever assigned it. Each block is told so, rather
+    // than a click anywhere on the page caught by the words on what was clicked.
+    const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
+    const isRestrictedRole = !seesOthersTasks || (teamReach && isUserAssignee)
+    const locked = isRestrictedRole && isOverdue
+
+    // Who it can be moved to, asked for when Transfer opens: undefined while
+    // they load, null if they couldn't be. /api/users scopes a Team Leader to
+    // their own team, so it's already who the server will accept.
+    const [transferPeople, setTransferPeople] = useState<Assignable[] | null | undefined>(undefined)
+    const [peopleTries, setPeopleTries] = useState(0)
+    const [retryingPeople, setRetryingPeople] = useState(false)
     useEffect(() => {
-        const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
-        if (isUserAssignee && (task.isEdited || isEditedPersistent)) {
-            // Logic to track if they've seen it could be here
-        }
-    }, [userId, task.assignees, task.isEdited, isEditedPersistent])
+        if (!isTransferModalOpen) return
+        const queryParams = new URLSearchParams()
+        queryParams.set('limit', '1000')
+        if (task.companyId) queryParams.set('companyId', task.companyId)
+        fetchRetrying(`/api/users?${queryParams.toString()}`)
+            .then(r => {
+                if (!r.ok) throw new Error(`Couldn't load the people (${r.status})`)
+                return r.json()
+            })
+            .then(result => setTransferPeople(result?.data?.data || []))
+            .catch(() => setTransferPeople(null))
+            .finally(() => setRetryingPeople(false))
+    }, [isTransferModalOpen, peopleTries, task.companyId])
+    const openTransfer = () => {
+        setTransferAssigneeIds(task.assignees?.map((a: any) => a.id) || [])
+        setIsTransferModalOpen(true)
+    }
 
-    // Load users once for search/filter efficiency
-    const isOverdue = new Date(task.deadline) < new Date() && ['PENDING', 'IN_PROGRESS'].includes(task.status)
-
-    useEffect(() => {
-        const isUserAssignee = task.assignees?.some((a: any) => a.id === userId)
-        const isRestrictedRole = !seesOthersTasks || (teamReach && isUserAssignee)
-
-        if (!isRestrictedRole || !isOverdue) return
-
-        const handleLocalClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement
-
-            // Ignore clicks inside the deadline modal
-            if (target.closest('#deadline-modal-content')) {
-                return
-            }
-
-            // Target buttons, links, labels, and inputs
-            const closestClickable = target.closest('button, a, label, input, [role="button"]')
-
-            if (closestClickable) {
-                // Helper to strip common emojis and normalize for robust matching
-                const clean = (str: string) => {
-                    if (!str) return ''
-                    return str.replace(/[\u1F60-\u1F64]|[\u2702-\u27B0]|[\u1F68-\u1F6C]|[\u1F30-\u1F70]|[\u2600-\u26ff]|[\uD83C-\uDBFF\uDC00-\uDFFF]/g, '')
-                        .trim()
-                        .toLowerCase()
-                }
-
-                const targetText = clean(closestClickable.textContent || '')
-                const targetTitle = clean(closestClickable.getAttribute('title') || '')
-
-                // Block ONLY these actions if overdue (they modify the submission state)
-                const isBlockedAction = [
-                    t('add_label') || 'add',
-                    t('capture_location_button' as any) || 'capture',
-                    t('save_draft_button' as any) || 'save draft',
-                    t('upload_drag_files_msg' as any) || 'upload',
-                    t('delete') || 'delete',
-                    t('delete_location_title' as any) || 'delete location',
-                    t('delete_note_title' as any) || 'delete note',
-                    t('delete_cost_title' as any) || 'delete cost',
-                    t('delete_attachment_title' as any) || 'delete attachment',
-                    '×',
-                    'x'
-                ].some(keyword => {
-                    const cleanKeyword = clean(keyword)
-                    if (!cleanKeyword) return false
-
-                    // Exact match for icons and the generic "Delete" to avoid blocking "Delete Task"
-                    const isExactMatchKey = ['×', 'x', clean(t('delete') || 'delete')].includes(cleanKeyword)
-                    if (isExactMatchKey) {
-                        return targetText === cleanKeyword || targetTitle === cleanKeyword
-                    }
-
-                    // For more specific titles/phrases, use includes
-                    return targetText.includes(cleanKeyword) || targetTitle.includes(cleanKeyword)
-                })
-
-                // Special robust check for file input and its immediate container
-                const isFileInput = closestClickable.tagName === 'INPUT' && (closestClickable as HTMLInputElement).type === 'file'
-
-                if (isBlockedAction || isFileInput) {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setShowDeadlineModal(true)
-                }
-            }
-        }
-
-
-
-
-        document.addEventListener('click', handleLocalClick, true)
-        return () => document.removeEventListener('click', handleLocalClick, true)
-    }, [userRole, isOverdue, t, userId, task.assignees, seesOthersTasks, teamReach])
-
-    useEffect(() => {
-        if (canTransfer) {
-            const queryParams = new URLSearchParams()
-            queryParams.set('limit', '1000')
-            if (task.companyId) queryParams.set('companyId', task.companyId)
-
-            fetchRetrying(`/api/users?${queryParams.toString()}`)
-                .then(r => {
-                    if (!r.ok) throw new Error()
-                    return r.json()
-                })
-                .then(result => {
-                    const data = result.data
-                    const usersList = data.data || []
-                    // No filtering here any more — /api/users scopes a Team
-                    // Leader to their own team server-side, so this list
-                    // already matches what the server will accept on submit.
-                    // Filtering in the browser decided what a picker showed,
-                    // never what a request could contain; the rows it hid had
-                    // already crossed the wire.
-                    setAllUsers(usersList)
-                })
-                .catch(() => setUserFetchError(true))
-        }
-    }, [userRole, task.companyId, canTransfer])
-
+    // Whoever it's for has seen how it changed: recorded, so the notice
+    // stays gone. Not recorded, it stays, and says why.
     const handleDismiss = async () => {
         try {
-            await fetch(`/api/tasks/${task.id}/dismiss-edit`, { method: 'POST' })
+            const res = await fetch(`/api/tasks/${task.id}/acknowledge`, { method: 'PUT' })
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                showToast(data.error || t('error_generic'), 'error')
+                return
+            }
             setIsEditedPersistent(false)
             setTask({ ...task, isEdited: false })
             router.refresh()
-        } catch (e) { console.error(e) }
+        } catch (e) {
+            console.error(e)
+            showToast(t('error_generic'), 'error')
+        }
     }
 
     const handleUpload = useCallback(async (isDraft: boolean, isEmergency?: boolean) => {
@@ -659,6 +622,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
                 // Said as the server says it, such as a task whose costs were paid meanwhile.
                 const body = await res.json().catch(() => null)
                 showToast(body?.error || t('error_generic'), 'error')
+                setShowDeleteConfirm(false)
                 if (res.status === 409) router.refresh()
                 return
             }
@@ -668,6 +632,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         } catch (e) {
             console.error(e)
             showToast(t('error_generic'), 'error')
+            setShowDeleteConfirm(false)
         }
     }
 
@@ -805,7 +770,6 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
     const handleRevert = async () => {
         setIsReverting(true)
-        setShowRevertConfirm(false)
         try {
             const res = await fetch(`/api/tasks/${task.id}/revert`, { method: 'POST' })
             if (!res.ok) {
@@ -824,6 +788,7 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             showToast(e.message || t('failed_revert_task'), 'error')
         } finally {
             setIsReverting(false)
+            setShowRevertConfirm(false)
         }
     }
 
@@ -877,351 +842,206 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
         }
     }
 
-    const containerStyle: React.CSSProperties = {
-        direction: locale === 'ar' ? 'rtl' : 'ltr',
-        textAlign: locale === 'ar' ? 'right' : 'left'
-    }
+    const decidedBy = DECIDED.includes(task.status) && task.lastStatusUpdateBy
+        ? t('list_status_by').replace('{name}', decidedByName(task.lastStatusUpdateBy))
+        : undefined
+    // Its costs, once it's done, are paid or waiting to be.
+    const owesCosts = task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED')
+    const deleted = (task.assignees ?? []).filter((a: any) => a.status === 'DELETED')
+    const names = (task.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
+    const reviewing = !isRestricted && mayManage('tasks.review') && task.status === 'PENDING_CONFIRMATION'
+    const editable = !isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && mayManage('tasks.edit')
+    const transferable = !isRestricted && canTransfer && ['IN_PROGRESS', 'PENDING'].includes(task.status)
+    // What the last edit changed, for whoever it's for to see.
+    const seesChanges = (task.isEdited || isEditedPersistent) && isOnTask
+    const editedBy = [...(Array.isArray(task.comments) ? task.comments : [])].reverse().find((l: any) => l.type === 'TASK_EDITED')?.author || t('an_admin')
+    const place = (task.place || task.location) ? placeOf(task) : null
 
-    const headerRowStyle: React.CSSProperties = {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexDirection: 'row',
-        gap: '1rem',
-        flexWrap: 'wrap'
-    }
-
-    const badgeGroupStyle: React.CSSProperties = {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        flexDirection: 'row'
-    }
-
-    const alertStyle: React.CSSProperties = {
-        padding: '1rem',
-        borderRadius: '0.5rem',
-        marginBottom: '1.5rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexDirection: 'row'
-    }
+    const menu: MenuItem[] = [
+        ...(transferable ? [{ key: 'transfer', icon: UserSwitchIcon, label: t('transfer_to_another_employee'), onSelect: openTransfer }] : []),
+        ...(owesCosts && companyWide('tasks.pay') && (task.paymentStatus === 'PAID' || task.paymentStatus === 'PENDING_PAYMENT')
+            ? [{ key: 'pay', icon: CurrencyCircleDollarIcon, label: task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid'), onSelect: () => { void handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID') } }]
+            : []),
+        ...(userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(task.status) && task.paymentStatus === 'PENDING_PAYMENT'
+            ? [{ key: 'revert', icon: ArrowCounterClockwiseIcon, label: t('return_to_in_progress'), onSelect: () => setShowRevertConfirm(true) }]
+            : []),
+        // A task whose costs are paid, in full or in part, stays (CLIENTS_PLAN.md §4.2).
+        ...(!isRestricted && mayManage('tasks.delete') && !hasPaidCosts
+            ? [{ key: 'delete', icon: TrashIcon, label: t('delete_task_button'), danger: true, onSelect: () => setShowDeleteConfirm(true) }]
+            : []),
+    ]
 
     return (
-        <div className={`card ${shouldHighlight ? 'highlight-shading' : ''}`} style={{
-            ...containerStyle,
-            background: isOverdue ? 'var(--danger-bg-tint)' : (shouldHighlight ? undefined : 'var(--surface)'),
-            borderColor: isOverdue ? 'var(--danger-border)' : undefined
-        }}>
-            {/* Deleted Assignee Alert - Check            {/* Deleted Assignee Alert */}
-            {task.assignees?.some((a: any) => a.status === 'DELETED') && canTransfer && !['COMPLETED', 'APPROVED', 'REJECTED'].includes(task.status) && (
-                <div style={{ ...alertStyle, background: 'var(--danger-bg)', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🚫</span>
-                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            <strong>{t('assignee_deleted_alert')}</strong>
-                            <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                {t('assignee_deleted_msg').replace('{name}', task.assignees.filter((a: any) => a.status === 'DELETED').map((a: any) => `${a.firstName} ${a.lastName}`).join(', '))}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Task Edited Alert */}
-            {task.isEdited && (!seesOthersTasks || isOnTask) && (
-                <div style={{ ...alertStyle, background: 'var(--warn-bg-warm-subtle)', border: '1px solid var(--warn-border-warm-firm)', color: 'var(--warn-fg-warm)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexDirection: 'row' }}>
-                        <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>⚠️</span>
-                        <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            <strong>{t('task_updated_alert')}</strong>
-                            <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                {t('task_updated_msg').replace('{author}', (() => {
-                                    try {
-                                        const logs = (Array.isArray(task.comments) ? task.comments : [])
-                                        if (Array.isArray(logs)) {
-                                            const lastEdit = [...logs].reverse().find((l: any) => l.type === 'TASK_EDITED')
-                                            return lastEdit?.author || t('an_admin')
-                                        }
-                                        return t('an_admin')
-                                    } catch { return locale === 'ar' ? 'مسؤول' : 'an admin' }
-                                })())}
-                            </p>
-                        </div>
-                    </div>
-                    <button onClick={() => action.run('dismiss', handleDismiss)} disabled={action.running} aria-busy={action.is('dismiss')} className="btn" style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)' }}>{t('i_understand_button')}</button>
-                </div>
-            )}
-
-            {/* Diff Modal */}
-            <Modal isOpen={!!diffField} onClose={() => setDiffField(null)} title={diffField === 'title' ? t('title_changes_title') : t('description_changes_title')}>
-                {diffField && latestChanges && latestChanges[diffField] && (
-                    <div style={{ direction: 'ltr' }}>
-                        <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
-                    </div>
-                )}
-            </Modal>
-
-            <div style={headerRowStyle}>
-                <div style={badgeGroupStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexDirection: 'row' }}>
-                        <h1 style={{ margin: 0 }}>{task.title}</h1>
-                        {(task.isEdited || isEditedPersistent) && task.assignees?.some((a: any) => a.id === userId) && latestChanges?.title && !viewedTitleChange && (
-                            <button onClick={() => { setDiffField('title'); setViewedTitleChange(true); }} style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)', borderRadius: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
-                        )}
-                    </div>
-                    <span style={{ padding: '0.25rem 0.75rem', borderRadius: '9999px', background: 'var(--info-fill)', color: 'var(--text-on-accent)', fontWeight: 'bold', fontSize: '0.9rem' }}>{task.difficulty} {t('points_label_plural')}</span>
-                    <span style={{
-                        padding: '0.5rem',
-                        borderRadius: '0.5rem',
-                        background: task.status === 'COMPLETED' ? 'var(--info-bg)' : task.status === 'APPROVED' ? 'var(--ok-bg)' : task.status === 'PENDING_CONFIRMATION' ? 'var(--warn-bg-yellow)' : task.status === 'REJECTED' ? 'var(--danger-bg)' : 'var(--border)',
-                        color: task.status === 'COMPLETED' ? 'var(--info-fg)' : task.status === 'APPROVED' ? 'var(--ok-fg)' : task.status === 'PENDING_CONFIRMATION' ? 'var(--warn-fg-yellow)' : task.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--text-strong)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        fontSize: (task as any).lastStatusUpdateBy && ['APPROVED', 'REJECTED', 'COMPLETED'].includes(task.status) ? '0.75rem' : 'inherit'
-                    }}>
-                        {t(`status_${task.status.toLowerCase()}` as any)}
-                        {(task as any).lastStatusUpdateBy && ['APPROVED', 'REJECTED', 'COMPLETED'].includes(task.status) && (
-                            <span style={{ fontWeight: 'normal', opacity: 0.8, fontSize: '0.7rem' }}>
-                                • {(task as any).lastStatusUpdateBy}
-                            </span>
+        <Page>
+            <PageHeader
+                title={(
+                    <span className="ui-title-with-badge">
+                        <bdi>{task.title}</bdi>
+                        <StatusBadge tone={taskStatusTone(task.status)}>{t(`status_${task.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
+                        {owesCosts && (
+                            <StatusBadge tone={task.paymentStatus === 'PAID' ? 'good' : 'waiting'}>{task.paymentStatus === 'PAID' ? t('task_payment_paid') : t('task_payment_pending')}</StatusBadge>
                         )}
                     </span>
-                    {task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && (
-                        <span style={{ padding: '0.5rem', borderRadius: '0.5rem', background: task.paymentStatus === 'PAID' ? 'var(--ok-bg-faint)' : 'var(--warn-border-warm)', color: task.paymentStatus === 'PAID' ? 'var(--ok-fg-deep)' : 'var(--warn-fg-warm)', fontSize: '0.875rem', fontWeight: '600' }}>
-                            {task.paymentStatus === 'PAID' ? t('paid_status') : t('pending_payment_status')}
-                        </span>
-                    )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row' }}>
-                    {task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED') && companyWide('tasks.pay') && (
-                        <button onClick={() => handlePaymentStatusChange(task.paymentStatus === 'PAID' ? 'PENDING_PAYMENT' : 'PAID')} style={{ background: task.paymentStatus === 'PAID' ? 'var(--warn-border-warm)' : 'var(--ok-bg-faint)', color: task.paymentStatus === 'PAID' ? 'var(--warn-fg-warm)' : 'var(--ok-fg-deep)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
-                            {task.paymentStatus === 'PAID' ? t('mark_as_pending_button') : t('mark_as_paid')}
-                        </button>
-                    )}
-                    {userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(task.status) && task.paymentStatus === 'PENDING_PAYMENT' && (
-                        <button
-                            onClick={() => setShowRevertConfirm(true)}
-                            style={{
-                                background: 'var(--surface-subtle)',
-                                color: 'var(--text-muted)',
-                                border: '1px solid var(--border-firm)',
-                                borderRadius: '0.25rem',
-                                padding: '0.5rem 1rem',
-                                cursor: 'pointer',
-                                fontWeight: '600'
-                            }}
-                        >
-                            {isReverting ? t('reverting') : t('return_to_in_progress')}
-                        </button>
-                    )}
-                    <button onClick={() => { startNavigationProgress(); router.back() }} style={{ background: 'none', border: '1px solid var(--border-firm)', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--text-soft)' }}>{t('close_button')}</button>
-                    {!isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && mayManage('tasks.edit') && (<button onClick={handleEditClick} style={{ background: 'var(--info-bg)', color: 'var(--info-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('edit_task_button')}</button>)}
-                    {/* A task whose costs are paid, in full or in part, stays (CLIENTS_PLAN.md §4.2). */}
-                    {!isRestricted && mayManage('tasks.delete') && !hasPaidCosts && (<button onClick={() => setShowDeleteConfirm(true)} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: 'none', borderRadius: '0.25rem', padding: '0.5rem 1rem', cursor: 'pointer' }}>{t('delete_task_button')}</button>)}
-                </div>
-            </div>
+                )}
+                subtitle={decidedBy}
+                back={{ href: '/dashboard/tasks', label: modules.label('tasks') }}
+                // Handed in: the manager's decision. Being worked on: Edit task.
+                action={reviewing
+                    ? (
+                        <>
+                            <Button icon={XIcon} onClick={handleReject}>{t('reject_button')}</Button>
+                            <Button variant="primary" icon={CheckIcon} onClick={handleApprove}>{t('approve_button')}</Button>
+                        </>
+                    )
+                    : editable && <Button icon={PencilSimpleIcon} onClick={handleEditClick}>{t('edit_task_button')}</Button>}
+            />
 
-            <div style={{ fontSize: '1.25rem', lineHeight: '1.6', color: 'var(--text-body)', marginBottom: '2.5rem', whiteSpace: 'pre-wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    {task.description}
-                    {(task.isEdited || isEditedPersistent) && task.assignees?.some((a: any) => a.id === userId) && latestChanges?.description && !viewedDescriptionChange && (
-                        <button onClick={() => { setDiffField('description'); setViewedDescriptionChange(true); }} style={{ background: 'var(--warn-bg-warm)', color: 'var(--warn-fg-warm)', border: '1px solid var(--warn-border-warm-firm)', borderRadius: '0.25rem', padding: '0.1rem 0.5rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}>{t('edit')}</button>
+            {/* Someone it's for was deleted: whoever transfers tasks moves it on. */}
+            {deleted.length > 0 && canTransfer && !DECIDED.includes(task.status) && (
+                <Card title={t('assignee_deleted_alert')}>
+                    <p>{t('task_assignee_deleted_msg').replace('{name}', deleted.map((a: any) => `${a.firstName} ${a.lastName}`).join(locale === 'ar' ? '، ' : ', '))}</p>
+                    {transferable && (
+                        <div className="ui-form-actions">
+                            <Button variant="primary" icon={UserSwitchIcon} onClick={openTransfer}>{t('transfer_to_another_employee')}</Button>
+                        </div>
                     )}
-                </div>
-            </div>
-            {(task.place || task.location) && (() => {
-                const { name, link, ofClient } = placeOf(task)
-                return (
-                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--info-fg)', fontSize: '0.95rem', fontWeight: '500' }}>
-                        <span aria-hidden="true">📍</span>
-                        {link ? (
-                            <a href={link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--info-fg)', textDecoration: 'underline' }}>
-                                {name || link}
-                            </a>
-                        ) : (
-                            <span>{name}</span>
+                </Card>
+            )}
+
+            {/* Changed since it was given: whoever it's for sees what changed, and says they've seen it. */}
+            {task.isEdited && (!seesOthersTasks || isOnTask) && (
+                <Card title={t('task_updated_alert')}>
+                    <p>{t('task_updated_msg').replace('{author}', editedBy)}</p>
+                    <div className="ui-form-actions">
+                        <Button variant="primary" onClick={() => action.run('dismiss', handleDismiss)} disabled={action.running} busy={action.is('dismiss')}>{t('i_understand_button')}</Button>
+                        {seesChanges && latestChanges?.title && !viewedTitleChange && (
+                            <Button onClick={() => { setDiffField('title'); setViewedTitleChange(true) }}>{t('task_see_title_changes')}</Button>
                         )}
-                        {/* A client's location is named with its client already. */}
-                        {(task as any).client?.name && !ofClient && (
-                            <span style={{ color: 'var(--text-faint)', fontWeight: '400' }}>
-                                — {t('client_via_label' as any) || 'via'} {(task as any).client.name}
-                            </span>
+                        {seesChanges && latestChanges?.description && !viewedDescriptionChange && (
+                            <Button onClick={() => { setDiffField('description'); setViewedDescriptionChange(true) }}>{t('task_see_description_changes')}</Button>
                         )}
                     </div>
-                )
-            })()}
+                </Card>
+            )}
 
-            <div style={{ marginTop: '1rem', color: 'var(--text-soft)', fontSize: '0.9rem' }}>
-                {t('assigned_by')}: <strong>{creatorName || t('role_super_admin')}</strong> | {t('deadline_label')}: <strong><SafeDate date={task.deadline} locale={locale} /></strong>
-            </div>
-            <div style={{ marginTop: '0.5rem', color: 'var(--text-soft)', fontSize: '0.9rem' }}>
-                {t('assignee_label')}: {task.assignees?.length > 0 ? (
-                    task.assignees.map((a: any, idx: number) => (
-                        <span key={a.id}>
-                            <strong>{a.firstName} {a.lastName}</strong>
-                            {idx < task.assignees.length - 1 ? ', ' : ''}
-                        </span>
-                    ))
-                ) : (
-                    <strong>{t('no_assignee')}</strong>
-                )}
-            </div>
+            <Card
+                title={t('task_details')}
+                actions={menu.length > 0 && <RowMenu label={t('ui_more_actions_for').replace('{name}', task.title)} tooltip={t('ui_more_actions')} items={menu} />}
+            >
+                {task.description && <p className="ui-prose" dir="auto">{task.description}</p>}
+                <Details items={[
+                    ...(place ? [{
+                        label: t('task_location'),
+                        value: place.link
+                            ? <a href={place.link} target="_blank" rel="noopener noreferrer"><bdi>{place.name || place.link}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
+                            : <bdi>{place.name}</bdi>,
+                    }] : []),
+                    // A client's location is named with its client already.
+                    ...(task.client?.name && !place?.ofClient ? [{ label: t('client_label'), value: <bdi>{task.client.name}</bdi> }] : []),
+                    { label: t('assigned_by'), value: creatorName ? <bdi>{creatorName}</bdi> : t('role_super_admin') },
+                    { label: t('deadline_label'), value: <DueDate overdue={isOverdue}><SafeDate date={task.deadline} locale={locale} /></DueDate> },
+                    { label: t('points_label_plural'), value: countOf(t, locale, task.difficulty ?? 0, 'pts') },
+                    { label: t('assignees_label'), value: names.length ? <bdi>{new Intl.ListFormat(locale === 'ar' ? 'ar' : 'en', { type: 'conjunction' }).format(names)}</bdi> : t('no_assignee') },
+                ]} />
+            </Card>
 
-            {/* Comments / Logs Section */}
             <SectionBoundary name="TaskCommentsLog">
                 <TaskCommentsLog
                     task={task}
                     userId={userId}
+                    locked={locked}
                     onDeleteNote={(date: string) => handleDeleteItem('SUBMISSION_NOTE', date)}
                 />
             </SectionBoundary>
 
-            {/* Attachments Section */}
-            <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>{t('attachments_optional_label').split(' ')[0]}</h3>
-                {existingAttachments.length > 0 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '1rem' }}>
-                        {existingAttachments.map((att: any, idx: number) => (
-                            <div key={idx} style={{ position: 'relative' }}>
-                                <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', textDecoration: 'none', color: 'var(--text-body)', transition: 'all 0.2s', flexDirection: 'row' }}>
-                                    <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>📄</span>
-                                    <div style={{ overflow: 'hidden', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: '500', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{att.name || t('attachment')}</div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-soft)' }}>
-                                            {(task.assignees?.length > 1) && (
-                                                <span style={{ background: 'var(--surface-sunk)', border: '1px solid var(--border-firm)', color: 'var(--text-muted)', padding: '0.05rem 0.3rem', borderRadius: '1rem', fontSize: '0.6rem', fontWeight: 'bold', marginRight: locale === 'ar' ? '0' : '0.25rem', marginLeft: locale === 'ar' ? '0.25rem' : '0' }}>
-                                                    {locale === 'ar' ? 'بواسطة:' : 'By:'} {att.uploadedBy}
-                                                </span>
-                                            )}
-                                            {!((task.assignees?.length > 1)) && <span>{att.uploadedBy}</span>}
-                                            <span> • <SafeDate date={att.uploadedAt} locale={locale} format="dateOnly" /></span>
-                                        </div>
-                                    </div>
-                                </a>
-                                {task.status === 'IN_PROGRESS' && (att.uploadedById === userId || can('tasks.edit')) && (
-                                    <button aria-label={t('delete_attachment_title')}
-                                        onClick={(e) => { e.preventDefault(); handleDeleteItem('ATTACHMENT', att.url); }}
-                                        style={{ position: 'absolute', top: '5px', right: locale === 'ar' ? 'auto' : '5px', left: locale === 'ar' ? '5px' : 'auto', background: 'var(--surface)', border: '1px solid var(--danger-bg)', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
-                                        title={t('delete_attachment_title')}
-                                    >
-                                        <TrashIcon size={14} />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p style={{ color: 'var(--text-soft)', fontStyle: 'italic' }}>{t('no_attachments_msg')}</p>
-                )}
-            </div>
+            <Card title={t('attachments_label')}>
+                {existingAttachments.length > 0
+                    ? (
+                        <FileChips label={t('attachments_label')}>
+                            {existingAttachments.map((att: any) => (
+                                <FileChip
+                                    key={att.url}
+                                    name={att.name || t('attachment')}
+                                    href={att.url}
+                                    onRemove={task.status === 'IN_PROGRESS' && !locked && (att.uploadedById === userId || can('tasks.edit')) ? () => handleDeleteItem('ATTACHMENT', att.url) : undefined}
+                                />
+                            ))}
+                        </FileChips>
+                    )
+                    : <p className="ui-hint">{t('no_attachments_msg')}</p>}
+            </Card>
 
-            {/* Costs Section */}
             <TaskCostsSection
                 task={task}
                 userId={userId}
+                locked={locked}
                 onDeleteItem={handleDeleteItem}
                 onPaymentStatusChange={handlePaymentStatusChange}
                 getMemberCosts={getMemberCosts}
                 getMemberPaymentStatus={getMemberPaymentStatus}
             />
 
-            {
-                !isRestricted && (
-                    <>
-                        {/* Location History Section */}
-                        <TaskLocationHistorySection
-                            task={task}
-                            setTask={setTask}
-                            userId={userId}
-                            setLocationToDelete={setLocationToDelete}
+            {!isRestricted && (
+                <>
+                    <TaskLocationHistorySection
+                        task={task}
+                        setTask={setTask}
+                        userId={userId}
+                        locked={locked}
+                        setLocationToDelete={setLocationToDelete}
+                    />
+
+                    {/* What whoever it's for hands in, while they're working on it. */}
+                    {(!seesOthersTasks || isOnTask) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
+                        <TaskSubmissionForm
+                            pendingFiles={pendingFiles}
+                            onAddFiles={handleFiles}
+                            onRemoveFile={removePendingFile}
+                            uploading={uploading}
+                            costName={costName}
+                            setCostName={setCostName}
+                            companyId={task.companyId}
+                            cost={cost}
+                            setCost={setCost}
+                            onAddCost={handleAddCost}
+                            costReceipt={costReceipt}
+                            onCostReceipt={handleCostReceipt}
+                            onClearCostReceipt={() => setCostReceipt(null)}
+                            costEntries={costEntries}
+                            onRemoveCostEntry={removeCostEntry}
+                            note={note}
+                            setNote={setNote}
+                            capturingLocation={capturingLocation}
+                            locationStatus={locationStatus}
+                            onCaptureLocation={handleCaptureLocation}
+                            onSaveDraft={() => handleUpload(true)}
+                            onSubmitRequest={handleUploadRequest}
+                            loadingType={loadingType}
+                            locked={locked}
                         />
+                    )}
 
-                        {/* Submission Section (Employee only) */}
-                        {(!seesOthersTasks || isOnTask) && !['APPROVED', 'COMPLETED', 'PENDING_CONFIRMATION', 'REJECTED'].includes(task.status) && (
-                            <TaskSubmissionForm
-                                pendingFiles={pendingFiles}
-                                onAddFiles={handleFiles}
-                                onRemoveFile={removePendingFile}
-                                uploading={uploading}
-                                costName={costName}
-                                setCostName={setCostName}
-                                companyId={task.companyId}
-                                cost={cost}
-                                setCost={setCost}
-                                onAddCost={handleAddCost}
-                                costReceipt={costReceipt}
-                                onCostReceipt={handleCostReceipt}
-                                onClearCostReceipt={() => setCostReceipt(null)}
-                                costEntries={costEntries}
-                                onRemoveCostEntry={removeCostEntry}
-                                note={note}
-                                setNote={setNote}
-                                capturingLocation={capturingLocation}
-                                locationStatus={locationStatus}
-                                onCaptureLocation={handleCaptureLocation}
-                                onSaveDraft={() => handleUpload(true)}
-                                onSubmitRequest={handleUploadRequest}
-                                loadingType={loadingType}
-                            />
-                        )}
+                    {/* Handed in or done with: whoever it's for is told where it stands. */}
+                    {(!seesOthersTasks || isOnTask) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
+                        <Card>
+                            <p className="ui-hint">{task.status === 'PENDING_CONFIRMATION' ? t('pending_confirmation_msg') : t('task_finalized_msg')}</p>
+                        </Card>
+                    )}
+                </>
+            )}
 
-                        {/* Finalized/Pending Message for Employees */}
-                        {(!seesOthersTasks || isOnTask) && ['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(task.status) && (
-                            <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--surface-subtle)', border: '1px solid var(--border)', borderRadius: '0.5rem', textAlign: 'center' }}>
-                                <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: '500' }}>
-                                    {task.status === 'PENDING_CONFIRMATION'
-                                        ? t('pending_confirmation_msg' as any) || "Submitted and awaiting review"
-                                        : t('task_finalized_msg' as any) || "This task has been finalized and cannot be modified."}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Transfer Button (Admins only) */}
-                        {canTransfer && ['IN_PROGRESS', 'PENDING'].includes(task.status) && (
-                            <div style={{ marginTop: '2rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                                <button
-                                    onClick={() => {
-                                        const currentIds = task.assignees?.map((a: any) => a.id) || []
-                                        setTransferAssigneeIds(currentIds)
-                                        setIsTransferModalOpen(true)
-                                    }}
-                                    className="btn"
-                                    style={{
-                                        background: 'var(--surface-subtle)',
-                                        color: 'var(--text-muted)',
-                                        border: '1px solid var(--border-firm)',
-                                        borderRadius: '0.5rem',
-                                        padding: '0.6rem 1.25rem',
-                                        fontSize: '0.875rem',
-                                        fontWeight: '600',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        boxShadow: '0 1px 2px var(--shadow-faint)',
-                                        transition: 'all 0.2s ease',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <span aria-hidden="true">🔄</span> {t('transfer_to_another_employee')}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Approve/Reject Buttons (Admins only) */}
-                        {mayManage('tasks.review') && task.status === 'PENDING_CONFIRMATION' && (
-                            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1.25rem', borderTop: '2px solid var(--border)', paddingTop: '2rem', flexDirection: 'row' }}>
-                                <button onClick={handleApprove} className="btn btn-primary" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700' }}>{t('approve_button')}</button>
-                                <button onClick={handleReject} className="btn" style={{ flex: 1, padding: '1rem', fontSize: '1.1rem', fontWeight: '700', background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}>{t('reject_button')}</button>
-                            </div>
-                        )}
-                    </>
-                )
-            }
-
-            {/* Modals */}
+            <Dialog
+                open={!!diffField}
+                onClose={() => setDiffField(null)}
+                title={diffField === 'title' ? t('title_changes_title') : t('description_changes_title')}
+                actions={<Button onClick={() => setDiffField(null)}>{t('close')}</Button>}
+            >
+                {diffField && latestChanges && latestChanges[diffField] && (
+                    <div dir="auto">
+                        <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
+                    </div>
+                )}
+            </Dialog>
 
             <TaskEditDetailsModal
                 isOpen={isEditing}
@@ -1237,8 +1057,9 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
             <TaskTransferModal
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
-                allUsers={allUsers}
-                userFetchError={userFetchError}
+                people={transferPeople}
+                onRetry={() => { setRetryingPeople(true); setPeopleTries(n => n + 1) }}
+                retrying={retryingPeople}
                 transferAssigneeIds={transferAssigneeIds}
                 setTransferAssigneeIds={setTransferAssigneeIds}
                 transferring={transferring}
@@ -1273,65 +1094,50 @@ export default function TaskDetailClient({ task: initialTask, userRole, userId, 
 
                 showRevertConfirm={showRevertConfirm}
                 setShowRevertConfirm={setShowRevertConfirm}
-                onRevert={handleRevert}
+                onRevert={() => action.run('revert', handleRevert)}
                 isReverting={isReverting}
-
-                showDeadlineModal={showDeadlineModal}
-                setShowDeadlineModal={setShowDeadlineModal}
             />
-
-
-        </div>
+        </Page>
     )
 }
 
 /**
- * The comments and notes on a task — everything in its log that is not a cost
- * or a location, which have sections of their own.
- *
- * Extracted from an inline IIFE that wrapped its JSX in try/catch. That caught
- * errors in the expressions here but not in child components, and reported
- * nothing; the SectionBoundary around this does both, and a malformed log
- * still costs only this section rather than the page.
+ * The notes on a task, newest first: everything in its log that isn't a cost
+ * or a location, which have blocks of their own. The SectionBoundary around
+ * it means a malformed log costs only this block, not the page.
  */
-function TaskCommentsLog({ task, userId, onDeleteNote }: {
+function TaskCommentsLog({ task, userId, locked, onDeleteNote }: {
     task: any
     userId: string
+    /** Past its deadline, for whoever does it: a note stays. */
+    locked: boolean
     onDeleteNote: (date: string) => void
 }) {
     const { t, locale } = useLanguage()
     const canEditTask = useCan().can('tasks.edit')
-    if (!task.comments) return null
     const logs = Array.isArray(task.comments) ? task.comments : []
     const regularLogs = logs.filter((l: any) => l.type !== 'COST_ADDITION' && l.type !== 'LOCATION_ADDED')
     if (regularLogs.length === 0) return null
 
     return (
-                <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '1rem' }}>{t('comments_notes_title')}</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {[...regularLogs].reverse().map((log: any, i: number) => (
-                            <div key={i} style={{ padding: '1rem', background: 'var(--surface-subtle)', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', flexDirection: 'row' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        {(task.assignees?.length > 1) && (
-                                            <span style={{ background: 'var(--surface-sunk)', border: '1px solid var(--border-firm)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                                                {locale === 'ar' ? 'بواسطة:' : 'By:'} {log.author}
-                                            </span>
-                                        )}
-                                        {!((task.assignees?.length > 1)) && <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{log.author}</span>}
-                                        {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && (log.authorId === userId || canEditTask) && (
-                                            <button aria-label={t('delete_note_title')} onClick={() => onDeleteNote(log.date)} className="btn-icon" style={{ padding: '2px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }} title={t('delete_note_title')}>
-                                                <TrashIcon size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}><SafeDate date={log.date || log.createdAt} locale={locale} /></span>
-                                </div>
-                                <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-body)', whiteSpace: 'pre-wrap' }}>{log.text}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+        <Card title={t('comments_notes_title')}>
+            <ol className="ui-notes">
+                {[...regularLogs].reverse().map((log: any, i: number) => (
+                    <li key={`${log.date || log.createdAt}-${i}`}>
+                        <div className="ui-note-head">
+                            <strong><bdi>{log.author}</bdi></strong>
+                            <span className="ui-hint"><SafeDate date={log.date || log.createdAt} locale={locale} /></span>
+                            {log.type === 'SUBMISSION_NOTE' && task.status === 'IN_PROGRESS' && !locked && (log.authorId === userId || canEditTask) && (
+                                <Button size="sm" variant="quiet" icon={TrashIcon} onClick={() => onDeleteNote(log.date)}>{t('delete')}</Button>
+                            )}
+                        </div>
+                        {/* An edit has no words of its own: it's said as one. */}
+                        {log.text
+                            ? <p className="ui-note-text" dir="auto">{log.text}</p>
+                            : log.type === 'TASK_EDITED' && <p className="ui-note-text ui-hint">{t('task_log_edited')}</p>}
+                    </li>
+                ))}
+            </ol>
+        </Card>
     )
 }

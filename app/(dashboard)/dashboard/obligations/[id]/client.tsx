@@ -16,6 +16,7 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { decidedByName } from '@/lib/decided-by'
+import { useDeadlineClock } from '@/lib/useDeadlineClock'
 
 const FILE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
 const FILE_MAX_BYTES = 4 * 1024 * 1024
@@ -38,18 +39,6 @@ function attachmentsOf(saved: string | null | undefined): Attachment[] {
 }
 
 const fileName = (a: Attachment) => a.name || a.url.split('/').pop() || a.url
-
-/** The longest a timer waits: setTimeout fires at once past it. */
-const LONGEST_WAIT = 2 ** 31 - 1
-
-/**
- * How long until the page looks at its deadline again: just after it, or
- * as long as a timer can wait, to look again then. Null once it's passed.
- */
-export function untilDeadline(deadlineAt: number, now: number): number | null {
-    if (now > deadlineAt) return null
-    return Math.min(deadlineAt - now + 500, LONGEST_WAIT)
-}
 
 /** An address that isn't an obligation, or no longer is: said on a page with the way back. */
 export function ObligationNotFound() {
@@ -95,17 +84,9 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     const teamReach = scope('obligations.view') === 'TEAM'
     const mayManageThis = canManage && (scope('obligations.manage') === 'TEAM' || !obligation.assignees?.some((a: any) => a.id === userId))
 
-    // The time it's drawn at: the server's to begin with, so the first paint
-    // matches, then moved on just after the deadline (found by Codex on PR
-    // 122), so a page left open across it locks then, not at the next reload.
+    // Moved on at the deadline, so a page left open across it locks then (lib/useDeadlineClock.ts).
     const deadlineAt = new Date(obligation.deadline).getTime()
-    const [clock, setClock] = useState(now)
-    useEffect(() => {
-        const wait = untilDeadline(deadlineAt, clock)
-        if (wait === null) return
-        const timer = setTimeout(() => setClock(Date.now()), wait)
-        return () => clearTimeout(timer)
-    }, [deadlineAt, clock])
+    const clock = useDeadlineClock(deadlineAt, now)
     const isOverdue = deadlineAt < clock && ['PENDING', 'IN_PROGRESS'].includes(obligation.status)
     // Past its deadline, whoever does it can't add to it any more, nor take
     // files off it, and is told to see whoever assigned it.

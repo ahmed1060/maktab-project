@@ -417,7 +417,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     VALUES ('asked-meanwhile', 'c2', 'e2', $1, 'e2', now())`, [role.id])
                 deleting = RoleService.delete(role.id, sa).catch((error: Error) => error.message)
                 for (let i = 0; i < 40; i++) {
-                    if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE NOT granted`)).rows[0].n > 0) break
+                    if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE NOT l.granted AND a.datname = current_database()`)).rows[0].n > 0) break
                     await new Promise(r => setTimeout(r, 50))
                 }
             } finally {
@@ -571,7 +571,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 await db.query(`DELETE FROM "Role" WHERE id = $1`, [going])
                 asking = RoleRequestService.create({ userId: "new3", roleId: going }, hr).catch((error: Error) => error)
                 for (let i = 0; i < 40; i++) {
-                    if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE NOT granted`)).rows[0].n > 0) break
+                    if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE NOT l.granted AND a.datname = current_database()`)).rows[0].n > 0) break
                     await new Promise(r => setTimeout(r, 50))
                 }
             } finally {

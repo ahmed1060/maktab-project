@@ -113,7 +113,7 @@ describe.skipIf(!ADMIN_URL)("the attendance calendar, in Postgres", () => {
             const setting = Calendar.setDefault(spare, "2026-12-01", "a1").then(() => "SET", (e: Error) => e.message)
             // Until the change waits on that lock, or has gone ahead without it.
             for (let i = 0; i < 40; i++) {
-                if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`)).rows[0].n > 0) break
+                if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'advisory' AND NOT l.granted AND a.datname = current_database()`)).rows[0].n > 0) break
                 await new Promise(r => setTimeout(r, 50))
             }
             await db.query(`UPDATE "WorkSchedule" SET "archivedAt" = now() WHERE id = $1`, [spare])

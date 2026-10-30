@@ -345,8 +345,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      second was the Tasks list, merged in #118 on 2026-10-30, and the
      third the Obligations list, merged in #119 on 2026-10-30, and the
      fourth Create task, merged in #120 on 2026-10-30, and the fifth Add
-     obligation, merged in #121 on 2026-10-30. The sixth is an
-     obligation's page, open for review in #122;
+     obligation, merged in #121 on 2026-10-30, and the sixth an
+     obligation's page, merged in #122 on 2026-10-30. The seventh is a
+     task's page, in two parts: its page and dialogs, open for review in
+     #123, then its costs, location history, submission form and edit
+     dialog;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1287,3 +1290,53 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   so adding files and saving a draft stayed open until a reload (found by
   Codex on PR 122). In the browser, a deadline 30 seconds off locked the
   page after it without a reload.
+- **2026-10-30:** A task's page moves onto the building blocks (§5 step 5),
+  in two parts. The first is the page and its dialogs; its costs, location
+  history, submission form and edit dialog keep their own blocks until the
+  second.
+  - Its page header: its title with its status, and once it's done, whether
+    its costs are paid; who decided it once it's decided; the way back to
+    the list. A manager decides one handed in from there, Approve the
+    primary button and Reject, and edits one being worked on.
+  - Its notices in cards: someone it was for was deleted, with Transfer
+    task; and it was changed since it was given, with I understand and,
+    for whoever it's for, how the title or description changed.
+  - Its details in a card: its description, where it's done (its map pin a
+    link that says it opens a new tab), its client, who assigned it, its
+    deadline (marked overdue while it's still to be done), its points and
+    who it's for. Transfer task, Mark as paid or pending, Return to in
+    progress (a Super Admin's) and Delete task are in its More actions.
+  - Its notes newest first, and its files as chips.
+  - Its dialogs on the building blocks: Delete, Approve or Reject (with
+    its points when it was transferred), Submit without adding anything,
+    Delete an item or a location, Return to in progress, and Transfer task
+    with the shared people checklist, asked for when it opens.
+  - Past its deadline, for whoever does it, each block is told it's locked:
+    the submission form says so, and adding files, costs, a location or a
+    draft, and taking files, notes, costs or locations off, are switched
+    off. A pop-up caught any click on the page by the words on what was
+    clicked. The deadline moves on while the page is open, as on an
+    obligation's page (lib/useDeadlineClock.ts).
+  - An address that isn't a task says so on a page with the way back.
+  - Its words are in sentence case, and its messages end their sentences.
+- **2026-10-30:** An obligation's page was merged in #122, and a task's page
+  opens for review in #123 (§5 step 5).
+- **2026-10-30:** In #123, I understand on a task that was changed records
+  that its assignee has seen it. It posted to a route that isn't there:
+  the 404 was let pass, the notice hid itself, and it was back at the next
+  visit. Found by trying it in the browser.
+- **2026-10-30:** In #123, Vercel's web interface audit of a task's page:
+  how its title or description changed closes with a button as well as
+  Escape; an edit in its notes is said in words rather than as a name and
+  a date with nothing under them; and its notes are headed Notes.
+- **2026-10-30:** In #123, the database tests that wait for one transaction
+  to be held up by another look only at their own database. They counted
+  the whole server's waiting locks, and the other database tests, running
+  beside them, ended the wait early: "ends nothing when the advance
+  changed" failed in a full run and passed on its own.
+- **2026-10-30:** In #123, a deadline changed while its page is open locks
+  the page at the new deadline. The page waited from the time it was drawn
+  at, not the time it is now, so a deadline moved later locked it as late
+  again as the page had been open, and one moved earlier, to a time already
+  passed, wasn't shown as passed until the old wait was up (found by Codex
+  on PR 123). A refresh's newer time from the server is taken too.

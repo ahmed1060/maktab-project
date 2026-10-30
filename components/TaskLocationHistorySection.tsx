@@ -23,9 +23,11 @@ interface TaskLocationHistorySectionProps {
     setTask: (task: any) => void
     userId: string
     setLocationToDelete: (v: { index?: number, date?: string } | null) => void
+    /** Past its deadline, for whoever does it: a location stays. */
+    locked?: boolean
 }
 
-function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDelete }: TaskLocationHistorySectionProps) {
+function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDelete, locked = false }: TaskLocationHistorySectionProps) {
     const { t, locale } = useLanguage()
     const { can } = useCan()
     const { showToast } = useToast()
@@ -306,7 +308,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                                 </button>
                                             </div>
                                         )}
-                                        {canDelete && task.status === 'IN_PROGRESS' && (loc.authorId === userId || can('tasks.edit')) && (
+                                        {canDelete && !locked && task.status === 'IN_PROGRESS' && (loc.authorId === userId || can('tasks.edit')) && (
                                             <button aria-label={t('delete_location_title')} onClick={() => setLocationToDelete({ date: loc.date })} style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg-strong)', border: 'none', borderRadius: '0.25rem', padding: '0.4rem', cursor: 'pointer', display: 'flex' }} title={t('delete_location_title')}>
                                                 <TrashIcon size={16} />
                                             </button>

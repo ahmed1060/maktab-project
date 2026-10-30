@@ -124,7 +124,7 @@ describe.skipIf(!ADMIN_URL)("work locations, in Postgres", () => {
     /** Until another connection waits on a lock, or a moment has passed without one. */
     const untilSomebodyWaits = async () => {
         for (let i = 0; i < 40; i++) {
-            if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE NOT granted`)).rows[0].n > 0) return
+            if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE NOT l.granted AND a.datname = current_database()`)).rows[0].n > 0) return
             await new Promise(r => setTimeout(r, 50))
         }
     }
