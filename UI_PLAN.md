@@ -1477,3 +1477,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   moves onto the page. The built-in Employee and Team Leader may ask, and
   every custom role there already; the built-in Admin may not, as today.
   Their balance is on Mine. The first opens for review in #126.
+- **2026-10-30:** In #126, Ask for leave is a permission in the role
+  editor's Day off group, at Own, and a new company's built-in Employee
+  and Team Leader hold it. It's personal, so an Admin who may not ask for
+  leave still gives somebody a role that may (`ROLES_PLAN.md` §4.2, rule
+  4). Nothing asks for it yet: the companies there get it first (§2.3,
+  part 2b).

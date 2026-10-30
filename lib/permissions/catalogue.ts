@@ -26,9 +26,12 @@ import type { Module } from "@/lib/features/bundles"
  * - `implies`: permissions it is useless without. A role granted this is
  *   granted those too.
  *
- * Actions on one's own things — submitting a task assigned to you, requesting
- * leave, editing your own profile — are not permissions. Everybody may always
- * do them.
+ * - `personal`: one's own, and nobody else's (see below).
+ *
+ * Actions on one's own things — submitting a task assigned to you, editing
+ * your own profile — are not permissions. Everybody may always do them. Asking
+ * for leave was one until a company could decide who may (UI_PLAN.md §2.3,
+ * part 2a): it's a `personal` permission now.
  */
 
 export type Scope = "OWN" | "TEAM" | "COMPANY"
@@ -61,10 +64,19 @@ type PermissionDefinition = {
      * is the actor, so no route has to remember to.
      */
     notOnOwn?: true
+    /**
+     * Only ever about oneself: asking for one's own leave. It gives its holder
+     * no reach over anybody, so a role holding it is no access its giver lacks
+     * (ROLES_PLAN.md §4.2, rule 4), and covers() doesn't ask them to hold it:
+     * an Admin who may not ask for leave still makes somebody an Employee, who
+     * may.
+     */
+    personal?: true
 }
 
 const TEAM_OR_COMPANY = ["TEAM", "COMPANY"] as const
 const COMPANY = ["COMPANY"] as const
+const OWN = ["OWN"] as const
 const MOVES_MONEY = "Moves money"
 const CANNOT_BE_UNDONE = "Cannot be undone"
 
@@ -146,6 +158,10 @@ export const PERMISSIONS = {
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
     "dayoff.approve":           { code: 33, module: "DAY_OFF", scopes: TEAM_OR_COMPANY, implies: ["dayoff.view"], notOnOwn: true },
     "dayoff.adjust_credit":     { code: 34, module: "DAY_OFF", scopes: COMPANY, implies: ["dayoff.view"], notOnOwn: true },
+    // Asking for leave of one's own (UI_PLAN.md §2.3, part 2a): given to a
+    // role or not, as the Requests page offers a day off only to those who
+    // may ask. Only ever one's own, so its scope is too.
+    "dayoff.request":           { code: 65, module: "DAY_OFF", scopes: OWN, personal: true },
 
     // --- Salaries ----------------------------------------------------------
     // One permission for seeing a salary anywhere — profile, history, payroll,
@@ -220,6 +236,10 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 4: lists.* (codes 58–59), for the saved lists of cost names and task
  * titles (CLIENTS_PLAN.md §5.7).
+ *
+ * Not raised for dayoff.request (code 65, UI_PLAN.md §2.3, part 2a): no role
+ * already there holds it until a later release's migration, and every
+ * release live by then knows it.
  */
 export const CATALOGUE_VERSION = 4
 
@@ -239,6 +259,11 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[]
 
 export function isPermission(value: string): value is Permission {
     return Object.prototype.hasOwnProperty.call(PERMISSIONS, value)
+}
+
+/** Whether a permission is only ever about oneself (see `personal`). */
+export function isPersonal(permission: Permission): boolean {
+    return (PERMISSIONS[permission] as PermissionDefinition).personal === true
 }
 
 /** Whether a permission is planned but not yet checked anywhere (see `reserved`). */

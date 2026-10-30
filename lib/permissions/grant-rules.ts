@@ -1,4 +1,4 @@
-import { PERMISSIONS, isPermission, isReserved, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isPermission, isPersonal, isReserved, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 
 /**
@@ -69,11 +69,13 @@ export function grantRows(grants: Grants): { permission: Permission; scope: Scop
 
 /**
  * Whether `held` covers `wanted`: every permission, at an equal or wider scope.
- * The "you can only hand out access you have" rule (§4.2, rule 4).
+ * The "you can only hand out access you have" rule (§4.2, rule 4). A personal
+ * permission is no access over anybody (catalogue.ts, `personal`), so it's
+ * not asked for.
  */
 export function covers(held: Grants, wanted: Grants): boolean {
     return (Object.entries(wanted) as [Permission, Scope][])
-        .every(([permission, scope]) => !!held[permission] && WIDTH[held[permission]!] >= WIDTH[scope])
+        .every(([permission, scope]) => isPersonal(permission) || (!!held[permission] && WIDTH[held[permission]!] >= WIDTH[scope]))
 }
 
 /**

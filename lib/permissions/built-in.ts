@@ -160,8 +160,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
     // verifyResourceAccess. Nothing else: they do not edit people, see
     // salaries, or see or decide their team's leave today.
     //
-    // A person's own profile, payslips, leave requests and histories reach
-    // them through owner rules on those routes, which are not permissions.
+    // A person's own profile, payslips and histories reach them through
+    // owner rules on those routes, which are not permissions. Asking for
+    // leave is one since UI_PLAN.md §2.3, part 2a: a company decides who may.
     TEAM_LEADER: {
         "employees.view": "TEAM",
 
@@ -206,6 +207,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "charges.view": "TEAM",
         // Their team's cash advances, and their own, to see (§7.7).
         "cash_advances.view": "TEAM",
+        // They ask for leave of their own, as they did before it was a
+        // permission (UI_PLAN.md §2.3, part 2a).
+        "dayoff.request": "OWN",
     },
     // Everyone reads and adds to the company's records, and adds names to
     // the saved lists (CLIENTS_PLAN.md §5.7).
@@ -213,6 +217,8 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "records.view": "COMPANY",
         "records.contribute": "COMPANY",
         "lists.add": "COMPANY",
+        // And asks for leave of their own (UI_PLAN.md §2.3, part 2a).
+        "dayoff.request": "OWN",
     },
 }
 

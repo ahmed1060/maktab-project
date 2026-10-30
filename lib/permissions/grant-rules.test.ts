@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { normalizeGrants, covers, grantRows } from "./grant-rules"
 import { BUILT_IN_GRANTS } from "./built-in"
+import { ALL_PERMISSIONS, PERMISSIONS, isPersonal } from "./catalogue"
 
 describe("normalizeGrants", () => {
     it("refuses a permission the catalogue does not know", () => {
@@ -51,5 +52,14 @@ describe("covers — you can only hand out what you hold", () => {
     it("the built-in Admin covers the other built-in roles", () => {
         expect(covers(BUILT_IN_GRANTS.ADMIN, BUILT_IN_GRANTS.TEAM_LEADER)).toBe(true)
         expect(covers(BUILT_IN_GRANTS.ADMIN, BUILT_IN_GRANTS.EMPLOYEE)).toBe(true)
+    })
+
+    it("but not a personal permission, which is no access over anybody: an Admin who may not ask for leave still gives a role that may", () => {
+        expect(isPersonal("dayoff.request")).toBe(true)
+        expect(covers({ "tasks.view": "COMPANY" }, { "tasks.view": "TEAM", "dayoff.request": "OWN" })).toBe(true)
+        // Nothing else is personal: every other grant is reach over somebody.
+        expect(ALL_PERMISSIONS.filter(isPersonal)).toEqual(["dayoff.request"])
+        // And a personal one is offered only at Own: it reaches nobody else.
+        for (const p of ALL_PERMISSIONS.filter(isPersonal)) expect(PERMISSIONS[p].scopes, p).toEqual(["OWN"])
     })
 })
