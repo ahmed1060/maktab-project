@@ -10,7 +10,9 @@ import { useCompany } from '@/context/CompanyContext'
 import { useToast } from '@/context/ToastContext'
 import TaskPlacePicker, { type TaskPlace } from '@/components/locations/TaskPlacePicker'
 import { NamePicker } from '@/components/ui'
-import { TASK_TITLE_MAX, TASK_DESCRIPTION_MAX, firstError } from '@/lib/new-task'
+import { TASK_TITLE_MAX, TASK_DESCRIPTION_MAX, TASK_FIELDS } from '@/lib/new-task'
+import { firstError } from '@/lib/form-errors'
+import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
 import { pickIn, type CompanyPick } from '@/lib/saved-lists'
 import { useListNames } from '@/components/lists/useListNames'
 import { locationProblem, rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
@@ -29,7 +31,7 @@ import { earliestDeadline } from '@/lib/deadline'
 import { useCan } from '@/lib/useCan'
 import { useModules } from '@/lib/useModules'
 import { DownloadSimpleIcon, IdentificationCardIcon, UploadSimpleIcon } from '@phosphor-icons/react/ssr'
-import { Button, ButtonLink, Card, Field, Page, PageHeader, SearchInput, TextArea, TextInput } from '@/components/ui'
+import { Button, ButtonLink, Card, Field, Page, PageHeader, TextArea, TextInput } from '@/components/ui'
 
 const NO_CLIENTS: any[] = []
 
@@ -148,16 +150,16 @@ export default function NewTaskPage() {
             errors.locationId = t('task_location_required')
         }
         if (assigneeIds.length === 0) {
-            errors.assigneeIds = t('tasks_assignees_required')
+            errors.assigneeIds = t('assignees_required')
         }
         if (!deadline) {
-            errors.deadline = t('tasks_deadline_required')
+            errors.deadline = t('deadline_required')
         }
         if (difficulty === '') {
-            errors.difficulty = t('tasks_points_required')
+            errors.difficulty = t('points_required')
         }
 
-        const first = firstError(errors)
+        const first = firstError(errors, TASK_FIELDS)
         if (first) {
             setFieldErrors(errors)
             setIsSubmitting(false)
@@ -460,13 +462,6 @@ export default function NewTaskPage() {
         }
     }
 
-    const [searchTerm, setSearchTerm] = useState('')
-
-    const filteredUsers = users.filter(u => {
-        const fullName = `${u.firstName} ${u.lastName}`.toLowerCase()
-        return fullName.includes(searchTerm.toLowerCase())
-    })
-
     // The Excel upload's file, picked from its button in the header.
     const fileInput = useRef<HTMLInputElement>(null)
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
@@ -542,35 +537,14 @@ export default function NewTaskPage() {
                         />
                     </div>
                     {/* Who it's for: as many as it needs, found by name (DESIGN.md §5.3). */}
-                    <fieldset id="field-assigneeIds" className="ui-field ui-fieldset" aria-describedby={fieldErrors.assigneeIds ? 'assignees-error' : undefined}>
-                        <legend className="ui-label">{t('assignees_label')}</legend>
-                        <Field label={t('tasks_assignee_search')} hideLabel>{p => (
-                            <SearchInput {...p} autoComplete="off" placeholder={t('tasks_assignee_search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                        )}</Field>
-                        <div className="ui-checklist">
-                            {!usersResult
-                                ? <p className="ui-hint" role="status">{t('loading')}</p>
-                                : filteredUsers.length === 0
-                                    ? <p className="ui-hint">{t('tasks_no_people_match')}</p>
-                                    : filteredUsers.map(u => (
-                                        <label key={u.id} className="ui-choice">
-                                            <input
-                                                type="checkbox"
-                                                className="ui-check"
-                                                checked={assigneeIds.includes(u.id)}
-                                                disabled={isSubmitting}
-                                                onChange={e => {
-                                                    setAssigneeIds(e.target.checked ? [...assigneeIds, u.id] : assigneeIds.filter(id => id !== u.id))
-                                                    clearError('assigneeIds')
-                                                }}
-                                            />
-                                            <bdi>{u.firstName} {u.lastName}</bdi>
-                                            <span className="ui-hint">{t(`role_${String(u.role).toLowerCase()}` as TranslationKey)}</span>
-                                        </label>
-                                    ))}
-                        </div>
-                        {fieldErrors.assigneeIds && <span id="assignees-error" className="ui-error">{fieldErrors.assigneeIds}</span>}
-                    </fieldset>
+                    <AssigneeChecklist
+                        id="field-assigneeIds"
+                        people={usersResult ? users : undefined}
+                        value={assigneeIds}
+                        onChange={ids => { setAssigneeIds(ids); clearError('assigneeIds') }}
+                        disabled={isSubmitting}
+                        error={fieldErrors.assigneeIds || undefined}
+                    />
                     <div id="field-deadline">
                         <DateTimePicker
                             asField
@@ -582,7 +556,7 @@ export default function NewTaskPage() {
                         />
                     </div>
                     <div id="field-difficulty">
-                        <Field label={t('difficulty')} hint={t('tasks_points_hint')} error={fieldErrors.difficulty || undefined}>{p => (
+                        <Field label={t('difficulty')} hint={t('points_hint')} error={fieldErrors.difficulty || undefined}>{p => (
                             <TextInput
                                 {...p}
                                 type="number"

@@ -1218,3 +1218,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-30:** In #120, reloading or closing Create task with something
   typed asks first, rather than losing it; not once it's being sent
   (Vercel's web interface audit).
+- **2026-10-30:** Add obligation moves onto the building blocks (§5 step
+  5), as Create task did, with the pieces they now share
+  (`components/forms/AssigneeChecklist.tsx`, `lib/form-errors.ts`).
+  - Its page header, with the way back to the Obligations list.
+  - The form in one panel: each field with its visible label, its hint
+    and its error below it. How often it recurs is a choice of radio
+    buttons (DESIGN.md §5.3), one time to begin with.
+  - Who it's for and its deadline are checked before it's sent, as the
+    server needs them, so each says so under its field rather than the
+    server's refusal above the form. The focus goes to the first field
+    that's wrong.
+  - Create obligation is the page's one primary button, and leaving with
+    something typed asks first.

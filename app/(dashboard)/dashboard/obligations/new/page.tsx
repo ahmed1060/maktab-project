@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { PlusIcon } from '@phosphor-icons/react/ssr'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
@@ -9,11 +10,22 @@ import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { permissionsOf, useCan } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
-import Link from 'next/link'
 import { fetchRetrying } from '@/lib/swr-fetcher'
+import { useModules } from '@/lib/useModules'
+import { firstError } from '@/lib/form-errors'
+import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
+import { Button, ButtonLink, Card, Choice, Field, Page, PageHeader, TextArea, TextInput } from '@/components/ui'
+
+/** The longest an obligation's title and description may be, as this form takes them. */
+const TITLE_MAX = 100
+const DESCRIPTION_MAX = 500
+/** Its fields in the order they're in, for the first one wrong to take the focus. */
+const FIELDS = ['title', 'description', 'assigneeIds', 'deadline', 'difficulty'] as const
+const RECURRENCES = ['ONE_TIME', 'DAILY', 'WEEKLY', 'MONTHLY'] as const
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
+    const modules = useModules()
     // The deadline floor offered to the picker, kept current while the form
     // stays open. See lib/useNow.ts.
     const now = useNow()
@@ -22,9 +34,11 @@ export default function NewObligationPage() {
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
-    const [recurrence, setRecurrence] = useState('ONE_TIME')
-    const [searchTerm, setSearchTerm] = useState('')
+    const [recurrence, setRecurrence] = useState<(typeof RECURRENCES)[number]>('ONE_TIME')
     const [users, setUsers] = useState<any[]>([])
+    // Whether the people have come: the list says it's loading until they
+    // have, rather than that there's no one, and says so if they couldn't.
+    const [people, setPeople] = useState<'loading' | 'loaded' | 'failed'>('loading')
     const router = useRouter()
 
     const { data: session } = useSession()
@@ -68,12 +82,24 @@ export default function NewObligationPage() {
                     ? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
                     : sortedData
                 setUsers(filteredData)
+                setPeople('loaded')
             })
+            .catch(() => setPeople('failed'))
     }, [session, selectedCompanyId, mayCreate])
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Reloading or closing the tab with something typed asks first, as it
+    // would lose it; not once it's being sent (Vercel's web interface audit).
+    const started = !!(title || description || assigneeIds.length || deadline || difficulty || recurrence !== 'ONE_TIME')
+    useEffect(() => {
+        if (!started || isSubmitting) return
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [started, isSubmitting])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -81,25 +107,32 @@ export default function NewObligationPage() {
         setIsSubmitting(true)
         setError('')
 
-        // Client-side Validation
+        // Client-side Validation, in the order the fields are in. Who it's
+        // for and when were only checked by the server, whose refusal came
+        // back above the form rather than under the field.
         const errors: { [key: string]: string } = {}
-        if (!title || title.length < 3 || title.length > 100) {
-            errors.title = t('task_title_validation' as any)
+        if (!title || title.length < 3 || title.length > TITLE_MAX) {
+            errors.title = t('task_title_validation')
         }
-        if (!description || description.length < 10 || description.length > 500) {
-            errors.description = t('obligation_description_validation' as any)
+        if (!description || description.length < 10 || description.length > DESCRIPTION_MAX) {
+            errors.description = t('obligation_description_validation')
+        }
+        if (assigneeIds.length === 0) {
+            errors.assigneeIds = t('assignees_required')
+        }
+        if (!deadline) {
+            errors.deadline = t('deadline_required')
+        }
+        if (difficulty === '') {
+            errors.difficulty = t('points_required')
         }
 
-        if (Object.keys(errors).length > 0) {
+        const first = firstError(errors, FIELDS)
+        if (first) {
             setFieldErrors(errors)
             setIsSubmitting(false)
-
-            // Auto-scroll to first error
-            const firstErrorField = Object.keys(errors)[0]
-            const element = document.getElementById(`field-${firstErrorField}`)
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            }
+            // The first field that's wrong takes the focus, which brings it into view.
+            document.querySelector<HTMLElement>(`#field-${first} :is(input, textarea, select, button)`)?.focus()
             return
         }
 
@@ -138,187 +171,85 @@ export default function NewObligationPage() {
         }
     }
 
-    const containerStyle: React.CSSProperties = {
-        direction: locale === 'ar' ? 'rtl' : 'ltr',
-        textAlign: locale === 'ar' ? 'right' : 'left'
-    }
-
-    const filteredUsers = users.filter(u => {
-        const fullName = `${u.firstName} ${u.lastName}`.toLowerCase()
-        return fullName.includes(searchTerm.toLowerCase())
-    })
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const used = (n: number, max: number) => t('ui_characters_used').replace('{used}', num(n)).replace('{max}', num(max))
+    const clearError = (field: string) => { if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: '' }) }
 
     if (!mayCreate) return <AccessDenied />
 
     return (
-        <div className="card" style={{ maxWidth: '600px', margin: '0 auto', ...containerStyle }}>
-            <h1 style={{ marginBottom: '1.5rem' }}>{t('add_obligation')}</h1>
-            {error && (
-                <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', border: '1px solid var(--danger-border)' }}>
-                    {error}
-                </div>
-            )}
-            <form onSubmit={handleSubmit}>
-                <div id="field-title" style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('title_label' as any)}</label>
-                    <input aria-label={t('title_label' as any)}
-                        className="input"
-                        value={title}
-                        onChange={e => {
-                            setTitle(e.target.value)
-                            if (fieldErrors.title) setFieldErrors({ ...fieldErrors, title: '' })
-                        }}
-                        style={fieldErrors.title ? { borderColor: 'var(--danger-solid)' } : {}}
-                        required
-                        maxLength={100}
-                    />
-                    {fieldErrors.title && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.title}
-                        </div>
-                    )}
-                    <div style={{ fontSize: '0.75rem', color: title.length >= 100 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
-                        {title.length}/100
+        <Page>
+            <PageHeader title={t('add_obligation')} back={{ href: '/dashboard/obligations', label: modules.label('obligations') }} />
+
+            <Card>
+                <form onSubmit={handleSubmit} noValidate className="ui-form">
+                    <div id="field-title">
+                        <Field label={t('title_label')} hint={used(title.length, TITLE_MAX)} error={fieldErrors.title || undefined}>{p => (
+                            <TextInput {...p} value={title} maxLength={TITLE_MAX} disabled={isSubmitting}
+                                onChange={e => { setTitle(e.target.value); clearError('title') }} />
+                        )}</Field>
                     </div>
-                </div>
-                <div id="field-description" style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('description_label' as any)}</label>
-                    <textarea aria-label={t('description_label' as any)}
-                        className="input"
-                        value={description}
-                        onChange={e => {
-                            setDescription(e.target.value)
-                            if (fieldErrors.description) setFieldErrors({ ...fieldErrors, description: '' })
-                        }}
-                        style={fieldErrors.description ? { borderColor: 'var(--danger-solid)' } : {}}
-                        rows={4}
-                        required
-                        maxLength={500}
-                    />
-                    {fieldErrors.description && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.description}
-                        </div>
-                    )}
-                    <div style={{ fontSize: '0.75rem', color: description.length >= 500 ? 'var(--danger-fg-strong)' : 'var(--text-faint)', textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.25rem' }}>
-                        {description.length}/500
+                    <div id="field-description">
+                        <Field label={t('description_label')} hint={used(description.length, DESCRIPTION_MAX)} error={fieldErrors.description || undefined}>{p => (
+                            <TextArea {...p} value={description} rows={4} maxLength={DESCRIPTION_MAX} disabled={isSubmitting}
+                                onChange={e => { setDescription(e.target.value); clearError('description') }} />
+                        )}</Field>
                     </div>
-                </div>
-                <div id="field-assigneeIds" style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('assignee_label')}</label>
-                    <input aria-label={t('assignee_label')}
-                        type="text"
-                        className="input"
-                        placeholder={t('search_placeholder')}
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}
+                    {/* Who it's for: as many as it needs, found by name (DESIGN.md §5.3). */}
+                    <AssigneeChecklist
+                        id="field-assigneeIds"
+                        people={people === 'loading' ? undefined : people === 'failed' ? null : users}
+                        value={assigneeIds}
+                        onChange={ids => { setAssigneeIds(ids); clearError('assigneeIds') }}
+                        disabled={isSubmitting}
+                        error={fieldErrors.assigneeIds || undefined}
                     />
-                    <div style={{
-                        maxHeight: '200px',
-                        overflowY: 'auto',
-                        border: '1px solid var(--border)',
-                        borderRadius: '0.5rem',
-                        padding: '0.75rem',
-                        background: 'var(--surface)'
-                    }}>
-                        {filteredUsers.length > 0 ? filteredUsers.map(u => (
-                            <label key={u.id} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                marginBottom: '0.5rem',
-                                cursor: 'pointer',
-                                padding: '0.25rem',
-                                borderRadius: '0.25rem',
-                                background: assigneeIds.includes(u.id) ? 'var(--info-bg-sky)' : 'transparent'
-                            }}>
-                                <input
-                                    type="checkbox"
-                                    checked={assigneeIds.includes(u.id)}
-                                    onChange={e => {
-                                        if (e.target.checked) {
-                                            setAssigneeIds([...assigneeIds, u.id])
-                                        } else {
-                                            setAssigneeIds(assigneeIds.filter(id => id !== u.id))
-                                        }
-                                        if (fieldErrors.assigneeIds) setFieldErrors({ ...fieldErrors, assigneeIds: '' })
-                                    }}
-                                />
-                                <span style={{ fontSize: '0.9rem' }}>
-                                    {u.firstName} {u.lastName} <small style={{ color: 'var(--text-soft)' }}>({t(`role_${u.role?.toLowerCase().replace('team_leader', 'team_leader').replace('employee', 'employee').replace('admin', 'admin')}` as any)})</small>
-                                </span>
-                            </label>
-                        )) : (
-                            <div style={{ color: 'var(--text-soft)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
-                                {t('no_data_available')}
-                            </div>
-                        )}
+                    <div id="field-deadline">
+                        <DateTimePicker
+                            asField
+                            label={t('deadline_label')}
+                            value={deadline}
+                            onChange={v => { setDeadline(v); clearError('deadline') }}
+                            min={earliestDeadline(now).toISOString()}
+                            error={fieldErrors.deadline || undefined}
+                        />
                     </div>
-                    {fieldErrors.assigneeIds && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                            {fieldErrors.assigneeIds}
-                        </div>
-                    )}
-                </div>
-                <div id="field-deadline" style={{ marginBottom: '1.25rem' }}>
-                    <DateTimePicker
-                        label={t('deadline_label')}
-                        value={deadline}
-                        onChange={setDeadline}
-                        min={earliestDeadline(now).toISOString()}
-                    />
-                </div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('recurrence_label')}</label>
-                    <select aria-label={t('recurrence_label')}
-                        className="input"
+                    {/* How often it comes round: a few options, so radio buttons (DESIGN.md §5.3). */}
+                    <Choice
+                        legend={t('recurrence_label')}
+                        name="recurrence"
                         value={recurrence}
-                        onChange={e => setRecurrence(e.target.value)}
-                        required
-                    >
-                        <option value="ONE_TIME">{t('recurrence_one_time')}</option>
-                        <option value="DAILY">{t('recurrence_daily')}</option>
-                        <option value="WEEKLY">{t('recurrence_weekly')}</option>
-                        <option value="MONTHLY">{t('recurrence_monthly')}</option>
-                    </select>
-                </div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('difficulty')}</label>
-                    <input aria-label={t('difficulty')}
-                        type="number"
-                        className="input"
-                        value={difficulty}
-                        onChange={e => {
-                            const val = e.target.value
-                            if (val === '') {
-                                setDifficulty('')
-                            } else {
-                                const num = parseInt(val)
-                                setDifficulty(Math.min(Math.max(num, 0), 10).toString())
-                            }
-                        }}
-                        min="0"
-                        max="10"
-                        placeholder="0-10"
-                        required
+                        onChange={setRecurrence}
+                        options={RECURRENCES.map(r => ({ value: r, label: t(`recurrence_${r.toLowerCase()}` as 'recurrence_one_time') }))}
                     />
-                </div>
+                    <div id="field-difficulty">
+                        <Field label={t('difficulty')} hint={t('points_hint')} error={fieldErrors.difficulty || undefined}>{p => (
+                            <TextInput
+                                {...p}
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                max={10}
+                                value={difficulty}
+                                disabled={isSubmitting}
+                                onChange={e => {
+                                    const val = e.target.value
+                                    setDifficulty(val === '' ? '' : Math.min(Math.max(parseInt(val), 0), 10).toString())
+                                    clearError('difficulty')
+                                }}
+                            />
+                        )}</Field>
+                    </div>
 
-
-
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                        {isSubmitting ? t('creating') : t('create_obligation_button' as any)}
-                    </button>
-                    <Link href={'/dashboard/obligations'}
-                        className="btn"
-                        style={{ textDecoration: 'none', background: 'var(--border)', color: 'var(--text-strong)' }}
-                    >
-                        {t('cancel')}
-                    </Link>
-                </div>
-            </form >
-        </div >
+                    {error && <p className="ui-error" role="alert">{error}</p>}
+                    <div className="ui-form-actions">
+                        <Button type="submit" variant="primary" icon={PlusIcon} busy={isSubmitting}>
+                            {isSubmitting ? t('creating') : t('create_obligation_button')}
+                        </Button>
+                        <ButtonLink href={'/dashboard/obligations'}>{t('cancel')}</ButtonLink>
+                    </div>
+                </form>
+            </Card>
+        </Page>
     )
 }

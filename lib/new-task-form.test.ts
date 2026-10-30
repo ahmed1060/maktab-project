@@ -52,7 +52,7 @@ describe("Create task", () => {
             expect(html).toMatch(new RegExp(`class="ui-label"[^>]*>${label}<`))
         }
         expect(html.match(/ui_characters_used/g)?.length).toBe(2)
-        expect(html).toContain("tasks_points_hint")
+        expect(html).toContain("points_hint")
     })
 
     it("picks the deadline from a field like the others", async () => {
@@ -70,7 +70,7 @@ describe("Create task", () => {
         expect(html.match(/type="checkbox"/g)?.length).toBe(2)
         expect(html).toContain("Mona Adel")
         expect(html).toContain("role_team_leader")
-        expect(html).toContain("tasks_assignee_search")
+        expect(html).toContain("assignees_search")
     })
 
     it("says it's loading the people rather than that there are none", async () => {
