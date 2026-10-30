@@ -866,7 +866,7 @@ balance first, automatically:
     balance, each cost added makes its Spent entry, each cost shows From
     advance and To pay back, removing a cost puts its part back, Mark all
     as paid pays only what's owed, and the money owed is offered at
-    hand-over (§7.3);
+    hand-over (§7.3) (built);
   - 7c: the permissions for the companies already there, once 7a's role
     editor is live, as for charges (§6.8);
   - 7d: leaving the company: a balance still held becomes a debt, its
@@ -914,6 +914,43 @@ balance first, automatically:
     entry, newest first, with who recorded it. Give advance, Record
     return and Correction are on it for whoever may.
   - **A Super Admin picks a company first,** as for lists (§5).
+- **Proposed, as 7b builds it:**
+  - **A cost is paid from its author's advance first,** as it's added
+    (§7.2): the part the balance covers, never more than the cost, and only
+    where the company uses cash advances. Each cost keeps its part from the
+    advance, and the advance a Spent entry for it, on that cost and its
+    task, made in the same step, so the balance shown is always current.
+  - **What's paid back is only the rest** (§7.4). A task's shares, its
+    total to pay back and Mark all as paid count only the part owed to the
+    employee, so the part paid from the advance is never paid again. What
+    a cost came to stays on the cost itself, as it has since 4d (§4.5).
+  - **A Super Admin's costs come from no advance:** they hold none.
+  - **Removing a cost puts its part back** on the balance (§7.4), as a
+    Spent entry the other way round, on the same task. Entries are never
+    edited, so what was spent and what came back both stay. Deleting a
+    task puts back every cost's part the same way. What's put back goes
+    back even where the company has stopped using cash advances since:
+    the money is the person's again, and the Cash advances card shows it
+    held.
+  - **Two costs added at once by one person,** on two tasks, take their
+    parts one after the other, under the same hold on their advance as an
+    entry recorded by hand, so together they never take more than it
+    holds.
+  - **Each cost shows From advance and To pay back** where it's listed, on
+    the task and in Employee costs, once part of it came from an advance.
+    A task's total says how much of it came from cash advances. With a
+    cost name picked (§5.9), what's due of the costs of that name is only
+    what's to be paid back of each.
+  - **Add cost says the balance:** "Your advance: 700 EGP", before the
+    cost is added. There's still nothing to choose.
+  - **The person's history shows each Spent entry** as Spent on a cost,
+    or Put back, with its task, or that the task was deleted since.
+  - **At hand-over, what's owed is offered:** giving an advance to someone
+    the company owes says so ("Ahmed is owed 300 EGP") and offers to pay it
+    in the same hand-over, for whoever pays costs. It's paid as Mark all as
+    paid pays their costs, exactly the list it said: if that changed
+    meanwhile, the advance is given and nothing is paid, and it says to
+    pay from the Costs page.
 
 ---
 
@@ -1002,7 +1039,8 @@ balance first, automatically:
        done.
      - Step 7, cash advances (§7). Proposed: it ships as four PRs, 7a to
        7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
-       My cash advance, is built, and open for review in #112.
+       My cash advance, is built, and open for review in #112. 7b, costs
+       paid from the advance, is built.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1863,3 +1901,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   nothing, and the delete then took it with them; and one recorded as
   they were deleted failed as an error, not as nobody there (found by
   Codex).
+- **2026-10-30:** 7b is built: costs paid from the cash advance (§7.2,
+  §7.4). A cost added is paid from its author's advance first, and only
+  the rest is to be paid back, in their share, the task's total and Mark
+  all as paid. Each part taken is a Spent entry on its cost and task;
+  removing the cost or deleting its task puts it back. Each cost shows
+  From advance and To pay back, Add cost says the balance, and giving an
+  advance offers to pay what the company owes the person in the same
+  hand-over (§7.8).
