@@ -1377,6 +1377,22 @@ a.ui-row:focus-visible {
   outline: 2px solid var(--brand-text);
   outline-offset: 2px;
 }
+/* On phones, two to a row while their values fit half of it. A value is
+   never broken, an amount from its currency least of all: a tile whose
+   value needs more takes the row. Labels and notes still wrap. */
+@media (max-width: 767px) {
+  .ui-tiles {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .ui-tile {
+    flex: 1 1 calc(50% - var(--space-3) / 2);
+    min-width: min-content;
+  }
+  .ui-tiles dd:not(.ui-tile-note) {
+    white-space: nowrap;
+  }
+}
 
 /* ── Donut chart (§5.5) ── */
 .ui-donut {

@@ -1106,3 +1106,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   language (`DESIGN.md` §3.3): Arabic-Indic digits in Arabic, and grouped
   thousands in both, as every other amount. They were written out by hand,
   in Latin digits either way.
+- **2026-10-30:** On phones, a total tile's value stays on one line
+  (`DESIGN.md` §5.5). Two tiles to a row put an amount's currency on a line
+  of its own, as on the Costs page's Charged to clients and Cash advances
+  tabs; a tile whose value needs more than half the row takes the row now.
