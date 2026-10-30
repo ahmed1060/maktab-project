@@ -1329,3 +1329,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   how its title or description changed closes with a button as well as
   Escape; an edit in its notes is said in words rather than as a name and
   a date with nothing under them; and its notes are headed Notes.
+- **2026-10-30:** In #123, the database tests that wait for one transaction
+  to be held up by another look only at their own database. They counted
+  the whole server's waiting locks, and the other database tests, running
+  beside them, ended the wait early: "ends nothing when the advance
+  changed" failed in a full run and passed on its own.

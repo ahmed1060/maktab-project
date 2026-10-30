@@ -150,7 +150,7 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
         const ending = end("e3").then(() => "ended", (e: Error) => e.message)
         // Once the ending waits on the advance, the return commits.
         for (let i = 0; i < 100; i++) {
-            if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`)).rows[0].n > 0) break
+            if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'advisory' AND NOT l.granted AND a.datname = current_database()`)).rows[0].n > 0) break
             await new Promise(r => setTimeout(r, 100))
         }
         await returning.query("COMMIT")
@@ -215,7 +215,7 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
             await archiving.query(`UPDATE "User" SET status = 'ARCHIVED' WHERE id = 'e7'`)
             const recording = record().then(() => "recorded", (e: Error) => e.message)
             for (let i = 0; i < 100; i++) {
-                if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`)).rows[0].n > 0) break
+                if ((await db.query(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'advisory' AND NOT l.granted AND a.datname = current_database()`)).rows[0].n > 0) break
                 await new Promise(r => setTimeout(r, 100))
             }
             await archiving.query("COMMIT")
