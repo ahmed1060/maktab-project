@@ -344,8 +344,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the two tabs already on them, merged in #117 on 2026-10-30. The
      second was the Tasks list, merged in #118 on 2026-10-30, and the
      third the Obligations list, merged in #119 on 2026-10-30, and the
-     fourth Create task, merged in #120 on 2026-10-30. The fifth is Add
-     obligation, open for review in #121;
+     fourth Create task, merged in #120 on 2026-10-30, and the fifth Add
+     obligation, merged in #121 on 2026-10-30. The sixth is an
+     obligation's page, open for review in #122;
    - the one Requests page (§2.3).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
@@ -1245,6 +1246,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     tries;
   - the fields have names, autofill is kept out of them, and a title or
     description runs in the direction of its own language.
+- **2026-10-30:** Add obligation was merged in #121, and an obligation's
+  page opens for review in #122 (§5 step 5).
 - **2026-10-30:** An obligation's page moves onto the building blocks (§5
   step 5).
   - Its page header: its title with its status, who decided it once it's
