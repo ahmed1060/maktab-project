@@ -1114,3 +1114,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   lines, so every tab shows (`DESIGN.md` §5.5). The Costs page's three ran
   past the edge in English, Cash advances cut off mid-word even when it
   was the one picked. Saved lists' two now share the row too.
+- **2026-10-30:** `CLIENTS_PLAN.md`'s 7d was merged in #115, so its steps
+  0–7 are done. Four small fixes open for review in #116, before the rest
+  of this plan (§5 step 5).

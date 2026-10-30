@@ -1080,8 +1080,9 @@ balance first, automatically:
        7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
        My cash advance, was merged in #112 on 2026-10-30, and 7b, costs
        paid from the advance, in #113, and 7c, the permissions for the
-       companies already there, in #114. 7d, a balance held on leaving
-       becoming a debt, is built, and open for review in #115.
+       companies already there, in #114, and 7d, a balance held on
+       leaving becoming a debt, in #115. Step 7 is done, and with it
+       steps 0–7.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -2021,3 +2022,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   so its `%`, `_` and `\` were patterns: "a_b" was refused because "axb"
   was taken, and "%" because anyone was. They're taken as typed now, as
   the saved lists' names are (§5.9).
+- **2026-10-30:** 7d was merged in #115, so step 7 is done, and with it
+  steps 0–7. Four small fixes open for review in #116 before the rest of
+  `UI_PLAN.md`: the username check above, a task's cost amounts in the
+  page's language, and total tiles and tabs on phones.
