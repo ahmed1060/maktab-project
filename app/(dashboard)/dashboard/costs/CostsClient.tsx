@@ -22,7 +22,7 @@ import DateRangePicker from '@/components/DateRangePicker'
 import CostsHeader from '@/components/charges/CostsHeader'
 import ExtraFilterSelects from '@/components/filters/ExtraFilterSelects'
 import { pickExtra } from '@/components/filters/extra-filters'
-import { withChanges } from '@/components/filters/address'
+import { arrived, changed, type Picked } from '@/components/filters/address'
 import {
     Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, Pager, SearchInput, Select, StatusBadge, TotalTiles,
     taskStatusTone, type Column,
@@ -81,19 +81,45 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
 
-    const filters = {
-        // A Super Admin's chosen company, so Mark all as paid pays its costs only.
-        company: searchParams.get('company') || '',
-        employeeId: searchParams.get('employeeId') || '',
-        dateFrom: searchParams.get('dateFrom') || '',
-        dateTo: searchParams.get('dateTo') || '',
-        search: searchParams.get('search') || '',
-        // So Mark all as paid pays only the client's and location's shown (CLIENTS_PLAN.md §3.4).
-        clientId: searchParams.get('clientId') || '',
-        locationId: searchParams.get('locationId') || '',
-        // The tasks with a cost of a saved name, and what those come to (CLIENTS_PLAN.md §5.9).
-        costNameId: searchParams.get('costNameId') || '',
+    // What's picked shows at once, and the address follows: it changes only
+    // once its navigation lands. The date range picker reads its start back
+    // for its end, so it lost the start picked just before (found by Codex on
+    // PR 117). Each change builds on the last, so the search, sent once
+    // typing pauses, keeps a filter picked meanwhile.
+    const committed = searchParams.toString()
+    const [shown, setShown] = useState<Picked>({ latest: committed, sent: [] })
+    useAdjustOnChange([committed], () => setShown(p => arrived(p, committed)))
+    const [made, setMade] = useState(0)
+    const pushed = useRef(0)
+    useEffect(() => {
+        if (made === pushed.current) return
+        pushed.current = made
+        router.push(`/dashboard/costs?${shown.latest}`)
+    }, [made, shown.latest, router])
+    /** The list with these changed in the address, from its first page unless it's the page that changes. */
+    const go = (changes: Record<string, string>) => {
+        setShown(p => changed(p, changes))
+        setMade(n => n + 1)
     }
+
+    const filtersOf = (address: URLSearchParams) => ({
+        // A Super Admin's chosen company, so Mark all as paid pays its costs only.
+        company: address.get('company') || '',
+        employeeId: address.get('employeeId') || '',
+        dateFrom: address.get('dateFrom') || '',
+        dateTo: address.get('dateTo') || '',
+        search: address.get('search') || '',
+        // So Mark all as paid pays only the client's and location's shown (CLIENTS_PLAN.md §3.4).
+        clientId: address.get('clientId') || '',
+        locationId: address.get('locationId') || '',
+        // The tasks with a cost of a saved name, and what those come to (CLIENTS_PLAN.md §5.9).
+        costNameId: address.get('costNameId') || '',
+    })
+    const picked = new URLSearchParams(shown.latest)
+    // What the filters show, and what the list shown is of: the server's,
+    // for its address, which Mark all as paid's confirmation counted.
+    const filters = filtersOf(picked)
+    const listed = filtersOf(searchParams)
     const placeFilters = usePlaceFilters({ clientId: filters.clientId, locationId: filters.locationId })
     const costNameFilter = useNameFilter('COST_NAME', 'costNameId', filters.costNameId)
     const extraFilters = [...placeFilters, ...costNameFilter]
@@ -116,9 +142,9 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     const allCostEntries: Entry[] = tasksWithCosts.flatMap(task => {
         // With a cost name picked, each card is what's due of the costs of
         // that name: a person's on the task, or no one's (the task's own).
-        if (filters.costNameId && Array.isArray(task.costs)) {
+        if (listed.costNameId && Array.isArray(task.costs)) {
             const names = (task.assignees || []).map((a: any) => `${a.firstName} ${a.lastName}`.trim()).filter(Boolean)
-            return namedParts([task], filters.employeeId).map(part => ({
+            return namedParts([task], listed.employeeId).map(part => ({
                 ...task,
                 displayCost: part.amount,
                 displayAssignee: part.userId
@@ -154,9 +180,9 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     })
 
     // With an employee picked, only their shares: the task's own rows are no one's.
-    const filteredEntries = allCostEntries.filter(entry => !filters.employeeId || entry.displayAssignee.id === filters.employeeId)
+    const filteredEntries = allCostEntries.filter(entry => !listed.employeeId || entry.displayAssignee.id === listed.employeeId)
 
-    const sortParam = `${searchParams.get('sortBy') || 'date'}_${searchParams.get('sortOrder') || 'desc'}`
+    const sortParam = `${picked.get('sortBy') || 'date'}_${picked.get('sortOrder') || 'desc'}`
     const sortKey: SortKey = sortParam in SORTS ? sortParam as SortKey : 'date_desc'
     const [sortBy, sortOrder] = sortKey.split('_') as ['date' | 'amount', 'asc' | 'desc']
     const sortedEntries = [...filteredEntries].sort((a, b) => {
@@ -166,22 +192,10 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
         return sortOrder === 'asc' ? comparison : -comparison
     })
 
-    // The address as last changed, which each change builds on: the search,
-    // sent once typing pauses, keeps a filter picked meanwhile, which the
-    // render that started its timer hadn't seen (found by Codex on PR 117).
-    // It follows the address when it changes some other way, as going back.
-    const address = useRef(searchParams.toString())
-    useEffect(() => { address.current = searchParams.toString() }, [searchParams])
-    /** The list with these changed in the address, from its first page unless it's the page that changes. */
-    const go = (changes: Record<string, string>) => {
-        address.current = withChanges(address.current, changes)
-        router.push(`/dashboard/costs?${address.current}`)
-    }
-
     // The search is sent once typing pauses, not on every key. The field
-    // follows the address only when something else changed its search, as
-    // going back does: not when it's the search this sent, arriving while
-    // more is typed.
+    // follows the search picked only when something else changed it, as
+    // going back does: not when it's the search this sent, while more is
+    // typed.
     const [query, setQuery] = useState(filters.search)
     const [sent, setSent] = useState(filters.search)
     useAdjustOnChange([filters.search], () => {
@@ -195,12 +209,11 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
             go({ search: query.trim() })
         }, 400)
         return () => clearTimeout(timer)
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- `go` builds on the address as last changed, whichever render made it.
     }, [query, sent])
 
     const pickFilter = (key: string, value: string) => {
-        const picked = Object.fromEntries(extraFilters.map(f => [f.key, f.value]))
-        go(pickExtra(extraFilters, picked, key, value))
+        const values = Object.fromEntries(extraFilters.map(f => [f.key, f.value]))
+        go(pickExtra(extraFilters, values, key, value))
     }
     const filtersOn = (filters.employeeId ? 1 : 0) + (filters.dateFrom || filters.dateTo ? 1 : 0) + extraFilters.filter(f => f.value).length
     const resetFilters = () => {
@@ -217,7 +230,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
             const res = await fetch('/api/tasks/payment/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filters, confirm: { digest: toPay.digest } })
+                body: JSON.stringify({ filters: listed, confirm: { digest: toPay.digest } })
             })
             if (res.status === 409) {
                 // Changed since it was shown: shown again as it is now.
@@ -243,7 +256,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     // adds up those costs, and a payment is a person's share of a whole task:
     // it says so rather than pay more than it shows (§5.9).
     const paysAll = companyWide('tasks.pay') && total > 0
-    const payButton = paysAll && !filters.costNameId && toPay && toPay.count > 0 && (
+    const payButton = paysAll && !listed.costNameId && toPay && toPay.count > 0 && (
         <Button variant="primary" icon={CheckCircleIcon} busy={isUpdating} onClick={() => setConfirming(true)}>
             {isUpdating ? t('marking_as_paid') : t('mark_all_as_paid')}
         </Button>
@@ -252,12 +265,12 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     // What each amount is: the cost name the list is filtered by, or what's to pay back.
-    const amountIs = filters.costNameId && costName ? costName : t('advances_to_pay_back')
+    const amountIs = listed.costNameId && costName ? costName : t('advances_to_pay_back')
     const person = (e: Entry) => <bdi>{`${e.displayAssignee.firstName} ${e.displayAssignee.lastName}`.trim()}</bdi>
     const task = (e: Entry) => <Link href={`/dashboard/tasks/${e.id}`} prefetch={false} className="ui-item-link"><bdi>{e.title}</bdi></Link>
     const badge = (e: Entry) => <StatusBadge tone={taskStatusTone(e.status)}>{t(`status_${e.status.toLowerCase()}` as TranslationKey)}</StatusBadge>
     // What their cash advance paid of it, never paid again (CLIENTS_PLAN.md §7.2).
-    const advanced = (e: Entry) => !filters.costNameId && (e.fromAdvance ?? 0) > 0
+    const advanced = (e: Entry) => !listed.costNameId && (e.fromAdvance ?? 0) > 0
 
     const columns: Column<Entry>[] = [
         { key: 'task', header: t('costs_col_task'), cell: e => <ItemTitle title={task(e)} /> },
@@ -303,7 +316,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
                 {
                     label: t('costs_total_due'), value: money(totalDue),
                     // Mark all as paid gives way to why, with a cost name picked.
-                    note: paysAll && filters.costNameId ? t('costs_pay_by_name') : undefined,
+                    note: paysAll && listed.costNameId ? t('costs_pay_by_name') : undefined,
                 },
             ]} />
 

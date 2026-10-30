@@ -1149,3 +1149,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   its last task is paid elsewhere and it's refreshed, goes to the last page
   there is, with its filters. The list showed only its empty state, saying
   there were no costs, with no pager to go back by (found by Codex).
+- **2026-10-30:** In #117, Employee costs' filters show what's picked at
+  once, and the address follows. They were read from the address, which
+  changes only once its navigation lands, so the date range picker read the
+  start just picked back from there for the end, and lost it (found by
+  Codex). The selects showed what was picked only once the list came back,
+  too.
