@@ -36,4 +36,12 @@ describe("asking for leave", () => {
     it("reaches the companies already there in 2b's migration, run once 2a's role editor was live", () => {
         expect(readFileSync("lib/roles-migration.test.ts", "utf8")).toContain("prisma/migrations/20261124000000_dayoff_request_granted/migration.sql")
     })
+
+    it("is what asking for leave needs, in the API and on the day-off page (part 2b)", () => {
+        expect(readFileSync("app/api/day-off-requests/route.ts", "utf8")).toContain('can(session.user, "dayoff.request")')
+        const page = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
+        expect(page).toContain("const mayAsk = can('dayoff.request')")
+        // Not "whoever doesn't see others' leave" any more: an HR officer may ask too.
+        expect(page).not.toMatch(/!managesRequests && <Button/)
+    })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { PERMISSIONS, ALL_PERMISSIONS, isPermission, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, ALL_PERMISSIONS, isPermission, isPersonal, type Permission, type Scope } from "./catalogue"
 import { BUILT_IN_GRANTS, type BuiltInRole } from "./built-in"
 import { can, grantFor, withinScope } from "./can"
 import { withGrants } from "@/lib/permissions/test-actors"
@@ -56,10 +56,15 @@ describe("can", () => {
     const superAdmin = { id: "sa", role: "SUPER_ADMIN", companyId: null }
 
     it("gives a Super Admin everything, anywhere", () => {
-        for (const p of ALL_PERMISSIONS) {
+        for (const p of ALL_PERMISSIONS.filter(p => !isPersonal(p))) {
             expect(grantFor(superAdmin, p)).toBe("ALL")
             expect(can(superAdmin, p, { companyId: "c9" })).toBe(true)
         }
+    })
+
+    it("but a personal permission: they're nobody's employee, and ask for no leave (UI_PLAN.md §2.3, part 2b)", () => {
+        expect(grantFor(superAdmin, "dayoff.request")).toBeNull()
+        expect(can(superAdmin, "dayoff.request")).toBe(false)
     })
 
     it("holds an Admin to their own company", () => {
