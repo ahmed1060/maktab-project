@@ -14,6 +14,16 @@ import { join } from "node:path"
 const files = (dir: string, ext: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
     e.isDirectory() ? files(join(dir, e.name), ext) : e.name.endsWith(ext) ? [join(dir, e.name)] : [])
 
+/** The route file a screen's path reaches: a `${…}` segment is its folder's [param]. */
+function routeFile(route: string): string {
+    let dir = "app"
+    for (const seg of route.split("/").filter(Boolean)) {
+        const param = seg.includes("${") && existsSync(dir) ? readdirSync(dir).find(e => /^\[[^.\]]+\]$/.test(e)) : undefined
+        dir = join(dir, param ?? seg)
+    }
+    return join(dir, "route.ts")
+}
+
 describe("list paging", () => {
     it("no route parses page or limit by hand", () => {
         const byHand = files("app/api", "route.ts")
@@ -35,7 +45,7 @@ describe("list paging", () => {
         expect(asked.length).toBeGreaterThan(5)
 
         const over = asked.flatMap(({ screen, route, limit }) => {
-            const file = join("app", route.replace(/\$\{[^}]+\}/g, seg => `[${seg.includes("section") ? "sectionId" : "id"}]`), "route.ts")
+            const file = routeFile(route)
             if (!existsSync(file)) return [`${screen}: no route file for ${route}`]
             const call = readFileSync(file, "utf8").match(/parsePaging\(searchParams, \d+(?:, (\d+))?\)/)
             if (!call) return [`${file}: doesn't use parsePaging`]

@@ -9,6 +9,7 @@ import { calendarDateStr } from "@/lib/time"
 import { filterTimeZone } from "@/lib/services/filter-zone"
 import { uploadedHere } from "@/lib/services/cost-receipts"
 import type { Paging } from "@/lib/pagination"
+import { owedTo } from "@/lib/services/costs-query"
 import {
     CASH_ADVANCE_NOTE_MAX, HANDOVER_FOLDER, RECORDED_KINDS, balanceAfter, cashAdvancesInUse, dayOf, signedAmount, type RecordedKind,
 } from "@/lib/cash-advances"
@@ -40,6 +41,8 @@ const PERSON = { id: true, firstName: true, lastName: true, status: true, compan
 
 const ENTRY = {
     id: true, kind: true, amount: true, date: true, note: true, photoUrl: true, confirmedAt: true, recordedByName: true, createdAt: true,
+    // A Spent one's task, while it's there (§7.4).
+    task: { select: { id: true, title: true } },
 } satisfies Prisma.CashAdvanceEntrySelect
 
 function nameOf(person: { firstName: string; lastName: string }) {
@@ -80,9 +83,13 @@ async function balancesIn(companyId: string) {
     }]))
 }
 
-/** Today, where the company is: the last day an entry may be recorded on. */
-async function todayIn(companyId: string): Promise<string> {
-    return calendarDateStr(new Date(), await filterTimeZone(companyId))
+/**
+ * Today, where the company is: the last day an entry may be recorded on.
+ * Inside a transaction, read through it: one waiting for a connection the
+ * others hold, while they wait on its hold on an advance, never gets one.
+ */
+async function todayIn(companyId: string, db: Db = prisma): Promise<string> {
+    return calendarDateStr(new Date(), await filterTimeZone(companyId, db))
 }
 
 /** A name's words, each in the first or last name. */
@@ -165,6 +172,8 @@ export class CashAdvanceService {
             totalPages: Math.ceil(total / paging.limit),
             // Nobody gives or settles their own (§7.8): can() refuses it.
             canGive: can(user, "cash_advances.give", target),
+            // What they're owed, offered at hand-over (§7.3).
+            owed: person.id !== user.id ? await owedTo(user, person.id) : null,
         }
     }
 
@@ -265,6 +274,57 @@ export class CashAdvanceService {
         if (user.role === "SUPER_ADMIN") return true
         if (!user.companyId) return false
         return cashAdvancesInUse(await prisma.company.findUnique({ where: { id: user.companyId }, select: { cashAdvancesAllowed: true, cashAdvancesOn: true } }))
+    }
+
+    /**
+     * Pays costs being added from their author's advance first (§7.2): each
+     * the part the balance covers, in the order they're added, never more
+     * than the cost. Only where the company uses cash advances, and only a
+     * company person's: a Super Admin holds none. Each cost's part, which
+     * spent() then records once the costs are there. Holds the company and
+     * the person's advance, as recording an entry does.
+     */
+    static async spendFor(tx: Prisma.TransactionClient, author: { id: string; role?: string | null }, companyId: string | null, amounts: readonly number[]): Promise<number[]> {
+        const none = amounts.map(() => 0)
+        if (!companyId || author.role === "SUPER_ADMIN") return none
+        await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
+        const company = await tx.company.findUnique({ where: { id: companyId }, select: { cashAdvancesAllowed: true, cashAdvancesOn: true } })
+        if (!cashAdvancesInUse(company)) return none
+        await CashAdvanceService.lockPerson(tx, author.id)
+        let balance = await balanceOf(tx, companyId, author.id)
+        return amounts.map(amount => {
+            const part = cents(Math.min(balance, amount))
+            balance = cents(balance - part)
+            return part
+        })
+    }
+
+    /**
+     * Spent entries for costs paid from an advance (§7.4): taken off as they
+     * were added (way -1), or put back as they're removed (way 1), each on
+     * its cost and task. One put back is put back whether or not the company
+     * still uses cash advances: the money is the person's again.
+     */
+    static async spent(tx: Prisma.TransactionClient, companyId: string, taskId: string, costs: readonly { id: string; authorId: string | null; part: number }[], way: -1 | 1, by: { id: string; name?: string | null }) {
+        let parts = costs.filter((c): c is { id: string; authorId: string; part: number } => !!c.authorId && c.part > 0)
+        if (!parts.length) return
+        if (way === 1) {
+            // Each person's advance held, in one order, so two removals don't wait on each other.
+            const authors = [...new Set(parts.map(c => c.authorId))].sort()
+            for (const authorId of authors) await CashAdvanceService.lockPerson(tx, authorId)
+            // Someone deleted for good since has no advance to put it back on:
+            // theirs went with them, held at nothing (UserService.delete).
+            const here = new Set((await tx.user.findMany({ where: { id: { in: authors } }, select: { id: true } })).map(u => u.id))
+            parts = parts.filter(c => here.has(c.authorId))
+            if (!parts.length) return
+        }
+        const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
+        await tx.cashAdvanceEntry.createMany({
+            data: parts.map(c => ({
+                companyId, userId: c.authorId, kind: "SPENT" as const, amount: cents(way * c.part), date,
+                costId: c.id, taskId, recordedById: by.id, recordedByName: by.name ?? null,
+            })),
+        })
     }
 
     /** What one person holds, which keeps them from being deleted for good (§7.4). */

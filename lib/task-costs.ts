@@ -36,6 +36,8 @@ export type CostRow = {
     authorName: string | null
     /** Its receipt's photo, if one was taken (§6.2). */
     receiptUrl: string | null
+    /** The part of it paid from its author's cash advance (CLIENTS_PLAN.md §7.2). */
+    fromAdvance?: number
     /** When it was added, which costs added together share. */
     createdAt: string
 }
@@ -49,6 +51,8 @@ export type CostLine = {
     author: string | null
     authorId: string | null
     receiptUrl: string | null
+    /** The part of it paid from its author's cash advance; the rest is paid back (CLIENTS_PLAN.md §7.2). */
+    fromAdvance?: number
 }
 
 export function isCostEntry(entry: unknown): entry is CostEntry {
@@ -115,5 +119,5 @@ export function costLines(rows: CostRow[], comments: unknown): CostLine[] {
     const at = (id: string) => place.get(id) ?? Number.MAX_SAFE_INTEGER
     return [...rows]
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || at(a.id) - at(b.id))
-        .map(r => ({ id: r.id, date: r.createdAt, amount: r.amount, description: r.description, author: r.authorName, authorId: r.authorId, receiptUrl: r.receiptUrl ?? null }))
+        .map(r => ({ id: r.id, date: r.createdAt, amount: r.amount, description: r.description, author: r.authorName, authorId: r.authorId, receiptUrl: r.receiptUrl ?? null, fromAdvance: r.fromAdvance }))
 }

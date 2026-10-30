@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { COST_DESCRIPTION_MAX, RECEIPT_ACCEPT } from '@/lib/task-costs'
+import AdvanceBalanceHint from '@/components/cash-advances/AdvanceBalanceHint'
 import { FileChip, FileChips, FilePicker, NamePicker, type PickedName } from '@/components/ui'
 import { useListNames } from '@/components/lists/useListNames'
 
@@ -109,6 +110,8 @@ export default function TaskSubmissionForm({
 
             <div style={{ marginBottom: '1.5rem' }}>
                 <label htmlFor="cost-name" style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem' }}>{t('add_costs_label')}</label>
+                {/* Their cash advance, which pays the costs they add first (CLIENTS_PLAN.md §7.2). */}
+                <AdvanceBalanceHint />
                 {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'row', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 220px', minWidth: 0 }}>

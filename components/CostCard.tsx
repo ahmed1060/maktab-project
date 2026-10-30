@@ -15,6 +15,8 @@ interface CostCardProps {
             lastName: string
         }
         paymentStatus?: string
+        /** Of this person's costs on the task, what their cash advance paid (CLIENTS_PLAN.md §7.5). */
+        fromAdvance?: number
     }
     isHighlighted?: boolean
     /** What the amount is, when it's not the whole cost: the cost name the list is filtered by (CLIENTS_PLAN.md §5.9). */
@@ -75,11 +77,17 @@ export default function CostCard({ task, isHighlighted, amountLabel }: CostCardP
                 }}>
                     {/* A cost name, as typed, can be long: it wraps rather than run out of the box. */}
                     <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', fontWeight: '600', marginBottom: '0.25rem', overflowWrap: 'anywhere' }}>
-                        {amountLabel || t('total_cost')}
+                        {amountLabel || (task.fromAdvance ? t('advances_to_pay_back') : t('total_cost'))}
                     </div>
                     <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--warn-fg)' }}>
                         {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(task.totalCost)} {t('egp')}
                     </div>
+                    {/* What their cash advance paid of it, never paid again (CLIENTS_PLAN.md §7.2). */}
+                    {!amountLabel && !!task.fromAdvance && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--warn-fg)', marginTop: 'var(--space-1)' }}>
+                            {t('advances_from_advance')}: {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(task.fromAdvance)} {t('egp')}
+                        </div>
+                    )}
                 </div>
 
                 <div style={{

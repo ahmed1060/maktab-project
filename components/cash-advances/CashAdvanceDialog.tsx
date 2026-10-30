@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useState } from 'react'
+import useSWR from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { Button, Choice, Details, Dialog, Field, FileChip, FileChips, FilePicker, TextArea, TextInput } from '@/components/ui'
@@ -9,7 +10,8 @@ import {
 } from '@/lib/cash-advances'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
-import type { AdvancePerson } from './types'
+import { fetcher } from '@/lib/swr-fetcher'
+import type { AdvancePerson, Owed } from './types'
 
 const TITLE: Record<RecordedKind, TranslationKey> = { GIVEN: 'advances_give_title', RETURNED: 'advances_return_title', CORRECTION: 'advances_correct_title' }
 const SAVE: Record<RecordedKind, TranslationKey> = { GIVEN: 'advances_give', RETURNED: 'advances_record_return', CORRECTION: 'advances_save_correction' }
@@ -42,9 +44,13 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
     const [saving, setSaving] = useState(false)
     // The photo, once uploaded: a try again after a refusal sends the same file.
     const [uploaded, setUploaded] = useState<{ file: File; url: string } | null>(null)
+    // What the company owes them, offered with the advance (CLIENTS_PLAN.md §7.3): asked for as it opens.
+    const [payOwed, setPayOwed] = useState<'yes' | 'no'>('no')
+    const { data: about } = useSWR<{ data: { owed: Owed | null } }>(person && kind === 'GIVEN' ? `/api/cash-advances/${encodeURIComponent(person.id)}?limit=1` : null, fetcher)
+    const owed = kind === 'GIVEN' ? about?.data?.owed ?? null : null
 
     useAdjustOnChange([person?.id, kind], () => {
-        setAmount(''); setDirection('add'); setDate(today); setNote(''); setPhoto(null); setUploaded(null)
+        setAmount(''); setDirection('add'); setDate(today); setNote(''); setPhoto(null); setUploaded(null); setPayOwed('no')
     })
 
     const balance = person?.balance ?? 0
@@ -90,7 +96,20 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
                 showToast(refusalText(t, answer), 'error')
                 return
             }
-            showToast(t(DONE[kind]), 'success')
+            // And what they're owed, exactly as it said, as Mark all as paid pays their costs (§4.1).
+            const paying = owed && payOwed === 'yes' ? owed : null
+            if (paying) {
+                const paid = await fetch('/api/tasks/payment/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filters: { employeeId: person.id }, confirm: { digest: paying.digest } }),
+                }).catch(() => null)
+                const paidAnswer = paid ? await paid.json().catch(() => null) : null
+                if (!paid?.ok) showToast(paidAnswer?.code === 'PAYMENT_LIST_CHANGED' ? t('advances_owed_changed') : t('advances_owed_failed'), 'warning')
+                else showToast(t('advances_given_and_paid').replace('{amount}', money(paying.amount)), 'success')
+            } else {
+                showToast(t(DONE[kind]), 'success')
+            }
             onSaved()
             onClose()
         } catch (error) {
@@ -134,6 +153,18 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
                 <Field label={t(kind === 'CORRECTION' ? 'advances_reason' : 'advances_note')} hint={t(kind === 'CORRECTION' ? 'advances_reason_hint' : 'advances_note_hint')} error={noteError}>{p => (
                     <TextArea {...p} name="note" autoComplete="off" rows={2} maxLength={CASH_ADVANCE_NOTE_MAX} value={note} onChange={e => setNote(e.target.value)} />
                 )}</Field>
+                {owed && (
+                    <Choice
+                        legend={t('advances_owed_title').replace('{name}', person?.name ?? '').replace('{amount}', money(owed.amount))}
+                        name="payOwed"
+                        value={payOwed}
+                        onChange={setPayOwed}
+                        options={[
+                            { value: 'yes', label: t('advances_owed_pay').replace('{amount}', money(owed.amount)) },
+                            { value: 'no', label: t('advances_owed_not_now') },
+                        ]}
+                    />
+                )}
                 {kind === 'GIVEN' && (
                     <div className="ui-field">
                         {photo && (

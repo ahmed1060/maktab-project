@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import Link from 'next/link'
 import {
-    ArrowUDownLeftIcon, CalendarBlankIcon, CheckCircleIcon, HandCoinsIcon, HourglassIcon, NotePencilIcon, PaperclipIcon, SlidersHorizontalIcon, UserIcon,
+    ArrowUDownLeftIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, HandCoinsIcon, HourglassIcon, NotePencilIcon, PaperclipIcon, SlidersHorizontalIcon, UserIcon,
     WalletIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
@@ -100,9 +101,14 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     const status = (e: AdvanceEntry) => e.kind !== 'GIVEN' ? null
         : e.confirmedAt ? <StatusBadge tone="good">{t('advances_confirmed')}</StatusBadge>
             : <StatusBadge tone="waiting">{t('advances_awaiting')}</StatusBadge>
+    // Spent on a cost, or put back as it was removed; on its task, while it's there (§7.4).
+    const kindOf = (e: AdvanceEntry) => t(e.kind === 'SPENT' && e.amount > 0 ? 'advances_kind_put_back' : KIND_LABEL[e.kind])
+    const onTask = (e: AdvanceEntry) => e.kind !== 'SPENT' ? null
+        : e.task ? <Link href={`/dashboard/tasks/${encodeURIComponent(e.task.id)}`} prefetch={false} className="ui-item-link"><bdi>{e.task.title}</bdi></Link>
+            : <span>{t('advances_task_gone')}</span>
     const what = (e: AdvanceEntry) => (
         <>
-            <ItemTitle title={t(KIND_LABEL[e.kind])} detail={e.note ? <bdi>{e.note}</bdi> : undefined} detailIcon={e.note ? NotePencilIcon : undefined} />
+            <ItemTitle title={kindOf(e)} detail={onTask(e) ?? (e.note ? <bdi>{e.note}</bdi> : undefined)} detailIcon={onTask(e) ? ClipboardTextIcon : e.note ? NotePencilIcon : undefined} />
             {e.photoUrl && <FileChip name={t('advances_photo')} href={e.photoUrl} />}
         </>
     )
@@ -146,10 +152,11 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                 rowKey={e => e.id}
                 card={e => (
                     <ListCard
-                        title={t(KIND_LABEL[e.kind])}
+                        title={kindOf(e)}
                         status={status(e)}
                         details={[
                             { icon: WalletIcon, text: <strong className="ui-num">{signed(e.amount)}</strong> },
+                            ...(onTask(e) ? [{ icon: ClipboardTextIcon, text: onTask(e) }] : []),
                             { icon: CalendarBlankIcon, text: <span>{dayLabel(e.date, locale)}</span> },
                             ...(e.note ? [{ icon: NotePencilIcon, text: <bdi>{e.note}</bdi> }] : []),
                             { icon: UserIcon, text: <span>{t('advances_recorded_by').replace('{name}', e.recordedByName ?? t('unknown_user'))}</span> },

@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { grantFor, type Actor } from "@/lib/permissions/can"
+import { can, grantFor, type Actor } from "@/lib/permissions/can"
 import { assignedToTeamWhere } from "@/lib/team-scope"
 import { dayRangeIn } from "@/lib/services/filter-zone"
 import { placeFilters } from "@/lib/place-filters"
@@ -128,7 +128,7 @@ async function namedDue(where: { AND: any[] }, name: FilterName | null, employee
     if (!name) return withCostNamed(null)
     const tasks = await prisma.task.findMany({
         where: { AND: [...where.AND, withCostNamed(name)] },
-        select: { id: true, memberCosts: true, memberPaymentStatus: true, costs: { where: costNamed(name), select: { authorId: true, amount: true } } },
+        select: { id: true, memberCosts: true, memberPaymentStatus: true, costs: { where: costNamed(name), select: { authorId: true, amount: true, fromAdvance: true } } },
     })
     return { id: { in: [...new Set(namedParts(tasks, employeeId).map(p => p.taskId))] } }
 }
@@ -156,4 +156,18 @@ export function snapshotOf(tasks: { id: string; totalCost: unknown; memberCosts:
         digest: createHash("sha256").update(partsLine(parts)).digest("hex"),
         rows,
     }
+}
+
+/**
+ * What the company owes this person for their costs, as the Costs page lists
+ * it for them and Mark all as paid would pay it (CLIENTS_PLAN.md §4.1):
+ * offered at hand-over to whoever pays costs (§7.3), with the digest that
+ * pays exactly that.
+ */
+export async function owedTo(user: Actor & { id: string }, personId: string) {
+    if (!can(user, "tasks.pay")) return null
+    const where = await pendingCostsWhere(user, { employeeId: personId })
+    if (!where) return null
+    const { count, amount, digest } = await pendingCostsSnapshot(where, personId)
+    return count > 0 ? { count, amount, digest } : null
 }

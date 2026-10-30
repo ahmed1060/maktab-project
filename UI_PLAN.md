@@ -1079,3 +1079,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   tab has a Cash advances card, on the building blocks, for the switches.
 - **2026-10-30:** `CLIENTS_PLAN.md`'s 6d was merged in #111, and 7a opens
   for review in #112.
+- **2026-10-30:** With `CLIENTS_PLAN.md`'s 7b, a cost paid partly or
+  wholly from a cash advance shows From advance and To pay back on its own
+  line under it, on the task's page, and a task's total box says To pay
+  back, with how much came from cash advances. Employee costs' cards say
+  To pay back, with From advance under the amount. Add cost has a line
+  with the person's advance, a cash advance's history shows Spent on a
+  cost and Put back with the task, and the Give advance dialog asks
+  whether to pay what the person is owed in the same hand-over.
+- **2026-10-30:** `CLIENTS_PLAN.md`'s 7a was merged in #112, and 7b opens
+  for review in #113.
