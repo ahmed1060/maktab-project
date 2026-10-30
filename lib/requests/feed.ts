@@ -113,21 +113,34 @@ export function internalRow(v: Viewer, r: InternalRequest): FeedRow {
         started: r.inProgressAt?.toISOString() ?? null,
         finished: r.completedAt?.toISOString() ?? null,
         status: r.status,
-        sortAt: done ? (r.completedAt ?? r.updatedAt).toISOString() : asked,
+        sortAt: done ? r.updatedAt.toISOString() : asked,
         mayDecide: !done && reaches,
         mayDelete: superAdmin || (!done && (r.userId === v.id || (r.companyId === v.companyId && reaches))),
     }
+}
+
+/**
+ * The order internal requests are read in, which must be the order the page
+ * merges them in (pageOf): newest first by sortAt, then by id. Read in any
+ * other order, a tie at a page's edge gave the next page a different first
+ * rows, repeating one and never showing another (found by Codex on PR 125).
+ * Done is by when it last changed, which is when it was done: completedAt
+ * is null on requests done before it was kept, and Postgres puts nulls first.
+ */
+export function internalOrder(show: RequestsShow) {
+    return show === "done"
+        ? [{ updatedAt: "desc" as const }, { id: "asc" as const }]
+        : [{ createdAt: "desc" as const }, { id: "asc" as const }]
 }
 
 const internal: Source = {
     kind: "internal",
     where: internalWhere,
     list: (v, q, where, take) => {
-        const done = q.show === "done"
         return Promise.all([
             prisma.request.findMany({
                 where,
-                orderBy: done ? [{ completedAt: "desc" }, { updatedAt: "desc" }] : [{ createdAt: "desc" }],
+                orderBy: internalOrder(q.show),
                 take,
                 include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
             }),
@@ -142,7 +155,9 @@ const SOURCES: Source[] = [internal]
 
 /** Every kind's rows, merged newest first, and the page of them shown. */
 export function pageOf(lists: Listed[], page: number, limit: number) {
-    const rows = lists.flatMap(l => l.rows).sort((a, b) => b.sortAt.localeCompare(a.sortAt) || a.id.localeCompare(b.id))
+    // By character, as the database orders ids, not by the locale's rules.
+    const byId = (a: FeedRow, b: FeedRow) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    const rows = lists.flatMap(l => l.rows).sort((a, b) => (a.sortAt < b.sortAt ? 1 : a.sortAt > b.sortAt ? -1 : 0) || byId(a, b))
     const total = lists.reduce((sum, l) => sum + l.total, 0)
     return { rows: rows.slice((page - 1) * limit, page * limit), total, totalPages: Math.max(1, Math.ceil(total / limit)) }
 }

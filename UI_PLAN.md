@@ -1451,3 +1451,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   does. The page reads the database itself, past the API's handler, so it
   showed them their requests, and others' they see (found by Codex on PR
   125). The rule is one function now, which the handler asks too.
+- **2026-10-30:** In #125, the feed reads each kind in the order the page
+  merges them in: newest first, then by id. Read in another order, two
+  requests asked at the same moment on a page's edge could each fall on
+  both pages, or on neither (found by Codex on PR 125). Done is in order of
+  when each was last changed, which is when it was done, as the old history
+  page had it: a request done before its completion time was kept has none.

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { internalRow, internalWhere, pageOf, type FeedRow } from "./feed"
+import { internalOrder, internalRow, internalWhere, pageOf, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -87,9 +87,16 @@ describe("an internal request's row", () => {
         expect(internalRow(superAdmin, request({ status: "COMPLETED" })).mayDelete).toBe(true)
     })
 
-    it("once done, is ordered by when it was done", () => {
+    it("once done, is ordered by when it was last changed, which is when it was done", () => {
         const done = new Date("2026-10-30T12:00:00Z")
-        expect(internalRow(admin, request({ status: "COMPLETED", completedAt: done })).sortAt).toBe(done.toISOString())
+        expect(internalRow(admin, request({ status: "COMPLETED", completedAt: done, updatedAt: done })).sortAt).toBe(done.toISOString())
+        // One done before completedAt was kept has none: it's still ordered, by the same column the database orders by.
+        expect(internalRow(admin, request({ status: "COMPLETED", completedAt: null, updatedAt: done })).sortAt).toBe(done.toISOString())
+    })
+
+    it("is read in the order the page merges in, ties by id, so a page boundary neither repeats nor drops one (found by Codex on PR 125)", () => {
+        expect(internalOrder("waiting")).toEqual([{ createdAt: "desc" }, { id: "asc" }])
+        expect(internalOrder("done")).toEqual([{ updatedAt: "desc" }, { id: "asc" }])
     })
 })
 
@@ -107,6 +114,14 @@ describe("the page of rows", () => {
         expect(first.total).toBe(9)
         expect(first.totalPages).toBe(5)
         expect(pageOf([a, b], 2, 2).rows.map(r => r.id)).toEqual(["a1"])
+    })
+
+    it("breaks a tie by id, as the database is read", () => {
+        const at = "2026-10-30T10:00:00.000Z"
+        // Read a, b, c, d by the database; pages of two are a, b then c, d.
+        const read = { rows: ["a", "b", "c", "d"].map(id => row(id, at)), total: 4 }
+        expect(pageOf([read], 1, 2).rows.map(r => r.id)).toEqual(["a", "b"])
+        expect(pageOf([{ ...read, rows: read.rows.slice(0, 4) }], 2, 2).rows.map(r => r.id)).toEqual(["c", "d"])
     })
 
     it("has a page even with nothing on it", () => {
