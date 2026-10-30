@@ -1148,8 +1148,10 @@ export class TaskService {
 
                 // What of it came from its author's cash advance goes back on
                 // it, and only the rest comes off what's to be paid back
-                // (CLIENTS_PLAN.md §7.4).
-                const advanced = row ? Number(row.fromAdvance) : 0
+                // (CLIENTS_PLAN.md §7.4). That's on its row, however the cost
+                // was named: by its id, or by its entry's time, which names it.
+                const linked = row ?? (isCost && typeof item.costId === 'string' ? await tx.taskCost.findFirst({ where: { id: item.costId, taskId: id } }) : null)
+                const advanced = linked ? Number(linked.fromAdvance) : 0
                 const owed = cents(Number(item.amount || 0) - advanced)
                 if (isCost && owed > 0) {
                     updateData.totalCost = { decrement: owed }
@@ -1159,8 +1161,8 @@ export class TaskService {
                         updateData.memberCosts = memberCosts
                     }
                 }
-                if (row && advanced > 0 && task.companyId) {
-                    await CashAdvanceService.spent(tx, task.companyId, id, [{ id: row.id, authorId: row.authorId, part: advanced }], 1, { id: userId, name: session.user.name })
+                if (linked && advanced > 0 && task.companyId) {
+                    await CashAdvanceService.spent(tx, task.companyId, id, [{ id: linked.id, authorId: linked.authorId, part: advanced }], 1, { id: userId, name: session.user.name })
                 }
                 if (isCost && typeof item.costId === 'string') costRow = item.costId
             } else {

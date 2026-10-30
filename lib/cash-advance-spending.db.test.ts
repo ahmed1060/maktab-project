@@ -185,6 +185,17 @@ describe.skipIf(!ADMIN_URL)("costs paid from cash advances, in Postgres", () => 
         expect((await Advances.person(admin.user, "e1", PAGE)).owed).toBeNull()
     })
 
+    it("puts a cost's part back when it's removed by its entry's time, as the older request names it", async () => {
+        await Advances.record(admin, "e2", { kind: "GIVEN", amount: 100, date: "2026-10-03" })
+        const before = await task("k2")
+        await add("k2", eman, 130)
+        const { rows: [entry] } = await db.query(`SELECT c->>'date' AS date FROM "Task", jsonb_array_elements(comments) c WHERE id = 'k2' AND c->>'type' = 'COST_ADDITION' AND (c->>'amount')::numeric = 130`)
+        await Tasks.deleteItem("k2", eman, { type: "COST_ADDITION", itemId: entry.date })
+        // Its 100 back on her advance, and only the 30 owed comes off.
+        expect(await balance("e2")).toBe(100)
+        expect(await task("k2")).toMatchObject({ total: before.total, shares: before.shares })
+    })
+
     it("holds a cost's part to the cost, in the database too", async () => {
         const [row] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'k2' LIMIT 1`)).rows
         await expect(db.query(`UPDATE "TaskCost" SET "fromAdvance" = amount + 1 WHERE id = '${row.id}'`)).rejects.toThrow(/TaskCost_fromAdvance_check/)

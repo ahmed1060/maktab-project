@@ -1916,3 +1916,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   and their checks. Production's last migration is 7a's, none is
   unfinished, and it has none of 7b's columns yet, no cash advance entry,
   and no company allowed cash advances (checked read-only just before).
+- **2026-10-30:** In 7b (#113), a cost removed by its entry's time, as the
+  older request names it, puts its part from the advance back too, and
+  only what's owed comes off what's to be paid back. Only a cost removed
+  by its id did: by its time, the whole cost came off, and its part from
+  the advance was lost (found by Codex).
