@@ -20,6 +20,9 @@ import {
  * and a balance is always the sum of its person's entries (§7.4).
  */
 
+/** A debt's source when it's what someone still held on leaving (§7.3). */
+export const CASH_ADVANCE_DEBT = "CASH_ADVANCE"
+
 /** At work: not suspended, deleted or gone, so an advance may be given (§7.4). */
 const AT_WORK = ["ACTIVE", "OFFLINE"] as const
 
@@ -324,6 +327,37 @@ export class CashAdvanceService {
                 companyId, userId: c.authorId, kind: "SPENT" as const, amount: cents(way * c.part), date,
                 costId: c.id, taskId, recordedById: by.id, recordedByName: by.name ?? null,
             })),
+        })
+    }
+
+    /**
+     * Leaving the company (§7.3): what they still hold becomes a debt,
+     * recovered as other debts are. An entry of its own takes the balance to
+     * nothing, and the debt names it as its source. Under the hold on their
+     * advance each entry is recorded under; `counted` is what the settlement
+     * counted, and anything else since is refused, as the statement would no
+     * longer add up. Null when nothing is held.
+     */
+    static async toDebt(
+        tx: Prisma.TransactionClient,
+        companyId: string,
+        userId: string,
+        counted: number,
+        debt: { dueDate: Date; by: { id: string; name?: string | null } },
+    ) {
+        await CashAdvanceService.lockPerson(tx, userId)
+        const held = await balanceOf(tx, companyId, userId)
+        if (held !== cents(counted)) throw new Error("CASH_ADVANCE_CHANGED")
+        if (held <= 0) return null
+        const entry = await tx.cashAdvanceEntry.create({
+            data: {
+                companyId, userId, kind: "DEBT", amount: -held, date: new Date(`${await todayIn(companyId, tx)}T00:00:00Z`),
+                recordedById: debt.by.id, recordedByName: debt.by.name ?? null,
+            },
+            select: { id: true },
+        })
+        return tx.debt.create({
+            data: { userId, companyId, amount: held, source: CASH_ADVANCE_DEBT, sourceId: entry.id, dueDate: debt.dueDate },
         })
     }
 

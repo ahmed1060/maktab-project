@@ -33,6 +33,8 @@ type Preview = {
     paidSource: 'PAYSLIP' | 'RUN_NOT_PAID' | 'NO_RUN'
     debtsOutstanding: number
     debtRecovered: number
+    /** What they still hold of a cash advance, which becomes a debt; in debtsOutstanding too. */
+    cashAdvanceHeld?: number
     payable: number
 }
 
@@ -241,6 +243,12 @@ export default function EndContractModal({ userId, name, status, onClose, onDone
                                             decision and a surprise. */}
                                         {preview.debtsOutstanding > 0 && (
                                             <>
+                                                {/* Their cash advance, said before it becomes a debt (CLIENTS_PLAN.md §7.3). */}
+                                                {(preview.cashAdvanceHeld ?? 0) > 0 && (
+                                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 'var(--space-2) 0' }}>
+                                                        {t('settlement_advance_to_debt').replace('{amount}', money(preview.cashAdvanceHeld ?? 0))}
+                                                    </p>
+                                                )}
                                                 {row(t('settlement_debt_recovered'), money(preview.debtRecovered))}
                                                 {row(t('settlement_payable'), money(preview.payable), true)}
                                                 {preview.debtsOutstanding > preview.debtRecovered && (

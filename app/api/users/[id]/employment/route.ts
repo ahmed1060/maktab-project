@@ -64,6 +64,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
                 net: toMajor(preview.netMinor),
                 debtsOutstanding: toMajor(preview.debtsOutstandingMinor),
                 debtRecovered: toMajor(preview.debtRecoveredMinor),
+                cashAdvanceHeld: toMajor(preview.cashAdvanceHeldMinor),
                 payable: toMajor(preview.payableMinor),
             },
         })
@@ -133,6 +134,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
             reason: typeof reason === 'string' ? reason : undefined,
             createdById: session.user.id,
             actorRole: session.user.role,
+            actorName: session.user.name,
             reassignReportsTo,
         })
 

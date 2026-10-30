@@ -412,6 +412,8 @@ export default function EmployeeHistoryPage() {
                                                     {d.recovered > 0 && `${t('debt_recovered_so_far').replace('{n}', d.recovered.toFixed(2))} · `}
                                                     {d.writtenOff > 0 && `${t('debt_written_off').replace('{n}', d.writtenOff.toFixed(2))} · `}
                                                     <SafeDate date={d.dueDate} locale={locale} />
+                                                    {/* What someone still held of a cash advance on leaving (CLIENTS_PLAN.md §7.3). */}
+                                                    {d.source === 'CASH_ADVANCE' ? ` · ${t('debt_source_CASH_ADVANCE')}` : ''}
                                                     {d.reason ? ` · ${d.reason}` : ''}
                                                 </span>
                                             </div>

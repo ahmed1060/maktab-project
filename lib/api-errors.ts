@@ -45,6 +45,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CASH_ADVANCE_MORE_THAN_HELD: { status: 409, message: "That's more than they hold." },
     CASH_ADVANCE_BELOW_ZERO: { status: 409, message: "That would take their balance below zero." },
     CASH_ADVANCE_ALREADY_CONFIRMED: { status: 409, message: "You've already confirmed receiving this advance." },
+    CASH_ADVANCE_CHANGED: { status: 409, message: "Their cash advance changed while the settlement was worked out. Look at the settlement again, then end the contract." },
     CASH_ADVANCE_STILL_HELD: { status: 409, message: "This person still holds cash advance money. Record its return before deleting them for good." },
     CASH_ADVANCES_HELD: { status: 409, message: "Cash advances can't be switched off while anyone holds advance money. It must be spent or returned first." },
     TASK_HAS_CHARGES: { status: 409, message: "This task's costs are charged to its client, so it can't be deleted. Mark them not charged to the client first." },
