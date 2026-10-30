@@ -1121,3 +1121,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   currency with it, as a total tile's does (`DESIGN.md` §5.5). On a phone,
   "350.00 EGP" had "EGP" on a line of its own; the description beside it
   wraps instead now.
+- **2026-10-30:** The first of the remaining old pages moves onto the
+  building blocks (§5 step 5): the Costs page's Employee costs tab, beside
+  the two already on them.
+  - The Costs page has its page header on every tab, its title and
+    subtitle, with Mark all as paid as Employee costs' one primary button.
+    The old top bar's title gives way to it, as on the other pages with
+    one.
+  - A filter bar: the search, the employee, the client, the location, the
+    cost name, the dates, and the order within the page.
+  - The tasks to pay and the total due as tiles. With a cost name picked,
+    the total's tile says payments are made per task, where Mark all as
+    paid would be.
+  - The list as a table on computers and cards on phones: each person's
+    share of a task still to pay, what their cash advance paid of it, and
+    the task's status. Mark all as paid still asks first, as in 4a.

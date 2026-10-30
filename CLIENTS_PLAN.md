@@ -2026,3 +2026,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   steps 0–7. Four small fixes open for review in #116 before the rest of
   `UI_PLAN.md`: the username check above, a task's cost amounts in the
   page's language, and total tiles and tabs on phones.
+- **2026-10-30:** The Costs page's Employee costs tab moves onto the
+  building blocks (`UI_PLAN.md` §5). What it lists, its totals, its
+  filters (§3, §5.9) and Mark all as paid (§4.1) work as they did.
