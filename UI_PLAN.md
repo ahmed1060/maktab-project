@@ -1145,3 +1145,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   search waits to be sent stays picked. The search's timer sent the address
   as the render that started it saw it, without the filter, and so undid it
   (found by Codex).
+- **2026-10-30:** In #117, Employee costs on a page past its last, as when
+  its last task is paid elsewhere and it's refreshed, goes to the last page
+  there is, with its filters. The list showed only its empty state, saying
+  there were no costs, with no pager to go back by (found by Codex).
