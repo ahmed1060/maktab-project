@@ -1195,3 +1195,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - A page past the last goes to the last there is.
 - **2026-10-30:** The Tasks list was merged in #118, and the Obligations
   list opens for review in #119 (§5 step 5).
+- **2026-10-30:** In #119, an obligation that doesn't recur says "One
+  time", in sentence case, on the list, its page and its form.

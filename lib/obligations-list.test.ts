@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { en } from "./translations/en"
 
 /**
  * The Obligations list on the building blocks (UI_PLAN.md §5 step 5), as
@@ -103,5 +104,14 @@ describe("the Obligations list", () => {
         expect(filtered).toContain("obligations_empty_filters")
         expect(filtered).toContain("ui_reset_filters")
         expect(await obligationsList([])).toContain("obligations_empty")
+    })
+})
+
+describe("how often an obligation recurs", () => {
+    it("is in sentence case, as the list's other words are (DESIGN.md §3.4)", () => {
+        for (const key of ["recurrence_one_time", "recurrence_daily", "recurrence_weekly", "recurrence_monthly", "recurrence_yearly"] as const) {
+            const word = en[key]
+            expect(word.slice(1), key).toBe(word.slice(1).toLowerCase())
+        }
     })
 })

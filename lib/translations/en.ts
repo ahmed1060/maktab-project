@@ -520,7 +520,7 @@ export const en = {
         created_label: "Created",
         deadline_label: "Deadline",
         recurrence_label: "Recurrence",
-        recurrence_one_time: "One Time",
+        recurrence_one_time: "One time",
         recurrence_daily: "Daily",
         recurrence_weekly: "Weekly",
         recurrence_monthly: "Monthly",
