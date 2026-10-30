@@ -1321,3 +1321,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Its words are in sentence case, and its messages end their sentences.
 - **2026-10-30:** An obligation's page was merged in #122, and a task's page
   opens for review in #123 (§5 step 5).
+- **2026-10-30:** In #123, I understand on a task that was changed records
+  that its assignee has seen it. It posted to a route that isn't there:
+  the 404 was let pass, the notice hid itself, and it was back at the next
+  visit. Found by trying it in the browser.

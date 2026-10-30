@@ -146,6 +146,16 @@ describe("its assignee", () => {
         expect(html).toContain("i_understand_button")
         expect(client()).toMatch(/action\.run\('dismiss', handleDismiss\)/)
     })
+
+    it("says they've seen the change to the route that records it, and keeps the notice if it isn't recorded", () => {
+        // I understand posted to /dismiss-edit, which isn't a route: the 404
+        // was let pass, the notice hid itself, and came back at the next visit.
+        const src = client()
+        const dismiss = src.slice(src.indexOf("const handleDismiss"), src.indexOf("const handleUpload"))
+        expect(dismiss).toContain("fetch(`/api/tasks/${task.id}/acknowledge`, { method: 'PUT' })")
+        expect(dismiss).not.toContain("dismiss-edit")
+        expect(dismiss.indexOf("if (!res.ok)")).toBeLessThan(dismiss.indexOf("setIsEditedPersistent(false)"))
+    })
 })
 
 describe("a manager", () => {

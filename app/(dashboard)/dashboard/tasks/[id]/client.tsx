@@ -213,13 +213,23 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
         setIsTransferModalOpen(true)
     }
 
+    // Whoever it's for has seen how it changed: recorded, so the notice
+    // stays gone. Not recorded, it stays, and says why.
     const handleDismiss = async () => {
         try {
-            await fetch(`/api/tasks/${task.id}/dismiss-edit`, { method: 'POST' })
+            const res = await fetch(`/api/tasks/${task.id}/acknowledge`, { method: 'PUT' })
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                showToast(data.error || t('error_generic'), 'error')
+                return
+            }
             setIsEditedPersistent(false)
             setTask({ ...task, isEdited: false })
             router.refresh()
-        } catch (e) { console.error(e) }
+        } catch (e) {
+            console.error(e)
+            showToast(t('error_generic'), 'error')
+        }
     }
 
     const handleUpload = useCallback(async (isDraft: boolean, isEmergency?: boolean) => {
