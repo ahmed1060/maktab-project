@@ -39,6 +39,9 @@ export default function NewObligationPage() {
     // Whether the people have come: the list says it's loading until they
     // have, rather than that there's no one, and says so if they couldn't.
     const [people, setPeople] = useState<'loading' | 'loaded' | 'failed'>('loading')
+    // Try again asks once more, with the checklist's failure kept, busy, until it's answered.
+    const [tries, setTries] = useState(0)
+    const [retrying, setRetrying] = useState(false)
     const router = useRouter()
 
     const { data: session } = useSession()
@@ -90,7 +93,8 @@ export default function NewObligationPage() {
                 setPeople('loaded')
             })
             .catch(() => setPeople('failed'))
-    }, [session, selectedCompanyId, mayCreate])
+            .finally(() => setRetrying(false))
+    }, [session, selectedCompanyId, mayCreate, tries])
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
@@ -190,13 +194,13 @@ export default function NewObligationPage() {
                 <form onSubmit={handleSubmit} noValidate className="ui-form">
                     <div id="field-title">
                         <Field label={t('title_label')} hint={used(title.length, TITLE_MAX)} error={fieldErrors.title || undefined}>{p => (
-                            <TextInput {...p} value={title} maxLength={TITLE_MAX} disabled={isSubmitting}
+                            <TextInput {...p} name="title" autoComplete="off" dir="auto" value={title} maxLength={TITLE_MAX} disabled={isSubmitting}
                                 onChange={e => { setTitle(e.target.value); clearError('title') }} />
                         )}</Field>
                     </div>
                     <div id="field-description">
                         <Field label={t('description_label')} hint={used(description.length, DESCRIPTION_MAX)} error={fieldErrors.description || undefined}>{p => (
-                            <TextArea {...p} value={description} rows={4} maxLength={DESCRIPTION_MAX} disabled={isSubmitting}
+                            <TextArea {...p} name="description" dir="auto" value={description} rows={4} maxLength={DESCRIPTION_MAX} disabled={isSubmitting}
                                 onChange={e => { setDescription(e.target.value); clearError('description') }} />
                         )}</Field>
                     </div>
@@ -204,6 +208,8 @@ export default function NewObligationPage() {
                     <AssigneeChecklist
                         id="field-assigneeIds"
                         people={people === 'loading' ? undefined : people === 'failed' ? null : users}
+                        onRetry={() => { setRetrying(true); setTries(n => n + 1) }}
+                        retrying={retrying}
                         value={assigneeIds}
                         onChange={ids => { setAssigneeIds(ids); clearError('assigneeIds') }}
                         disabled={isSubmitting}
@@ -231,6 +237,8 @@ export default function NewObligationPage() {
                         <Field label={t('difficulty')} hint={t('points_hint')} error={fieldErrors.difficulty || undefined}>{p => (
                             <TextInput
                                 {...p}
+                                name="difficulty"
+                                autoComplete="off"
                                 type="number"
                                 inputMode="numeric"
                                 min={0}

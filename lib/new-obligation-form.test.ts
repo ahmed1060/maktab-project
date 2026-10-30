@@ -46,6 +46,15 @@ describe("Add obligation", () => {
         expect(html).toContain('class="ui-input ui-date-trigger"')
     })
 
+    it("names its fields, keeps autofill out of them, and lets a title run in its own direction (web interface audit)", async () => {
+        const html = await form()
+        const input = (name: string) => html.match(new RegExp(`<(input|textarea)[^>]*name="${name}"[^>]*>`))?.[0] ?? ""
+        expect(input("title")).toMatch(/autocomplete="off"/i)
+        expect(input("title")).toContain('dir="auto"')
+        expect(input("description")).toContain('dir="auto"')
+        expect(input("difficulty")).toMatch(/autocomplete="off"/i)
+    })
+
     it("picks how often it recurs from radio buttons, one time to begin with", async () => {
         const html = await form()
         expect(html).toContain('class="ui-choices"')
@@ -69,6 +78,7 @@ describe("Add obligation", () => {
         const page = readFileSync("app/(dashboard)/dashboard/obligations/new/page.tsx", "utf8")
         expect(page).toMatch(/fetchRetrying\(`\/api\/users\?\$\{queryParams\.toString\(\)\}`\)\s*\.then\(res => \{\s*if \(!res\.ok\) throw/)
         expect(page).toContain(".catch(() => setPeople('failed'))")
+        expect(page).toContain("onRetry={() => { setRetrying(true); setTries(n => n + 1) }}")
     })
 
     it("has Create obligation as its one primary button, and Cancel back to the list", async () => {
@@ -92,5 +102,24 @@ describe("Add obligation", () => {
 
     it("writes the description's limits in Arabic digits in Arabic", () => {
         expect(ar.obligation_description_validation).toContain("١٠ و ٥٠٠")
+    })
+})
+
+describe("the people checklist that couldn't load", () => {
+    async function checklist(retrying = false) {
+        const { default: AssigneeChecklist } = await import("@/components/forms/AssigneeChecklist")
+        return renderToStaticMarkup(h(AssigneeChecklist, { people: null, value: [], onChange: () => {}, onRetry: () => {}, retrying }))
+    }
+
+    it("says so with a warning and Try again, as a list that didn't load does (DESIGN.md §5.5)", async () => {
+        const html = await checklist()
+        expect(html).toContain('class="ui-empty"')
+        expect(html).toContain('role="alert">failed_load_employees<')
+        expect(html).toMatch(/<button type="button" class="ui-btn[^"]*"[^>]*>.*try_again/)
+        expect(html).not.toContain("assignees_none_match")
+    })
+
+    it("shows Try again busy while it tries", async () => {
+        expect(await checklist(true)).toContain('aria-busy="true"')
     })
 })

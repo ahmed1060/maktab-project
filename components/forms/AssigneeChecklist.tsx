@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
-import { Field, SearchInput } from '@/components/ui'
+import { Button, EmptyState, Field, SearchInput } from '@/components/ui'
 import type { TranslationKey } from '@/lib/translations'
 
 export type Assignable = { id: string; firstName: string; lastName: string; role?: string | null }
@@ -10,10 +11,14 @@ export type Assignable = { id: string; firstName: string; lastName: string; role
 /**
  * Who a task or an obligation is for (DESIGN.md §5.3, a pick of several from
  * a long list): as many as it needs, found by name, each with their role.
- * `people` is undefined while they load, and null when they couldn't be.
+ * `people` is undefined while they load, and null when they couldn't be,
+ * which offers Try again as a list that didn't load does (DESIGN.md §5.5).
  */
-export default function AssigneeChecklist({ people, value, onChange, disabled = false, error, id }: {
+export default function AssigneeChecklist({ people, value, onChange, onRetry, retrying = false, disabled = false, error, id }: {
     people: Assignable[] | null | undefined
+    onRetry: () => void
+    /** While Try again is trying. */
+    retrying?: boolean
     value: string[]
     onChange: (ids: string[]) => void
     disabled?: boolean
@@ -35,7 +40,11 @@ export default function AssigneeChecklist({ people, value, onChange, disabled = 
                 {people === undefined
                     ? <p className="ui-hint" role="status">{t('loading')}</p>
                     : people === null
-                        ? <p className="ui-error" role="alert">{t('failed_load_employees')}</p>
+                        ? <EmptyState
+                            icon={WarningCircleIcon}
+                            title={<span role="alert">{t('failed_load_employees')}</span>}
+                            action={<Button busy={retrying} onClick={onRetry}>{t('try_again')}</Button>}
+                        />
                         : shown.length === 0
                             ? <p className="ui-hint">{t('assignees_none_match')}</p>
                             : shown.map(u => (

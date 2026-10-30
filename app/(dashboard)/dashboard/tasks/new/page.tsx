@@ -74,7 +74,7 @@ export default function NewTaskPage() {
     const usersKey = session
         ? `/api/users?${new URLSearchParams({ limit: '1000', ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) })}`
         : null
-    const { data: usersResult, error: usersError } = useSWR(usersKey, fetcher)
+    const { data: usersResult, error: usersError, mutate: retryUsers, isValidating: retryingUsers } = useSWR(usersKey, fetcher)
     const users: any[] = useMemo(() => {
         const usersList = usersResult?.data?.data || usersResult?.data || []
         if (!Array.isArray(usersList)) {
@@ -521,7 +521,7 @@ export default function NewTaskPage() {
                     </div>
                     <div id="field-description">
                         <Field label={t('description_label')} hint={used(description.length, TASK_DESCRIPTION_MAX)} error={fieldErrors.description || undefined}>{p => (
-                            <TextArea {...p} value={description} rows={4} maxLength={TASK_DESCRIPTION_MAX} disabled={isSubmitting}
+                            <TextArea {...p} name="description" dir="auto" value={description} rows={4} maxLength={TASK_DESCRIPTION_MAX} disabled={isSubmitting}
                                 onChange={e => { setDescription(e.target.value); clearError('description') }} />
                         )}</Field>
                     </div>
@@ -540,6 +540,8 @@ export default function NewTaskPage() {
                     <AssigneeChecklist
                         id="field-assigneeIds"
                         people={usersError ? null : usersResult ? users : undefined}
+                        onRetry={() => { void retryUsers() }}
+                        retrying={retryingUsers}
                         value={assigneeIds}
                         onChange={ids => { setAssigneeIds(ids); clearError('assigneeIds') }}
                         disabled={isSubmitting}
@@ -559,6 +561,8 @@ export default function NewTaskPage() {
                         <Field label={t('difficulty')} hint={t('points_hint')} error={fieldErrors.difficulty || undefined}>{p => (
                             <TextInput
                                 {...p}
+                                name="difficulty"
+                                autoComplete="off"
                                 type="number"
                                 inputMode="numeric"
                                 min={0}

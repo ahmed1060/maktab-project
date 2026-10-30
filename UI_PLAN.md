@@ -1239,3 +1239,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   obligation read a server error as an empty list, so it said no one
   matched the search; Create task (#120) never read its error, so it said
   it was loading for good. Found by trying them with the list refused.
+- **2026-10-30:** In #121, Vercel's web interface audit of both forms:
+  - the people who couldn't be loaded are said as a list that didn't load
+    is (DESIGN.md §5.5): a warning, the line, and Try again, busy while it
+    tries;
+  - the fields have names, autofill is kept out of them, and a title or
+    description runs in the direction of its own language.

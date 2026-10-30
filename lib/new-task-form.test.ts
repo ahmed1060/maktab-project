@@ -25,7 +25,7 @@ vi.mock("@/components/ManageTemplatesModal", () => ({ default: () => null }))
 const people = { list: [] as object[] | null | "failed" }
 vi.mock("swr", () => ({
     default: (key: string | null) => !key?.startsWith("/api/users") ? { data: undefined }
-        : people.list === "failed" ? { data: undefined, error: new Error("Request failed") }
+        : people.list === "failed" ? { data: undefined, error: new Error("Request failed"), mutate: () => {}, isValidating: false }
         : { data: people.list ? { data: { data: people.list } } : undefined },
 }))
 
@@ -57,6 +57,12 @@ describe("Create task", () => {
         expect(html).toContain("points_hint")
     })
 
+    it("names its fields, keeps autofill out of them, and lets a description run in its own direction (web interface audit)", async () => {
+        const html = await form()
+        expect(html.match(/<textarea[^>]*name="description"[^>]*>/)?.[0]).toContain('dir="auto"')
+        expect(html.match(/<input[^>]*name="difficulty"[^>]*>/)?.[0]).toMatch(/autocomplete="off"/i)
+    })
+
     it("picks the deadline from a field like the others", async () => {
         const html = await form()
         expect(html).toContain('class="ui-input ui-date-trigger"')
@@ -82,6 +88,7 @@ describe("Create task", () => {
     it("says when the people couldn't be loaded, rather than loading forever", async () => {
         const html = await form("failed")
         expect(html).toContain("failed_load_employees")
+        expect(html).toContain("try_again")
         expect(html).not.toContain('role="status"')
     })
 
