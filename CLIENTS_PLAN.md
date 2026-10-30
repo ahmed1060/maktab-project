@@ -1039,8 +1039,8 @@ balance first, automatically:
        done.
      - Step 7, cash advances (§7). Proposed: it ships as four PRs, 7a to
        7d (§7.8). 7a, the ledger, the switches, the Cash advances tab and
-       My cash advance, is built, and open for review in #112. 7b, costs
-       paid from the advance, is built.
+       My cash advance, was merged in #112 on 2026-10-30, and 7b, costs
+       paid from the advance, is built, and open for review in #113.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -1909,3 +1909,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   From advance and To pay back, Add cost says the balance, and giving an
   advance offers to pay what the company owes the person in the same
   hand-over (§7.8).
+- **2026-10-30:** 7a was merged in #112, with Codex's finding fixed in it.
+  Its migration ran in production as its preview built, and production
+  has had no errors since. 7b opens for review in #113. Its migration only
+  adds: each cost's part from the advance, a Spent entry's cost and task,
+  and their checks. Production's last migration is 7a's, none is
+  unfinished, and it has none of 7b's columns yet, no cash advance entry,
+  and no company allowed cash advances (checked read-only just before).

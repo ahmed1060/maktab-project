@@ -1087,3 +1087,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   with the person's advance, a cash advance's history shows Spent on a
   cost and Put back with the task, and the Give advance dialog asks
   whether to pay what the person is owed in the same hand-over.
+- **2026-10-30:** `CLIENTS_PLAN.md`'s 7a was merged in #112, and 7b opens
+  for review in #113.
