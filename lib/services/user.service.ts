@@ -5,6 +5,7 @@ import { supabase } from "@/lib/storage"
 import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
 import { generateUsername } from "@/lib/username"
+import { likeText } from "@/lib/saved-lists"
 import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
@@ -110,7 +111,9 @@ export class UserService {
         // 4. Username Logic
         let finalUsername = username
         if (finalUsername) {
-            const conflict = await prisma.user.findFirst({ where: { username: { equals: finalUsername as string, mode: 'insensitive' } } })
+            // Prisma matches an insensitive equals with ILIKE: its %, _ and \
+            // are taken as typed, or "a_b" is taken whenever "axb" is.
+            const conflict = await prisma.user.findFirst({ where: { username: { equals: likeText(finalUsername as string), mode: 'insensitive' } } })
             if (conflict) throw new Error("USERNAME_IN_USE")
         } else if (targetCompanyId) {
             finalUsername = await generateUsername(targetCompanyId)

@@ -2016,3 +2016,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   ending that committed meanwhile went unseen: an advance could be given
   to someone gone, and a correction for them stay on their balance (found
   by Codex).
+- **2026-10-30:** A username picked for someone new is refused only when
+  another person has it, ignoring capitals. Prisma matched it with ILIKE,
+  so its `%`, `_` and `\` were patterns: "a_b" was refused because "axb"
+  was taken, and "%" because anyone was. They're taken as typed now, as
+  the saved lists' names are (§5.9).
