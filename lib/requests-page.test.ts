@@ -200,6 +200,85 @@ describe("day off on it (UI_PLAN.md §2.3, part 2c)", () => {
     })
 })
 
+describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
+    const hours = (fields: Partial<FeedRow> = {}): FeedRow => row({
+        kind: "permission", id: "p1", what: "EARLY_LEAVE", detail: "Doctor",
+        permission: { date: "2026-11-03", start: "16:00", end: "17:00", minutes: 60, rejectionReason: null },
+        ...fields,
+    })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/PermissionDialogs.tsx", "utf8")
+    const allowance = { left: 90, total: 120, pending: 30, carried: 0 }
+
+    it("reads as any request does: the type of permission, its day and hours, who asked and its status", async () => {
+        const html = await page({ rows: [hours()], kinds: ["internal", "dayOff", "permission"] })
+        expect(html).toContain("audit_value_EARLY_LEAVE")
+        expect(html).toContain("3 Nov 2026")
+        expect(html).toContain("16:00")
+        expect(html).toContain("17:00")
+        expect(html).toContain("Mona Adel")
+        expect(html).toContain("requests_kind_permission")
+        expect(html).toContain("ui-badge ui-badge-waiting")
+    })
+
+    it("is approved or rejected under To review by whoever may decide it", async () => {
+        expect(await page({ rows: [hours()] })).not.toContain("approve_button")
+        const html = await page({ rows: [hours({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+        expect(dialogs).toContain("fetch(`/api/attendance/permissions/${request.id}/decide`")
+    })
+
+    it("once ended, is Approved, Rejected or Withdrawn, which is no one's fault", async () => {
+        expect(await page({ rows: [hours({ status: "APPROVED" })], show: "done" })).toContain("ui-badge ui-badge-good")
+        expect(await page({ rows: [hours({ status: "REJECTED" })], show: "done" })).toContain("ui-badge ui-badge-problem")
+        const withdrawn = await page({ rows: [hours({ status: "CANCELLED" })], show: "done" })
+        expect(withdrawn).toContain("ui-badge ui-badge-neutral")
+        expect(withdrawn).toContain("status_withdrawn")
+    })
+
+    it("may be withdrawn from its More actions by whoever asked, once they've said so", () => {
+        expect(client).toContain("r.mayWithdraw")
+        expect(client).toContain("label: t('req_withdraw')")
+        expect(dialogs).toContain("fetch(`/api/attendance/permissions/${request.id}`, { method: 'DELETE' })")
+        expect(dialogs).toContain("t('req_withdraw_hint')")
+    })
+
+    it("shows what's left of the month's permission hours on Mine, under the day off balance and above the list", async () => {
+        const mine = await page({ tab: "mine", kinds: ["internal", "dayOff", "permission"], credit: { remaining: 9, used: 3 }, mayAskDayOff: true, allowance })
+        expect(mine).toContain("requests_permission_left")
+        expect(mine).toContain("requests_permission_waiting")
+        expect(mine.indexOf("credit_overview")).toBeLessThan(mine.indexOf("requests_permission_left"))
+        expect(mine.indexOf("requests_permission_left")).toBeLessThan(mine.indexOf("ui-filterbar"))
+        // Nothing waiting, nothing said of it.
+        expect(await page({ tab: "mine", allowance: { ...allowance, pending: 0 } })).not.toContain("requests_permission_waiting")
+        expect(await page({ allowance })).not.toContain("requests_permission_left")
+    })
+
+    it("is asked for from New request, with the chosen day's limits, its type, hours and reason", () => {
+        expect(client).toContain("mayAskPermission")
+        expect(dialogs).toContain("fetch('/api/attendance/permissions', {")
+        expect(dialogs).toContain("/api/attendance/permissions/balance?date=")
+        expect(dialogs).toContain("t('req_limits')")
+        expect(dialogs).toContain("t('req_permissions_off_on_day')")
+        expect(dialogs).toContain("maxLength={500}")
+        // Why the server refused it, in their language.
+        for (const code of ["PERMISSION_TOO_LATE", "PERMISSION_OVER_ALLOWANCE", "PERMISSION_OVERLAPS", "PERMISSION_TOO_SHORT", "PERMISSION_TOO_LONG", "PERMISSION_TOO_MANY_REQUESTS", "PAYROLL_MONTH_LOCKED"]) {
+            expect(dialogs, code).toContain(code)
+        }
+    })
+
+    it("is searched by its reason, and by reason alone where there's no title to search", async () => {
+        expect(await page({ kinds: ["internal", "permission"] })).toContain("requests_search_any")
+        expect(await page({ kinds: ["permission"] })).toContain("requests_search_reason")
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [hours({ mayDecide: true }), hours({ id: "p2", mayWithdraw: true })], tab: "mine", kinds: ["permission"], allowance })
+        expect(html).not.toContain("style=")
+    })
+})
+
 describe("its server page", () => {
     const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
 
@@ -221,6 +300,11 @@ describe("its server page", () => {
     it("finds a day off a notification picked out too, now that its links land here (part 2d)", () => {
         expect(server).toContain("prisma.dayOffRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
         expect(server).toContain('picked.status === "COMPLETED" || picked.status === "APPROVED" || picked.status === "REJECTED"')
+    })
+
+    it("offers asking for permission hours to whoever has attendance of their own, with what's left of the month's", () => {
+        expect(server).toContain("sessionHasModule({ user: viewer }, 'ATTENDANCE')")
+        expect(server).toContain("AttendanceRequestService.permissionBalance(")
     })
 
     it("reads the dates of leave only for Day off", () => {

@@ -506,6 +506,7 @@ model AttendancePolicy        // one row per version, per company
 model PermissionRequest       // إذن
   userId, date, type, startAt, endAt, minutes
   reason, status, reviewedById?, reviewedAt?, rejectionReason?
+  updatedAt                   // asked, decided or withdrawn: the Requests page's Done order (UI_PLAN.md §2.3, #130)
 
 model OvertimeApproval
   userId, date, approvedMinutes?, status, requestedById?, reviewedById?

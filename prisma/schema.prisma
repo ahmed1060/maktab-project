@@ -2413,6 +2413,9 @@ model PermissionRequest {
   reason          String
   status          AttendanceRequestStatus @default(PENDING)
   createdAt       DateTime                @default(now())
+  /// When it was last changed: asked, decided or withdrawn. The Requests
+  /// page's Done list is in this order (UI_PLAN.md §2.3, part 3a).
+  updatedAt       DateTime                @default(now()) @updatedAt
   reviewedById    String?
   reviewedAt      DateTime?
   rejectionReason String?

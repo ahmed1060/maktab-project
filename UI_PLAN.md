@@ -171,7 +171,14 @@ one once its kind has moved in.
       (Decided on 2026-10-31), as the Day off list had them; the other kinds
       have no dates to filter by.
 3. **Permission hours and missing punches:** asked for and decided on the
-   page; Attendance's Requests tab points there.
+   page; Attendance's Requests tab points there. In three PRs (Decided on
+   2026-10-31), each small enough to review, nothing stopping meanwhile:
+   1. **3a:** permission hours on the page (#130): asked for with the
+      chosen day's limits, withdrawn while it waits or before an approved
+      one begins, and approved or rejected under To review. The month's
+      allowance is a line on Mine, under day off's (Decided on 2026-10-31).
+   2. **3b:** missing punches on the page, the same way.
+   3. **3c:** Attendance's Requests tab, and its notifications, point there.
 4. **Overtime, phones and flagged punches:** decided under To review.
    Approving someone's phone and a flagged punch join too (Decided on
    2026-10-30), so a manager has one queue for what waits on them.
@@ -1540,3 +1547,26 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Its dates of leave are a filter once the kind is Day off, by the day
     each starts, as the Day off list had them; leaving Day off, or Reset,
     takes them away.
+- **2026-10-31:** The Day off page sends people to the Requests page, merged
+  in #129, and part 3 is planned in three PRs (§2.3): permission hours,
+  missing punches, then Attendance's Requests tab points there. The month's
+  permission-hours allowance is a line on Mine, under day off's. The first
+  opens for review in #130.
+- **2026-10-31:** Permission hours join the Requests page in #130 (§2.3,
+  part 3a):
+  - Mine has one's own, To review everyone else's that this person decides
+    with Decide permission hours, at its reach, in a company with
+    Attendance.
+  - Waiting is asked; Done is approved, rejected or withdrawn, in order of
+    when it was. A permission request now keeps when it last changed;
+    those already there take when they were decided or withdrawn, or else
+    asked.
+  - A row reads its type, its day, its hours and how long. Approve is one
+    click, as on the Attendance page; Reject asks for a reason if there is
+    one. Whoever asked may withdraw it from More actions while it waits, or
+    once approved until it begins in the company's time.
+  - New request offers permission hours to whoever has attendance of their
+    own: the day, with that day's limits and what's left of its month's,
+    the type the policy allows, the hours and why.
+  - On Mine, what's left of this month's is a line under the day off
+    balance, while the policy allows them.

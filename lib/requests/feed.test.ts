@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, pageOf, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, pageOf, permissionRow, permissionWhere, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -198,6 +198,108 @@ describe("a day off's row", () => {
         const approved = dayOffRow(admin, request({ status: "APPROVED", daysDeducted: 2.5, deductionType: "SALARY", updatedAt: decided }))
         expect(approved).toMatchObject({ finished: decided.toISOString(), sortAt: decided.toISOString(), dayOff: { deducted: 2.5, deductedFrom: "SALARY" } })
         expect(dayOffRow(admin, request({ status: "REJECTED", rejectionReason: "Busy week", updatedAt: decided })).dayOff?.rejectionReason).toBe("Busy week")
+    })
+})
+
+// --- Permission hours (UI_PLAN.md §2.3, part 3a) --------------------------------
+
+/** A company that hasn't the Attendance module. */
+const withoutAttendance = <T extends object>(who: T) => ({ ...who, featureAccess: { unrestricted: false, bundles: ["COMPANY_MANAGEMENT"] } })
+/** A role of a company's own that decides its team's permission hours. */
+const shiftLead = { id: "h1", role: "TEAM_LEADER", companyId: "c1", grants: "49.2,52.2" }
+
+describe("permission hours on Mine", () => {
+    it("are one's own in their company, waiting or ended: approved, rejected or withdrawn", () => {
+        expect(permissionWhere(employee, waiting)).toEqual({ companyId: "c1", userId: "e1", status: "PENDING" })
+        expect(permissionWhere(admin, { ...waiting, show: "done" })).toEqual({ companyId: "c1", userId: "a1", status: { in: ["APPROVED", "REJECTED", "CANCELLED"] } })
+    })
+
+    it("aren't the Super Admin's, nor anyone's in a company without Attendance", () => {
+        expect(permissionWhere(superAdmin, waiting)).toBeNull()
+        expect(permissionWhere(withoutAttendance(employee), waiting)).toBeNull()
+    })
+})
+
+describe("permission hours on To review", () => {
+    const review = { ...waiting, tab: "review" as const }
+
+    it("are everyone else's in the company, for whoever decides the company's", () => {
+        expect(permissionWhere(admin, review)).toEqual({ companyId: "c1", userId: { not: "a1" }, status: "PENDING" })
+    })
+
+    it("are their team's, for a role that decides its team's, and not their own", () => {
+        expect(permissionWhere(shiftLead, review)).toEqual({
+            companyId: "c1", userId: { not: "h1" }, status: "PENDING", AND: [{ user: { OR: [{ teamLeaderId: "h1" }, { id: "h1" }] } }],
+        })
+    })
+
+    it("aren't there for whoever doesn't decide them: an employee, the built-in Team Leader, or a company without Attendance", () => {
+        expect(permissionWhere(employee, review)).toBeNull()
+        expect(permissionWhere(leader, review)).toBeNull()
+        expect(permissionWhere(withoutAttendance(admin), review)).toBeNull()
+    })
+
+    it("are the picked company's for the Super Admin, or every company's", () => {
+        expect(permissionWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ companyId: "c2", status: "PENDING" })
+        expect(permissionWhere(superAdmin, { ...review, show: "done" })).toEqual({ status: { in: ["APPROVED", "REJECTED", "CANCELLED"] } })
+    })
+
+    it("narrow to one person and words in the reason, within that reach", () => {
+        expect(permissionWhere(shiftLead, { ...review, personId: "x9", search: "doctor" })).toMatchObject({
+            reason: { contains: "doctor", mode: "insensitive" },
+            AND: [{ user: { OR: [{ teamLeaderId: "h1" }, { id: "h1" }] } }, { userId: "x9" }],
+        })
+    })
+})
+
+describe("permission hours' row", () => {
+    const asked = new Date("2026-10-29T09:00:00Z")
+    // In Cairo, +02:00 on 3 November: 16:00 there is 14:00 UTC.
+    const request = (fields: object = {}) => ({
+        id: "p1", companyId: "c1", userId: "e2", date: new Date("2026-11-03T00:00:00Z"), type: "EARLY_LEAVE", startMinutes: 960, endMinutes: 1020,
+        minutes: 60, reason: "Doctor", status: "PENDING", createdAt: asked, updatedAt: asked, rejectionReason: null,
+        user: { firstName: "Mona", lastName: "Adel", teamLeaderId: "h1" }, company: { timezone: "Africa/Cairo" }, ...fields,
+    })
+    const before = new Date("2026-11-03T13:59:00Z")
+    const begun = new Date("2026-11-03T14:00:00Z")
+
+    it("says who asked, for what kind of permission, which day and hours, and why", () => {
+        expect(permissionRow(admin, request(), before)).toMatchObject({
+            kind: "permission", id: "p1", who: { id: "e2", name: "Mona Adel" }, what: "EARLY_LEAVE", detail: "Doctor",
+            asked: asked.toISOString(), finished: null, status: "PENDING", sortAt: asked.toISOString(), mayDelete: false,
+            permission: { date: "2026-11-03", start: "16:00", end: "17:00", minutes: 60, rejectionReason: null },
+        })
+    })
+
+    it("reads a night's hours after midnight as that morning's", () => {
+        expect(permissionRow(admin, request({ startMinutes: 1740, endMinutes: 1800 }), before).permission).toMatchObject({ start: "05:00", end: "06:00" })
+    })
+
+    it("may be decided by whoever decides permission hours, within their team for a team's, while it waits, and never their own", () => {
+        expect(permissionRow(admin, request(), before).mayDecide).toBe(true)
+        expect(permissionRow(shiftLead, request(), before).mayDecide).toBe(true)
+        expect(permissionRow(superAdmin, request(), before).mayDecide).toBe(true)
+        expect(permissionRow(shiftLead, request({ user: { firstName: "Sami", lastName: "Nabil", teamLeaderId: "h2" } }), before).mayDecide).toBe(false)
+        expect(permissionRow(employee, request(), before).mayDecide).toBe(false)
+        expect(permissionRow(admin, request({ status: "APPROVED" }), before).mayDecide).toBe(false)
+        expect(permissionRow(admin, request({ userId: "a1" }), before).mayDecide).toBe(false)
+    })
+
+    it("may be withdrawn by whoever asked, while it waits, or once approved until it begins in the company's time", () => {
+        const mine = (fields: object = {}) => request({ userId: "e1", ...fields })
+        expect(permissionRow(employee, mine(), begun).mayWithdraw).toBe(true)
+        expect(permissionRow(employee, mine({ status: "APPROVED" }), before).mayWithdraw).toBe(true)
+        expect(permissionRow(employee, mine({ status: "APPROVED" }), begun).mayWithdraw).toBe(false)
+        expect(permissionRow(employee, mine({ status: "REJECTED" }), before).mayWithdraw).toBe(false)
+        expect(permissionRow(admin, request(), before).mayWithdraw).toBe(false)
+    })
+
+    it("once ended, says what came of it, and is ordered by when it was", () => {
+        const ended = new Date("2026-10-30T12:00:00Z")
+        expect(permissionRow(admin, request({ status: "REJECTED", rejectionReason: "Busy day", updatedAt: ended }), before)).toMatchObject({
+            finished: ended.toISOString(), sortAt: ended.toISOString(), permission: { rejectionReason: "Busy day" },
+        })
+        expect(permissionRow(employee, request({ userId: "e1", status: "CANCELLED", updatedAt: ended }), before)).toMatchObject({ finished: ended.toISOString(), sortAt: ended.toISOString() })
     })
 })
 
