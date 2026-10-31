@@ -2082,3 +2082,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   #130. Neither touches clients or locations.
 - **2026-10-31:** Permission hours join the Requests page in #130
   (`UI_PLAN.md` §2.3, part 3a). It doesn't touch clients or locations.
+- **2026-10-31:** Permission hours on the Requests page were merged in #130
+  (`UI_PLAN.md` §2.3), and missing punches join it in #131. Neither touches
+  clients or locations.

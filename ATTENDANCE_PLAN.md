@@ -513,6 +513,7 @@ model OvertimeApproval
 
 model MissingPunchRequest
   userId, date, claimedInAt?, claimedOutAt?, reason, status, …
+  updatedAt                   // reported, decided or withdrawn: the Requests page's Done order (UI_PLAN.md §2.3, #131)
 ```
 
 ### 8.5 Locations and registered devices

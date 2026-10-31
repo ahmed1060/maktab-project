@@ -177,7 +177,9 @@ one once its kind has moved in.
       chosen day's limits, withdrawn while it waits or before an approved
       one begins, and approved or rejected under To review. The month's
       allowance is a line on Mine, under day off's (Decided on 2026-10-31).
-   2. **3b:** missing punches on the page, the same way.
+   2. **3b:** missing punches on the page, the same way (#131): reported
+      with the day, time, in or out and why; withdrawn while it waits;
+      approved, which adds the punch, or rejected under To review.
    3. **3c:** Attendance's Requests tab, and its notifications, point there.
 4. **Overtime, phones and flagged punches:** decided under To review.
    Approving someone's phone and a flagged punch join too (Decided on
@@ -1570,3 +1572,24 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the type the policy allows, the hours and why.
   - On Mine, what's left of this month's is a line under the day off
     balance, while the policy allows them.
+- **2026-10-31:** Permission hours on the Requests page were merged in #130,
+  and missing punches join it in #131 (§2.3, part 3b):
+  - Mine has one's own reports; To review everyone else's that this person
+    corrects with Correct attendance, at its reach, in a company with
+    Attendance.
+  - Waiting is reported; Done is approved, rejected or withdrawn, in order
+    of when it was. A report now keeps when it last changed; those already
+    there take when they were decided or withdrawn, or else reported.
+  - A row reads which punch (in, out, or not stated), its day and time.
+    Approve is one click, and adds the punch; Reject asks for a reason if
+    there is one; whoever reported it may withdraw it while it waits.
+  - New request offers a missing punch to whoever has attendance of their
+    own: the day, today at the latest, the time, in or out, and why.
+  - Rejecting and withdrawing are one pair of dialogs for both attendance
+    kinds.
+- **2026-10-31:** Found by Codex on #131: the missing punch form took today
+  from the browser, which can be a day behind the company's, so just after
+  the company's midnight that day's punches couldn't be picked. The page
+  now passes the company's own day, which the attendance API reads times
+  in, to both attendance forms: a missing punch can't be after it, and
+  both start on it.

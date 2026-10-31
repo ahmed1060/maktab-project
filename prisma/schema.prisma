@@ -2459,6 +2459,9 @@ model MissingPunchRequest {
   status          AttendanceRequestStatus @default(PENDING)
   punchId         String?
   createdAt       DateTime                @default(now())
+  /// When it was last changed: reported, decided or withdrawn. The Requests
+  /// page's Done list is in this order (UI_PLAN.md §2.3, part 3b).
+  updatedAt       DateTime                @default(now()) @updatedAt
   reviewedById    String?
   reviewedAt      DateTime?
   rejectionReason String?

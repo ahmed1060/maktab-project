@@ -24,7 +24,9 @@ import {
     Row, Rows, RowMenu, SearchInput, Section, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
 } from '@/components/ui'
 import { AskDayOff, DecideDayOff } from './DayOffDialogs'
-import { AskPermission, PERMISSION_TYPE_LABEL, RejectPermission, WithdrawPermission, clockText, decidePermission, permissionDay } from './PermissionDialogs'
+import {
+    AskPermission, PERMISSION_TYPE_LABEL, RejectAttendance, ReportMissingPunch, WithdrawAttendance, clockText, decideAttendance, permissionDay, punchDay, punchTime,
+} from './AttendanceDialogs'
 
 /**
  * A request's status, as a badge: an internal request's, or a day off's or
@@ -46,7 +48,11 @@ const KIND_LABEL: Record<RequestKind, TranslationKey> = {
     // A kind, "Day off", not the side bar's name for its page (found in the browser).
     dayOff: 'requests_kind_day_off',
     permission: 'requests_kind_permission',
+    missingPunch: 'requests_kind_missing_punch',
 }
+
+/** A missing punch's name: which punch, if they said (§2.3, part 3b). */
+const MISSING_LABEL: Record<string, TranslationKey> = { IN: 'requests_missing_in', OUT: 'requests_missing_out' }
 
 /** An internal request's next step, for whoever may decide it. */
 const NEXT: Record<string, { to: string; label: TranslationKey; icon: typeof PlayIcon }> = {
@@ -73,14 +79,16 @@ interface RequestsClientProps {
     mayAskDayOff?: boolean
     /** Their day off balance, on Mine, for whoever may ask for leave. */
     credit?: { remaining: number; used: number } | null
-    /** Whether they have attendance of their own to ask permission hours of (§2.3, part 3a). */
-    mayAskPermission?: boolean
+    /** Whether they have attendance of their own: to ask permission hours of, and report a missing punch in (§2.3, part 3). */
+    mayAskAttendance?: boolean
+    /** Today, as the company's calendar has it, for whoever has attendance of their own (found by Codex on PR 131). */
+    attendanceToday?: string | null
     /** What's left of this month's permission hours, in minutes, on Mine, while the policy allows them. */
     allowance?: { left: number; total: number; pending: number; carried: number } | null
 }
 
 export default function RequestsClient({
-    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null, mayAskPermission = false, allowance = null,
+    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null,
 }: RequestsClientProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -142,9 +150,10 @@ export default function RequestsClient({
         }
     })
 
-    // Permission hours are approved as they are: there's nothing to choose (§2.3, part 3a).
-    const approvePermission = (r: FeedRow) => action.run(r.id, async () => {
-        const refused = await decidePermission(r, true, null)
+    // Permission hours and missing punches are approved as they are: there's
+    // nothing to choose (§2.3, part 3). A missing punch's is added as a punch.
+    const approveAttendance = (r: FeedRow) => action.run(r.id, async () => {
+        const refused = await decideAttendance(r, true, null)
         if (refused) {
             showToast(t(refused), 'error')
             return
@@ -175,7 +184,8 @@ export default function RequestsClient({
     const kindLabel = (r: FeedRow) => kindName(r.kind)
     // What it's for: an internal request's title, or a day off's or permission's type.
     const name = (r: FeedRow) => r.kind === 'dayOff' ? t(DAY_OFF_TYPE_LABEL[r.what] ?? 'regular_day_off')
-        : r.kind === 'permission' ? t(PERMISSION_TYPE_LABEL[r.what] ?? 'audit_value_MIDDAY') : r.what
+        : r.kind === 'permission' ? t(PERMISSION_TYPE_LABEL[r.what] ?? 'audit_value_MIDDAY')
+            : r.kind === 'missingPunch' ? t(MISSING_LABEL[r.what] ?? 'requests_missing_any') : r.what
     const title = (r: FeedRow) => {
         const what = name(r)
         return <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{what}</bdi></button>
@@ -196,16 +206,19 @@ export default function RequestsClient({
     const hours = (r: FeedRow) => `${clockText(r.permission!.start, locale)} – ${clockText(r.permission!.end, locale)}`
     const length = (r: FeedRow) => t('req_minutes').replace('{n}', num(r.permission!.minutes))
     const permissionWhen = (r: FeedRow) => [permissionDay(r.permission!.date, locale), hours(r), length(r)].join(sep)
+    // A missing punch: the day and the time on the wall.
+    const punchWhen = (r: FeedRow) => [punchDay(r.missingPunch!.at, locale), punchTime(r.missingPunch!.at, locale)].join(sep)
+    const direction = (r: FeedRow) => t(r.missingPunch?.direction === 'IN' ? 'punch_in' : r.missingPunch?.direction === 'OUT' ? 'punch_out' : 'punch_direction_unknown')
     // What came of a day off: the days taken and from what, or why it was refused;
     // and why permission hours were.
     const outcome = (r: FeedRow) => {
-        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason
+        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason
         const d = r.dayOff
         if (d && r.status === 'APPROVED') return t(d.deductedFrom === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', countOf(t, locale, d.deducted, 'days'))
         return r.status === 'REJECTED' && why ? `${t('rejected_reason_prefix')}: ${why}` : null
     }
     // Under its name: its kind, once there's more than one, and a day off's days or permission's hours.
-    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : null
+    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.missingPunch ? punchWhen(r) : null
     const detail = (r: FeedRow) => {
         const parts = [kinds.length > 1 ? kindLabel(r) : null, when(r)].filter(Boolean)
         return parts.length ? <span>{parts.join(sep)}</span> : undefined
@@ -221,8 +234,8 @@ export default function RequestsClient({
             <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
-        if (r.kind === 'permission') return r.mayDecide && <>
-            <Button size="sm" icon={CheckIcon} onClick={() => { void approvePermission(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
+        if (r.kind === 'permission' || r.kind === 'missingPunch') return r.mayDecide && <>
+            <Button size="sm" icon={CheckIcon} onClick={() => { void approveAttendance(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setRejecting(r) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
         const step = r.mayDecide ? NEXT[r.status] : undefined
@@ -245,6 +258,10 @@ export default function RequestsClient({
         />
     )
     const actions = (r: FeedRow) => <span className="ui-row-actions">{next(r)}{menu(r)}</span>
+    // What rejecting refuses: whose permission hours on which day, or whose missing punch when.
+    const rejectQuestion = (r: FeedRow) => r.missingPunch
+        ? t('requests_missing_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
+        : t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
     // When it ended: done, decided, or withdrawn by whoever asked.
     const finishedLabel = (r: FeedRow): TranslationKey => r.kind === 'internal' ? 'finished_at' : r.status === 'CANCELLED' ? 'requests_withdrawn_on' : 'requests_decided_on'
 
@@ -342,6 +359,7 @@ export default function RequestsClient({
                             ...(kinds.length > 1 ? [{ icon: ShapesIcon, text: kindLabel(r) }] : []),
                             ...(r.dayOff ? [{ icon: CalendarBlankIcon, text: <span>{leaveWhen(r)}</span> }] : []),
                             ...(r.permission ? [{ icon: ClockIcon, text: <span>{permissionWhen(r)}</span> }] : []),
+                            ...(r.missingPunch ? [{ icon: ClockIcon, text: <span>{punchWhen(r)}</span> }] : []),
                             ...(review ? [{ icon: UserIcon, text: <bdi>{r.who.name}</bdi> }] : []),
                             { icon: CalendarIcon, text: asked(r) },
                         ]}
@@ -375,6 +393,11 @@ export default function RequestsClient({
                                 { label: t('requests_permission_hours'), value: hours(viewing) },
                                 { label: t('requests_permission_length'), value: length(viewing) },
                             ] : []),
+                            ...(viewing.missingPunch ? [
+                                { label: t('date_label'), value: punchDay(viewing.missingPunch.at, locale) },
+                                { label: t('punch_time'), value: punchTime(viewing.missingPunch.at, locale) },
+                                { label: t('punch_direction'), value: direction(viewing) },
+                            ] : []),
                             { label: t('requested_on'), value: <SafeDate date={viewing.asked} locale={locale} /> },
                             ...(viewing.started ? [{ label: t('started_at'), value: <SafeDate date={viewing.started} locale={locale} /> }] : []),
                             ...(viewing.finished ? [{ label: t(finishedLabel(viewing)), value: <SafeDate date={viewing.finished} locale={locale} /> }] : []),
@@ -402,14 +425,17 @@ export default function RequestsClient({
                     onClose={() => setDeciding(null)} onDecided={() => { setDeciding(null); router.refresh() }} />
             )}
             {rejecting && (
-                <RejectPermission key={rejecting.id} request={rejecting} onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); router.refresh() }} />
+                <RejectAttendance key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
+                    placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : 'requests_permission_reject_placeholder')}
+                    onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); router.refresh() }} />
             )}
             {withdrawing && (
-                <WithdrawPermission key={withdrawing.id} request={withdrawing} onClose={() => setWithdrawing(null)}
-                    onWithdrawn={() => { setWithdrawing(null); setViewing(null); router.refresh() }} />
+                <WithdrawAttendance key={withdrawing.id} request={withdrawing}
+                    hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : 'req_withdraw_hint')}
+                    onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); router.refresh() }} />
             )}
 
-            <NewRequest open={asking} mayAskDayOff={mayAskDayOff} mayAskPermission={mayAskPermission} onClose={() => setAsking(false)} onAsked={() => {
+            <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} onClose={() => setAsking(false)} onAsked={() => {
                 setAsking(false)
                 // Theirs, waiting: where it now is.
                 if (tab === 'mine' && show === 'waiting') router.refresh()
@@ -422,18 +448,20 @@ export default function RequestsClient({
 /**
  * Asking for something: a title and what it's about, as the server checks
  * them; a day off, for whoever may ask for leave (§2.3, part 2c); or
- * permission hours, for whoever has attendance of their own (part 3a).
+ * permission hours or a missing punch, for whoever has attendance of their
+ * own (part 3).
  */
-function NewRequest({ open, mayAskDayOff, mayAskPermission, onClose, onAsked }: {
+function NewRequest({ open, mayAskDayOff, today, onClose, onAsked }: {
     open: boolean
     mayAskDayOff: boolean
-    mayAskPermission: boolean
+    /** The company's day, for whoever has attendance of their own; null for whoever hasn't. */
+    today: string | null
     onClose: () => void
     onAsked: () => void
 }) {
     const { t } = useLanguage()
     const [what, setWhat] = useState<RequestKind>('internal')
-    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && mayAskDayOff) || (k === 'permission' && mayAskPermission))
+    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && mayAskDayOff) || ((k === 'permission' || k === 'missingPunch') && today !== null))
     const close = () => {
         setWhat('internal')
         onClose()
@@ -450,9 +478,11 @@ function NewRequest({ open, mayAskDayOff, mayAskPermission, onClose, onAsked }: 
             )}
             {what === 'dayOff'
                 ? <AskDayOff onCancel={close} onAsked={asked} />
-                : what === 'permission'
-                    ? <AskPermission onCancel={close} onAsked={asked} />
-                    : <AskInternal onCancel={close} onAsked={onAsked} />}
+                : what === 'permission' && today
+                    ? <AskPermission today={today} onCancel={close} onAsked={asked} />
+                    : what === 'missingPunch' && today
+                        ? <ReportMissingPunch today={today} onCancel={close} onReported={asked} />
+                        : <AskInternal onCancel={close} onAsked={onAsked} />}
         </Dialog>
     )
 }
