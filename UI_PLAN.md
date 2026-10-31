@@ -166,7 +166,10 @@ one once its kind has moved in.
       under To review with the days to take off and from what, and the
       balance on Mine (#128). The Day off page stays meanwhile.
    4. **2d:** Day off requests sends people there, with its notifications
-      and the dashboard's tile, once the page has what its list filters by.
+      and the dashboard's tile, once the page has what its list filters by
+      (#129). Its dates of leave are a filter once the kind is Day off
+      (Decided on 2026-10-31), as the Day off list had them; the other kinds
+      have no dates to filter by.
 3. **Permission hours and missing punches:** asked for and decided on the
    page; Attendance's Requests tab points there.
 4. **Overtime, phones and flagged punches:** decided under To review.
@@ -1522,3 +1525,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     title.
   - In Arabic, a line's parts are joined with an Arabic comma: a dot beside
     a number reads as the digit zero (found in the browser).
+- **2026-10-31:** Day off on the Requests page was merged in #128 (§2.3,
+  part 2c), and the Day off page sends people there in #129. Decided: its
+  dates of leave are a filter once the kind is Day off.
