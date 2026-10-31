@@ -40,7 +40,8 @@ describe("the Attendance page's Requests tab", () => {
     })
 
     it("keeps Approve overtime ahead, which isn't a request (decided on 2026-10-31)", () => {
-        expect(tab).toContain("t('req_overtime_ahead')")
+        // A button that looks like the link beside it (found in the browser).
+        expect(tab).toContain("<Button onClick={() => setApprovingAhead(true)}>{t('req_overtime_ahead')}</Button>")
         expect(tab).toContain("<OvertimeAheadModal")
         expect(tab).toContain("/api/attendance/people?")
     })

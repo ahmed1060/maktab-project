@@ -1695,3 +1695,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     it's decided.
   - Other attendance notices are about one's own days, phone or check-ins,
     which stay on the Attendance page, and still open it.
+  - Found in the browser: the new phone's notice still said to approve it
+    under Attendance → Requests; it says the Requests page now, in both
+    languages, old notices too, since a notice is worded when it's shown.
+    And Approve overtime ahead is the building blocks' button, as the link
+    beside it is.

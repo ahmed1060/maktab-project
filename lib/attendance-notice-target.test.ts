@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { attendanceNoticeTarget } from "./attendance-notice-target"
+import { en } from "./translations/en"
+import { ar } from "./translations/ar"
 
 /**
  * An attendance notification opens the Attendance page, not the Requests page
@@ -33,6 +35,13 @@ describe("an attendance notification", () => {
         expect(attendanceNoticeTarget("ATTENDANCE_PHONE", "/dashboard/attendance?tab=requests", "notice_att_phone_requested")).toBe("/dashboard/requests?tab=review&kind=phone")
         // One's own phone decided stays on the Attendance page.
         expect(attendanceNoticeTarget("ATTENDANCE_PHONE", null, "notice_att_phone_approved")).toBe("/dashboard/attendance")
+    })
+
+    it("says where the new phone is decided: the Requests page, not the Attendance page's tab (found in the browser)", () => {
+        expect(en.notice_att_phone_requested).toContain("Requests page")
+        expect(en.notice_att_phone_requested).not.toContain("Attendance →")
+        expect(ar.notice_att_phone_requested).toContain("صفحة الطلبات")
+        expect(ar.notice_att_phone_requested).not.toContain("الحضور ←")
     })
 
     it("is given the notice's key by the bell and by the push, which open the same page", () => {

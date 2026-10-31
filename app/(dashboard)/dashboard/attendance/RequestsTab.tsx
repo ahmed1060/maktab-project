@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ButtonLink } from '@/components/ui'
+import { Button, ButtonLink } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -269,7 +269,8 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
             {decidesOvertime && (
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <p style={{ margin: 0, fontSize: '0.88rem', flex: '1 1 16rem' }}>{t('requests_overtime_ahead_line')}</p>
-                    <button className="btn btn-secondary" onClick={() => setApprovingAhead(true)}>{t('req_overtime_ahead')}</button>
+                    {/* The building blocks' button, as the link beside it is (found in the browser). */}
+                    <Button onClick={() => setApprovingAhead(true)}>{t('req_overtime_ahead')}</Button>
                 </div>
             )}
             {approvingAhead && (

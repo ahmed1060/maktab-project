@@ -2953,7 +2953,7 @@ export const en = {
         notice_face_approved: "Your face verification photo was approved. Face verification is now on for your check-ins.",
         notice_face_rejected: "Your face verification photo wasn't approved.{reason} Set face verification up again in the app.",
         notice_face_reverify: "Please verify your face again: the app will ask for it before your next check-in.",
-        notice_att_phone_requested: "{name} asked to check in from a new phone ({model}). Approve it under Attendance → Requests.",
+        notice_att_phone_requested: "{name} asked to check in from a new phone ({model}). Decide it on the Requests page, under To review.",
         notice_att_phone_approved: "Your phone ({model}) is approved: check in with it from now on.",
         notice_att_phone_rejected: "Your new phone ({model}) wasn't approved, and check-ins made with it don't count.{reason} Check in with your previous phone, or ask again.",
         notice_att_phone_revoked: "Your phone ({model}) can no longer be used to check in.{reason} Register your new phone in the app.",
