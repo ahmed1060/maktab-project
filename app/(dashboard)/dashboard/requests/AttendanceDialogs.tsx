@@ -6,15 +6,23 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useBusyAction } from '@/lib/useBusyAction'
 import type { TranslationKey } from '@/lib/translations'
-import type { FeedRow } from '@/lib/requests/kinds'
+import type { FeedRow, RequestKind } from '@/lib/requests/kinds'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 
 /**
- * Permission hours on the one Requests page (UI_PLAN.md §2.3, part 3a):
- * asking for them, rejecting them and withdrawing them, as the Attendance
- * page's Requests tab did.
+ * Attendance requests on the one Requests page (UI_PLAN.md §2.3, part 3):
+ * asking for permission hours (part 3a) and reporting a missing punch (part
+ * 3b), and rejecting and withdrawing either, as the Attendance page's
+ * Requests tab did.
  */
+
+/** The attendance kinds, and each one's API (app/api/attendance). */
+export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch'>
+export const ATTENDANCE_API: Record<AttendanceKind, string> = {
+    permission: '/api/attendance/permissions',
+    missingPunch: '/api/attendance/missing-punches',
+}
 
 /** The server's own check (lib/validations/attendance-request.schema.ts): a reason, and a reason to refuse. */
 const REASON_MAX = 500
@@ -39,6 +47,8 @@ const REFUSED: Record<string, TranslationKey> = {
     PAYROLL_MONTH_LOCKED: 'requests_month_locked',
     REQUEST_ALREADY_DECIDED: 'requests_already_decided',
     REQUEST_ALREADY_STARTED: 'requests_permission_started',
+    PUNCH_IN_FUTURE: 'requests_missing_future',
+    MISSING_PUNCH_ALREADY_REPORTED: 'requests_missing_already',
 }
 
 const dateLocale = (locale: string) => locale === 'ar' ? 'ar-EG' : 'en-GB'
@@ -48,6 +58,10 @@ const digits = (locale: string) => (n: number) => n.toLocaleString(dateLocale(lo
 export function permissionDay(date: string, locale: string) {
     return new Date(`${date}T00:00:00Z`).toLocaleDateString(dateLocale(locale), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 }
+
+/** A wall-clock time, "2026-10-28T17:05": its day, as permissionDay, and its time, as clockText. */
+export const punchDay = (at: string, locale: string) => permissionDay(at.slice(0, 10), locale)
+export const punchTime = (at: string, locale: string) => clockText(at.slice(11, 16), locale)
 
 /** A time of day, "16:00", as the language writes it. */
 export function clockText(hhmm: string, locale: string) {
@@ -61,10 +75,10 @@ async function refusal(res: Response, fallback: TranslationKey): Promise<Transla
     return REFUSED[body?.code] ?? fallback
 }
 
-/** Approves or rejects somebody's permission hours. Null once done; otherwise what to say. */
-export async function decidePermission(request: Pick<FeedRow, 'id'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
+/** Approves or rejects somebody's permission hours or missing punch. Null once done; otherwise what to say. */
+export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
     try {
-        const res = await fetch(`/api/attendance/permissions/${request.id}/decide`, {
+        const res = await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}/decide`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ approve, reason }),
@@ -75,8 +89,15 @@ export async function decidePermission(request: Pick<FeedRow, 'id'>, approve: bo
     }
 }
 
-/** Rejecting permission hours, with a reason if there is one. */
-export function RejectPermission({ request, onClose, onDecided }: { request: FeedRow; onClose: () => void; onDecided: () => void }) {
+/** Rejecting permission hours or a missing punch, with a reason if there is one. */
+export function RejectAttendance({ request, question, placeholder, onClose, onDecided }: {
+    request: FeedRow
+    /** What's being refused, in a sentence: whose, and which. */
+    question: string
+    placeholder: string
+    onClose: () => void
+    onDecided: () => void
+}) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
@@ -85,7 +106,7 @@ export function RejectPermission({ request, onClose, onDecided }: { request: Fee
 
     const reject = () => void action.run('decide', async () => {
         // The schema takes an empty reason as none given.
-        const refused = await decidePermission(request, false, reason.trim() || null)
+        const refused = await decideAttendance(request, false, reason.trim() || null)
         if (refused) {
             showToast(t(refused), 'error')
             return
@@ -104,23 +125,23 @@ export function RejectPermission({ request, onClose, onDecided }: { request: Fee
                 <Button variant="danger" onClick={reject} disabled={action.running} busy={action.is('decide')}>{t('reject_button')}</Button>
             </>}
         >
-            <p>{t('requests_permission_reject_question').replace('{name}', request.who.name).replace('{date}', permissionDay(request.permission!.date, locale))}</p>
+            <p>{question}</p>
             <Field label={t('rejection_reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}>{p => (
-                <TextArea {...p} name="rejection-reason" dir="auto" placeholder={t('requests_permission_reject_placeholder')} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} />
+                <TextArea {...p} name="rejection-reason" dir="auto" placeholder={placeholder} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} />
             )}</Field>
         </Dialog>
     )
 }
 
-/** Withdrawing one's own permission hours: its minutes go back to the month's. */
-export function WithdrawPermission({ request, onClose, onWithdrawn }: { request: FeedRow; onClose: () => void; onWithdrawn: () => void }) {
+/** Withdrawing one's own permission hours or report of a missing punch. */
+export function WithdrawAttendance({ request, hint, onClose, onWithdrawn }: { request: FeedRow; hint: string; onClose: () => void; onWithdrawn: () => void }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
 
     const withdraw = () => void action.run('withdraw', async () => {
         try {
-            const res = await fetch(`/api/attendance/permissions/${request.id}`, { method: 'DELETE' })
+            const res = await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}`, { method: 'DELETE' })
             if (!res.ok) {
                 showToast(t(await refusal(res, 'error_generic')), 'error')
                 return
@@ -142,7 +163,7 @@ export function WithdrawPermission({ request, onClose, onWithdrawn }: { request:
                 <Button variant="danger" onClick={withdraw} disabled={action.running} busy={action.is('withdraw')}>{t('req_withdraw')}</Button>
             </>}
         >
-            <p>{t('req_withdraw_hint')}</p>
+            <p>{hint}</p>
         </Dialog>
     )
 }
@@ -240,6 +261,80 @@ export function AskPermission({ onCancel, onAsked }: { onCancel: () => void; onA
             <DialogActions>
                 <Button onClick={onCancel}>{t('cancel')}</Button>
                 <Button type="submit" variant="primary" disabled={action.running} busy={action.is('ask')}>{t('send_request')}</Button>
+            </DialogActions>
+        </form>
+    )
+}
+
+type ReportErrors = { date?: string; time?: string; reason?: string }
+
+/**
+ * Reporting a punch the terminal didn't record: the day, today at the
+ * latest, the time, whether in or out if they know, and why. Once approved
+ * it's added as a punch, and the day is worked out again.
+ */
+export function ReportMissingPunch({ onCancel, onReported }: { onCancel: () => void; onReported: () => void }) {
+    const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const action = useBusyAction()
+    const num = digits(locale)
+    const [date, setDate] = useState(today)
+    const [time, setTime] = useState('')
+    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('')
+    const [reason, setReason] = useState('')
+    const [errors, setErrors] = useState<ReportErrors>({})
+
+    const submit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        const form = e.currentTarget
+        const found: ReportErrors = {
+            date: !date ? t('requests_missing_date_missing') : undefined,
+            time: !time ? t('requests_missing_time_missing') : undefined,
+            reason: !reason.trim() ? t('requests_missing_reason_missing') : undefined,
+        }
+        setErrors(found)
+        if (found.date || found.time || found.reason) {
+            requestAnimationFrame(() => form.querySelector<HTMLElement>(found.date ? '.ui-date-trigger' : '[aria-invalid="true"]')?.focus())
+            return
+        }
+        void action.run('report', async () => {
+            try {
+                const res = await fetch('/api/attendance/missing-punches', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ at: `${date}T${time}`, direction: direction || null, reason: reason.trim() }),
+                })
+                if (!res.ok) {
+                    showToast(t(await refusal(res, 'failed_submit_request')), 'error')
+                    return
+                }
+                showToast(t('req_reported'), 'success')
+                onReported()
+            } catch {
+                showToast(t('error_generic'), 'error')
+            }
+        })
+    }
+
+    return (
+        <form className="ui-form" noValidate onSubmit={submit}>
+            <p className="ui-hint">{t('req_missing_hint')}</p>
+            <DatePickerSingle asField label={t('date_label')} value={date} maxDate={today()} error={errors.date}
+                onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
+            <Field label={t('punch_time')} error={errors.time}>{p => (
+                <TextInput {...p} name="time" type="time" autoComplete="off" value={time} onChange={e => { setTime(e.target.value); setErrors(x => ({ ...x, time: undefined })) }} />
+            )}</Field>
+            <Field label={t('punch_direction')}>{p => (
+                <Select {...p} name="direction" value={direction} onChange={e => setDirection(e.target.value as '' | 'IN' | 'OUT')}
+                    options={[{ value: '', label: t('punch_direction_unknown') }, { value: 'IN', label: t('punch_in') }, { value: 'OUT', label: t('punch_out') }]} />
+            )}</Field>
+            <Field label={t('reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))} error={errors.reason}>{p => (
+                <TextArea {...p} name="reason" dir="auto" placeholder={t('requests_missing_reason_placeholder')} value={reason} maxLength={500}
+                    onChange={e => { setReason(e.target.value); setErrors(x => ({ ...x, reason: undefined })) }} />
+            )}</Field>
+            <DialogActions>
+                <Button onClick={onCancel}>{t('cancel')}</Button>
+                <Button type="submit" variant="primary" disabled={action.running} busy={action.is('report')}>{t('send_request')}</Button>
             </DialogActions>
         </form>
     )

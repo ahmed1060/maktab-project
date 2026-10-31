@@ -207,7 +207,7 @@ describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
         ...fields,
     })
     const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
-    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/PermissionDialogs.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
     const allowance = { left: 90, total: 120, pending: 30, carried: 0 }
 
     it("reads as any request does: the type of permission, its day and hours, who asked and its status", async () => {
@@ -226,7 +226,8 @@ describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
         const html = await page({ rows: [hours({ mayDecide: true })] })
         expect(html).toMatch(/<button[^>]*>.*approve_button/)
         expect(html).toMatch(/<button[^>]*>.*reject_button/)
-        expect(dialogs).toContain("fetch(`/api/attendance/permissions/${request.id}/decide`")
+        expect(dialogs).toContain("permission: '/api/attendance/permissions'")
+        expect(dialogs).toContain("fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}/decide`")
     })
 
     it("once ended, is Approved, Rejected or Withdrawn, which is no one's fault", async () => {
@@ -240,8 +241,8 @@ describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
     it("may be withdrawn from its More actions by whoever asked, once they've said so", () => {
         expect(client).toContain("r.mayWithdraw")
         expect(client).toContain("label: t('req_withdraw')")
-        expect(dialogs).toContain("fetch(`/api/attendance/permissions/${request.id}`, { method: 'DELETE' })")
-        expect(dialogs).toContain("t('req_withdraw_hint')")
+        expect(dialogs).toContain("fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}`, { method: 'DELETE' })")
+        expect(client).toContain("'req_withdraw_hint'")
     })
 
     it("shows what's left of the month's permission hours on Mine, under the day off balance and above the list", async () => {
@@ -256,7 +257,7 @@ describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
     })
 
     it("is asked for from New request, with the chosen day's limits, its type, hours and reason", () => {
-        expect(client).toContain("mayAskPermission")
+        expect(client).toContain("mayAskAttendance")
         expect(dialogs).toContain("fetch('/api/attendance/permissions', {")
         expect(dialogs).toContain("/api/attendance/permissions/balance?date=")
         expect(dialogs).toContain("t('req_limits')")
@@ -275,6 +276,54 @@ describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
 
     it("has no styles typed in", async () => {
         const html = await page({ rows: [hours({ mayDecide: true }), hours({ id: "p2", mayWithdraw: true })], tab: "mine", kinds: ["permission"], allowance })
+        expect(html).not.toContain("style=")
+    })
+})
+
+describe("missing punches on it (UI_PLAN.md §2.3, part 3b)", () => {
+    const punch = (fields: Partial<FeedRow> = {}): FeedRow => row({
+        kind: "missingPunch", id: "m1", what: "OUT", detail: "The terminal was down",
+        missingPunch: { at: "2026-10-28T17:05", direction: "OUT", rejectionReason: null },
+        ...fields,
+    })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
+
+    it("reads as any request does: which punch, its day and time, who reported it and its status", async () => {
+        const html = await page({ rows: [punch()], kinds: ["internal", "permission", "missingPunch"] })
+        expect(html).toContain("requests_missing_out")
+        expect(html).toContain("28 Oct 2026")
+        expect(html).toContain("17:05")
+        expect(html).toContain("Mona Adel")
+        expect(html).toContain("requests_kind_missing_punch")
+        expect(await page({ rows: [punch({ what: "", missingPunch: { at: "2026-10-28T17:05", direction: null, rejectionReason: null } })] })).toContain("requests_missing_any")
+    })
+
+    it("is approved, adding the punch, or rejected, under To review by whoever may decide it", async () => {
+        expect(await page({ rows: [punch()] })).not.toContain("approve_button")
+        const html = await page({ rows: [punch({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+        expect(dialogs).toContain("missingPunch: '/api/attendance/missing-punches'")
+        expect(client).toContain("t('requests_missing_reject_question')")
+    })
+
+    it("may be withdrawn while it waits, once the one who reported it says so", async () => {
+        expect(client).toContain("'requests_missing_withdraw_hint'")
+        expect(await page({ rows: [punch({ status: "CANCELLED" })], show: "done" })).toContain("status_withdrawn")
+    })
+
+    it("is reported from New request: the day, which can't be after today, the time, in or out, and why", () => {
+        expect(dialogs).toContain("fetch('/api/attendance/missing-punches', {")
+        expect(dialogs).toContain("maxDate={today()}")
+        expect(dialogs).toContain("t('req_missing_hint')")
+        expect(dialogs).toContain("t('punch_direction_unknown')")
+        // Why the server refused it, in their language.
+        for (const code of ["PUNCH_IN_FUTURE", "MISSING_PUNCH_ALREADY_REPORTED", "PAYROLL_MONTH_LOCKED"]) expect(dialogs, code).toContain(code)
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [punch({ mayDecide: true }), punch({ id: "m2", mayWithdraw: true })], kinds: ["missingPunch"] })
         expect(html).not.toContain("style=")
     })
 })
