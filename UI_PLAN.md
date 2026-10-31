@@ -1877,3 +1877,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the two clashed, and it failed on every run. It picks its months after
     the one approved, with a Monday at the month's end as before, and
     takes Cairo's own offset, +03:00 in summer.
+- **2026-11-01:** The attendance tests were merged in #143. Decided on
+  2026-10-31: Payroll's month is kept in its address, so a reload or a
+  link opens on it, and a Super Admin's company is the company in view
+  from the top bar, as on every other page. Payroll's own company picker
+  goes; with it, they picked the company twice. Both are written into
+  `DESIGN.md` (§5.3), for Attendance's month and Public holidays' year
+  too, and Payroll follows them in #144.

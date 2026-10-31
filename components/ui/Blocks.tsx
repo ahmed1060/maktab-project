@@ -92,9 +92,8 @@ export function SectionLink({ href, download, children }: { href: string; downlo
 
 /**
  * Which period a page is about, such as Payroll's month (DESIGN.md §5.3): its
- * selects, each a Field, in a panel under the page header. A Field with
- * `ui-period-wide`, such as the Super Admin's company, takes a line of its
- * own on phones.
+ * selects, each a Field, in a panel under the page header. The page keeps
+ * the period in its address.
  */
 export function PeriodBar({ children }: { children: ReactNode }) {
     return <div className="ui-panel ui-period">{children}</div>

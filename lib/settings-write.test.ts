@@ -124,9 +124,12 @@ describe("G2: the payroll settings can actually be set", () => {
 })
 
 describe("G3: a Super Admin can reach a register", () => {
-    it("offers a company picker to them and to nobody else", () => {
-        expect(REGISTER).toContain("isSuper && (")
-        expect(REGISTER).toContain("payroll_pick_company")
+    it("follows the company in view, picked in the top bar, for them and nobody else", () => {
+        // Decided on 2026-10-31: the page had a picker of its own, so a Super
+        // Admin picked the company twice (DESIGN.md §5.3).
+        expect(REGISTER).toContain("const { selectedCompanyId } = useCompany()")
+        expect(REGISTER).toContain("const companyId = isSuper ? (selectedCompanyId ?? '') : ''")
+        expect(REGISTER).not.toContain("/api/companies")
     })
 
     it("asks for nothing until a company is chosen", () => {
@@ -137,8 +140,9 @@ describe("G3: a Super Admin can reach a register", () => {
 
     it("chooses no company on their behalf", () => {
         // Defaulting to the first would show a Super Admin somebody's payroll
-        // they did not ask for.
-        expect(REGISTER).toContain("useState<string>('')")
+        // they did not ask for. All companies, in the top bar, is none.
+        expect(REGISTER).toContain("selectedCompanyId ?? ''")
+        expect(REGISTER).toContain("payroll_pick_company_hint")
     })
 
     it("carries the company on every call, not just the read", () => {
@@ -174,10 +178,10 @@ describe("G3: a Super Admin can reach a register", () => {
         expect(REGISTER).toContain("const view: View | null = registerKey && !error ? (data?.data ?? null) : null")
     })
 
-    it("reads the company list at the level the envelope actually puts it", () => {
-        // { data: { data: [...] } } — reaching one level short yields an empty
-        // picker and no error, which is how this would have shipped looking fine.
-        expect(REGISTER).toContain("Array.isArray(body?.data?.data)")
+    it("keeps the month picked in its address, the top bar's company with it", () => {
+        // So a reload or a link opens on it (DESIGN.md §5.3, decided on 2026-10-31).
+        expect(REGISTER).toContain("const { year, month } = periodFromAddress(params, now)")
+        expect(REGISTER).toContain("router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })")
     })
 })
 

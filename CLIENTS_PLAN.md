@@ -2123,3 +2123,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** Payroll's review cards were merged in #142, and four
   attendance tests that depended on the date are fixed in #143
   (`UI_PLAN.md`). Neither touches clients or locations.
+- **2026-11-01:** The attendance tests were merged in #143. Payroll keeps
+  its month in its address and follows the top bar's company in view, in
+  #144 (`UI_PLAN.md` §5). Neither touches clients or locations.
