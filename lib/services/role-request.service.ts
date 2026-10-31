@@ -39,8 +39,12 @@ type Session = { user: { id: string; role: string; companyId?: string | null; gr
  * it on Mine for whoever asked and To review for whoever decides.
  */
 const link = (id: string) => `/dashboard/requests?kind=role&highlight=${id}`
-/** The person it gave a role to doesn't see it there: their own profile shows the role. */
-const profile = (userId: string) => `/dashboard/employees/${userId}`
+/**
+ * The person it gave a role to doesn't see it there, and their own profile
+ * has no Role field (found in the browser): the dashboard, whose side bar
+ * has what the new role opens.
+ */
+const NEW_ROLE = "/dashboard"
 const name = (u: { firstName: string; lastName: string }) => `${u.firstName} ${u.lastName}`
 
 const SHAPE = {
@@ -193,7 +197,7 @@ export class RoleRequestService {
             link(id),
         )
         if (input.approve) {
-            await NotificationService.notify(request.userId, "ROLE_CHANGE_APPROVED", { key: "notice_role_now", params: { role: roleParam(request.role) } }, profile(request.userId))
+            await NotificationService.notify(request.userId, "ROLE_CHANGE_APPROVED", { key: "notice_role_now", params: { role: roleParam(request.role) } }, NEW_ROLE)
         }
         return RoleRequestService.get(id)
     }

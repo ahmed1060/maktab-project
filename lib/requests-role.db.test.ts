@@ -8,7 +8,7 @@ import { withGrants } from "@/lib/permissions/test-actors"
  * a real Postgres: those one asked for on Mine, the company's that somebody
  * else asked for under To review for whoever gives roles, Done in order of
  * when each was decided or withdrawn, and a decision's notices opening it
- * there, or the person's own profile.
+ * there, or the dashboard for the person given the role.
  *
  * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
  * its maintenance database. Skipped without it (CI has no database).
@@ -108,7 +108,7 @@ describe.skipIf(!ADMIN_URL)("role requests on the Requests page, in Postgres", (
         expect((await requestFeed(ehab, query())).kinds).not.toContain("role")
     })
 
-    it("once decided is first on Done; whoever asked is told with it on the Requests page, and the person with their profile", { timeout: 60_000 }, async () => {
+    it("once decided is first on Done; whoever asked is told with it on the Requests page, and the person with the dashboard", { timeout: 60_000 }, async () => {
         const { RoleRequestService } = await import("@/lib/services/role-request.service")
         const { requestFeed } = await import("@/lib/requests/feed")
         vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-30T10:00:00Z") })
@@ -118,7 +118,9 @@ describe.skipIf(!ADMIN_URL)("role requests on the Requests page, in Postgres", (
         const { rows } = await db.query(`SELECT "userId", type, "relatedId" FROM "Notification" ORDER BY "userId"`)
         expect(rows).toEqual([
             // On the one Requests page (§2.3, part 5b), which opens it on Mine for whoever asked.
-            { userId: "e1", type: "ROLE_CHANGE_APPROVED", relatedId: "/dashboard/employees/e1" },
+            // Their own profile has no Role field, so it doesn't show it (found in the browser): the
+            // dashboard, whose side bar has what the new role opens.
+            { userId: "e1", type: "ROLE_CHANGE_APPROVED", relatedId: "/dashboard" },
             { userId: "h1", type: "ROLE_CHANGE_APPROVED", relatedId: "/dashboard/requests?kind=role&highlight=r-wait" },
         ])
     })

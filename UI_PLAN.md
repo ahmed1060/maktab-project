@@ -1760,7 +1760,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     it picked out, and its other tabs' links to Roles and access. Asking
     for one, deciding it and reminding of it are noticed with it on the
     Requests page; the Role field on a profile links its waiting one there.
-    "Your role is now" opens one's own profile, which shows it.
+    "Your role is now" opens the dashboard, whose side bar has what the new
+    role opens.
   - The side bar's Role requests item is Roles and access now, beside
     Company settings, for whoever gives roles; whoever only asks for roles
     finds theirs on the Requests page.
@@ -1769,3 +1770,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     say, beside who really asked. Its person is who asked now, as every
     row's is, and whose role it would be is beside the role, on Mine and
     To review alike, and in the details as "Whose role".
+  - Found in the browser: "Your role is now" opened one's own profile,
+    which has no Role field, so it said nothing of the role. It opens the
+    dashboard now, whose side bar has what the new role opens.
