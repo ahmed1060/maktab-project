@@ -147,6 +147,15 @@ describe("day off on To review", () => {
         expect(dayOffWhere(superAdmin, { ...review, show: "done" })).toEqual({ status: { in: ["APPROVED", "REJECTED"] } })
     })
 
+    it("narrows to the days of leave, by the day each starts, as the Day off list did (decided on 2026-10-31)", () => {
+        expect(dayOffWhere(admin, { ...review, from: "2026-11-01", to: "2026-11-07" })).toMatchObject({
+            AND: [{ date: { gte: new Date("2026-11-01T00:00:00.000Z"), lt: new Date("2026-11-08T00:00:00.000Z") } }],
+        })
+        expect(dayOffWhere(employee, { ...waiting, from: "2026-11-01" })).toMatchObject({ AND: [{ date: { gte: new Date("2026-11-01T00:00:00.000Z") } }] })
+        // A day that isn't one is left out, not sent on.
+        expect(dayOffWhere(admin, { ...review, from: "2026-02-31" })).not.toHaveProperty("AND")
+    })
+
     it("narrows to one person and words in the reason, within that reach", () => {
         expect(dayOffWhere(admin, { ...review, personId: "x9", search: "wedding" })).toMatchObject({
             user: { companyId: "c1" }, reason: { contains: "wedding", mode: "insensitive" }, AND: [{ userId: "x9" }],

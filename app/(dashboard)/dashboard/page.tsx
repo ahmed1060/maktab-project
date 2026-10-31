@@ -262,7 +262,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 <Section title={t('needs_your_review')}>
                     <TotalTiles items={[
                         { label: t('pending_task_reviews'), value: num(reviewTasks), href: tasksListHref({ status: 'PENDING_CONFIRMATION', teamOnly: tasksTeamOnly }) },
-                        ...(can(viewer, 'dayoff.approve') ? [{ label: t('pending_day_off_requests'), value: num(pendingDayOffRequests), href: '/dashboard/day-off-requests?status=PENDING' }] : []),
+                        ...(can(viewer, 'dayoff.approve') ? [{ label: t('pending_day_off_requests'), value: num(pendingDayOffRequests), href: '/dashboard/requests?tab=review&kind=dayOff&show=waiting' }] : []),
                         ...(can(viewer, 'profile_requests.review') ? [{ label: t('pending_profile_requests'), value: num(pendingProfileRequests), href: '/dashboard/profile-requests' }] : []),
                     ]} />
                 </Section>
@@ -380,7 +380,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         {byStatus(taskStats as any, t('task_distribution'))}
                     </Section>
                     <Section title={t('credit_overview')}>
-                        <DayOffCreditDonut remaining={remainingCredit} used={usedCredits} t={t} locale={locale} href="/dashboard/day-off-requests" />
+                        <DayOffCreditDonut remaining={remainingCredit} used={usedCredits} t={t} locale={locale} href="/dashboard/requests?tab=mine&kind=dayOff" />
                     </Section>
                 </Columns>
 
@@ -407,10 +407,10 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
 
                 <Columns>
                     {myLatestDayOffRequest && (
-                        <Section title={t('my_day_off_request')} action={<SectionLink href="/dashboard/day-off-requests">{t('view_all')}</SectionLink>}>
+                        <Section title={t('my_day_off_request')} action={<SectionLink href="/dashboard/requests?tab=mine&kind=dayOff">{t('view_all')}</SectionLink>}>
                             <Rows label={t('my_day_off_request')}>
                                 <Row
-                                    href="/dashboard/day-off-requests"
+                                    href={`/dashboard/requests?tab=mine&kind=dayOff&highlight=${myLatestDayOffRequest.id}`}
                                     title={dayOffWord(myLatestDayOffRequest.type)}
                                     detail={myLatestDayOffRequest.endDate && day(myLatestDayOffRequest.endDate) !== day(myLatestDayOffRequest.date)
                                         ? `${day(myLatestDayOffRequest.date)} – ${day(myLatestDayOffRequest.endDate)}`

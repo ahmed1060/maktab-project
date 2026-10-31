@@ -15,11 +15,11 @@ describe("day off credit used", () => {
         expect(usedDayOffCredit(null, undefined)).toBe(0)
     })
 
-    it("is the one answer on the dashboard and on Day Off Requests", () => {
+    it("is the one answer on the dashboard and on the Requests page's Mine (UI_PLAN.md §2.3, part 2d)", () => {
         const dashboard = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")
-        const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
+        const requests = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
         expect(dashboard).toContain("usedDayOffCredit(currentUser?.baseDayOffCredit, currentUser?.dayOffCredit)")
-        expect(dayOff).toContain("usedDayOffCredit(baseCredit, userCredit)")
+        expect(requests).toContain("usedDayOffCredit(balance.baseDayOffCredit ?? balance.dayOffCredit, balance.dayOffCredit)")
         // Not summed from approved requests, which counts salary days and past years.
         expect(dashboard).not.toMatch(/approvedRequests\.reduce/)
     })

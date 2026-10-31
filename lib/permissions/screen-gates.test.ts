@@ -86,10 +86,12 @@ const GATES: Gate[] = [
     { what: "dashboard: add employee (in the overview)", file: D + "page.tsx", uses: "can(viewer, 'employees.create') && <ButtonLink href=\"/dashboard/employees/new\"", before: r => managers(r) && r !== "TEAM_LEADER", now: p => p.can("tasks.view") && p.can("employees.create") },
 
     // --- Day off and payroll ---------------------------------------------------
-    { what: "day off: the company's requests", file: D + "day-off-requests/page.tsx", uses: "const managesRequests = can('dayoff.view')", before: admins, now: p => p.can("dayoff.view") },
-    { what: "day off: decide", file: D + "day-off-requests/page.tsx", uses: "const canDecide = can('dayoff.approve')", before: admins, now: p => p.can("dayoff.approve") },
+    // On the one Requests page since UI_PLAN.md §2.3, part 2d: To review has
+    // others' leave for whoever sees it, and its buttons where they may decide.
+    { what: "day off: the company's requests", file: "lib/requests/feed.ts", uses: 'const reach = grantFor(v, "dayoff.view")', before: admins, now: p => p.can("dayoff.view") },
+    { what: "day off: decide", file: "lib/requests/feed.ts", uses: 'can(v, "dayoff.approve", target)', before: admins, now: p => p.can("dayoff.approve") },
     // Added in Part B: the buttons on one request, never one's own.
-    { what: "day off: decide this one (flag: one's own)", file: D + "day-off-requests/page.tsx", uses: "canFor('dayoff.approve', r.userId, r.user?.teamLeaderId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("dayoff.approve", own ? ACTOR[role].id : "someone-else") },
+    { what: "day off: decide this one (flag: one's own)", file: "lib/requests/feed.ts", uses: 'const mayDecide = !decided && can(v, "dayoff.view", target) && can(v, "dayoff.approve", target)', before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("dayoff.approve", own ? ACTOR[role].id : "someone-else") },
     { what: "name changes: decide this one (flag: one's own)", file: D + "profile-requests/page.tsx", uses: "permissions.canFor('profile_requests.review', req.userId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("profile_requests.review", own ? ACTOR[role].id : "someone-else") },
     { what: "payroll: save draft", file: D + "payroll/page.tsx", uses: "const canPrepare = can('payroll.prepare')", before: admins, now: p => p.can("payroll.prepare") },
     { what: "payroll: approve", file: D + "payroll/page.tsx", uses: "const canApprove = can('payroll.approve')", before: admins, now: p => p.can("payroll.approve") },

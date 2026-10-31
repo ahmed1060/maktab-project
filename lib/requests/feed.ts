@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { can, grantFor, type Actor, type Target } from "@/lib/permissions/can"
 import { and, teamMemberWhere } from "@/lib/team-scope"
 import { sessionHasModule } from "@/lib/features/require"
+import { dayOffListFilters } from "@/lib/services/day-off-query"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
 
 /**
@@ -28,6 +29,9 @@ export type FeedQuery = {
     personId: string
     /** The company the Super Admin picked, if any. */
     companyId: string | null
+    /** Day off's dates of leave, as calendar days (§2.3, part 2d): those starting from and to. */
+    from?: string
+    to?: string
     page: number
     limit: number
 }
@@ -161,7 +165,7 @@ const DECIDED = ["APPROVED", "REJECTED"]
  * still ask; To review is everyone else's they see with dayoff.view, at its
  * reach. Null when they have none there.
  */
-export function dayOffWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+export function dayOffWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId" | "from" | "to">): Record<string, any> | null {
     if (!sessionHasModule({ user: v }, "DAY_OFF")) return null
     const where: Record<string, any> = {}
     if (q.tab === "mine") {
@@ -183,6 +187,9 @@ export function dayOffWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "sear
     }
     where.status = q.show === "done" ? { in: DECIDED } : "PENDING"
     if (q.search) where.reason = { contains: q.search, mode: "insensitive" }
+    // Its dates of leave, by the day each starts, as the Day off list read
+    // them; a day that isn't one is left out.
+    if (q.from || q.to) for (const dates of dayOffListFilters(new URLSearchParams({ from: q.from ?? "", to: q.to ?? "" }))) and(where, dates)
     return where
 }
 

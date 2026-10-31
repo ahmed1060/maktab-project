@@ -14,9 +14,9 @@ describe("a day-off request's dates", () => {
         expect(spansDays("2026-10-20T00:00:00.000Z", "2026-10-20T00:00:00.000Z")).toBe(false)
     })
 
-    it("are what the Day Off list shows", () => {
-        const page = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
-        expect(page).toContain("const range = (r: DayOffRequest) => spansDays(r.date, r.endDate)")
+    it("are what the Requests page shows (UI_PLAN.md §2.3, part 2d)", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+        expect(page).toContain("return spansDays(d.from, d.to) ? `${day(d.from)} – ${day(d.to!)}` : day(d.from)")
         expect(page).not.toContain("+ 86400000")
     })
 })

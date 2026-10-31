@@ -2074,3 +2074,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** The companies there got Ask for leave, merged in #127
   (`UI_PLAN.md` §2.3), and day off moves onto the Requests page in #128.
   Neither touches clients or locations.
+- **2026-10-31:** Day off on the Requests page was merged in #128
+  (`UI_PLAN.md` §2.3), and the Day off page sends people there in #129.
+  Neither touches clients or locations.

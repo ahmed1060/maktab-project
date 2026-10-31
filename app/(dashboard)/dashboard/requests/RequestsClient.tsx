@@ -14,6 +14,7 @@ import { DAY_OFF_TYPE_LABEL } from '@/lib/day-off-types'
 import type { TranslationKey } from '@/lib/translations'
 import type { FeedRow, RequestKind, RequestsShow, RequestsTab } from '@/lib/requests/kinds'
 import SafeDate from '@/components/SafeDate'
+import DateRangePicker from '@/components/DateRangePicker'
 import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
 import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
@@ -92,12 +93,14 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
         visibleRow(highlightId)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
     }, [highlightId, highlightShown])
 
-    const filters = { kind: picked.get('kind') || '', employeeId: picked.get('employeeId') || '' }
-    const filtersOn = (filters.kind ? 1 : 0) + (review && filters.employeeId ? 1 : 0)
+    const filters = { kind: picked.get('kind') || '', employeeId: picked.get('employeeId') || '', from: picked.get('from') || '', to: picked.get('to') || '' }
+    // Day off's dates of leave are offered with Day off alone (decided on 2026-10-31).
+    const dayOffOnly = filters.kind === 'dayOff'
+    const filtersOn = (filters.kind ? 1 : 0) + (review && filters.employeeId ? 1 : 0) + (dayOffOnly && (filters.from || filters.to) ? 1 : 0)
     // The tab and Waiting or Done stay: they're which list, not a filter.
     const resetFilters = () => {
         clear()
-        go({ kind: '', employeeId: '', search: '' })
+        go({ kind: '', employeeId: '', search: '', from: '', to: '' })
     }
     const tabHref = (to: RequestsTab) => `/dashboard/requests?${withChanges(picked.toString(), { tab: to, employeeId: '', highlight: '' })}`
 
@@ -248,7 +251,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
                 )}</Field>
                 {kinds.length > 1 && (
                     <Field label={t('requests_kind_label')} hideLabel>{p => (
-                        <Select {...p} icon={ShapesIcon} value={filters.kind} onChange={e => go({ kind: e.target.value })}
+                        <Select {...p} icon={ShapesIcon} value={filters.kind} onChange={e => go({ kind: e.target.value, from: '', to: '' })}
                             options={[{ value: '', label: t('requests_kind_all') }, ...kinds.map(k => ({ value: k, label: kindName(k) }))]} />
                     )}</Field>
                 )}
@@ -256,6 +259,10 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
                     <Field label={t('requests_col_who')} hideLabel>{p => (
                         <Select {...p} icon={UserIcon} value={filters.employeeId} onChange={e => go({ employeeId: e.target.value })} options={employeeOptions} />
                     )}</Field>
+                )}
+                {dayOffOnly && (
+                    <DateRangePicker asField hideLabel label={t('requests_leave_dates')} dateFrom={filters.from} dateTo={filters.to}
+                        onChange={(from, to) => go({ from, to })} />
                 )}
             </FilterBar>
 

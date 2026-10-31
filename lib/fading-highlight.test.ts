@@ -33,7 +33,6 @@ describe("the first render already agrees with the URL", () => {
 
 describe("no screen goes back to copying it by hand", () => {
     const SCREENS = [
-        "app/(dashboard)/dashboard/day-off-requests/page.tsx",
         "app/(dashboard)/dashboard/employees/[id]/history/page.tsx",
         "app/(dashboard)/dashboard/requests/RequestsClient.tsx",
     ]

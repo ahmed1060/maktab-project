@@ -117,7 +117,8 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
             } else if (type.includes('OBLIGATION')) {
                 router.push(`/dashboard/obligations?highlight=${notification.relatedId}`)
             } else if (type.includes('DAY_OFF')) {
-                router.push(`/dashboard/day-off-requests?highlight=${notification.relatedId}`)
+                // On the one Requests page (UI_PLAN.md §2.3, part 2d).
+                router.push(`/dashboard/requests?kind=dayOff&highlight=${notification.relatedId}`)
             } else if (type.includes('BONUS') || type.includes('DEDUCTION')) {
                 // Redirection to the user's own salary history
                 if (!notification.userId) return
