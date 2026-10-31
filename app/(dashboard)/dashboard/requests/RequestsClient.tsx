@@ -416,7 +416,8 @@ export default function RequestsClient({
                                 ...(overtimeAmount(viewing) ? [{ label: t('requests_overtime'), value: overtimeAmount(viewing) }] : []),
                                 ...(inOut(viewing) ? [{ label: t('requests_overtime_in_out'), value: inOut(viewing) }] : []),
                             ] : []),
-                            { label: t('requested_on'), value: <SafeDate date={viewing.asked} locale={locale} /> },
+                            // A day's overtime has no time it was asked at: its day is above.
+                            ...(viewing.overtime ? [] : [{ label: t('requested_on'), value: <SafeDate date={viewing.asked} locale={locale} /> }]),
                             ...(viewing.started ? [{ label: t('started_at'), value: <SafeDate date={viewing.started} locale={locale} /> }] : []),
                             ...(viewing.finished ? [{ label: t(finishedLabel(viewing)), value: <SafeDate date={viewing.finished} locale={locale} /> }] : []),
                             { label: t('status_label'), value: badge(viewing) },

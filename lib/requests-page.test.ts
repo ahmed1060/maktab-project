@@ -359,8 +359,9 @@ describe("overtime on it (UI_PLAN.md §2.3, part 4a)", () => {
         expect(html).toContain("requests_kind_overtime")
     })
 
-    it("is asked on its day, not at a time of it", () => {
+    it("is asked on its day, not at a time of it, and its details say no time it was asked at (found in the browser)", () => {
         expect(client).toContain("r.overtime ? permissionDay(r.overtime.date, locale)")
+        expect(client).toContain("...(viewing.overtime ? [] : [{ label: t('requested_on')")
     })
 
     it("is approved, all its minutes, or rejected with a reason, by whoever may decide it", async () => {
