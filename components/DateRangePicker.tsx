@@ -22,9 +22,11 @@ interface DateRangePickerProps {
      * or the range picked), as a select does.
      */
     hideLabel?: boolean
+    /** With asField, what's wrong with it, under it as a field's error is (DESIGN.md §5.3). */
+    error?: string
 }
 
-export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate, asField = false, hideLabel = false }: DateRangePickerProps) {
+export default function DateRangePicker({ dateFrom, dateTo, onChange, label, minDate, maxDate, asField = false, hideLabel = false, error }: DateRangePickerProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const mounted = useHydrated()
@@ -322,12 +324,16 @@ export default function DateRangePicker({ dateFrom, dateTo, onChange, label, min
                 {label || t('filter_by_date_range' as any)}
             </label>
             {asField ? (
-                <span className="ui-control has-start-icon">
-                    <Icon icon={CalendarBlankIcon} size={16} />
-                    <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!dateFrom && !dateTo ? true : undefined}>
-                        {rangeText}
-                    </button>
-                </span>
+                <>
+                    <span className="ui-control has-start-icon">
+                        <Icon icon={CalendarBlankIcon} size={16} />
+                        <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!dateFrom && !dateTo ? true : undefined}
+                            aria-describedby={error ? `${openerId}-error` : undefined}>
+                            {rangeText}
+                        </button>
+                    </span>
+                    {error && <span id={`${openerId}-error`} className="ui-error">{error}</span>}
+                </>
             ) : (
             <button
                 type="button"

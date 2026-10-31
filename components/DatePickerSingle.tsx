@@ -18,9 +18,11 @@ interface DatePickerSingleProps {
     asField?: boolean
     /** Can't be changed, as while the form it's in is saving. */
     disabled?: boolean
+    /** With asField, what's wrong with it, under it as a field's error is (DESIGN.md §5.3). */
+    error?: string
 }
 
-export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false, disabled = false }: DatePickerSingleProps) {
+export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false, disabled = false, error }: DatePickerSingleProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const mounted = useHydrated()
@@ -225,10 +227,12 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
             {label && <label htmlFor={openerId} className="ui-label">{label}</label>}
             <span className="ui-control has-start-icon">
                 <Icon icon={CalendarBlankIcon} size={16} />
-                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!value || undefined} disabled={disabled}>
+                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!value || undefined} disabled={disabled}
+                    aria-describedby={error ? `${openerId}-error` : undefined}>
                     {value ? formatDate(value) : t('select_date' as any)}
                 </button>
             </span>
+            {error && <span id={`${openerId}-error`} className="ui-error">{error}</span>}
             {portal}
         </div>
     )
