@@ -49,6 +49,7 @@ const KIND_LABEL: Record<RequestKind, TranslationKey> = {
     dayOff: 'requests_kind_day_off',
     permission: 'requests_kind_permission',
     missingPunch: 'requests_kind_missing_punch',
+    overtime: 'requests_kind_overtime',
 }
 
 /** A missing punch's name: which punch, if they said (§2.3, part 3b). */
@@ -185,7 +186,8 @@ export default function RequestsClient({
     // What it's for: an internal request's title, or a day off's or permission's type.
     const name = (r: FeedRow) => r.kind === 'dayOff' ? t(DAY_OFF_TYPE_LABEL[r.what] ?? 'regular_day_off')
         : r.kind === 'permission' ? t(PERMISSION_TYPE_LABEL[r.what] ?? 'audit_value_MIDDAY')
-            : r.kind === 'missingPunch' ? t(MISSING_LABEL[r.what] ?? 'requests_missing_any') : r.what
+            : r.kind === 'missingPunch' ? t(MISSING_LABEL[r.what] ?? 'requests_missing_any')
+                : r.kind === 'overtime' ? t('requests_overtime') : r.what
     const title = (r: FeedRow) => {
         const what = name(r)
         return <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{what}</bdi></button>
@@ -208,17 +210,24 @@ export default function RequestsClient({
     const permissionWhen = (r: FeedRow) => [permissionDay(r.permission!.date, locale), hours(r), length(r)].join(sep)
     // A missing punch: the day and the time on the wall.
     const punchWhen = (r: FeedRow) => [punchDay(r.missingPunch!.at, locale), punchTime(r.missingPunch!.at, locale)].join(sep)
+    // A day's overtime: the day, how much, and when they came and left; once
+    // decided, what was approved (§2.3, part 4a).
+    const inOut = (r: FeedRow) => r.overtime?.firstIn && r.overtime.lastOut ? `${clockText(r.overtime.firstIn, locale)} – ${clockText(r.overtime.lastOut, locale)}` : null
+    const overtimeAmount = (r: FeedRow) => r.overtime!.approvedMinutes !== null
+        ? t('requests_overtime_approved').replace('{n}', num(r.overtime!.approvedMinutes))
+        : r.overtime!.minutes !== null ? t('requests_overtime_minutes').replace('{n}', num(r.overtime!.minutes)) : null
+    const overtimeWhen = (r: FeedRow) => [permissionDay(r.overtime!.date, locale), overtimeAmount(r), inOut(r)].filter(Boolean).join(sep)
     const direction = (r: FeedRow) => t(r.missingPunch?.direction === 'IN' ? 'punch_in' : r.missingPunch?.direction === 'OUT' ? 'punch_out' : 'punch_direction_unknown')
     // What came of a day off: the days taken and from what, or why it was refused;
     // and why permission hours were.
     const outcome = (r: FeedRow) => {
-        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason
+        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason ?? r.overtime?.note
         const d = r.dayOff
         if (d && r.status === 'APPROVED') return t(d.deductedFrom === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', countOf(t, locale, d.deducted, 'days'))
         return r.status === 'REJECTED' && why ? `${t('rejected_reason_prefix')}: ${why}` : null
     }
     // Under its name: its kind, once there's more than one, and a day off's days or permission's hours.
-    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.missingPunch ? punchWhen(r) : null
+    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.missingPunch ? punchWhen(r) : r.overtime ? overtimeWhen(r) : null
     const detail = (r: FeedRow) => {
         const parts = [kinds.length > 1 ? kindLabel(r) : null, when(r)].filter(Boolean)
         return parts.length ? <span>{parts.join(sep)}</span> : undefined
@@ -228,13 +237,14 @@ export default function RequestsClient({
         return s ? <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge> : null
     }
     // Its day and time together: a narrow column broke "9:25 pm" from its day.
-    const asked = (r: FeedRow) => <span className="ui-nowrap"><SafeDate date={r.asked} locale={locale} format="short" /></span>
+    // A day's overtime is "asked" on its day, which has no time of its own.
+    const asked = (r: FeedRow) => <span className="ui-nowrap">{r.overtime ? permissionDay(r.overtime.date, locale) : <SafeDate date={r.asked} locale={locale} format="short" />}</span>
     const next = (r: FeedRow) => {
         if (r.kind === 'dayOff') return r.mayDecide && <>
             <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
-        if (r.kind === 'permission' || r.kind === 'missingPunch') return r.mayDecide && <>
+        if (r.kind === 'permission' || r.kind === 'missingPunch' || r.kind === 'overtime') return r.mayDecide && <>
             <Button size="sm" icon={CheckIcon} onClick={() => { void approveAttendance(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setRejecting(r) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
@@ -252,7 +262,7 @@ export default function RequestsClient({
             tooltip={t('ui_more_actions')}
             items={[
                 { key: 'view', icon: EyeIcon, label: t('requests_view_details'), onSelect: () => setViewing(r) },
-                ...(r.mayWithdraw ? [{ key: 'withdraw', icon: ArrowUUpLeftIcon, label: t('req_withdraw'), danger: true, onSelect: () => setWithdrawing(r) }] : []),
+                ...(r.mayWithdraw ? [{ key: 'withdraw', icon: ArrowUUpLeftIcon, label: r.overtime ? t('requests_overtime_withdraw') : t('req_withdraw'), danger: true, onSelect: () => setWithdrawing(r) }] : []),
                 ...(r.mayDelete ? [{ key: 'delete', icon: TrashIcon, label: t('delete'), danger: true, onSelect: () => setDeleting(r) }] : []),
             ]}
         />
@@ -261,7 +271,9 @@ export default function RequestsClient({
     // What rejecting refuses: whose permission hours on which day, or whose missing punch when.
     const rejectQuestion = (r: FeedRow) => r.missingPunch
         ? t('requests_missing_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
-        : t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
+        : r.overtime
+            ? t('requests_overtime_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.overtime.date, locale))
+            : t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
     // When it ended: done, decided, or withdrawn by whoever asked.
     const finishedLabel = (r: FeedRow): TranslationKey => r.kind === 'internal' ? 'finished_at' : r.status === 'CANCELLED' ? 'requests_withdrawn_on' : 'requests_decided_on'
 
@@ -360,6 +372,7 @@ export default function RequestsClient({
                             ...(r.dayOff ? [{ icon: CalendarBlankIcon, text: <span>{leaveWhen(r)}</span> }] : []),
                             ...(r.permission ? [{ icon: ClockIcon, text: <span>{permissionWhen(r)}</span> }] : []),
                             ...(r.missingPunch ? [{ icon: ClockIcon, text: <span>{punchWhen(r)}</span> }] : []),
+                            ...(r.overtime ? [{ icon: ClockIcon, text: <span>{overtimeWhen(r)}</span> }] : []),
                             ...(review ? [{ icon: UserIcon, text: <bdi>{r.who.name}</bdi> }] : []),
                             { icon: CalendarIcon, text: asked(r) },
                         ]}
@@ -398,6 +411,11 @@ export default function RequestsClient({
                                 { label: t('punch_time'), value: punchTime(viewing.missingPunch.at, locale) },
                                 { label: t('punch_direction'), value: direction(viewing) },
                             ] : []),
+                            ...(viewing.overtime ? [
+                                { label: t('date_label'), value: permissionDay(viewing.overtime.date, locale) },
+                                ...(overtimeAmount(viewing) ? [{ label: t('requests_overtime'), value: overtimeAmount(viewing) }] : []),
+                                ...(inOut(viewing) ? [{ label: t('requests_overtime_in_out'), value: inOut(viewing) }] : []),
+                            ] : []),
                             { label: t('requested_on'), value: <SafeDate date={viewing.asked} locale={locale} /> },
                             ...(viewing.started ? [{ label: t('started_at'), value: <SafeDate date={viewing.started} locale={locale} /> }] : []),
                             ...(viewing.finished ? [{ label: t(finishedLabel(viewing)), value: <SafeDate date={viewing.finished} locale={locale} /> }] : []),
@@ -426,12 +444,13 @@ export default function RequestsClient({
             )}
             {rejecting && (
                 <RejectAttendance key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
-                    placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : 'requests_permission_reject_placeholder')}
+                    placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : rejecting.overtime ? 'requests_overtime_reject_placeholder' : 'requests_permission_reject_placeholder')}
                     onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); router.refresh() }} />
             )}
             {withdrawing && (
                 <WithdrawAttendance key={withdrawing.id} request={withdrawing}
-                    hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : 'req_withdraw_hint')}
+                    title={t(withdrawing.overtime ? 'requests_overtime_withdraw_title' : 'requests_withdraw_title')}
+                    hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : withdrawing.overtime ? 'requests_overtime_withdraw_hint' : 'req_withdraw_hint')}
                     onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); router.refresh() }} />
             )}
 

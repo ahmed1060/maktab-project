@@ -41,7 +41,8 @@ async function page(props: Record<string, unknown> = {}) {
 }
 
 describe("the Requests page", () => {
-    it("has the page header, with New request for whoever asks for things", async () => {
+    // The first to render the page imports it, which takes a while on a cold start.
+    it("has the page header, with New request for whoever asks for things", { timeout: 60_000 }, async () => {
         const html = await page()
         expect(html).toContain('class="ui-page-header"')
         expect(html).toMatch(/<h1[^>]*>Requests</)
@@ -82,7 +83,7 @@ describe("the Requests page", () => {
 
     it("keeps when it was asked on one line, its time not broken from its day (found in the browser)", () => {
         const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
-        expect(client).toContain('<span className="ui-nowrap"><SafeDate date={r.asked} locale={locale} format="short" /></span>')
+        expect(client).toContain('<span className="ui-nowrap">{r.overtime ? permissionDay(r.overtime.date, locale) : <SafeDate date={r.asked} locale={locale} format="short" />}</span>')
     })
 
     it("offers the next step to whoever may decide it: Start, then Mark as done", async () => {
@@ -240,7 +241,7 @@ describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
 
     it("may be withdrawn from its More actions by whoever asked, once they've said so", () => {
         expect(client).toContain("r.mayWithdraw")
-        expect(client).toContain("label: t('req_withdraw')")
+        expect(client).toContain(": t('req_withdraw')")
         expect(dialogs).toContain("fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}`, { method: 'DELETE' })")
         expect(client).toContain("'req_withdraw_hint'")
     })
@@ -335,6 +336,52 @@ describe("missing punches on it (UI_PLAN.md §2.3, part 3b)", () => {
 
     it("has no styles typed in", async () => {
         const html = await page({ rows: [punch({ mayDecide: true }), punch({ id: "m2", mayWithdraw: true })], kinds: ["missingPunch"] })
+        expect(html).not.toContain("style=")
+    })
+})
+
+describe("overtime on it (UI_PLAN.md §2.3, part 4a)", () => {
+    const day = (fields: Partial<FeedRow> = {}): FeedRow => row({
+        kind: "overtime", id: "d1", what: "", detail: null, asked: "2026-10-29T00:00:00.000Z", sortAt: "2026-10-29T00:00:00.000Z",
+        overtime: { companyId: "c1", userId: "e2", date: "2026-10-29", minutes: 90, firstIn: "09:00", lastOut: "18:30", approvedMinutes: null, note: null },
+        ...fields,
+    })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
+
+    it("reads as any request does: whose overtime, which day, how much, and when they came and left", async () => {
+        const html = await page({ rows: [day()], kinds: ["internal", "overtime"] })
+        expect(html).toContain("requests_overtime")
+        expect(html).toContain("29 Oct 2026")
+        // English writes the hour as it is said: 9:00, not 09:00.
+        expect(html).toContain("9:00 – 18:30")
+        expect(html).toContain("Mona Adel")
+        expect(html).toContain("requests_kind_overtime")
+    })
+
+    it("is asked on its day, not at a time of it", () => {
+        expect(client).toContain("r.overtime ? permissionDay(r.overtime.date, locale)")
+    })
+
+    it("is approved, all its minutes, or rejected with a reason, by whoever may decide it", async () => {
+        const html = await page({ rows: [day({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+        expect(dialogs).toContain("overtime: '/api/attendance/overtime'")
+        expect(client).toContain("t('requests_overtime_reject_question')")
+        for (const code of ["OVERTIME_OFF", "OVERTIME_NEEDS_NO_APPROVAL", "OVERTIME_MINUTES_REQUIRED"]) expect(dialogs, code).toContain(code)
+    })
+
+    it("once decided, says what came of it, and its decision may be withdrawn, once they've said so", async () => {
+        const approved = await page({ rows: [day({ status: "APPROVED", overtime: { companyId: "c1", userId: "e2", date: "2026-10-29", minutes: null, firstIn: null, lastOut: null, approvedMinutes: 60, note: null } })], show: "done" })
+        expect(approved).toContain("ui-badge ui-badge-good")
+        expect(approved).toContain("requests_overtime_approved")
+        expect(client).toContain("t('requests_overtime_withdraw')")
+        expect(client).toContain("'requests_overtime_withdraw_hint'")
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [day({ mayDecide: true })], kinds: ["overtime"] })
         expect(html).not.toContain("style=")
     })
 })

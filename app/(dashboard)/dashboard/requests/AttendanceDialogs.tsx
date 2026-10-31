@@ -18,10 +18,12 @@ import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } fro
  */
 
 /** The attendance kinds, and each one's API (app/api/attendance). */
-export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch'>
+export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch' | 'overtime'>
 export const ATTENDANCE_API: Record<AttendanceKind, string> = {
     permission: '/api/attendance/permissions',
     missingPunch: '/api/attendance/missing-punches',
+    // A decision on a day's overtime, made or withdrawn (§2.3, part 4a).
+    overtime: '/api/attendance/overtime',
 }
 
 /** The server's own check (lib/validations/attendance-request.schema.ts): a reason, and a reason to refuse. */
@@ -49,6 +51,9 @@ const REFUSED: Record<string, TranslationKey> = {
     REQUEST_ALREADY_STARTED: 'requests_permission_started',
     PUNCH_IN_FUTURE: 'requests_missing_future',
     MISSING_PUNCH_ALREADY_REPORTED: 'requests_missing_already',
+    OVERTIME_OFF: 'requests_overtime_off',
+    OVERTIME_NEEDS_NO_APPROVAL: 'requests_overtime_no_approval',
+    OVERTIME_MINUTES_REQUIRED: 'requests_overtime_minutes_required',
 }
 
 const dateLocale = (locale: string) => locale === 'ar' ? 'ar-EG' : 'en-GB'
@@ -75,14 +80,26 @@ async function refusal(res: Response, fallback: TranslationKey): Promise<Transla
     return REFUSED[body?.code] ?? fallback
 }
 
-/** Approves or rejects somebody's permission hours or missing punch. Null once done; otherwise what to say. */
-export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
+/**
+ * Approves or rejects somebody's permission hours, missing punch or a day's
+ * overtime: all of its minutes, as the Attendance page did. Null once done;
+ * otherwise what to say.
+ */
+export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'overtime'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
     try {
-        const res = await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}/decide`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approve, reason }),
-        })
+        const o = request.overtime
+        const res = o
+            ? await fetch(ATTENDANCE_API.overtime, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Whose day, and the company, which the Super Admin's must name.
+                body: JSON.stringify({ companyId: o.companyId, userId: o.userId, date: o.date, status: approve ? 'APPROVED' : 'REJECTED', note: reason }),
+            })
+            : await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}/decide`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approve, reason }),
+            })
         return res.ok ? null : await refusal(res, 'error_generic')
     } catch {
         return 'error_generic'
@@ -133,8 +150,14 @@ export function RejectAttendance({ request, question, placeholder, onClose, onDe
     )
 }
 
-/** Withdrawing one's own permission hours or report of a missing punch. */
-export function WithdrawAttendance({ request, hint, onClose, onWithdrawn }: { request: FeedRow; hint: string; onClose: () => void; onWithdrawn: () => void }) {
+/** Withdrawing one's own permission hours or report of a missing punch, or a decision on overtime. */
+export function WithdrawAttendance({ request, title, hint, onClose, onWithdrawn }: {
+    request: FeedRow
+    title: string
+    hint: string
+    onClose: () => void
+    onWithdrawn: () => void
+}) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
@@ -157,7 +180,7 @@ export function WithdrawAttendance({ request, hint, onClose, onWithdrawn }: { re
         <Dialog
             open
             onClose={onClose}
-            title={t('requests_withdraw_title')}
+            title={title}
             actions={<>
                 <Button onClick={onClose}>{t('cancel')}</Button>
                 <Button variant="danger" onClick={withdraw} disabled={action.running} busy={action.is('withdraw')}>{t('req_withdraw')}</Button>
