@@ -2088,3 +2088,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** Missing punches on the Requests page were merged in #131
   (`UI_PLAN.md` §2.3), and the Attendance page points there in #132. Neither
   touches clients or locations.
+- **2026-10-31:** The Attendance page points to the Requests page, merged in
+  #132 (`UI_PLAN.md` §2.3), and part 4 is planned in four PRs, overtime
+  first in #133. None touches clients or locations.
