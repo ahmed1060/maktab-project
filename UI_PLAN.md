@@ -1653,3 +1653,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     isn't anybody's, and searching doesn't find it.
   - A person's own phone stays on the Attendance page, and its phones list
     stays until part 4d.
+  - Found in the browser: "1 check-ins held" read wrong. The check-ins a
+    phone holds are counted in each language's plural: 1 check-in held;
+    تسجيل حضور واحد معلّق، ٣ تسجيلات حضور معلّقة.

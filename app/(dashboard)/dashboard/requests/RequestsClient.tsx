@@ -235,7 +235,7 @@ export default function RequestsClient({
     const phoneSystem = (r: FeedRow) => [r.phone!.model ? platform(r) : null, r.phone!.appVersion ? `v${r.phone!.appVersion}` : null].filter(Boolean).join(sep)
     const phoneWhen = (r: FeedRow) => [
         phoneSystem(r) || null,
-        r.status === 'PENDING' && r.phone!.held > 0 ? t('req_phone_held').replace('{n}', num(r.phone!.held)) : null,
+        r.status === 'PENDING' && r.phone!.held > 0 ? countOf(t, locale, r.phone!.held, 'held') : null,
         r.phone!.attested ? null : t('req_phone_unverified'),
     ].filter(Boolean).join(sep)
     const direction = (r: FeedRow) => t(r.missingPunch?.direction === 'IN' ? 'punch_in' : r.missingPunch?.direction === 'OUT' ? 'punch_out' : 'punch_direction_unknown')

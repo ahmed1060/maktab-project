@@ -402,7 +402,8 @@ describe("check-in phones on it (UI_PLAN.md §2.3, part 4b)", () => {
         expect(html).toContain("requests_kind_phone")
         expect(html).toContain("audit_value_ANDROID")
         expect(html).toContain("v1.4.0")
-        expect(html).toContain("req_phone_held")
+        // "1 check-in held", "3 check-ins held" (found in the browser).
+        expect(html).toContain("count_held_other")
         // Its app not shown to be genuine, as the Attendance page said.
         expect(html).toContain("req_phone_unverified")
         expect(html).toContain("Mona Adel")
@@ -412,7 +413,7 @@ describe("check-in phones on it (UI_PLAN.md §2.3, part 4b)", () => {
         const html = await page({ rows: [phone({ what: "", phone: { platform: "IOS", model: null, appVersion: null, attested: true, held: 0, reason: null, replaced: false } })] })
         expect(html).toContain("audit_value_IOS")
         expect(html).not.toContain("req_phone_unverified")
-        expect(html).not.toContain("req_phone_held")
+        expect(html).not.toContain("count_held_")
     })
 
     it("is approved or rejected with a reason by whoever may decide it, as the Attendance page did", async () => {
