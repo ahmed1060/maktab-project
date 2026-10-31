@@ -1773,3 +1773,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Found in the browser: "Your role is now" opened one's own profile,
     which has no Role field, so it said nothing of the role. It opens the
     dashboard now, whose side bar has what the new role opens.
+  - Found in the screenshots: in Arabic, whose role it would be ran into
+    "لـ" when the name is in Latin letters; a space keeps them apart.

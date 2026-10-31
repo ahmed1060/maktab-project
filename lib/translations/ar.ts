@@ -1431,7 +1431,7 @@ export const ar = {
         requests_name_change_reject_placeholder: "مثل أنه لا يطابق بطاقة الهوية…",
         // طلبات الأدوار في صفحة الطلبات الموحّدة (UI_PLAN.md §2.3، الجزء 5ب).
         requests_kind_role: "تغيير الدور",
-        requests_role_for: "لـ{name}",
+        requests_role_for: "لـ {name}",
         requests_role_person_label: "صاحب الدور",
         requests_role_to_label: "الدور المطلوب",
         requests_role_now_label: "الدور الحالي",

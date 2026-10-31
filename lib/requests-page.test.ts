@@ -706,6 +706,10 @@ describe("the old history page and links to it", () => {
 })
 
 describe("its words", () => {
+    it("leave a space after Arabic's لـ before whose role it would be, which a name in Latin letters ran into (found in the browser)", () => {
+        expect(ar.requests_role_for).toBe("لـ {name}")
+    })
+
     it("are in sentence case, and the same keys in both languages (DESIGN.md §3.4)", () => {
         for (const key of ["requests_new", "requests_tab_mine", "requests_tab_review", "requests_show_waiting", "requests_show_done", "requests_start", "requests_mark_done", "requests_view_details"] as const) {
             expect(en[key].slice(1), key).toBe(en[key].slice(1).toLowerCase())
