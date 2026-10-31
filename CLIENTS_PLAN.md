@@ -2117,3 +2117,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** The account check was merged in #140. Payroll's top moves
   onto the building blocks in #141 (`UI_PLAN.md` §5). Neither touches
   clients or locations.
+- **2026-10-31:** Payroll's top was merged in #141, and its review cards
+  move onto the building blocks in #142 (`UI_PLAN.md` §5). Neither touches
+  clients or locations.

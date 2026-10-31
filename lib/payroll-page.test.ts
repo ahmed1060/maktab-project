@@ -17,6 +17,8 @@ const state = {
     grants: new Set<string>(),
     keys: [] as (string | null)[],
     result: {} as { data?: unknown; error?: unknown; isLoading?: boolean },
+    /** Pages of attendance changed after payroll, as the server sends them. */
+    discrepancies: undefined as unknown[] | undefined,
 }
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u1", role: state.role } }, status: "authenticated" }) }))
 vi.mock("@/context/LanguageContext", () => ({
@@ -31,7 +33,7 @@ vi.mock("swr", () => ({
         return key ? { ...idle, ...state.result } : idle
     },
 }))
-vi.mock("swr/infinite", () => ({ default: () => ({ data: undefined, mutate: async () => {}, size: 1, setSize: () => {} }) }))
+vi.mock("swr/infinite", () => ({ default: () => ({ data: state.discrepancies, mutate: async () => {}, size: 1, setSize: () => {} }) }))
 
 type View = Record<string, unknown>
 const view = (fields: View = {}, register: View = {}): View => ({
@@ -43,7 +45,8 @@ const view = (fields: View = {}, register: View = {}): View => ({
 })
 const delivery = (fields: View = {}) => ({ paidAt: null, batchSize: 25, sent: 3, sendable: 12, unsent: 9, ...fields })
 
-async function page({ shows, role = "ADMIN", grants = [], locale = "en" }: { shows?: View | "loading" | "failed"; role?: string; grants?: string[]; locale?: "en" | "ar" } = {}) {
+async function page({ shows, role = "ADMIN", grants = [], locale = "en", discrepancies }: { shows?: View | "loading" | "failed"; role?: string; grants?: string[]; locale?: "en" | "ar"; discrepancies?: unknown[] } = {}) {
+    state.discrepancies = discrepancies
     state.role = role
     state.grants = new Set(grants)
     state.locale = locale
@@ -247,5 +250,130 @@ describe("paying and sending", () => {
         expect(await page({ shows: approved() })).not.toContain("Paying and sending")
         // Not before it's approved.
         expect(await page({ shows: view({ delivery: delivery() }), grants: deliverer })).not.toContain("Paying and sending")
+    })
+})
+
+// ── Part 2: the review cards (UI_PLAN.md §5 step 5) ──
+
+/** A card by its title: the card's own tag, and all it holds. */
+const reviewCard = (html: string, title: string) => {
+    const at = html.indexOf(`<h2 class="ui-card-title">${title}`)
+    if (at < 0) return ""
+    return html.slice(html.lastIndexOf('<section class="ui-panel ui-card"', at), html.indexOf("</section>", at) + "</section>".length)
+}
+const person = (fields: View) => ({ userId: "u", name: "Mona Adel", previousMinor: 100000, currentMinor: 120000, deltaMinor: 20000, kind: "CHANGED", ...fields })
+
+describe("what changed since the draft was saved", () => {
+    const moved = { deltaMinor: 15050, people: [person({ userId: "a" }), person({ userId: "b", name: "", deltaMinor: -4950, kind: "GONE" }), person({ userId: "c", name: "Same One", kind: "SAME", deltaMinor: 0 })] }
+
+    it("is a card that waits on someone, its total beside its title, a row for each who moved", async () => {
+        const part = reviewCard(await page({ shows: view({ sinceDraft: moved, draftSavedAt: "2026-10-30T10:15:00Z" }) }), en.payroll_since_draft)
+        expect(part).toMatch(/^<section class="ui-panel ui-card" data-tone="waiting"><div class="ui-card-head"><h2 class="ui-card-title">[^<]+<\/h2><strong class="ui-num">\+150\.50<\/strong><\/div>/)
+        expect(part).toContain("30 Oct 2026")
+        expect(part).toMatch(/<span class="ui-item-title">Mona Adel<\/span><span class="ui-item-detail">Changed<\/span><\/span><span class="ui-row-end"><span class="ui-num">\+200\.00<\/span>/)
+        // A row only the draft had has no name to give, and says so, once.
+        expect(part).toContain(`<span class="ui-item-title">${en.payroll_since_draft_gone}</span></span>`)
+        expect(part).toContain("−49.50")
+        expect(part).not.toContain("Same One")
+        expect(part).not.toContain("style=")
+    })
+
+    it("is only there while it's a draft, and only when someone moved", async () => {
+        expect(await page({ shows: view({ status: "APPROVED", sinceDraft: moved }) })).not.toContain(en.payroll_since_draft)
+        expect(await page({ shows: view({ sinceDraft: { deltaMinor: 0, people: [person({ kind: "SAME" })] } }) })).not.toContain(en.payroll_since_draft)
+    })
+})
+
+describe("the change since last month", () => {
+    it("is a card with its total beside its title and a row for each who changed", async () => {
+        const part = reviewCard(await page({ shows: view({ variance: { previousTotalMinor: 0, currentTotalMinor: 0, deltaMinor: 20000, people: [person({}), person({ userId: "n", name: "New One", kind: "NEW" })] } }) }), en.payroll_variance)
+        expect(part).toMatch(/^<section class="ui-panel ui-card"><div class="ui-card-head"><h2 class="ui-card-title">[^<]+<\/h2><strong class="ui-num">\+200\.00<\/strong><\/div>/)
+        expect(part).toContain('<span class="ui-item-title">New One</span><span class="ui-item-detail">New</span>')
+        expect(part).not.toContain("style=")
+    })
+
+    it("tells nothing to compare against from nothing changed", async () => {
+        expect(reviewCard(await page({ shows: view() }), en.payroll_variance)).toContain(`<p class="ui-card-note">${en.payroll_no_previous}</p>`)
+        expect(reviewCard(await page({ shows: view({ variance: { previousTotalMinor: 0, currentTotalMinor: 0, deltaMinor: 0, people: [person({ kind: "SAME", deltaMinor: 0 })] } }) }), en.payroll_variance))
+            .toContain(`<p class="ui-card-note">${en.payroll_variance_SAME}</p>`)
+    })
+
+    it("says how many more changed than it lists", async () => {
+        const people = Array.from({ length: 11 }, (_, i) => person({ userId: `p${i}`, name: `Person ${i}` }))
+        const part = reviewCard(await page({ shows: view({ variance: { previousTotalMinor: 0, currentTotalMinor: 0, deltaMinor: 0, people } }) }), en.payroll_variance)
+        expect(part.match(/<li>/g)).toHaveLength(8)
+        expect(part).toContain(`<p class="ui-card-note">${en.payroll_variance_more.replace("{n}", "3")}</p>`)
+    })
+})
+
+describe("people paid for days nobody has ruled on", () => {
+    const pending = { pendingDecisions: [{ userId: "a", name: "Mona Adel", undecidedDays: 3 }] }
+
+    it("is a card that waits on someone, with the acknowledgement under the names", async () => {
+        const part = reviewCard(await page({ shows: view({}, pending), grants: ["payroll.approve"] }), en.payroll_pending_decisions)
+        expect(part).toMatch(/^<section class="ui-panel ui-card" data-tone="waiting">/)
+        expect(part).toContain('<span class="ui-item-title">Mona Adel</span>')
+        expect(part).toContain(en.payroll_undecided_days.replace("{n}", "3"))
+        expect(part).toMatch(/<label class="ui-choice"><input type="checkbox" class="ui-check"\/>I know these people/)
+        expect(part).not.toContain("style=")
+    })
+
+    it("asks for no acknowledgement once the month is approved", async () => {
+        expect(reviewCard(await page({ shows: view({ status: "APPROVED" }, pending) }), en.payroll_pending_decisions)).not.toContain('type="checkbox"')
+    })
+})
+
+describe("people whose month can't be worked out", () => {
+    it("is a card that says something's wrong, a row for each with why", async () => {
+        const part = reviewCard(await page({ shows: view({ refused: [{ userId: "a", name: "Mona Adel", reason: "No salary on record" }] }) }), en.payroll_refused)
+        expect(part).toMatch(/^<section class="ui-panel ui-card" data-tone="problem">/)
+        expect(part).toContain('<span class="ui-item-title">Mona Adel</span><span class="ui-item-detail">No salary on record</span>')
+        expect(part).not.toContain("style=")
+    })
+})
+
+describe("attendance in payroll", () => {
+    const entries = [{ userId: "a", name: "Mona Adel", lines: [], totals: { earningsMinor: 0, deductionsMinor: 0, netMinor: 0, carriedMinor: 0 }, daysPaid: 31, wholeMonth: true, undecidedDays: 0, excluded: false }]
+
+    it("before it reaches payslips, shows what it would cost each person, deducted from nobody", async () => {
+        const part = reviewCard(await page({ shows: view({ attendance: { reachesPayroll: false, from: null, discrepanciesOpen: 0, byPerson: { a: { lateness: 5000, earlyLeave: 0, absence: 10000, overtime: 2500 } } } }, { entries }) }), en.attpay_dry_title)
+        expect(part).toMatch(/^<section class="ui-panel ui-card">/)
+        expect(part).toContain("150.00")
+        expect(part).toContain('<span class="ui-item-title">Mona Adel</span>')
+        expect(part).toContain('<span class="ui-num">−150.00 · +25.00</span>')
+        expect(part).not.toContain("style=")
+    })
+
+    it("once it does, says so under its title", async () => {
+        const html = await page({ shows: view({ attendance: { reachesPayroll: true, from: "2026-09", discrepanciesOpen: 0, byPerson: {} } }) })
+        expect(reviewCard(html, en.attpay_title)).toContain(`<p>${en.attpay_register_on.replace("{month}", "September 2026")}</p>`)
+    })
+})
+
+describe("attendance changed after a month was approved", () => {
+    const changed = (fields: View = {}) => ({ id: "d1", userId: "a", name: "Mona Adel", date: "2026-09-14", paidStatus: "ABSENT", nowStatus: "PRESENT", differenceMinor: 12000, resolvedAt: null, resolution: null, ...fields })
+    const shows = view({ attendance: { reachesPayroll: true, from: "2026-09", discrepanciesOpen: 2, byPerson: {} } })
+
+    it("is a card that waits on someone, a row for each day with what's owed", async () => {
+        const part = reviewCard(await page({ shows, discrepancies: [{ data: { open: [changed(), changed({ id: "d2", differenceMinor: -3000 })], openCount: 2, nextCursor: null } }] }), en.attpay_changed_title)
+        expect(part).toMatch(/^<section class="ui-panel ui-card" data-tone="waiting"><div class="ui-card-head"><h2 class="ui-card-title">Attendance changed after payroll \(2\)<\/h2>/)
+        expect(part).toContain("14 Sept 2026 · <bdi>Mona Adel</bdi>")
+        expect(part).toContain(`${en.audit_value_ABSENT} → ${en.audit_value_PRESENT}`)
+        expect(part).toContain(en.attpay_owed_to.replace("{amount}", "120.00"))
+        expect(part).toContain(en.attpay_owed_by.replace("{amount}", "30.00"))
+        expect(part).not.toContain("style=")
+    })
+
+    it("offers Mark resolved to whoever prepares payroll, and more when there are", async () => {
+        const pages = [{ data: { open: [changed()], openCount: 2, nextCursor: "c1" } }]
+        const preparer = reviewCard(await page({ shows, discrepancies: pages, grants: ["payroll.prepare"] }), en.attpay_changed_title)
+        expect(preparer).toMatch(/<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Mark resolved<\/button>/)
+        expect(preparer).toMatch(/<button type="button" class="ui-btn ui-btn-quiet">Show more<\/button>/)
+        expect(reviewCard(await page({ shows, discrepancies: pages }), en.attpay_changed_title)).not.toContain("Mark resolved")
+    })
+
+    it("points its arrow the way Arabic reads", async () => {
+        const part = reviewCard(await page({ shows, locale: "ar", discrepancies: [{ data: { open: [changed()], openCount: 1, nextCursor: null } }] }), ar.attpay_changed_title)
+        expect(part).toContain(`${ar.audit_value_ABSENT} ← ${ar.audit_value_PRESENT}`)
     })
 })

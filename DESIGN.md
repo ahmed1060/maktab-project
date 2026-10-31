@@ -626,6 +626,13 @@ These are built once, in the building-blocks PR, and every page uses them
     might be done twice.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
+  - A card that needs someone before going on has the Waiting on someone
+    colour (§2.3) as a 3px bar on its start edge. An example is Payroll's
+    people paid for days nobody has ruled on.
+  - A card that says something is wrong has the Problem colour's. An
+    example is the people whose month couldn't be worked out.
+  - Its title says what it is, so the colour is never the only signal,
+    and its background stays the panel's, so its text keeps its contrast.
 
 ---
 
@@ -897,3 +904,7 @@ changed:
   and year, and later Attendance's month and Public holidays' year. Each
   picks it its own way today: three selects squeezed in beside the title,
   a browser's month field, and arrows either side of a year.
+- **2026-10-31:** A card that needs someone, or says something is wrong
+  (§5.5, Card), for Payroll's review: a bar on its start edge in its
+  meaning's colour, as an overdue row has. Payroll's old cards filled the
+  whole card with the colour.

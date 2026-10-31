@@ -453,9 +453,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-10-30, then its costs, location history, submission form and
      edit dialog, merged in #124 on 2026-10-30. After the one Requests
      page and the account check, merged in #140 on 2026-10-31, the eighth
-     is Payroll, in two parts: its top (the page header, the month it's
-     for, paying and sending, and the totals) opens for review in #141,
-     then its review cards, the list and the debts;
+     is Payroll, in three parts: its top (the page header, the month it's
+     for, paying and sending, and the totals), merged in #141 on
+     2026-10-31; its review cards, which open for review in #142; then the
+     list of everyone paid and the debts;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -1839,3 +1840,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   inside a card kept the browser's own margins, so an approved month's
   one line on Payroll stood in a card twice its height. A card spaces
   what's in it itself, which also tightens a task page's two notices.
+- **2026-10-31:** Payroll's top was merged in #141. Payroll comes in three
+  parts rather than two, so each stays small: the review cards in #142,
+  then the list of everyone paid and the debts.
+  - A card that needs someone, or says something is wrong, has its
+    meaning's bar on its start edge, a new rule in `DESIGN.md` (§5.5,
+    Card). The old cards were filled with the colour.
+  - What changed since the draft and since last month have their totals
+    beside their titles, and a row for each person. Last month's says how
+    many more changed than the eight it lists; it used to cut the rest off
+    without saying so.
+  - The acknowledgement stays with the people it's about, as a tickbox
+    under them.
+  - Attendance's dry run is a plain card: it waits on nobody.
+  - Attendance that changed after a month was approved has its days in
+    the page's language, and its arrow points the way the page reads.
+    Mark resolved asks how it was settled in the building blocks' dialog.
+    Left empty, it says so under the field; its button used to stay greyed
+    with no reason given.

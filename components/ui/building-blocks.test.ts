@@ -360,6 +360,12 @@ describe("page layout, sections, rows and tiles", () => {
         expect(html).toBe('<a class="ui-btn ui-btn-quiet ui-btn-sm" href="/api/payroll/2026/10/export" download="">Download CSV</a>')
     })
 
+    it("a card that needs someone, or says something's wrong, says so with its tone, and a plain one has none", () => {
+        expect(render(h(ui.Card, { title: "Waiting on a decision", tone: "waiting", children: "x" }))).toBe('<section class="ui-panel ui-card" data-tone="waiting"><div class="ui-card-head"><h2 class="ui-card-title">Waiting on a decision</h2></div>x</section>')
+        expect(render(h(ui.Card, { title: "Cannot be calculated", tone: "problem", children: "x" }))).toContain('data-tone="problem"')
+        expect(render(h(ui.Card, { children: "x" }))).toBe('<section class="ui-panel ui-card">x</section>')
+    })
+
     it("which period a page is about is picked in a panel of its own", () => {
         expect(render(h(ui.PeriodBar, { children: "x" }))).toBe('<div class="ui-panel ui-period">x</div>')
     })
@@ -549,6 +555,12 @@ describe("the stylesheet keeps the rules", () => {
     it("a page on the building blocks sits on the page colour, not the old moving gradient", () => {
         expect(css).toMatch(/:root:has\(\.ui-page\) body \{\s*background: var\(--page\);\s*animation: none;/)
         expect(css).toMatch(/:root:has\(\.ui-page\) body::before \{\s*display: none;/)
+    })
+
+    it("a toned card has its meaning's bar on its start edge, and keeps the panel's background", () => {
+        expect(css).toMatch(/\.ui-card\[data-tone="waiting"\] \{\s*border-inline-start: 3px solid var\(--status-waiting-fg\);\s*\}/)
+        expect(css).toMatch(/\.ui-card\[data-tone="problem"\] \{\s*border-inline-start: 3px solid var\(--problem-text\);\s*\}/)
+        expect(css).not.toMatch(/\.ui-card\[data-tone="[a-z]+"\] \{[^}]*background/)
     })
 
     it("a card spaces what's in it itself: a paragraph in it keeps no margins of its own", () => {

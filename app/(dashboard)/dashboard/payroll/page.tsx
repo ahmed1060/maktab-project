@@ -9,7 +9,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import ConfirmModal from '@/components/ConfirmModal'
 import DatePickerSingle from '@/components/DatePickerSingle'
-import { Button, Card, Details, Dialog, EmptyState, Field, Page, PageHeader, PeriodBar, Section, SectionLink, Select, StatusBadge, TotalTiles, type StatusTone, type Tile } from '@/components/ui'
+import { Button, Card, Details, Dialog, EmptyState, Field, Page, PageHeader, PeriodBar, Row, Section, SectionLink, Select, StatusBadge, TextArea, TotalTiles, type StatusTone, type Tile } from '@/components/ui'
 import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { dayLabel } from '@/lib/cash-advances'
@@ -73,6 +73,9 @@ type View = {
     attendance?: { reachesPayroll: boolean; from: string | null; byPerson: Record<string, AttendanceMoney>; discrepanciesOpen: number }
 }
 
+/** How many of those who changed since last month are listed; the card says how many more. */
+const VARIANCE_SHOWN = 8
+
 /** A month's status, by what it means (DESIGN.md §2.3): a draft is neutral, approved and paid are done. */
 const STATUS_TONE: Record<View['status'], StatusTone> = { DRAFT: 'neutral', APPROVED: 'good', PAID: 'good' }
 
@@ -104,6 +107,7 @@ export default function PayrollRegisterPage() {
         | { kind: 'approve' }
         | { kind: 'paid' }
         | { kind: 'waive'; debt: { id: string; name: string; amount: number } }
+        | { kind: 'resolve'; discrepancy: Discrepancy }
         | null
     >(null)
     // Not while it works: closing then would hide the answer.
@@ -177,16 +181,34 @@ export default function PayrollRegisterPage() {
     const discrepancies: Discrepancy[] = (discrepancyPages ?? []).flatMap(p => p.data?.open ?? [])
     const discrepanciesOpen = discrepancyPages?.[0]?.data?.openCount ?? 0
     const moreDiscrepancies = !!discrepancyPages?.[discrepancyPages.length - 1]?.data?.nextCursor
-    const [resolving, setResolving] = useState<Discrepancy | null>(null)
-    const resolve = async (reason?: string) => {
-        const target = resolving
-        if (!target) return
+    // How a difference was settled, said in the dialog that marks it
+    // resolved: kept as the record of how, so it's a few words at least.
+    const [resolution, setResolution] = useState('')
+    const [resolutionMissing, setResolutionMissing] = useState(false)
+    const openResolve = (discrepancy: Discrepancy) => {
+        setResolution('')
+        setResolutionMissing(false)
+        setConfirming({ kind: 'resolve', discrepancy })
+    }
+    const resolve = async (target: Discrepancy) => {
+        if (resolution.trim().length < 3) {
+            setResolutionMissing(true)
+            // To the field, once it's marked, as a form's first error is.
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('textarea[name="resolution"]')?.focus())
+            return
+        }
         try {
-            const res = await fetch(`/api/attendance/discrepancies/${target.id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) })
+            const res = await fetch(`/api/attendance/discrepancies/${target.id}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: resolution.trim() }) })
             const body = await res.json().catch(() => null)
             showToast(res.ok ? t('attpay_resolved') : (body?.error || t('error_generic')), res.ok ? 'success' : 'error')
-            if (res.ok) reloadDiscrepancies()
-        } finally { setResolving(null) }
+            // Refused, it stays open with what was typed, to try again.
+            if (res.ok) {
+                reloadDiscrepancies()
+                setConfirming(null)
+            }
+        } catch {
+            showToast(t('error_generic'), 'error')
+        }
     }
 
     const save = async () => {
@@ -326,6 +348,18 @@ export default function PayrollRegisterPage() {
         }}>{children}</div>
     )
 
+    // Who moved since the draft was saved, and since last month, the unchanged
+    // left out; last month's change lists the first few and says how many more.
+    const sinceDraft = view?.sinceDraft?.people.filter(p => p.kind !== 'SAME') ?? []
+    const varied = view?.variance?.people.filter(p => p.kind !== 'SAME') ?? []
+    const when = (iso: string) => new Date(iso).toLocaleString(digits, { dateStyle: 'medium', timeStyle: 'short' })
+    // Attendance's dry run: each person on the register it would deduct from or pay.
+    const dryRun = view?.attendance && !view.attendance.reachesPayroll
+        ? Object.entries(view.attendance.byPerson)
+            .map(([userId, m]) => ({ userId, name: register?.entries.find(e => e.userId === userId)?.name ?? '', ...m, deductions: m.lateness + m.earlyLeave + m.absence }))
+            .filter(r => r.name && (r.deductions > 0 || r.overtime > 0))
+        : []
+
     const totals: Tile[] = register ? [
         { label: t('payroll_payable'), value: money(register.payableMinor) },
         { label: t('payroll_included'), value: count(register.includedCount) },
@@ -459,169 +493,134 @@ export default function PayrollRegisterPage() {
                 </Section>
             )}
 
-            {/* E1: what has moved since the draft on screen was saved.
-                Shown above the month-on-month variance and only when something
-                actually moved, because its job is to interrupt — approval is
-                irreversible, and the gap between reading a register and signing
-                it is exactly where a late adjustment lands unnoticed. */}
-            {(() => {
-                const changed = view?.sinceDraft?.people.filter(p => p.kind !== 'SAME') ?? []
-                if (!isDraft || changed.length === 0) return null
-                return card(
-                    <>
-                        <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_since_draft')}</h2>
-                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>
-                            {t('payroll_since_draft_msg').replace(
-                                '{when}',
-                                view!.draftSavedAt
-                                    ? new Date(view!.draftSavedAt).toLocaleString(isRtl ? 'ar-EG' : 'en-GB')
-                                    : '—',
-                            )}
-                        </p>
-                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginBottom: '0.5rem' }}>
-                            {signedMoney(view!.sinceDraft!.deltaMinor)}
-                        </div>
-                        {changed.map(p => (
-                            <div key={p.userId} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.9rem' }}>
-                                <span>
-                                    {/* The stored draft has no names, so the
-                                        computed side supplies them; a row that
-                                        appears only in the draft has none and
-                                        says so rather than showing blank. */}
-                                    {p.name || t('payroll_since_draft_gone')}{' '}
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        {t(`payroll_variance_${p.kind}` as any)}
-                                    </span>
-                                </span>
-                                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{signedMoney(p.deltaMinor)}</span>
-                            </div>
+            {/* E1: what has moved since the draft on screen was saved, and
+                only when something did, because its job is to interrupt:
+                approval is irreversible, and the gap between reading a
+                register and signing it is where a late adjustment lands
+                unnoticed. Above the month-on-month change. */}
+            {isDraft && sinceDraft.length > 0 && (
+                <Card tone="waiting" title={t('payroll_since_draft')} actions={<strong className="ui-num">{signedMoney(view!.sinceDraft!.deltaMinor)}</strong>}>
+                    <p>{t('payroll_since_draft_msg').replace('{when}', view!.draftSavedAt ? when(view!.draftSavedAt) : '—')}</p>
+                    <ul className="ui-rows" aria-label={t('payroll_since_draft')}>
+                        {sinceDraft.map(p => (
+                            // The stored draft has no names, so the computed side
+                            // supplies them; a row only the draft had has none,
+                            // and says so rather than showing blank, which says
+                            // what "Gone" would too.
+                            <Row key={p.userId} title={p.name || t('payroll_since_draft_gone')} detail={p.name ? t(`payroll_variance_${p.kind}` as TranslationKey) : undefined} end={<span className="ui-num">{signedMoney(p.deltaMinor)}</span>} />
                         ))}
-                    </>, 'warn')
-            })()}
-
-            {/* What moved. Null and zero are different answers, so they read
-                differently: one says nothing changed, the other says there is
-                nothing to compare against. */}
-            {view && card(
-                <>
-                    <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>{t('payroll_variance')}</h2>
-                    {!view.variance ? (
-                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t('payroll_no_previous')}</p>
-                    ) : (
-                        <>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: view.variance.deltaMinor === 0 ? 'var(--text-muted)' : view.variance.deltaMinor > 0 ? 'var(--warn-fg)' : 'var(--ok-fg)' }}>
-                                {signedMoney(view.variance.deltaMinor)}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.75rem' }}>
-                                {view.variance.people.filter(p => p.kind !== 'SAME').slice(0, 8).map(p => (
-                                    <div key={p.userId} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.9rem' }}>
-                                        <span>
-                                            {p.name}{' '}
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                {t(`payroll_variance_${p.kind}` as any)}
-                                            </span>
-                                        </span>
-                                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{signedMoney(p.deltaMinor)}</span>
-                                    </div>
-                                ))}
-                                {view.variance.people.every(p => p.kind === 'SAME') && (
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                        {t('payroll_variance_SAME')}
-                                    </span>
-                                )}
-                            </div>
-                        </>
-                    )}
-                </>
+                    </ul>
+                </Card>
             )}
 
-            {register && register.pendingDecisions.length > 0 && card(
-                <>
-                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_pending_decisions')}</h2>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>{t('payroll_pending_decisions_msg')}</p>
-                    {register.pendingDecisions.map(p => (
-                        <div key={p.userId} style={{ fontSize: '0.9rem' }}>
-                            {p.name} — {t('payroll_undecided_days').replace('{n}', String(p.undecidedDays))}
-                        </div>
-                    ))}
+            {/* What moved since last month. Null and zero are different
+                answers, so they read differently: one says nothing changed,
+                the other that there is nothing to compare against. */}
+            {view && (
+                <Card title={t('payroll_variance')} actions={view.variance && <strong className="ui-num">{signedMoney(view.variance.deltaMinor)}</strong>}>
+                    {!view.variance ? (
+                        <p className="ui-card-note">{t('payroll_no_previous')}</p>
+                    ) : varied.length === 0 ? (
+                        <p className="ui-card-note">{t('payroll_variance_SAME')}</p>
+                    ) : (
+                        <>
+                            <ul className="ui-rows" aria-label={t('payroll_variance')}>
+                                {varied.slice(0, VARIANCE_SHOWN).map(p => (
+                                    <Row key={p.userId} title={p.name} detail={t(`payroll_variance_${p.kind}` as TranslationKey)} end={<span className="ui-num">{signedMoney(p.deltaMinor)}</span>} />
+                                ))}
+                            </ul>
+                            {varied.length > VARIANCE_SHOWN && <p className="ui-card-note">{t('payroll_variance_more').replace('{n}', count(varied.length - VARIANCE_SHOWN))}</p>}
+                        </>
+                    )}
+                </Card>
+            )}
+
+            {register && register.pendingDecisions.length > 0 && (
+                <Card tone="waiting" title={t('payroll_pending_decisions')}>
+                    <p>{t('payroll_pending_decisions_msg')}</p>
+                    <ul className="ui-rows" aria-label={t('payroll_pending_decisions')}>
+                        {register.pendingDecisions.map(p => (
+                            <Row key={p.userId} title={p.name} end={t('payroll_undecided_days').replace('{n}', count(p.undecidedDays))} />
+                        ))}
+                    </ul>
                     {/* The acknowledgement lives here, with the names it is
                         about, rather than next to the Approve button. A tickbox
                         beside a button is a step in pressing the button; one
                         beside the list is a statement about the list. */}
                     {isDraft && (
-                        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginTop: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                            <input
-                                type="checkbox"
-                                checked={acknowledged}
-                                onChange={e => setAcknowledged(e.target.checked)}
-                                style={{ marginTop: '0.2rem' }}
-                            />
-                            <span>{t('payroll_acknowledge_pending')}</span>
+                        <label className="ui-choice">
+                            <input type="checkbox" className="ui-check" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />
+                            {t('payroll_acknowledge_pending')}
                         </label>
                     )}
-                </>, 'warn')}
+                </Card>
+            )}
 
-            {view && view.refused.length > 0 && card(
-                <>
-                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_refused')}</h2>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>{t('payroll_refused_msg')}</p>
-                    {view.refused.map(r => (
-                        <div key={r.userId} style={{ fontSize: '0.9rem' }}>
-                            <strong>{r.name}</strong> — {r.reason}
-                        </div>
-                    ))}
-                </>, 'danger')}
+            {view && view.refused.length > 0 && (
+                <Card tone="problem" title={t('payroll_refused')}>
+                    <p>{t('payroll_refused_msg')}</p>
+                    <ul className="ui-rows" aria-label={t('payroll_refused')}>
+                        {view.refused.map(r => <Row key={r.userId} title={r.name} detail={r.reason} />)}
+                    </ul>
+                </Card>
+            )}
 
-            {view?.attendance && (() => {
-                const a = view.attendance
-                const rows = Object.entries(a.byPerson)
-                    .map(([userId, m]) => ({ userId, name: register?.entries.find(e => e.userId === userId)?.name ?? '', ...m, deductions: m.lateness + m.earlyLeave + m.absence }))
-                    .filter(r => r.name && (r.deductions > 0 || r.overtime > 0))
-                const fromText = a.from ? new Date(`${a.from}-01T00:00:00Z`).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : ''
-                if (a.reachesPayroll) return card(<p style={{ margin: 0, fontSize: '0.9rem' }}>{a.from ? t('attpay_register_on').replace('{month}', fromText) : t('attpay_register_on_approved')}</p>)
-                if (rows.length === 0) return null
-                return card(
-                    <>
-                        <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('attpay_dry_title')}</h2>
-                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>
-                            {t('attpay_dry_msg')
-                                .replace('{deductions}', money(rows.reduce((s, r) => s + r.deductions, 0)))
-                                .replace('{overtime}', money(rows.reduce((s, r) => s + r.overtime, 0)))}
-                        </p>
-                        {rows.map(r => (
-                            <div key={r.userId} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.88rem', flexWrap: 'wrap' }}>
-                                <span>{r.name}</span>
-                                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                    {r.deductions > 0 && <span style={{ color: 'var(--danger-fg-strong)' }}>−{money(r.deductions)}</span>}
-                                    {r.overtime > 0 && <span style={{ marginInlineStart: '0.6rem' }}>+{money(r.overtime)}</span>}
+            {/* What attendance costs this month: on the payslips once it
+                reaches payroll; before then, what it would cost each person,
+                deducted from nobody (ATTENDANCE_PLAN.md §20). */}
+            {view?.attendance && (view.attendance.reachesPayroll ? (
+                <Card title={t('attpay_title')}>
+                    <p>{view.attendance.from
+                        ? t('attpay_register_on').replace('{month}', new Date(`${view.attendance.from}-01T00:00:00Z`).toLocaleDateString(digits, { month: 'long', year: 'numeric', timeZone: 'UTC' }))
+                        : t('attpay_register_on_approved')}</p>
+                </Card>
+            ) : dryRun.length > 0 && (
+                <Card title={t('attpay_dry_title')}>
+                    <p>{t('attpay_dry_msg')
+                        .replace('{deductions}', money(dryRun.reduce((s, r) => s + r.deductions, 0)))
+                        .replace('{overtime}', money(dryRun.reduce((s, r) => s + r.overtime, 0)))}</p>
+                    <ul className="ui-rows" aria-label={t('attpay_dry_title')}>
+                        {dryRun.map(r => (
+                            <Row key={r.userId} title={r.name} end={(
+                                <span className="ui-num">
+                                    {[r.deductions > 0 ? `−${money(r.deductions)}` : null, r.overtime > 0 ? `+${money(r.overtime)}` : null].filter(Boolean).join(' · ')}
                                 </span>
-                            </div>
+                            )} />
                         ))}
-                    </>, 'warn')
-            })()}
+                    </ul>
+                </Card>
+            ))}
 
-            {discrepancies.length > 0 && card(
-                <>
-                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('attpay_changed_title')} ({discrepanciesOpen})</h2>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem' }}>{t('attpay_changed_msg')}</p>
-                    {discrepancies.map(d => (
-                        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', fontSize: '0.88rem', flexWrap: 'wrap', padding: '0.3rem 0' }}>
-                            <span>
-                                <bdi>{d.date}</bdi> · {d.name}
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
-                                    {t(`audit_value_${d.paidStatus}` as any)} → {d.nowStatus ? t(`audit_value_${d.nowStatus}` as any) : '—'}
-                                </span>
-                            </span>
-                            <span style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                                    {d.differenceMinor > 0 ? t('attpay_owed_to').replace('{amount}', money(d.differenceMinor)) : t('attpay_owed_by').replace('{amount}', money(-d.differenceMinor))}
-                                </span>
-                                {canPrepare && <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem' }} onClick={() => setResolving(d)}>{t('attpay_resolve')}</button>}
-                            </span>
+            {/* Attendance changed after its month's payroll was approved
+                (ATTENDANCE_PLAN.md §12.3): whenever any is open, whatever the
+                switch says now. A page at a time, and every one shown: each is
+                money owed. */}
+            {discrepancies.length > 0 && (
+                <Card tone="waiting" title={`${t('attpay_changed_title')} (${count(discrepanciesOpen)})`}>
+                    <p>{t('attpay_changed_msg')}</p>
+                    <ul className="ui-rows" aria-label={t('attpay_changed_title')}>
+                        {discrepancies.map(d => (
+                            <Row
+                                key={d.id}
+                                title={<>{dayLabel(d.date, locale)} · <bdi>{d.name}</bdi></>}
+                                // The arrow points the way the page reads.
+                                detail={`${t(`audit_value_${d.paidStatus}` as TranslationKey)} ${isRtl ? '←' : '→'} ${d.nowStatus ? t(`audit_value_${d.nowStatus}` as TranslationKey) : '—'}`}
+                                end={<>
+                                    <span className="ui-num">
+                                        {d.differenceMinor > 0 ? t('attpay_owed_to').replace('{amount}', money(d.differenceMinor)) : t('attpay_owed_by').replace('{amount}', money(-d.differenceMinor))}
+                                    </span>
+                                    {canPrepare && <Button size="sm" onClick={() => openResolve(d)}>{t('attpay_resolve')}</Button>}
+                                </>}
+                            />
+                        ))}
+                    </ul>
+                    {moreDiscrepancies && (
+                        <div className="ui-form-actions">
+                            <Button variant="quiet" onClick={() => setDiscrepancyPageCount(discrepancyPageCount + 1)}>{t('attpay_show_more')}</Button>
                         </div>
-                    ))}
-                    {moreDiscrepancies && <button className="btn btn-secondary" style={{ marginTop: '0.5rem' }} onClick={() => setDiscrepancyPageCount(discrepancyPageCount + 1)}>{t('attpay_show_more')}</button>}
-                </>, 'warn')}
+                    )}
+                </Card>
+            )}
 
             {register && card(
                 register.entries.length === 0 ? (
@@ -693,15 +692,28 @@ export default function PayrollRegisterPage() {
                 )
             )}
 
-            <ConfirmModal
-                isOpen={!!resolving}
+            {/* Marking a difference settled says how, for the record. */}
+            <Dialog
+                open={confirming?.kind === 'resolve'}
+                onClose={closeConfirm}
                 title={t('attpay_resolve')}
-                message={t('attpay_resolve_hint')}
-                confirmText={t('attpay_resolve')}
-                reason={{ label: t('attpay_resolution') }}
-                onConfirm={resolve}
-                onCancel={() => setResolving(null)}
-            />
+                actions={<>
+                    <Button onClick={closeConfirm} disabled={action.running}>{t('cancel')}</Button>
+                    <Button variant="primary" onClick={() => { if (confirming?.kind === 'resolve') void action.run('resolve', () => resolve(confirming.discrepancy)) }} disabled={action.running} busy={action.is('resolve')}>
+                        {t('attpay_resolve')}
+                    </Button>
+                </>}
+            >
+                {confirming?.kind === 'resolve' && (
+                    <p>
+                        {dayLabel(confirming.discrepancy.date, locale)} · <bdi>{confirming.discrepancy.name}</bdi>
+                    </p>
+                )}
+                <Field label={t('attpay_resolution')} hint={t('attpay_resolve_hint')} error={resolutionMissing ? t('attpay_resolution_required') : undefined}>{p => (
+                    <TextArea {...p} name="resolution" dir="auto" maxLength={500} value={resolution} disabled={action.running}
+                        onChange={e => { setResolution(e.target.value); setResolutionMissing(false) }} />
+                )}</Field>
+            </Dialog>
             {/* Approving and marking paid can't be undone, so each asks first,
                 and stays open while it works: the code a high-risk action asks
                 for comes up over it. */}

@@ -445,6 +445,15 @@
   line-height: var(--leading-xl);
   font-weight: 500;
 }
+/* A card that needs someone, or says something is wrong (§5.5): its
+   meaning's bar on the start edge, as an overdue row has. The background
+   stays the panel's, so what it says keeps its contrast. */
+.ui-card[data-tone="waiting"] {
+  border-inline-start: 3px solid var(--status-waiting-fg);
+}
+.ui-card[data-tone="problem"] {
+  border-inline-start: 3px solid var(--problem-text);
+}
 /* The card spaces what's in it, so a paragraph keeps none of the browser's
    own margins: an approved month's one line on Payroll stood in a card
    twice its height. */
