@@ -612,7 +612,124 @@ const overtime: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime]
+// --- Check-in phones: a new one waits, then is in use, rejected, revoked or withdrawn (§2.3, part 4b)
+
+/** Decided since: approved and in use, rejected, revoked or replaced, or withdrawn by its owner. */
+const PHONE_DONE = ["ACTIVE", "REJECTED", "REVOKED", "WITHDRAWN"]
+
+/** The reason a phone keeps when a new one of its owner's was approved: not anybody's words. */
+const REPLACED = "REPLACED"
+
+/**
+ * Which check-in phones this person has on a tab, in a company that has
+ * Attendance, as its API's rule (app/api/attendance/phones): under To review
+ * only, since one's own phone stays on the Attendance page (decided on
+ * 2026-10-31), everyone else's they decide with attendance.approve_devices,
+ * at its reach. Null when they have none there.
+ */
+export function phoneWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "ATTENDANCE")) return null
+    if (q.tab === "mine") return null
+    const reach = grantFor(v, "attendance.approve_devices")
+    if (!reach) return null
+    const where: Record<string, any> = {}
+    if (reach === "ALL") {
+        if (q.companyId) where.companyId = q.companyId
+    } else {
+        if (!v.companyId) return null
+        where.companyId = v.companyId
+        // Nobody decides their own.
+        where.userId = { not: v.id }
+        if (reach === "TEAM") and(where, { user: teamMemberWhere(v.id) })
+    }
+    if (q.personId) and(where, { userId: q.personId })
+    where.status = q.show === "done" ? { in: PHONE_DONE } : "PENDING"
+    if (q.search) {
+        // Why one was rejected or revoked; a phone waiting has no words to match.
+        if (q.show === "done") where.reason = { contains: q.search, mode: "insensitive", not: REPLACED }
+        else where.id = { in: [] }
+    }
+    return where
+}
+
+type CheckInPhone = {
+    id: string
+    companyId: string
+    userId: string
+    platform: string
+    model: string | null
+    appVersion: string | null
+    attested: boolean
+    status: string
+    requestedAt: Date
+    decidedAt: Date | null
+    reason: string | null
+    user: { firstName: string; lastName: string; teamLeaderId: string | null }
+    /** The check-ins it holds. */
+    _count: { punches: number }
+}
+
+/**
+ * A check-in phone as a row: waiting, in order of when it was asked for;
+ * decided, of when it was, which every change of its status keeps
+ * (AttendancePhoneService). Deciding it and revoking the one in use are the
+ * routes' own rule (app/api/attendance/phones/[id]): attendance.approve_devices
+ * at its owner, which is never one's own.
+ */
+export function phoneRow(v: Viewer, p: CheckInPhone): FeedRow {
+    const target: Target = { companyId: p.companyId, userId: p.userId, teamLeaderId: p.user.teamLeaderId }
+    const waits = p.status === "PENDING"
+    const decides = can(v, "attendance.approve_devices", target)
+    const asked = p.requestedAt.toISOString()
+    // Never null once decided; were it, last, as the database reads Done.
+    const finished = waits ? null : p.decidedAt?.toISOString() ?? null
+    const replaced = p.status === "REVOKED" && p.reason === REPLACED
+    return {
+        kind: "phone",
+        id: p.id,
+        who: { id: p.userId, name: `${p.user.firstName} ${p.user.lastName}`.trim() },
+        what: p.model ?? "",
+        detail: null,
+        asked,
+        started: null,
+        finished,
+        status: p.status,
+        sortAt: waits ? asked : finished ?? "",
+        mayDecide: waits && decides,
+        mayDelete: false,
+        mayWithdraw: false,
+        mayRevoke: p.status === "ACTIVE" && decides,
+        phone: {
+            platform: p.platform === "IOS" ? "IOS" : "ANDROID", model: p.model, appVersion: p.appVersion, attested: p.attested,
+            held: p._count.punches, reason: replaced ? null : p.reason, replaced,
+        },
+    }
+}
+
+const phone: Source = {
+    kind: "phone",
+    where: phoneWhere,
+    list: (v, q, where, take) => {
+        // Each in the order its rows' sortAt is: waiting by when it was asked for, decided by when it was.
+        const orderBy = q.show === "done"
+            ? [{ decidedAt: { sort: "desc" as const, nulls: "last" as const } }, { id: "asc" as const }]
+            : [{ requestedAt: "desc" as const }, { id: "asc" as const }]
+        return Promise.all([
+            prisma.checkInPhone.findMany({
+                where, orderBy, take,
+                select: {
+                    id: true, companyId: true, userId: true, platform: true, model: true, appVersion: true, attested: true,
+                    status: true, requestedAt: true, decidedAt: true, reason: true,
+                    user: { select: { firstName: true, lastName: true, teamLeaderId: true } },
+                    _count: { select: { punches: { where: { status: "PENDING_DEVICE" } } } },
+                },
+            }),
+            prisma.checkInPhone.count({ where }),
+        ]).then(([rows, total]) => ({ rows: rows.map(r => phoneRow(v, r)), total }))
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone]
 
 // --- The page --------------------------------------------------------
 

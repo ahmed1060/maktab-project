@@ -2091,3 +2091,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** The Attendance page points to the Requests page, merged in
   #132 (`UI_PLAN.md` §2.3), and part 4 is planned in four PRs, overtime
   first in #133. None touches clients or locations.
+- **2026-10-31:** Overtime on the Requests page was merged in #133
+  (`UI_PLAN.md` §2.3), and check-in phones join it in #134. Neither touches
+  clients or locations.

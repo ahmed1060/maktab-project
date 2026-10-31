@@ -192,7 +192,10 @@ one once its kind has moved in.
    (Decided on 2026-10-31):
    1. **4a:** overtime (#133): a day's overtime waiting, approved with all
       its minutes or rejected with a reason; a decision may be withdrawn.
-   2. **4b:** check-in phones.
+   2. **4b:** check-in phones (#134): a new phone waiting, with the
+      check-ins it holds, approved or rejected with a reason; once decided,
+      in use, rejected, revoked, replaced or withdrawn; the one in use may
+      be revoked.
    3. **4c:** flagged punches, with the face photo and map link they show
       today.
    4. **4d:** the Attendance tab's To decide, and their notifications,
@@ -1634,3 +1637,22 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     may be withdrawn from More actions, and the day waits again.
   - Approve overtime ahead stays on the Attendance page, which keeps its
     overtime list until part 4d.
+- **2026-10-31:** Overtime on the Requests page was merged in #133, and
+  check-in phones join it in #134 (§2.3, part 4b), under To review only:
+  - Waiting is everyone else's new phones, for whoever may approve the
+    phones people check in from, at its reach, the latest asked for first.
+    Done is those decided since: in use, rejected, revoked, replaced by a
+    newer phone of theirs, or withdrawn by its owner, the latest first.
+  - A row is named by the phone's model, or its system when the app kept
+    none, and reads its system and app version, the check-ins it holds
+    while it waits, and whether its app was shown to be genuine.
+  - Approve is one click, as on the Attendance page; Reject asks for a
+    reason if there is one. The phone in use may be revoked from More
+    actions, with a reason if there is one.
+  - A phone replaced says so, not why it was revoked: the word it keeps
+    isn't anybody's, and searching doesn't find it.
+  - A person's own phone stays on the Attendance page, and its phones list
+    stays until part 4d.
+  - Found in the browser: "1 check-ins held" read wrong. The check-ins a
+    phone holds are counted in each language's plural: 1 check-in held;
+    تسجيل حضور واحد معلّق، ٣ تسجيلات حضور معلّقة.

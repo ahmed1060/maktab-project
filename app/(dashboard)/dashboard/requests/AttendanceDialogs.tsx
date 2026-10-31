@@ -11,19 +11,21 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 
 /**
- * Attendance requests on the one Requests page (UI_PLAN.md §2.3, part 3):
- * asking for permission hours (part 3a) and reporting a missing punch (part
- * 3b), and rejecting and withdrawing either, as the Attendance page's
- * Requests tab did.
+ * Attendance requests on the one Requests page (UI_PLAN.md §2.3, parts 3
+ * and 4): asking for permission hours (part 3a) and reporting a missing
+ * punch (part 3b), rejecting and withdrawing either, deciding overtime (part
+ * 4a) and check-in phones (part 4b), as the Attendance page's Requests tab did.
  */
 
 /** The attendance kinds, and each one's API (app/api/attendance). */
-export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch' | 'overtime'>
+export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch' | 'overtime' | 'phone'>
 export const ATTENDANCE_API: Record<AttendanceKind, string> = {
     permission: '/api/attendance/permissions',
     missingPunch: '/api/attendance/missing-punches',
     // A decision on a day's overtime, made or withdrawn (§2.3, part 4a).
     overtime: '/api/attendance/overtime',
+    // A new phone approved or rejected, and the one in use revoked (§2.3, part 4b).
+    phone: '/api/attendance/phones',
 }
 
 /** The server's own check (lib/validations/attendance-request.schema.ts): a reason, and a reason to refuse. */
@@ -54,6 +56,8 @@ const REFUSED: Record<string, TranslationKey> = {
     OVERTIME_OFF: 'requests_overtime_off',
     OVERTIME_NEEDS_NO_APPROVAL: 'requests_overtime_no_approval',
     OVERTIME_MINUTES_REQUIRED: 'requests_overtime_minutes_required',
+    PHONE_NOT_PENDING: 'requests_already_decided',
+    PHONE_NOT_ACTIVE: 'requests_phone_not_active',
 }
 
 const dateLocale = (locale: string) => locale === 'ar' ? 'ar-EG' : 'en-GB'
@@ -81,9 +85,9 @@ async function refusal(res: Response, fallback: TranslationKey): Promise<Transla
 }
 
 /**
- * Approves or rejects somebody's permission hours, missing punch or a day's
- * overtime: all of its minutes, as the Attendance page did. Null once done;
- * otherwise what to say.
+ * Approves or rejects somebody's permission hours, missing punch, a day's
+ * overtime (all of its minutes, as the Attendance page did) or new check-in
+ * phone. Null once done; otherwise what to say.
  */
 export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'overtime'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
     try {
@@ -106,7 +110,7 @@ export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'o
     }
 }
 
-/** Rejecting permission hours or a missing punch, with a reason if there is one. */
+/** Rejecting permission hours, a missing punch, a day's overtime or a new phone, with a reason if there is one. */
 export function RejectAttendance({ request, question, placeholder, onClose, onDecided }: {
     request: FeedRow
     /** What's being refused, in a sentence: whose, and which. */
@@ -187,6 +191,58 @@ export function WithdrawAttendance({ request, title, hint, onClose, onWithdrawn 
             </>}
         >
             <p>{hint}</p>
+        </Dialog>
+    )
+}
+
+/**
+ * Revoking somebody's phone in use, lost, stolen or theirs no more, with a
+ * reason if there is one: it checks in no more, and they register a new one
+ * (§2.3, part 4b).
+ */
+export function RevokePhone({ request, onClose, onRevoked }: {
+    request: FeedRow
+    onClose: () => void
+    onRevoked: () => void
+}) {
+    const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const action = useBusyAction()
+    const num = digits(locale)
+    const [reason, setReason] = useState('')
+
+    const revoke = () => void action.run('revoke', async () => {
+        try {
+            const res = await fetch(`${ATTENDANCE_API.phone}/${request.id}/revoke`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason.trim() || null }),
+            })
+            if (!res.ok) {
+                showToast(t(await refusal(res, 'error_generic')), 'error')
+                return
+            }
+            showToast(t('req_phone_revoked'), 'success')
+            onRevoked()
+        } catch {
+            showToast(t('error_generic'), 'error')
+        }
+    })
+
+    return (
+        <Dialog
+            open
+            onClose={onClose}
+            title={t('requests_phone_revoke_title')}
+            actions={<>
+                <Button onClick={onClose}>{t('cancel')}</Button>
+                <Button variant="danger" onClick={revoke} disabled={action.running} busy={action.is('revoke')}>{t('req_phone_revoke')}</Button>
+            </>}
+        >
+            <p>{t('req_phone_revoke_confirm').replace('{name}', request.who.name)}</p>
+            <Field label={t('requests_phone_revoke_reason')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}>{p => (
+                <TextArea {...p} name="revoke-reason" dir="auto" placeholder={t('requests_phone_revoke_placeholder')} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} />
+            )}</Field>
         </Dialog>
     )
 }
