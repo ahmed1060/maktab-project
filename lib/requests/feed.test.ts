@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, phoneRow, phoneWhere, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -464,6 +464,89 @@ describe("overtime's rows", () => {
         })
         expect(overtimeDecisionRow(admin, decision({ status: "REJECTED", approvedMinutes: 0, note: "Not asked for" })).overtime).toMatchObject({ approvedMinutes: null, note: "Not asked for" })
         expect(overtimeDecisionRow(employee, decision()).mayWithdraw).toBe(false)
+    })
+})
+
+// --- Check-in phones (UI_PLAN.md §2.3, part 4b) -------------------------------
+
+/** A role of a company's own that decides its team's phones. */
+const phoneLead = { id: "h1", role: "TEAM_LEADER", companyId: "c1", grants: "49.2,53.2" }
+
+describe("check-in phones", () => {
+    const review = { ...waiting, tab: "review" as const }
+    const done = { ...review, show: "done" as const }
+
+    it("are under To review only: one's own phone stays on the Attendance page (decided on 2026-10-31)", () => {
+        expect(phoneWhere(employee, waiting)).toBeNull()
+        expect(phoneWhere(admin, waiting)).toBeNull()
+    })
+
+    it("waiting is everyone else's new phones waiting for approval, for whoever decides the company's", () => {
+        expect(phoneWhere(admin, review)).toEqual({ companyId: "c1", userId: { not: "a1" }, status: "PENDING" })
+    })
+
+    it("done is those decided since: in use, rejected, revoked or replaced, and withdrawn", () => {
+        expect(phoneWhere(admin, done)).toEqual({ companyId: "c1", userId: { not: "a1" }, status: { in: ["ACTIVE", "REJECTED", "REVOKED", "WITHDRAWN"] } })
+    })
+
+    it("are their team's for a role that decides its team's, the picked company's for the Super Admin, and one person's when picked", () => {
+        expect(phoneWhere(phoneLead, { ...review, personId: "x9" })).toEqual({
+            companyId: "c1", userId: { not: "h1" }, status: "PENDING", AND: [{ user: { OR: [{ teamLeaderId: "h1" }, { id: "h1" }] } }, { userId: "x9" }],
+        })
+        expect(phoneWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ companyId: "c2", status: "PENDING" })
+    })
+
+    it("aren't there for whoever doesn't decide them, nor in a company without Attendance", () => {
+        expect(phoneWhere(employee, review)).toBeNull()
+        expect(phoneWhere(overtimeLead, review)).toBeNull()
+        expect(phoneWhere(withoutAttendance(admin), review)).toBeNull()
+    })
+
+    it("are searched by why one was rejected or revoked, not by the word a replaced one keeps; a phone waiting has no words to match", () => {
+        expect(phoneWhere(admin, { ...done, search: "lost" })).toMatchObject({ reason: { contains: "lost", mode: "insensitive", not: "REPLACED" } })
+        expect(phoneWhere(admin, { ...review, search: "lost" })).toMatchObject({ id: { in: [] } })
+    })
+})
+
+describe("a check-in phone's row", () => {
+    const asked = new Date("2026-10-29T08:00:00Z")
+    const decided = new Date("2026-10-30T12:00:00Z")
+    const phone = (fields: object = {}) => ({
+        id: "ph1", companyId: "c1", userId: "e2", platform: "ANDROID", model: "Pixel 8", appVersion: "1.4.0", attested: true,
+        status: "PENDING", requestedAt: asked, decidedAt: null, reason: null,
+        user: { firstName: "Mona", lastName: "Adel", teamLeaderId: "h1" }, _count: { punches: 3 }, ...fields,
+    })
+
+    it("waiting says whose, which phone, and how many check-ins it holds, and is in order of when it was asked for", () => {
+        expect(phoneRow(admin, phone())).toMatchObject({
+            kind: "phone", id: "ph1", who: { id: "e2", name: "Mona Adel" }, what: "Pixel 8", detail: null, status: "PENDING",
+            asked: asked.toISOString(), sortAt: asked.toISOString(), finished: null, mayDelete: false, mayWithdraw: false, mayRevoke: false,
+            phone: { platform: "ANDROID", model: "Pixel 8", appVersion: "1.4.0", attested: true, held: 3, reason: null, replaced: false },
+        })
+    })
+
+    it("waiting may be decided by whoever decides phones, within their team for a team's, and never their own", () => {
+        expect(phoneRow(admin, phone()).mayDecide).toBe(true)
+        expect(phoneRow(phoneLead, phone()).mayDecide).toBe(true)
+        expect(phoneRow(phoneLead, phone({ user: { firstName: "Sami", lastName: "Nabil", teamLeaderId: "h2" } })).mayDecide).toBe(false)
+        expect(phoneRow(admin, phone({ userId: "a1" })).mayDecide).toBe(false)
+    })
+
+    it("once decided, is in order of when, says why it was refused, and the one in use may be revoked by whoever may decide it", () => {
+        const inUse = phoneRow(admin, phone({ status: "ACTIVE", decidedAt: decided, _count: { punches: 0 } }))
+        expect(inUse).toMatchObject({ status: "ACTIVE", finished: decided.toISOString(), sortAt: decided.toISOString(), mayDecide: false, mayRevoke: true, phone: { held: 0 } })
+        expect(phoneRow(employee, phone({ status: "ACTIVE", decidedAt: decided })).mayRevoke).toBe(false)
+        expect(phoneRow(admin, phone({ status: "ACTIVE", decidedAt: decided, userId: "a1" })).mayRevoke).toBe(false)
+        expect(phoneRow(admin, phone({ status: "REJECTED", decidedAt: decided, reason: "Not a work phone" }))).toMatchObject({ mayRevoke: false, phone: { reason: "Not a work phone", replaced: false } })
+    })
+
+    it("one revoked when a new one was approved says it was replaced, not why it was revoked", () => {
+        expect(phoneRow(admin, phone({ status: "REVOKED", decidedAt: decided, reason: "REPLACED" })).phone).toMatchObject({ reason: null, replaced: true })
+        expect(phoneRow(admin, phone({ status: "REVOKED", decidedAt: decided, reason: "Lost" })).phone).toMatchObject({ reason: "Lost", replaced: false })
+    })
+
+    it("a phone with no model kept is named by the page, from its platform", () => {
+        expect(phoneRow(admin, phone({ model: null })).what).toBe("")
     })
 })
 

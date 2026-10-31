@@ -387,6 +387,66 @@ describe("overtime on it (UI_PLAN.md §2.3, part 4a)", () => {
     })
 })
 
+describe("check-in phones on it (UI_PLAN.md §2.3, part 4b)", () => {
+    const phone = (fields: Partial<FeedRow> = {}): FeedRow => row({
+        kind: "phone", id: "ph1", what: "Pixel 8", detail: null,
+        phone: { platform: "ANDROID", model: "Pixel 8", appVersion: "1.4.0", attested: false, held: 3, reason: null, replaced: false },
+        ...fields,
+    })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
+
+    it("reads as any request does: whose phone, which, its system and app, and the check-ins it holds", async () => {
+        const html = await page({ rows: [phone()], kinds: ["internal", "phone"] })
+        expect(html).toContain("Pixel 8")
+        expect(html).toContain("requests_kind_phone")
+        expect(html).toContain("audit_value_ANDROID")
+        expect(html).toContain("v1.4.0")
+        expect(html).toContain("req_phone_held")
+        // Its app not shown to be genuine, as the Attendance page said.
+        expect(html).toContain("req_phone_unverified")
+        expect(html).toContain("Mona Adel")
+    })
+
+    it("without a model kept, is named by its system", async () => {
+        const html = await page({ rows: [phone({ what: "", phone: { platform: "IOS", model: null, appVersion: null, attested: true, held: 0, reason: null, replaced: false } })] })
+        expect(html).toContain("audit_value_IOS")
+        expect(html).not.toContain("req_phone_unverified")
+        expect(html).not.toContain("req_phone_held")
+    })
+
+    it("is approved or rejected with a reason by whoever may decide it, as the Attendance page did", async () => {
+        const html = await page({ rows: [phone({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+        expect(dialogs).toContain("phone: '/api/attendance/phones'")
+        expect(client).toContain("t('requests_phone_reject_question')")
+        expect(dialogs).toContain("PHONE_NOT_PENDING")
+    })
+
+    it("once decided, says so: in use, rejected and why, revoked and why, replaced, or withdrawn", async () => {
+        const facts = { platform: "ANDROID", model: "Pixel 8", appVersion: "1.4.0", attested: true, held: 0, reason: null, replaced: false } as const
+        expect(await page({ rows: [phone({ status: "ACTIVE", phone: facts })], show: "done" })).toMatch(/ui-badge ui-badge-good[^>]*>req_phone_in_use/)
+        expect(await page({ rows: [phone({ status: "REVOKED", phone: facts })], show: "done" })).toMatch(/ui-badge ui-badge-problem[^>]*>requests_phone_revoked/)
+        expect(await page({ rows: [phone({ status: "REVOKED", phone: { ...facts, replaced: true } })], show: "done" })).toMatch(/ui-badge ui-badge-neutral[^>]*>requests_phone_replaced/)
+        expect(await page({ rows: [phone({ status: "WITHDRAWN", phone: facts })], show: "done" })).toMatch(/ui-badge ui-badge-neutral[^>]*>status_withdrawn/)
+        expect(client).toContain("'requests_phone_revoked_on'")
+        expect(client).toContain("'requests_phone_replaced_on'")
+    })
+
+    it("the one in use may be revoked, with a reason if there is one, by whoever may decide it", () => {
+        expect(client).toContain("...(r.mayRevoke ? [{ key: 'revoke'")
+        expect(dialogs).toContain("export function RevokePhone(")
+        expect(dialogs).toContain("`${ATTENDANCE_API.phone}/${request.id}/revoke`")
+        expect(dialogs).toContain("PHONE_NOT_ACTIVE")
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [phone({ mayDecide: true })], kinds: ["phone"] })
+        expect(html).not.toContain("style=")
+    })
+})
+
 describe("its server page", () => {
     const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
 

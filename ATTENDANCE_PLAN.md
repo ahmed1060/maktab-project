@@ -656,6 +656,9 @@ whole rule.
   and tells the employee to check in with it. The days affected surface on the
   exceptions screen as incomplete, for the usual missing-punch flow.
 - **Lost phone:** an admin revokes directly; the user registers a new one.
+- **Where they're decided:** under To review on the one Requests page too,
+  waiting and decided, with Approve, Reject and Revoke (`UI_PLAN.md` §2.3,
+  part 4b, #134). A person's own phone stays on the Attendance page.
 - **Held punches:** check-ins from a phone awaiting approval are recorded as
   `PENDING_DEVICE` and count only once it is approved, so a slow approval does not
   cost the employee a day.

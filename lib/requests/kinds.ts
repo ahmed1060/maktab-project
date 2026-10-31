@@ -5,7 +5,7 @@
  */
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -37,6 +37,10 @@ export type FeedRow = {
     missingPunch?: MissingPunchFacts
     /** Overtime's own facts (§2.3, part 4a): a day's waiting, or a decision on it. */
     overtime?: OvertimeFacts
+    /** Whether whoever decides it may stop it checking in: a check-in phone in use (§2.3, part 4b). */
+    mayRevoke?: boolean
+    /** A check-in phone's own facts (§2.3, part 4b). Its `what` is its model, if kept. */
+    phone?: PhoneFacts
 }
 
 export type DayOffFacts = {
@@ -78,4 +82,18 @@ export type OvertimeFacts = {
     /** A decision: what was approved, and the note it was made with. */
     approvedMinutes: number | null
     note: string | null
+}
+
+export type PhoneFacts = {
+    platform: "ANDROID" | "IOS"
+    model: string | null
+    appVersion: string | null
+    /** Whether it proved it runs the genuine app when it was registered. */
+    attested: boolean
+    /** While it waits: the check-ins it has recorded, held until it's decided. */
+    held: number
+    /** Why it was rejected or revoked, if someone said. */
+    reason: string | null
+    /** Revoked because a new phone of theirs was approved. */
+    replaced: boolean
 }
