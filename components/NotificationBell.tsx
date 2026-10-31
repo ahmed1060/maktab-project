@@ -124,13 +124,9 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                 if (!notification.userId) return
                 router.push(`/dashboard/employees/${notification.userId}/history?highlight=${notification.relatedId}`)
             } else if (type.includes('PROFILE')) {
-                // If it's a request, go to requests page. If it's a personal profile update, go to own profile.
-                if (notification.message.toLowerCase().includes('request')) {
-                    router.push(`/dashboard/profile-requests?highlight=${notification.relatedId}`)
-                } else {
-                    if (!notification.userId) return
-                    router.push(`/dashboard/employees/${notification.userId}?highlight=${notification.relatedId}`)
-                }
+                // A decision on one's name change, on the one Requests page (UI_PLAN.md §2.3, part 5a).
+                // An older notice names the person rather than the request, and opens the kind's list.
+                router.push(`/dashboard/requests?kind=nameChange&highlight=${notification.relatedId}`)
             } else if (type.includes('NOTE')) {
                 // For notes, relatedId contains the dashboard path
                 // We append the notification ID as highlight if the specific note ID isn't in the path

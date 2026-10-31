@@ -501,11 +501,11 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                     </div>
                 )}
 
-                {/* Profile Name Requests Counter (for whoever decides them) */}
+                {/* Profile Name Requests Counter (for whoever decides them), opening them on the Requests page (UI_PLAN.md §2.3, part 5a) */}
                 {permissionsOf(currentUser as any).can('profile_requests.review') && (
                     <Suspense fallback={<div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'var(--veil-20)' }} />}>
                         <Link
-                            href="/dashboard/profile-requests"
+                            href="/dashboard/requests?tab=review&kind=nameChange&show=waiting"
                             title={t('profile_name_requests')}
                             aria-label={t('profile_name_requests')}
                             style={{

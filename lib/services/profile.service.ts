@@ -87,7 +87,8 @@ export class ProfileService {
                 request.userId,
                 'PROFILE_UPDATE',
                 { key: 'notice_name_change_approved', params: { name: `${request.newFirstName} ${request.newLastName}` } },
-                request.userId,
+                // The request, which the bell opens on the Requests page (UI_PLAN.md §2.3, part 5a).
+                id,
                 tx
             )
 
@@ -128,7 +129,8 @@ export class ProfileService {
                 request.userId,
                 'PROFILE_UPDATE_REJECTED',
                 { key: 'notice_name_change_rejected', params: { note: optional('notice_note_suffix', { note: adminNote ?? '' }, adminNote) } },
-                request.userId,
+                // The request, which the bell opens on the Requests page (UI_PLAN.md §2.3, part 5a).
+                id,
                 tx
             )
 

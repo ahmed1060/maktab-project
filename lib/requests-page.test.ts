@@ -499,6 +499,44 @@ describe("flagged check-ins on it (UI_PLAN.md §2.3, part 4c)", () => {
     })
 })
 
+describe("name changes on it (UI_PLAN.md §2.3, part 5a)", () => {
+    const change = (fields: Partial<FeedRow> = {}): FeedRow => row({
+        kind: "nameChange", id: "n1", what: "Mona Adel Fahmy", detail: null,
+        nameChange: { from: "Mona Adel", to: "Mona Adel Fahmy", note: null },
+        ...fields,
+    })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
+
+    it("reads as any request does: the name it's for, the one it was, and who asked", async () => {
+        const html = await page({ rows: [change()], kinds: ["internal", "nameChange"] })
+        expect(html).toContain("Mona Adel Fahmy")
+        expect(html).toContain("requests_kind_name_change")
+        expect(html).toContain("requests_name_change_from")
+        expect(html).toContain("Mona Adel")
+    })
+
+    it("is approved or rejected, with a reason if there is one, by whoever may decide it", async () => {
+        const html = await page({ rows: [change({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+        // Its own routes, with the note they take.
+        expect(dialogs).toContain("`/api/profile-requests/${request.id}/${approve ? 'approve' : 'reject'}`")
+        expect(dialogs).toContain("JSON.stringify({ adminNote: reason ?? '' })")
+        expect(client).toContain("t('requests_name_change_reject_question')")
+    })
+
+    it("once decided, says so, and why it was rejected", async () => {
+        expect(await page({ rows: [change({ status: "APPROVED" })], show: "done" })).toMatch(/ui-badge ui-badge-good[^>]*>status_approved/)
+        expect(client).toContain("?? r.nameChange?.note")
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [change({ mayDecide: true })], kinds: ["nameChange"] })
+        expect(html).not.toContain("style=")
+    })
+})
+
 describe("its server page", () => {
     const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
 
@@ -538,6 +576,10 @@ describe("its server page", () => {
         expect(server).toContain('show ??= picked.status === "PENDING" || picked.status === "IN_PROGRESS" ? "waiting" : "done"')
     })
 
+    it("finds a name change a notification picked out too, now that its links land here (part 5a)", () => {
+        expect(server).toContain("prisma.profileUpdateRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
+    })
+
     it("reads the dates of leave only for Day off", () => {
         expect(server).toContain('from: kind === "dayOff" ? searchParams.from ?? "" : ""')
         expect(server).toContain('to: kind === "dayOff" ? searchParams.to ?? "" : ""')
@@ -550,6 +592,23 @@ describe("the old history page and links to it", () => {
         expect(history).toContain("redirect(")
         expect(history).toContain("show: 'done'")
         expect(history).toContain("highlight")
+    })
+
+    it("send people from the Profile requests page to name changes on the Requests page, keeping the one picked out (part 5a)", () => {
+        const profile = readFileSync("app/(dashboard)/dashboard/profile-requests/page.tsx", "utf8")
+        expect(profile).toContain("redirect(")
+        expect(profile).toContain("kind: 'nameChange'")
+        expect(profile).toContain("highlight")
+    })
+
+    it("are the header's name-change count, the dashboard's tile, and a decision's notice, all on the Requests page (part 5a)", () => {
+        // Waiting, which they count, as the day off tile says too.
+        expect(readFileSync("components/DashboardHeader.tsx", "utf8")).toContain('href="/dashboard/requests?tab=review&kind=nameChange&show=waiting"')
+        expect(readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")).toContain("href: '/dashboard/requests?tab=review&kind=nameChange&show=waiting'")
+        expect(readFileSync("components/NotificationBell.tsx", "utf8")).toContain("router.push(`/dashboard/requests?kind=nameChange&highlight=${notification.relatedId}`)")
+        for (const f of ["components/DashboardHeader.tsx", "app/(dashboard)/dashboard/page.tsx", "components/NotificationBell.tsx"]) {
+            expect(readFileSync(f, "utf8"), f).not.toContain("/dashboard/profile-requests")
+        }
     })
 
     it("are a notification's link to its request, without asking for its status first", () => {
