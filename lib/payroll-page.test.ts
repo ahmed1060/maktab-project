@@ -367,7 +367,8 @@ describe("attendance changed after a month was approved", () => {
     it("offers Mark resolved to whoever prepares payroll, and more when there are", async () => {
         const pages = [{ data: { open: [changed()], openCount: 2, nextCursor: "c1" } }]
         const preparer = reviewCard(await page({ shows, discrepancies: pages, grants: ["payroll.prepare"] }), en.attpay_changed_title)
-        expect(preparer).toMatch(/<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Mark resolved<\/button>/)
+        // Named for its day and person, so a screen reader tells one row's from the next.
+        expect(preparer).toMatch(/<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm" aria-label="Mark resolved: 14 Sept 2026 · Mona Adel">Mark resolved<\/button>/)
         expect(preparer).toMatch(/<button type="button" class="ui-btn ui-btn-quiet">Show more<\/button>/)
         expect(reviewCard(await page({ shows, discrepancies: pages }), en.attpay_changed_title)).not.toContain("Mark resolved")
     })

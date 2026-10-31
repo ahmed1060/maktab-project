@@ -1924,6 +1924,7 @@ export const ar = {
         attpay_owed_to: "{amount} مستحقة له",
         attpay_owed_by: "{amount} مستحقة عليه",
         attpay_resolve: "تمت التسوية",
+        attpay_resolve_for: "تمت التسوية: {what}",
         attpay_resolution: "كيف تمت التسوية",
         attpay_resolve_hint: "اذكر كيف تمت التسوية — مثلًا التسوية المضافة هذا الشهر.",
         attpay_resolution_required: "اذكر كيف سُوّي، في كلمات قليلة.",

@@ -1926,6 +1926,7 @@ export const en = {
         attpay_owed_to: "{amount} owed to them",
         attpay_owed_by: "{amount} owed by them",
         attpay_resolve: "Mark resolved",
+        attpay_resolve_for: "Mark resolved: {what}",
         attpay_resolution: "How it was settled",
         attpay_resolve_hint: "Say how this was settled — for example, the adjustment added this month.",
         attpay_resolution_required: "Say how it was settled, in a few words.",

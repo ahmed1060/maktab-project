@@ -1858,3 +1858,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Mark resolved asks how it was settled in the building blocks' dialog.
     Left empty, it says so under the field; its button used to stay greyed
     with no reason given.
+- **2026-10-31:** Found in the interface audit, in #142: each day changed
+  after approval had a Mark resolved button with the same name, so a
+  screen reader couldn't tell one row's from the next. Each is named for
+  its day and person now.

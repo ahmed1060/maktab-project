@@ -609,7 +609,8 @@ export default function PayrollRegisterPage() {
                                     <span className="ui-num">
                                         {d.differenceMinor > 0 ? t('attpay_owed_to').replace('{amount}', money(d.differenceMinor)) : t('attpay_owed_by').replace('{amount}', money(-d.differenceMinor))}
                                     </span>
-                                    {canPrepare && <Button size="sm" onClick={() => openResolve(d)}>{t('attpay_resolve')}</Button>}
+                                    {/* Named for its row, so a screen reader tells one from the next. */}
+                                    {canPrepare && <Button size="sm" aria-label={t('attpay_resolve_for').replace('{what}', `${dayLabel(d.date, locale)} · ${d.name}`)} onClick={() => openResolve(d)}>{t('attpay_resolve')}</Button>}
                                 </>}
                             />
                         ))}
