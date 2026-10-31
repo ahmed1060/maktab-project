@@ -3,6 +3,8 @@ import { can, grantFor, type Actor, type Target } from "@/lib/permissions/can"
 import { and, teamMemberWhere } from "@/lib/team-scope"
 import { sessionHasModule } from "@/lib/features/require"
 import { dayOffListFilters } from "@/lib/services/day-off-query"
+import { addDays, toDateString } from "@/lib/attendance/calendar"
+import { localToInstant } from "@/lib/attendance/punch-import"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
 
 /**
@@ -259,7 +261,115 @@ const dayOff: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff]
+// --- Permission hours: asked for, then approved, rejected or withdrawn (§2.3, part 3a)
+
+const ENDED = ["APPROVED", "REJECTED", "CANCELLED"]
+
+/**
+ * Which permission hours this person has on a tab, in a company that has
+ * Attendance, as its APIs' rules (app/api/attendance/permissions): Mine is
+ * their own in their company; To review is everyone else's they decide with
+ * attendance.approve_permissions, at its reach. Null when they have none there.
+ */
+export function permissionWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "ATTENDANCE")) return null
+    const where: Record<string, any> = {}
+    if (q.tab === "mine") {
+        // The Super Admin has no attendance of their own.
+        if (v.role === "SUPER_ADMIN" || !v.companyId) return null
+        where.companyId = v.companyId
+        where.userId = v.id
+    } else {
+        const reach = grantFor(v, "attendance.approve_permissions")
+        if (!reach) return null
+        if (reach === "ALL") {
+            if (q.companyId) where.companyId = q.companyId
+        } else {
+            if (!v.companyId) return null
+            where.companyId = v.companyId
+            // Their own are on Mine.
+            where.userId = { not: v.id }
+            if (reach === "TEAM") and(where, { user: teamMemberWhere(v.id) })
+        }
+        if (q.personId) and(where, { userId: q.personId })
+    }
+    where.status = q.show === "done" ? { in: ENDED } : "PENDING"
+    if (q.search) where.reason = { contains: q.search, mode: "insensitive" }
+    return where
+}
+
+type PermissionRequest = {
+    id: string
+    companyId: string
+    userId: string
+    date: Date
+    type: string
+    startMinutes: number
+    endMinutes: number
+    minutes: number
+    reason: string
+    status: string
+    createdAt: Date
+    updatedAt: Date
+    rejectionReason: string | null
+    user: { firstName: string; lastName: string; teamLeaderId: string | null }
+    company: { timezone: string }
+}
+
+/** Minutes from a day's midnight as the clock reads them; a night's after midnight are the next morning's. */
+const clock = (minutes: number) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+
+/**
+ * Permission hours as a row. Deciding them is the decision route's own rule
+ * (POST /api/attendance/permissions/[id]/decide): attendance.approve_permissions
+ * at the asker, which is never one's own. Whoever asked may withdraw them
+ * while they wait, or once approved until they begin, in the company's time
+ * (AttendanceRequestService.cancelPermission).
+ */
+export function permissionRow(v: Viewer, r: PermissionRequest, now: Date): FeedRow {
+    const target: Target = { companyId: r.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
+    const waits = r.status === "PENDING"
+    const date = toDateString(r.date)
+    const starts = localToInstant(`${addDays(date, Math.floor(r.startMinutes / 1440))}T${clock(r.startMinutes % 1440)}:00`, r.company.timezone)
+    const asked = r.createdAt.toISOString()
+    return {
+        kind: "permission",
+        id: r.id,
+        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        what: r.type,
+        detail: r.reason || null,
+        asked,
+        started: null,
+        finished: waits ? null : r.updatedAt.toISOString(),
+        status: r.status,
+        sortAt: waits ? asked : r.updatedAt.toISOString(),
+        mayDecide: waits && can(v, "attendance.approve_permissions", target),
+        mayDelete: false,
+        mayWithdraw: r.userId === v.id && (waits || (r.status === "APPROVED" && starts.getTime() > now.getTime())),
+        permission: { date, start: clock(r.startMinutes), end: clock(r.endMinutes), minutes: r.minutes, rejectionReason: r.rejectionReason },
+    }
+}
+
+const permission: Source = {
+    kind: "permission",
+    where: permissionWhere,
+    list: (v, q, where, take) => {
+        return Promise.all([
+            prisma.permissionRequest.findMany({
+                where,
+                orderBy: feedOrder(q.show),
+                take,
+                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } }, company: { select: { timezone: true } } },
+            }),
+            prisma.permissionRequest.count({ where }),
+        ]).then(([rows, total]) => {
+            const now = new Date()
+            return { rows: rows.map(r => permissionRow(v, r, now)), total }
+        })
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission]
 
 // --- The page --------------------------------------------------------
 
