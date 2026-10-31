@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { verifyResourceAccess } from "@/lib/security"
 import AccessDenied from "@/components/AccessDenied"
+import { accountRefusal } from "@/lib/account-refusal"
 import TaskDetailClient, { TaskNotFound } from "./client"
 import { can } from '@/lib/permissions/can'
 import { shapeTask } from '@/lib/permissions/shape'
@@ -15,6 +16,9 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
     const params = await props.params
 
     const session = await getServerSession(authOptions)
+    // Refused as the APIs refuse it: suspended, archived, banned, lapsed or under
+    // maintenance, before anything is read (found after PR 139).
+    if (accountRefusal(session?.user ?? {})) return <AccessDenied />
     const task = await prisma.task.findUnique({
         where: { id: params.id },
         include: {

@@ -1,5 +1,7 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { accountRefusal } from "@/lib/account-refusal"
+import AccessDenied from "@/components/AccessDenied"
 import { prisma } from "@/lib/prisma"
 import { isValidTaskStatus } from "@/lib/valid-enums"
 import TasksClient from "./TasksClient"
@@ -20,6 +22,9 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
     const searchParams = await props.searchParams
 
     const session = await getServerSession(authOptions)
+    // Refused as the APIs refuse it: suspended, archived, banned, lapsed or under
+    // maintenance, before anything is read (found after PR 139).
+    if (accountRefusal(session?.user ?? {})) return <AccessDenied />
     const { asked, page } = askedPage(searchParams.page)
     const limit = 10
     const skip = (page - 1) * limit

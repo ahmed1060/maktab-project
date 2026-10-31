@@ -2110,3 +2110,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** Role requests on the Requests page were merged in #138
   (`UI_PLAN.md` §2.3), and the side bar shows one Requests item in #139.
   Neither touches clients or locations.
+- **2026-10-31:** The side bar's one Requests item was merged in #139
+  (`UI_PLAN.md` §2.3). The Tasks, Obligations and Costs pages, a task's and
+  a record's page refuse a suspended, archived or banned account before
+  they read anything, in #140, as the APIs do.

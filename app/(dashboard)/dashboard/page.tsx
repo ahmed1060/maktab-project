@@ -23,6 +23,8 @@ import { SCOPED_COMPANY_COOKIE, scopedCompanyId } from "@/lib/company-scope"
 import { CompanyService } from "@/lib/services/company.service"
 import { scopesToTeam, assignedToTeamWhere, teamMemberWhere, and } from '@/lib/team-scope'
 import { can, grantFor } from '@/lib/permissions/can'
+import { accountRefusal } from "@/lib/account-refusal"
+import AccessDenied from "@/components/AccessDenied"
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +41,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     const userRole = (session?.user as any)?.role
     // Who is asking, for can(): nobody signed in holds nothing.
     const viewer = (session?.user ?? { role: null }) as any
+    // Refused as the APIs refuse it: suspended, archived, banned, lapsed or under
+    // maintenance, before anything is read (found after PR 139).
+    if (accountRefusal(viewer)) return <AccessDenied />
     const userId = (session?.user as any)?.id
     // A Team Leader's task numbers are their team's; their links say so.
     const tasksTeamOnly = grantFor(viewer, 'tasks.view') === 'TEAM'
