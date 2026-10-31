@@ -5,6 +5,7 @@ import { sessionHasModule } from "@/lib/features/require"
 import { dayOffListFilters } from "@/lib/services/day-off-query"
 import { addDays, toDateString } from "@/lib/attendance/calendar"
 import { localToInstant } from "@/lib/attendance/punch-import"
+import { PLATFORM_REASON } from "@/lib/services/attendance-flag.service"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
 
 /**
@@ -729,7 +730,162 @@ const phone: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone]
+// --- Flagged check-ins: waiting for someone to accept or reject them (§2.3, part 4c)
+
+/**
+ * Which flagged check-ins this person has on a tab, in a company that has
+ * Attendance, as its API's rule (app/api/attendance/flagged): under To
+ * review only, since nobody asks for them (decided on 2026-10-31), everyone
+ * else's they correct with attendance.correct, at its reach. Not those
+ * flagged because our app couldn't prove itself: the Super Admin looks at
+ * them on their own page. Waiting is those still flagged and not withdrawn;
+ * Done is those decided, whatever came of them since. Null when they have
+ * none there.
+ */
+export function flaggedWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "ATTENDANCE")) return null
+    if (q.tab === "mine") return null
+    const reach = grantFor(v, "attendance.correct")
+    if (!reach) return null
+    const where: Record<string, any> = {}
+    if (reach === "ALL") {
+        if (q.companyId) where.companyId = q.companyId
+        // A check-in the app sent is always somebody's.
+        where.userId = { not: null }
+    } else {
+        if (!v.companyId) return null
+        where.companyId = v.companyId
+        // Nobody decides their own.
+        where.userId = { not: v.id }
+        if (reach === "TEAM") and(where, { user: teamMemberWhere(v.id) })
+    }
+    if (q.personId) and(where, { userId: q.personId })
+    if (q.show === "done") where.reviewedAt = { not: null }
+    else Object.assign(where, { status: "FLAGGED", voidedAt: null })
+    where.NOT = { flagReasons: { has: PLATFORM_REASON } }
+    if (q.search) {
+        // Why one was rejected; one waiting has no words to match.
+        if (q.show === "done") where.reviewReason = { contains: q.search, mode: "insensitive" }
+        else where.id = { in: [] }
+    }
+    return where
+}
+
+type FlaggedPunch = {
+    id: string
+    companyId: string
+    userId: string | null
+    status: string
+    direction: string | null
+    punchAtLocal: Date
+    receivedAt: Date
+    reviewedAt: Date | null
+    reviewReason: string | null
+    flagReasons: string[]
+    checkIn: unknown
+    workLocation: { name: string } | null
+    phone: { model: string | null; platform: string } | null
+    user: { firstName: string; lastName: string; teamLeaderId: string | null } | null
+}
+
+/** What the phone said, read as it was kept: a number is only one if it is one. */
+const numberIn = (o: unknown, key: string) => {
+    const n = o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined
+    return typeof n === "number" && Number.isFinite(n) ? n : null
+}
+
+/**
+ * A flagged check-in as a row: waiting, in order of when it arrived; decided,
+ * of when it was. Deciding it is the decision route's own rule (POST
+ * /api/attendance/flagged/[id]/decide): attendance.correct at whose it is,
+ * which is never one's own. A failed face check's photos are seen by whoever
+ * approves faces, and only while it waits, as the photo route's rule.
+ */
+export function flaggedRow(v: Viewer, p: FlaggedPunch): FeedRow {
+    const target: Target = { companyId: p.companyId, userId: p.userId, teamLeaderId: p.user?.teamLeaderId ?? null }
+    const waits = p.status === "FLAGGED" && !p.reviewedAt
+    const asked = p.receivedAt.toISOString()
+    const finished = p.reviewedAt?.toISOString() ?? null
+    const direction = p.direction === "IN" || p.direction === "OUT" ? p.direction : null
+    const round = (n: number | null) => n === null ? null : Math.round(n)
+    const ip = p.checkIn && typeof p.checkIn === "object" ? (p.checkIn as Record<string, unknown>).ip : null
+    return {
+        kind: "flagged",
+        id: p.id,
+        who: { id: p.userId ?? "", name: p.user ? `${p.user.firstName} ${p.user.lastName}`.trim() : "" },
+        what: direction ?? "",
+        detail: null,
+        asked,
+        started: null,
+        finished,
+        status: p.status,
+        sortAt: waits ? asked : finished ?? "",
+        mayDecide: waits && can(v, "attendance.correct", target),
+        mayDelete: false,
+        mayWithdraw: false,
+        flagged: {
+            // A wall-clock time, kept as it reads (lib/services/attendance-flag.service.ts).
+            at: p.punchAtLocal.toISOString().slice(0, 16),
+            direction,
+            reasons: p.flagReasons,
+            place: p.workLocation?.name ?? null,
+            distance: round(numberIn(p.checkIn, "distanceMeters")),
+            accuracy: round(numberIn(p.checkIn, "accuracyMeters")),
+            ip: typeof ip === "string" && ip ? ip : null,
+            latitude: numberIn(p.checkIn, "latitude"),
+            longitude: numberIn(p.checkIn, "longitude"),
+            phone: p.phone?.model ?? null,
+            reason: p.reviewReason,
+            mayViewFace: waits && p.flagReasons.includes("FACE_UNVERIFIED") && can(v, "attendance.approve_face", target),
+        },
+    }
+}
+
+/**
+ * Those in a month whose payroll is approved or paid, left out of Waiting as
+ * the Attendance page's list leaves them out: deciding one would be refused
+ * (AttendanceFlagService.decide), and it would wait forever. By the month it
+ * was on; one at a month's edge that a night shift carries over is refused
+ * when it's decided, and says so.
+ */
+async function closedMonths(where: Record<string, any>) {
+    const runs = await prisma.payrollRun.findMany({
+        where: { status: { in: ["APPROVED", "PAID"] }, ...(typeof where.companyId === "string" ? { companyId: where.companyId } : {}) },
+        select: { companyId: true, year: true, month: true },
+    })
+    return runs.map(r => ({
+        companyId: r.companyId,
+        punchAtLocal: { gte: new Date(Date.UTC(r.year, r.month - 1, 1)), lt: new Date(Date.UTC(r.year, r.month, 1)) },
+    }))
+}
+
+const flagged: Source = {
+    kind: "flagged",
+    where: flaggedWhere,
+    list: async (v, q, where, take) => {
+        const closed = q.show === "done" ? [] : await closedMonths(where)
+        const shown = closed.length > 0 ? and({ ...where }, { NOT: { OR: closed } }) : where
+        // Each in the order its rows' sortAt is: waiting by when it arrived, decided by when it was.
+        const orderBy = q.show === "done"
+            ? [{ reviewedAt: "desc" as const }, { id: "asc" as const }]
+            : [{ receivedAt: "desc" as const }, { id: "asc" as const }]
+        const [rows, total] = await Promise.all([
+            prisma.attendancePunch.findMany({
+                where: shown, orderBy, take,
+                select: {
+                    id: true, companyId: true, userId: true, status: true, direction: true, punchAtLocal: true, receivedAt: true,
+                    reviewedAt: true, reviewReason: true, flagReasons: true, checkIn: true,
+                    workLocation: { select: { name: true } }, phone: { select: { model: true, platform: true } },
+                    user: { select: { firstName: true, lastName: true, teamLeaderId: true } },
+                },
+            }),
+            prisma.attendancePunch.count({ where: shown }),
+        ])
+        return { rows: rows.map(r => flaggedRow(v, r)), total }
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone, flagged]
 
 // --- The page --------------------------------------------------------
 

@@ -2165,6 +2165,11 @@ model AttendancePunch {
   /// whether the app was verified. Never a photo or anything biometric.
   checkIn              Json?
   faceFrame            FaceFrame?
+  /// When a flagged check-in was accepted or rejected, and why it was
+  /// rejected, if someone said: the Requests page's Done order and outcome
+  /// (UI_PLAN.md §2.3, part 4c). Null until it's decided.
+  reviewedAt           DateTime?
+  reviewReason         String?
 
   @@unique([companyId, source, sourceKey])
   @@index([companyId, userId, punchAtLocal])
@@ -2173,6 +2178,7 @@ model AttendancePunch {
   @@index([deviceId])
   @@index([phoneId])
   @@index([companyId, status])
+  @@index([companyId, reviewedAt])
 }
 
 /// A spreadsheet of punches brought in, and what became of its rows.

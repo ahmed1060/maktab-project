@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowUUpLeftIcon, CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, ClockIcon, DeviceMobileIcon, EyeIcon, PlayIcon, PlusIcon, ProhibitIcon, ShapesIcon, TrashIcon, TrayIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
+import { ArrowUUpLeftIcon, CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, ClockIcon, DeviceMobileIcon, EyeIcon, MapPinIcon, PlayIcon, PlusIcon, ProhibitIcon, ShapesIcon, TrashIcon, TrayIcon, UserFocusIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
@@ -16,6 +16,8 @@ import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type 
 import SafeDate from '@/components/SafeDate'
 import DateRangePicker from '@/components/DateRangePicker'
 import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
+import { FlaggedFaceModal } from '@/components/FacePhoto'
+import { googleMapsLink } from '@/lib/attendance/geo'
 import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
@@ -44,6 +46,9 @@ const STATUS: Record<string, { tone: StatusTone; label: TranslationKey }> = {
     ACTIVE: { tone: 'good', label: 'req_phone_in_use' },
     REVOKED: { tone: 'problem', label: 'requests_phone_revoked' },
     WITHDRAWN: { tone: 'neutral', label: 'status_withdrawn' },
+    // A flagged check-in waits, then is accepted, and counts, or rejected (part 4c).
+    FLAGGED: { tone: 'waiting', label: 'status_pending' },
+    ACCEPTED: { tone: 'good', label: 'requests_flagged_accepted' },
 }
 
 /** A phone revoked because a new one of theirs was approved: no problem. */
@@ -58,6 +63,7 @@ const KIND_LABEL: Record<RequestKind, TranslationKey> = {
     missingPunch: 'requests_kind_missing_punch',
     overtime: 'requests_kind_overtime',
     phone: 'requests_kind_phone',
+    flagged: 'requests_kind_flagged',
 }
 
 /** A missing punch's name: which punch, if they said (§2.3, part 3b). */
@@ -122,6 +128,8 @@ export default function RequestsClient({
     const [rejecting, setRejecting] = useState<FeedRow | null>(null)
     const [withdrawing, setWithdrawing] = useState<FeedRow | null>(null)
     const [revoking, setRevoking] = useState<FeedRow | null>(null)
+    // A flagged check-in whose face check failed, open beside the reference photo (§2.3, part 4c).
+    const [faceOf, setFaceOf] = useState<FeedRow | null>(null)
 
     // The request a notification opened, brought into view while it's on the page shown.
     const highlightId = listed.get('highlight')
@@ -192,6 +200,11 @@ export default function RequestsClient({
 
     const kindName = (kind: RequestKind) => t(KIND_LABEL[kind])
     const platform = (r: FeedRow) => t(r.phone?.platform === 'IOS' ? 'audit_value_IOS' : 'audit_value_ANDROID')
+    // Why a check-in waits, in a sentence: the reasons' words, the first capitalised (§2.3, part 4c).
+    const why = (r: FeedRow) => {
+        const words = r.flagged!.reasons.map(x => t(`att_flag_${x}` as TranslationKey)).join(locale === 'ar' ? '، ' : ', ')
+        return words.charAt(0).toLocaleUpperCase(locale) + words.slice(1)
+    }
     const kindLabel = (r: FeedRow) => kindName(r.kind)
     // What it's for: an internal request's title, or a day off's or permission's type.
     const name = (r: FeedRow) => r.kind === 'dayOff' ? t(DAY_OFF_TYPE_LABEL[r.what] ?? 'regular_day_off')
@@ -199,7 +212,9 @@ export default function RequestsClient({
             : r.kind === 'missingPunch' ? t(MISSING_LABEL[r.what] ?? 'requests_missing_any')
                 : r.kind === 'overtime' ? t('requests_overtime')
                     // A phone by its model, or, without one kept, its system.
-                    : r.kind === 'phone' ? r.what || platform(r) : r.what
+                    : r.kind === 'phone' ? r.what || platform(r)
+                        // A flagged check-in by why it waits.
+                        : r.kind === 'flagged' ? why(r) : r.what
     const title = (r: FeedRow) => {
         const what = name(r)
         return <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{what}</bdi></button>
@@ -238,11 +253,30 @@ export default function RequestsClient({
         r.status === 'PENDING' && r.phone!.held > 0 ? countOf(t, locale, r.phone!.held, 'held') : null,
         r.phone!.attested ? null : t('req_phone_unverified'),
     ].filter(Boolean).join(sep)
+    // A flagged check-in: in or out, the place it was checked against, and how far from it.
+    const metres = (r: FeedRow) => r.flagged!.distance !== null ? t('req_flagged_distance').replace('{n}', num(r.flagged!.distance)) : null
+    // The place's name is the company's own words: it keeps its own direction, as <bdi> keeps it,
+    // in a line that is text (DESIGN.md §7).
+    const isolated = (text: string | null) => text ? `\u2068${text}\u2069` : null
+    const flaggedWhen = (r: FeedRow) => [
+        r.flagged!.direction ? t(r.flagged!.direction === 'IN' ? 'requests_flagged_in' : 'requests_flagged_out') : null,
+        isolated(r.flagged!.place),
+        metres(r),
+    ].filter(Boolean).join(sep)
+    // Where the phone said it was: how far and how exactly, and the map.
+    const flaggedWhere = (r: FeedRow) => {
+        const f = r.flagged!
+        const parts = [metres(r), f.accuracy !== null ? t('req_flagged_accuracy').replace('{n}', num(f.accuracy)) : null].filter(Boolean).join(sep)
+        const map = f.latitude !== null && f.longitude !== null
+            ? <a href={googleMapsLink(f.latitude, f.longitude)} target="_blank" rel="noopener noreferrer">{t('requests_flagged_map')}</a>
+            : null
+        return parts || map ? <span>{parts}{parts && map ? sep : null}{map}</span> : null
+    }
     const direction = (r: FeedRow) => t(r.missingPunch?.direction === 'IN' ? 'punch_in' : r.missingPunch?.direction === 'OUT' ? 'punch_out' : 'punch_direction_unknown')
     // What came of a day off: the days taken and from what, or why it was refused;
     // and why permission hours were.
     const outcome = (r: FeedRow) => {
-        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason ?? r.overtime?.note ?? r.phone?.reason
+        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason ?? r.overtime?.note ?? r.phone?.reason ?? r.flagged?.reason
         const d = r.dayOff
         if (d && r.status === 'APPROVED') return t(d.deductedFrom === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', countOf(t, locale, d.deducted, 'days'))
         // A phone revoked, and why, if someone said.
@@ -250,7 +284,8 @@ export default function RequestsClient({
         return r.status === 'REJECTED' && why ? `${t('rejected_reason_prefix')}: ${why}` : null
     }
     // Under its name: its kind, once there's more than one, and a day off's days or permission's hours.
-    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.missingPunch ? punchWhen(r) : r.overtime ? overtimeWhen(r) : r.phone ? phoneWhen(r) || null : null
+    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.missingPunch ? punchWhen(r) : r.overtime ? overtimeWhen(r)
+        : r.phone ? phoneWhen(r) || null : r.flagged ? flaggedWhen(r) || null : null
     const detail = (r: FeedRow) => {
         const parts = [kinds.length > 1 ? kindLabel(r) : null, when(r)].filter(Boolean)
         return parts.length ? <span>{parts.join(sep)}</span> : undefined
@@ -261,13 +296,16 @@ export default function RequestsClient({
     }
     // Its day and time together: a narrow column broke "9:25 pm" from its day.
     // A day's overtime is "asked" on its day, which has no time of its own.
-    const asked = (r: FeedRow) => <span className="ui-nowrap">{r.overtime ? permissionDay(r.overtime.date, locale) : <SafeDate date={r.asked} locale={locale} format="short" />}</span>
+    // A flagged check-in's is when it was made, as the clock on the wall read.
+    const asked = (r: FeedRow) => <span className="ui-nowrap">{r.overtime ? permissionDay(r.overtime.date, locale)
+        : r.flagged ? `${punchDay(r.flagged.at, locale)}${sep}${punchTime(r.flagged.at, locale)}`
+            : <SafeDate date={r.asked} locale={locale} format="short" />}</span>
     const next = (r: FeedRow) => {
         if (r.kind === 'dayOff') return r.mayDecide && <>
             <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
-        if (r.kind === 'permission' || r.kind === 'missingPunch' || r.kind === 'overtime' || r.kind === 'phone') return r.mayDecide && <>
+        if (r.kind === 'permission' || r.kind === 'missingPunch' || r.kind === 'overtime' || r.kind === 'phone' || r.kind === 'flagged') return r.mayDecide && <>
             <Button size="sm" icon={CheckIcon} onClick={() => { void approveAttendance(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setRejecting(r) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
@@ -285,6 +323,7 @@ export default function RequestsClient({
             tooltip={t('ui_more_actions')}
             items={[
                 { key: 'view', icon: EyeIcon, label: t('requests_view_details'), onSelect: () => setViewing(r) },
+                ...(r.flagged?.mayViewFace ? [{ key: 'face', icon: UserFocusIcon, label: t('face_flag_see'), onSelect: () => setFaceOf(r) }] : []),
                 ...(r.mayWithdraw ? [{ key: 'withdraw', icon: ArrowUUpLeftIcon, label: r.overtime ? t('requests_overtime_withdraw') : t('req_withdraw'), danger: true, onSelect: () => setWithdrawing(r) }] : []),
                 ...(r.mayRevoke ? [{ key: 'revoke', icon: ProhibitIcon, label: t('requests_phone_revoke'), danger: true, onSelect: () => setRevoking(r) }] : []),
                 ...(r.mayDelete ? [{ key: 'delete', icon: TrashIcon, label: t('delete'), danger: true, onSelect: () => setDeleting(r) }] : []),
@@ -292,14 +331,14 @@ export default function RequestsClient({
         />
     )
     const actions = (r: FeedRow) => <span className="ui-row-actions">{next(r)}{menu(r)}</span>
-    // What rejecting refuses: whose permission hours on which day, whose missing punch when, or whose new phone.
-    const rejectQuestion = (r: FeedRow) => r.phone
-        ? t('requests_phone_reject_question').replace('{name}', r.who.name).replace('{phone}', name(r))
-        : r.missingPunch
-        ? t('requests_missing_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
-        : r.overtime
-            ? t('requests_overtime_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.overtime.date, locale))
-            : t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
+    // What rejecting refuses: whose permission hours on which day, whose missing punch when, whose new phone, or whose check-in.
+    const rejectQuestion = (r: FeedRow) => {
+        if (r.flagged) return t('requests_flagged_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.flagged.at, locale)).replace('{date}', punchDay(r.flagged.at, locale))
+        if (r.phone) return t('requests_phone_reject_question').replace('{name}', r.who.name).replace('{phone}', name(r))
+        if (r.missingPunch) return t('requests_missing_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
+        if (r.overtime) return t('requests_overtime_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.overtime.date, locale))
+        return t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
+    }
     // When it ended: done, decided, withdrawn by whoever asked, or a phone revoked or replaced.
     const finishedLabel = (r: FeedRow): TranslationKey => r.kind === 'internal' ? 'finished_at'
         : r.status === 'CANCELLED' || r.status === 'WITHDRAWN' ? 'requests_withdrawn_on'
@@ -403,6 +442,7 @@ export default function RequestsClient({
                             ...(r.missingPunch ? [{ icon: ClockIcon, text: <span>{punchWhen(r)}</span> }] : []),
                             ...(r.overtime ? [{ icon: ClockIcon, text: <span>{overtimeWhen(r)}</span> }] : []),
                             ...(r.phone && phoneWhen(r) ? [{ icon: DeviceMobileIcon, text: <span>{phoneWhen(r)}</span> }] : []),
+                            ...(r.flagged && flaggedWhen(r) ? [{ icon: MapPinIcon, text: <span>{flaggedWhen(r)}</span> }] : []),
                             ...(review ? [{ icon: UserIcon, text: <bdi>{r.who.name}</bdi> }] : []),
                             { icon: CalendarIcon, text: asked(r) },
                         ]}
@@ -451,8 +491,18 @@ export default function RequestsClient({
                                 { label: t('requests_phone_app_check'), value: t(viewing.phone.attested ? 'requests_phone_verified' : 'req_phone_unverified') },
                                 ...(viewing.status === 'PENDING' ? [{ label: t('requests_phone_held_label'), value: num(viewing.phone.held) }] : []),
                             ] : []),
-                            // A day's overtime has no time it was asked at: its day is above.
-                            ...(viewing.overtime ? [] : [{ label: t('requested_on'), value: <SafeDate date={viewing.asked} locale={locale} /> }]),
+                            ...(viewing.flagged ? [
+                                { label: t('date_label'), value: punchDay(viewing.flagged.at, locale) },
+                                { label: t('punch_time'), value: punchTime(viewing.flagged.at, locale) },
+                                ...(viewing.flagged.direction ? [{ label: t('punch_direction'), value: t(viewing.flagged.direction === 'IN' ? 'punch_in' : 'punch_out') }] : []),
+                                ...(viewing.flagged.place ? [{ label: t('requests_flagged_place'), value: <bdi>{viewing.flagged.place}</bdi> }] : []),
+                                ...(flaggedWhere(viewing) ? [{ label: t('requests_flagged_where'), value: flaggedWhere(viewing) }] : []),
+                                ...(viewing.flagged.ip ? [{ label: t('requests_flagged_ip'), value: <bdi>{viewing.flagged.ip}</bdi> }] : []),
+                                ...(viewing.flagged.phone ? [{ label: t('req_phone'), value: <bdi>{viewing.flagged.phone}</bdi> }] : []),
+                                ...(viewing.flagged.mayViewFace ? [{ label: t('requests_flagged_face'), value: <Button size="sm" icon={UserFocusIcon} onClick={() => setFaceOf(viewing)}>{t('face_flag_see')}</Button> }] : []),
+                            ] : []),
+                            // A day's overtime has no time it was asked at: its day is above; a flagged check-in's time is above.
+                            ...(viewing.overtime || viewing.flagged ? [] : [{ label: t('requested_on'), value: <SafeDate date={viewing.asked} locale={locale} /> }]),
                             ...(viewing.started ? [{ label: t('started_at'), value: <SafeDate date={viewing.started} locale={locale} /> }] : []),
                             ...(viewing.finished ? [{ label: t(finishedLabel(viewing)), value: <SafeDate date={viewing.finished} locale={locale} /> }] : []),
                             { label: t('status_label'), value: badge(viewing) },
@@ -481,7 +531,7 @@ export default function RequestsClient({
             {rejecting && (
                 <RejectAttendance key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
                     placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : rejecting.overtime ? 'requests_overtime_reject_placeholder'
-                        : rejecting.phone ? 'requests_phone_reject_placeholder' : 'requests_permission_reject_placeholder')}
+                        : rejecting.phone ? 'requests_phone_reject_placeholder' : rejecting.flagged ? 'requests_flagged_reject_placeholder' : 'requests_permission_reject_placeholder')}
                     onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); router.refresh() }} />
             )}
             {withdrawing && (
@@ -491,6 +541,7 @@ export default function RequestsClient({
                     onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); router.refresh() }} />
             )}
 
+            {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.who.name} onClose={() => setFaceOf(null)} />}
             {revoking && (
                 <RevokePhone key={revoking.id} request={revoking}
                     onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); router.refresh() }} />

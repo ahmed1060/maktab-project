@@ -131,7 +131,11 @@ export class AttendanceFlagService {
             if ((await lockedMonths(tx, punch.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             // Read again under the lock: another reviewer may have decided it first,
             // or it was withdrawn while it waited (review on #23).
-            const { count } = await tx.attendancePunch.updateMany({ where: { id, status: "FLAGGED", voidedAt: null }, data: { status: decision.accept ? "ACCEPTED" : "REJECTED" } })
+            // When, and why if it's rejected: the Requests page's Done order and outcome (UI_PLAN.md §2.3, part 4c).
+            const { count } = await tx.attendancePunch.updateMany({
+                where: { id, status: "FLAGGED", voidedAt: null },
+                data: { status: decision.accept ? "ACCEPTED" : "REJECTED", reviewedAt: new Date(), reviewReason: reason },
+            })
             if (count === 0) fail("CHECK_IN_NOT_FLAGGED")
             // A failed face check's frame lives only while the flag is open (§13.8).
             await tx.faceFrame.deleteMany({ where: { punchId: id } })

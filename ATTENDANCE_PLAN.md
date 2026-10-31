@@ -587,6 +587,7 @@ model AttendancePunch
   identityCheck  Json?        // face result only: verified, scores, model version
   status                      // ACCEPTED | PENDING_DEVICE | FLAGGED | REJECTED
   rawPayload Json?, receivedAt
+  reviewedAt?, reviewReason?  // a flagged check-in decided, and why it was rejected: the Requests page's Done order and outcome (UI_PLAN.md §2.3, #135)
 
 model AttendanceDay
   companyId, userId, date
@@ -883,7 +884,9 @@ look"*. It is saved with the reason, appears on the **Flagged** tab of the daily
 exceptions screen (§13.1) for Admin/HR, and the employee is told it is awaiting
 review. If accepted, it counts as a normal check-in; if rejected, it does not, and
 the day is treated as if there were no check-in. Where the reason was the face
-check, the reviewer also sees the one captured frame (§13.8).
+check, the reviewer also sees the one captured frame (§13.8). They're decided
+on the one Requests page too, under To review, with the map of where the phone
+was and the face photos (`UI_PLAN.md` §2.3, part 4c, #135).
 
 The line between refused and flagged is deliberate: refusing innocent failures
 locks honest people out, and flagging clear fraud wastes reviewers' time.
