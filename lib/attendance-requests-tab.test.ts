@@ -24,6 +24,12 @@ describe("the Attendance page's Requests tab", () => {
         expect(tab).not.toContain("/api/attendance/missing-punches?${q}status=PENDING")
     })
 
+    it("points with a link that looks like a button: the old pages' .btn-secondary is a button's look, which a link hasn't (found in the browser)", () => {
+        expect(tab).toContain('<ButtonLink href="/dashboard/requests?tab=mine"')
+        expect(tab).toContain('<ButtonLink href="/dashboard/requests?tab=review"')
+        expect(tab).not.toMatch(/<Link[^>]*className="btn/)
+    })
+
     it("keeps overtime, phones and flagged punches until they move (part 4)", () => {
         expect(tab).toContain("/api/attendance/overtime?")
         expect(tab).toContain("/api/attendance/phones?")

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
+import { ButtonLink } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -117,7 +117,7 @@ function MyRequests() {
         <section className="glass" style={box}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('req_mine')}</h2>
             <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('requests_moved_mine')}</p>
-            <div><Link href="/dashboard/requests?tab=mine" className="btn btn-secondary">{t('requests_open_mine')}</Link></div>
+            <div><ButtonLink href="/dashboard/requests?tab=mine">{t('requests_open_mine')}</ButtonLink></div>
         </section>
     )
 }
@@ -339,7 +339,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
             {(decidesPermissions || decidesMissing) && (
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <p style={{ margin: 0, fontSize: '0.88rem', flex: '1 1 16rem' }}>{t('requests_moved_review')}</p>
-                    <Link href="/dashboard/requests?tab=review" className="btn btn-secondary">{t('requests_open_review')}</Link>
+                    <ButtonLink href="/dashboard/requests?tab=review">{t('requests_open_review')}</ButtonLink>
                 </div>
             )}
 
