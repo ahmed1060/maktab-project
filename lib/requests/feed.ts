@@ -6,6 +6,7 @@ import { dayOffListFilters } from "@/lib/services/day-off-query"
 import { addDays, toDateString } from "@/lib/attendance/calendar"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { PLATFORM_REASON } from "@/lib/services/attendance-flag.service"
+import { calendarDateStr } from "@/lib/time"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
 
 /**
@@ -981,7 +982,144 @@ const nameChange: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone, flagged, nameChange]
+// --- Role requests: asked for somebody, then approved, rejected or withdrawn (§2.3, part 5b)
+
+/**
+ * Which role requests this person has on a tab, as the role requests API's
+ * rule (ROLES_PLAN.md §6.12): Mine is those they asked for, for whoever asks
+ * for roles with employees.request_role; To review is the company's that
+ * somebody else asked for, for whoever gives roles with
+ * employees.assign_role, since nobody decides what they asked for. The
+ * Super Admin's is the picked company's. Null when they have none there.
+ *
+ * The person whose role it would be isn't told of it until it's decided,
+ * as before (decided on 2026-10-31).
+ */
+export function roleWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    const where: Record<string, any> = {}
+    if (q.tab === "mine") {
+        if (v.role === "SUPER_ADMIN" || !can(v, "employees.request_role")) return null
+        where.requestedById = v.id
+    } else {
+        const reach = grantFor(v, "employees.assign_role")
+        if (!reach) return null
+        if (reach === "ALL") {
+            if (q.companyId) where.companyId = q.companyId
+        } else {
+            if (!v.companyId) return null
+            where.companyId = v.companyId
+            // Those they asked for are on Mine.
+            where.requestedById = { not: v.id }
+        }
+        // Who asked, as the filter is for every kind and the row's person is (found in the browser).
+        if (q.personId) and(where, { requestedById: q.personId })
+    }
+    where.status = q.show === "done" ? { in: ENDED } : "PENDING"
+    if (q.search) {
+        // Why it was asked for; once decided, why it was decided so too.
+        const words = { contains: q.search, mode: "insensitive" }
+        where.OR = [{ note: words }, ...(q.show === "done" ? [{ decisionNote: words }] : [])]
+    }
+    return where
+}
+
+/**
+ * Role requests in order of when each was asked, and once done, of when it
+ * was decided or withdrawn: reminding the deciders of one that waits touches
+ * it (RoleRequestService.remindStale), which is no change to it.
+ */
+export function roleOrder(show: RequestsShow) {
+    // Every one done has when; nulls last all the same, as Postgres would put them first.
+    return show === "done" ? [{ decidedAt: { sort: "desc" as const, nulls: "last" as const } }, { id: "asc" as const }] : feedOrder(show)
+}
+
+type RoleRequest = {
+    id: string
+    companyId: string
+    userId: string
+    requestedById: string
+    status: string
+    note: string | null
+    decisionNote: string | null
+    actingUntil: Date | null
+    createdAt: Date
+    decidedAt: Date | null
+    user: { firstName: string; lastName: string; teamLeaderId: string | null; assignedRole: { name: string; builtIn: string | null } | null }
+    role: { name: string; builtIn: string | null }
+    requestedBy: { firstName: string; lastName: string }
+    decidedBy: { firstName: string; lastName: string } | null
+    company: { timezone: string }
+}
+
+const fullName = (p: { firstName: string; lastName: string }) => `${p.firstName} ${p.lastName}`.trim()
+
+/**
+ * A role request as a row. Its person is who asked, as every row's is, under
+ * "Asked by"; whose role it would be is beside the role (found in the
+ * browser). Deciding it is the decision route's own rule
+ * (RoleRequestService.decide): employees.assign_role at whose role it would
+ * be, never by whoever asked. Whoever asked may withdraw it while it waits.
+ */
+export function roleRow(v: Viewer, r: RoleRequest): FeedRow {
+    const target: Target = { companyId: r.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
+    const waits = r.status === "PENDING"
+    const asked = r.createdAt.toISOString()
+    const ended = r.decidedAt?.toISOString() ?? null
+    return {
+        kind: "role",
+        id: r.id,
+        who: { id: r.requestedById, name: fullName(r.requestedBy) },
+        what: r.role.name,
+        detail: r.note,
+        asked,
+        started: null,
+        finished: waits ? null : ended,
+        status: r.status,
+        sortAt: waits || !ended ? asked : ended,
+        mayDecide: waits && r.requestedById !== v.id && can(v, "employees.assign_role", target),
+        mayDelete: false,
+        mayWithdraw: waits && r.requestedById === v.id,
+        role: {
+            to: { name: r.role.name, builtIn: r.role.builtIn },
+            // Once approved it's the role they hold: the one it changed from is gone.
+            now: waits && r.user.assignedRole ? { name: r.user.assignedRole.name, builtIn: r.user.assignedRole.builtIn } : null,
+            // The company's own day, as it was asked for: it's kept as that day's start there,
+            // the day before in UTC east of it (found by Codex on PR 138).
+            actingUntil: r.actingUntil ? calendarDateStr(r.actingUntil, r.company.timezone) : null,
+            person: { id: r.userId, name: fullName(r.user) },
+            decidedBy: r.decidedBy ? fullName(r.decidedBy) : null,
+            note: r.decisionNote,
+        },
+    }
+}
+
+const NAMES = { select: { firstName: true, lastName: true } } as const
+
+const role: Source = {
+    kind: "role",
+    where: roleWhere,
+    list: (v, q, where, take) => {
+        return Promise.all([
+            prisma.roleRequest.findMany({
+                where,
+                orderBy: roleOrder(q.show),
+                take,
+                select: {
+                    id: true, companyId: true, userId: true, requestedById: true, status: true, note: true, decisionNote: true,
+                    actingUntil: true, createdAt: true, decidedAt: true,
+                    user: { select: { firstName: true, lastName: true, teamLeaderId: true, assignedRole: { select: { name: true, builtIn: true } } } },
+                    role: { select: { name: true, builtIn: true } },
+                    requestedBy: NAMES,
+                    decidedBy: NAMES,
+                    company: { select: { timezone: true } },
+                },
+            }),
+            prisma.roleRequest.count({ where }),
+        ]).then(([rows, total]) => ({ rows: rows.map(r => roleRow(v, r)), total }))
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone, flagged, nameChange, role]
 
 // --- The page --------------------------------------------------------
 

@@ -14,7 +14,7 @@ import type { TranslationKey } from './translations'
 
 /** One of the app's own pages, which a company can't rename, unlike its modules (lib/modules.ts). */
 type PageKey =
-    | 'checkIn' | 'attendance' | 'myAttendance' | 'roleRequests' | 'profileRequests' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
+    | 'checkIn' | 'attendance' | 'myAttendance' | 'rolesAndAccess' | 'profileRequests' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
     | 'companies' | 'packages' | 'allUsers'
     | 'roleTemplates' | 'policyTemplates' | 'publicHolidays'
     | 'superAdmins' | 'roleChanges' | 'accessReviews' | 'whoCan'
@@ -28,7 +28,9 @@ export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey; ic
     attendance: { href: '/dashboard/attendance', labelKey: 'attendance_title', icon: '🕘' },
     // The same page, for someone who sees only their own punches on it.
     myAttendance: { href: '/dashboard/attendance', labelKey: 'my_attendance', icon: '🕘' },
-    roleRequests: { href: '/dashboard/role-requests', labelKey: 'role_requests_title', icon: '🪪' },
+    // Asking the Super Admin to change a role, and access reviews: the Role
+    // requests page's other two tabs, once role requests moved to the Requests page (UI_PLAN.md §2.3, part 5b).
+    rolesAndAccess: { href: '/dashboard/roles-and-access', labelKey: 'roles_access_title', icon: '🪪' },
     profileRequests: { href: '/dashboard/profile-requests', labelKey: 'nav_profile_requests', icon: '📝' },
     payroll: { href: '/dashboard/payroll', labelKey: 'payroll', icon: '🧾' },
     myPayslips: { href: '/dashboard/documents', labelKey: 'my_payslips', icon: '📄' },
@@ -66,10 +68,11 @@ export const COMPANY_GROUPS: readonly SideBarGroup[] = [
     { key: 'work', labelKey: 'nav_group_work', items: ['tasks', 'obligations'] },
     { key: 'clients', labelKey: 'nav_group_clients', items: ['clients', 'locations', 'records'] },
     // The request pages sit together here until the one Requests page (§2.3).
-    { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests', 'dayOff', 'roleRequests', 'profileRequests'] },
+    { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests', 'dayOff', 'profileRequests'] },
     { key: 'money', labelKey: 'nav_group_money', items: ['costs', 'payroll'] },
     { key: 'me', labelKey: 'nav_group_me', items: ['myAttendance', 'myPayslips', 'myCashAdvance'] },
-    { key: 'bottom', labelKey: null, items: ['companySettings', 'savedLists'] },
+    // Roles and access beside the company's settings: how the company is set up, not daily work (decided on 2026-10-31).
+    { key: 'bottom', labelKey: null, items: ['companySettings', 'rolesAndAccess', 'savedLists'] },
 ]
 
 /** The Super Admin's own pages (§2.2), after the company's. */
@@ -118,8 +121,8 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
         case 'checkIn': return !v.superAdmin && v.checkIn
         case 'attendance': return attendance && seesOthersAttendance
         case 'myAttendance': return attendance && !seesOthersAttendance
-        // Role requests are for whoever decides them, and whoever makes them (ROLES_PLAN.md §6.12).
-        case 'roleRequests': return !v.superAdmin && (v.can('employees.assign_role') || v.can('employees.request_role'))
+        // For whoever gives roles, as its two tabs were; the Super Admin answers both from their own pages.
+        case 'rolesAndAccess': return !v.superAdmin && v.can('employees.assign_role')
         case 'profileRequests': return v.can('profile_requests.review')
         // A Team Leader manages people, not pay.
         case 'payroll': return v.can('payroll.view')

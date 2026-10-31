@@ -211,14 +211,18 @@ one once its kind has moved in.
       them, approved, or rejected with a reason if there is one. The
       Profile requests page, the header's count, the dashboard's tile and
       a decision's notice open them there.
-   2. **5b:** role requests: still asked for on an employee's page; on the
-      Mine of whoever asked, as the Role requests page has them, and
-      decided under To review (Decided on 2026-10-31). The Role requests
-      page's other tabs, asking the Super Admin to change a role and access
-      reviews, move to Company settings, beside Roles (Decided on
-      2026-10-31).
+   2. **5b:** role requests (#138): still asked for on an employee's page;
+      on the Mine of whoever asked, as the Role requests page has them, and
+      decided under To review for whoever gives roles, never by whoever
+      asked: approved, or rejected with the reason it must have; whoever
+      asked may withdraw it while it waits (Decided on 2026-10-31). The
+      Role requests page sends people there. Its other tabs, asking the
+      Super Admin to change a role and access reviews, are on a page of
+      their own, Roles and access, beside Company settings in the side bar,
+      for whoever gives roles (Decided on 2026-10-31, in place of moving
+      them to Company settings → Roles, which a company's people never see).
    3. **5c:** the side bar shows one Requests item under People, and the
-      old pages' items go.
+      old pages' items go: Day off and Profile requests.
 
 - **To review** is everyone else's requests the person sees, with the
   buttons where they may decide them. In the built-in roles, seeing and
@@ -227,7 +231,7 @@ one once its kind has moved in.
 - **The Super Admin's Role changes stay their own (Decided on
   2026-10-30):** a company asking the Super Admin to change or add a role
   isn't a request between the company's people. It stays under Access, and
-  on Roles for the company.
+  on Roles and access for the company (part 5b).
 
 ---
 
@@ -1731,3 +1735,48 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     open it there too; a decision's notice names the request now, and an
     older one, which named the person, opens the kind's list.
   - Asking stays on one's profile.
+- **2026-10-31:** Name changes on the Requests page were merged in #137.
+  Company settings → Roles turned out to be a tab only the Super Admin
+  sees, so the Role requests page's other two tabs get a page of their own
+  instead, Roles and access, beside Company settings (decided again on
+  2026-10-31). Role requests join in #138 (part 5b):
+  - Mine is those one asked for, for whoever asks for roles; To review is
+    the company's that somebody else asked for, for whoever gives roles, or
+    the picked company's for the Super Admin. The person whose role it
+    would be is told once it's decided, as before.
+  - A row is named by the role, a built-in one in the person's language,
+    and says whose it would be; an acting one says until when. They're
+    searched by the note it was asked with, and once decided by the one it
+    was decided with. Done is in order of when each was decided or
+    withdrawn, which reminding the deciders of one waiting doesn't move.
+  - Approve gives the role, as choosing it on their profile does. Reject
+    needs a reason, as the Role requests page did. Whoever asked may
+    withdraw it while it waits.
+  - A refusal says why in the person's language: the role requests API
+    answers with a code beside its words, as the attendance APIs do. One
+    that can't be given here, to someone who leads a team, says to change
+    it on their profile, which asks where their team goes.
+  - The Role requests page sends people to the Requests page, with the one
+    it picked out, and its other tabs' links to Roles and access. Asking
+    for one, deciding it and reminding of it are noticed with it on the
+    Requests page; the Role field on a profile links its waiting one there.
+    "Your role is now" opens the dashboard, whose side bar has what the new
+    role opens.
+  - The side bar's Role requests item is Roles and access now, beside
+    Company settings, for whoever gives roles; whoever only asks for roles
+    finds theirs on the Requests page.
+  - Found in the browser: a role request's row put whose role it would be
+    under "Asked by", the column, the person filter and the details all
+    say, beside who really asked. Its person is who asked now, as every
+    row's is, and whose role it would be is beside the role, on Mine and
+    To review alike, and in the details as "Whose role".
+  - Found in the browser: "Your role is now" opened one's own profile,
+    which has no Role field, so it said nothing of the role. It opens the
+    dashboard now, whose side bar has what the new role opens.
+  - Found in the screenshots: in Arabic, whose role it would be ran into
+    "لـ" when the name is in Latin letters; a space keeps them apart.
+- **2026-10-31:** In 5b (#138), found by Codex: an acting role's last day
+  showed a day early east of UTC, Cairo included. It's kept as the start
+  of that day in the company's time zone, which is the day before in UTC,
+  and the page reads dates in UTC. The feed sends the company's own day
+  now, as it was asked for.

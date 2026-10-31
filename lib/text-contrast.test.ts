@@ -44,7 +44,8 @@ describe("text contrast, light theme", () => {
     })
 
     it("a selected status pill is white on a colour dark enough for it", () => {
-        for (const f of ["app/(dashboard)/dashboard/role-requests/page.tsx", "components/AccessReviews.tsx", "components/RoleChangeRequests.tsx"]) {
+        // The Role requests page's own list is on the Requests page's building blocks now (UI_PLAN.md §2.3, part 5b).
+        for (const f of ["components/AccessReviews.tsx", "components/RoleChangeRequests.tsx"]) {
             const src = readFileSync(f, "utf8")
             expect(src, f).toContain("background: status === s ? 'var(--button-from)'")
         }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { dayOffRow, dayOffWhere, feedOrder, flaggedRow, flaggedWhere, internalRow, nameChangeRow, nameChangeWhere, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, phoneRow, phoneWhere, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, flaggedRow, flaggedWhere, internalRow, nameChangeRow, nameChangeWhere, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, phoneRow, phoneWhere, roleOrder, roleRow, roleWhere, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -707,6 +707,95 @@ describe("a name change's row", () => {
     it("once decided, is in order of when, with the note it was decided with", () => {
         expect(nameChangeRow(admin, change({ status: "REJECTED", updatedAt: decided, adminNote: "Use the name on your ID" }))).toMatchObject({
             finished: decided.toISOString(), sortAt: decided.toISOString(), nameChange: { note: "Use the name on your ID" },
+        })
+    })
+})
+
+// --- Role requests (UI_PLAN.md §2.3, part 5b) ----------------------------------
+
+describe("role requests", () => {
+    const review = { ...waiting, tab: "review" as const }
+    // A company's own role on the Employee base, asking for roles: HR (ROLES_PLAN.md §6.12).
+    const hr = { id: "h1", role: "EMPLOYEE", companyId: "c1", grants: "10.3" }
+
+    it("on Mine are those one asked for, waiting, or decided or withdrawn", () => {
+        expect(roleWhere(hr, waiting)).toEqual({ requestedById: "h1", status: "PENDING" })
+        expect(roleWhere(hr, { ...waiting, show: "done" })).toEqual({ requestedById: "h1", status: { in: ["APPROVED", "REJECTED", "CANCELLED"] } })
+    })
+
+    it("aren't on Mine for whoever doesn't ask for roles, nor the Super Admin", () => {
+        expect(roleWhere(employee, waiting)).toBeNull()
+        expect(roleWhere(admin, waiting)).toBeNull()
+        expect(roleWhere(superAdmin, waiting)).toBeNull()
+    })
+
+    it("on To review are the company's that somebody else asked for, for whoever gives roles, and the picked company's for the Super Admin", () => {
+        expect(roleWhere(admin, review)).toEqual({ companyId: "c1", requestedById: { not: "a1" }, status: "PENDING" })
+        expect(roleWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ companyId: "c2", status: "PENDING" })
+        // Who asked, as the person filter reads every row by (found in the browser).
+        expect(roleWhere(admin, { ...review, personId: "x9" })).toMatchObject({ AND: [{ requestedById: "x9" }] })
+    })
+
+    it("aren't on To review for whoever only asks for roles, or gives none", () => {
+        expect(roleWhere(hr, review)).toBeNull()
+        expect(roleWhere(leader, review)).toBeNull()
+    })
+
+    it("are searched by the note it was asked with, and once decided by the one it was decided with", () => {
+        expect(roleWhere(hr, { ...waiting, search: "new hire" })).toMatchObject({ OR: [{ note: { contains: "new hire", mode: "insensitive" } }] })
+        expect(roleWhere(hr, { ...waiting, show: "done", search: "audit" })).toMatchObject({
+            OR: [{ note: { contains: "audit", mode: "insensitive" } }, { decisionNote: { contains: "audit", mode: "insensitive" } }],
+        })
+    })
+
+    it("are in order of when each was asked, and once done, of when it was decided or withdrawn", () => {
+        expect(roleOrder("waiting")).toEqual([{ createdAt: "desc" }, { id: "asc" }])
+        // Reminding the deciders touches a request; when it was decided doesn't move.
+        expect(roleOrder("done")).toEqual([{ decidedAt: { sort: "desc", nulls: "last" } }, { id: "asc" }])
+    })
+})
+
+describe("a role request's row", () => {
+    const hr = { id: "h1", role: "EMPLOYEE", companyId: "c1", grants: "10.3" }
+    const asked = new Date("2026-10-29T08:00:00Z")
+    const decided = new Date("2026-10-30T12:00:00Z")
+    const request = (fields: object = {}) => ({
+        id: "r1", companyId: "c1", userId: "e2", requestedById: "h1", status: "PENDING", note: "Joins the accounts team", decisionNote: null,
+        actingUntil: null, createdAt: asked, decidedAt: null, company: { timezone: "Africa/Cairo" },
+        user: { firstName: "Mona", lastName: "Adel", teamLeaderId: null, assignedRole: { name: "Employee", builtIn: "EMPLOYEE" } },
+        role: { name: "Accountant", builtIn: null },
+        requestedBy: { firstName: "Hoda", lastName: "Samir" },
+        decidedBy: null,
+        ...fields,
+    })
+
+    it("waiting says who asked and why, the role, whose it would be and the one they hold, in order of when it was asked", () => {
+        // Who asked is the row's person, as every row's is: the person it's for is beside the role (found in the browser).
+        expect(roleRow(admin, request())).toMatchObject({
+            kind: "role", id: "r1", who: { id: "h1", name: "Hoda Samir" }, what: "Accountant", detail: "Joins the accounts team", status: "PENDING",
+            asked: asked.toISOString(), sortAt: asked.toISOString(), finished: null, mayDecide: true, mayDelete: false, mayWithdraw: false,
+            role: { to: { name: "Accountant", builtIn: null }, now: { name: "Employee", builtIn: "EMPLOYEE" }, actingUntil: null, person: { id: "e2", name: "Mona Adel" }, decidedBy: null, note: null },
+        })
+    })
+
+    it("as an acting role, says until when: the company's own day, as it was asked for (found by Codex on PR 138)", () => {
+        // 5 November in Cairo is kept as its start there, the 4th in UTC (RoleAssignmentService.returnOn).
+        expect(roleRow(admin, request({ actingUntil: new Date("2026-11-04T22:00:00Z") })).role?.actingUntil).toBe("2026-11-05")
+        expect(roleRow(admin, request({ actingUntil: new Date("2026-11-05T05:00:00Z"), company: { timezone: "America/New_York" } })).role?.actingUntil).toBe("2026-11-05")
+    })
+
+    it("may be decided by whoever gives roles but not by whoever asked, and withdrawn by whoever asked, while it waits", () => {
+        expect(roleRow(admin, request({ requestedById: "a1" })).mayDecide).toBe(false)
+        expect(roleRow(hr, request())).toMatchObject({ mayDecide: false, mayWithdraw: true })
+        expect(roleRow(admin, request({ status: "APPROVED", decidedAt: decided }))).toMatchObject({ mayDecide: false, mayWithdraw: false })
+        expect(roleRow(hr, request({ status: "CANCELLED", decidedAt: decided })).mayWithdraw).toBe(false)
+    })
+
+    it("once decided, is in order of when, with who decided and the note they decided with, and no role held to compare", () => {
+        expect(roleRow(admin, request({ status: "REJECTED", decidedAt: decided, decisionNote: "Wait for the audit", decidedBy: { firstName: "Amal", lastName: "One" } }))).toMatchObject({
+            finished: decided.toISOString(), sortAt: decided.toISOString(),
+            // Approving gave them the role: the one held now isn't the one it changed from.
+            role: { now: null, decidedBy: "Amal One", note: "Wait for the audit" },
         })
     })
 })

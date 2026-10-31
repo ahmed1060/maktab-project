@@ -537,8 +537,82 @@ describe("name changes on it (UI_PLAN.md §2.3, part 5a)", () => {
     })
 })
 
+describe("role requests on it (UI_PLAN.md §2.3, part 5b)", () => {
+    const facts = {
+        to: { name: "Accountant", builtIn: null }, now: { name: "Employee", builtIn: "EMPLOYEE" }, actingUntil: null,
+        person: { id: "e5", name: "Youssef Adel" }, decidedBy: null, note: null,
+    }
+    // Hoda asked, for Youssef.
+    const request = (fields: Partial<FeedRow> = {}): FeedRow => row({ kind: "role", id: "g1", who: { id: "h1", name: "Hoda Samir" }, what: "Accountant", detail: "Joins the accounts team", role: facts, ...fields })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
+
+    it("reads as any request does: the role, whose it would be, and who asked, in the column that says so (found in the browser)", async () => {
+        const html = await page({ rows: [request()], kinds: ["internal", "role"] })
+        expect(html).toContain("Accountant")
+        expect(html).toContain("requests_kind_role")
+        expect(html).toContain("requests_role_for")
+        expect(html).toContain("Hoda Samir")
+        expect(client).toContain("{ label: t('requests_role_person_label'), value: <bdi>{viewing.role.person.name}</bdi> }")
+    })
+
+    it("on Mine too, says whose it would be, since it isn't one's own", async () => {
+        const html = await page({ rows: [request({ mayWithdraw: true })], kinds: ["internal", "role"], tab: "mine" })
+        expect(html).toContain("requests_role_for")
+        expect(html).not.toContain("Hoda Samir")
+    })
+
+    it("as an acting role, says the day it was asked until, as the company's calendar has it (found by Codex on PR 138)", async () => {
+        const html = await page({ rows: [request({ role: { ...facts, actingUntil: "2026-11-05" } })], kinds: ["role"] })
+        expect(html).toContain("requests_role_acting_label 5 Nov 2026")
+    })
+
+    it("names a built-in role in the person's language", async () => {
+        const html = await page({ rows: [request({ what: "Team Leader", role: { ...facts, to: { name: "Team Leader", builtIn: "TEAM_LEADER" } } })], kinds: ["role"] })
+        expect(html).toContain("role_team_leader")
+    })
+
+    it("is approved, or rejected with the reason it must have, by whoever gives roles, through its own route", async () => {
+        const html = await page({ rows: [request({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+        expect(dialogs).toContain("`/api/role-requests/${request.id}`")
+        expect(dialogs).toContain("JSON.stringify({ action: approve ? 'APPROVE' : 'REJECT', note: reason })")
+        expect(client).toContain("t('requests_role_reject_question')")
+        expect(client).toContain("reasonRequired={rejecting.kind === 'role'}")
+    })
+
+    it("refused, says why in the person's language", () => {
+        for (const code of ["ALREADY_DECIDED", "ROLE_EXCEEDS_YOURS", "FORBIDDEN_ROLE_ASSIGNMENT", "ROLE_NOT_IN_COMPANY", "LEADER_HAS_REPORTS", "LAST_ADMIN", "ADMIN_IS_SUPER_ADMINS", "ACTING_END_IN_PAST", "REASON_REQUIRED"]) {
+            expect(dialogs, code).toMatch(new RegExp(`\\b${code}: '`))
+        }
+    })
+
+    it("may be withdrawn by whoever asked, while it waits", () => {
+        expect(dialogs).toContain("JSON.stringify({ action: 'CANCEL' })")
+        expect(client).toContain("'requests_role_withdraw_hint'")
+    })
+
+    it("once decided, says so, who decided, and why it was rejected", async () => {
+        expect(await page({ rows: [request({ status: "REJECTED", role: { ...facts, now: null, decidedBy: "Amal One", note: "Wait" } })], show: "done" })).toMatch(/ui-badge ui-badge-problem[^>]*>status_rejected/)
+        expect(client).toContain("t('requests_role_reject_question').replace('{name}', r.role.person.name)")
+        expect(client).toContain("?? r.role?.note")
+        expect(client).toContain("t('requests_role_decided_by_label')")
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [request({ mayDecide: true })], kinds: ["role"] })
+        expect(html).not.toContain("style=")
+    })
+})
+
 describe("its server page", () => {
     const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
+
+    it("finds a role request a notification picked out too, on Mine for whoever asked (part 5b)", () => {
+        expect(server).toContain("prisma.roleRequest.findUnique({ where: { id: searchParams.highlight }, select: { requestedById: true, status: true } })")
+        expect(server).toContain("({ userId: r.requestedById, status: r.status })")
+    })
 
     it("reads the rows from the one feed, on the tab this person has", () => {
         expect(server).toContain("requestFeed(viewer,")
@@ -611,6 +685,24 @@ describe("the old history page and links to it", () => {
         }
     })
 
+    it("send people from the Role requests page to role requests on the Requests page, and its other two tabs to Roles and access (part 5b)", () => {
+        const old = readFileSync("app/(dashboard)/dashboard/role-requests/page.tsx", "utf8")
+        expect(old).toContain("redirect(")
+        expect(old).toContain("kind: 'role'")
+        expect(old).toContain("`/dashboard/roles-and-access?${")
+        expect(old).toContain("highlight")
+    })
+
+    it("are a role request's notices, and the Role field's waiting one, on the Requests page (part 5b)", () => {
+        expect(readFileSync("components/RoleRequestControl.tsx", "utf8")).toContain("href={`/dashboard/requests?kind=role&highlight=${pending.id}`}")
+        // Asking the Super Admin to change a role, and access reviews, on their own page.
+        expect(readFileSync("lib/services/role-change-request.service.ts", "utf8")).toContain("`/dashboard/roles-and-access?tab=changes&highlight=${id}`")
+        expect(readFileSync("lib/services/access-review.service.ts", "utf8")).toContain("`/dashboard/roles-and-access?tab=reviews&highlight=${review.id}`")
+        for (const f of ["components/RoleRequestControl.tsx", "lib/services/role-request.service.ts", "lib/services/role-change-request.service.ts", "lib/services/access-review.service.ts"]) {
+            expect(readFileSync(f, "utf8"), f).not.toContain("/dashboard/role-requests")
+        }
+    })
+
     it("are a notification's link to its request, without asking for its status first", () => {
         const bell = readFileSync("components/NotificationBell.tsx", "utf8")
         expect(bell).toContain("router.push(`/dashboard/requests?highlight=${notification.relatedId}`)")
@@ -619,6 +711,10 @@ describe("the old history page and links to it", () => {
 })
 
 describe("its words", () => {
+    it("leave a space after Arabic's لـ before whose role it would be, which a name in Latin letters ran into (found in the browser)", () => {
+        expect(ar.requests_role_for).toBe("لـ {name}")
+    })
+
     it("are in sentence case, and the same keys in both languages (DESIGN.md §3.4)", () => {
         for (const key of ["requests_new", "requests_tab_mine", "requests_tab_review", "requests_show_waiting", "requests_show_done", "requests_start", "requests_mark_done", "requests_view_details"] as const) {
             expect(en[key].slice(1), key).toBe(en[key].slice(1).toLowerCase())

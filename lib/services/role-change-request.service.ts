@@ -93,7 +93,7 @@ export class RoleChangeRequestService {
             input.status === "DONE"
                 ? { key: "notice_role_change_done", params: { response: request!.response ? ` ${request!.response}` : "" } }
                 : { key: "notice_role_change_declined", params: { response: request!.response ?? "" } },
-            `/dashboard/role-requests?tab=changes&highlight=${id}`,
+            `/dashboard/roles-and-access?tab=changes&highlight=${id}`,
         )
         return request
     }
