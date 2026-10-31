@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
 import { accountRefusal } from "./account-refusal"
+import { stripComments } from "./strip-comments"
 
 /**
  * Whether a signed-in account may read or act at all: one rule, for the API
@@ -39,5 +41,32 @@ describe("an account's refusal", () => {
         const page = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
         expect(page).toContain("if (accountRefusal(viewer)) return <AccessDenied />")
         expect(page.indexOf("accountRefusal(viewer)")).toBeLessThan(page.indexOf("requestFeed(viewer,"))
+    })
+
+    it("is every page's that reads the database itself, before it reads or writes anything", () => {
+        // The proxy holds everyone off during maintenance or a locked subscription, but not a
+        // suspended, archived or banned account with a session still live: the dashboard home,
+        // the Tasks, Obligations and Costs pages and a record's page read for it, and a task's
+        // and an obligation's marked themselves seen (found after PR 139).
+        const pages = (readdirSync("app/(dashboard)", { recursive: true }) as string[])
+            .filter(f => f.endsWith("page.tsx"))
+            .map(f => join("app/(dashboard)", f))
+        const reads = /\bprisma\.|\b[A-Z]\w*Service\.\w+\(|\brequestFeed\(/
+        const unchecked: string[] = []
+        let readers = 0
+        for (const file of pages) {
+            const src = stripComments(readFileSync(file, "utf8"))
+            if (/^\s*['"]use client['"]/.test(src)) continue
+            // The page itself: a helper above it runs only when the page calls it.
+            const body = src.slice(Math.max(0, src.indexOf("export default")))
+            const read = body.search(reads)
+            if (read < 0) continue
+            readers++
+            const check = body.indexOf("accountRefusal(")
+            if (check < 0 || check > read || !/accountRefusal\([^)]*\)\) return <AccessDenied \/>/.test(body)) unchecked.push(file)
+        }
+        expect(unchecked).toEqual([])
+        // The guard reads what it means to: the Requests page and the seven found.
+        expect(readers).toBeGreaterThanOrEqual(8)
     })
 })

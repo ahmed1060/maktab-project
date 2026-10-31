@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { accountRefusal } from '@/lib/account-refusal'
+import AccessDenied from '@/components/AccessDenied'
 import { redirect } from 'next/navigation'
 import CostsClient from './CostsClient'
 import { can } from '@/lib/permissions/can'
@@ -35,6 +37,9 @@ export default async function CostsPage(props: { searchParams: Promise<{
     if (!session) {
         redirect('/login')
     }
+    // Refused as the APIs refuse it: suspended, archived, banned, lapsed or under
+    // maintenance, before anything is read (found after PR 139).
+    if (accountRefusal(session.user)) return <AccessDenied />
 
     // Its tabs (CLIENTS_PLAN.md §6.4, §7.5): Employee costs, for paying them,
     // which takes tasks.pay; Charged to clients, which takes charges.view;

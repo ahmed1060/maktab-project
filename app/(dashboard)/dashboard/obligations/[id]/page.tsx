@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { verifyResourceAccess } from "@/lib/security"
 import AccessDenied from "@/components/AccessDenied"
+import { accountRefusal } from "@/lib/account-refusal"
 import ObligationDetailClient, { ObligationNotFound } from "./client"
 
 export default async function ObligationDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -12,6 +13,9 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
     const params = await props.params
 
     const session = await getServerSession(authOptions)
+    // Refused as the APIs refuse it: suspended, archived, banned, lapsed or under
+    // maintenance, before anything is read (found after PR 139).
+    if (accountRefusal(session?.user ?? {})) return <AccessDenied />
     const userId = (session?.user as any)?.id
 
     const obligation = await prisma.obligation.findUnique({

@@ -1795,3 +1795,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - A company without Day off no longer sees it in the side bar, locked, as
     something else the product does; an old link to its page still shows
     them what it is.
+- **2026-10-31:** The side bar's one Requests item was merged in #139,
+  which finishes the one Requests page (§2.3). Next, before the remaining
+  old pages (§5): the account check the Requests page has (found by Codex
+  on #125) on every page that reads the database itself, in #140. A
+  suspended, archived or banned account keeps a live session, and the
+  proxy holds off only maintenance and a locked subscription, so the
+  dashboard home, the Tasks, Obligations and Costs pages, a task's, an
+  obligation's and a record's page still sent such an account their data;
+  a task's and an obligation's page marked themselves seen too. Each now
+  says Access restricted before it reads anything, and a test fails for
+  any page that reads the database before asking.
