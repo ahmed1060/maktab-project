@@ -1175,7 +1175,6 @@ export const ar = {
         nav_group_access: "الصلاحيات",
         nav_group_operations: "التشغيل",
         my_attendance: "حضوري",
-        nav_profile_requests: "طلبات تغيير الاسم",
         error_company_exists: "اسم الشركة موجود بالفعل",
         back_to_companies: "العودة إلى الشركات",
         payment_history: "سجل المدفوعات",

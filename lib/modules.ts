@@ -22,7 +22,6 @@ export const MODULE_KEYS = [
     'tasks',
     'obligations',
     'requests',
-    'dayOff',
     'records',
     'costs',
     'employees',
@@ -54,10 +53,10 @@ type ModuleDefinition = {
  * Defaults, read off the sidebar as it stands today, so an uncustomised
  * company is byte-identical to before this existed.
  *
- * One of these settles an inconsistency rather than recording one: Day Off is
- * 📅 in the sidebar and 🌴 on its page. Nobody has complained, but a module
- * cannot have two icons once there is one place that answers what its icon is
- * — so the sidebar value wins and the pages will follow it.
+ * Day off was one, until it became a kind of request on the Requests page
+ * (UI_PLAN.md §2.3, part 5c): with no entry of its own, there was nothing left
+ * to name. A name or icon a company kept for it is dropped as any unknown key
+ * is, when the overrides are read.
  *
  * Records is today's Clients section, moved onto each client's page
  * (CLIENTS_PLAN.md §0.2). Its key changed with it, and a company's own name or
@@ -68,7 +67,6 @@ export const MODULES: Record<ModuleKey, ModuleDefinition> = {
     tasks: { labelKey: 'tasks', icon: '✅', href: '/dashboard/tasks' },
     obligations: { labelKey: 'obligations', icon: '📌', href: '/dashboard/obligations' },
     requests: { labelKey: 'requests', icon: '📩', href: '/dashboard/requests' },
-    dayOff: { labelKey: 'day_off_requests', icon: '📅', href: '/dashboard/day-off-requests' },
     records: { labelKey: 'records', icon: '🗂️', href: '/dashboard/records' },
     costs: { labelKey: 'costs', icon: '💰', href: '/dashboard/costs' },
     employees: { labelKey: 'employees', icon: '👥', href: '/dashboard/employees' },

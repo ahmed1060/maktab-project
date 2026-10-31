@@ -14,7 +14,7 @@ import type { TranslationKey } from './translations'
 
 /** One of the app's own pages, which a company can't rename, unlike its modules (lib/modules.ts). */
 type PageKey =
-    | 'checkIn' | 'attendance' | 'myAttendance' | 'rolesAndAccess' | 'profileRequests' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
+    | 'checkIn' | 'attendance' | 'myAttendance' | 'rolesAndAccess' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
     | 'companies' | 'packages' | 'allUsers'
     | 'roleTemplates' | 'policyTemplates' | 'publicHolidays'
     | 'superAdmins' | 'roleChanges' | 'accessReviews' | 'whoCan'
@@ -31,7 +31,6 @@ export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey; ic
     // Asking the Super Admin to change a role, and access reviews: the Role
     // requests page's other two tabs, once role requests moved to the Requests page (UI_PLAN.md §2.3, part 5b).
     rolesAndAccess: { href: '/dashboard/roles-and-access', labelKey: 'roles_access_title', icon: '🪪' },
-    profileRequests: { href: '/dashboard/profile-requests', labelKey: 'nav_profile_requests', icon: '📝' },
     payroll: { href: '/dashboard/payroll', labelKey: 'payroll', icon: '🧾' },
     myPayslips: { href: '/dashboard/documents', labelKey: 'my_payslips', icon: '📄' },
     // Everyone's own cash advance (CLIENTS_PLAN.md §7.5).
@@ -67,8 +66,8 @@ export const COMPANY_GROUPS: readonly SideBarGroup[] = [
     { key: 'top', labelKey: null, items: ['dashboard', 'checkIn'] },
     { key: 'work', labelKey: 'nav_group_work', items: ['tasks', 'obligations'] },
     { key: 'clients', labelKey: 'nav_group_clients', items: ['clients', 'locations', 'records'] },
-    // The request pages sit together here until the one Requests page (§2.3).
-    { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests', 'dayOff', 'profileRequests'] },
+    // One Requests item: day off, name changes and role requests are kinds on its page (§2.3, part 5c).
+    { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests'] },
     { key: 'money', labelKey: 'nav_group_money', items: ['costs', 'payroll'] },
     { key: 'me', labelKey: 'nav_group_me', items: ['myAttendance', 'myPayslips', 'myCashAdvance'] },
     // Roles and access beside the company's settings: how the company is set up, not daily work (decided on 2026-10-31).
@@ -123,7 +122,6 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
         case 'myAttendance': return attendance && !seesOthersAttendance
         // For whoever gives roles, as its two tabs were; the Super Admin answers both from their own pages.
         case 'rolesAndAccess': return !v.superAdmin && v.can('employees.assign_role')
-        case 'profileRequests': return v.can('profile_requests.review')
         // A Team Leader manages people, not pay.
         case 'payroll': return v.can('payroll.view')
         // The Super Admin is nobody's employee, and has no payslips.

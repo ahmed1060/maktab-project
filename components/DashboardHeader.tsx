@@ -252,7 +252,6 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         if (path === '/dashboard/super-admins') return t('super_admins')
         if (path === '/dashboard/requests') return modules.label('requests')
         if (path === '/dashboard/requests/history') return t('requests_history')
-        if (path === '/dashboard/day-off-requests') return modules.label('dayOff')
         if (path === '/dashboard/usernames') return t('usernames_list')
         // Named here as well as set by the page, because the page deliberately
         // sets no header while the email gate is up — without this the fallback

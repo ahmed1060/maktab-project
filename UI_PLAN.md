@@ -99,10 +99,11 @@ permissions allow, as today.
   Security settings, History and Sign out.
 - **Costs** holds its tabs: Employee costs, Charged to clients, and Cash
   advances.
-- **One Requests page** (§2.3) replaces the separate request pages, later.
-  Until then, the existing ones sit together under People: Requests, Day off
-  requests, Role requests and Profile requests (name changes, today linked
-  only from the top bar).
+- **One Requests page** (§2.3) replaces the separate request pages: People
+  has one Requests item (part 5c). Day off, name changes and role requests
+  are kinds on its page, and their old pages send people there. Roles and
+  access, the Role requests page's other tabs, sits beside Company settings
+  for whoever gives roles (part 5b).
 
 ### 2.2 The Super Admin
 
@@ -222,7 +223,9 @@ one once its kind has moved in.
       for whoever gives roles (Decided on 2026-10-31, in place of moving
       them to Company settings → Roles, which a company's people never see).
    3. **5c:** the side bar shows one Requests item under People, and the
-      old pages' items go: Day off and Profile requests.
+      old pages' items go: Day off and Profile requests (#139). Day off
+      stops being a module a company names or gives an icon, since it has
+      no entry of its own to name.
 
 - **To review** is everyone else's requests the person sees, with the
   buttons where they may decide them. In the built-in roles, seeing and
@@ -1780,3 +1783,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   of that day in the company's time zone, which is the day before in UTC,
   and the page reads dates in UTC. The feed sends the company's own day
   now, as it was asked for.
+- **2026-10-31:** Role requests on the Requests page were merged in #138,
+  which finishes part 5b. The side bar shows one Requests item in #139
+  (part 5c):
+  - People is Employees, Attendance and Requests. The Day off and Profile
+    requests items go; their pages already send people to the Requests
+    page, and so do their notices and links.
+  - Day off stops being a module: it has no entry of its own to name, so
+    Company settings no longer offers a name or icon for it. One a company
+    kept is dropped as any unknown key is, when the names are read.
+  - A company without Day off no longer sees it in the side bar, locked, as
+    something else the product does; an old link to its page still shows
+    them what it is.

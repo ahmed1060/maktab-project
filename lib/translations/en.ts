@@ -1212,7 +1212,6 @@ export const en = {
         nav_group_access: "Access",
         nav_group_operations: "Operations",
         my_attendance: "My attendance",
-        nav_profile_requests: "Profile requests",
         error_company_exists: "Company name already exists",
         back_to_companies: "Back to Companies",
         payment_history: "Payment History",
