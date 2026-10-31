@@ -91,6 +91,9 @@ export default function DayOffRequestsPage() {
     const { can, canFor } = useCan()
     const managesRequests = can('dayoff.view')
     const canDecide = can('dayoff.approve')
+    // Asking is its own permission (UI_PLAN.md §2.3, part 2b), so a manager
+    // whose role holds it asks too.
+    const mayAsk = can('dayoff.request')
     const { selectedCompanyId: contextCompanyId } = useCompany()
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
@@ -324,7 +327,7 @@ export default function DayOffRequestsPage() {
             <PageHeader
                 title={modules.label('dayOff')}
                 subtitle={t('day_off_requests_subtitle')}
-                action={!managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>}
+                action={mayAsk && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>}
             />
 
             {!managesRequests && (
@@ -378,7 +381,7 @@ export default function DayOffRequestsPage() {
                         ? <EmptyState icon={WarningCircleIcon} title={t('day_off_requests_load_failed')} action={<Button busy={requestsRetrying} onClick={() => { void fetchRequests() }}>{t('try_again')}</Button>} />
                         : <EmptyState icon={CalendarBlankIcon} title={filtersOn > 0 || search ? t('no_search_results') : t('no_day_off_requests_yet')} action={filtersOn > 0 || search
                             ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
-                            : !managesRequests && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>} />}
+                            : mayAsk && <Button variant="primary" icon={CalendarCheckIcon} onClick={() => setIsRequestOpen(true)}>{t('request_day_off')}</Button>} />}
                 />
             )}
 

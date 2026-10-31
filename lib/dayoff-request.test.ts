@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
+import { readFileSync } from "node:fs"
 import { PERMISSIONS, type Permission } from "@/lib/permissions/catalogue"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { GRANTED_LATER } from "@/lib/permissions/test-actors"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
@@ -33,7 +33,15 @@ describe("asking for leave", () => {
         expect((ar as Record<string, string>).perm_dayoff_request).toBeTruthy()
     })
 
-    it("reaches the companies already there in a later PR's migration, once this role editor is live", () => {
-        expect(GRANTED_LATER).toContain(ASK)
+    it("reaches the companies already there in 2b's migration, run once 2a's role editor was live", () => {
+        expect(readFileSync("lib/roles-migration.test.ts", "utf8")).toContain("prisma/migrations/20261124000000_dayoff_request_granted/migration.sql")
+    })
+
+    it("is what asking for leave needs, in the API and on the day-off page (part 2b)", () => {
+        expect(readFileSync("app/api/day-off-requests/route.ts", "utf8")).toContain('can(session.user, "dayoff.request")')
+        const page = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
+        expect(page).toContain("const mayAsk = can('dayoff.request')")
+        // Not "whoever doesn't see others' leave" any more: an HR officer may ask too.
+        expect(page).not.toMatch(/!managesRequests && <Button/)
     })
 })

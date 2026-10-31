@@ -1,4 +1,4 @@
-import { definitionOf, type Permission, type Scope } from "./catalogue"
+import { definitionOf, isPersonal, type Permission, type Scope } from "./catalogue"
 import { decodeGrants } from "./grants"
 
 /**
@@ -35,9 +35,13 @@ export type Target = {
     teamLeaderId?: string | null
 }
 
-/** The scope at which this actor holds this permission, or null. */
+/**
+ * The scope at which this actor holds this permission, or null. The Super
+ * Admin holds everything, everywhere, but a personal permission: they're
+ * nobody's employee, and ask for no leave (UI_PLAN.md §2.3, part 2b).
+ */
 export function grantFor(actor: Actor, permission: Permission): Scope | "ALL" | null {
-    if (actor.role === "SUPER_ADMIN") return "ALL"
+    if (actor.role === "SUPER_ADMIN") return isPersonal(permission) ? null : "ALL"
     return decodeGrants(actor.grants)[permission] ?? null
 }
 

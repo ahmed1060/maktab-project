@@ -141,9 +141,12 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
 
         it("gives a company's own roles Add list names, as Everyone has it, and keeps what they held", async () => {
             const own = (await db.query(`SELECT "roleId", permission, scope FROM "RoleGrant" WHERE "roleId" LIKE 'own-%' ORDER BY "roleId", permission`)).rows
+            // And Ask for leave, which 2b gives every role of a company's own (UI_PLAN.md §2.3).
             expect(own).toEqual([
+                { roleId: "own-desk", permission: "dayoff.request", scope: "OWN" },
                 { roleId: "own-desk", permission: "lists.add", scope: "COMPANY" },
                 { roleId: "own-desk", permission: "tasks.view", scope: "TEAM" },
+                { roleId: "own-stores", permission: "dayoff.request", scope: "OWN" },
                 { roleId: "own-stores", permission: "lists.add", scope: "COMPANY" },
             ])
         })

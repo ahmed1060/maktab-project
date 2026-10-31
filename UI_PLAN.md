@@ -161,7 +161,7 @@ one once its kind has moved in.
    1. **2a:** Ask for leave in the permissions and the role editor, and in
       a new company's built-in roles. Nothing checks it yet.
    2. **2b:** the companies there already get it, by a migration, once 2a
-      is live; then asking for leave needs it.
+      is live; then asking for leave needs it (#127).
    3. **2c:** day off on the page: asked for in a dialog, decided under To
       review with the days to take off and from what, and Day off requests
       sends people there.
@@ -1483,3 +1483,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   leave still gives somebody a role that may (`ROLES_PLAN.md` §4.2, rule
   4). Nothing asks for it yet: the companies there get it first (§2.3,
   part 2b).
+- **2026-10-30:** Ask for leave was merged in #126 (§2.3, part 2a), and
+  the companies there get it in #127, after which asking needs it.
+- **2026-10-30:** In #127, the companies already there get Ask for leave,
+  at Own: their built-in Employee and Team Leader, who ask today, and every
+  role of their own, whatever its base. Not the built-in Admin, who doesn't
+  ask today either. A role given it in the role editor since 2a keeps it as
+  it is, and only the holders of a role given it reload their grants.
+- **2026-10-30:** In #127, asking for leave needs Ask for leave: the API
+  refuses anyone whose role doesn't hold it, and the Super Admin, who's
+  nobody's employee and holds no personal permission. The Day off page
+  offers Request day off by it, rather than to whoever doesn't see others'
+  leave, so a manager whose role holds it, an HR officer say, asks too.

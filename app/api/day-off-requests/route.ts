@@ -4,6 +4,7 @@ import { createDayOffSchema } from "@/lib/validations/day-off.schema"
 import { DayOffService } from "@/lib/services/day-off.service"
 import { parsePaging } from "@/lib/pagination"
 import { dayOffListFilters } from "@/lib/services/day-off-query"
+import { can } from "@/lib/permissions/can"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -23,6 +24,10 @@ export const GET = withStandardHandler(async (req, session) => {
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
+    // Asking for leave is a role's to give (UI_PLAN.md §2.3, part 2b): the
+    // built-in Employee and Team Leader hold it, and whoever a company gives it.
+    if (!can(session.user, "dayoff.request")) return ApiResponse.forbidden("Your role doesn't ask for leave")
+
     // 1. Validation
     const validation = createDayOffSchema.safeParse(json)
     if (!validation.success) {

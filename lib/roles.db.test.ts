@@ -8,7 +8,6 @@ import { decodeGrants, encodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
-import { migratedGrants } from "@/lib/permissions/test-actors"
 import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleRequestService } from "@/lib/services/role-request.service"
 import { RoleChangeRequestService } from "@/lib/services/role-change-request.service"
@@ -80,6 +79,8 @@ const LISTS_GRANTED = "20261116000000_lists_granted"
 const CHARGES_GRANTED = "20261119000000_charges_granted"
 // The built-in Admin and Team Leader roles' cash_advances.* (CLIENTS_PLAN.md §7.7, §7.8).
 const CASH_ADVANCES_GRANTED = "20261122000000_cash_advances_granted"
+// The built-in Employee and Team Leader roles' dayoff.request (UI_PLAN.md §2.3, part 2b).
+const DAYOFF_REQUEST_GRANTED = "20261124000000_dayoff_request_granted"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -139,6 +140,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(LISTS_GRANTED))
         await db.query(sql(CHARGES_GRANTED))
         await db.query(sql(CASH_ADVANCES_GRANTED))
+        await db.query(sql(DAYOFF_REQUEST_GRANTED))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -171,7 +173,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(migratedGrants(builtIn))
+                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
                 }
             }
         })
@@ -184,8 +186,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // And one for every built-in role: lists.* (CLIENTS_PLAN.md §5.10).
             // And one for the Admin and Team Leader roles: charges.* (CLIENTS_PLAN.md §6.8).
             // And one for the Admin and Team Leader roles: cash_advances.* (CLIENTS_PLAN.md §7.8).
+            // And one for the Team Leader and Employee roles: dayoff.request (UI_PLAN.md §2.3, part 2b).
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            const version = { ADMIN: 11, TEAM_LEADER: 6, EMPLOYEE: 3 } as Record<string, number>
+            const version = { ADMIN: 11, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
             for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(version[role.builtIn])
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([
@@ -366,7 +369,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // …and the change is audited, before and after.
             const [audit] = (await auditOf(employee.id)).filter(a => a.action === "UPDATE_ROLE")
             // Its built-in grants, before.
-            expect(audit.details.before.grants).toHaveLength(Object.keys(migratedGrants("EMPLOYEE")).length)
+            expect(audit.details.before.grants).toHaveLength(Object.keys(BUILT_IN_GRANTS.EMPLOYEE).length)
             expect(audit.details.after.grants).toEqual([{ permission: "records.view", scope: "COMPANY" }])
             expect(audit.details.holders).toBe(1)
         })
@@ -710,7 +713,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             expect(decodeGrants(acting.grants)).toMatchObject({ "dayoff.approve": "COMPANY" })
             const over = await RoleService.forToken("act1", prisma, new Date(until.getTime() + 1000))
             expect(over).toMatchObject({ roleId: cover, role: "EMPLOYEE", actingEnded: true })
-            expect(decodeGrants(over.grants)).toEqual(migratedGrants("EMPLOYEE"))
+            expect(decodeGrants(over.grants)).toEqual(BUILT_IN_GRANTS.EMPLOYEE)
             // The day comes.
             expect(await RoleAssignmentService.endActing(new Date(until.getTime() + 1000))).toMatchObject({ returned: 1 })
             expect(await row("act1")).toMatchObject({ roleId: employee, actingUntil: null, returnRoleId: null })

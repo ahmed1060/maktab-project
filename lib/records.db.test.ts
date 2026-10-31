@@ -144,8 +144,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 "TEAM_LEADER records.contribute", "TEAM_LEADER records.edit", "TEAM_LEADER records.view",
             ])
             const { rows: [employeeRole] } = await db.query(`SELECT version FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
-            // Once for the renaming, and once more for 5b's lists.add (CLIENTS_PLAN.md §5.10).
-            expect(employeeRole.version).toBe(3)
+            // Once for the renaming, once more for 5b's lists.add (CLIENTS_PLAN.md §5.10), and
+            // once for 2b's dayoff.request (UI_PLAN.md §2.3).
+            expect(employeeRole.version).toBe(4)
             const { rows: [template] } = await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = 't'`)
             expect(template.grants).toEqual([{ permission: "tasks.view", scope: "TEAM" }, { permission: "records.delete", scope: "COMPANY" }])
         })
@@ -158,8 +159,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         it("rewrites the stored names of Clients' permissions, keeping one of a role's held under both (0c)", async () => {
             const grants = async (where: string) => (await db.query(`SELECT r.id, g.permission, g.scope FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE ${where} ORDER BY 1, 2`)).rows.map(r => `${r.permission} ${r.scope}`)
             expect(await grants(`g.permission LIKE 'vendors.%'`)).toEqual([])
-            // With Add list names, which 5b gives every role (CLIENTS_PLAN.md §5.10).
-            expect(await grants(`r.id = 'r-0b'`)).toEqual(["clients.manage COMPANY", "clients.view COMPANY", "lists.add COMPANY", "tasks.view TEAM"])
+            // With Add list names, which 5b gives every role (CLIENTS_PLAN.md §5.10), and Ask
+            // for leave, which 2b gives every role of a company's own (UI_PLAN.md §2.3).
+            expect(await grants(`r.id = 'r-0b'`)).toEqual(["clients.manage COMPANY", "clients.view COMPANY", "dayoff.request OWN", "lists.add COMPANY", "tasks.view TEAM"])
             // The built-in roles the roles migration seeded with vendors.*.
             expect(await grants(`r."companyId" = 'c1' AND r."builtIn" = 'ADMIN' AND g.permission LIKE 'clients.%'`)).toEqual(["clients.manage COMPANY", "clients.view COMPANY"])
             const { rows: [template] } = await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = 't-0b'`)

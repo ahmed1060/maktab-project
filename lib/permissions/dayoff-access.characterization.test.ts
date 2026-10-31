@@ -219,3 +219,32 @@ describe("who is notified of a new request — recorded", () => {
         expect(recipients).toContainEqual(["admin", "admin1b", "sa-row"])
     })
 })
+
+// --- asking ------------------------------------------------------------------
+
+describe("asking for leave — since UI_PLAN.md §2.3, part 2b", () => {
+    // Today, as the service reckons it: a fixed date turns into the past and is refused.
+    const ask = async () => {
+        const { POST } = await import("@/app/api/day-off-requests/route")
+        return (await POST(send("POST", "/api/day-off-requests", { date: new Date().toISOString().split("T")[0], type: "REGULAR" }))).status
+    }
+
+    it("is for whoever's role holds Ask for leave: the built-in Employee and Team Leader", async () => {
+        for (const name of ["employee", "leader"] as const) {
+            as(name)
+            expect(await ask(), name).toBe(201)
+        }
+    })
+
+    it("isn't the built-in Admin's, whose role doesn't hold it, nor the Super Admin's, who's nobody's employee", async () => {
+        for (const name of ["admin", "superAdmin"] as const) {
+            as(name)
+            expect(await ask(), name).toBe(403)
+        }
+    })
+
+    it("isn't for someone whose company took it off their role", async () => {
+        state.session = { user: { ...ACTORS.employee, grants: "" } }
+        expect(await ask()).toBe(403)
+    })
+})

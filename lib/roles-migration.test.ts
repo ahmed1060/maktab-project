@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { migratedGrants } from "@/lib/permissions/test-actors"
+import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 import { isPermission } from "@/lib/permissions/catalogue"
 
 /**
@@ -30,6 +30,8 @@ const LATER = [
     "prisma/migrations/20261119000000_charges_granted/migration.sql",
     // The built-in Admin and Team Leader roles' cash_advances.* (CLIENTS_PLAN.md §7.7, §7.8).
     "prisma/migrations/20261122000000_cash_advances_granted/migration.sql",
+    // The built-in Employee and Team Leader roles' dayoff.request (UI_PLAN.md §2.3, part 2b).
+    "prisma/migrations/20261124000000_dayoff_request_granted/migration.sql",
 ].map(path => readFileSync(path, "utf8"))
 
 // A later one that renames permissions: clients.* became records.*, for the
@@ -66,7 +68,7 @@ describe("the roles migration seeds the built-in grants", () => {
     it("exactly as lib/permissions/built-in.ts has them", () => {
         const fromSql = seeded()
         for (const role of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-            expect(fromSql[role] ?? {}, role).toEqual(migratedGrants(role))
+            expect(fromSql[role] ?? {}, role).toEqual(BUILT_IN_GRANTS[role])
         }
     })
 
