@@ -140,7 +140,10 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
     const kindLabel = (r: FeedRow) => kindName(r.kind)
     // What it's for: an internal request's title, or a day off's type.
     const name = (r: FeedRow) => r.kind === 'dayOff' ? t(DAY_OFF_TYPE_LABEL[r.what] ?? 'regular_day_off') : r.what
-    const title = (r: FeedRow) => <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{name(r)}</bdi></button>
+    const title = (r: FeedRow) => {
+        const what = name(r)
+        return <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{what}</bdi></button>
+    }
     // A day off's days are calendar days, kept at midnight UTC: read as such wherever the screen is.
     const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const day = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })

@@ -30,7 +30,7 @@ describe("a date picker's error", () => {
     it("is under the range's picker too", async () => {
         const { default: DateRangePicker } = await import("@/components/DateRangePicker")
         const html = renderToStaticMarkup(h(DateRangePicker, { asField: true, label: "Dates", dateFrom: "", dateTo: "", onChange: () => {}, error: "Pick the days" }))
-        const { trigger, error } = describedError(html)
+        const { error } = describedError(html)
         expect(error).toBe("Pick the days")
     })
 
