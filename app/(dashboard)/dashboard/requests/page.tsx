@@ -32,12 +32,14 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     let show: RequestsShow | null = searchParams.show === "waiting" || searchParams.show === "done" ? searchParams.show : null
     // A notification's request opens on the tab it's on, and with its
     // status: their own on Mine, anyone else's on To review, and Done once
-    // it's done. It shows only if the feed has it for them.
+    // it's done or decided. It shows only if the feed has it for them. A day
+    // off's too, since its links land here (§2.3, part 2d).
     if (searchParams.highlight && (!tab || !show)) {
         const picked = await prisma.request.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
+            ?? await prisma.dayOffRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
         if (picked) {
             tab ??= picked.userId === viewer.id ? "mine" : "review"
-            show ??= picked.status === "COMPLETED" ? "done" : "waiting"
+            show ??= picked.status === "COMPLETED" || picked.status === "APPROVED" || picked.status === "REJECTED" ? "done" : "waiting"
         }
     }
     // What waits on them comes first, for whoever has it.
@@ -53,6 +55,9 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
         personId: tab === "review" ? searchParams.employeeId ?? "" : "",
         // The company the Super Admin picked; nobody else's reach moves with it.
         companyId: superAdmin ? searchParams.companyId || null : null,
+        // Day off's dates of leave, offered with it alone (decided on 2026-10-31).
+        from: kind === "dayOff" ? searchParams.from ?? "" : "",
+        to: kind === "dayOff" ? searchParams.to ?? "" : "",
     })
     const elsewhere = pageRedirect("/dashboard/requests", searchParams, asked, feed.totalPages)
     if (elsewhere) redirect(elsewhere)

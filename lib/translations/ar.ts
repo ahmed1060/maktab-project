@@ -1329,6 +1329,7 @@ export const ar = {
         requests_kind_all: "كل الأنواع",
         requests_kind_internal: "طلب عام",
         requests_kind_day_off: "إجازة",
+        requests_leave_dates: "تواريخ الإجازة",
         requests_search_any: "ابحث بالعنوان أو السبب",
         requests_ask_for: "ماذا تطلب",
         requests_day_off_date_missing: "اختر يوم الإجازة أو أيامها.",

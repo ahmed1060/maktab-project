@@ -71,21 +71,19 @@ describe("the day off credit donut", () => {
             .toContain("تعذّر تحميل رصيد إجازاتك. <button")
     })
 
-    it("on the Day Off page, fails, loads and tries again with the credit request itself", () => {
-        const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
-        expect(dayOff).toContain("const { data: userCreditResult, error: userCreditError, isLoading: userCreditLoading, isValidating: userCreditRetrying, mutate: reloadUserCredit } = useSWR(userCreditQuery, fetcher)")
-        // Earlier numbers stay up if only a later refresh fails.
-        expect(dayOff).toContain("failed={!foundUser && !!userCreditError}")
-        expect(dayOff).toContain("loading={status === 'loading' || userCreditLoading}")
-        expect(dayOff).not.toContain("loading={!foundUser}")
+    it("on the Requests page's Mine, comes with the page, read on the server, so it never loads or fails on its own (UI_PLAN.md §2.3, part 2d)", () => {
+        const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
+        expect(server).toContain("prisma.user.findUnique({ where: { id: viewer.id }, select: { dayOffCredit: true, baseDayOffCredit: true } })")
+        const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+        expect(client).not.toContain("useSWR")
     })
 
-    it("is the one the dashboard home and the Day Off page both show", () => {
+    it("is the one the dashboard home and the Requests page's Mine both show", () => {
         const dashboard = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")
-        const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
-        expect(dashboard).toContain('<DayOffCreditDonut remaining={remainingCredit} used={usedCredits} t={t} locale={locale} href="/dashboard/day-off-requests" />')
-        expect(dayOff).toContain("<DayOffCreditDonut remaining={userCredit} used={usedByCredit} t={t} locale={locale}")
-        // The Day Off page's two tiles are gone: the donut says the same.
-        expect(dayOff).not.toContain("TotalTiles")
+        const requests = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+        expect(dashboard).toContain('<DayOffCreditDonut remaining={remainingCredit} used={usedCredits} t={t} locale={locale} href="/dashboard/requests?tab=mine&kind=dayOff" />')
+        expect(requests).toContain("<DayOffCreditDonut remaining={credit.remaining} used={credit.used} t={t} locale={locale} />")
+        // Two tiles saying the same as the donut are gone.
+        expect(requests).not.toContain("TotalTiles")
     })
 })

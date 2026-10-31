@@ -1528,3 +1528,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-10-31:** Day off on the Requests page was merged in #128 (§2.3,
   part 2c), and the Day off page sends people there in #129. Decided: its
   dates of leave are a filter once the kind is Day off.
+- **2026-10-31:** In #129, the Day off page sends people to the one
+  Requests page (§2.3, part 2d):
+  - Its address lands on Day off there: Waiting for its pending ones, Done
+    for its decided ones, with the request a link picked out. Its old
+    list, and the list's own helper, are gone. The side bar's Day off goes
+    there through it, and a company without Day off still sees what it is.
+  - A day off's notification opens it there, on its tab and with its
+    status; the dashboard's waiting tile opens them under To review, and
+    one's own balance and latest request open Mine.
+  - Its dates of leave are a filter once the kind is Day off, by the day
+    each starts, as the Day off list had them; leaving Day off, or Reset,
+    takes them away.

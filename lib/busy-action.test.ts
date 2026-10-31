@@ -59,8 +59,8 @@ describe("useBusyAction", () => {
 
 describe("data buttons that had no busy state", () => {
     const uses: [string, RegExp][] = [
-        ["app/(dashboard)/dashboard/day-off-requests/page.tsx", /action\.run\('approve'[\s\S]*?busy=\{action\.is\('approve'\)\}/],
-        ["app/(dashboard)/dashboard/day-off-requests/page.tsx", /action\.run\('reject'[\s\S]*?busy=\{action\.is\('reject'\)\}/],
+        // Approving and rejecting a day off, on the Requests page (UI_PLAN.md §2.3, part 2d).
+        ["app/(dashboard)/dashboard/requests/DayOffDialogs.tsx", /action\.run\('decide'[\s\S]*?busy=\{action\.is\('decide'\)\}/],
         ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", /action\.run\('approve', handleApprove\)/],
         ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", /action\.run\('reject', handleReject\)/],
         ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", /action\.run\('delete', handleDelete\)/],

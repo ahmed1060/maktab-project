@@ -13,9 +13,11 @@ import { ar } from "./translations/ar"
  * when, its status and the buttons to decide it.
  */
 
+/** The page's address, which a test may set. */
+const address = { query: "" }
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: () => {}, refresh: () => {} }),
-    useSearchParams: () => new URLSearchParams(""),
+    useSearchParams: () => new URLSearchParams(address.query),
 }))
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: null }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
@@ -180,6 +182,22 @@ describe("day off on it (UI_PLAN.md §2.3, part 2c)", () => {
         const html = await page({ rows: [leave({ mayDecide: true })], kinds: ["internal", "dayOff"] })
         expect(html).not.toContain("style=")
     })
+
+    it("is filtered by its dates of leave once the kind is Day off, as the Day off list was (decided on 2026-10-31)", async () => {
+        expect(await page({ kinds: ["internal", "dayOff"] })).not.toContain("requests_leave_dates")
+        address.query = "kind=dayOff&from=2026-11-01&to=2026-11-07"
+        try {
+            const html = await page({ kinds: ["internal", "dayOff"] })
+            expect(html).toContain("requests_leave_dates")
+            // Day off and its dates: two filters on.
+            expect(html).toMatch(/ui-filterbar-count[^>]*>2</)
+        } finally {
+            address.query = ""
+        }
+        // Leaving Day off, or resetting, takes its dates with it.
+        expect(client).toContain("go({ kind: e.target.value, from: '', to: '' })")
+        expect(client).toContain("go({ kind: '', employeeId: '', search: '', from: '', to: '' })")
+    })
 })
 
 describe("its server page", () => {
@@ -198,6 +216,16 @@ describe("its server page", () => {
 
     it("opens a notification's request on its tab and with its status", () => {
         expect(server).toContain("searchParams.highlight")
+    })
+
+    it("finds a day off a notification picked out too, now that its links land here (part 2d)", () => {
+        expect(server).toContain("prisma.dayOffRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
+        expect(server).toContain('picked.status === "COMPLETED" || picked.status === "APPROVED" || picked.status === "REJECTED"')
+    })
+
+    it("reads the dates of leave only for Day off", () => {
+        expect(server).toContain('from: kind === "dayOff" ? searchParams.from ?? "" : ""')
+        expect(server).toContain('to: kind === "dayOff" ? searchParams.to ?? "" : ""')
     })
 })
 

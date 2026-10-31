@@ -1366,6 +1366,7 @@ export const en = {
         requests_kind_all: "All kinds",
         requests_kind_internal: "General request",
         requests_kind_day_off: "Day off",
+        requests_leave_dates: "Dates of leave",
         requests_search_any: "Search by title or reason",
         requests_ask_for: "What for",
         requests_day_off_date_missing: "Pick the day, or the days, you'd like off.",

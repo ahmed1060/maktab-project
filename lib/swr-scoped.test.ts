@@ -55,21 +55,16 @@ describe("a list's rows, kept within one company", () => {
         expect(employees).toContain("const failed = loadFailed(scoped, error, listUrl)")
         expect(employees).toContain("if (isLoading && !result && !failed) return <LoadingSpinner")
         expect(employees).toContain("<EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />")
-        const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
-        expect(dayOff).toContain("const requestsFailed = loadFailed(scopedRequests, requestsError, requestsQuery)")
-        expect(dayOff).toContain("<EmptyState icon={WarningCircleIcon} title={t('day_off_requests_load_failed')} action={<Button busy={requestsRetrying} onClick={() => { void fetchRequests() }}>{t('try_again')}</Button>} />")
         expect(readFileSync("components/EmployeeFilter.tsx", "utf8")).toContain("{totalCount !== undefined && <div style={{")
     })
 
-    it("is how the Employees and Day Off lists keep their rows", () => {
+    // Day off's list is the Requests page's since UI_PLAN.md §2.3, part 2d, read on the server below.
+    it("is how the Employees list keeps its rows", () => {
         const employees = readFileSync("app/(dashboard)/dashboard/employees/page.tsx", "utf8")
         expect(employees).toContain("const listUrl = listQuery ? employeesListUrl(listQuery) : null")
         expect(employees).toContain("useSWR(scopedKey(listUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })")
         expect(employees).toContain("const result = forScope(scoped, selectedCompanyId)")
-        const dayOff = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
-        expect(dayOff).toContain("useSWR(scopedKey(requestsQuery, contextCompanyId), scopedFetcher, { keepPreviousData: true })")
-        expect(dayOff).toContain("const requestsResult = forScope(scopedRequests, contextCompanyId)")
-        for (const page of [employees, dayOff]) expect(page).not.toMatch(/useSWR\([^)]*, fetcher, \{ keepPreviousData: true \}\)/)
+        expect(employees).not.toMatch(/useSWR\([^)]*, fetcher, \{ keepPreviousData: true \}\)/)
     })
 
     // The Requests page is read on the server now (UI_PLAN.md §2.3): the
