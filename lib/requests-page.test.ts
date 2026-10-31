@@ -562,6 +562,11 @@ describe("role requests on it (UI_PLAN.md §2.3, part 5b)", () => {
         expect(html).not.toContain("Hoda Samir")
     })
 
+    it("as an acting role, says the day it was asked until, as the company's calendar has it (found by Codex on PR 138)", async () => {
+        const html = await page({ rows: [request({ role: { ...facts, actingUntil: "2026-11-05" } })], kinds: ["role"] })
+        expect(html).toContain("requests_role_acting_label 5 Nov 2026")
+    })
+
     it("names a built-in role in the person's language", async () => {
         const html = await page({ rows: [request({ what: "Team Leader", role: { ...facts, to: { name: "Team Leader", builtIn: "TEAM_LEADER" } } })], kinds: ["role"] })
         expect(html).toContain("role_team_leader")

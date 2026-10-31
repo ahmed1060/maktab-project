@@ -6,6 +6,7 @@ import { dayOffListFilters } from "@/lib/services/day-off-query"
 import { addDays, toDateString } from "@/lib/attendance/calendar"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { PLATFORM_REASON } from "@/lib/services/attendance-flag.service"
+import { calendarDateStr } from "@/lib/time"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
 
 /**
@@ -1047,6 +1048,7 @@ type RoleRequest = {
     role: { name: string; builtIn: string | null }
     requestedBy: { firstName: string; lastName: string }
     decidedBy: { firstName: string; lastName: string } | null
+    company: { timezone: string }
 }
 
 const fullName = (p: { firstName: string; lastName: string }) => `${p.firstName} ${p.lastName}`.trim()
@@ -1081,7 +1083,9 @@ export function roleRow(v: Viewer, r: RoleRequest): FeedRow {
             to: { name: r.role.name, builtIn: r.role.builtIn },
             // Once approved it's the role they hold: the one it changed from is gone.
             now: waits && r.user.assignedRole ? { name: r.user.assignedRole.name, builtIn: r.user.assignedRole.builtIn } : null,
-            actingUntil: r.actingUntil?.toISOString() ?? null,
+            // The company's own day, as it was asked for: it's kept as that day's start there,
+            // the day before in UTC east of it (found by Codex on PR 138).
+            actingUntil: r.actingUntil ? calendarDateStr(r.actingUntil, r.company.timezone) : null,
             person: { id: r.userId, name: fullName(r.user) },
             decidedBy: r.decidedBy ? fullName(r.decidedBy) : null,
             note: r.decisionNote,
@@ -1107,6 +1111,7 @@ const role: Source = {
                     role: { select: { name: true, builtIn: true } },
                     requestedBy: NAMES,
                     decidedBy: NAMES,
+                    company: { select: { timezone: true } },
                 },
             }),
             prisma.roleRequest.count({ where }),

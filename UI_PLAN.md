@@ -1775,3 +1775,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     dashboard now, whose side bar has what the new role opens.
   - Found in the screenshots: in Arabic, whose role it would be ran into
     "لـ" when the name is in Latin letters; a space keeps them apart.
+- **2026-10-31:** In 5b (#138), found by Codex: an acting role's last day
+  showed a day early east of UTC, Cairo included. It's kept as the start
+  of that day in the company's time zone, which is the day before in UTC,
+  and the page reads dates in UTC. The feed sends the company's own day
+  now, as it was asked for.

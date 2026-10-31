@@ -761,7 +761,7 @@ describe("a role request's row", () => {
     const decided = new Date("2026-10-30T12:00:00Z")
     const request = (fields: object = {}) => ({
         id: "r1", companyId: "c1", userId: "e2", requestedById: "h1", status: "PENDING", note: "Joins the accounts team", decisionNote: null,
-        actingUntil: null, createdAt: asked, decidedAt: null,
+        actingUntil: null, createdAt: asked, decidedAt: null, company: { timezone: "Africa/Cairo" },
         user: { firstName: "Mona", lastName: "Adel", teamLeaderId: null, assignedRole: { name: "Employee", builtIn: "EMPLOYEE" } },
         role: { name: "Accountant", builtIn: null },
         requestedBy: { firstName: "Hoda", lastName: "Samir" },
@@ -778,9 +778,10 @@ describe("a role request's row", () => {
         })
     })
 
-    it("as an acting role, says until when", () => {
-        const until = new Date("2026-12-01T00:00:00Z")
-        expect(roleRow(admin, request({ actingUntil: until })).role?.actingUntil).toBe(until.toISOString())
+    it("as an acting role, says until when: the company's own day, as it was asked for (found by Codex on PR 138)", () => {
+        // 5 November in Cairo is kept as its start there, the 4th in UTC (RoleAssignmentService.returnOn).
+        expect(roleRow(admin, request({ actingUntil: new Date("2026-11-04T22:00:00Z") })).role?.actingUntil).toBe("2026-11-05")
+        expect(roleRow(admin, request({ actingUntil: new Date("2026-11-05T05:00:00Z"), company: { timezone: "America/New_York" } })).role?.actingUntil).toBe("2026-11-05")
     })
 
     it("may be decided by whoever gives roles but not by whoever asked, and withdrawn by whoever asked, while it waits", () => {

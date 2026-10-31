@@ -140,7 +140,7 @@ export type RoleFacts = {
     /** The role asked for; while it waits, the one they hold now. */
     to: RoleName
     now: RoleName | null
-    /** Asked for as an acting role, until then (ROLES_PLAN.md §6.13). */
+    /** Asked for as an acting role, until this day of the company's calendar, "2026-11-05" (ROLES_PLAN.md §6.13). */
     actingUntil: string | null
     /** Whose role it would be (found in the browser: they aren't who asked). */
     person: { id: string; name: string }
