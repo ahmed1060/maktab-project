@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server"
 import { ApiResponse } from "@/lib/api-response"
 
 /**
@@ -14,10 +15,14 @@ export function teamRefusalResponse(error: any) {
     // saying who sends an Admin hunting through a list, and the popup that
     // offers to reassign or unassign them is built from exactly this payload.
     if (error?.message === 'LEADER_HAS_REPORTS') {
-        return ApiResponse.badRequest(
-            "This person still leads a team. Choose where their team members go before changing this.",
-            { reports: error.reports ?? [] },
-        )
+        // Its code too, so the Requests page, which offers no hand-off, can say
+        // where to make the change instead (UI_PLAN.md §2.3, part 5b).
+        return NextResponse.json({
+            success: false,
+            error: "This person still leads a team. Choose where their team members go before changing this.",
+            details: { reports: error.reports ?? [] },
+            code: 'LEADER_HAS_REPORTS',
+        }, { status: 400 })
     }
     const message = TEAM_REFUSALS[error?.message as keyof typeof TEAM_REFUSALS]
     return message ? ApiResponse.badRequest(message) : null

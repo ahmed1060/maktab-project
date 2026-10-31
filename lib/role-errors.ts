@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server"
 import { ApiResponse } from "@/lib/api-response"
 import { GrantsError, SeparationError } from "@/lib/services/role.service"
 
@@ -34,17 +35,26 @@ export function denyUnlessSuperAdmin(session: any) {
 }
 
 /**
+ * A refusal with its code beside its words, as the attendance APIs answer
+ * (lib/api-utils.ts), so a screen can say it in the person's language: the
+ * Requests page does, for a role request (UI_PLAN.md §2.3, part 5b).
+ */
+function refused(status: 400 | 403 | 404, message: string, code: string) {
+    return NextResponse.json({ success: false, error: message, code }, { status })
+}
+
+/**
  * Refusals of handing a role out (ROLES_PLAN.md §4.2), wherever it happens —
  * creating an account or editing one. Null for anything else.
  */
 export function assignmentRefusal(error: any) {
     switch (error?.message) {
-        case "OWN_ROLE": return ApiResponse.forbidden("Nobody changes their own role")
-        case "FORBIDDEN_ROLE_ASSIGNMENT": return ApiResponse.forbidden("You cannot give that role")
-        case "ROLE_NOT_IN_COMPANY": return ApiResponse.badRequest("That role is not one of this company's")
-        case "ROLE_EXCEEDS_YOURS": return ApiResponse.forbidden("That role holds access you do not have, so you cannot give it")
-        case "ACTING_END_IN_PAST": return ApiResponse.badRequest("An acting role must end in the future")
-        case "ACTING_NEEDS_ROLE": return ApiResponse.badRequest("Choose the acting role as well as when it ends")
+        case "OWN_ROLE": return refused(403, "Nobody changes their own role", "OWN_ROLE")
+        case "FORBIDDEN_ROLE_ASSIGNMENT": return refused(403, "You cannot give that role", "FORBIDDEN_ROLE_ASSIGNMENT")
+        case "ROLE_NOT_IN_COMPANY": return refused(400, "That role is not one of this company's", "ROLE_NOT_IN_COMPANY")
+        case "ROLE_EXCEEDS_YOURS": return refused(403, "That role holds access you do not have, so you cannot give it", "ROLE_EXCEEDS_YOURS")
+        case "ACTING_END_IN_PAST": return refused(400, "An acting role must end in the future", "ACTING_END_IN_PAST")
+        case "ACTING_NEEDS_ROLE": return refused(400, "Choose the acting role as well as when it ends", "ACTING_NEEDS_ROLE")
     }
     return null
 }
@@ -52,16 +62,16 @@ export function assignmentRefusal(error: any) {
 /** Refusals of asking for, or deciding, a role request (ROLES_PLAN.md §6.12). */
 export function roleRequestRefusal(error: any) {
     switch (error?.message) {
-        case "USER_NOT_FOUND": return ApiResponse.notFound("User not found")
-        case "REQUEST_NOT_FOUND": return ApiResponse.notFound("Request not found")
-        case "FORBIDDEN": return ApiResponse.forbidden("You cannot do that")
-        case "SAME_ROLE": return ApiResponse.badRequest("They already have that role")
-        case "ALREADY_PENDING": return ApiResponse.badRequest("A request for this person is already waiting")
-        case "ALREADY_DECIDED": return ApiResponse.badRequest("This request has already been decided")
-        case "OWN_REQUEST": return ApiResponse.forbidden("Somebody else must decide a request you made")
-        case "REASON_REQUIRED": return ApiResponse.badRequest("Say why it is declined")
-        case "ADMIN_IS_SUPER_ADMINS": return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
-        case "LAST_ADMIN": return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
+        case "USER_NOT_FOUND": return refused(404, "User not found", "USER_NOT_FOUND")
+        case "REQUEST_NOT_FOUND": return refused(404, "Request not found", "REQUEST_NOT_FOUND")
+        case "FORBIDDEN": return refused(403, "You cannot do that", "FORBIDDEN")
+        case "SAME_ROLE": return refused(400, "They already have that role", "SAME_ROLE")
+        case "ALREADY_PENDING": return refused(400, "A request for this person is already waiting", "ALREADY_PENDING")
+        case "ALREADY_DECIDED": return refused(400, "This request has already been decided", "ALREADY_DECIDED")
+        case "OWN_REQUEST": return refused(403, "Somebody else must decide a request you made", "OWN_REQUEST")
+        case "REASON_REQUIRED": return refused(400, "Say why it is declined", "REASON_REQUIRED")
+        case "ADMIN_IS_SUPER_ADMINS": return refused(403, "Only the Super Admin acts on an Admin", "ADMIN_IS_SUPER_ADMINS")
+        case "LAST_ADMIN": return refused(400, "A company must keep at least one Admin at work. Give its Admin role to someone else first.", "LAST_ADMIN")
     }
     return assignmentRefusal(error)
 }

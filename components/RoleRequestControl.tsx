@@ -56,7 +56,7 @@ export default function RoleRequestControl({ userId, companyId, current, locked,
     if (pending) {
         return (
             <div style={{ padding: '0.6rem 0.75rem', borderRadius: '0.75rem', background: 'var(--warn-bg)', border: '1px solid var(--warn-border)', fontSize: '0.9rem' }}>
-                {roleLabel(current, t)} · <Link href={`/dashboard/role-requests?highlight=${pending.id}`}>{t('role_requests_pending_for').replace('{role}', roleLabel(pending.role, t))}</Link>
+                {roleLabel(current, t)} · <Link href={`/dashboard/requests?kind=role&highlight=${pending.id}`}>{t('role_requests_pending_for').replace('{role}', roleLabel(pending.role, t))}</Link>
             </div>
         )
     }

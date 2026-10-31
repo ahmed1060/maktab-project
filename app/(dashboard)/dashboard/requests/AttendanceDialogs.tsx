@@ -15,7 +15,8 @@ import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } fro
  * and 4): asking for permission hours (part 3a) and reporting a missing
  * punch (part 3b), rejecting and withdrawing either, deciding overtime (part
  * 4a), check-in phones (part 4b) and flagged check-ins (part 4c), as the
- * Attendance page's Requests tab did.
+ * Attendance page's Requests tab did; and deciding a name change (part 5a)
+ * or a role request, or withdrawing one's own role request (part 5b).
  */
 
 /** The attendance kinds, and each one's API (app/api/attendance). */
@@ -62,6 +63,16 @@ const REFUSED: Record<string, TranslationKey> = {
     PHONE_NOT_PENDING: 'requests_already_decided',
     PHONE_NOT_ACTIVE: 'requests_phone_not_active',
     CHECK_IN_NOT_FLAGGED: 'requests_already_decided',
+    // A role request's (lib/role-errors.ts): what the one deciding can do about it (part 5b).
+    ALREADY_DECIDED: 'requests_already_decided',
+    REASON_REQUIRED: 'requests_role_reason_required',
+    ROLE_EXCEEDS_YOURS: 'requests_role_exceeds',
+    FORBIDDEN_ROLE_ASSIGNMENT: 'requests_role_not_given',
+    ROLE_NOT_IN_COMPANY: 'requests_role_gone',
+    LEADER_HAS_REPORTS: 'requests_role_leads_team',
+    LAST_ADMIN: 'requests_role_last_admin',
+    ADMIN_IS_SUPER_ADMINS: 'requests_role_admin_super',
+    ACTING_END_IN_PAST: 'requests_role_acting_ended',
 }
 
 const dateLocale = (locale: string) => locale === 'ar' ? 'ar-EG' : 'en-GB'
@@ -91,11 +102,20 @@ async function refusal(res: Response, fallback: TranslationKey): Promise<Transla
 /**
  * Approves or rejects somebody's permission hours, missing punch, a day's
  * overtime (all of its minutes, as the Attendance page did), new check-in
- * phone, flagged check-in or name change (§2.3, part 5a). Null once done;
- * otherwise what to say.
+ * phone, flagged check-in, name change (§2.3, part 5a) or role request
+ * (part 5b). Null once done; otherwise what to say.
  */
 export async function decideRequest(request: Pick<FeedRow, 'id' | 'kind' | 'overtime'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
     try {
+        if (request.kind === 'role') {
+            // Approving gives the role, as choosing it on their profile would.
+            const res = await fetch(`/api/role-requests/${request.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: approve ? 'APPROVE' : 'REJECT', note: reason }),
+            })
+            return res.ok ? null : await refusal(res, 'error_generic')
+        }
         if (request.kind === 'nameChange') {
             // Its own routes, which say nothing but that it was decided already.
             const res = await fetch(`/api/profile-requests/${request.id}/${approve ? 'approve' : 'reject'}`, {
@@ -125,12 +145,18 @@ export async function decideRequest(request: Pick<FeedRow, 'id' | 'kind' | 'over
     }
 }
 
-/** Rejecting permission hours, a missing punch, a day's overtime, a new phone, a flagged check-in or a name change, with a reason if there is one. */
-export function RejectRequest({ request, question, placeholder, onClose, onDecided }: {
+/**
+ * Rejecting permission hours, a missing punch, a day's overtime, a new
+ * phone, a flagged check-in or a name change, with a reason if there is one;
+ * a role request, with the reason it must have (part 5b).
+ */
+export function RejectRequest({ request, question, placeholder, reasonRequired = false, onClose, onDecided }: {
     request: FeedRow
     /** What's being refused, in a sentence: whose, and which. */
     question: string
     placeholder: string
+    /** The server refuses it without one (RoleRequestService.decide). */
+    reasonRequired?: boolean
     onClose: () => void
     onDecided: () => void
 }) {
@@ -139,8 +165,18 @@ export function RejectRequest({ request, question, placeholder, onClose, onDecid
     const action = useBusyAction()
     const num = digits(locale)
     const [reason, setReason] = useState('')
+    const [missing, setMissing] = useState(false)
 
-    const reject = () => void action.run('decide', async () => {
+    const reject = () => {
+        if (reasonRequired && !reason.trim()) {
+            setMissing(true)
+            // To the field, once it's marked, as a form's first error is.
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('textarea[name="rejection-reason"]')?.focus())
+            return
+        }
+        void decide()
+    }
+    const decide = () => action.run('decide', async () => {
         // The schema takes an empty reason as none given.
         const refused = await decideRequest(request, false, reason.trim() || null)
         if (refused) {
@@ -162,14 +198,16 @@ export function RejectRequest({ request, question, placeholder, onClose, onDecid
             </>}
         >
             <p>{question}</p>
-            <Field label={t('rejection_reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}>{p => (
-                <TextArea {...p} name="rejection-reason" dir="auto" placeholder={placeholder} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} />
+            <Field label={t('rejection_reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}
+                error={missing ? t('requests_role_reason_required') : undefined}>{p => (
+                <TextArea {...p} name="rejection-reason" dir="auto" placeholder={placeholder} value={reason} required={reasonRequired}
+                    onChange={e => { setReason(e.target.value); setMissing(false) }} maxLength={500} />
             )}</Field>
         </Dialog>
     )
 }
 
-/** Withdrawing one's own permission hours or report of a missing punch, or a decision on overtime. */
+/** Withdrawing one's own permission hours or report of a missing punch, a decision on overtime, or a role one asked for (part 5b). */
 export function WithdrawAttendance({ request, title, hint, onClose, onWithdrawn }: {
     request: FeedRow
     title: string
@@ -183,7 +221,13 @@ export function WithdrawAttendance({ request, title, hint, onClose, onWithdrawn 
 
     const withdraw = () => void action.run('withdraw', async () => {
         try {
-            const res = await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}`, { method: 'DELETE' })
+            const res = request.kind === 'role'
+                ? await fetch(`/api/role-requests/${request.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'CANCEL' }),
+                })
+                : await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}`, { method: 'DELETE' })
             if (!res.ok) {
                 showToast(t(await refusal(res, 'error_generic')), 'error')
                 return

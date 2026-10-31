@@ -24,12 +24,22 @@ describe("the side bar", () => {
             "top: dashboard",
             "work: tasks, obligations",
             "clients: clients, locations, records",
-            "people: employees, attendance, requests, dayOff, roleRequests, profileRequests",
+            // Role requests are on the Requests page (UI_PLAN.md §2.3, part 5b).
+            "people: employees, attendance, requests, dayOff, profileRequests",
             "money: costs, payroll",
             "me: myPayslips",
-            // The saved lists, for whoever manages them (CLIENTS_PLAN.md §5.6).
-            "bottom: companySettings, savedLists",
+            // The saved lists, for whoever manages them (CLIENTS_PLAN.md §5.6), and Roles and
+            // access beside Company Settings, for whoever gives roles (decided on 2026-10-31).
+            "bottom: companySettings, rolesAndAccess, savedLists",
         ])
+    })
+
+    it("offers Roles and access to whoever gives roles, not whoever only asks for them, nor the Super Admin (part 5b)", () => {
+        const asks = (permission: string) => ({ ...viewer("EMPLOYEE"), can: (p: string) => p === permission })
+        expect(shape(asks("employees.assign_role")).join(" ")).toContain("rolesAndAccess")
+        expect(shape(asks("employees.request_role")).join(" ")).not.toContain("rolesAndAccess")
+        expect(shape(viewer("SUPER_ADMIN")).join(" ")).not.toContain("rolesAndAccess")
+        expect(PAGES.rolesAndAccess.href).toBe("/dashboard/roles-and-access")
     })
 
     it("puts My cash advance under Me, only where the company uses cash advances (CLIENTS_PLAN.md §7.5)", () => {

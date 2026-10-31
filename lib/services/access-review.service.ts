@@ -122,7 +122,7 @@ export class AccessReviewService {
                 deciders.map(d => d.id),
                 "ROLE_ACCESS_REVIEW",
                 { key: "notice_access_review_ready", params: { count: lines.length } },
-                `/dashboard/role-requests?tab=reviews&highlight=${review.id}`,
+                `/dashboard/roles-and-access?tab=reviews&highlight=${review.id}`,
             )
         }
         return review

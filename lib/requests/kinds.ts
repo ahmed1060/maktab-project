@@ -5,7 +5,7 @@
  */
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone", "flagged", "nameChange"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone", "flagged", "nameChange", "role"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -45,6 +45,8 @@ export type FeedRow = {
     flagged?: FlaggedFacts
     /** A name change's own facts (§2.3, part 5a). Its `what` is the name it's for. */
     nameChange?: NameChangeFacts
+    /** A role request's own facts (§2.3, part 5b). Its `what` is the role's name, as stored; `who` is whose role it would be. */
+    role?: RoleFacts
 }
 
 export type DayOffFacts = {
@@ -127,6 +129,22 @@ export type NameChangeFacts = {
     /** The name it was asked from, and the one it's for. */
     from: string
     to: string
+    /** The note it was decided with, if any. */
+    note: string | null
+}
+
+/** A role, as lib/role-label.ts names it: a built-in one in the person's language. */
+export type RoleName = { name: string; builtIn: string | null }
+
+export type RoleFacts = {
+    /** The role asked for; while it waits, the one they hold now. */
+    to: RoleName
+    now: RoleName | null
+    /** Asked for as an acting role, until then (ROLES_PLAN.md §6.13). */
+    actingUntil: string | null
+    /** Who asked, and who decided: nobody named for the Super Admin. */
+    by: string
+    decidedBy: string | null
     /** The note it was decided with, if any. */
     note: string | null
 }
