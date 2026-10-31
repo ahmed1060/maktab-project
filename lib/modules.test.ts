@@ -22,11 +22,16 @@ import { resolveTitleKey } from "./page-title"
 import { COMPANY_GROUPS, PAGES } from "./side-bar"
 
 describe("the module registry", () => {
-    it("covers the ten company-facing modules and no more", () => {
+    it("covers the nine company-facing modules and no more", () => {
+        // Day off is a kind of request on the Requests page, with no entry of its own to name (UI_PLAN.md §2.3, part 5c).
         expect([...MODULE_KEYS].sort()).toEqual([
-            "clients", "costs", "dashboard", "dayOff", "employees",
+            "clients", "costs", "dashboard", "employees",
             "locations", "obligations", "records", "requests", "tasks",
         ])
+    })
+
+    it("drops a name or icon a company kept for Day off, which has no entry now (part 5c)", () => {
+        expect(parseModuleOverrides({ dayOff: "Leave", requests: "Asks" })).toEqual({ requests: "Asks" })
     })
 
     it("excludes the System modules", () => {

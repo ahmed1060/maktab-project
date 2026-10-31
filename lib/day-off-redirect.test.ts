@@ -48,8 +48,8 @@ describe("the links to day off", () => {
         expect(dashboard).not.toContain("/dashboard/day-off-requests")
     })
 
-    it("are the side bar's Day off, which lands there through the old address, whose layout still shows a company without Day off what it is", () => {
-        expect(readFileSync("lib/modules.ts", "utf8")).toContain("dayOff: { labelKey: 'day_off_requests', icon: '📅', href: '/dashboard/day-off-requests' }")
+    it("aren't the side bar's any more, which has the one Requests item (part 5c); an old address's layout still shows a company without Day off what it is", () => {
+        expect(readFileSync("lib/modules.ts", "utf8")).not.toContain("/dashboard/day-off-requests")
         expect(readFileSync("app/(dashboard)/dashboard/day-off-requests/layout.tsx", "utf8")).toContain("guardModule('DAY_OFF')")
     })
 })

@@ -2107,3 +2107,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   (`UI_PLAN.md` §2.3), and role requests join it in #138, the Role
   requests page's other tabs moving to Roles and access. Neither touches
   clients or locations.
+- **2026-10-31:** Role requests on the Requests page were merged in #138
+  (`UI_PLAN.md` §2.3), and the side bar shows one Requests item in #139.
+  Neither touches clients or locations.

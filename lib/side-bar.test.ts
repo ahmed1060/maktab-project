@@ -24,14 +24,23 @@ describe("the side bar", () => {
             "top: dashboard",
             "work: tasks, obligations",
             "clients: clients, locations, records",
-            // Role requests are on the Requests page (UI_PLAN.md §2.3, part 5b).
-            "people: employees, attendance, requests, dayOff, profileRequests",
+            // One Requests item: day off, name changes and role requests are on its page (UI_PLAN.md §2.3, part 5c).
+            "people: employees, attendance, requests",
             "money: costs, payroll",
             "me: myPayslips",
             // The saved lists, for whoever manages them (CLIENTS_PLAN.md §5.6), and Roles and
             // access beside Company Settings, for whoever gives roles (decided on 2026-10-31).
             "bottom: companySettings, rolesAndAccess, savedLists",
         ])
+    })
+
+    it("has one Requests item, for everyone: the Day off and Profile requests pages send people to it (part 5c)", () => {
+        for (const role of ["ADMIN", "TEAM_LEADER", "EMPLOYEE", "SUPER_ADMIN"]) {
+            const all = shape(viewer(role, { companySettings: true, cashAdvances: true })).join(" ")
+            expect(all, role).toContain("requests")
+            expect(all, role).not.toMatch(/dayOff|profileRequests/)
+        }
+        expect(Object.keys(PAGES)).not.toContain("profileRequests")
     })
 
     it("offers Roles and access to whoever gives roles, not whoever only asks for them, nor the Super Admin (part 5b)", () => {
