@@ -1622,3 +1622,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   overtime, check-in phones, flagged punches, then the Attendance tab's To
   decide points there. They're under To review only: nobody asks for them.
   The first opens in #133.
+- **2026-10-31:** Overtime joins the Requests page in #133 (§2.3, part 4a),
+  under To review only:
+  - Waiting is everyone else's days whose overtime waits for a decision,
+    for whoever decides it with Decide overtime, at its reach, newest day
+    first; Done is the decisions made, the latest first.
+  - A row reads whose, which day, how much, and when they came and left;
+    "asked on" is its day, which has no time of its own.
+  - Approve is one click and approves all its minutes, as on the
+    Attendance page; Reject asks for a reason if there is one; a decision
+    may be withdrawn from More actions, and the day waits again.
+  - Approve overtime ahead stays on the Attendance page, which keeps its
+    overtime list until part 4d.
