@@ -5,7 +5,7 @@
  */
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -35,6 +35,8 @@ export type FeedRow = {
     permission?: PermissionFacts
     /** A missing punch's own facts (§2.3, part 3b). Its `what` is its direction, if stated. */
     missingPunch?: MissingPunchFacts
+    /** Overtime's own facts (§2.3, part 4a): a day's waiting, or a decision on it. */
+    overtime?: OvertimeFacts
 }
 
 export type DayOffFacts = {
@@ -62,4 +64,18 @@ export type MissingPunchFacts = {
     at: string
     direction: "IN" | "OUT" | null
     rejectionReason: string | null
+}
+
+export type OvertimeFacts = {
+    /** Whose and which day, as a decision on it is sent: the Super Admin's names the company. */
+    companyId: string
+    userId: string
+    date: string
+    /** A day waiting: its overtime, and when they came and left, as the clock on the wall read. */
+    minutes: number | null
+    firstIn: string | null
+    lastOut: string | null
+    /** A decision: what was approved, and the note it was made with. */
+    approvedMinutes: number | null
+    note: string | null
 }

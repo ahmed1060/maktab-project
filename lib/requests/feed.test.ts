@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, missingPunchRow, missingPunchWhere, pageOf, permissionRow, permissionWhere, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -387,6 +387,83 @@ describe("a missing punch's row", () => {
         expect(missingPunchRow(admin, report({ status: "REJECTED", rejectionReason: "No sign of it", updatedAt: ended }))).toMatchObject({
             finished: ended.toISOString(), sortAt: ended.toISOString(), missingPunch: { rejectionReason: "No sign of it" },
         })
+    })
+})
+
+// --- Overtime (UI_PLAN.md §2.3, part 4a) ---------------------------------------
+
+/** A role of a company's own that decides its team's overtime. */
+const overtimeLead = { id: "h1", role: "TEAM_LEADER", companyId: "c1", grants: "49.2,51.2" }
+
+describe("overtime", () => {
+    const review = { ...waiting, tab: "review" as const }
+
+    it("is under To review only: nobody asks for it, so it isn't on Mine (decided on 2026-10-31)", () => {
+        expect(overtimeWhere(employee, waiting)).toBeNull()
+        expect(overtimeWhere(admin, waiting)).toBeNull()
+    })
+
+    it("waiting is everyone else's days whose overtime waits for a decision, for whoever decides the company's", () => {
+        expect(overtimeWhere(admin, review)).toEqual({ companyId: "c1", userId: { not: "a1" }, overtimeStatus: "PENDING" })
+    })
+
+    it("done is the decisions made, approved or rejected", () => {
+        expect(overtimeWhere(admin, { ...review, show: "done" })).toEqual({ companyId: "c1", userId: { not: "a1" }, status: { in: ["APPROVED", "REJECTED"] } })
+    })
+
+    it("is their team's for a role that decides its team's, the picked company's for the Super Admin, and one person's when picked", () => {
+        expect(overtimeWhere(overtimeLead, { ...review, personId: "x9" })).toEqual({
+            companyId: "c1", userId: { not: "h1" }, overtimeStatus: "PENDING", AND: [{ user: { OR: [{ teamLeaderId: "h1" }, { id: "h1" }] } }, { userId: "x9" }],
+        })
+        expect(overtimeWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ companyId: "c2", overtimeStatus: "PENDING" })
+    })
+
+    it("isn't there for whoever doesn't decide it, nor in a company without Attendance", () => {
+        expect(overtimeWhere(employee, review)).toBeNull()
+        expect(overtimeWhere(leader, review)).toBeNull()
+        expect(overtimeWhere(withoutAttendance(admin), review)).toBeNull()
+    })
+
+    it("is searched by a decision's note; a day waiting has no words to match", () => {
+        expect(overtimeWhere(admin, { ...review, show: "done", search: "busy" })).toMatchObject({ note: { contains: "busy", mode: "insensitive" } })
+        expect(overtimeWhere(admin, { ...review, search: "busy" })).toMatchObject({ id: { in: [] } })
+    })
+})
+
+describe("overtime's rows", () => {
+    const day = (fields: object = {}) => ({
+        id: "d1", companyId: "c1", userId: "e2", date: new Date("2026-10-29T00:00:00Z"), overtimeMinutes: 90,
+        firstInAt: new Date("2026-10-29T09:00:00Z"), lastOutAt: new Date("2026-10-29T18:30:00Z"),
+        user: { firstName: "Mona", lastName: "Adel", teamLeaderId: "h1" }, ...fields,
+    })
+    const decided = new Date("2026-10-30T12:00:00Z")
+    const decision = (fields: object = {}) => ({
+        id: "o1", companyId: "c1", userId: "e2", date: new Date("2026-10-29T00:00:00Z"), status: "APPROVED", approvedMinutes: 90, note: null,
+        decidedAt: decided, user: { firstName: "Mona", lastName: "Adel", teamLeaderId: "h1" }, ...fields,
+    })
+
+    it("a day waiting says whose, which day, how much, and when they came and left, as the clock on the wall read", () => {
+        expect(overtimeDayRow(admin, day())).toMatchObject({
+            kind: "overtime", id: "d1", who: { id: "e2", name: "Mona Adel" }, status: "PENDING", asked: "2026-10-29T00:00:00.000Z",
+            sortAt: "2026-10-29T00:00:00.000Z", finished: null, mayDelete: false, mayWithdraw: false,
+            overtime: { companyId: "c1", userId: "e2", date: "2026-10-29", minutes: 90, approvedMinutes: null, firstIn: "09:00", lastOut: "18:30", note: null },
+        })
+    })
+
+    it("a day waiting may be decided by whoever decides overtime, within their team for a team's, and never their own", () => {
+        expect(overtimeDayRow(admin, day()).mayDecide).toBe(true)
+        expect(overtimeDayRow(overtimeLead, day()).mayDecide).toBe(true)
+        expect(overtimeDayRow(overtimeLead, day({ user: { firstName: "Sami", lastName: "Nabil", teamLeaderId: "h2" } })).mayDecide).toBe(false)
+        expect(overtimeDayRow(admin, day({ userId: "a1" })).mayDecide).toBe(false)
+    })
+
+    it("a decision says what came of it, is ordered by when it was made, and may be withdrawn by whoever may decide it again", () => {
+        expect(overtimeDecisionRow(admin, decision())).toMatchObject({
+            kind: "overtime", id: "o1", status: "APPROVED", finished: decided.toISOString(), sortAt: decided.toISOString(), mayDecide: false, mayWithdraw: true,
+            overtime: { date: "2026-10-29", minutes: null, approvedMinutes: 90, note: null },
+        })
+        expect(overtimeDecisionRow(admin, decision({ status: "REJECTED", approvedMinutes: 0, note: "Not asked for" })).overtime).toMatchObject({ approvedMinutes: null, note: "Not asked for" })
+        expect(overtimeDecisionRow(employee, decision()).mayWithdraw).toBe(false)
     })
 })
 
