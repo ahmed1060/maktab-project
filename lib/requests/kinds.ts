@@ -45,7 +45,7 @@ export type FeedRow = {
     flagged?: FlaggedFacts
     /** A name change's own facts (§2.3, part 5a). Its `what` is the name it's for. */
     nameChange?: NameChangeFacts
-    /** A role request's own facts (§2.3, part 5b). Its `what` is the role's name, as stored; `who` is whose role it would be. */
+    /** A role request's own facts (§2.3, part 5b). Its `what` is the role's name, as stored; `who` is who asked, as every row's is. */
     role?: RoleFacts
 }
 
@@ -142,8 +142,9 @@ export type RoleFacts = {
     now: RoleName | null
     /** Asked for as an acting role, until then (ROLES_PLAN.md §6.13). */
     actingUntil: string | null
-    /** Who asked, and who decided: nobody named for the Super Admin. */
-    by: string
+    /** Whose role it would be (found in the browser: they aren't who asked). */
+    person: { id: string; name: string }
+    /** Who decided: nobody named for the Super Admin. */
     decidedBy: string | null
     /** The note it was decided with, if any. */
     note: string | null

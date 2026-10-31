@@ -1470,7 +1470,7 @@ export const en = {
         // would be, which role, and who asked; refused, why, in the person's language.
         requests_kind_role: "Role change",
         requests_role_for: "For {name}",
-        requests_role_by: "Asked by {name}",
+        requests_role_person_label: "Whose role",
         requests_role_to_label: "Role asked for",
         requests_role_now_label: "Role now",
         requests_role_acting_label: "Acting until",
@@ -2809,7 +2809,6 @@ export const en = {
         // The Role requests page's other two tabs, on their own page (UI_PLAN.md §2.3, part 5b).
         roles_access_title: "Roles and access",
         roles_access_hint: "Ask the Super Admin to change a role, and review who holds which.",
-        role_requests_by: "Asked by",
         role_requests_sent: "Request sent for approval",
         role_requests_ask: "Request this role",
         role_requests_pending_for: "Waiting for approval: {role}",

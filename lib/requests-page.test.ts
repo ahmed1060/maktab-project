@@ -540,24 +540,26 @@ describe("name changes on it (UI_PLAN.md §2.3, part 5a)", () => {
 describe("role requests on it (UI_PLAN.md §2.3, part 5b)", () => {
     const facts = {
         to: { name: "Accountant", builtIn: null }, now: { name: "Employee", builtIn: "EMPLOYEE" }, actingUntil: null,
-        by: "Hoda Samir", decidedBy: null, note: null,
+        person: { id: "e5", name: "Youssef Adel" }, decidedBy: null, note: null,
     }
-    const request = (fields: Partial<FeedRow> = {}): FeedRow => row({ kind: "role", id: "g1", what: "Accountant", detail: "Joins the accounts team", role: facts, ...fields })
+    // Hoda asked, for Youssef.
+    const request = (fields: Partial<FeedRow> = {}): FeedRow => row({ kind: "role", id: "g1", who: { id: "h1", name: "Hoda Samir" }, what: "Accountant", detail: "Joins the accounts team", role: facts, ...fields })
     const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
     const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
 
-    it("reads as any request does: the role, whose it would be, and who asked", async () => {
+    it("reads as any request does: the role, whose it would be, and who asked, in the column that says so (found in the browser)", async () => {
         const html = await page({ rows: [request()], kinds: ["internal", "role"] })
         expect(html).toContain("Accountant")
         expect(html).toContain("requests_kind_role")
-        expect(html).toContain("requests_role_by")
-        expect(html).toContain("Mona Adel")
+        expect(html).toContain("requests_role_for")
+        expect(html).toContain("Hoda Samir")
+        expect(client).toContain("{ label: t('requests_role_person_label'), value: <bdi>{viewing.role.person.name}</bdi> }")
     })
 
-    it("on Mine, says whose it would be, since it isn't one's own", async () => {
+    it("on Mine too, says whose it would be, since it isn't one's own", async () => {
         const html = await page({ rows: [request({ mayWithdraw: true })], kinds: ["internal", "role"], tab: "mine" })
         expect(html).toContain("requests_role_for")
-        expect(html).not.toContain("requests_role_by")
+        expect(html).not.toContain("Hoda Samir")
     })
 
     it("names a built-in role in the person's language", async () => {
@@ -588,6 +590,7 @@ describe("role requests on it (UI_PLAN.md §2.3, part 5b)", () => {
 
     it("once decided, says so, who decided, and why it was rejected", async () => {
         expect(await page({ rows: [request({ status: "REJECTED", role: { ...facts, now: null, decidedBy: "Amal One", note: "Wait" } })], show: "done" })).toMatch(/ui-badge ui-badge-problem[^>]*>status_rejected/)
+        expect(client).toContain("t('requests_role_reject_question').replace('{name}', r.role.person.name)")
         expect(client).toContain("?? r.role?.note")
         expect(client).toContain("t('requests_role_decided_by_label')")
     })

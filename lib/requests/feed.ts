@@ -1010,7 +1010,8 @@ export function roleWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search
             // Those they asked for are on Mine.
             where.requestedById = { not: v.id }
         }
-        if (q.personId) and(where, { userId: q.personId })
+        // Who asked, as the filter is for every kind and the row's person is (found in the browser).
+        if (q.personId) and(where, { requestedById: q.personId })
     }
     where.status = q.show === "done" ? { in: ENDED } : "PENDING"
     if (q.search) {
@@ -1051,10 +1052,11 @@ type RoleRequest = {
 const fullName = (p: { firstName: string; lastName: string }) => `${p.firstName} ${p.lastName}`.trim()
 
 /**
- * A role request as a row, for the person whose role it would be. Deciding
- * it is the decision route's own rule (RoleRequestService.decide):
- * employees.assign_role at that person, never by whoever asked. Whoever
- * asked may withdraw it while it waits.
+ * A role request as a row. Its person is who asked, as every row's is, under
+ * "Asked by"; whose role it would be is beside the role (found in the
+ * browser). Deciding it is the decision route's own rule
+ * (RoleRequestService.decide): employees.assign_role at whose role it would
+ * be, never by whoever asked. Whoever asked may withdraw it while it waits.
  */
 export function roleRow(v: Viewer, r: RoleRequest): FeedRow {
     const target: Target = { companyId: r.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
@@ -1064,7 +1066,7 @@ export function roleRow(v: Viewer, r: RoleRequest): FeedRow {
     return {
         kind: "role",
         id: r.id,
-        who: { id: r.userId, name: fullName(r.user) },
+        who: { id: r.requestedById, name: fullName(r.requestedBy) },
         what: r.role.name,
         detail: r.note,
         asked,
@@ -1080,7 +1082,7 @@ export function roleRow(v: Viewer, r: RoleRequest): FeedRow {
             // Once approved it's the role they hold: the one it changed from is gone.
             now: waits && r.user.assignedRole ? { name: r.user.assignedRole.name, builtIn: r.user.assignedRole.builtIn } : null,
             actingUntil: r.actingUntil?.toISOString() ?? null,
-            by: fullName(r.requestedBy),
+            person: { id: r.userId, name: fullName(r.user) },
             decidedBy: r.decidedBy ? fullName(r.decidedBy) : null,
             note: r.decisionNote,
         },

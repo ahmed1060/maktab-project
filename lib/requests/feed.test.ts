@@ -732,8 +732,8 @@ describe("role requests", () => {
     it("on To review are the company's that somebody else asked for, for whoever gives roles, and the picked company's for the Super Admin", () => {
         expect(roleWhere(admin, review)).toEqual({ companyId: "c1", requestedById: { not: "a1" }, status: "PENDING" })
         expect(roleWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ companyId: "c2", status: "PENDING" })
-        // Whose role it would be.
-        expect(roleWhere(admin, { ...review, personId: "x9" })).toMatchObject({ AND: [{ userId: "x9" }] })
+        // Who asked, as the person filter reads every row by (found in the browser).
+        expect(roleWhere(admin, { ...review, personId: "x9" })).toMatchObject({ AND: [{ requestedById: "x9" }] })
     })
 
     it("aren't on To review for whoever only asks for roles, or gives none", () => {
@@ -769,11 +769,12 @@ describe("a role request's row", () => {
         ...fields,
     })
 
-    it("waiting says whose it would be, the role and the one they hold, who asked and why, in order of when it was asked", () => {
+    it("waiting says who asked and why, the role, whose it would be and the one they hold, in order of when it was asked", () => {
+        // Who asked is the row's person, as every row's is: the person it's for is beside the role (found in the browser).
         expect(roleRow(admin, request())).toMatchObject({
-            kind: "role", id: "r1", who: { id: "e2", name: "Mona Adel" }, what: "Accountant", detail: "Joins the accounts team", status: "PENDING",
+            kind: "role", id: "r1", who: { id: "h1", name: "Hoda Samir" }, what: "Accountant", detail: "Joins the accounts team", status: "PENDING",
             asked: asked.toISOString(), sortAt: asked.toISOString(), finished: null, mayDecide: true, mayDelete: false, mayWithdraw: false,
-            role: { to: { name: "Accountant", builtIn: null }, now: { name: "Employee", builtIn: "EMPLOYEE" }, actingUntil: null, by: "Hoda Samir", decidedBy: null, note: null },
+            role: { to: { name: "Accountant", builtIn: null }, now: { name: "Employee", builtIn: "EMPLOYEE" }, actingUntil: null, person: { id: "e2", name: "Mona Adel" }, decidedBy: null, note: null },
         })
     })
 

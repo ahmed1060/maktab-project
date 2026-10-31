@@ -83,7 +83,7 @@ describe.skipIf(!ADMIN_URL)("role requests on the Requests page, in Postgres", (
         const done = await requestFeed(hoda, query({ tab: "mine", show: "done" }))
         // The rejected one was touched since, which doesn't move it.
         expect(done.rows.map(r => r.id)).toEqual(["r-yes", "r-back", "r-no"])
-        expect(done.rows[2]).toMatchObject({ who: { name: "Eman Two" }, what: "Accountant", role: { by: "Hoda Samir", decidedBy: "Amal One", note: "Wait for the audit" } })
+        expect(done.rows[2]).toMatchObject({ who: { name: "Hoda Samir" }, what: "Accountant", role: { person: { name: "Eman Two" }, decidedBy: "Amal One", note: "Wait for the audit" } })
         expect(done.kinds).toContain("role")
     })
 
@@ -92,11 +92,14 @@ describe.skipIf(!ADMIN_URL)("role requests on the Requests page, in Postgres", (
         const feed = await requestFeed(amal, query())
         expect(feed.rows.map(r => r.id)).toEqual(["r-wait"])
         expect(feed.rows[0]).toMatchObject({
-            who: { name: "Ehab One" }, detail: "Joins the accounts team", mayDecide: true,
-            role: { to: { name: "Accountant", builtIn: null }, now: { builtIn: "EMPLOYEE" }, by: "Hoda Samir" },
+            who: { name: "Hoda Samir" }, detail: "Joins the accounts team", mayDecide: true,
+            role: { to: { name: "Accountant", builtIn: null }, now: { builtIn: "EMPLOYEE" }, person: { id: "e1", name: "Ehab One" } },
         })
         expect((await requestFeed(amal, query({ show: "done" }))).rows.map(r => r.id)).toEqual(["r-yes", "r-back", "r-no"])
         expect((await requestFeed(amal, query({ show: "done", search: "audit" }))).rows.map(r => r.id)).toEqual(["r-no"])
+        // By who asked, as the person filter is for every kind.
+        expect((await requestFeed(amal, query({ show: "done", personId: "h1" }))).rows.map(r => r.id)).toEqual(["r-yes", "r-back", "r-no"])
+        expect((await requestFeed(amal, query({ show: "done", personId: "e2" }))).rows).toEqual([])
     })
 
     it("aren't anywhere for whoever neither asks for nor gives roles", async () => {

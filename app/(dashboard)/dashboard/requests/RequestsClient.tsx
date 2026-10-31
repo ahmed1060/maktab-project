@@ -279,10 +279,9 @@ export default function RequestsClient({
             : null
         return parts || map ? <span>{parts}{parts && map ? sep : null}{map}</span> : null
     }
-    // A role request: on Mine, whose it would be, since it isn't one's own; under To review, who asked
-    // (the person is beside it); and an acting one, until when (§2.3, part 5b).
+    // A role request: whose it would be, since that isn't who asked; and an acting one, until when (§2.3, part 5b).
     const roleWhen = (r: FeedRow) => [
-        t(review ? 'requests_role_by' : 'requests_role_for').replace('{name}', isolated(review ? r.role!.by : r.who.name)!),
+        t('requests_role_for').replace('{name}', isolated(r.role!.person.name)!),
         r.role!.actingUntil ? `${t('requests_role_acting_label')} ${day(r.role!.actingUntil)}` : null,
     ].filter(Boolean).join(sep)
     const direction = (r: FeedRow) => t(r.missingPunch?.direction === 'IN' ? 'punch_in' : r.missingPunch?.direction === 'OUT' ? 'punch_out' : 'punch_direction_unknown')
@@ -348,7 +347,7 @@ export default function RequestsClient({
     const actions = (r: FeedRow) => <span className="ui-row-actions">{next(r)}{menu(r)}</span>
     // What rejecting refuses: whose permission hours on which day, whose missing punch when, whose new phone, or whose check-in.
     const rejectQuestion = (r: FeedRow) => {
-        if (r.role) return t('requests_role_reject_question').replace('{name}', r.who.name).replace('{role}', name(r))
+        if (r.role) return t('requests_role_reject_question').replace('{name}', r.role.person.name).replace('{role}', name(r))
         if (r.nameChange) return t('requests_name_change_reject_question').replace('{name}', r.who.name).replace('{to}', r.nameChange.to)
         if (r.flagged) return t('requests_flagged_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.flagged.at, locale)).replace('{date}', punchDay(r.flagged.at, locale))
         if (r.phone) return t('requests_phone_reject_question').replace('{name}', r.who.name).replace('{phone}', name(r))
@@ -515,10 +514,10 @@ export default function RequestsClient({
                                 { label: t('requests_name_change_to_label'), value: <bdi>{viewing.nameChange.to}</bdi> },
                             ] : []),
                             ...(viewing.role ? [
+                                { label: t('requests_role_person_label'), value: <bdi>{viewing.role.person.name}</bdi> },
                                 { label: t('requests_role_to_label'), value: <bdi>{name(viewing)}</bdi> },
                                 ...(viewing.role.now ? [{ label: t('requests_role_now_label'), value: <bdi>{roleLabel(viewing.role.now, t)}</bdi> }] : []),
                                 ...(viewing.role.actingUntil ? [{ label: t('requests_role_acting_label'), value: day(viewing.role.actingUntil) }] : []),
-                                { label: t('role_requests_by'), value: <bdi>{viewing.role.by}</bdi> },
                                 ...(viewing.role.decidedBy ? [{ label: t('requests_role_decided_by_label'), value: <bdi>{viewing.role.decidedBy}</bdi> }] : []),
                             ] : []),
                             ...(viewing.flagged ? [

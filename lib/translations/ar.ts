@@ -1432,7 +1432,7 @@ export const ar = {
         // طلبات الأدوار في صفحة الطلبات الموحّدة (UI_PLAN.md §2.3، الجزء 5ب).
         requests_kind_role: "تغيير الدور",
         requests_role_for: "لـ{name}",
-        requests_role_by: "مقدم الطلب: {name}",
+        requests_role_person_label: "صاحب الدور",
         requests_role_to_label: "الدور المطلوب",
         requests_role_now_label: "الدور الحالي",
         requests_role_acting_label: "بالإنابة حتى",
@@ -2802,7 +2802,6 @@ export const ar = {
         who_can_through: "عبر الدور {role}",
         roles_access_title: "الأدوار والصلاحيات",
         roles_access_hint: "اطلب من مدير النظام تعديل دور، وراجع من يحمل كل دور.",
-        role_requests_by: "مقدم الطلب",
         role_requests_sent: "تم إرسال الطلب للموافقة",
         role_requests_ask: "طلب هذا الدور",
         role_requests_pending_for: "بانتظار الموافقة: {role}",

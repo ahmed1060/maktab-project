@@ -1745,11 +1745,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the picked company's for the Super Admin. The person whose role it
     would be is told once it's decided, as before.
   - A row is named by the role, a built-in one in the person's language,
-    and says whose it would be on Mine, and who asked under To review; an
-    acting one says until when. They're searched by the note it was asked
-    with, and once decided by the one it was decided with. Done is in order
-    of when each was decided or withdrawn, which reminding the deciders of
-    one waiting doesn't move.
+    and says whose it would be; an acting one says until when. They're
+    searched by the note it was asked with, and once decided by the one it
+    was decided with. Done is in order of when each was decided or
+    withdrawn, which reminding the deciders of one waiting doesn't move.
   - Approve gives the role, as choosing it on their profile does. Reject
     needs a reason, as the Role requests page did. Whoever asked may
     withdraw it while it waits.
@@ -1765,3 +1764,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The side bar's Role requests item is Roles and access now, beside
     Company settings, for whoever gives roles; whoever only asks for roles
     finds theirs on the Requests page.
+  - Found in the browser: a role request's row put whose role it would be
+    under "Asked by", the column, the person filter and the details all
+    say, beside who really asked. Its person is who asked now, as every
+    row's is, and whose role it would be is beside the role, on Mine and
+    To review alike, and in the details as "Whose role".
