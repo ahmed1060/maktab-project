@@ -2094,3 +2094,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** Overtime on the Requests page was merged in #133
   (`UI_PLAN.md` §2.3), and check-in phones join it in #134. Neither touches
   clients or locations.
+- **2026-10-31:** Check-in phones on the Requests page were merged in #134
+  (`UI_PLAN.md` §2.3), and flagged check-ins join it in #135. Neither
+  touches clients or locations.

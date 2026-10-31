@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, phoneRow, phoneWhere, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, flaggedRow, flaggedWhere, internalRow, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, phoneRow, phoneWhere, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -547,6 +547,102 @@ describe("a check-in phone's row", () => {
 
     it("a phone with no model kept is named by the page, from its platform", () => {
         expect(phoneRow(admin, phone({ model: null })).what).toBe("")
+    })
+})
+
+// --- Flagged check-ins (UI_PLAN.md §2.3, part 4c) -----------------------------
+
+/** A role of a company's own that corrects its team's attendance, and one that also sees face photos. */
+const correctsTeam = { id: "h1", role: "TEAM_LEADER", companyId: "c1", grants: "49.2,50.2" }
+const seesFaces = { id: "h1", role: "TEAM_LEADER", companyId: "c1", grants: "49.2,50.2,54.3" }
+
+describe("flagged check-ins", () => {
+    const review = { ...waiting, tab: "review" as const }
+    const done = { ...review, show: "done" as const }
+    // The Super Admin's to look at, on their own page: never the company's.
+    const notPlatform = { NOT: { flagReasons: { has: "ATTESTATION_UNVERIFIED" } } }
+
+    it("are under To review only: nobody asks for them (decided on 2026-10-31)", () => {
+        expect(flaggedWhere(employee, waiting)).toBeNull()
+        expect(flaggedWhere(admin, waiting)).toBeNull()
+    })
+
+    it("waiting is everyone else's still flagged, for whoever corrects the company's attendance, but those the Super Admin looks at", () => {
+        expect(flaggedWhere(admin, review)).toEqual({ companyId: "c1", userId: { not: "a1" }, status: "FLAGGED", voidedAt: null, ...notPlatform })
+    })
+
+    it("done is those decided, whatever came of them since", () => {
+        expect(flaggedWhere(admin, done)).toEqual({ companyId: "c1", userId: { not: "a1" }, reviewedAt: { not: null }, ...notPlatform })
+    })
+
+    it("are their team's for a role that corrects its team's, the picked company's for the Super Admin, and one person's when picked", () => {
+        expect(flaggedWhere(correctsTeam, { ...review, personId: "x9" })).toEqual({
+            companyId: "c1", userId: { not: "h1" }, status: "FLAGGED", voidedAt: null, ...notPlatform,
+            AND: [{ user: { OR: [{ teamLeaderId: "h1" }, { id: "h1" }] } }, { userId: "x9" }],
+        })
+        expect(flaggedWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ companyId: "c2", userId: { not: null }, status: "FLAGGED", voidedAt: null, ...notPlatform })
+    })
+
+    it("aren't there for whoever doesn't correct attendance, nor in a company without Attendance", () => {
+        expect(flaggedWhere(employee, review)).toBeNull()
+        expect(flaggedWhere(phoneLead, review)).toBeNull()
+        expect(flaggedWhere(withoutAttendance(admin), review)).toBeNull()
+    })
+
+    it("are searched by why one was rejected; one waiting has no words to match", () => {
+        expect(flaggedWhere(admin, { ...done, search: "home" })).toMatchObject({ reviewReason: { contains: "home", mode: "insensitive" } })
+        expect(flaggedWhere(admin, { ...review, search: "home" })).toMatchObject({ id: { in: [] } })
+    })
+})
+
+describe("a flagged check-in's row", () => {
+    const received = new Date("2026-10-29T06:02:10Z")
+    const reviewed = new Date("2026-10-30T12:00:00Z")
+    const punch = (fields: object = {}) => ({
+        id: "k1", companyId: "c1", userId: "e2", status: "FLAGGED", direction: "IN", punchAtLocal: new Date("2026-10-29T09:02:00Z"),
+        receivedAt: received, reviewedAt: null, reviewReason: null, flagReasons: ["OUTSIDE_AREA", "IMPRECISE_LOCATION"],
+        checkIn: { latitude: 30.0444, longitude: 31.2357, accuracyMeters: 85.4, distanceMeters: 240, ip: "41.33.1.2", attested: true },
+        workLocation: { name: "Head office" }, phone: { model: "Pixel 8", platform: "ANDROID" },
+        user: { firstName: "Mona", lastName: "Adel", teamLeaderId: "h1" }, ...fields,
+    })
+
+    it("waiting says whose, when on the wall's clock, why, and where, in order of when it arrived", () => {
+        expect(flaggedRow(admin, punch())).toMatchObject({
+            kind: "flagged", id: "k1", who: { id: "e2", name: "Mona Adel" }, what: "IN", detail: null, status: "FLAGGED",
+            asked: received.toISOString(), sortAt: received.toISOString(), finished: null, mayDelete: false, mayWithdraw: false,
+            flagged: {
+                at: "2026-10-29T09:02", direction: "IN", reasons: ["OUTSIDE_AREA", "IMPRECISE_LOCATION"], place: "Head office",
+                distance: 240, accuracy: 85, ip: "41.33.1.2", latitude: 30.0444, longitude: 31.2357, phone: "Pixel 8", reason: null, mayViewFace: false,
+            },
+        })
+    })
+
+    it("waiting may be decided by whoever corrects attendance, within their team for a team's, and never their own", () => {
+        expect(flaggedRow(admin, punch()).mayDecide).toBe(true)
+        expect(flaggedRow(correctsTeam, punch()).mayDecide).toBe(true)
+        expect(flaggedRow(correctsTeam, punch({ user: { firstName: "Sami", lastName: "Nabil", teamLeaderId: "h2" } })).mayDecide).toBe(false)
+        expect(flaggedRow(admin, punch({ userId: "a1" })).mayDecide).toBe(false)
+    })
+
+    it("one whose face check failed has its photos for whoever sees face photos, while it waits", () => {
+        const face = { flagReasons: ["FACE_UNVERIFIED"] }
+        expect(flaggedRow(admin, punch(face)).flagged!.mayViewFace).toBe(true)
+        expect(flaggedRow(seesFaces, punch(face)).flagged!.mayViewFace).toBe(true)
+        expect(flaggedRow(correctsTeam, punch(face)).flagged!.mayViewFace).toBe(false)
+        expect(flaggedRow(admin, punch()).flagged!.mayViewFace).toBe(false)
+        expect(flaggedRow(admin, punch({ ...face, status: "ACCEPTED", reviewedAt: reviewed })).flagged!.mayViewFace).toBe(false)
+    })
+
+    it("once decided, is in order of when, and says why it was rejected", () => {
+        expect(flaggedRow(admin, punch({ status: "REJECTED", reviewedAt: reviewed, reviewReason: "Worked from home" }))).toMatchObject({
+            status: "REJECTED", finished: reviewed.toISOString(), sortAt: reviewed.toISOString(), mayDecide: false, flagged: { reason: "Worked from home" },
+        })
+    })
+
+    it("reads what the phone said only as far as it said it", () => {
+        const row = flaggedRow(admin, punch({ direction: null, checkIn: null, workLocation: null, phone: null }))
+        expect(row.what).toBe("")
+        expect(row.flagged).toMatchObject({ direction: null, place: null, distance: null, accuracy: null, ip: null, latitude: null, longitude: null, phone: null })
     })
 })
 

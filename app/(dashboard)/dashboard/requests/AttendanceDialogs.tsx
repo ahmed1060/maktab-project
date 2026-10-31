@@ -14,11 +14,12 @@ import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } fro
  * Attendance requests on the one Requests page (UI_PLAN.md §2.3, parts 3
  * and 4): asking for permission hours (part 3a) and reporting a missing
  * punch (part 3b), rejecting and withdrawing either, deciding overtime (part
- * 4a) and check-in phones (part 4b), as the Attendance page's Requests tab did.
+ * 4a), check-in phones (part 4b) and flagged check-ins (part 4c), as the
+ * Attendance page's Requests tab did.
  */
 
 /** The attendance kinds, and each one's API (app/api/attendance). */
-export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch' | 'overtime' | 'phone'>
+export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch' | 'overtime' | 'phone' | 'flagged'>
 export const ATTENDANCE_API: Record<AttendanceKind, string> = {
     permission: '/api/attendance/permissions',
     missingPunch: '/api/attendance/missing-punches',
@@ -26,6 +27,8 @@ export const ATTENDANCE_API: Record<AttendanceKind, string> = {
     overtime: '/api/attendance/overtime',
     // A new phone approved or rejected, and the one in use revoked (§2.3, part 4b).
     phone: '/api/attendance/phones',
+    // A flagged check-in accepted or rejected (§2.3, part 4c).
+    flagged: '/api/attendance/flagged',
 }
 
 /** The server's own check (lib/validations/attendance-request.schema.ts): a reason, and a reason to refuse. */
@@ -58,6 +61,7 @@ const REFUSED: Record<string, TranslationKey> = {
     OVERTIME_MINUTES_REQUIRED: 'requests_overtime_minutes_required',
     PHONE_NOT_PENDING: 'requests_already_decided',
     PHONE_NOT_ACTIVE: 'requests_phone_not_active',
+    CHECK_IN_NOT_FLAGGED: 'requests_already_decided',
 }
 
 const dateLocale = (locale: string) => locale === 'ar' ? 'ar-EG' : 'en-GB'
@@ -86,8 +90,8 @@ async function refusal(res: Response, fallback: TranslationKey): Promise<Transla
 
 /**
  * Approves or rejects somebody's permission hours, missing punch, a day's
- * overtime (all of its minutes, as the Attendance page did) or new check-in
- * phone. Null once done; otherwise what to say.
+ * overtime (all of its minutes, as the Attendance page did), new check-in
+ * phone or flagged check-in. Null once done; otherwise what to say.
  */
 export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'overtime'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
     try {
@@ -102,7 +106,8 @@ export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'o
             : await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}/decide`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ approve, reason }),
+                // A flagged check-in is accepted, as its route says.
+                body: JSON.stringify(request.kind === 'flagged' ? { accept: approve, reason } : { approve, reason }),
             })
         return res.ok ? null : await refusal(res, 'error_generic')
     } catch {
@@ -110,7 +115,7 @@ export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'o
     }
 }
 
-/** Rejecting permission hours, a missing punch, a day's overtime or a new phone, with a reason if there is one. */
+/** Rejecting permission hours, a missing punch, a day's overtime, a new phone or a flagged check-in, with a reason if there is one. */
 export function RejectAttendance({ request, question, placeholder, onClose, onDecided }: {
     request: FeedRow
     /** What's being refused, in a sentence: whose, and which. */

@@ -196,8 +196,9 @@ one once its kind has moved in.
       check-ins it holds, approved or rejected with a reason; once decided,
       in use, rejected, revoked, replaced or withdrawn; the one in use may
       be revoked.
-   3. **4c:** flagged punches, with the face photo and map link they show
-      today.
+   3. **4c:** flagged punches (#135), with the face photo and map link they
+      show today: those still flagged, approved or rejected with a reason;
+      once decided, accepted or rejected, and why.
    4. **4d:** the Attendance tab's To decide, and their notifications,
       point there.
 5. **Name changes and role requests:** decided on the page; their pages
@@ -1656,3 +1657,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Found in the browser: "1 check-ins held" read wrong. The check-ins a
     phone holds are counted in each language's plural: 1 check-in held;
     تسجيل حضور واحد معلّق، ٣ تسجيلات حضور معلّقة.
+- **2026-10-31:** Check-in phones on the Requests page were merged in #134,
+  and flagged check-ins join it in #135 (§2.3, part 4c), under To review
+  only:
+  - Waiting is everyone else's check-ins still flagged, for whoever
+    corrects attendance, at its reach, the latest to arrive first. Not
+    those flagged because the app couldn't prove itself, which the Super
+    Admin looks at on their own page; not those withdrawn; and not those in
+    a month whose payroll is approved or paid, which can't be decided, as
+    the Attendance page leaves them out.
+  - Done is those decided, the latest first, with why one was rejected. A
+    check-in kept neither when it was decided nor why: it does now, and
+    for those decided already they're found in the audit log.
+  - A row is named by why it waits, reads in or out, the place and how far
+    from it, and is "asked" when it was made, as the wall's clock read.
+    Its details have the map of where the phone was, its address and
+    phone, and, for whoever sees face photos, a failed face check's photos,
+    as the Attendance page did; they're in More actions too.
+  - Approve is one click and the check-in counts; Reject asks for a reason
+    if there is one, and it doesn't.
+  - The Attendance page's list stays until part 4d.

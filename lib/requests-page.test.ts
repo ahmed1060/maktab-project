@@ -83,7 +83,7 @@ describe("the Requests page", () => {
 
     it("keeps when it was asked on one line, its time not broken from its day (found in the browser)", () => {
         const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
-        expect(client).toContain('<span className="ui-nowrap">{r.overtime ? permissionDay(r.overtime.date, locale) : <SafeDate date={r.asked} locale={locale} format="short" />}</span>')
+        expect(client).toMatch(/<span className="ui-nowrap">\{r\.overtime \? permissionDay\(r\.overtime\.date, locale\)[\s\S]{0,200}: <SafeDate date=\{r\.asked\} locale=\{locale\} format="short" \/>\}<\/span>/)
     })
 
     it("offers the next step to whoever may decide it: Start, then Mark as done", async () => {
@@ -361,7 +361,7 @@ describe("overtime on it (UI_PLAN.md §2.3, part 4a)", () => {
 
     it("is asked on its day, not at a time of it, and its details say no time it was asked at (found in the browser)", () => {
         expect(client).toContain("r.overtime ? permissionDay(r.overtime.date, locale)")
-        expect(client).toContain("...(viewing.overtime ? [] : [{ label: t('requested_on')")
+        expect(client).toContain("...(viewing.overtime || viewing.flagged ? [] : [{ label: t('requested_on')")
     })
 
     it("is approved, all its minutes, or rejected with a reason, by whoever may decide it", async () => {
@@ -444,6 +444,57 @@ describe("check-in phones on it (UI_PLAN.md §2.3, part 4b)", () => {
 
     it("has no styles typed in", async () => {
         const html = await page({ rows: [phone({ mayDecide: true })], kinds: ["phone"] })
+        expect(html).not.toContain("style=")
+    })
+})
+
+describe("flagged check-ins on it (UI_PLAN.md §2.3, part 4c)", () => {
+    const facts = {
+        at: "2026-10-29T09:02", direction: "IN" as const, reasons: ["OUTSIDE_AREA", "IMPRECISE_LOCATION"], place: "Head office", distance: 240, accuracy: 85,
+        ip: "41.33.1.2", latitude: 30.0444, longitude: 31.2357, phone: "Pixel 8", reason: null, mayViewFace: false,
+    }
+    const punch = (fields: Partial<FeedRow> = {}): FeedRow => row({ kind: "flagged", id: "k1", what: "IN", detail: null, status: "FLAGGED", flagged: facts, ...fields })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
+
+    it("reads as any request does: whose check-in, why it waits, when on the wall's clock, and where", async () => {
+        const html = await page({ rows: [punch()], kinds: ["internal", "flagged"] })
+        // Why, in a sentence: the reasons' words, the first capitalised.
+        expect(html).toContain("Att_flag_OUTSIDE_AREA, att_flag_IMPRECISE_LOCATION")
+        expect(html).toContain("requests_kind_flagged")
+        expect(html).toContain("requests_flagged_in")
+        expect(html).toContain("29 Oct 2026")
+        expect(html).toContain("9:02")
+        // The company's words keep their own direction in an Arabic line, as <bdi> keeps them.
+        expect(html).toContain("\u2068Head office\u2069")
+        expect(html).toContain("req_flagged_distance")
+        expect(html).toContain("Mona Adel")
+    })
+
+    it("is approved or rejected with a reason by whoever may decide it, as the Attendance page did", async () => {
+        const html = await page({ rows: [punch({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+        expect(dialogs).toContain("flagged: '/api/attendance/flagged'")
+        // The flagged route takes accept, not approve.
+        expect(dialogs).toContain("{ accept: approve, reason }")
+        expect(dialogs).toContain("CHECK_IN_NOT_FLAGGED")
+        expect(client).toContain("t('requests_flagged_reject_question')")
+    })
+
+    it("has the map of where the phone was, and a failed face check's photos for whoever may see them, as the Attendance page did", () => {
+        expect(client).toContain("googleMapsLink(")
+        expect(client).toContain("...(r.flagged?.mayViewFace ? [{ key: 'face'")
+        expect(client).toContain("<FlaggedFaceModal")
+    })
+
+    it("once decided, says so, and why it was rejected", async () => {
+        expect(await page({ rows: [punch({ status: "ACCEPTED" })], show: "done" })).toMatch(/ui-badge ui-badge-good[^>]*>requests_flagged_accepted/)
+        expect(client).toContain("?? r.flagged?.reason")
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [punch({ mayDecide: true })], kinds: ["flagged"] })
         expect(html).not.toContain("style=")
     })
 })

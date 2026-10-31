@@ -5,7 +5,7 @@
  */
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone", "flagged"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -41,6 +41,8 @@ export type FeedRow = {
     mayRevoke?: boolean
     /** A check-in phone's own facts (§2.3, part 4b). Its `what` is its model, if kept. */
     phone?: PhoneFacts
+    /** A flagged check-in's own facts (§2.3, part 4c). Its `what` is its direction, if stated. */
+    flagged?: FlaggedFacts
 }
 
 export type DayOffFacts = {
@@ -96,4 +98,25 @@ export type PhoneFacts = {
     reason: string | null
     /** Revoked because a new phone of theirs was approved. */
     replaced: boolean
+}
+
+export type FlaggedFacts = {
+    /** When, as the clock on the wall read: "2026-10-29T09:02". */
+    at: string
+    direction: "IN" | "OUT" | null
+    /** Why it waits: OUTSIDE_AREA, IMPRECISE_LOCATION and the like. */
+    reasons: string[]
+    /** What the phone said and the server saw, as far as it said it: the place it was checked against, metres from it and the fix's accuracy, the address it came from, and the fix. */
+    place: string | null
+    distance: number | null
+    accuracy: number | null
+    ip: string | null
+    latitude: number | null
+    longitude: number | null
+    /** The phone's model. */
+    phone: string | null
+    /** Why it was rejected, if someone said. */
+    reason: string | null
+    /** Whether this person may see the face photos of one whose face check failed, while it waits. */
+    mayViewFace: boolean
 }
