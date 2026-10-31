@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, pageOf, permissionRow, permissionWhere, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, missingPunchRow, missingPunchWhere, pageOf, permissionRow, permissionWhere, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -300,6 +300,93 @@ describe("permission hours' row", () => {
             finished: ended.toISOString(), sortAt: ended.toISOString(), permission: { rejectionReason: "Busy day" },
         })
         expect(permissionRow(employee, request({ userId: "e1", status: "CANCELLED", updatedAt: ended }), before)).toMatchObject({ finished: ended.toISOString(), sortAt: ended.toISOString() })
+    })
+})
+
+// --- Missing punches (UI_PLAN.md §2.3, part 3b) ---------------------------------
+
+/** A role of a company's own that corrects its team's attendance. */
+const teamCorrector = { id: "h1", role: "TEAM_LEADER", companyId: "c1", grants: "49.2,50.2" }
+
+describe("missing punches on Mine", () => {
+    it("are one's own reports in their company, waiting or ended: approved, rejected or withdrawn", () => {
+        expect(missingPunchWhere(employee, waiting)).toEqual({ companyId: "c1", userId: "e1", status: "PENDING" })
+        expect(missingPunchWhere(admin, { ...waiting, show: "done" })).toEqual({ companyId: "c1", userId: "a1", status: { in: ["APPROVED", "REJECTED", "CANCELLED"] } })
+    })
+
+    it("aren't the Super Admin's, nor anyone's in a company without Attendance", () => {
+        expect(missingPunchWhere(superAdmin, waiting)).toBeNull()
+        expect(missingPunchWhere(withoutAttendance(employee), waiting)).toBeNull()
+    })
+})
+
+describe("missing punches on To review", () => {
+    const review = { ...waiting, tab: "review" as const }
+
+    it("are everyone else's in the company, for whoever corrects the company's attendance", () => {
+        expect(missingPunchWhere(admin, review)).toEqual({ companyId: "c1", userId: { not: "a1" }, status: "PENDING" })
+    })
+
+    it("are their team's, for a role that corrects its team's, and not their own", () => {
+        expect(missingPunchWhere(teamCorrector, review)).toEqual({
+            companyId: "c1", userId: { not: "h1" }, status: "PENDING", AND: [{ user: { OR: [{ teamLeaderId: "h1" }, { id: "h1" }] } }],
+        })
+    })
+
+    it("aren't there for whoever doesn't correct attendance: an employee, the built-in Team Leader, or a company without Attendance", () => {
+        expect(missingPunchWhere(employee, review)).toBeNull()
+        expect(missingPunchWhere(leader, review)).toBeNull()
+        expect(missingPunchWhere(withoutAttendance(admin), review)).toBeNull()
+    })
+
+    it("are the picked company's for the Super Admin, or every company's, and narrow to one person and the reason", () => {
+        expect(missingPunchWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ companyId: "c2", status: "PENDING" })
+        expect(missingPunchWhere(teamCorrector, { ...review, personId: "x9", search: "terminal" })).toMatchObject({
+            reason: { contains: "terminal", mode: "insensitive" },
+            AND: [{ user: { OR: [{ teamLeaderId: "h1" }, { id: "h1" }] } }, { userId: "x9" }],
+        })
+    })
+})
+
+describe("a missing punch's row", () => {
+    const asked = new Date("2026-10-29T09:00:00Z")
+    // The time claimed is the clock on the wall, kept as it reads.
+    const report = (fields: object = {}) => ({
+        id: "m1", companyId: "c1", userId: "e2", claimedAt: new Date("2026-10-28T17:05:00Z"), direction: "OUT", reason: "The terminal was down",
+        status: "PENDING", createdAt: asked, updatedAt: asked, rejectionReason: null,
+        user: { firstName: "Mona", lastName: "Adel", teamLeaderId: "h1" }, ...fields,
+    })
+
+    it("says who reported it, the punch, its day and time, and why", () => {
+        expect(missingPunchRow(admin, report())).toMatchObject({
+            kind: "missingPunch", id: "m1", who: { id: "e2", name: "Mona Adel" }, what: "OUT", detail: "The terminal was down",
+            asked: asked.toISOString(), finished: null, status: "PENDING", sortAt: asked.toISOString(), mayDelete: false,
+            missingPunch: { at: "2026-10-28T17:05", direction: "OUT", rejectionReason: null },
+        })
+        expect(missingPunchRow(admin, report({ direction: null })).missingPunch?.direction).toBeNull()
+    })
+
+    it("may be decided by whoever corrects attendance, within their team for a team's, while it waits, and never their own", () => {
+        expect(missingPunchRow(admin, report()).mayDecide).toBe(true)
+        expect(missingPunchRow(teamCorrector, report()).mayDecide).toBe(true)
+        expect(missingPunchRow(superAdmin, report()).mayDecide).toBe(true)
+        expect(missingPunchRow(teamCorrector, report({ user: { firstName: "Sami", lastName: "Nabil", teamLeaderId: "h2" } })).mayDecide).toBe(false)
+        expect(missingPunchRow(employee, report()).mayDecide).toBe(false)
+        expect(missingPunchRow(admin, report({ status: "APPROVED" })).mayDecide).toBe(false)
+        expect(missingPunchRow(admin, report({ userId: "a1" })).mayDecide).toBe(false)
+    })
+
+    it("may be withdrawn by whoever reported it, only while it waits", () => {
+        expect(missingPunchRow(employee, report({ userId: "e1" })).mayWithdraw).toBe(true)
+        expect(missingPunchRow(employee, report({ userId: "e1", status: "APPROVED" })).mayWithdraw).toBe(false)
+        expect(missingPunchRow(admin, report()).mayWithdraw).toBe(false)
+    })
+
+    it("once ended, says why it was refused, and is ordered by when it ended", () => {
+        const ended = new Date("2026-10-30T12:00:00Z")
+        expect(missingPunchRow(admin, report({ status: "REJECTED", rejectionReason: "No sign of it", updatedAt: ended }))).toMatchObject({
+            finished: ended.toISOString(), sortAt: ended.toISOString(), missingPunch: { rejectionReason: "No sign of it" },
+        })
     })
 })
 

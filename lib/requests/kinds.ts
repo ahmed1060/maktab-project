@@ -5,7 +5,7 @@
  */
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -27,12 +27,14 @@ export type FeedRow = {
     sortAt: string
     mayDecide: boolean
     mayDelete: boolean
-    /** Whether whoever asked may take it back: permission hours (§2.3, part 3a). */
+    /** Whether whoever asked may take it back: permission hours and missing punches (§2.3, part 3). */
     mayWithdraw?: boolean
     /** A day off's own facts (§2.3, part 2c). Its `what` is its type. */
     dayOff?: DayOffFacts
     /** Permission hours' own facts (§2.3, part 3a). Its `what` is its type. */
     permission?: PermissionFacts
+    /** A missing punch's own facts (§2.3, part 3b). Its `what` is its direction, if stated. */
+    missingPunch?: MissingPunchFacts
 }
 
 export type DayOffFacts = {
@@ -52,5 +54,12 @@ export type PermissionFacts = {
     start: string
     end: string
     minutes: number
+    rejectionReason: string | null
+}
+
+export type MissingPunchFacts = {
+    /** The time claimed, as the clock on the wall read it: "2026-10-28T17:05". */
+    at: string
+    direction: "IN" | "OUT" | null
     rejectionReason: string | null
 }

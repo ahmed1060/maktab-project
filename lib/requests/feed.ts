@@ -369,7 +369,103 @@ const permission: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission]
+// --- Missing punches: reported, then approved, rejected or withdrawn (§2.3, part 3b)
+
+/**
+ * Which reports of a missing punch this person has on a tab, in a company
+ * that has Attendance, as its APIs' rules (app/api/attendance/missing-punches):
+ * Mine is their own in their company; To review is everyone else's they
+ * correct with attendance.correct, at its reach. Null when they have none there.
+ */
+export function missingPunchWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "ATTENDANCE")) return null
+    const where: Record<string, any> = {}
+    if (q.tab === "mine") {
+        // The Super Admin has no attendance of their own.
+        if (v.role === "SUPER_ADMIN" || !v.companyId) return null
+        where.companyId = v.companyId
+        where.userId = v.id
+    } else {
+        const reach = grantFor(v, "attendance.correct")
+        if (!reach) return null
+        if (reach === "ALL") {
+            if (q.companyId) where.companyId = q.companyId
+        } else {
+            if (!v.companyId) return null
+            where.companyId = v.companyId
+            // Their own are on Mine.
+            where.userId = { not: v.id }
+            if (reach === "TEAM") and(where, { user: teamMemberWhere(v.id) })
+        }
+        if (q.personId) and(where, { userId: q.personId })
+    }
+    where.status = q.show === "done" ? { in: ENDED } : "PENDING"
+    if (q.search) where.reason = { contains: q.search, mode: "insensitive" }
+    return where
+}
+
+type MissingPunchRequest = {
+    id: string
+    companyId: string
+    userId: string
+    claimedAt: Date
+    direction: string | null
+    reason: string
+    status: string
+    createdAt: Date
+    updatedAt: Date
+    rejectionReason: string | null
+    user: { firstName: string; lastName: string; teamLeaderId: string | null }
+}
+
+/**
+ * A report of a missing punch as a row. Deciding it is the decision route's
+ * own rule (POST /api/attendance/missing-punches/[id]/decide):
+ * attendance.correct at the one who reported it, which is never one's own.
+ * Whoever reported it may withdraw it while it waits
+ * (AttendanceRequestService.cancelMissingPunch).
+ */
+export function missingPunchRow(v: Viewer, r: MissingPunchRequest): FeedRow {
+    const target: Target = { companyId: r.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
+    const waits = r.status === "PENDING"
+    const asked = r.createdAt.toISOString()
+    const direction = r.direction === "IN" || r.direction === "OUT" ? r.direction : null
+    return {
+        kind: "missingPunch",
+        id: r.id,
+        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        what: direction ?? "",
+        detail: r.reason || null,
+        asked,
+        started: null,
+        finished: waits ? null : r.updatedAt.toISOString(),
+        status: r.status,
+        sortAt: waits ? asked : r.updatedAt.toISOString(),
+        mayDecide: waits && can(v, "attendance.correct", target),
+        mayDelete: false,
+        mayWithdraw: r.userId === v.id && waits,
+        // A wall-clock time, kept as it reads (lib/services/attendance-request.service.ts).
+        missingPunch: { at: r.claimedAt.toISOString().slice(0, 16), direction, rejectionReason: r.rejectionReason },
+    }
+}
+
+const missingPunch: Source = {
+    kind: "missingPunch",
+    where: missingPunchWhere,
+    list: (v, q, where, take) => {
+        return Promise.all([
+            prisma.missingPunchRequest.findMany({
+                where,
+                orderBy: feedOrder(q.show),
+                take,
+                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+            }),
+            prisma.missingPunchRequest.count({ where }),
+        ]).then(([rows, total]) => ({ rows: rows.map(r => missingPunchRow(v, r)), total }))
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission, missingPunch]
 
 // --- The page --------------------------------------------------------
 
