@@ -367,6 +367,13 @@ describe("its server page", () => {
         expect(server).toContain("AttendanceRequestService.permissionBalance(")
     })
 
+    it("finds permission hours and missing punches a notification picked out too, now that their links land here (part 3c)", () => {
+        expect(server).toContain("prisma.permissionRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
+        expect(server).toContain("prisma.missingPunchRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
+        // Withdrawn is done too.
+        expect(server).toContain('picked.status === "CANCELLED"')
+    })
+
     it("reads the dates of leave only for Day off", () => {
         expect(server).toContain('from: kind === "dayOff" ? searchParams.from ?? "" : ""')
         expect(server).toContain('to: kind === "dayOff" ? searchParams.to ?? "" : ""')

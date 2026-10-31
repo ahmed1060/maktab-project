@@ -142,7 +142,7 @@ export class PushService {
             })
             if (count === 0) continue
             const language = n.user?.language ?? "en"
-            const message: PushMessage = { title: (DICTS[language] ?? en).app_name, body: textOf(n, language), link: attendanceNoticeTarget(n.type, n.relatedId) }
+            const message: PushMessage = { title: (DICTS[language] ?? en).app_name, body: textOf(n, language), link: attendanceNoticeTarget(n.type, n.relatedId, n.messageKey) }
             let delivered = false, retry = false
             const phones = n.user?.checkInPhones ?? []
             const target = pushTarget(phones)

@@ -100,7 +100,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
             // First: neither an attendance notification nor a role request's
             // may fall through to the REQUEST branch below, which reads an
             // internal request's id.
-            const attendance = attendanceNoticeTarget(type, notification.relatedId)
+            const attendance = attendanceNoticeTarget(type, notification.relatedId, notification.messageKey)
             if (attendance) {
                 router.push(attendance)
             } else if (type.startsWith('ROLE_')) {

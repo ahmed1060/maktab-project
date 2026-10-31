@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { ButtonLink } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -16,9 +17,11 @@ import { send, json } from './send'
 import { googleMapsLink } from '@/lib/attendance/geo'
 
 /**
- * Requests (P0.6): permission hours (إذن) and reports of a missing punch,
- * asked for by everyone for themselves; and, for whoever decides them, the
- * ones waiting — with overtime that waits for approval.
+ * Requests (P0.6): one's own phone, and for whoever decides them, overtime,
+ * phones and flagged punches. Permission hours (إذن) and reports of a missing
+ * punch are asked for and decided on the one Requests page (UI_PLAN.md §2.3,
+ * part 3c), which this points to; asking from a day still opens the forms
+ * here.
  *
  * attendance.approve_permissions decides permission hours,
  * attendance.approve_overtime overtime, attendance.correct missing punches —
@@ -26,8 +29,6 @@ import { googleMapsLink } from '@/lib/attendance/geo'
  */
 
 type Status = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
-type PermissionRow = { id: string; userId: string; name?: string; teamLeaderId?: string | null; date: string; type: string; start: string; end: string; minutes: number; reason: string; status: Status; rejectionReason: string | null }
-type MissingRow = { id: string; userId: string; name?: string; teamLeaderId?: string | null; at: string; direction: 'IN' | 'OUT' | null; reason: string; status: Status; rejectionReason: string | null }
 type Waiting = { userId: string; name: string; teamLeaderId: string | null; date: string; overtimeMinutes: number; firstIn: string | null; lastOut: string | null }
 type Decision = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; status: 'APPROVED' | 'REJECTED'; approvedMinutes: number; note: string | null }
 type Balance = { enabled: boolean; types: string[]; allowanceMinutes: number; carriedMinutes: number; approvedMinutes: number; pendingMinutes: number; remainingMinutes: number; requests: number; maxRequests: number | null; minPerRequestMinutes: number; maxPerRequestMinutes: number }
@@ -52,7 +53,7 @@ export default function RequestsTab({ q, companyId, today }: { q: string; compan
     return (
         <div style={{ display: 'grid', gap: '1rem' }}>
             {asks && <MyPhone />}
-            {asks && <MyRequests today={today} />}
+            {asks && <MyRequests />}
             <ToDecide q={q} companyId={companyId} today={today} />
         </div>
     )
@@ -105,107 +106,18 @@ function MyPhone() {
     )
 }
 
-function MyRequests({ today }: { today: string }) {
+/**
+ * One's own permission hours and missing punches are asked for, followed and
+ * withdrawn on the one Requests page (UI_PLAN.md §2.3, part 3c): this points
+ * there. Asking from a day on the Days tab still opens the forms below.
+ */
+function MyRequests() {
     const { t } = useLanguage()
-    const { showToast } = useToast()
-    const [asking, setAsking] = useState(false)
-    const [reporting, setReporting] = useState(false)
-    const [withdrawing, setWithdrawing] = useState<{ kind: 'permission' | 'missing'; id: string } | null>(null)
-    const { data: balanceBody, mutate: refreshBalance } = useSWR(`/api/attendance/permissions/balance?month=${today.slice(0, 7)}`, fetcher)
-    const { data: permBody, mutate: refreshPerms } = useSWR('/api/attendance/permissions?mine=1', fetcher)
-    const { data: missBody, mutate: refreshMissing } = useSWR('/api/attendance/missing-punches?mine=1', fetcher)
-    const balance: Balance | undefined = balanceBody?.data
-    const permissions: PermissionRow[] | null = permBody ? permBody.data?.requests ?? [] : null
-    const missing: MissingRow[] | null = missBody ? missBody.data?.requests ?? [] : null
-    const refresh = () => { refreshBalance(); refreshPerms(); refreshMissing() }
-
-    const withdraw = async () => {
-        if (!withdrawing) return
-        const url = withdrawing.kind === 'permission' ? `/api/attendance/permissions/${withdrawing.id}` : `/api/attendance/missing-punches/${withdrawing.id}`
-        const r = await send(url, { method: 'DELETE' }, t('punch_failed'))
-        setWithdrawing(null)
-        if (!r.ok) return showToast(r.error, 'error')
-        showToast(t('req_withdrawn'), 'success')
-        refresh()
-    }
-
     return (
         <section className="glass" style={box}>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('req_mine')}</h2>
-                <div style={{ flex: 1 }} />
-                {/* Always offered: a later month's policy may allow what this one doesn't (review on #14). */}
-                <button className="btn btn-primary" onClick={() => setAsking(true)}>{t('req_ask_permission')}</button>
-                <button className="btn btn-secondary" onClick={() => setReporting(true)}>{t('req_report_missing')}</button>
-            </div>
-            {balance && (
-                <p style={{ margin: 0, fontSize: '0.88rem' }}>
-                    {balance.enabled
-                        ? t('req_balance')
-                            .replace('{left}', String(balance.remainingMinutes))
-                            .replace('{total}', String(balance.allowanceMinutes + balance.carriedMinutes))
-                            .replace('{pending}', String(balance.pendingMinutes))
-                        : t('req_permissions_off')}
-                    {balance.enabled && balance.carriedMinutes > 0 && <span style={soft}> · {t('req_carried').replace('{n}', String(balance.carriedMinutes))}</span>}
-                </p>
-            )}
-
-            <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_permissions')}</h3>
-            {permissions === null ? <LoadingSpinner /> : permissions.length === 0 ? <p style={{ margin: 0, ...soft }}>{t('req_none')}</p> : (
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                        <thead><tr><th>{t('punch_date')}</th><th>{t('req_type')}</th><th>{t('req_time')}</th><th>{t('req_status')}</th><th /></tr></thead>
-                        <tbody>
-                            {permissions.map(r => (
-                                <tr key={r.id}>
-                                    <td style={{ whiteSpace: 'nowrap' }}><bdi>{r.date}</bdi></td>
-                                    <td>{t(TYPE_KEY[r.type])}<div style={soft}>{r.reason}</div></td>
-                                    <td style={{ whiteSpace: 'nowrap' }}><bdi>{r.start}–{r.end}</bdi><div style={soft}>{t('req_minutes').replace('{n}', String(r.minutes))}</div></td>
-                                    <td><StatusText status={r.status} why={r.rejectionReason} /></td>
-                                    <td style={{ textAlign: 'end' }}>
-                                        {(r.status === 'PENDING' || (r.status === 'APPROVED' && r.date > today)) && (
-                                            <button className="btn btn-secondary" style={small} onClick={() => setWithdrawing({ kind: 'permission', id: r.id })}>{t('req_withdraw')}</button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_missing')}</h3>
-            {missing === null ? <LoadingSpinner /> : missing.length === 0 ? <p style={{ margin: 0, ...soft }}>{t('req_none')}</p> : (
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                        <thead><tr><th>{t('punch_time')}</th><th>{t('punch_direction')}</th><th>{t('req_status')}</th><th /></tr></thead>
-                        <tbody>
-                            {missing.map(r => (
-                                <tr key={r.id}>
-                                    <td style={{ whiteSpace: 'nowrap' }}><bdi>{r.at.replace('T', ' ')}</bdi><div style={soft}>{r.reason}</div></td>
-                                    <td>{r.direction === 'IN' ? t('punch_in') : r.direction === 'OUT' ? t('punch_out') : '—'}</td>
-                                    <td><StatusText status={r.status} why={r.rejectionReason} /></td>
-                                    <td style={{ textAlign: 'end' }}>
-                                        {r.status === 'PENDING' && <button className="btn btn-secondary" style={small} onClick={() => setWithdrawing({ kind: 'missing', id: r.id })}>{t('req_withdraw')}</button>}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {asking && <AskPermissionModal today={today} onClose={() => setAsking(false)} onDone={() => { setAsking(false); refresh() }} />}
-            {reporting && <ReportMissingModal today={today} onClose={() => setReporting(false)} onDone={() => { setReporting(false); refresh() }} />}
-            <ConfirmModal
-                isOpen={!!withdrawing}
-                title={t('req_withdraw')}
-                message={t('req_withdraw_hint')}
-                confirmText={t('req_withdraw')}
-                variant="danger"
-                onConfirm={withdraw}
-                onCancel={() => setWithdrawing(null)}
-            />
+            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('req_mine')}</h2>
+            <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('requests_moved_mine')}</p>
+            <div><ButtonLink href="/dashboard/requests?tab=mine">{t('requests_open_mine')}</ButtonLink></div>
         </section>
     )
 }
@@ -353,7 +265,7 @@ export function ReportMissingModal({ today, initial, onClose, onDone }: {
 
 // --- to decide -------------------------------------------------------------------
 
-type Rejecting = { kind: 'permission' | 'missing' | 'phone' | 'checkin'; id: string } | { kind: 'overtime'; userId: string; date: string }
+type Rejecting = { kind: 'phone' | 'checkin'; id: string } | { kind: 'overtime'; userId: string; date: string }
 
 function ToDecide({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
@@ -373,15 +285,11 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
     const [revoking, setRevoking] = useState<PhoneRow | null>(null)
     const [busy, setBusy] = useState(false)
 
-    const { data: permBody, mutate: refreshPerms } = useSWR(decidesPermissions ? `/api/attendance/permissions?${q}status=PENDING` : null, fetcher)
-    const { data: missBody, mutate: refreshMissing } = useSWR(decidesMissing ? `/api/attendance/missing-punches?${q}status=PENDING` : null, fetcher)
     const { data: otBody, mutate: refreshOvertime } = useSWR(decidesOvertime && month ? `/api/attendance/overtime?${q}from=${month}-01&to=${lastDayOf(month)}` : null, fetcher)
     const { data: flagBody, error: flagError, mutate: refreshFlagged } = useSWR(decidesMissing ? `/api/attendance/flagged?${q}` : null, fetcher)
     const { data: phoneBody, error: phoneError, mutate: refreshPhones } = useSWR(decidesPhones ? `/api/attendance/phones?${q}` : null, fetcher)
     const { data: peopleBody } = useSWR(decidesOvertime ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
-    const permissions: PermissionRow[] | null = permBody ? permBody.data?.requests ?? [] : null
-    const missing: MissingRow[] | null = missBody ? missBody.data?.requests ?? [] : null
     const waiting: Waiting[] | null = otBody ? otBody.data?.waiting ?? [] : null
     const decisions: Decision[] = otBody?.data?.decisions ?? []
     const phones: PhoneRow[] = phoneBody?.data?.phones ?? []
@@ -399,12 +307,6 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
             refresh()
         } finally { setBusy(false) }
     }
-    const decide = (kind: 'permission' | 'missing', id: string, approve: boolean, reason?: string) => act(
-        kind === 'permission' ? `/api/attendance/permissions/${id}/decide` : `/api/attendance/missing-punches/${id}/decide`,
-        json('POST', { approve, reason: reason ?? null }),
-        approve ? 'req_approved' : 'req_rejected',
-        kind === 'permission' ? refreshPerms : refreshMissing,
-    )
     const decideCheckIn = (id: string, accept: boolean, reason?: string) =>
         act(`/api/attendance/flagged/${id}/decide`, json('POST', { accept, reason: reason ?? null }), accept ? 'req_approved' : 'req_rejected', refreshFlagged)
     const decidePhone = (id: string, approve: boolean, reason?: string) =>
@@ -418,8 +320,7 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
         try {
             if (r.kind === 'overtime') return await decideOvertime(r.userId, r.date, 'REJECTED', reason)
             if (r.kind === 'phone') return await decidePhone(r.id, false, reason)
-            if (r.kind === 'checkin') return await decideCheckIn(r.id, false, reason)
-            return await decide(r.kind, r.id, false, reason)
+            return await decideCheckIn(r.id, false, reason)
         } finally { setRejecting(null) }
     }
     const approveReject = (onApprove: () => void, onReject: () => void) => (
@@ -434,59 +335,14 @@ function ToDecide({ q, companyId, today }: { q: string; companyId: string | null
         <section className="glass" style={box}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('req_to_decide')}</h2>
 
-            {decidesPermissions && (
-                <>
-                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_permissions')}</h3>
-                    {permissions === null ? <LoadingSpinner /> : permissions.length === 0 ? <p style={{ margin: 0, ...soft }}>{t('req_none_waiting')}</p> : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                                <thead><tr><th>{t('punch_person')}</th><th>{t('punch_date')}</th><th>{t('req_type')}</th><th>{t('req_time')}</th><th /></tr></thead>
-                                <tbody>
-                                    {permissions.map(r => (
-                                        <tr key={r.id}>
-                                            <td>{r.name}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}><bdi>{r.date}</bdi></td>
-                                            <td>{t(TYPE_KEY[r.type])}<div style={soft}>{r.reason}</div></td>
-                                            <td style={{ whiteSpace: 'nowrap' }}><bdi>{r.start}–{r.end}</bdi><div style={soft}>{t('req_minutes').replace('{n}', String(r.minutes))}</div></td>
-                                            <td>{!mine(r.userId) && p.canFor('attendance.approve_permissions', r.userId, r.teamLeaderId) && (
-                                                approveReject(() => decide('permission', r.id, true), () => setRejecting({ kind: 'permission', id: r.id }))
-                                            )}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </>
+            {/* Permission hours and missing punches are decided on the one Requests page (UI_PLAN.md §2.3, part 3c). */}
+            {(decidesPermissions || decidesMissing) && (
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '0.88rem', flex: '1 1 16rem' }}>{t('requests_moved_review')}</p>
+                    <ButtonLink href="/dashboard/requests?tab=review">{t('requests_open_review')}</ButtonLink>
+                </div>
             )}
 
-            {decidesMissing && (
-                <>
-                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_missing')}</h3>
-                    {missing === null ? <LoadingSpinner /> : missing.length === 0 ? <p style={{ margin: 0, ...soft }}>{t('req_none_waiting')}</p> : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                                <thead><tr><th>{t('punch_person')}</th><th>{t('punch_time')}</th><th>{t('punch_direction')}</th><th /></tr></thead>
-                                <tbody>
-                                    {missing.map(r => (
-                                        <tr key={r.id}>
-                                            <td>{r.name}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}><bdi>{r.at.replace('T', ' ')}</bdi><div style={soft}>{r.reason}</div></td>
-                                            <td>{r.direction === 'IN' ? t('punch_in') : r.direction === 'OUT' ? t('punch_out') : '—'}</td>
-                                            <td>{!mine(r.userId) && p.canFor('attendance.correct', r.userId, r.teamLeaderId) && (
-                                                approveReject(() => decide('missing', r.id, true), () => setRejecting({ kind: 'missing', id: r.id }))
-                                            )}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* Check-ins the app flagged for the company to decide (§9.6): shown while
-                loading or failing, and once loaded only when there is one. */}
             {decidesMissing && (!flagBody || flagged.length > 0) && (
                 <>
                     <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_flagged')}</h3>
