@@ -175,7 +175,9 @@ describe("the register screen asks before it freezes", () => {
         // this slice swallow the pending card it is meant to exclude — a slice
         // that silently widened, which is the third time bounding a slice on
         // the wrong marker has bitten in this repository.
-        const header = PAGE.slice(PAGE.indexOf("payroll_save_draft"), PAGE.indexOf("{view && !isDraft && card("))
+        // On the building blocks the buttons are the page header's, and the
+        // month's picker follows it (UI_PLAN.md §5 step 5).
+        const header = PAGE.slice(PAGE.indexOf("payroll_save_draft"), PAGE.indexOf("<PeriodBar>"))
         expect(header.length, "the header slice no longer terminates").toBeGreaterThan(0)
         expect(header, "the acknowledgement moved into the button group")
             .not.toContain("payroll_acknowledge_pending")
@@ -184,9 +186,10 @@ describe("the register screen asks before it freezes", () => {
     it("says what approving does before it does it", () => {
         // Still asked before it happens, now in the app's own dialog rather
         // than the browser's — confirm() ignored the palette, could not be
-        // translated, and rendered Arabic left-to-right.
+        // translated, and rendered Arabic left-to-right. On the building
+        // blocks, it's their dialog (UI_PLAN.md §5 step 5).
         expect(PAGE).toContain("payroll_approve_msg")
-        expect(PAGE).toMatch(/<ConfirmModal[\s/>]/)
+        expect(PAGE).toMatch(/<Dialog\s+open=\{confirming\?\.kind === 'approve'\}/)
         expect(PAGE).toContain("setConfirming({ kind: 'approve' })")
         expect(PAGE).not.toMatch(/(?<![.\w])confirm\s*\(/)
     })

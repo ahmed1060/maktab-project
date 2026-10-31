@@ -219,7 +219,8 @@ describe("the money moving is one act", () => {
         // stamping the 27th makes the record disagree with the bank. A future
         // date is the one thing this status is not for.
         expect(PAID_ROUTE).toContain("A payment date cannot be in the future")
-        expect(PAGE).toContain("max={new Date().toISOString().slice(0, 10)}")
+        expect(PAGE).toContain("const today = new Date().toISOString().slice(0, 10)")
+        expect(PAGE).toMatch(/<DatePickerSingle [^>]*maxDate=\{today\}/)
     })
 })
 
@@ -260,8 +261,8 @@ describe("the screen tells the truth about what has gone out", () => {
         // number: batches resume, a reserved address is never stamped, and a
         // run can sit at 48 of 50 indefinitely.
         expect(PAGE).toContain("payroll_issue_progress")
-        expect(PAGE).toContain("view.delivery.sent")
-        expect(PAGE).toContain("view.delivery.sendable")
+        expect(PAGE).toContain("count(delivery.sent)")
+        expect(PAGE).toContain("count(delivery.sendable)")
     })
 
     it("names the people a send skipped or failed on, separately from the count", () => {
@@ -272,8 +273,9 @@ describe("the screen tells the truth about what has gone out", () => {
     })
 
     it("offers no send button before the month is approved", () => {
-        const card = PAGE.slice(PAGE.indexOf("payroll_delivery"), PAGE.indexOf("{register && card("))
-        expect(PAGE).toContain("{view && !isDraft && view.delivery && canDeliver && card(")
+        // Each half's button is for whoever may do it (UI_PLAN.md §5 step 5).
+        const card = PAGE.slice(PAGE.indexOf("payroll_delivery"), PAGE.indexOf("payroll_totals"))
+        expect(PAGE).toContain("{view && !isDraft && delivery && (canIssue || canMarkPaid) && (")
         expect(card).toContain("payroll_issue")
     })
 })

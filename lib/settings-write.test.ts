@@ -158,7 +158,7 @@ describe("G3: a Super Admin can reach a register", () => {
     it("reloads when the company changes", () => {
         // The company is part of the SWR key, so choosing another one is a
         // different request rather than a cached answer for the last.
-        expect(REGISTER).toMatch(/useSWR\(registerKey, fetcher,/)
+        expect(REGISTER).toMatch(/useSWR\(registerKey, fetcher\)/)
         expect(REGISTER).toContain("`/api/payroll/${year}/${month}${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`")
     })
 
@@ -167,8 +167,11 @@ describe("G3: a Super Admin can reach a register", () => {
     // screen while that one loads, not even last month's. The pickers stay.
     it("shows no other register while the one asked for loads", () => {
         expect(REGISTER).not.toContain("keepPreviousData")
-        expect(REGISTER).toContain("if (!session) return <LoadingSpinner />")
-        expect(REGISTER).toContain("{isLoading && !view && <LoadingSpinner />}")
+        // On the building blocks it says so in place of the register, as
+        // while the session loads, when nothing is asked yet (UI_PLAN.md §5
+        // step 5).
+        expect(REGISTER).toMatch(/\) : !view && \(\s*<div className="ui-panel" role="status"><EmptyState icon=\{HourglassIcon\} title=\{t\('payroll_loading'\)\} \/><\/div>/)
+        expect(REGISTER).toContain("const view: View | null = registerKey && !error ? (data?.data ?? null) : null")
     })
 
     it("reads the company list at the level the envelope actually puts it", () => {

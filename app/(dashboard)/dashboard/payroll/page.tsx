@@ -1,14 +1,19 @@
 'use client'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
+import { BuildingsIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, fetchRetrying, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
+import DatePickerSingle from '@/components/DatePickerSingle'
+import { Button, Card, Details, Dialog, EmptyState, Field, Page, PageHeader, PeriodBar, Section, SectionLink, Select, StatusBadge, TotalTiles, type StatusTone, type Tile } from '@/components/ui'
 import { useCan } from '@/lib/useCan'
+import { useBusyAction } from '@/lib/useBusyAction'
+import { dayLabel } from '@/lib/cash-advances'
+import type { TranslationKey } from '@/lib/translations'
 
 /**
  * The register: one month, everybody in it, and what changed.
@@ -19,6 +24,10 @@ import { useCan } from '@/lib/useCan'
  * things that are not settled — undecided suspensions, people whose month could
  * not be computed — before the list itself, so nothing that needs a decision is
  * below a long table.
+ *
+ * On the building blocks from the top down (UI_PLAN.md §5 step 5): the page
+ * header, the month it's for (DESIGN.md §5.3), paying and sending, and the
+ * totals so far; the review cards, the list and the debts follow.
  */
 
 type Line = { kind: 'EARNING' | 'DEDUCTION'; label: string; amountMinor: number; source: string; sourceId?: string | null }
@@ -64,6 +73,9 @@ type View = {
     attendance?: { reachesPayroll: boolean; from: string | null; byPerson: Record<string, AttendanceMoney>; discrepanciesOpen: number }
 }
 
+/** A month's status, by what it means (DESIGN.md §2.3): a draft is neutral, approved and paid are done. */
+const STATUS_TONE: Record<View['status'], StatusTone> = { DRAFT: 'neutral', APPROVED: 'good', PAID: 'good' }
+
 export default function PayrollRegisterPage() {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -73,18 +85,17 @@ export default function PayrollRegisterPage() {
     const now = new Date()
     const [year, setYear] = useState(now.getFullYear())
     const [month, setMonth] = useState(now.getMonth() + 1)
-    const [saving, setSaving] = useState(false)
     const [open, setOpen] = useState<string | null>(null)
-    const [approving, setApproving] = useState(false)
     const [acknowledged, setAcknowledged] = useState(false)
-    const [issuing, setIssuing] = useState(false)
+    // Saving, approving, sending and marking paid: one at a time, and the
+    // button that started it says so.
+    const action = useBusyAction()
     // G3: a Super Admin has no companyId of their own — SuperAdmin has no such
     // column — so without a picker the register resolved to no company and
     // answered 400. The API always supported naming one; this is the control
     // that was missing.
     const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
     const [companyId, setCompanyId] = useState<string>('')
-    const [paying, setPaying] = useState(false)
     const [waiving, setWaiving] = useState<string | null>(null)
     // Which confirmation is open, if any. One piece of state rather than three
     // booleans: only ever one of these is on screen, and three flags is three
@@ -95,6 +106,8 @@ export default function PayrollRegisterPage() {
         | { kind: 'waive'; debt: { id: string; name: string; amount: number } }
         | null
     >(null)
+    // Not while it works: closing then would hide the answer.
+    const closeConfirm = () => { if (!action.running) setConfirming(null) }
     // Defaults to today, and is a date rather than a switch because a transfer
     // made on the 25th is usually recorded on the 27th, and stamping the 27th
     // makes the record disagree with the bank.
@@ -144,9 +157,9 @@ export default function PayrollRegisterPage() {
     // No other register stays up while this one loads, not even last month's:
     // Save draft, Approve and Mark as paid name the company, month and year
     // picked, not the ones on screen. The pickers stay, over a spinner.
-    const { data, error, isLoading, mutate: load } = useSWR(registerKey, fetcher, {
-        onError: (err: SWRError) => showToast(err.info?.error || t('error_generic'), 'error'),
-    })
+    // Didn't load: the page says so, with the server's own word when it gave
+    // one, and Try again (DESIGN.md §5.5).
+    const { data, error, isValidating, mutate: load } = useSWR(registerKey, fetcher)
     const view: View | null = registerKey && !error ? (data?.data ?? null) : null
     // Attendance changed after a payroll was approved (§12.3): whenever any is
     // open, whatever the switch says now.
@@ -177,7 +190,6 @@ export default function PayrollRegisterPage() {
     }
 
     const save = async () => {
-        setSaving(true)
         try {
             const res = await fetch(`/api/payroll/${year}/${month}`, {
                 method: 'POST',
@@ -189,13 +201,10 @@ export default function PayrollRegisterPage() {
             if (res.ok) load()
         } catch {
             showToast(t('payroll_save_failed'), 'error')
-        } finally {
-            setSaving(false)
         }
     }
 
     const approve = async () => {
-        setApproving(true)
         try {
             const res = await fetch(`/api/payroll/${year}/${month}/approve`, {
                 method: 'POST',
@@ -218,13 +227,10 @@ export default function PayrollRegisterPage() {
             )
         } catch {
             showToast(t('payroll_approve_failed'), 'error')
-        } finally {
-            setApproving(false)
         }
     }
 
     const issue = async () => {
-        setIssuing(true)
         try {
             const res = await fetch(`/api/payroll/${year}/${month}/issue`, {
                 method: 'POST',
@@ -253,13 +259,10 @@ export default function PayrollRegisterPage() {
             load()
         } catch {
             showToast(t('payroll_issue_failed'), 'error')
-        } finally {
-            setIssuing(false)
         }
     }
 
     const markPaid = async () => {
-        setPaying(true)
         try {
             const res = await fetch(`/api/payroll/${year}/${month}/paid`, {
                 method: 'POST',
@@ -271,8 +274,6 @@ export default function PayrollRegisterPage() {
             if (res.ok) load()
         } catch {
             showToast(t('payroll_paid_failed'), 'error')
-        } finally {
-            setPaying(false)
         }
     }
 
@@ -294,18 +295,27 @@ export default function PayrollRegisterPage() {
         }
     }
 
-    const monthName = useMemo(
-        () => new Date(2000, month - 1).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' }),
-        [month, isRtl])
-
-    if (!session) return <LoadingSpinner />
+    const digits = isRtl ? 'ar-EG' : 'en-GB'
+    const count = (n: number) => n.toLocaleString(digits)
+    const months = Array.from({ length: 12 }, (_, i) => ({
+        value: String(i + 1),
+        label: new Date(2000, i).toLocaleString(digits, { month: 'long' }),
+    }))
+    const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => ({
+        value: String(y),
+        label: y.toLocaleString(digits, { useGrouping: false }),
+    }))
 
     const register = view?.register
     const isDraft = view?.status === 'DRAFT'
     const canPrepare = can('payroll.prepare')
     const canApprove = can('payroll.approve')
-    const canDeliver = can('payroll.issue_payslips') || can('payroll.mark_paid')
+    const canIssue = can('payroll.issue_payslips')
+    const canMarkPaid = can('payroll.mark_paid')
     const canWaive = can('debts.waive')
+    const delivery = view?.delivery
+    const today = new Date().toISOString().slice(0, 10)
+    const forCompany = companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''
 
     const card = (children: React.ReactNode, tone?: 'warn' | 'danger') => (
         <div className="card" style={{
@@ -316,177 +326,137 @@ export default function PayrollRegisterPage() {
         }}>{children}</div>
     )
 
-    const stat = (label: string, value: string, tone?: string) => (
-        <div style={{ minWidth: '9rem' }}>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{label}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: tone || 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-        </div>
-    )
+    const totals: Tile[] = register ? [
+        { label: t('payroll_payable'), value: money(register.payableMinor) },
+        { label: t('payroll_included'), value: count(register.includedCount) },
+        ...(register.excludedCount > 0 ? [{ label: t('payroll_excluded'), value: count(register.excludedCount) }] : []),
+        ...(register.carriedMinor > 0 ? [{ label: t('payroll_carried'), value: money(register.carriedMinor) }] : []),
+    ] : []
 
     return (
-        <div style={{ direction: isRtl ? 'rtl' : 'ltr', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div>
-                    <h1 style={{ margin: 0 }}>{t('payroll_register')}</h1>
-                    <p style={{ margin: '0.25rem 0 0', color: 'var(--text-muted)' }}>
-                        {monthName} {year}
-                        {view ? ` · ${t('payroll_month')} ${view.payrollDay}` : ''}
-                    </p>
-                </div>
+        <Page>
+            <PageHeader
+                title={(
+                    <span className="ui-title-with-badge">
+                        {t('payroll_register')}
+                        {view && <StatusBadge tone={STATUS_TONE[view.status]}>{t(`payroll_status_${view.status}` as TranslationKey)}</StatusBadge>}
+                    </span>
+                )}
+                subtitle={`${new Date(year, month - 1).toLocaleString(digits, { month: 'long', year: 'numeric' })}${view ? ` · ${t('payroll_payday_line').replace('{day}', count(view.payrollDay))}` : ''}`}
+                // A draft's: saving it, and approving it, which asks first.
+                action={isDraft && (canPrepare || canApprove) && (
+                    <>
+                        {canPrepare && (
+                            <Button onClick={() => action.run('save', save)} disabled={action.running} busy={action.is('save')}>
+                                {t('payroll_save_draft')}
+                            </Button>
+                        )}
+                        {canApprove && (
+                            <Button variant="primary" onClick={() => setConfirming({ kind: 'approve' })} disabled={action.running || !register || register.includedCount === 0}>
+                                {t('payroll_approve')}
+                            </Button>
+                        )}
+                    </>
+                )}
+            />
 
-                <div style={{ display: 'flex', gap: '0.5rem', marginInlineStart: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {isSuper && (
-                        <select
-                            className="input"
-                            value={companyId}
-                            onChange={e => setCompanyId(e.target.value)}
-                            style={{ width: 'auto', maxWidth: '14rem' }}
-                            aria-label={t('payroll_company')}
-                        >
-                            <option value="">{t('payroll_pick_company')}</option>
-                            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    )}
-                    <select aria-label={t('payroll_month' as any)} className="input" value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: 'auto' }}>
-                        {Array.from({ length: 12 }, (_, i) => (
-                            <option key={i + 1} value={i + 1}>
-                                {new Date(2000, i).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' })}
-                            </option>
-                        ))}
-                    </select>
-                    <select aria-label={t('payroll_year' as any)} className="input" value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: 'auto' }}>
-                        {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => (
-                            <option key={y} value={y}>{y}</option>
-                        ))}
-                    </select>
-                    {view && (
-                        <span style={{
-                            padding: '0.35rem 0.75rem', borderRadius: '0.6rem', fontSize: '0.8rem', fontWeight: 700,
-                            background: isDraft ? 'var(--surface-sunk)' : 'var(--ok-bg)',
-                            color: isDraft ? 'var(--text-muted)' : 'var(--ok-fg)',
-                        }}>
-                            {t(`payroll_status_${view.status}` as any)}
-                        </span>
-                    )}
-                    {/* A file of whatever is stored, draft included — the
-                        filename carries the status, so a draft export cannot be
-                        mistaken for an approved one. A plain link rather than a
-                        fetch-and-blob: the browser already sends the session
-                        cookie, and this way the download behaves like a
-                        download. */}
-                    {view?.delivery && (
-                        <a className="btn" href={`/api/payroll/${year}/${month}/export${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`}>
-                            {t('payroll_export')}
-                        </a>
-                    )}
-                    {isDraft && canPrepare && (
-                        <button className="btn" onClick={save} disabled={saving || approving}>
-                            {saving ? '…' : t('payroll_save_draft')}
-                        </button>
-                    )}
-                    {isDraft && canApprove && (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => setConfirming({ kind: 'approve' })}
-                            disabled={approving || saving || !register || register.includedCount === 0}
-                        >
-                            {approving ? '…' : t('payroll_approve')}
-                        </button>
-                    )}
-                </div>
-            </div>
+            <PeriodBar>
+                {isSuper && (
+                    <Field label={t('payroll_company')} className="ui-period-wide">{p => (
+                        <Select {...p} value={companyId} onChange={e => setCompanyId(e.target.value)} options={[
+                            { value: '', label: t('payroll_pick_company') },
+                            ...companies.map(c => ({ value: c.id, label: c.name })),
+                        ]} />
+                    )}</Field>
+                )}
+                <Field label={t('payroll_month')}>{p => (
+                    <Select {...p} value={String(month)} onChange={e => setMonth(Number(e.target.value))} options={months} />
+                )}</Field>
+                <Field label={t('payroll_year')}>{p => (
+                    <Select {...p} value={String(year)} onChange={e => setYear(Number(e.target.value))} options={years} />
+                )}</Field>
+            </PeriodBar>
 
-            {isSuper && !companyId && card(
-                <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('payroll_pick_company_hint')}</p>
+            {isSuper && !companyId ? (
+                <div className="ui-panel"><EmptyState icon={BuildingsIcon} title={t('payroll_pick_company_hint')} /></div>
+            ) : error ? (
+                <div className="ui-panel">
+                    <EmptyState
+                        icon={WarningCircleIcon}
+                        title={t('payroll_load_failed')}
+                        detail={(error as SWRError).info?.error}
+                        action={<Button busy={isValidating} onClick={() => { void load() }}>{t('try_again')}</Button>}
+                    />
+                </div>
+            ) : !view && (
+                <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('payroll_loading')} /></div>
             )}
 
-            {isLoading && !view && <LoadingSpinner />}
-
-            {view && !isDraft && card(
-                <p style={{ margin: 0, fontSize: '0.9rem' }}>{t('payroll_approved_locked')}</p>
-            )}
+            {view && !isDraft && <Card><p>{t('payroll_approved_locked')}</p></Card>}
 
             {/* Sending and paying. Only after approval, and the two halves are
-                laid out side by side because they are independent: payslips can
-                go out before the transfer clears, or after, and neither waits on
-                the other. */}
-            {view && !isDraft && view.delivery && canDeliver && card(
-                <>
-                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_delivery')}</h2>
-                    <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('payroll_delivery_msg')}</p>
-
-                    <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '14rem' }}>
-                            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                                {t('payroll_issue')}
-                            </div>
-                            {view.delivery.sendable === 0 ? (
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t('payroll_issue_none')}</span>
+                side by side because they are independent: payslips can go out
+                before the transfer clears, or after, and neither waits on the
+                other. Each half's button is for whoever may do it. */}
+            {view && !isDraft && delivery && (canIssue || canMarkPaid) && (
+                <Card title={t('payroll_delivery')}>
+                    <p className="ui-card-note">{t('payroll_delivery_msg')}</p>
+                    <div className="ui-columns">
+                        <section>
+                            <h3 className="ui-subsection-title">{t('payroll_issue')}</h3>
+                            {delivery.sendable === 0 ? (
+                                <p className="ui-card-note">{t('payroll_issue_none')}</p>
                             ) : (
                                 <>
-                                    <span style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>
-                                        {t('payroll_issue_progress')
-                                            .replace('{sent}', String(view.delivery.sent))
-                                            .replace('{total}', String(view.delivery.sendable))}
-                                    </span>
-                                    {view.delivery.unsent === 0 ? (
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--ok-fg)' }}>{t('payroll_issue_all_sent')}</span>
-                                    ) : (
-                                        <button className="btn btn-primary" onClick={issue} disabled={issuing} style={{ alignSelf: 'flex-start' }}>
-                                            {issuing ? '…' : t('payroll_issue_next')
-                                                .replace('{n}', String(Math.min(view.delivery.batchSize, view.delivery.unsent)))}
-                                        </button>
+                                    <p className="ui-num">
+                                        {t('payroll_issue_progress').replace('{sent}', count(delivery.sent)).replace('{total}', count(delivery.sendable))}
+                                    </p>
+                                    {delivery.unsent === 0 ? (
+                                        <p className="ui-card-note">{t('payroll_issue_all_sent')}</p>
+                                    ) : canIssue && (
+                                        <div className="ui-form-actions">
+                                            <Button variant="primary" onClick={() => action.run('issue', issue)} disabled={action.running} busy={action.is('issue')}>
+                                                {t('payroll_issue_next').replace('{n}', count(Math.min(delivery.batchSize, delivery.unsent)))}
+                                            </Button>
+                                        </div>
                                     )}
                                 </>
                             )}
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '14rem' }}>
-                            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                                {t('payroll_mark_paid')}
-                            </div>
-                            {view.delivery.paidAt ? (
-                                <span style={{ fontSize: '0.9rem' }}>
-                                    {t('payroll_paid_on')}{' '}
-                                    {new Date(view.delivery.paidAt).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
-                                </span>
-                            ) : (
+                        </section>
+                        <section>
+                            <h3 className="ui-subsection-title">{t('payroll_mark_paid')}</h3>
+                            {delivery.paidAt ? (
+                                // Kept as the day picked: the start of it, in UTC.
+                                <p>{`${t('payroll_paid_on')} ${dayLabel(delivery.paidAt.slice(0, 10), locale)}`}</p>
+                            ) : canMarkPaid ? (
                                 <>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} htmlFor="payroll-paid-at">
-                                        {t('payroll_paid_date')}
-                                    </label>
-                                    <input
-                                        id="payroll-paid-at"
-                                        className="input"
-                                        type="date"
-                                        value={paidAt}
-                                        max={new Date().toISOString().slice(0, 10)}
-                                        onChange={e => setPaidAt(e.target.value)}
-                                        style={{ width: 'auto' }}
-                                    />
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('payroll_paid_date_hint')}</span>
-                                    <button
-                                        className="btn"
-                                        onClick={() => setConfirming({ kind: 'paid' })}
-                                        disabled={paying}
-                                        style={{ alignSelf: 'flex-start' }}
-                                    >
-                                        {paying ? '…' : t('payroll_mark_paid')}
-                                    </button>
+                                    {/* A date rather than a switch: a transfer made on the
+                                        25th is usually recorded on the 27th, and stamping
+                                        the 27th makes the record disagree with the bank. */}
+                                    <DatePickerSingle asField label={t('payroll_paid_date')} hint={t('payroll_paid_date_hint')} value={paidAt} maxDate={today} onChange={setPaidAt} disabled={action.running} />
+                                    <div className="ui-form-actions">
+                                        <Button onClick={() => setConfirming({ kind: 'paid' })} disabled={action.running}>{t('payroll_mark_paid')}</Button>
+                                    </div>
                                 </>
+                            ) : (
+                                <p className="ui-card-note">{t('payroll_not_paid_yet')}</p>
                             )}
-                        </div>
+                        </section>
                     </div>
-                </>
+                </Card>
             )}
 
-            {register && card(
-                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                    {stat(t('payroll_payable'), money(register.payableMinor))}
-                    {stat(t('payroll_included'), String(register.includedCount))}
-                    {register.excludedCount > 0 && stat(t('payroll_excluded'), String(register.excludedCount), 'var(--text-muted)')}
-                    {register.carriedMinor > 0 && stat(t('payroll_carried'), money(register.carriedMinor), 'var(--danger-solid)')}
-                </div>
+            {/* The register as a file, draft included, once it's stored: the
+                filename carries the status, so a draft's can't be taken for an
+                approved one's. Beside the totals rather than in the header,
+                where it made a third button beside Save draft and Approve. */}
+            {register && (
+                <Section
+                    title={t('payroll_totals')}
+                    action={delivery && <SectionLink download href={`/api/payroll/${year}/${month}/export${forCompany}`}>{t('payroll_export')}</SectionLink>}
+                >
+                    <TotalTiles items={totals} />
+                </Section>
             )}
 
             {/* E1: what has moved since the draft on screen was saved.
@@ -732,41 +702,48 @@ export default function PayrollRegisterPage() {
                 onConfirm={resolve}
                 onCancel={() => setResolving(null)}
             />
-            {/* One modal, told what it is asking by the state above. Approving
-                and marking paid are irreversible; writing off a debt is too, and
-                additionally needs to record why — so it is the same dialog with
-                a reason field rather than a second dialog that would drift out
-                of step with this one. */}
+            {/* Approving and marking paid can't be undone, so each asks first,
+                and stays open while it works: the code a high-risk action asks
+                for comes up over it. */}
+            <Dialog
+                open={confirming?.kind === 'approve'}
+                onClose={closeConfirm}
+                title={t('payroll_approve_title')}
+                actions={<>
+                    <Button onClick={closeConfirm} disabled={action.running}>{t('cancel')}</Button>
+                    <Button variant="primary" onClick={() => action.run('approve', async () => { await approve(); setConfirming(null) })} disabled={action.running} busy={action.is('approve')}>
+                        {t('payroll_approve')}
+                    </Button>
+                </>}
+            >
+                <p>{t('payroll_approve_msg')}</p>
+            </Dialog>
+            <Dialog
+                open={confirming?.kind === 'paid'}
+                onClose={closeConfirm}
+                title={t('payroll_mark_paid_title')}
+                actions={<>
+                    <Button onClick={closeConfirm} disabled={action.running}>{t('cancel')}</Button>
+                    <Button variant="primary" onClick={() => action.run('paid', async () => { await markPaid(); setConfirming(null) })} disabled={action.running} busy={action.is('paid')}>
+                        {t('payroll_mark_paid')}
+                    </Button>
+                </>}
+            >
+                <p>{t('payroll_mark_paid_msg')}</p>
+                <Details items={[{ label: t('payroll_paid_date'), value: dayLabel(paidAt, locale) }]} />
+            </Dialog>
+            {/* Writing off a debt can't be undone either, and records why. */}
             <ConfirmModal
-                isOpen={confirming !== null}
-                variant={confirming?.kind === 'waive' ? 'warning' : 'danger'}
-                title={
-                    confirming?.kind === 'approve' ? t('payroll_approve_title')
-                        : confirming?.kind === 'paid' ? t('payroll_mark_paid_title')
-                            : confirming?.kind === 'waive'
-                                ? t('payroll_debt_waive_title').replace('{name}', confirming.debt.name)
-                                : ''
-                }
-                message={
-                    confirming?.kind === 'approve' ? t('payroll_approve_msg')
-                        : confirming?.kind === 'paid' ? t('payroll_mark_paid_msg')
-                            : confirming?.kind === 'waive' ? t('payroll_debt_waive_msg')
-                                : ''
-                }
-                confirmText={
-                    confirming?.kind === 'approve' ? t('payroll_approve')
-                        : confirming?.kind === 'paid' ? t('payroll_mark_paid')
-                            : t('payroll_debt_waive')
-                }
-                reason={confirming?.kind === 'waive'
-                    ? { label: t('payroll_debt_waive_reason_label'), placeholder: t('payroll_debt_waive_reason_hint') }
-                    : undefined}
+                isOpen={confirming?.kind === 'waive'}
+                variant="warning"
+                title={confirming?.kind === 'waive' ? t('payroll_debt_waive_title').replace('{name}', confirming.debt.name) : ''}
+                message={t('payroll_debt_waive_msg')}
+                confirmText={t('payroll_debt_waive')}
+                reason={{ label: t('payroll_debt_waive_reason_label'), placeholder: t('payroll_debt_waive_reason_hint') }}
                 onCancel={() => setConfirming(null)}
                 onConfirm={async (reason) => {
                     const pending = confirming
-                    if (pending?.kind === 'approve') await approve()
-                    else if (pending?.kind === 'paid') await markPaid()
-                    else if (pending?.kind === 'waive') await waive(pending.debt, reason ?? '')
+                    if (pending?.kind === 'waive') await waive(pending.debt, reason ?? '')
                     setConfirming(null)
                 }}
             />
@@ -815,6 +792,6 @@ export default function PayrollRegisterPage() {
                     ))}
                 </>
             )}
-        </div>
+        </Page>
     )
 }

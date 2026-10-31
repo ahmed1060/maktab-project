@@ -80,9 +80,24 @@ export function Section({ title, action, children }: { title: ReactNode; action?
     )
 }
 
-/** A quiet link on the end of a section's heading, such as "View all". */
-export function SectionLink({ href, children }: { href: string; children: ReactNode }) {
+/**
+ * A quiet link on the end of a section's heading, such as "View all", or a
+ * file to download, such as Payroll's register: that's a plain link, which
+ * the browser fetches itself, where the app's own would fetch it as a page.
+ */
+export function SectionLink({ href, download, children }: { href: string; download?: boolean; children: ReactNode }) {
+    if (download) return <a className="ui-btn ui-btn-quiet ui-btn-sm" href={href} download>{children}</a>
     return <Link href={href} className="ui-btn ui-btn-quiet ui-btn-sm">{children}</Link>
+}
+
+/**
+ * Which period a page is about, such as Payroll's month (DESIGN.md §5.3): its
+ * selects, each a Field, in a panel under the page header. A Field with
+ * `ui-period-wide`, such as the Super Admin's company, takes a line of its
+ * own on phones.
+ */
+export function PeriodBar({ children }: { children: ReactNode }) {
+    return <div className="ui-panel ui-period">{children}</div>
 }
 
 /** A short list in a panel, a row per item. A full list with filters and pages is a DataList. */
