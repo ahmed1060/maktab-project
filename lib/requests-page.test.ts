@@ -519,7 +519,7 @@ describe("its server page", () => {
 
     it("finds a day off a notification picked out too, now that its links land here (part 2d)", () => {
         expect(server).toContain("prisma.dayOffRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
-        expect(server).toContain('picked.status === "COMPLETED" || picked.status === "APPROVED" || picked.status === "REJECTED"')
+        expect(server).toContain('picked.status === "PENDING" || picked.status === "IN_PROGRESS" ? "waiting" : "done"')
     })
 
     it("offers asking for permission hours to whoever has attendance of their own, with what's left of the month's", () => {
@@ -530,8 +530,12 @@ describe("its server page", () => {
     it("finds permission hours and missing punches a notification picked out too, now that their links land here (part 3c)", () => {
         expect(server).toContain("prisma.permissionRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
         expect(server).toContain("prisma.missingPunchRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
-        // Withdrawn is done too.
-        expect(server).toContain('picked.status === "CANCELLED"')
+    })
+
+    it("finds a check-in phone a notification picked out too, now that its links land here (part 4d)", () => {
+        expect(server).toContain("prisma.checkInPhone.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })")
+        // A phone in use, revoked or withdrawn is done too: only waiting is waiting.
+        expect(server).toContain('show ??= picked.status === "PENDING" || picked.status === "IN_PROGRESS" ? "waiting" : "done"')
     })
 
     it("reads the dates of leave only for Day off", () => {

@@ -16,7 +16,8 @@ describe("map links", () => {
     it.each([
         "components/AttendanceLocationsPanel.tsx",
         "app/(dashboard)/dashboard/check-ins/page.tsx",
-        "app/(dashboard)/dashboard/attendance/RequestsTab.tsx",
+        // A flagged check-in's, on the Requests page since part 4c.
+        "app/(dashboard)/dashboard/requests/RequestsClient.tsx",
     ])("%s uses it, not OpenStreetMap", f => {
         const s = readFileSync(f, "utf8")
         expect(s).toContain("googleMapsLink")

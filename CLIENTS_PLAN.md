@@ -2097,3 +2097,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** Check-in phones on the Requests page were merged in #134
   (`UI_PLAN.md` §2.3), and flagged check-ins join it in #135. Neither
   touches clients or locations.
+- **2026-10-31:** Flagged check-ins on the Requests page were merged in #135
+  (`UI_PLAN.md` §2.3), and the Attendance page points there for all of
+  them in #136. Neither touches clients or locations.

@@ -34,16 +34,19 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     // A notification's request opens on the tab it's on, and with its
     // status: their own on Mine, anyone else's on To review, and Done once
     // it's done, decided or withdrawn. It shows only if the feed has it for
-    // them. A day off's too, since its links land here (§2.3, part 2d), and
-    // permission hours' and a missing punch's (part 3c).
+    // them. A day off's too, since its links land here (§2.3, part 2d),
+    // permission hours' and a missing punch's (part 3c), and a new check-in
+    // phone's (part 4d).
     if (searchParams.highlight && (!tab || !show)) {
         const picked = await prisma.request.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.dayOffRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.permissionRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.missingPunchRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
+            ?? await prisma.checkInPhone.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
         if (picked) {
             tab ??= picked.userId === viewer.id ? "mine" : "review"
-            show ??= picked.status === "COMPLETED" || picked.status === "APPROVED" || picked.status === "REJECTED" || picked.status === "CANCELLED" ? "done" : "waiting"
+            // Waiting is waiting, or started; anything else is done: done, decided, withdrawn, in use or revoked.
+            show ??= picked.status === "PENDING" || picked.status === "IN_PROGRESS" ? "waiting" : "done"
         }
     }
     // What waits on them comes first, for whoever has it.
