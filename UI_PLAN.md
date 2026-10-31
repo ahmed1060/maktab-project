@@ -162,9 +162,11 @@ one once its kind has moved in.
       a new company's built-in roles. Nothing checks it yet.
    2. **2b:** the companies there already get it, by a migration, once 2a
       is live; then asking for leave needs it (#127).
-   3. **2c:** day off on the page: asked for in a dialog, decided under To
-      review with the days to take off and from what, and Day off requests
-      sends people there.
+   3. **2c:** day off on the page: asked for from New request, decided
+      under To review with the days to take off and from what, and the
+      balance on Mine (#128). The Day off page stays meanwhile.
+   4. **2d:** Day off requests sends people there, with its notifications
+      and the dashboard's tile, once the page has what its list filters by.
 3. **Permission hours and missing punches:** asked for and decided on the
    page; Attendance's Requests tab points there.
 4. **Overtime, phones and flagged punches:** decided under To review.
@@ -1495,3 +1497,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   nobody's employee and holds no personal permission. The Day off page
   offers Request day off by it, rather than to whoever doesn't see others'
   leave, so a manager whose role holds it, an HR officer say, asks too.
+- **2026-10-31:** The companies there got Ask for leave, merged in #127
+  (§2.3, part 2b), and day off moves onto the Requests page in two PRs
+  rather than one: 2c brings it there, and 2d sends the Day off page's
+  people, links and tile to it. Its first opens for review in #128.
+- **2026-10-31:** In #128, day off joins the one Requests page (§2.3,
+  part 2c):
+  - Its rows read as any request's: the kind of leave, which days and how
+    many work days (every day but Friday), who asked, when, and its status:
+    Pending while waiting, then Approved or Rejected, under Done. Its kind
+    is "Day off", in the kind filter and under its name.
+  - From the feed, by Day off's own rules: Mine is one's own, in a company
+    with Day off; To review is everyone else's whose leave one sees, at that
+    reach, with Approve and Reject where one may decide it, never one's own.
+  - Approving asks for the days to take and whether from the balance or the
+    salary, which it has to be when the balance is short; rejecting asks for
+    a reason, if there is one. Its details say what came of it.
+  - New request asks what for: a general request, or a day off, for
+    whoever's role may ask for leave. A day off has its type, its day or
+    days, from today on, and why; a missing day is said under its picker,
+    and a day asked for already, or gone, in their language.
+  - Their balance is a donut on Mine, above the list.
+  - The search finds a day off by its reason, as well as a request by its
+    title.
+  - In Arabic, a line's parts are joined with an Arabic comma: a dot beside
+    a number reads as the digit zero (found in the browser).

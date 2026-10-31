@@ -109,12 +109,91 @@ describe("the Requests page", () => {
     })
 })
 
+describe("day off on it (UI_PLAN.md §2.3, part 2c)", () => {
+    const leave = (fields: Partial<FeedRow> = {}): FeedRow => row({
+        kind: "dayOff", id: "d1", what: "REGULAR", detail: "A wedding",
+        dayOff: { from: "2026-11-03T00:00:00.000Z", to: "2026-11-05T00:00:00.000Z", deducted: 0, deductedFrom: "CREDIT", rejectionReason: null, credit: 12 },
+        ...fields,
+    })
+    const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
+    const dialogs = readFileSync("app/(dashboard)/dashboard/requests/DayOffDialogs.tsx", "utf8")
+
+    it("reads as any request does: the kind of leave, which days and how many work days, who asked and its status", async () => {
+        const html = await page({ rows: [leave()], kinds: ["internal", "dayOff"] })
+        expect(html).toContain("regular_day_off")
+        expect(html).toContain("3 Nov 2026 – 5 Nov 2026")
+        expect(html).toContain("count_days_other")
+        expect(html).toContain("Mona Adel")
+        expect(html).toContain("ui-badge ui-badge-waiting")
+        // Its kind is "Day off", not the side bar's "Day off requests" (found in the browser).
+        expect(html).toContain("requests_kind_day_off")
+    })
+
+    it("joins its days with an Arabic comma in Arabic, where a dot reads as the digit zero (found in the browser)", () => {
+        expect(client).toContain("const sep = locale === 'ar' ? '، ' : ' · '")
+        expect(client).not.toContain("join(' · ')")
+        expect(client).not.toMatch(/\{leaveDates\(r\)\} · \{leaveDays\(r\)\}/)
+    })
+
+    it("is approved or rejected under To review by whoever may decide it", async () => {
+        expect(await page({ rows: [leave()] })).not.toContain("approve_button")
+        const html = await page({ rows: [leave({ mayDecide: true })] })
+        expect(html).toMatch(/<button[^>]*>.*approve_button/)
+        expect(html).toMatch(/<button[^>]*>.*reject_button/)
+    })
+
+    it("once decided, is Approved or Rejected", async () => {
+        expect(await page({ rows: [leave({ status: "APPROVED" })], show: "done" })).toContain("ui-badge ui-badge-good")
+        expect(await page({ rows: [leave({ status: "REJECTED" })], show: "done" })).toContain("ui-badge ui-badge-problem")
+    })
+
+    it("is searched by its reason as well as a request by its title", async () => {
+        expect(await page({ kinds: ["internal", "dayOff"] })).toContain("requests_search_any")
+        expect(await page()).not.toContain("requests_search_any")
+    })
+
+    it("shows one's day off balance on Mine, above the list, to whoever may ask for leave", async () => {
+        const mine = await page({ tab: "mine", kinds: ["internal", "dayOff"], credit: { remaining: 9, used: 3 }, mayAskDayOff: true })
+        expect(mine).toContain("credit_overview")
+        expect(mine.indexOf("credit_overview")).toBeLessThan(mine.indexOf("ui-filterbar"))
+        expect(await page({ kinds: ["internal", "dayOff"], credit: { remaining: 9, used: 3 }, mayAskDayOff: true })).not.toContain("credit_overview")
+        expect(await page({ tab: "mine", credit: null })).not.toContain("credit_overview")
+    })
+
+    it("is decided as the old page did: days to take, from the balance or the salary, or a reason to refuse", () => {
+        expect(dialogs).toContain("fetch(`/api/admin/day-off-requests/${request.id}`")
+        expect(dialogs).toContain("t('days_to_deduct_label')")
+        expect(dialogs).toContain("t('insufficient_credit')")
+        expect(dialogs).toContain("maxLength={300}")
+    })
+
+    it("is asked for from New request, by whoever may, with its type, days and reason", () => {
+        expect(client).toContain("mayAskDayOff")
+        expect(dialogs).toContain("fetch('/api/day-off-requests'")
+        expect(dialogs).toContain("t('requests_day_off_date_missing')")
+        // Why the server refused it, in their language.
+        expect(dialogs).toContain("OVERLAPPING_REQUEST")
+        expect(dialogs).toContain("DATE_IN_PAST")
+    })
+
+    it("has no styles typed in", async () => {
+        const html = await page({ rows: [leave({ mayDecide: true })], kinds: ["internal", "dayOff"] })
+        expect(html).not.toContain("style=")
+    })
+})
+
 describe("its server page", () => {
     const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
 
     it("reads the rows from the one feed, on the tab this person has", () => {
         expect(server).toContain("requestFeed(viewer,")
         expect(server).toContain("tabsFor(viewer)")
+    })
+
+    it("offers asking for a day off to whoever's role may, in a company with Day off, with their balance", () => {
+        expect(server).toContain("can(viewer, 'dayoff.request')")
+        expect(server).toContain("sessionHasModule({ user: viewer }, 'DAY_OFF')")
+        expect(server).toContain("usedDayOffCredit(")
     })
 
     it("opens a notification's request on its tab and with its status", () => {

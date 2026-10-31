@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { spansDays } from "./day-off-range"
+import { spansDays, workDays } from "./day-off-range"
 
 describe("a day-off request's dates", () => {
     it("show both ends from two days up", () => {
@@ -18,5 +18,18 @@ describe("a day-off request's dates", () => {
         const page = readFileSync("app/(dashboard)/dashboard/day-off-requests/page.tsx", "utf8")
         expect(page).toContain("const range = (r: DayOffRequest) => spansDays(r.date, r.endDate)")
         expect(page).not.toContain("+ 86400000")
+    })
+})
+
+describe("the work days a request covers", () => {
+    it("are every day but Friday, counted by calendar day wherever the screen is", () => {
+        // Tuesday 3 to Thursday 5 November 2026.
+        expect(workDays("2026-11-03T00:00:00.000Z", "2026-11-05T00:00:00.000Z")).toBe(3)
+        // Thursday 5 to Saturday 7: Friday the 6th isn't one.
+        expect(workDays("2026-11-05T00:00:00.000Z", "2026-11-07T00:00:00.000Z")).toBe(2)
+        // One day, with no end.
+        expect(workDays("2026-11-03T00:00:00.000Z", null)).toBe(1)
+        // A Friday alone is none.
+        expect(workDays("2026-11-06T00:00:00.000Z")).toBe(0)
     })
 })

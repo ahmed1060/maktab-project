@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { internalOrder, internalRow, internalWhere, pageOf, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, internalRow, internalWhere, pageOf, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -95,8 +95,100 @@ describe("an internal request's row", () => {
     })
 
     it("is read in the order the page merges in, ties by id, so a page boundary neither repeats nor drops one (found by Codex on PR 125)", () => {
-        expect(internalOrder("waiting")).toEqual([{ createdAt: "desc" }, { id: "asc" }])
-        expect(internalOrder("done")).toEqual([{ updatedAt: "desc" }, { id: "asc" }])
+        expect(feedOrder("waiting")).toEqual([{ createdAt: "desc" }, { id: "asc" }])
+        expect(feedOrder("done")).toEqual([{ updatedAt: "desc" }, { id: "asc" }])
+    })
+})
+
+// --- Day off (UI_PLAN.md §2.3, part 2c) ----------------------------------------
+
+/** A company that hasn't the Day off module: Company Management only. */
+const withoutDayOff = <T extends object>(who: T) => ({ ...who, featureAccess: { unrestricted: false, bundles: ["COMPANY_MANAGEMENT"] } })
+/** A role of a company's own that sees and decides its team's leave. */
+const hrTeam = { id: "h1", role: "TEAM_LEADER", companyId: "c1", grants: "32.2,33.2" }
+
+describe("day off on Mine", () => {
+    it("is one's own, waiting or decided", () => {
+        expect(dayOffWhere(employee, waiting)).toEqual({ userId: "e1", status: "PENDING" })
+        expect(dayOffWhere(employee, { ...waiting, show: "done" })).toEqual({ userId: "e1", status: { in: ["APPROVED", "REJECTED"] } })
+    })
+
+    it("is an Admin's own too, asked before their role may ask no more", () => {
+        expect(dayOffWhere(admin, waiting)).toEqual({ userId: "a1", status: "PENDING" })
+    })
+
+    it("isn't the Super Admin's, nor anyone's in a company without Day off", () => {
+        expect(dayOffWhere(superAdmin, waiting)).toBeNull()
+        expect(dayOffWhere(withoutDayOff(employee), waiting)).toBeNull()
+    })
+})
+
+describe("day off on To review", () => {
+    const review = { ...waiting, tab: "review" as const }
+
+    it("is everyone else's in the company, for whoever sees the company's leave", () => {
+        expect(dayOffWhere(admin, review)).toEqual({ user: { companyId: "c1" }, userId: { not: "a1" }, status: "PENDING" })
+    })
+
+    it("is their team's, for a role that sees its team's, and not their own", () => {
+        expect(dayOffWhere(hrTeam, review)).toEqual({
+            user: { companyId: "c1", OR: [{ teamLeaderId: "h1" }, { id: "h1" }] }, userId: { not: "h1" }, status: "PENDING",
+        })
+    })
+
+    it("isn't there for whoever doesn't see others' leave: an employee, or the built-in Team Leader", () => {
+        expect(dayOffWhere(employee, review)).toBeNull()
+        expect(dayOffWhere(leader, review)).toBeNull()
+        expect(dayOffWhere(withoutDayOff(admin), review)).toBeNull()
+    })
+
+    it("is the picked company's for the Super Admin, or every company's", () => {
+        expect(dayOffWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ user: { companyId: "c2" }, status: "PENDING" })
+        expect(dayOffWhere(superAdmin, { ...review, show: "done" })).toEqual({ status: { in: ["APPROVED", "REJECTED"] } })
+    })
+
+    it("narrows to one person and words in the reason, within that reach", () => {
+        expect(dayOffWhere(admin, { ...review, personId: "x9", search: "wedding" })).toMatchObject({
+            user: { companyId: "c1" }, reason: { contains: "wedding", mode: "insensitive" }, AND: [{ userId: "x9" }],
+        })
+    })
+})
+
+describe("a day off's row", () => {
+    const asked = new Date("2026-10-29T09:00:00Z")
+    const request = (fields: object = {}) => ({
+        id: "d1", userId: "e2", type: "REGULAR", status: "PENDING", reason: "A wedding", date: new Date("2026-11-03T00:00:00Z"),
+        endDate: new Date("2026-11-05T00:00:00Z"), createdAt: asked, updatedAt: asked, daysDeducted: 0, deductionType: "CREDIT",
+        rejectionReason: null, user: { firstName: "Mona", lastName: "Adel", teamLeaderId: "h1", companyId: "c1", dayOffCredit: 12 }, ...fields,
+    })
+
+    it("says who asked, for what kind of leave, which days and why", () => {
+        expect(dayOffRow(admin, request())).toMatchObject({
+            kind: "dayOff", id: "d1", who: { id: "e2", name: "Mona Adel" }, what: "REGULAR", detail: "A wedding",
+            asked: asked.toISOString(), status: "PENDING", sortAt: asked.toISOString(), mayDelete: false,
+            dayOff: { from: "2026-11-03T00:00:00.000Z", to: "2026-11-05T00:00:00.000Z" },
+        })
+    })
+
+    it("may be decided by whoever approves leave, within their team for a team's, until it's decided, and never their own", () => {
+        expect(dayOffRow(admin, request()).mayDecide).toBe(true)
+        expect(dayOffRow(hrTeam, request()).mayDecide).toBe(true)
+        expect(dayOffRow(hrTeam, request({ user: { firstName: "Sami", lastName: "Nabil", teamLeaderId: "h2", companyId: "c1", dayOffCredit: 3 } })).mayDecide).toBe(false)
+        expect(dayOffRow(employee, request()).mayDecide).toBe(false)
+        expect(dayOffRow(admin, request({ status: "APPROVED" })).mayDecide).toBe(false)
+        expect(dayOffRow(admin, request({ userId: "a1" })).mayDecide).toBe(false)
+    })
+
+    it("carries the asker's balance only to whoever may decide it", () => {
+        expect(dayOffRow(admin, request()).dayOff?.credit).toBe(12)
+        expect(dayOffRow(employee, request({ userId: "e1" })).dayOff?.credit).toBeNull()
+    })
+
+    it("once decided, says what came of it, and is ordered by when it was", () => {
+        const decided = new Date("2026-10-30T12:00:00Z")
+        const approved = dayOffRow(admin, request({ status: "APPROVED", daysDeducted: 2.5, deductionType: "SALARY", updatedAt: decided }))
+        expect(approved).toMatchObject({ finished: decided.toISOString(), sortAt: decided.toISOString(), dayOff: { deducted: 2.5, deductedFrom: "SALARY" } })
+        expect(dayOffRow(admin, request({ status: "REJECTED", rejectionReason: "Busy week", updatedAt: decided })).dayOff?.rejectionReason).toBe("Busy week")
     })
 })
 

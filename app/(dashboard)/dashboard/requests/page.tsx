@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { askedPage, pageRedirect } from "@/lib/list-page"
 import { accountRefusal } from "@/lib/account-refusal"
+import { can } from "@/lib/permissions/can"
+import { sessionHasModule } from "@/lib/features/require"
+import { usedDayOffCredit } from "@/lib/day-off-credit"
 import AccessDenied from "@/components/AccessDenied"
 import { REQUEST_KINDS, requestFeed, tabsFor, type RequestKind, type RequestsShow, type RequestsTab, type Viewer } from "@/lib/requests/feed"
 import RequestsClient from "./RequestsClient"
@@ -54,10 +57,19 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     const elsewhere = pageRedirect("/dashboard/requests", searchParams, asked, feed.totalPages)
     if (elsewhere) redirect(elsewhere)
 
+    // Asking for a day off, for whoever's role may, in a company with Day off
+    // (§2.3, part 2c); their balance shows on Mine, above the list.
+    const mayAskDayOff = sessionHasModule({ user: viewer }, 'DAY_OFF') && can(viewer, 'dayoff.request')
+    let credit: { remaining: number; used: number } | null = null
+    if (mayAskDayOff && tab === "mine") {
+        const balance = await prisma.user.findUnique({ where: { id: viewer.id }, select: { dayOffCredit: true, baseDayOffCredit: true } })
+        if (balance) credit = { remaining: balance.dayOffCredit, used: usedDayOffCredit(balance.baseDayOffCredit ?? balance.dayOffCredit, balance.dayOffCredit) }
+    }
+
     return (
         <RequestsClient
             rows={feed.rows} total={feed.total} page={page} totalPages={feed.totalPages} kinds={feed.kinds}
-            tabs={tabs} tab={tab} show={show} superAdmin={superAdmin}
+            tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} mayAskDayOff={mayAskDayOff} credit={credit}
         />
     )
 }

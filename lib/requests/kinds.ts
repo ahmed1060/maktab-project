@@ -5,7 +5,7 @@
  */
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal"] as const
+export const REQUEST_KINDS = ["internal", "dayOff"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -27,4 +27,17 @@ export type FeedRow = {
     sortAt: string
     mayDecide: boolean
     mayDelete: boolean
+    /** A day off's own facts (§2.3, part 2c). Its `what` is its type. */
+    dayOff?: DayOffFacts
+}
+
+export type DayOffFacts = {
+    from: string
+    to: string | null
+    /** Once approved, the days taken, and whether from the balance or the salary. */
+    deducted: number
+    deductedFrom: "CREDIT" | "SALARY"
+    rejectionReason: string | null
+    /** The asker's balance, for whoever may decide it: what approving can take from. */
+    credit: number | null
 }

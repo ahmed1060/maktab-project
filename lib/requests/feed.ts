@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { can, grantFor, type Actor, type Target } from "@/lib/permissions/can"
 import { and, teamMemberWhere } from "@/lib/team-scope"
+import { sessionHasModule } from "@/lib/features/require"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
 
 /**
@@ -31,7 +32,7 @@ export type FeedQuery = {
     limit: number
 }
 
-export type Viewer = Actor & { id: string; role?: string | null; companyId?: string | null }
+export type Viewer = Actor & { id: string; role?: string | null; companyId?: string | null; featureAccess?: unknown }
 
 type Listed = { rows: FeedRow[]; total: number }
 
@@ -120,14 +121,15 @@ export function internalRow(v: Viewer, r: InternalRequest): FeedRow {
 }
 
 /**
- * The order internal requests are read in, which must be the order the page
- * merges them in (pageOf): newest first by sortAt, then by id. Read in any
- * other order, a tie at a page's edge gave the next page a different first
- * rows, repeating one and never showing another (found by Codex on PR 125).
- * Done is by when it last changed, which is when it was done: completedAt
- * is null on requests done before it was kept, and Postgres puts nulls first.
+ * The order every kind is read in, which must be the order the page merges
+ * them in (pageOf): newest first by sortAt, then by id. Read in any other
+ * order, a tie at a page's edge gave the next page a different first rows,
+ * repeating one and never showing another (found by Codex on PR 125). Done
+ * is by when it last changed, which is when it was done or decided: an
+ * internal request's completedAt is null on those done before it was kept,
+ * and Postgres puts nulls first.
  */
-export function internalOrder(show: RequestsShow) {
+export function feedOrder(show: RequestsShow) {
     return show === "done"
         ? [{ updatedAt: "desc" as const }, { id: "asc" as const }]
         : [{ createdAt: "desc" as const }, { id: "asc" as const }]
@@ -140,7 +142,7 @@ const internal: Source = {
         return Promise.all([
             prisma.request.findMany({
                 where,
-                orderBy: internalOrder(q.show),
+                orderBy: feedOrder(q.show),
                 take,
                 include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
             }),
@@ -149,7 +151,108 @@ const internal: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal]
+// --- Day off: asked for, then approved or rejected (§2.3, part 2c) -------
+
+const DECIDED = ["APPROVED", "REJECTED"]
+
+/**
+ * Which day-off requests this person has on a tab, in a company that has Day
+ * off, as its APIs' rules: Mine is their own, whether or not their role may
+ * still ask; To review is everyone else's they see with dayoff.view, at its
+ * reach. Null when they have none there.
+ */
+export function dayOffWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "DAY_OFF")) return null
+    const where: Record<string, any> = {}
+    if (q.tab === "mine") {
+        if (v.role === "SUPER_ADMIN") return null
+        where.userId = v.id
+    } else {
+        const reach = grantFor(v, "dayoff.view")
+        if (!reach) return null
+        if (reach === "ALL") {
+            if (q.companyId) where.user = { companyId: q.companyId }
+        } else {
+            if (!v.companyId) return null
+            // A request has no company of its own: its asker's is.
+            where.user = reach === "TEAM" ? { companyId: v.companyId, ...teamMemberWhere(v.id) } : { companyId: v.companyId }
+            // Their own are on Mine.
+            where.userId = { not: v.id }
+        }
+        if (q.personId) and(where, { userId: q.personId })
+    }
+    where.status = q.show === "done" ? { in: DECIDED } : "PENDING"
+    if (q.search) where.reason = { contains: q.search, mode: "insensitive" }
+    return where
+}
+
+type DayOffRequest = {
+    id: string
+    userId: string
+    type: string
+    status: string
+    reason: string | null
+    date: Date
+    endDate: Date | null
+    createdAt: Date
+    updatedAt: Date
+    daysDeducted: number | null
+    deductionType: string
+    rejectionReason: string | null
+    user: { firstName: string; lastName: string; teamLeaderId: string | null; companyId: string | null; dayOffCredit: number }
+}
+
+/**
+ * A day-off request as a row. Deciding it is the decision route's own rule
+ * (PATCH /api/admin/day-off-requests/[id]): dayoff.approve, which is never
+ * one's own, and dayoff.view at its asker. It's never taken off.
+ */
+export function dayOffRow(v: Viewer, r: DayOffRequest): FeedRow {
+    const target: Target = { companyId: r.user.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
+    const decided = r.status !== "PENDING"
+    const mayDecide = !decided && can(v, "dayoff.view", target) && can(v, "dayoff.approve", target)
+    const asked = r.createdAt.toISOString()
+    return {
+        kind: "dayOff",
+        id: r.id,
+        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        what: r.type,
+        detail: r.reason || null,
+        asked,
+        started: null,
+        finished: decided ? r.updatedAt.toISOString() : null,
+        status: r.status,
+        sortAt: decided ? r.updatedAt.toISOString() : asked,
+        mayDecide,
+        mayDelete: false,
+        dayOff: {
+            from: r.date.toISOString(),
+            to: r.endDate?.toISOString() ?? null,
+            deducted: r.daysDeducted ?? 0,
+            deductedFrom: r.deductionType === "SALARY" ? "SALARY" : "CREDIT",
+            rejectionReason: r.rejectionReason,
+            credit: mayDecide ? r.user.dayOffCredit : null,
+        },
+    }
+}
+
+const dayOff: Source = {
+    kind: "dayOff",
+    where: dayOffWhere,
+    list: (v, q, where, take) => {
+        return Promise.all([
+            prisma.dayOffRequest.findMany({
+                where,
+                orderBy: feedOrder(q.show),
+                take,
+                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true, companyId: true, dayOffCredit: true } } },
+            }),
+            prisma.dayOffRequest.count({ where }),
+        ]).then(([rows, total]) => ({ rows: rows.map(r => dayOffRow(v, r)), total }))
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff]
 
 // --- The page --------------------------------------------------------
 
