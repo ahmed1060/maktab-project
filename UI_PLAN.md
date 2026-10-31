@@ -185,7 +185,18 @@ one once its kind has moved in.
       part 4; asking from a day on the Days tab still opens its forms.
 4. **Overtime, phones and flagged punches:** decided under To review.
    Approving someone's phone and a flagged punch join too (Decided on
-   2026-10-30), so a manager has one queue for what waits on them.
+   2026-10-30), so a manager has one queue for what waits on them. Under
+   To review only (Decided on 2026-10-31): nobody asks for them, so Mine
+   doesn't list them; a person's own phone stays on the Attendance page,
+   and so does Approve overtime ahead, which isn't a request. In four PRs
+   (Decided on 2026-10-31):
+   1. **4a:** overtime (#133): a day's overtime waiting, approved with all
+      its minutes or rejected with a reason; a decision may be withdrawn.
+   2. **4b:** check-in phones.
+   3. **4c:** flagged punches, with the face photo and map link they show
+      today.
+   4. **4d:** the Attendance tab's To decide, and their notifications,
+      point there.
 5. **Name changes and role requests:** decided on the page; their pages
    send people there, and the side bar shows one Requests item under
    People.
@@ -1606,3 +1617,20 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The Attendance page's Requests tab no longer lists them: My requests
     points to Mine, and whoever decides them is pointed to To review.
     Overtime, phones and flagged punches stay there until part 4.
+- **2026-10-31:** The Attendance page points to the Requests page, merged in
+  #132, which finishes part 3. Part 4 is planned in four PRs (§2.3):
+  overtime, check-in phones, flagged punches, then the Attendance tab's To
+  decide points there. They're under To review only: nobody asks for them.
+  The first opens in #133.
+- **2026-10-31:** Overtime joins the Requests page in #133 (§2.3, part 4a),
+  under To review only:
+  - Waiting is everyone else's days whose overtime waits for a decision,
+    for whoever decides it with Decide overtime, at its reach, newest day
+    first; Done is the decisions made, the latest first.
+  - A row reads whose, which day, how much, and when they came and left;
+    "asked on" is its day, which has no time of its own.
+  - Approve is one click and approves all its minutes, as on the
+    Attendance page; Reject asks for a reason if there is one; a decision
+    may be withdrawn from More actions, and the day waits again.
+  - Approve overtime ahead stays on the Attendance page, which keeps its
+    overtime list until part 4d.

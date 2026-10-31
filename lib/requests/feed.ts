@@ -465,7 +465,154 @@ const missingPunch: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission, missingPunch]
+// --- Overtime: a day's waiting, then a decision on it (§2.3, part 4a) ---------
+
+/**
+ * Which overtime this person has on a tab, in a company that has Attendance,
+ * as its API's rule (app/api/attendance/overtime): under To review only,
+ * since nobody asks for it (decided on 2026-10-31), everyone else's they
+ * decide with attendance.approve_overtime, at its reach. Waiting is the days
+ * whose overtime waits for a decision (AttendanceDay); Done is the decisions
+ * made (OvertimeApproval). Null when they have none there.
+ */
+export function overtimeWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "ATTENDANCE")) return null
+    if (q.tab === "mine") return null
+    const reach = grantFor(v, "attendance.approve_overtime")
+    if (!reach) return null
+    const where: Record<string, any> = {}
+    if (reach === "ALL") {
+        if (q.companyId) where.companyId = q.companyId
+    } else {
+        if (!v.companyId) return null
+        where.companyId = v.companyId
+        // Nobody decides their own.
+        where.userId = { not: v.id }
+        if (reach === "TEAM") and(where, { user: teamMemberWhere(v.id) })
+    }
+    if (q.personId) and(where, { userId: q.personId })
+    if (q.show === "done") {
+        where.status = { in: DECIDED }
+        if (q.search) where.note = { contains: q.search, mode: "insensitive" }
+    } else {
+        where.overtimeStatus = "PENDING"
+        // A day waiting has no words to search.
+        if (q.search) where.id = { in: [] }
+    }
+    return where
+}
+
+type OvertimePerson = { firstName: string; lastName: string; teamLeaderId: string | null }
+
+type OvertimeDay = {
+    id: string
+    companyId: string
+    userId: string
+    date: Date
+    overtimeMinutes: number
+    firstInAt: Date | null
+    lastOutAt: Date | null
+    user: OvertimePerson
+}
+
+type OvertimeDecision = {
+    id: string
+    companyId: string
+    userId: string
+    date: Date
+    status: string
+    approvedMinutes: number
+    note: string | null
+    decidedAt: Date
+    user: OvertimePerson
+}
+
+/** A wall-clock time's hour and minute, as it reads (lib/services/attendance-request.service.ts). */
+const wallTime = (d: Date | null) => d ? d.toISOString().slice(11, 16) : null
+
+/**
+ * A day whose overtime waits, as a row. Deciding it is the decision route's
+ * own rule (POST /api/attendance/overtime): attendance.approve_overtime at
+ * whose day it is, which is never one's own. Its day is when it was "asked":
+ * the page reads it as a day.
+ */
+export function overtimeDayRow(v: Viewer, d: OvertimeDay): FeedRow {
+    const target: Target = { companyId: d.companyId, userId: d.userId, teamLeaderId: d.user.teamLeaderId }
+    const day = d.date.toISOString()
+    return {
+        kind: "overtime",
+        id: d.id,
+        who: { id: d.userId, name: `${d.user.firstName} ${d.user.lastName}`.trim() },
+        what: "",
+        detail: null,
+        asked: day,
+        started: null,
+        finished: null,
+        status: "PENDING",
+        sortAt: day,
+        mayDecide: can(v, "attendance.approve_overtime", target),
+        mayDelete: false,
+        mayWithdraw: false,
+        overtime: {
+            companyId: d.companyId, userId: d.userId, date: toDateString(d.date), minutes: d.overtimeMinutes,
+            firstIn: wallTime(d.firstInAt), lastOut: wallTime(d.lastOutAt), approvedMinutes: null, note: null,
+        },
+    }
+}
+
+/**
+ * A decision on overtime, as a row, ordered by when it was made. Whoever may
+ * decide it may withdraw it (DELETE /api/attendance/overtime/[id]), and the
+ * day waits again.
+ */
+export function overtimeDecisionRow(v: Viewer, a: OvertimeDecision): FeedRow {
+    const target: Target = { companyId: a.companyId, userId: a.userId, teamLeaderId: a.user.teamLeaderId }
+    const decided = a.decidedAt.toISOString()
+    return {
+        kind: "overtime",
+        id: a.id,
+        who: { id: a.userId, name: `${a.user.firstName} ${a.user.lastName}`.trim() },
+        what: "",
+        detail: null,
+        asked: a.date.toISOString(),
+        started: null,
+        finished: decided,
+        status: a.status,
+        sortAt: decided,
+        mayDecide: false,
+        mayDelete: false,
+        mayWithdraw: can(v, "attendance.approve_overtime", target),
+        overtime: {
+            companyId: a.companyId, userId: a.userId, date: toDateString(a.date), minutes: null, firstIn: null, lastOut: null,
+            approvedMinutes: a.status === "APPROVED" ? a.approvedMinutes : null, note: a.note,
+        },
+    }
+}
+
+const OVERTIME_PERSON = { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } } as const
+
+const overtime: Source = {
+    kind: "overtime",
+    where: overtimeWhere,
+    list: (v, q, where, take) => {
+        // Each table in the order its rows' sortAt is: a day by its date, a decision by when it was made.
+        if (q.show === "done") {
+            return Promise.all([
+                prisma.overtimeApproval.findMany({ where, orderBy: [{ decidedAt: "desc" }, { id: "asc" }], take, include: OVERTIME_PERSON }),
+                prisma.overtimeApproval.count({ where }),
+            ]).then(([rows, total]) => ({ rows: rows.map(r => overtimeDecisionRow(v, r)), total }))
+        }
+        return Promise.all([
+            prisma.attendanceDay.findMany({
+                where, orderBy: [{ date: "desc" }, { id: "asc" }], take,
+                select: { id: true, companyId: true, userId: true, date: true, overtimeMinutes: true, firstInAt: true, lastOutAt: true, ...OVERTIME_PERSON },
+            }),
+            prisma.attendanceDay.count({ where }),
+        ]).then(([rows, total]) => ({ rows: rows.map(r => overtimeDayRow(v, r)), total }))
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime]
 
 // --- The page --------------------------------------------------------
 
