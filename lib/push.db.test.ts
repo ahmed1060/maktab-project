@@ -92,10 +92,11 @@ describe.skipIf(!ADMIN_URL)("the push outbox, in Postgres", () => {
         expect(sent).toEqual([])
     })
 
-    it("opens where the bell opens: a decided request, kept by its id, opens the Attendance page", async () => {
+    it("opens where the bell opens: decided permission hours on the Requests page, picked out (UI_PLAN.md §2.3, part 3c), and overtime on the Attendance page", async () => {
         await NotificationService.notify("e2", "ATTENDANCE_REQUEST", { key: "notice_att_permission_approved", params: { date: { date: "2026-10-01" }, start: "09:00", end: "09:30" } }, "5d1c0f0e-2b52-4f6a-9c1e-1f2a3b4c5d6e")
+        await NotificationService.notify("e2", "ATTENDANCE_REQUEST", { key: "notice_att_overtime_approved", params: { date: { date: "2026-10-01" }, minutes: 60 } }, "0a7e6d5c-4b3a-4291-8f7e-6d5c4b3a2918")
         await PushService.flush(new Date(), sender)
-        expect(sent.map(s => s.link)).toEqual(["/dashboard/attendance"])
+        expect(sent.map(s => s.link).sort()).toEqual(["/dashboard/attendance", "/dashboard/requests?kind=permission&highlight=5d1c0f0e-2b52-4f6a-9c1e-1f2a3b4c5d6e"])
     })
 
     it("pushes nothing about someone else: a new phone waiting for the reader's approval", async () => {

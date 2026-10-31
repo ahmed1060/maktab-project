@@ -14,6 +14,22 @@ describe("an attendance notification", () => {
         expect(attendanceNoticeTarget("DAY_OFF_RESULT", "d1")).toBeNull()
     })
 
+    it("opens permission hours and missing punches on the Requests page, picked out, now that they're decided there (UI_PLAN.md §2.3, part 3c)", () => {
+        expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "p1", "notice_att_permission_approved")).toBe("/dashboard/requests?kind=permission&highlight=p1")
+        expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "p1", "notice_att_permission_rejected")).toBe("/dashboard/requests?kind=permission&highlight=p1")
+        expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "m1", "notice_att_missing_approved")).toBe("/dashboard/requests?kind=missingPunch&highlight=m1")
+        expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "m1", "notice_att_missing_rejected")).toBe("/dashboard/requests?kind=missingPunch&highlight=m1")
+        // Overtime is decided on the Attendance page until part 4.
+        expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "o1", "notice_att_overtime_approved")).toBe("/dashboard/attendance")
+        // An old notice with no key still opens the Attendance page.
+        expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "p1", null)).toBe("/dashboard/attendance")
+    })
+
+    it("is given the notice's key by the bell and by the push, which open the same page", () => {
+        expect(readFileSync("components/NotificationBell.tsx", "utf8")).toContain("attendanceNoticeTarget(type, notification.relatedId, notification.messageKey)")
+        expect(readFileSync("lib/services/push.service.ts", "utf8")).toContain("attendanceNoticeTarget(n.type, n.relatedId, n.messageKey)")
+    })
+
     it("is routed by the bell before the generic request branch", () => {
         const bell = readFileSync("components/NotificationBell.tsx", "utf8")
         const attendance = bell.indexOf("attendanceNoticeTarget(type")
