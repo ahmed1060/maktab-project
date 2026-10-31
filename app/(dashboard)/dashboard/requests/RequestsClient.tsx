@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarIcon, CheckIcon, CircleHalfIcon, EyeIcon, PlayIcon, PlusIcon, ShapesIcon, TrashIcon, TrayIcon, UserIcon } from '@phosphor-icons/react/ssr'
+import { CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, EyeIcon, PlayIcon, PlusIcon, ShapesIcon, TrashIcon, TrayIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
@@ -9,27 +9,28 @@ import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { countOf } from '@/lib/plural'
+import { spansDays, workDays } from '@/lib/day-off-range'
+import { DAY_OFF_TYPE_LABEL } from '@/lib/day-off-types'
 import type { TranslationKey } from '@/lib/translations'
 import type { FeedRow, RequestKind, RequestsShow, RequestsTab } from '@/lib/requests/kinds'
 import SafeDate from '@/components/SafeDate'
+import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
 import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import {
-    Button, DataList, Details, Dialog, DialogActions, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
-    RowMenu, SearchInput, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
+    Button, Choice, DataList, Details, Dialog, DialogActions, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
+    RowMenu, SearchInput, Section, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
 } from '@/components/ui'
+import { AskDayOff, DecideDayOff } from './DayOffDialogs'
 
-/** An internal request's status, as a badge. */
+/** A request's status, as a badge: an internal request's, or a day off's once decided. */
 const STATUS: Record<string, { tone: StatusTone; label: TranslationKey }> = {
     PENDING: { tone: 'waiting', label: 'status_pending' },
     IN_PROGRESS: { tone: 'progress', label: 'status_in_progress' },
     COMPLETED: { tone: 'good', label: 'status_completed' },
-}
-
-/** Each kind's name, in the filter and on its rows once there's more than one. */
-const KIND: Record<string, TranslationKey> = {
-    internal: 'requests_kind_internal',
+    APPROVED: { tone: 'good', label: 'status_approved' },
+    REJECTED: { tone: 'problem', label: 'status_rejected' },
 }
 
 /** An internal request's next step, for whoever may decide it. */
@@ -53,9 +54,13 @@ interface RequestsClientProps {
     tab: RequestsTab
     show: RequestsShow
     superAdmin: boolean
+    /** Whether their role may ask for leave, in a company with Day off (§2.3, part 2c). */
+    mayAskDayOff?: boolean
+    /** Their day off balance, on Mine, for whoever may ask for leave. */
+    credit?: { remaining: number; used: number } | null
 }
 
-export default function RequestsClient({ rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin }: RequestsClientProps) {
+export default function RequestsClient({ rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null }: RequestsClientProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const modules = useModules()
@@ -75,6 +80,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
     const [viewing, setViewing] = useState<FeedRow | null>(null)
     const [deleting, setDeleting] = useState<FeedRow | null>(null)
     const [asking, setAsking] = useState(false)
+    const [deciding, setDeciding] = useState<{ row: FeedRow; decision: 'APPROVED' | 'REJECTED' } | null>(null)
 
     // The request a notification opened, brought into view while it's on the page shown.
     const highlightId = listed.get('highlight')
@@ -128,8 +134,36 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
         }
     })
 
-    const kindLabel = (r: FeedRow) => t(KIND[r.kind])
-    const title = (r: FeedRow) => <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{r.what}</bdi></button>
+    // Each kind's name, in the filter and on its rows once there's more than one.
+    // A kind, "Day off", not the side bar's name for its page (found in the browser).
+    const kindName = (kind: RequestKind) => t(kind === 'dayOff' ? 'requests_kind_day_off' : 'requests_kind_internal')
+    const kindLabel = (r: FeedRow) => kindName(r.kind)
+    // What it's for: an internal request's title, or a day off's type.
+    const name = (r: FeedRow) => r.kind === 'dayOff' ? t(DAY_OFF_TYPE_LABEL[r.what] ?? 'regular_day_off') : r.what
+    const title = (r: FeedRow) => <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{name(r)}</bdi></button>
+    // A day off's days are calendar days, kept at midnight UTC: read as such wherever the screen is.
+    const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const day = (iso: string) => new Date(iso).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+    const leaveDates = (r: FeedRow) => {
+        const d = r.dayOff!
+        return spansDays(d.from, d.to) ? `${day(d.from)} – ${day(d.to!)}` : day(d.from)
+    }
+    const leaveDays = (r: FeedRow) => countOf(t, locale, workDays(r.dayOff!.from, r.dayOff!.to), 'days')
+    // Between the parts of a line. In Arabic a dot beside a number reads as the digit zero (٠).
+    const sep = locale === 'ar' ? '، ' : ' · '
+    const leaveWhen = (r: FeedRow) => `${leaveDates(r)}${sep}${leaveDays(r)}`
+    // What came of a day off: the days taken and from what, or why it was refused.
+    const outcome = (r: FeedRow) => {
+        const d = r.dayOff
+        if (!d) return null
+        if (r.status === 'APPROVED') return t(d.deductedFrom === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', countOf(t, locale, d.deducted, 'days'))
+        return r.status === 'REJECTED' && d.rejectionReason ? `${t('rejected_reason_prefix')}: ${d.rejectionReason}` : null
+    }
+    // Under its name: its kind, once there's more than one, and a day off's days.
+    const detail = (r: FeedRow) => {
+        const parts = [kinds.length > 1 ? kindLabel(r) : null, r.dayOff ? leaveWhen(r) : null].filter(Boolean)
+        return parts.length ? <span>{parts.join(sep)}</span> : undefined
+    }
     const badge = (r: FeedRow) => {
         const s = STATUS[r.status]
         return s ? <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge> : null
@@ -137,6 +171,10 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
     // Its day and time together: a narrow column broke "9:25 pm" from its day.
     const asked = (r: FeedRow) => <span className="ui-nowrap"><SafeDate date={r.asked} locale={locale} format="short" /></span>
     const next = (r: FeedRow) => {
+        if (r.kind === 'dayOff') return r.mayDecide && <>
+            <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
+            <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
+        </>
         const step = r.mayDecide ? NEXT[r.status] : undefined
         if (!step) return null
         return (
@@ -147,7 +185,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
     }
     const menu = (r: FeedRow) => (
         <RowMenu
-            label={t('ui_more_actions_for').replace('{name}', r.what)}
+            label={t('ui_more_actions_for').replace('{name}', name(r))}
             tooltip={t('ui_more_actions')}
             items={[
                 { key: 'view', icon: EyeIcon, label: t('requests_view_details'), onSelect: () => setViewing(r) },
@@ -158,7 +196,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
     const actions = (r: FeedRow) => <span className="ui-row-actions">{next(r)}{menu(r)}</span>
 
     const columns: Column<FeedRow>[] = [
-        { key: 'request', header: t('requests_col_request'), cell: r => <ItemTitle title={title(r)} detail={kinds.length > 1 ? kindLabel(r) : undefined} /> },
+        { key: 'request', header: t('requests_col_request'), cell: r => <ItemTitle title={title(r)} detail={detail(r)} /> },
         ...(review ? [{ key: 'who', header: t('requests_col_who'), cell: (r: FeedRow) => <Person names={[r.who.name]} /> }] : []),
         { key: 'asked', header: t('requests_col_asked'), cell: asked },
         { key: 'status', header: t('status_label'), cell: badge },
@@ -172,6 +210,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
             : review
                 ? <EmptyState icon={TrayIcon} title={t('requests_empty_review')} />
                 : <EmptyState icon={TrayIcon} title={t('requests_empty_mine')} action={<Button icon={PlusIcon} onClick={() => setAsking(true)}>{t('requests_new')}</Button>} />
+    const searchLabel = t(kinds.includes('dayOff') ? 'requests_search_any' : 'requests_search')
 
     return (
         <Page>
@@ -188,8 +227,15 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
                 ]} />
             )}
 
+            {/* Their balance, above the list, on Mine (decided on 2026-10-30). */}
+            {!review && credit && (
+                <Section title={t('credit_overview')}>
+                    <DayOffCreditDonut remaining={credit.remaining} used={credit.used} t={t} locale={locale} />
+                </Section>
+            )}
+
             <FilterBar
-                search={<Field label={t('requests_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('requests_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
+                search={<Field label={searchLabel} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={searchLabel} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
                 activeCount={filtersOn}
                 onReset={filtersOn > 0 || query ? resetFilters : undefined}
             >
@@ -200,7 +246,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
                 {kinds.length > 1 && (
                     <Field label={t('requests_kind_label')} hideLabel>{p => (
                         <Select {...p} icon={ShapesIcon} value={filters.kind} onChange={e => go({ kind: e.target.value })}
-                            options={[{ value: '', label: t('requests_kind_all') }, ...kinds.map(k => ({ value: k, label: t(KIND[k] ?? 'requests_kind_internal') }))]} />
+                            options={[{ value: '', label: t('requests_kind_all') }, ...kinds.map(k => ({ value: k, label: kindName(k) }))]} />
                     )}</Field>
                 )}
                 {review && (
@@ -222,6 +268,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
                         status={badge(r)}
                         details={[
                             ...(kinds.length > 1 ? [{ icon: ShapesIcon, text: kindLabel(r) }] : []),
+                            ...(r.dayOff ? [{ icon: CalendarBlankIcon, text: <span>{leaveWhen(r)}</span> }] : []),
                             ...(review ? [{ icon: UserIcon, text: <bdi>{r.who.name}</bdi> }] : []),
                             { icon: CalendarIcon, text: asked(r) },
                         ]}
@@ -235,7 +282,7 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
             <Dialog
                 open={!!viewing}
                 onClose={() => setViewing(null)}
-                title={viewing ? <bdi>{viewing.what}</bdi> : ''}
+                title={viewing ? <bdi>{name(viewing)}</bdi> : ''}
                 actions={viewing && <>
                     <Button onClick={() => setViewing(null)}>{t('close')}</Button>
                     {next(viewing)}
@@ -246,10 +293,15 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
                         {viewing.detail && <p className="ui-prose" dir="auto">{viewing.detail}</p>}
                         <Details items={[
                             { label: t('requests_col_who'), value: <bdi>{viewing.who.name}</bdi> },
+                            ...(viewing.dayOff ? [
+                                { label: t('dates_label'), value: leaveDates(viewing) },
+                                { label: t('requests_day_off_work_days'), value: leaveDays(viewing) },
+                            ] : []),
                             { label: t('requested_on'), value: <SafeDate date={viewing.asked} locale={locale} /> },
                             ...(viewing.started ? [{ label: t('started_at'), value: <SafeDate date={viewing.started} locale={locale} /> }] : []),
-                            ...(viewing.finished ? [{ label: t('finished_at'), value: <SafeDate date={viewing.finished} locale={locale} /> }] : []),
+                            ...(viewing.finished ? [{ label: t(viewing.dayOff ? 'requests_decided_on' : 'finished_at'), value: <SafeDate date={viewing.finished} locale={locale} /> }] : []),
                             { label: t('status_label'), value: badge(viewing) },
+                            ...(outcome(viewing) ? [{ label: t('requests_day_off_outcome'), value: <bdi>{outcome(viewing)}</bdi> }] : []),
                         ]} />
                     </>
                 )}
@@ -264,10 +316,15 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
                     <Button variant="danger" onClick={() => { if (deleting) void remove(deleting) }} busy={action.is('delete')} disabled={action.running}>{t('delete')}</Button>
                 </>}
             >
-                <p>{t('requests_delete_body').replace('{title}', deleting?.what ?? '')}</p>
+                <p>{t('requests_delete_body').replace('{title}', deleting ? name(deleting) : '')}</p>
             </Dialog>
 
-            <NewRequest open={asking} onClose={() => setAsking(false)} onAsked={() => {
+            {deciding && (
+                <DecideDayOff key={`${deciding.row.id}-${deciding.decision}`} request={deciding.row} decision={deciding.decision}
+                    onClose={() => setDeciding(null)} onDecided={() => { setDeciding(null); router.refresh() }} />
+            )}
+
+            <NewRequest open={asking} mayAskDayOff={mayAskDayOff} onClose={() => setAsking(false)} onAsked={() => {
                 setAsking(false)
                 // Theirs, waiting: where it now is.
                 if (tab === 'mine' && show === 'waiting') router.refresh()
@@ -277,8 +334,32 @@ export default function RequestsClient({ rows, total, page, totalPages, kinds, t
     )
 }
 
-/** Asking for something: a title and what it's about, as the server checks them. */
-function NewRequest({ open, onClose, onAsked }: { open: boolean; onClose: () => void; onAsked: () => void }) {
+/**
+ * Asking for something: a title and what it's about, as the server checks
+ * them, or a day off, for whoever may ask for leave (§2.3, part 2c).
+ */
+function NewRequest({ open, mayAskDayOff, onClose, onAsked }: { open: boolean; mayAskDayOff: boolean; onClose: () => void; onAsked: () => void }) {
+    const { t } = useLanguage()
+    const [what, setWhat] = useState<'internal' | 'dayOff'>('internal')
+    const close = () => {
+        setWhat('internal')
+        onClose()
+    }
+    return (
+        <Dialog open={open} onClose={close} title={t('requests_new')}>
+            {mayAskDayOff && (
+                <Choice legend={t('requests_ask_for')} name="ask-for" value={what} onChange={setWhat}
+                    options={[{ value: 'internal', label: t('requests_kind_internal') }, { value: 'dayOff', label: t('requests_kind_day_off') }]} />
+            )}
+            {what === 'dayOff'
+                ? <AskDayOff onCancel={close} onAsked={() => { setWhat('internal'); onAsked() }} />
+                : <AskInternal onCancel={close} onAsked={onAsked} />}
+        </Dialog>
+    )
+}
+
+/** An internal request: a title and what it's about. */
+function AskInternal({ onCancel, onAsked }: { onCancel: () => void; onAsked: () => void }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
@@ -293,7 +374,7 @@ function NewRequest({ open, onClose, onAsked }: { open: boolean; onClose: () => 
         setTitle('')
         setDetails('')
         setErrors({})
-        onClose()
+        onCancel()
     }
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -327,21 +408,19 @@ function NewRequest({ open, onClose, onAsked }: { open: boolean; onClose: () => 
     }
 
     return (
-        <Dialog open={open} onClose={close} title={t('requests_new')}>
-            <form id={formId} className="ui-form" noValidate onSubmit={submit}>
-                <Field label={t('requests_title_label')} hint={used(title.length, TITLE.max)} error={errors.title}>{p => (
-                    <TextInput {...p} name="title" autoComplete="off" dir="auto" maxLength={TITLE.max} placeholder={t('requests_title_placeholder')} value={title}
-                        onChange={e => { setTitle(e.target.value); setErrors(x => ({ ...x, title: undefined })) }} />
-                )}</Field>
-                <Field label={t('requests_details_label')} hint={used(details.length, DETAILS.max)} error={errors.details}>{p => (
-                    <TextArea {...p} name="details" dir="auto" rows={5} maxLength={DETAILS.max} placeholder={t('requests_details_placeholder')} value={details}
-                        onChange={e => { setDetails(e.target.value); setErrors(x => ({ ...x, details: undefined })) }} />
-                )}</Field>
-                <DialogActions>
-                    <Button onClick={close}>{t('cancel')}</Button>
-                    <Button type="submit" variant="primary" disabled={action.running} busy={action.is('ask')}>{t('requests_send')}</Button>
-                </DialogActions>
-            </form>
-        </Dialog>
+        <form id={formId} className="ui-form" noValidate onSubmit={submit}>
+            <Field label={t('requests_title_label')} hint={used(title.length, TITLE.max)} error={errors.title}>{p => (
+                <TextInput {...p} name="title" autoComplete="off" dir="auto" maxLength={TITLE.max} placeholder={t('requests_title_placeholder')} value={title}
+                    onChange={e => { setTitle(e.target.value); setErrors(x => ({ ...x, title: undefined })) }} />
+            )}</Field>
+            <Field label={t('requests_details_label')} hint={used(details.length, DETAILS.max)} error={errors.details}>{p => (
+                <TextArea {...p} name="details" dir="auto" rows={5} maxLength={DETAILS.max} placeholder={t('requests_details_placeholder')} value={details}
+                    onChange={e => { setDetails(e.target.value); setErrors(x => ({ ...x, details: undefined })) }} />
+            )}</Field>
+            <DialogActions>
+                <Button onClick={close}>{t('cancel')}</Button>
+                <Button type="submit" variant="primary" disabled={action.running} busy={action.is('ask')}>{t('requests_send')}</Button>
+            </DialogActions>
+        </form>
     )
 }

@@ -14,3 +14,18 @@ export function spansDays(date: string, endDate?: string | null): boolean {
 function calendarDay(iso: string): string {
     return new Date(iso).toISOString().slice(0, 10)
 }
+
+/**
+ * The work days a request covers: every day but Friday. Counted by calendar
+ * day, as the days are kept, so a screen west of UTC doesn't count each one
+ * as the day before.
+ */
+export function workDays(date: string, endDate?: string | null): number {
+    const day = new Date(`${calendarDay(date)}T00:00:00.000Z`)
+    const last = new Date(`${calendarDay(endDate || date)}T00:00:00.000Z`)
+    let count = 0
+    for (; day <= last; day.setUTCDate(day.getUTCDate() + 1)) {
+        if (day.getUTCDay() !== 5) count++
+    }
+    return count
+}
