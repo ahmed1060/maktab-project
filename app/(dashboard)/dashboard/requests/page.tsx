@@ -7,6 +7,7 @@ import { accountRefusal } from "@/lib/account-refusal"
 import { can } from "@/lib/permissions/can"
 import { sessionHasModule } from "@/lib/features/require"
 import { usedDayOffCredit } from "@/lib/day-off-credit"
+import { AttendanceRequestService } from "@/lib/services/attendance-request.service"
 import AccessDenied from "@/components/AccessDenied"
 import { REQUEST_KINDS, requestFeed, tabsFor, type RequestKind, type RequestsShow, type RequestsTab, type Viewer } from "@/lib/requests/feed"
 import RequestsClient from "./RequestsClient"
@@ -71,10 +72,27 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
         if (balance) credit = { remaining: balance.dayOffCredit, used: usedDayOffCredit(balance.baseDayOffCredit ?? balance.dayOffCredit, balance.dayOffCredit) }
     }
 
+    // Asking for permission hours, for whoever has attendance of their own,
+    // as the attendance API's rule (asksForSelf); on Mine, what's left of
+    // this month's, while the policy allows them (§2.3, part 3a).
+    const mayAskPermission = sessionHasModule({ user: viewer }, 'ATTENDANCE') && !superAdmin && !!viewer.companyId
+    let allowance: { left: number; total: number; pending: number; carried: number } | null = null
+    if (mayAskPermission && tab === "mine") {
+        const today = await AttendanceRequestService.todayIn(viewer.companyId!)
+        const balance = await AttendanceRequestService.permissionBalance(viewer.companyId!, viewer.id, today.slice(0, 7), today)
+        if (balance.enabled) allowance = {
+            left: balance.remainingMinutes,
+            total: balance.allowanceMinutes + balance.carriedMinutes,
+            pending: balance.pendingMinutes,
+            carried: balance.carriedMinutes,
+        }
+    }
+
     return (
         <RequestsClient
             rows={feed.rows} total={feed.total} page={page} totalPages={feed.totalPages} kinds={feed.kinds}
             tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} mayAskDayOff={mayAskDayOff} credit={credit}
+            mayAskPermission={mayAskPermission} allowance={allowance}
         />
     )
 }
