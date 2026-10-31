@@ -88,7 +88,7 @@ export default function AttendancePage() {
         ...(p.companyWide('attendance.approve_face') ? ['face' as const] : []),
         ...(correctsCompany ? ['import' as const, 'numbers' as const] : []),
     ]
-    // A link may open a tab (?tab=requests, from a notice about a phone); one this person doesn't have falls back.
+    // A link may open a tab (?tab=punches, from a notice about a check-in decided); one this person doesn't have falls back.
     // A tab picked by hand goes into the address too: the same notice's link followed again is then a change
     // of address, and opens its tab, where a pick held aside kept winning (review on #21).
     const linked = params.get('tab') as Tab | null

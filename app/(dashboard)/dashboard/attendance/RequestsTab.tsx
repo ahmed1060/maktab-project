@@ -6,43 +6,25 @@ import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
-import { FlaggedFaceModal } from '@/components/FacePhoto'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
 import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import type { TranslationKey } from '@/lib/translations'
 import { send, json } from './send'
-import { googleMapsLink } from '@/lib/attendance/geo'
 
 /**
- * Requests (P0.6): one's own phone, and for whoever decides them, overtime,
- * phones and flagged punches. Permission hours (إذن) and reports of a missing
- * punch are asked for and decided on the one Requests page (UI_PLAN.md §2.3,
- * part 3c), which this points to; asking from a day still opens the forms
- * here.
- *
- * attendance.approve_permissions decides permission hours,
- * attendance.approve_overtime overtime, attendance.correct missing punches —
- * each at its scope, and never one's own.
+ * Requests (P0.6): one's own phone, and a pointer to the one Requests page
+ * (UI_PLAN.md §2.3, parts 3c and 4d), where one's own requests are, and what
+ * waits on whoever decides permission hours, missing punches, overtime,
+ * check-in phones and flagged check-ins. Asking from a day still opens the
+ * forms here, and approving overtime ahead stays here.
  */
 
-type Status = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
-type Waiting = { userId: string; name: string; teamLeaderId: string | null; date: string; overtimeMinutes: number; firstIn: string | null; lastOut: string | null }
-type Decision = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; status: 'APPROVED' | 'REJECTED'; approvedMinutes: number; note: string | null }
 type Balance = { enabled: boolean; types: string[]; allowanceMinutes: number; carriedMinutes: number; approvedMinutes: number; pendingMinutes: number; remainingMinutes: number; requests: number; maxRequests: number | null; minPerRequestMinutes: number; maxPerRequestMinutes: number }
 type Person = { id: string; name: string; teamLeaderId: string | null }
-type FlaggedRow = {
-    id: string; userId: string; name: string; teamLeaderId: string | null; at: string; flagReasons: string[]
-    checkIn: { latitude?: number; longitude?: number; distanceMeters?: number; accuracyMeters?: number; ip?: string | null } | null
-    workLocation: { name: string } | null; phone: { model: string | null; platform: string } | null
-}
-type PhoneRow = { id: string; userId: string; name: string; teamLeaderId: string | null; platform: 'ANDROID' | 'IOS'; model: string | null; appVersion: string | null; attested: boolean; status: 'PENDING' | 'ACTIVE'; requestedAt: string; decidedAt: string | null; held: number }
 
-const STATUS_COLOR: Record<Status, string> = { PENDING: 'var(--warn-fg)', APPROVED: 'var(--ok-fg)', REJECTED: 'var(--danger-fg)', CANCELLED: 'var(--text-soft)' }
 const TYPE_KEY: Record<string, TranslationKey> = { LATE_ARRIVAL: 'audit_value_LATE_ARRIVAL', EARLY_LEAVE: 'audit_value_EARLY_LEAVE', MIDDAY: 'audit_value_MIDDAY' }
-const lastDayOf = (month: string) => { const [y, m] = month.split('-').map(Number); return `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}` }
 const box = { padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '1rem' } as const
 const small = { fontSize: '0.78rem', padding: '0.25rem 0.6rem' } as const
 const soft = { color: 'var(--text-soft)', fontSize: '0.78rem' } as const
@@ -119,16 +101,6 @@ function MyRequests() {
             <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('requests_moved_mine')}</p>
             <div><ButtonLink href="/dashboard/requests?tab=mine">{t('requests_open_mine')}</ButtonLink></div>
         </section>
-    )
-}
-
-function StatusText({ status, why }: { status: Status; why: string | null }) {
-    const { t } = useLanguage()
-    return (
-        <>
-            <span style={{ color: STATUS_COLOR[status], fontWeight: 600 }}>{t(`audit_value_${status}` as TranslationKey)}</span>
-            {why && <div style={soft}>{why}</div>}
-        </>
     )
 }
 
@@ -265,264 +237,50 @@ export function ReportMissingModal({ today, initial, onClose, onDone }: {
 
 // --- to decide -------------------------------------------------------------------
 
-type Rejecting = { kind: 'phone' | 'checkin'; id: string } | { kind: 'overtime'; userId: string; date: string }
-
+/**
+ * What waits on this person is decided on the one Requests page, under To
+ * review (UI_PLAN.md §2.3, parts 3c and 4d): permission hours, missing
+ * punches, overtime, check-in phones and flagged check-ins. This points
+ * there. Approving overtime ahead of its day stays here: it isn't a request
+ * (decided on 2026-10-31).
+ */
 function ToDecide({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
-    const { showToast } = useToast()
     const p = useCan()
-    // A flagged check-in whose face check failed, open beside the reference photo (§13.8).
-    const [faceOf, setFaceOf] = useState<{ id: string; name: string } | null>(null)
     const { data: session } = useSession()
     const me = session?.user?.id
     const decidesPermissions = p.can('attendance.approve_permissions')
     const decidesOvertime = p.can('attendance.approve_overtime')
     const decidesMissing = p.can('attendance.correct')
     const decidesPhones = p.can('attendance.approve_devices')
-    const [month, setMonth] = useState(() => today.slice(0, 7))
-    const [rejecting, setRejecting] = useState<Rejecting | null>(null)
     const [approvingAhead, setApprovingAhead] = useState(false)
-    const [revoking, setRevoking] = useState<PhoneRow | null>(null)
-    const [busy, setBusy] = useState(false)
-
-    const { data: otBody, mutate: refreshOvertime } = useSWR(decidesOvertime && month ? `/api/attendance/overtime?${q}from=${month}-01&to=${lastDayOf(month)}` : null, fetcher)
-    const { data: flagBody, error: flagError, mutate: refreshFlagged } = useSWR(decidesMissing ? `/api/attendance/flagged?${q}` : null, fetcher)
-    const { data: phoneBody, error: phoneError, mutate: refreshPhones } = useSWR(decidesPhones ? `/api/attendance/phones?${q}` : null, fetcher)
     const { data: peopleBody } = useSWR(decidesOvertime ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
-    const waiting: Waiting[] | null = otBody ? otBody.data?.waiting ?? [] : null
-    const decisions: Decision[] = otBody?.data?.decisions ?? []
-    const phones: PhoneRow[] = phoneBody?.data?.phones ?? []
-    const flagged: FlaggedRow[] = flagBody?.data?.checkIns ?? []
 
     if (!decidesPermissions && !decidesOvertime && !decidesMissing && !decidesPhones) return null
-    const companyField = companyId ? { companyId } : {}
-
-    const act = async (url: string, init: RequestInit, done: TranslationKey, refresh: () => void) => {
-        setBusy(true)
-        try {
-            const r = await send(url, init, t('punch_failed'))
-            if (!r.ok) return showToast(r.error, 'error')
-            showToast(t(done), 'success')
-            refresh()
-        } finally { setBusy(false) }
-    }
-    const decideCheckIn = (id: string, accept: boolean, reason?: string) =>
-        act(`/api/attendance/flagged/${id}/decide`, json('POST', { accept, reason: reason ?? null }), accept ? 'req_approved' : 'req_rejected', refreshFlagged)
-    const decidePhone = (id: string, approve: boolean, reason?: string) =>
-        act(`/api/attendance/phones/${id}/decide`, json('POST', { approve, reason: reason ?? null }), approve ? 'req_approved' : 'req_rejected', refreshPhones)
-    const decideOvertime = (userId: string, date: string, status: 'APPROVED' | 'REJECTED', note?: string) =>
-        act('/api/attendance/overtime', json('POST', { ...companyField, userId, date, status, note: note ?? null }), status === 'APPROVED' ? 'req_approved' : 'req_rejected', refreshOvertime)
-
-    const reject = async (reason?: string) => {
-        const r = rejecting
-        if (!r) return
-        try {
-            if (r.kind === 'overtime') return await decideOvertime(r.userId, r.date, 'REJECTED', reason)
-            if (r.kind === 'phone') return await decidePhone(r.id, false, reason)
-            return await decideCheckIn(r.id, false, reason)
-        } finally { setRejecting(null) }
-    }
-    const approveReject = (onApprove: () => void, onReject: () => void) => (
-        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" style={small} disabled={busy} onClick={onApprove}>{t('req_approve')}</button>
-            <button className="btn btn-secondary" style={small} disabled={busy} onClick={onReject}>{t('req_reject')}</button>
-        </div>
-    )
-    const mine = (userId: string) => userId === me
 
     return (
         <section className="glass" style={box}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{t('req_to_decide')}</h2>
-
-            {/* Permission hours and missing punches are decided on the one Requests page (UI_PLAN.md §2.3, part 3c). */}
-            {(decidesPermissions || decidesMissing) && (
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <p style={{ margin: 0, fontSize: '0.88rem', flex: '1 1 16rem' }}>{t('requests_moved_review')}</p>
+                <ButtonLink href="/dashboard/requests?tab=review">{t('requests_open_review')}</ButtonLink>
+            </div>
+            {decidesOvertime && (
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <p style={{ margin: 0, fontSize: '0.88rem', flex: '1 1 16rem' }}>{t('requests_moved_review')}</p>
-                    <ButtonLink href="/dashboard/requests?tab=review">{t('requests_open_review')}</ButtonLink>
+                    <p style={{ margin: 0, fontSize: '0.88rem', flex: '1 1 16rem' }}>{t('requests_overtime_ahead_line')}</p>
+                    <button className="btn btn-secondary" onClick={() => setApprovingAhead(true)}>{t('req_overtime_ahead')}</button>
                 </div>
             )}
-
-            {decidesMissing && (!flagBody || flagged.length > 0) && (
-                <>
-                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_flagged')}</h3>
-                    <p style={{ margin: 0, ...soft }}>{t('req_flagged_hint')}</p>
-                    {!flagBody ? (flagError ? <p style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p> : <LoadingSpinner />) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                                <thead><tr><th>{t('punch_person')}</th><th>{t('punch_time')}</th><th>{t('req_flagged_why')}</th><th /></tr></thead>
-                                <tbody>
-                                    {flagged.map(f => (
-                                        <tr key={f.id}>
-                                            <td>{f.name}</td>
-                                            <td style={{ whiteSpace: 'nowrap' }}>
-                                                <bdi>{f.at.slice(0, 10)} {f.at.slice(11, 16)}</bdi>
-                                                <div style={soft}>{f.workLocation?.name ?? '—'}</div>
-                                            </td>
-                                            <td>
-                                                {f.flagReasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}
-                                                {f.flagReasons.includes('FACE_UNVERIFIED') && !mine(f.userId) && p.companyWide('attendance.approve_face') && (
-                                                    <> · <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand-primary-text)', cursor: 'pointer' }} onClick={() => setFaceOf({ id: f.id, name: f.name })}>{t('face_flag_see')}</button></>
-                                                )}
-                                                <div style={soft}>{[
-                                                    f.checkIn?.distanceMeters !== undefined && t('req_flagged_distance').replace('{n}', String(f.checkIn.distanceMeters)),
-                                                    f.checkIn?.accuracyMeters !== undefined && t('req_flagged_accuracy').replace('{n}', String(Math.round(f.checkIn.accuracyMeters))),
-                                                    f.checkIn?.ip,
-                                                ].filter(Boolean).join(' · ')}
-                                                    {f.checkIn?.latitude !== undefined && f.checkIn?.longitude !== undefined && (
-                                                        <> · <a href={googleMapsLink(f.checkIn.latitude, f.checkIn.longitude)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a></>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td>{!mine(f.userId) && p.canFor('attendance.correct', f.userId, f.teamLeaderId) && (
-                                                approveReject(() => decideCheckIn(f.id, true), () => setRejecting({ kind: 'checkin', id: f.id }))
-                                            )}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                    {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.name} onClose={() => setFaceOf(null)} />}
-                </>
-            )}
-
-            {/* While loading, or failing to, it says so; loaded, only once somebody has a phone: a company without the app has nothing here (§9.3). */}
-            {decidesPhones && !phoneBody && (
-                <>
-                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
-                    {phoneError ? <p style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p> : <LoadingSpinner />}
-                </>
-            )}
-            {/* Loaded empty before, and failing now: no list to show, but somebody may have a phone waiting since (review on #49). */}
-            {decidesPhones && phoneBody && phones.length === 0 && phoneError && (
-                <>
-                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
-                    <p role="alert" style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p>
-                </>
-            )}
-            {decidesPhones && phones.length > 0 && (
-                <>
-                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_phones')}</h3>
-                    <p style={{ margin: 0, ...soft }}>{t('req_phones_hint')}</p>
-                    {/* Loaded before, and failing now: the list below may be out of date, so it says so (review on #21). */}
-                    {phoneError && <p role="alert" style={{ margin: 0, ...soft, color: 'var(--danger-fg)' }}>{t('error_generic')}</p>}
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                            <thead><tr><th>{t('punch_person')}</th><th>{t('req_phone')}</th><th>{t('req_phone_state')}</th><th /></tr></thead>
-                            <tbody>
-                                {phones.map(ph => (
-                                    <tr key={ph.id}>
-                                        <td>{ph.name}</td>
-                                        <td>
-                                            {ph.model || t(`audit_value_${ph.platform}` as TranslationKey)}
-                                            <div style={soft}>{[t(`audit_value_${ph.platform}` as TranslationKey), ph.appVersion && `v${ph.appVersion}`].filter(Boolean).join(' · ')}</div>
-                                            {!ph.attested && <div style={{ ...soft, color: 'var(--warn-fg)' }}>{t('req_phone_unverified')}</div>}
-                                        </td>
-                                        <td>
-                                            {ph.status === 'PENDING' ? <span style={{ color: 'var(--warn-fg)' }}>{t('req_phone_waiting')}</span> : <span style={{ color: 'var(--ok-fg)' }}>{t('req_phone_in_use')}</span>}
-                                            {ph.status === 'PENDING' && ph.held > 0 && <div style={soft}>{t('req_phone_held').replace('{n}', String(ph.held))}</div>}
-                                        </td>
-                                        <td>{!mine(ph.userId) && p.canFor('attendance.approve_devices', ph.userId, ph.teamLeaderId) && (
-                                            ph.status === 'PENDING'
-                                                ? approveReject(() => decidePhone(ph.id, true), () => setRejecting({ kind: 'phone', id: ph.id }))
-                                                : <div style={{ textAlign: 'end' }}><button className="btn btn-secondary" style={{ ...small, color: 'var(--danger-fg)' }} disabled={busy} onClick={() => setRevoking(ph)}>{t('req_phone_revoke')}</button></div>
-                                        )}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
-            )}
-
-            {decidesOvertime && (
-                <>
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                        <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{t('req_overtime')}</h3>
-                        <input className="input" type="month" aria-label={t('day_month')} value={month} onChange={e => setMonth(e.target.value)} style={{ maxWidth: '11rem' }} />
-                        <div style={{ flex: 1 }} />
-                        <button className="btn btn-secondary" onClick={() => setApprovingAhead(true)}>{t('req_overtime_ahead')}</button>
-                    </div>
-                    {waiting === null ? <LoadingSpinner /> : (
-                        <>
-                            {waiting.length === 0 ? <p style={{ margin: 0, ...soft }}>{t('req_none_waiting')}</p> : (
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                                        <thead><tr><th>{t('punch_person')}</th><th>{t('punch_date')}</th><th>{t('day_overtime')}</th><th /></tr></thead>
-                                        <tbody>
-                                            {waiting.map(w => (
-                                                <tr key={`${w.userId}:${w.date}`}>
-                                                    <td>{w.name}</td>
-                                                    <td style={{ whiteSpace: 'nowrap' }}><bdi>{w.date}</bdi><div style={soft}><bdi>{w.firstIn?.slice(11, 16) ?? '—'}–{w.lastOut?.slice(11, 16) ?? '—'}</bdi></div></td>
-                                                    <td>{t('req_minutes').replace('{n}', String(w.overtimeMinutes))}</td>
-                                                    <td>{!mine(w.userId) && p.canFor('attendance.approve_overtime', w.userId, w.teamLeaderId) && (
-                                                        approveReject(() => decideOvertime(w.userId, w.date, 'APPROVED'), () => setRejecting({ kind: 'overtime', userId: w.userId, date: w.date }))
-                                                    )}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                            {decisions.length > 0 && (
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                                        <thead><tr><th>{t('punch_person')}</th><th>{t('punch_date')}</th><th>{t('req_decision')}</th><th /></tr></thead>
-                                        <tbody>
-                                            {decisions.map(d => (
-                                                <tr key={d.id}>
-                                                    <td>{d.name}</td>
-                                                    <td style={{ whiteSpace: 'nowrap' }}><bdi>{d.date}</bdi></td>
-                                                    <td>
-                                                        <StatusText status={d.status} why={d.note} />
-                                                        {d.status === 'APPROVED' && <div style={soft}>{t('req_minutes').replace('{n}', String(d.approvedMinutes))}</div>}
-                                                    </td>
-                                                    <td style={{ textAlign: 'end' }}>
-                                                        {!mine(d.userId) && p.canFor('attendance.approve_overtime', d.userId, d.teamLeaderId) && (
-                                                            <button className="btn btn-secondary" style={small} disabled={busy} onClick={() => act(`/api/attendance/overtime/${d.id}`, { method: 'DELETE' }, 'req_withdrawn', refreshOvertime)}>{t('req_withdraw')}</button>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </>
-            )}
-
             {approvingAhead && (
                 <OvertimeAheadModal
                     today={today}
                     companyId={companyId}
                     people={people.filter(x => x.id !== me && p.canFor('attendance.approve_overtime', x.id, x.teamLeaderId))}
                     onClose={() => setApprovingAhead(false)}
-                    onDone={() => { setApprovingAhead(false); refreshOvertime() }}
+                    onDone={() => setApprovingAhead(false)}
                 />
             )}
-            <ConfirmModal
-                isOpen={!!revoking}
-                title={t('req_phone_revoke')}
-                message={t('req_phone_revoke_confirm').replace('{name}', revoking?.name ?? '')}
-                confirmText={t('req_phone_revoke')}
-                variant="danger"
-                reason={{ label: t('punch_reason'), minLength: 0 }}
-                onConfirm={async (reason?: string) => { const ph = revoking; if (ph) await act(`/api/attendance/phones/${ph.id}/revoke`, json('POST', { reason: reason ?? null }), 'req_phone_revoked', refreshPhones); setRevoking(null) }}
-                onCancel={() => setRevoking(null)}
-            />
-            <ConfirmModal
-                isOpen={!!rejecting}
-                title={t('req_reject')}
-                message={t('req_reject_hint')}
-                confirmText={t('req_reject')}
-                variant="danger"
-                reason={{ label: t('punch_reason'), minLength: 0 }}
-                onConfirm={reject}
-                onCancel={() => setRejecting(null)}
-            />
         </section>
     )
 }

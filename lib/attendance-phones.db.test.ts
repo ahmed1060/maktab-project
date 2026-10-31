@@ -105,6 +105,9 @@ describe.skipIf(!ADMIN_URL)("check-in phones, in Postgres", () => {
         // The company's Admin (COMPANY scope) is told; the person themselves is not.
         expect(await notices("a1")).toEqual(["notice_att_phone_requested"])
         expect(await notices("e1")).toEqual([])
+        // To the phone on the Requests page, where it's decided (UI_PLAN.md §2.3, part 4d).
+        const { rows: [notice] } = await db.query(`SELECT "relatedId" FROM "Notification" WHERE "userId" = 'a1' AND type = 'ATTENDANCE_PHONE'`)
+        expect(notice.relatedId).toBe(`/dashboard/requests?tab=review&kind=phone&highlight=${phone.id}`)
         const { rows: [audit] } = await db.query(`SELECT action, details FROM "AuditLog" WHERE "entityId" = $1`, [phone.id])
         expect(audit).toMatchObject({ action: "REGISTER_CHECK_IN_PHONE", details: { userId: "e1", attested: false } })
         expect(await Phones.mine("e1")).toMatchObject({ active: null, pending: { id: phone.id } })

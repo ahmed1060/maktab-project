@@ -260,18 +260,11 @@ describe("the page's tabs (review on #21)", () => {
         expect(page).not.toContain("setPicked")
     })
 
-    it("say a phone list failed to refresh, though an earlier one is still shown", () => {
+    it("keep no phone list of their own to go stale: phones are listed on the Requests page, read with the page (UI_PLAN.md §2.3, part 4d)", () => {
+        // A list that failed to refresh said so (reviews on #21 and #49); there's no such list now to fail.
         const tab = readFileSync("app/(dashboard)/dashboard/attendance/RequestsTab.tsx", "utf8")
-        const list = tab.slice(tab.indexOf("{decidesPhones && phones.length > 0 && ("))
-        expect(list.slice(0, 600)).toMatch(/\{phoneError && <p role="alert"[^\n]*t\('error_generic'\)/)
-    })
-
-    it("say a phone list failed to refresh when the one before was empty (review on #49)", () => {
-        // Neither the loading branch (it had loaded) nor the list (it had nothing) showed the failure.
-        const tab = readFileSync("app/(dashboard)/dashboard/attendance/RequestsTab.tsx", "utf8")
-        const empty = tab.slice(tab.indexOf("{decidesPhones && phoneBody && phones.length === 0 && phoneError && ("))
-        expect(tab).toContain("{decidesPhones && phoneBody && phones.length === 0 && phoneError && (")
-        expect(empty.slice(0, 400)).toMatch(/<p role="alert"[^\n]*t\('error_generic'\)/)
+        expect(tab).not.toContain("/api/attendance/phones?")
+        expect(tab).toContain('href="/dashboard/requests?tab=review"')
     })
 })
 

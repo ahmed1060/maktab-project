@@ -19,10 +19,20 @@ describe("an attendance notification", () => {
         expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "p1", "notice_att_permission_rejected")).toBe("/dashboard/requests?kind=permission&highlight=p1")
         expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "m1", "notice_att_missing_approved")).toBe("/dashboard/requests?kind=missingPunch&highlight=m1")
         expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "m1", "notice_att_missing_rejected")).toBe("/dashboard/requests?kind=missingPunch&highlight=m1")
-        // Overtime is decided on the Attendance page until part 4.
+        // Overtime decided is about one's own day, which is on the Attendance page.
         expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "o1", "notice_att_overtime_approved")).toBe("/dashboard/attendance")
         // An old notice with no key still opens the Attendance page.
         expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "p1", null)).toBe("/dashboard/attendance")
+    })
+
+    it("opens a new phone waiting on the Requests page, an old notice's too, now that it's decided there (part 4d)", () => {
+        // The notice's own link, with the phone picked out.
+        expect(attendanceNoticeTarget("ATTENDANCE_PHONE", "/dashboard/requests?tab=review&kind=phone&highlight=ph1", "notice_att_phone_requested"))
+            .toBe("/dashboard/requests?tab=review&kind=phone&highlight=ph1")
+        // One sent before, to the Attendance page's tab that points there now.
+        expect(attendanceNoticeTarget("ATTENDANCE_PHONE", "/dashboard/attendance?tab=requests", "notice_att_phone_requested")).toBe("/dashboard/requests?tab=review&kind=phone")
+        // One's own phone decided stays on the Attendance page.
+        expect(attendanceNoticeTarget("ATTENDANCE_PHONE", null, "notice_att_phone_approved")).toBe("/dashboard/attendance")
     })
 
     it("is given the notice's key by the bell and by the push, which open the same page", () => {

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { ButtonLink } from '@/components/ui'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
@@ -46,7 +47,7 @@ const small = { fontSize: '0.78rem', padding: '0.25rem 0.6rem' } as const
 const soft = { color: 'var(--text-soft)', fontSize: '0.78rem' } as const
 const NOTE_KEY: Record<string, TranslationKey> = { FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' }
 
-export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: string; companyId: string | null; today: string; onOpen: (tab: 'requests' | 'numbers' | 'face') => void }) {
+export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: string; companyId: string | null; today: string; onOpen: (tab: 'numbers' | 'face') => void }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const p = useCan()
@@ -123,7 +124,8 @@ export default function ExceptionsTab({ q, companyId, today, onOpen }: { q: stri
                     <input className="input" type="date" value={to} max={yesterday} onChange={e => setTo(e.target.value)} />
                 </label>
                 <div style={{ flex: 1 }} />
-                {waitingRequests > 0 && <button className="btn btn-secondary" onClick={() => onOpen('requests')}>{t('exc_requests_waiting').replace('{n}', String(waitingRequests))}</button>}
+                {/* To where they're decided, not the Requests tab that only points there (UI_PLAN.md §2.3, part 4d). */}
+                {waitingRequests > 0 && <ButtonLink href="/dashboard/requests?tab=review">{t('exc_requests_waiting').replace('{n}', String(waitingRequests))}</ButtonLink>}
                 {(c?.unmatched ?? 0) > 0 && <button className="btn btn-secondary" onClick={() => onOpen('numbers')}>{t('exc_unmatched_waiting').replace('{n}', String(c!.unmatched))}</button>}
                 {(c?.faceOverdue ?? 0) > 0 && <button className="btn btn-secondary" onClick={() => onOpen('face')}>{t('exc_face_overdue_waiting').replace('{n}', String(c!.faceOverdue))}</button>}
             </div>

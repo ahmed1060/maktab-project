@@ -5,8 +5,9 @@ import { readFileSync } from "node:fs"
  * The Attendance page's Requests tab, once permission hours and missing
  * punches are asked for and decided on the one Requests page (UI_PLAN.md
  * §2.3, part 3c): it points there, rather than keeping lists of its own
- * that would say the same thing twice. Overtime, phones and flagged punches
- * stay on it until part 4.
+ * that would say the same thing twice. Overtime, check-in phones and
+ * flagged check-ins follow in part 4d, once they're decided there too
+ * (parts 4a–4c).
  */
 
 const tab = readFileSync("app/(dashboard)/dashboard/attendance/RequestsTab.tsx", "utf8")
@@ -30,10 +31,24 @@ describe("the Attendance page's Requests tab", () => {
         expect(tab).not.toMatch(/<Link[^>]*className="btn/)
     })
 
-    it("keeps overtime, phones and flagged punches until they move (part 4)", () => {
-        expect(tab).toContain("/api/attendance/overtime?")
-        expect(tab).toContain("/api/attendance/phones?")
-        expect(tab).toContain("/api/attendance/flagged?")
+    it("points to overtime, check-in phones and flagged check-ins too, which are decided there now (part 4d)", () => {
+        expect(tab).not.toContain("/api/attendance/overtime?")
+        expect(tab).not.toContain("/api/attendance/phones?")
+        expect(tab).not.toContain("/api/attendance/flagged?")
+        // For whoever decides any of them.
+        expect(tab).toContain("if (!decidesPermissions && !decidesOvertime && !decidesMissing && !decidesPhones) return null")
+    })
+
+    it("keeps Approve overtime ahead, which isn't a request (decided on 2026-10-31)", () => {
+        expect(tab).toContain("t('req_overtime_ahead')")
+        expect(tab).toContain("<OvertimeAheadModal")
+        expect(tab).toContain("/api/attendance/people?")
+    })
+
+    it("has the Exceptions tab's waiting requests open the Requests page, not the tab that points there (part 4d)", () => {
+        const exceptions = readFileSync("app/(dashboard)/dashboard/attendance/ExceptionsTab.tsx", "utf8")
+        expect(exceptions).toContain('<ButtonLink href="/dashboard/requests?tab=review"')
+        expect(exceptions).not.toContain("onOpen('requests')")
     })
 
     it("still offers asking from a day, which the Days tab and the check-in page open", () => {

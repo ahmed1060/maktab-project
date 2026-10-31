@@ -38,8 +38,8 @@ async function actorOf(tx: Prisma.TransactionClient, actorId: string) {
     return superAdmin ? { superAdminId: actorId } : { userId: actorId }
 }
 
-/** Where a notice about phones opens: the requests to decide. */
-export const PHONE_REQUESTS_PAGE = "/dashboard/attendance?tab=requests"
+/** Where a notice about a new phone opens: it, on the Requests page, where it's decided (UI_PLAN.md §2.3, part 4d). */
+export const phoneRequestsPage = (phoneId: string) => `/dashboard/requests?tab=review&kind=phone&highlight=${encodeURIComponent(phoneId)}`
 
 const reasonParam = (reason: string | null) => optional("notice_reason_suffix", { reason: reason ?? "" }, reason)
 
@@ -119,14 +119,14 @@ export class AttendancePhoneService {
                 tx, userId, details: { companyId, userId, platform: phone.platform, model: phone.model, attested: phone.attested, attestationReason: attestation.reason, replaced: replaced?.id ?? null },
             })
             // In the same transaction: a request nobody hears about would wait forever.
-            await AttendancePhoneService.tellDeciders(tx, companyId, userId, phone.model)
+            await AttendancePhoneService.tellDeciders(tx, companyId, userId, phone.id, phone.model)
             return { phone, fresh: true }
         })
         return out.phone
     }
 
     /** Whoever may approve this person's phone: the company's deciders, and their team leader if theirs is the team scope. */
-    private static async tellDeciders(tx: Prisma.TransactionClient, companyId: string, userId: string, model: string | null) {
+    private static async tellDeciders(tx: Prisma.TransactionClient, companyId: string, userId: string, phoneId: string, model: string | null) {
         const person = await tx.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, teamLeaderId: true } })
         if (!person) return
         const deciders = await tx.user.findMany({
@@ -142,7 +142,7 @@ export class AttendancePhoneService {
         await NotificationService.notifyMany(deciders.map(d => d.id), "ATTENDANCE_PHONE", {
             key: "notice_att_phone_requested",
             params: { name: `${person.firstName} ${person.lastName}`.trim(), model: model ?? "" },
-        }, PHONE_REQUESTS_PAGE, tx)
+        }, phoneRequestsPage(phoneId), tx)
     }
 
     /** This person's phone in use, and the one they asked for, if any. */

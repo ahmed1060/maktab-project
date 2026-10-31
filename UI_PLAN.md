@@ -200,7 +200,9 @@ one once its kind has moved in.
       show today: those still flagged, approved or rejected with a reason;
       once decided, accepted or rejected, and why.
    4. **4d:** the Attendance tab's To decide, and their notifications,
-      point there.
+      point there (#136): the tab keeps a pointer and Approve overtime
+      ahead; the Exceptions tab's requests waiting open To review; a new
+      phone's notice opens it, picked out, an older one the phones.
 5. **Name changes and role requests:** decided on the page; their pages
    send people there, and the side bar shows one Requests item under
    People.
@@ -1677,3 +1679,19 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Approve is one click and the check-in counts; Reject asks for a reason
     if there is one, and it doesn't.
   - The Attendance page's list stays until part 4d.
+- **2026-10-31:** Flagged check-ins on the Requests page were merged in
+  #135, and the Attendance page points there for all of them in #136
+  (§2.3, part 4d), which finishes part 4:
+  - The Attendance page's Requests tab no longer lists overtime, check-in
+    phones or flagged check-ins: To decide points to To review, for
+    whoever decides any attendance request, and keeps Approve overtime
+    ahead, which isn't a request. One's own phone stays.
+  - The Exceptions tab's requests waiting open To review, rather than the
+    tab that only points there.
+  - A new phone's notice to whoever approves phones opens it on the
+    Requests page, picked out, from the bell and from a push on the
+    check-in app; one sent before opens the Requests page's phones. The
+    page finds a phone picked out, and opens it on To review, Done once
+    it's decided.
+  - Other attendance notices are about one's own days, phone or check-ins,
+    which stay on the Attendance page, and still open it.

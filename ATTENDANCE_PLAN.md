@@ -657,9 +657,11 @@ whole rule.
   and tells the employee to check in with it. The days affected surface on the
   exceptions screen as incomplete, for the usual missing-punch flow.
 - **Lost phone:** an admin revokes directly; the user registers a new one.
-- **Where they're decided:** under To review on the one Requests page too,
+- **Where they're decided:** under To review on the one Requests page,
   waiting and decided, with Approve, Reject and Revoke (`UI_PLAN.md` §2.3,
-  part 4b, #134). A person's own phone stays on the Attendance page.
+  part 4b, #134); the Attendance page points there, and a new phone's
+  notice opens it there (part 4d, #136). A person's own phone stays on the
+  Attendance page.
 - **Held punches:** check-ins from a phone awaiting approval are recorded as
   `PENDING_DEVICE` and count only once it is approved, so a slow approval does not
   cost the employee a day.
@@ -885,8 +887,9 @@ exceptions screen (§13.1) for Admin/HR, and the employee is told it is awaiting
 review. If accepted, it counts as a normal check-in; if rejected, it does not, and
 the day is treated as if there were no check-in. Where the reason was the face
 check, the reviewer also sees the one captured frame (§13.8). They're decided
-on the one Requests page too, under To review, with the map of where the phone
-was and the face photos (`UI_PLAN.md` §2.3, part 4c, #135).
+on the one Requests page, under To review, with the map of where the phone
+was and the face photos (`UI_PLAN.md` §2.3, part 4c, #135); the Attendance
+page points there (part 4d, #136).
 
 The line between refused and flagged is deliberate: refusing innocent failures
 locks honest people out, and flagging clear fraud wastes reviewers' time.
