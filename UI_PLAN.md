@@ -1587,3 +1587,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     own: the day, today at the latest, the time, in or out, and why.
   - Rejecting and withdrawing are one pair of dialogs for both attendance
     kinds.
+- **2026-10-31:** Found by Codex on #131: the missing punch form took today
+  from the browser, which can be a day behind the company's, so just after
+  the company's midnight that day's punches couldn't be picked. The page
+  now passes the company's own day, which the attendance API reads times
+  in, to both attendance forms: a missing punch can't be after it, and
+  both start on it.

@@ -77,10 +77,13 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     // (asksForSelf); on Mine, what's left of this month's permission hours,
     // while the policy allows them (§2.3, part 3).
     const mayAskAttendance = sessionHasModule({ user: viewer }, 'ATTENDANCE') && !superAdmin && !!viewer.companyId
+    // The company's own day, which the attendance API reads times in: what a
+    // missing punch can't be after, and the day both forms start on. The
+    // browser's can be a day behind it (found by Codex on PR 131).
+    const attendanceToday = mayAskAttendance ? await AttendanceRequestService.todayIn(viewer.companyId!) : null
     let allowance: { left: number; total: number; pending: number; carried: number } | null = null
-    if (mayAskAttendance && tab === "mine") {
-        const today = await AttendanceRequestService.todayIn(viewer.companyId!)
-        const balance = await AttendanceRequestService.permissionBalance(viewer.companyId!, viewer.id, today.slice(0, 7), today)
+    if (attendanceToday && tab === "mine") {
+        const balance = await AttendanceRequestService.permissionBalance(viewer.companyId!, viewer.id, attendanceToday.slice(0, 7), attendanceToday)
         if (balance.enabled) allowance = {
             left: balance.remainingMinutes,
             total: balance.allowanceMinutes + balance.carriedMinutes,
@@ -93,7 +96,7 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
         <RequestsClient
             rows={feed.rows} total={feed.total} page={page} totalPages={feed.totalPages} kinds={feed.kinds}
             tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} mayAskDayOff={mayAskDayOff} credit={credit}
-            mayAskAttendance={mayAskAttendance} allowance={allowance}
+            mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance}
         />
     )
 }

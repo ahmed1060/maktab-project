@@ -81,12 +81,14 @@ interface RequestsClientProps {
     credit?: { remaining: number; used: number } | null
     /** Whether they have attendance of their own: to ask permission hours of, and report a missing punch in (§2.3, part 3). */
     mayAskAttendance?: boolean
+    /** Today, as the company's calendar has it, for whoever has attendance of their own (found by Codex on PR 131). */
+    attendanceToday?: string | null
     /** What's left of this month's permission hours, in minutes, on Mine, while the policy allows them. */
     allowance?: { left: number; total: number; pending: number; carried: number } | null
 }
 
 export default function RequestsClient({
-    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null, mayAskAttendance = false, allowance = null,
+    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null,
 }: RequestsClientProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -433,7 +435,7 @@ export default function RequestsClient({
                     onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); router.refresh() }} />
             )}
 
-            <NewRequest open={asking} mayAskDayOff={mayAskDayOff} mayAskAttendance={mayAskAttendance} onClose={() => setAsking(false)} onAsked={() => {
+            <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} onClose={() => setAsking(false)} onAsked={() => {
                 setAsking(false)
                 // Theirs, waiting: where it now is.
                 if (tab === 'mine' && show === 'waiting') router.refresh()
@@ -449,16 +451,17 @@ export default function RequestsClient({
  * permission hours or a missing punch, for whoever has attendance of their
  * own (part 3).
  */
-function NewRequest({ open, mayAskDayOff, mayAskAttendance, onClose, onAsked }: {
+function NewRequest({ open, mayAskDayOff, today, onClose, onAsked }: {
     open: boolean
     mayAskDayOff: boolean
-    mayAskAttendance: boolean
+    /** The company's day, for whoever has attendance of their own; null for whoever hasn't. */
+    today: string | null
     onClose: () => void
     onAsked: () => void
 }) {
     const { t } = useLanguage()
     const [what, setWhat] = useState<RequestKind>('internal')
-    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && mayAskDayOff) || ((k === 'permission' || k === 'missingPunch') && mayAskAttendance))
+    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && mayAskDayOff) || ((k === 'permission' || k === 'missingPunch') && today !== null))
     const close = () => {
         setWhat('internal')
         onClose()
@@ -475,10 +478,10 @@ function NewRequest({ open, mayAskDayOff, mayAskAttendance, onClose, onAsked }: 
             )}
             {what === 'dayOff'
                 ? <AskDayOff onCancel={close} onAsked={asked} />
-                : what === 'permission'
-                    ? <AskPermission onCancel={close} onAsked={asked} />
-                    : what === 'missingPunch'
-                        ? <ReportMissingPunch onCancel={close} onReported={asked} />
+                : what === 'permission' && today
+                    ? <AskPermission today={today} onCancel={close} onAsked={asked} />
+                    : what === 'missingPunch' && today
+                        ? <ReportMissingPunch today={today} onCancel={close} onReported={asked} />
                         : <AskInternal onCancel={close} onAsked={onAsked} />}
         </Dialog>
     )

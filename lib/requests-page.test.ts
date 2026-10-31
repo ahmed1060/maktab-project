@@ -315,11 +315,22 @@ describe("missing punches on it (UI_PLAN.md §2.3, part 3b)", () => {
 
     it("is reported from New request: the day, which can't be after today, the time, in or out, and why", () => {
         expect(dialogs).toContain("fetch('/api/attendance/missing-punches', {")
-        expect(dialogs).toContain("maxDate={today()}")
+        expect(dialogs).toContain("maxDate={today}")
         expect(dialogs).toContain("t('req_missing_hint')")
         expect(dialogs).toContain("t('punch_direction_unknown')")
         // Why the server refused it, in their language.
         for (const code of ["PUNCH_IN_FUTURE", "MISSING_PUNCH_ALREADY_REPORTED", "PAYROLL_MONTH_LOCKED"]) expect(dialogs, code).toContain(code)
+    })
+
+    it("knows today as the company's calendar has it, not the browser's, which can be a day behind (found by Codex on PR 131)", () => {
+        const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
+        expect(server).toContain("const attendanceToday = mayAskAttendance ? await AttendanceRequestService.todayIn(viewer.companyId!) : null")
+        expect(server).toContain("attendanceToday={attendanceToday}")
+        expect(client).toContain("<ReportMissingPunch today={today}")
+        expect(client).toContain("<AskPermission today={today}")
+        // Both forms start on it, and a missing punch can't be after it.
+        expect(dialogs).toContain("const [date, setDate] = useState(today)")
+        expect(dialogs).not.toMatch(/function today\(\)/)
     })
 
     it("has no styles typed in", async () => {

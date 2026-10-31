@@ -168,12 +168,6 @@ export function WithdrawAttendance({ request, hint, onClose, onWithdrawn }: { re
     )
 }
 
-/** Today, as the calendar day the picker takes. */
-function today() {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 /** The chosen day's rules and what's left of its month's (GET /api/attendance/permissions/balance). */
 type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number }
 
@@ -184,7 +178,12 @@ type Errors = { date?: string; start?: string; end?: string; reason?: string }
  * whose limits and what's left of its month's show once it's picked; the
  * type the policy allows; the hours; and why.
  */
-export function AskPermission({ onCancel, onAsked }: { onCancel: () => void; onAsked: () => void }) {
+export function AskPermission({ today, onCancel, onAsked }: {
+    /** Today, as the company's calendar has it (found by Codex on PR 131). */
+    today: string
+    onCancel: () => void
+    onAsked: () => void
+}) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
@@ -273,7 +272,12 @@ type ReportErrors = { date?: string; time?: string; reason?: string }
  * latest, the time, whether in or out if they know, and why. Once approved
  * it's added as a punch, and the day is worked out again.
  */
-export function ReportMissingPunch({ onCancel, onReported }: { onCancel: () => void; onReported: () => void }) {
+export function ReportMissingPunch({ today, onCancel, onReported }: {
+    /** Today, as the company's calendar has it: the browser's can be a day behind (found by Codex on PR 131). */
+    today: string
+    onCancel: () => void
+    onReported: () => void
+}) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
@@ -319,7 +323,7 @@ export function ReportMissingPunch({ onCancel, onReported }: { onCancel: () => v
     return (
         <form className="ui-form" noValidate onSubmit={submit}>
             <p className="ui-hint">{t('req_missing_hint')}</p>
-            <DatePickerSingle asField label={t('date_label')} value={date} maxDate={today()} error={errors.date}
+            <DatePickerSingle asField label={t('date_label')} value={date} maxDate={today} error={errors.date}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
             <Field label={t('punch_time')} error={errors.time}>{p => (
                 <TextInput {...p} name="time" type="time" autoComplete="off" value={time} onChange={e => { setTime(e.target.value); setErrors(x => ({ ...x, time: undefined })) }} />
