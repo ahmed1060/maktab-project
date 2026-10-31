@@ -205,7 +205,20 @@ one once its kind has moved in.
       phone's notice opens it, picked out, an older one the phones.
 5. **Name changes and role requests:** decided on the page; their pages
    send people there, and the side bar shows one Requests item under
-   People.
+   People. In three PRs (Decided on 2026-10-31):
+   1. **5a:** name changes (#137): still asked for on one's profile; one's
+      own on Mine, everyone else's under To review for whoever decides
+      them, approved, or rejected with a reason if there is one. The
+      Profile requests page, the header's count, the dashboard's tile and
+      a decision's notice open them there.
+   2. **5b:** role requests: still asked for on an employee's page; on the
+      Mine of whoever asked, as the Role requests page has them, and
+      decided under To review (Decided on 2026-10-31). The Role requests
+      page's other tabs, asking the Super Admin to change a role and access
+      reviews, move to Company settings, beside Roles (Decided on
+      2026-10-31).
+   3. **5c:** the side bar shows one Requests item under People, and the
+      old pages' items go.
 
 - **To review** is everyone else's requests the person sees, with the
   buttons where they may decide them. In the built-in roles, seeing and
@@ -1700,3 +1713,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     languages, old notices too, since a notice is worded when it's shown.
     And Approve overtime ahead is the building blocks' button, as the link
     beside it is.
+- **2026-10-31:** The Attendance page points to the Requests page for every
+  request, merged in #136, which finishes part 4. Part 5 is planned in three
+  PRs (§2.3): name changes, role requests, then one Requests item in the
+  side bar. Role requests show on the Mine of whoever asked for them, and
+  the Role requests page's other tabs move to Company settings, beside
+  Roles. Name changes join in #137 (part 5a):
+  - Mine is one's own, waiting or decided; To review is everyone else's in
+    the company, for whoever decides name changes, never their own, or the
+    picked company's for the Super Admin.
+  - A row is named by the name it's for, and says the one it was. They're
+    searched by the new name, and once decided by the note.
+  - Approve is one click; Reject asks for a reason if there is one, which
+    the Profile requests page didn't, and the person is told it.
+  - The Profile requests page sends people there, with the one it picked
+    out. The header's count, the dashboard's tile, and a decision's notice
+    open it there too; a decision's notice names the request now, and an
+    older one, which named the person, opens the kind's list.
+  - Asking stays on one's profile.

@@ -73,7 +73,9 @@ describe("header icons", () => {
     const header = readFileSync("components/DashboardHeader.tsx", "utf8")
 
     it("name the icon-only link to profile name requests", () => {
-        const link = header.slice(header.indexOf('href="/dashboard/profile-requests"'), header.indexOf("</Link>", header.indexOf('href="/dashboard/profile-requests"')))
+        // On the Requests page since part 5a (UI_PLAN.md §2.3).
+        const href = 'href="/dashboard/requests?tab=review&kind=nameChange&show=waiting"'
+        const link = header.slice(header.indexOf(href), header.indexOf("</Link>", header.indexOf(href)))
         expect(link).toContain("aria-label={t('profile_name_requests')}")
         expect(link).toMatch(/<svg aria-hidden="true" focusable="false"/)
     })

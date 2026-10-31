@@ -885,7 +885,103 @@ const flagged: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone, flagged]
+// --- Name changes: asked for, then approved or rejected (§2.3, part 5a) ---------
+
+/**
+ * Which name changes this person has on a tab, as its API's rule
+ * (app/api/profile-requests): Mine is their own; To review is everyone
+ * else's in their company they decide with profile_requests.review, or the
+ * picked company's for the Super Admin. A request has no company of its
+ * own: its asker's is. Null when they have none there.
+ */
+export function nameChangeWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    const where: Record<string, any> = {}
+    if (q.tab === "mine") {
+        // The Super Admin has no name in a company to change.
+        if (v.role === "SUPER_ADMIN") return null
+        where.userId = v.id
+    } else {
+        const reach = grantFor(v, "profile_requests.review")
+        if (!reach) return null
+        if (reach === "ALL") {
+            if (q.companyId) where.user = { companyId: q.companyId }
+        } else {
+            if (!v.companyId) return null
+            where.user = { companyId: v.companyId }
+            // Nobody decides their own.
+            where.userId = { not: v.id }
+        }
+        if (q.personId) and(where, { userId: q.personId })
+    }
+    where.status = q.show === "done" ? { in: DECIDED } : "PENDING"
+    if (q.search) {
+        // The name it's for; once decided, the note it was decided with too.
+        const words = { contains: q.search, mode: "insensitive" }
+        where.OR = [{ newFirstName: words }, { newLastName: words }, ...(q.show === "done" ? [{ adminNote: words }] : [])]
+    }
+    return where
+}
+
+type NameChangeRequest = {
+    id: string
+    userId: string
+    oldFirstName: string
+    oldLastName: string
+    newFirstName: string
+    newLastName: string
+    status: string
+    adminNote: string | null
+    createdAt: Date
+    updatedAt: Date
+    user: { firstName: string; lastName: string; companyId: string | null; teamLeaderId: string | null }
+}
+
+/**
+ * A name change as a row. Deciding it is the decision routes' own rule
+ * (app/api/profile-requests/[id]/approve and reject): profile_requests.review
+ * at whose it is, which is never one's own. Done is in order of when it was
+ * decided, which nothing changes after.
+ */
+export function nameChangeRow(v: Viewer, r: NameChangeRequest): FeedRow {
+    const target: Target = { companyId: r.user.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
+    const waits = r.status === "PENDING"
+    const asked = r.createdAt.toISOString()
+    const to = `${r.newFirstName} ${r.newLastName}`.trim()
+    return {
+        kind: "nameChange",
+        id: r.id,
+        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        what: to,
+        detail: null,
+        asked,
+        started: null,
+        finished: waits ? null : r.updatedAt.toISOString(),
+        status: r.status,
+        sortAt: waits ? asked : r.updatedAt.toISOString(),
+        mayDecide: waits && can(v, "profile_requests.review", target),
+        mayDelete: false,
+        mayWithdraw: false,
+        nameChange: { from: `${r.oldFirstName} ${r.oldLastName}`.trim(), to, note: r.adminNote },
+    }
+}
+
+const nameChange: Source = {
+    kind: "nameChange",
+    where: nameChangeWhere,
+    list: (v, q, where, take) => {
+        return Promise.all([
+            prisma.profileUpdateRequest.findMany({
+                where,
+                orderBy: feedOrder(q.show),
+                take,
+                include: { user: { select: { firstName: true, lastName: true, companyId: true, teamLeaderId: true } } },
+            }),
+            prisma.profileUpdateRequest.count({ where }),
+        ]).then(([rows, total]) => ({ rows: rows.map(r => nameChangeRow(v, r)), total }))
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone, flagged, nameChange]
 
 // --- The page --------------------------------------------------------
 

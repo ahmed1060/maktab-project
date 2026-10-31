@@ -91,10 +91,20 @@ async function refusal(res: Response, fallback: TranslationKey): Promise<Transla
 /**
  * Approves or rejects somebody's permission hours, missing punch, a day's
  * overtime (all of its minutes, as the Attendance page did), new check-in
- * phone or flagged check-in. Null once done; otherwise what to say.
+ * phone, flagged check-in or name change (§2.3, part 5a). Null once done;
+ * otherwise what to say.
  */
-export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'overtime'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
+export async function decideRequest(request: Pick<FeedRow, 'id' | 'kind' | 'overtime'>, approve: boolean, reason: string | null): Promise<TranslationKey | null> {
     try {
+        if (request.kind === 'nameChange') {
+            // Its own routes, which say nothing but that it was decided already.
+            const res = await fetch(`/api/profile-requests/${request.id}/${approve ? 'approve' : 'reject'}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminNote: reason ?? '' }),
+            })
+            return res.ok ? null : res.status === 400 ? 'requests_already_decided' : 'error_generic'
+        }
         const o = request.overtime
         const res = o
             ? await fetch(ATTENDANCE_API.overtime, {
@@ -115,8 +125,8 @@ export async function decideAttendance(request: Pick<FeedRow, 'id' | 'kind' | 'o
     }
 }
 
-/** Rejecting permission hours, a missing punch, a day's overtime, a new phone or a flagged check-in, with a reason if there is one. */
-export function RejectAttendance({ request, question, placeholder, onClose, onDecided }: {
+/** Rejecting permission hours, a missing punch, a day's overtime, a new phone, a flagged check-in or a name change, with a reason if there is one. */
+export function RejectRequest({ request, question, placeholder, onClose, onDecided }: {
     request: FeedRow
     /** What's being refused, in a sentence: whose, and which. */
     question: string
@@ -132,7 +142,7 @@ export function RejectAttendance({ request, question, placeholder, onClose, onDe
 
     const reject = () => void action.run('decide', async () => {
         // The schema takes an empty reason as none given.
-        const refused = await decideAttendance(request, false, reason.trim() || null)
+        const refused = await decideRequest(request, false, reason.trim() || null)
         if (refused) {
             showToast(t(refused), 'error')
             return

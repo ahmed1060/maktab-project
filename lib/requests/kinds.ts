@@ -5,7 +5,7 @@
  */
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone", "flagged"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone", "flagged", "nameChange"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -43,6 +43,8 @@ export type FeedRow = {
     phone?: PhoneFacts
     /** A flagged check-in's own facts (§2.3, part 4c). Its `what` is its direction, if stated. */
     flagged?: FlaggedFacts
+    /** A name change's own facts (§2.3, part 5a). Its `what` is the name it's for. */
+    nameChange?: NameChangeFacts
 }
 
 export type DayOffFacts = {
@@ -119,4 +121,12 @@ export type FlaggedFacts = {
     reason: string | null
     /** Whether this person may see the face photos of one whose face check failed, while it waits. */
     mayViewFace: boolean
+}
+
+export type NameChangeFacts = {
+    /** The name it was asked from, and the one it's for. */
+    from: string
+    to: string
+    /** The note it was decided with, if any. */
+    note: string | null
 }

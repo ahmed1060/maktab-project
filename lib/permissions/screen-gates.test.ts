@@ -73,7 +73,8 @@ const GATES: Gate[] = [
     // The one Requests page (UI_PLAN.md §2.3) asks these on the server, in its feed, for each row.
     { what: "requests: To review, others' requests", file: "lib/requests/feed.ts", uses: 'const reach = grantFor(v, "requests.view")', before: managers, now: p => p.can("requests.view") },
     { what: "requests: decide one", file: "lib/requests/feed.ts", uses: 'can(v, "requests.view", target) && can(v, "requests.review", target)', before: managers, now: p => p.can("requests.view") && p.can("requests.review") },
-    { what: "name changes: page", file: D + "profile-requests/page.tsx", uses: "const canReview = permissions.can('profile_requests.review')", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("profile_requests.review") },
+    // On the one Requests page since UI_PLAN.md §2.3, part 5a: To review has others' name changes for whoever decides them.
+    { what: "name changes: page", file: "lib/requests/feed.ts", uses: 'const reach = grantFor(v, "profile_requests.review")', before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("profile_requests.review") },
     { what: "name changes: header counter", file: "components/DashboardHeader.tsx", uses: "permissionsOf(currentUser as any).can('profile_requests.review')", before: admins, now: p => p.can("profile_requests.review") },
 
     // --- Sidebar and dashboard --------------------------------------------------
@@ -92,7 +93,7 @@ const GATES: Gate[] = [
     { what: "day off: decide", file: "lib/requests/feed.ts", uses: 'can(v, "dayoff.approve", target)', before: admins, now: p => p.can("dayoff.approve") },
     // Added in Part B: the buttons on one request, never one's own.
     { what: "day off: decide this one (flag: one's own)", file: "lib/requests/feed.ts", uses: 'const mayDecide = !decided && can(v, "dayoff.view", target) && can(v, "dayoff.approve", target)', before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("dayoff.approve", own ? ACTOR[role].id : "someone-else") },
-    { what: "name changes: decide this one (flag: one's own)", file: D + "profile-requests/page.tsx", uses: "permissions.canFor('profile_requests.review', req.userId)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("profile_requests.review", own ? ACTOR[role].id : "someone-else") },
+    { what: "name changes: decide this one (flag: one's own)", file: "lib/requests/feed.ts", uses: 'mayDecide: waits && can(v, "profile_requests.review", target)', before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("profile_requests.review", own ? ACTOR[role].id : "someone-else") },
     { what: "payroll: save draft", file: D + "payroll/page.tsx", uses: "const canPrepare = can('payroll.prepare')", before: admins, now: p => p.can("payroll.prepare") },
     { what: "payroll: approve", file: D + "payroll/page.tsx", uses: "const canApprove = can('payroll.approve')", before: admins, now: p => p.can("payroll.approve") },
     { what: "payroll: delivery", file: D + "payroll/page.tsx", uses: "const canDeliver = can('payroll.issue_payslips') || can('payroll.mark_paid')", before: admins, now: p => p.can("payroll.issue_payslips") || p.can("payroll.mark_paid") },

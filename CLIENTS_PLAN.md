@@ -2100,3 +2100,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** Flagged check-ins on the Requests page were merged in #135
   (`UI_PLAN.md` §2.3), and the Attendance page points there for all of
   them in #136. Neither touches clients or locations.
+- **2026-10-31:** The Attendance page points to the Requests page, merged in
+  #136 (`UI_PLAN.md` §2.3), and name changes join it in #137. Neither
+  touches clients or locations.

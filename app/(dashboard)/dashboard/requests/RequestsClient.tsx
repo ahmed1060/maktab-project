@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowUUpLeftIcon, CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, ClockIcon, DeviceMobileIcon, EyeIcon, MapPinIcon, PlayIcon, PlusIcon, ProhibitIcon, ShapesIcon, TrashIcon, TrayIcon, UserFocusIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
+import { ArrowUUpLeftIcon, CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, ClockIcon, DeviceMobileIcon, EyeIcon, IdentificationCardIcon, MapPinIcon, PlayIcon, PlusIcon, ProhibitIcon, ShapesIcon, TrashIcon, TrayIcon, UserFocusIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
@@ -27,7 +27,7 @@ import {
 } from '@/components/ui'
 import { AskDayOff, DecideDayOff } from './DayOffDialogs'
 import {
-    AskPermission, PERMISSION_TYPE_LABEL, RejectAttendance, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideAttendance, permissionDay, punchDay, punchTime,
+    AskPermission, PERMISSION_TYPE_LABEL, RejectRequest, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideRequest, permissionDay, punchDay, punchTime,
 } from './AttendanceDialogs'
 
 /**
@@ -64,6 +64,7 @@ const KIND_LABEL: Record<RequestKind, TranslationKey> = {
     overtime: 'requests_kind_overtime',
     phone: 'requests_kind_phone',
     flagged: 'requests_kind_flagged',
+    nameChange: 'requests_kind_name_change',
 }
 
 /** A missing punch's name: which punch, if they said (§2.3, part 3b). */
@@ -171,7 +172,7 @@ export default function RequestsClient({
     // Permission hours and missing punches are approved as they are: there's
     // nothing to choose (§2.3, part 3). A missing punch's is added as a punch.
     const approveAttendance = (r: FeedRow) => action.run(r.id, async () => {
-        const refused = await decideAttendance(r, true, null)
+        const refused = await decideRequest(r, true, null)
         if (refused) {
             showToast(t(refused), 'error')
             return
@@ -214,7 +215,9 @@ export default function RequestsClient({
                     // A phone by its model, or, without one kept, its system.
                     : r.kind === 'phone' ? r.what || platform(r)
                         // A flagged check-in by why it waits.
-                        : r.kind === 'flagged' ? why(r) : r.what
+                        : r.kind === 'flagged' ? why(r)
+                            // A name change by the name it's for, which is its what.
+                            : r.what
     const title = (r: FeedRow) => {
         const what = name(r)
         return <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{what}</bdi></button>
@@ -276,7 +279,7 @@ export default function RequestsClient({
     // What came of a day off: the days taken and from what, or why it was refused;
     // and why permission hours were.
     const outcome = (r: FeedRow) => {
-        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason ?? r.overtime?.note ?? r.phone?.reason ?? r.flagged?.reason
+        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason ?? r.overtime?.note ?? r.phone?.reason ?? r.flagged?.reason ?? r.nameChange?.note
         const d = r.dayOff
         if (d && r.status === 'APPROVED') return t(d.deductedFrom === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', countOf(t, locale, d.deducted, 'days'))
         // A phone revoked, and why, if someone said.
@@ -285,7 +288,8 @@ export default function RequestsClient({
     }
     // Under its name: its kind, once there's more than one, and a day off's days or permission's hours.
     const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.missingPunch ? punchWhen(r) : r.overtime ? overtimeWhen(r)
-        : r.phone ? phoneWhen(r) || null : r.flagged ? flaggedWhen(r) || null : null
+        : r.phone ? phoneWhen(r) || null : r.flagged ? flaggedWhen(r) || null
+            : r.nameChange ? t('requests_name_change_from').replace('{name}', r.nameChange.from) : null
     const detail = (r: FeedRow) => {
         const parts = [kinds.length > 1 ? kindLabel(r) : null, when(r)].filter(Boolean)
         return parts.length ? <span>{parts.join(sep)}</span> : undefined
@@ -305,7 +309,7 @@ export default function RequestsClient({
             <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
-        if (r.kind === 'permission' || r.kind === 'missingPunch' || r.kind === 'overtime' || r.kind === 'phone' || r.kind === 'flagged') return r.mayDecide && <>
+        if (r.kind === 'permission' || r.kind === 'missingPunch' || r.kind === 'overtime' || r.kind === 'phone' || r.kind === 'flagged' || r.kind === 'nameChange') return r.mayDecide && <>
             <Button size="sm" icon={CheckIcon} onClick={() => { void approveAttendance(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setRejecting(r) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
@@ -333,6 +337,7 @@ export default function RequestsClient({
     const actions = (r: FeedRow) => <span className="ui-row-actions">{next(r)}{menu(r)}</span>
     // What rejecting refuses: whose permission hours on which day, whose missing punch when, whose new phone, or whose check-in.
     const rejectQuestion = (r: FeedRow) => {
+        if (r.nameChange) return t('requests_name_change_reject_question').replace('{name}', r.who.name).replace('{to}', r.nameChange.to)
         if (r.flagged) return t('requests_flagged_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.flagged.at, locale)).replace('{date}', punchDay(r.flagged.at, locale))
         if (r.phone) return t('requests_phone_reject_question').replace('{name}', r.who.name).replace('{phone}', name(r))
         if (r.missingPunch) return t('requests_missing_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
@@ -443,6 +448,7 @@ export default function RequestsClient({
                             ...(r.overtime ? [{ icon: ClockIcon, text: <span>{overtimeWhen(r)}</span> }] : []),
                             ...(r.phone && phoneWhen(r) ? [{ icon: DeviceMobileIcon, text: <span>{phoneWhen(r)}</span> }] : []),
                             ...(r.flagged && flaggedWhen(r) ? [{ icon: MapPinIcon, text: <span>{flaggedWhen(r)}</span> }] : []),
+                            ...(r.nameChange ? [{ icon: IdentificationCardIcon, text: <bdi>{t('requests_name_change_from').replace('{name}', r.nameChange.from)}</bdi> }] : []),
                             ...(review ? [{ icon: UserIcon, text: <bdi>{r.who.name}</bdi> }] : []),
                             { icon: CalendarIcon, text: asked(r) },
                         ]}
@@ -491,6 +497,10 @@ export default function RequestsClient({
                                 { label: t('requests_phone_app_check'), value: t(viewing.phone.attested ? 'requests_phone_verified' : 'req_phone_unverified') },
                                 ...(viewing.status === 'PENDING' ? [{ label: t('requests_phone_held_label'), value: num(viewing.phone.held) }] : []),
                             ] : []),
+                            ...(viewing.nameChange ? [
+                                { label: t('requests_name_change_from_label'), value: <bdi>{viewing.nameChange.from}</bdi> },
+                                { label: t('requests_name_change_to_label'), value: <bdi>{viewing.nameChange.to}</bdi> },
+                            ] : []),
                             ...(viewing.flagged ? [
                                 { label: t('date_label'), value: punchDay(viewing.flagged.at, locale) },
                                 { label: t('punch_time'), value: punchTime(viewing.flagged.at, locale) },
@@ -529,9 +539,10 @@ export default function RequestsClient({
                     onClose={() => setDeciding(null)} onDecided={() => { setDeciding(null); router.refresh() }} />
             )}
             {rejecting && (
-                <RejectAttendance key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
+                <RejectRequest key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
                     placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : rejecting.overtime ? 'requests_overtime_reject_placeholder'
-                        : rejecting.phone ? 'requests_phone_reject_placeholder' : rejecting.flagged ? 'requests_flagged_reject_placeholder' : 'requests_permission_reject_placeholder')}
+                        : rejecting.phone ? 'requests_phone_reject_placeholder' : rejecting.flagged ? 'requests_flagged_reject_placeholder'
+                            : rejecting.nameChange ? 'requests_name_change_reject_placeholder' : 'requests_permission_reject_placeholder')}
                     onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); router.refresh() }} />
             )}
             {withdrawing && (

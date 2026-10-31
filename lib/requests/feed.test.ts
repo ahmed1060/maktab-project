@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
-import { dayOffRow, dayOffWhere, feedOrder, flaggedRow, flaggedWhere, internalRow, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, phoneRow, phoneWhere, type FeedRow } from "./feed"
+import { dayOffRow, dayOffWhere, feedOrder, flaggedRow, flaggedWhere, internalRow, nameChangeRow, nameChangeWhere, internalWhere, missingPunchRow, missingPunchWhere, overtimeDecisionRow, overtimeDayRow, overtimeWhere, pageOf, permissionRow, permissionWhere, phoneRow, phoneWhere, type FeedRow } from "./feed"
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind read through
@@ -643,6 +643,71 @@ describe("a flagged check-in's row", () => {
         const row = flaggedRow(admin, punch({ direction: null, checkIn: null, workLocation: null, phone: null }))
         expect(row.what).toBe("")
         expect(row.flagged).toMatchObject({ direction: null, place: null, distance: null, accuracy: null, ip: null, latitude: null, longitude: null, phone: null })
+    })
+})
+
+// --- Name changes (UI_PLAN.md §2.3, part 5a) -----------------------------------
+
+describe("name changes", () => {
+    const review = { ...waiting, tab: "review" as const }
+
+    it("on Mine are one's own, waiting or decided", () => {
+        expect(nameChangeWhere(employee, waiting)).toEqual({ userId: "e1", status: "PENDING" })
+        expect(nameChangeWhere(employee, { ...waiting, show: "done" })).toEqual({ userId: "e1", status: { in: ["APPROVED", "REJECTED"] } })
+    })
+
+    it("aren't the Super Admin's own, who has no name in a company to change", () => {
+        expect(nameChangeWhere(superAdmin, waiting)).toBeNull()
+    })
+
+    it("on To review are everyone else's in the company, for whoever decides them, and the picked company's for the Super Admin", () => {
+        expect(nameChangeWhere(admin, review)).toEqual({ user: { companyId: "c1" }, userId: { not: "a1" }, status: "PENDING" })
+        expect(nameChangeWhere(superAdmin, { ...review, companyId: "c2" })).toEqual({ user: { companyId: "c2" }, status: "PENDING" })
+        expect(nameChangeWhere(admin, { ...review, personId: "x9" })).toMatchObject({ AND: [{ userId: "x9" }] })
+    })
+
+    it("aren't there for whoever doesn't decide them", () => {
+        expect(nameChangeWhere(employee, review)).toBeNull()
+        expect(nameChangeWhere(leader, review)).toBeNull()
+    })
+
+    it("are searched by the new name, and once decided by the note it was decided with", () => {
+        expect(nameChangeWhere(employee, { ...waiting, search: "sam" })).toMatchObject({
+            OR: [{ newFirstName: { contains: "sam", mode: "insensitive" } }, { newLastName: { contains: "sam", mode: "insensitive" } }],
+        })
+        expect(nameChangeWhere(employee, { ...waiting, show: "done", search: "id" })).toMatchObject({
+            OR: [{ newFirstName: { contains: "id", mode: "insensitive" } }, { newLastName: { contains: "id", mode: "insensitive" } }, { adminNote: { contains: "id", mode: "insensitive" } }],
+        })
+    })
+})
+
+describe("a name change's row", () => {
+    const asked = new Date("2026-10-29T08:00:00Z")
+    const decided = new Date("2026-10-30T12:00:00Z")
+    const change = (fields: object = {}) => ({
+        id: "n1", userId: "e2", oldFirstName: "Mona", oldLastName: "Adel", newFirstName: "Mona", newLastName: "Adel Fahmy",
+        status: "PENDING", adminNote: null, createdAt: asked, updatedAt: asked,
+        user: { firstName: "Mona", lastName: "Adel", companyId: "c1", teamLeaderId: null }, ...fields,
+    })
+
+    it("waiting says whose, the name it's for and the one it was, in order of when it was asked", () => {
+        expect(nameChangeRow(admin, change())).toMatchObject({
+            kind: "nameChange", id: "n1", who: { id: "e2", name: "Mona Adel" }, what: "Mona Adel Fahmy", detail: null, status: "PENDING",
+            asked: asked.toISOString(), sortAt: asked.toISOString(), finished: null, mayDecide: true, mayDelete: false, mayWithdraw: false,
+            nameChange: { from: "Mona Adel", to: "Mona Adel Fahmy", note: null },
+        })
+    })
+
+    it("may be decided by whoever decides name changes, never their own, and not once decided", () => {
+        expect(nameChangeRow(employee, change()).mayDecide).toBe(false)
+        expect(nameChangeRow(admin, change({ userId: "a1" })).mayDecide).toBe(false)
+        expect(nameChangeRow(admin, change({ status: "APPROVED", updatedAt: decided })).mayDecide).toBe(false)
+    })
+
+    it("once decided, is in order of when, with the note it was decided with", () => {
+        expect(nameChangeRow(admin, change({ status: "REJECTED", updatedAt: decided, adminNote: "Use the name on your ID" }))).toMatchObject({
+            finished: decided.toISOString(), sortAt: decided.toISOString(), nameChange: { note: "Use the name on your ID" },
+        })
     })
 })
 

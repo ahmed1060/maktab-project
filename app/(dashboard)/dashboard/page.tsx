@@ -263,7 +263,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     <TotalTiles items={[
                         { label: t('pending_task_reviews'), value: num(reviewTasks), href: tasksListHref({ status: 'PENDING_CONFIRMATION', teamOnly: tasksTeamOnly }) },
                         ...(can(viewer, 'dayoff.approve') ? [{ label: t('pending_day_off_requests'), value: num(pendingDayOffRequests), href: '/dashboard/requests?tab=review&kind=dayOff&show=waiting' }] : []),
-                        ...(can(viewer, 'profile_requests.review') ? [{ label: t('pending_profile_requests'), value: num(pendingProfileRequests), href: '/dashboard/profile-requests' }] : []),
+                        ...(can(viewer, 'profile_requests.review') ? [{ label: t('pending_profile_requests'), value: num(pendingProfileRequests), href: '/dashboard/requests?tab=review&kind=nameChange&show=waiting' }] : []),
                     ]} />
                 </Section>
 

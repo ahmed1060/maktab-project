@@ -36,13 +36,14 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     // it's done, decided or withdrawn. It shows only if the feed has it for
     // them. A day off's too, since its links land here (§2.3, part 2d),
     // permission hours' and a missing punch's (part 3c), and a new check-in
-    // phone's (part 4d).
+    // phone's (part 4d), and a name change's (part 5a).
     if (searchParams.highlight && (!tab || !show)) {
         const picked = await prisma.request.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.dayOffRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.permissionRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.missingPunchRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.checkInPhone.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
+            ?? await prisma.profileUpdateRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
         if (picked) {
             tab ??= picked.userId === viewer.id ? "mine" : "review"
             // Waiting is waiting, or started; anything else is done: done, decided, withdrawn, in use or revoked.
