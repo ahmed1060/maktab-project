@@ -180,7 +180,9 @@ one once its kind has moved in.
    2. **3b:** missing punches on the page, the same way (#131): reported
       with the day, time, in or out and why; withdrawn while it waits;
       approved, which adds the punch, or rejected under To review.
-   3. **3c:** Attendance's Requests tab, and its notifications, point there.
+   3. **3c:** Attendance's Requests tab, and its notifications, point there
+      (#132). Overtime, phones and flagged punches stay on the tab until
+      part 4; asking from a day on the Days tab still opens its forms.
 4. **Overtime, phones and flagged punches:** decided under To review.
    Approving someone's phone and a flagged punch join too (Decided on
    2026-10-30), so a manager has one queue for what waits on them.
@@ -1593,3 +1595,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   now passes the company's own day, which the attendance API reads times
   in, to both attendance forms: a missing punch can't be after it, and
   both start on it.
+- **2026-10-31:** Missing punches on the Requests page were merged in #131,
+  and the Attendance page points there in #132 (§2.3, part 3c):
+  - A decision on permission hours or a missing punch opens the Requests
+    page with the request picked out, from the bell and from a push on the
+    check-in app. Overtime's still opens the Attendance page, until part 4.
+  - The Requests page finds a picked-out permission or missing punch, as
+    it does a day off, and opens it on its tab, Done once it's decided or
+    withdrawn.
+  - The Attendance page's Requests tab no longer lists them: My requests
+    points to Mine, and whoever decides them is pointed to To review.
+    Overtime, phones and flagged punches stay there until part 4.
