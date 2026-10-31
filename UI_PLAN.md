@@ -1835,3 +1835,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     spinner and a toast.
 
   The review cards, the list and the debts follow in part 2.
+- **2026-10-31:** Found in the browser, in #141: a paragraph straight
+  inside a card kept the browser's own margins, so an approved month's
+  one line on Payroll stood in a card twice its height. A card spaces
+  what's in it itself, which also tightens a task page's two notices.

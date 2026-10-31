@@ -551,6 +551,12 @@ describe("the stylesheet keeps the rules", () => {
         expect(css).toMatch(/:root:has\(\.ui-page\) body::before \{\s*display: none;/)
     })
 
+    it("a card spaces what's in it itself: a paragraph in it keeps no margins of its own", () => {
+        // Found in the browser on Payroll (PR 141): an approved month's one
+        // line stood in a card twice its height.
+        expect(css).toMatch(/\.ui-card > p \{\s*margin: 0;\s*\}/)
+    })
+
     it("is loaded once, by the root layout", () => {
         expect(readFileSync("app/layout.tsx", "utf8")).toContain("import '@/components/ui/ui.css'")
     })
