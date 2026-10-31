@@ -2080,3 +2080,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** The Day off page sends people to the Requests page,
   merged in #129 (`UI_PLAN.md` §2.3), and permission hours move there in
   #130. Neither touches clients or locations.
+- **2026-10-31:** Permission hours join the Requests page in #130
+  (`UI_PLAN.md` §2.3, part 3a). It doesn't touch clients or locations.
