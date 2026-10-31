@@ -453,6 +453,16 @@ These are built once, in the building-blocks PR, and every page uses them
 - **On phones,** the filter bar becomes the search field plus a
   "Filters" button showing how many filters are on. The button shows the
   filters below the search, and hides them again.
+- **Which period a page is about,** such as the month on Payroll, is
+  chosen in a panel straight under the page header:
+  - a select for the month and one for the year, each with its visible
+    label, the month and year names in the page's language;
+  - where the Super Admin picks a company too, its select comes first;
+  - it opens on this month.
+
+  It isn't a filter bar: it doesn't narrow a list, it picks what the whole
+  page shows. So it's never folded away. On phones the selects share the
+  row, two to a line, and the company's takes a line of its own.
 
 ### 5.4 Lists: a table on computers, cards on phones
 
@@ -883,3 +893,7 @@ changed:
   Leader with no one on their team yet.
 - **2026-10-30:** A pick of several from a long list, and a form on a page
   of its own (§5.3), for Create task.
+- **2026-10-31:** Which period a page is about (§5.3), for Payroll's month
+  and year, and later Attendance's month and Public holidays' year. Each
+  picks it its own way today: three selects squeezed in beside the title,
+  a browser's month field, and arrows either side of a year.

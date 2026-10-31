@@ -20,9 +20,11 @@ interface DatePickerSingleProps {
     disabled?: boolean
     /** With asField, what's wrong with it, under it as a field's error is (DESIGN.md §5.3). */
     error?: string
+    /** With asField, what to know about it, under it as a field's hint is; an error takes its place. */
+    hint?: string
 }
 
-export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false, disabled = false, error }: DatePickerSingleProps) {
+export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false, disabled = false, error, hint }: DatePickerSingleProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     const mounted = useHydrated()
@@ -228,11 +230,11 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
             <span className="ui-control has-start-icon">
                 <Icon icon={CalendarBlankIcon} size={16} />
                 <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!value || undefined} disabled={disabled}
-                    aria-describedby={error ? `${openerId}-error` : undefined}>
+                    aria-describedby={error ? `${openerId}-error` : hint ? `${openerId}-hint` : undefined}>
                     {value ? formatDate(value) : t('select_date' as any)}
                 </button>
             </span>
-            {error && <span id={`${openerId}-error`} className="ui-error">{error}</span>}
+            {error ? <span id={`${openerId}-error`} className="ui-error">{error}</span> : hint && <span id={`${openerId}-hint`} className="ui-hint">{hint}</span>}
             {portal}
         </div>
     )

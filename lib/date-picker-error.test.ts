@@ -41,3 +41,25 @@ describe("a date picker's error", () => {
         expect(html).not.toContain("ui-error")
     })
 })
+
+describe("a date picker's hint", () => {
+    // Payroll's payment date says it can't be a future day (UI_PLAN.md §5 step 5).
+    const described = (html: string, kind: "hint" | "error") => {
+        const trigger = html.match(/<button[^>]*class="ui-input ui-date-trigger"[^>]*>/)?.[0] ?? ""
+        const id = trigger.match(/aria-describedby="([^"]+)"/)?.[1]
+        return id ? html.match(new RegExp(`<span id="${id.replace(/[:]/g, "\\:")}" class="ui-${kind}">([^<]*)<`))?.[1] : undefined
+    }
+
+    it("is under the picker, as a field's is, and read with it", async () => {
+        const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
+        const html = renderToStaticMarkup(h(DatePickerSingle, { asField: true, label: "Payment date", value: "2026-10-15", onChange: () => {}, hint: "It can’t be a future day." }))
+        expect(described(html, "hint")).toBe("It can’t be a future day.")
+    })
+
+    it("gives way to an error, as a field's does", async () => {
+        const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
+        const html = renderToStaticMarkup(h(DatePickerSingle, { asField: true, label: "Payment date", value: "", onChange: () => {}, hint: "It can’t be a future day.", error: "Pick a day" }))
+        expect(described(html, "error")).toBe("Pick a day")
+        expect(html).not.toContain("ui-hint")
+    })
+})

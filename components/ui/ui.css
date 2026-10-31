@@ -445,6 +445,12 @@
   line-height: var(--leading-xl);
   font-weight: 500;
 }
+/* The card spaces what's in it, so a paragraph keeps none of the browser's
+   own margins: an approved month's one line on Payroll stood in a card
+   twice its height. */
+.ui-card > p {
+  margin: 0;
+}
 /* What a settings card is for, under its title. */
 .ui-card-note {
   margin: 0;
@@ -1885,6 +1891,46 @@ html[lang="ar"] .ui-empty-title {
     width: 100%;
     max-width: none;
   }
+}
+
+/* ── Which period a page is about (§5.3) ── */
+/* Its selects in a row under the page header, never folded away. On phones
+   two to a line, and the company's, the Super Admin's, a line of its own. */
+.ui-period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+.ui-period > .ui-field {
+  flex: 0 1 200px;
+}
+.ui-period > .ui-period-wide {
+  flex-basis: 280px;
+}
+@media (max-width: 767px) {
+  .ui-period > .ui-field {
+    flex: 1 1 calc(50% - var(--space-3) / 2);
+  }
+  .ui-period > .ui-period-wide {
+    flex-basis: 100%;
+  }
+}
+
+/* Halves of a card side by side, such as Payroll's sending and paying:
+   each its title, then what it says and its button, one under the other. */
+.ui-card .ui-columns > section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.ui-card .ui-columns > section > .ui-subsection-title {
+  margin: 0;
+}
+.ui-card .ui-columns > section > p {
+  margin: 0;
 }
 
 /* ── A name typed or picked from a saved list (§5.3) ── */

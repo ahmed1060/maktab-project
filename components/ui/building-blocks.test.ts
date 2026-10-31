@@ -354,6 +354,16 @@ describe("page layout, sections, rows and tiles", () => {
         expect(html).toContain('<a class="ui-btn ui-btn-quiet ui-btn-sm" href="/all">View all</a>')
     })
 
+    it("a section's link can be a file to download, which the browser fetches itself", () => {
+        // A plain link: the app's own would fetch the file as a page first.
+        const html = render(h(ui.SectionLink, { href: "/api/payroll/2026/10/export", download: true, children: "Download CSV" }))
+        expect(html).toBe('<a class="ui-btn ui-btn-quiet ui-btn-sm" href="/api/payroll/2026/10/export" download="">Download CSV</a>')
+    })
+
+    it("which period a page is about is picked in a panel of its own", () => {
+        expect(render(h(ui.PeriodBar, { children: "x" }))).toBe('<div class="ui-panel ui-period">x</div>')
+    })
+
     it("a row links to its item, with its detail and its end, and an overdue row says so", () => {
         const html = render(h(ui.Rows, { label: "Overdue tasks", children: [
             h(ui.Row, { key: "a", href: "/tasks/a", title: "Renew register", detail: "HQ", detailIcon: MapPinIcon, end: h(ui.DueDate, { overdue: true, children: "12 Oct" }), tone: "overdue" }),
@@ -539,6 +549,12 @@ describe("the stylesheet keeps the rules", () => {
     it("a page on the building blocks sits on the page colour, not the old moving gradient", () => {
         expect(css).toMatch(/:root:has\(\.ui-page\) body \{\s*background: var\(--page\);\s*animation: none;/)
         expect(css).toMatch(/:root:has\(\.ui-page\) body::before \{\s*display: none;/)
+    })
+
+    it("a card spaces what's in it itself: a paragraph in it keeps no margins of its own", () => {
+        // Found in the browser on Payroll (PR 141): an approved month's one
+        // line stood in a card twice its height.
+        expect(css).toMatch(/\.ui-card > p \{\s*margin: 0;\s*\}/)
     })
 
     it("is loaded once, by the root layout", () => {

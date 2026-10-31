@@ -96,7 +96,10 @@ const GATES: Gate[] = [
     { what: "name changes: decide this one (flag: one's own)", file: "lib/requests/feed.ts", uses: 'mayDecide: waits && can(v, "profile_requests.review", target)', before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("profile_requests.review", own ? ACTOR[role].id : "someone-else") },
     { what: "payroll: save draft", file: D + "payroll/page.tsx", uses: "const canPrepare = can('payroll.prepare')", before: admins, now: p => p.can("payroll.prepare") },
     { what: "payroll: approve", file: D + "payroll/page.tsx", uses: "const canApprove = can('payroll.approve')", before: admins, now: p => p.can("payroll.approve") },
-    { what: "payroll: delivery", file: D + "payroll/page.tsx", uses: "const canDeliver = can('payroll.issue_payslips') || can('payroll.mark_paid')", before: admins, now: p => p.can("payroll.issue_payslips") || p.can("payroll.mark_paid") },
+    // On the building blocks, each half of paying and sending asks its own (UI_PLAN.md §5 step 5).
+    { what: "payroll: delivery", file: D + "payroll/page.tsx", uses: "{view && !isDraft && delivery && (canIssue || canMarkPaid) && (", before: admins, now: p => p.can("payroll.issue_payslips") || p.can("payroll.mark_paid") },
+    { what: "payroll: send payslips", file: D + "payroll/page.tsx", uses: "const canIssue = can('payroll.issue_payslips')", before: admins, now: p => p.can("payroll.issue_payslips") },
+    { what: "payroll: mark paid", file: D + "payroll/page.tsx", uses: "const canMarkPaid = can('payroll.mark_paid')", before: admins, now: p => p.can("payroll.mark_paid") },
     { what: "payroll: waive a debt", file: D + "payroll/page.tsx", uses: "const canWaive = can('debts.waive')", before: admins, now: p => p.can("debts.waive") },
 
     // --- Employees -------------------------------------------------------------

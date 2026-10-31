@@ -451,9 +451,13 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      obligation's page, merged in #122 on 2026-10-30. The seventh was a
      task's page, in two parts: its page and dialogs, merged in #123 on
      2026-10-30, then its costs, location history, submission form and
-     edit dialog, merged in #124 on 2026-10-30;
-   - the one Requests page (§2.3), in five parts. The first, the page with
-     internal requests, opens for review in #125.
+     edit dialog, merged in #124 on 2026-10-30. After the one Requests
+     page and the account check, merged in #140 on 2026-10-31, the eighth
+     is Payroll, in two parts: its top (the page header, the month it's
+     for, paying and sending, and the totals) opens for review in #141,
+     then its review cards, the list and the debts;
+   - the one Requests page (§2.3), in five parts, the last merged in #139
+     on 2026-10-31.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -1806,3 +1810,32 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   a task's and an obligation's page marked themselves seen too. Each now
   says Access restricted before it reads anything, and a test fails for
   any page that reads the database before asking.
+- **2026-10-31:** The account check was merged in #140. Payroll moves onto
+  the building blocks next (§5), in two parts. The first, in #141, is its
+  top:
+  - The page header names the register, with its status, and says the
+    month and its payday. The payday read "Month 25": it took the month's
+    label.
+  - The month and year are picked in a panel under it, each with its
+    label, the Super Admin's company first. It's a new block in
+    `DESIGN.md` (§5.3), for Attendance's month and Public holidays' year
+    later too.
+  - A draft's Save draft and Approve are the header's buttons. The
+    register's file moves beside the totals' heading, where it doesn't
+    make a third.
+  - Paying and sending is one card, each half under its title. Each
+    half's button is for whoever may do it; both showed to anyone with
+    either permission.
+  - The totals are tiles, counted in the page's own digits.
+  - Approve and Mark as paid ask in the building blocks' dialog, which
+    names the day being recorded. Writing off a debt keeps its own until
+    part 2.
+  - While the register loads, and when it doesn't, the page says so in
+    its place, with the server's reason and Try again, where it showed a
+    spinner and a toast.
+
+  The review cards, the list and the debts follow in part 2.
+- **2026-10-31:** Found in the browser, in #141: a paragraph straight
+  inside a card kept the browser's own margins, so an approved month's
+  one line on Payroll stood in a card twice its height. A card spaces
+  what's in it itself, which also tightens a task page's two notices.
