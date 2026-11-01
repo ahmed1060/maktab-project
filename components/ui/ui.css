@@ -840,6 +840,53 @@ a.ui-file-open:focus-visible,
   flex-direction: column;
   gap: var(--space-6);
 }
+/* Fields side by side in a card, as a file's columns and a number saved by
+   hand (Attendance part 6, PR 152), sized as the period bar's: one alone
+   isn't the card's whole width (found in the interface audit), and on
+   phones two to a line. */
+.ui-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.ui-field-row > .ui-field {
+  flex: 0 1 240px;
+}
+@media (max-width: 767px) {
+  .ui-field-row > .ui-field {
+    flex: 1 1 calc(50% - var(--space-3) / 2);
+  }
+}
+/* What a file holds before it's imported, a line each, those to look at in
+   their status colour (DESIGN.md §2.3). */
+.ui-report {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--ink-2);
+}
+.ui-report > li[data-tone="waiting"] {
+  color: var(--status-waiting-fg);
+}
+.ui-report > li[data-tone="problem"] {
+  color: var(--problem-text);
+}
+/* More, behind a disclosure, such as the rows a file couldn't give. */
+.ui-more > summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--brand-text);
+}
+.ui-more > summary + * {
+  margin-block-start: var(--space-2);
+}
 /* What a section's list is, under its heading. */
 .ui-section > .ui-hint {
   margin: 0;

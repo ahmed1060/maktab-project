@@ -68,7 +68,7 @@ describe("data buttons that had no busy state", () => {
         ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", /action\.run\('complete', handleForceComplete\)/],
         ["app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", /action\.run\(`paid-\$\{payment\.id\}`/],
         ["app/(dashboard)/dashboard/tasks/[id]/client.tsx", /action\.run\('dismiss', handleDismiss\)/],
-        ["app/(dashboard)/dashboard/attendance/page.tsx", /action\.run\(`map-\$\{u\.code\}`/],
+        ["app/(dashboard)/dashboard/attendance/NumbersTab.tsx", /action\.run\(`map-\$\{u\.code\}`/],
         ["components/AccessReviews.tsx", /action\.run\(`confirm-\$\{line\.id\}`/],
         ["components/RoleChangeRequests.tsx", /action\.run\(`done-\$\{r\.id\}`/],
         ["components/CompanyRolesCard.tsx", /action\.run\(`default-\$\{role\.id\}`/],
