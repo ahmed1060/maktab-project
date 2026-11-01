@@ -2135,3 +2135,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     link and the old confirm box;
   - while they load, and when they can't, each says so, with the
     server's word and Try again. They were a spinner, or nothing.
+- **2026-11-01:** Found in the interface audit of #152: fields side by
+  side in a card stretched to fill it, so how a file's dates are written,
+  alone in its row, ran the card's whole width on a computer. They're
+  sized as the period bar's now, two to a line on phones. And the files
+  imported and the numbers saved were a panel in their card, a box in a
+  box: they're rows straight in it, as on Public holidays.

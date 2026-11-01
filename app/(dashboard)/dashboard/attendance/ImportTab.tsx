@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import useSWR from 'swr'
 import { HourglassIcon, TrayIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { Button, Card, Details, Dialog, DialogActions, EmptyState, Field, FileChip, FilePicker, Row, Rows, Select, StatusBadge, TextArea } from '@/components/ui'
+import { Button, Card, Details, Dialog, DialogActions, EmptyState, Field, FileChip, FilePicker, Row, Select, StatusBadge, TextArea } from '@/components/ui'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -156,7 +156,8 @@ export default function ImportTab({ q, companyId }: { q: string; companyId: stri
                 ) : imports.length === 0 ? (
                     <EmptyState icon={TrayIcon} title={t('punch_no_imports')} />
                 ) : (
-                    <Rows label={t('punch_import_history')}>
+                    // Straight in the card, as on Public holidays: a panel in it was a box in a box (found in the interface audit, PR 152).
+                    <ul className="ui-rows" aria-label={t('punch_import_history')}>
                         {imports.map(i => (
                             <Row key={i.id}
                                 title={<bdi>{i.fileName}</bdi>}
@@ -167,7 +168,7 @@ export default function ImportTab({ q, companyId }: { q: string; companyId: stri
                                     ? <StatusBadge tone="neutral">{t('punch_badge_WITHDRAWN')}</StatusBadge>
                                     : <Button size="sm" onClick={() => openWithdraw(i)}>{t('punch_withdraw_import')}</Button>} />
                         ))}
-                    </Rows>
+                    </ul>
                 )}
             </Card>
 

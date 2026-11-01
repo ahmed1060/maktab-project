@@ -138,7 +138,8 @@ describe("what a file holds, before it's imported", () => {
 describe("the files imported", () => {
     it("are rows, each with its day and what it brought in, and Withdraw, or why it was withdrawn", async () => {
         const part = card(await page(), "Imports")
-        expect(part).toContain('<ul class="ui-panel ui-rows" aria-label="Imports">')
+        // Straight in the card, as on Public holidays: a panel in the card was a box in a box (found in the interface audit).
+        expect(part).toContain('<ul class="ui-rows" aria-label="Imports">')
         expect(part).toContain('<span class="ui-item-title"><bdi>october.xlsx</bdi></span><span class="ui-item-detail">Thu 15 Oct: Added 12, already in 3, not imported 0</span>')
         expect(part).toContain(">Withdraw this import</button>")
         expect(part).toContain("Thu 1 Oct, withdrawn: Wrong branch")
@@ -190,6 +191,7 @@ describe("the numbers saved", () => {
         expect(part).toMatch(/<button type="submit" class="ui-btn ui-btn-secondary" disabled="">Save<\/button>/)
         expect(part).toContain('<span class="ui-item-title"><bdi>101</bdi></span><span class="ui-item-detail">Sami Nabil</span>')
         expect(part.match(/>Remove<\/button>/g)).toHaveLength(1)
+        expect(part).toContain('<ul class="ui-rows" aria-label="Numbers and people">')
     })
 
     it("say while they load, and when they didn't, with the server's word and Try again", async () => {
@@ -197,6 +199,15 @@ describe("the numbers saved", () => {
         const failed = await page({ tab: "numbers", codes: "failed" })
         expect(failed).toContain(`<p class="ui-empty-title">${en.punch_numbers_load_failed.replace("'", "&#x27;")}</p>`)
         expect(failed).toContain(">Try again</button>")
+    })
+})
+
+describe("found in the interface audit (PR 152)", () => {
+    it("sizes fields side by side as the period bar does, so one alone isn't the card's whole width", () => {
+        // How a file's dates are written ran the full width of the card on a computer.
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-field-row > \.ui-field \{\s*flex: 0 1 240px;\s*\}/)
+        expect(css).toMatch(/@media \(max-width: 767px\) \{\s*\.ui-field-row > \.ui-field \{\s*flex: 1 1 calc\(50% - var\(--space-3\) \/ 2\);/)
     })
 })
 

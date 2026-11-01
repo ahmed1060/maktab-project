@@ -4,7 +4,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { CheckCircleIcon, HashIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { Button, Card, DataList, Details, Dialog, EmptyState, Field, ItemTitle, ListCard, Row, Rows, Section, Select, TextInput, type Column } from '@/components/ui'
+import { Button, Card, DataList, Details, Dialog, EmptyState, Field, ItemTitle, ListCard, Row, Section, Select, TextInput, type Column } from '@/components/ui'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -117,12 +117,13 @@ export default function NumbersTab({ q, companyId }: { q: string; companyId: str
                 {codes.mapped.length === 0 ? (
                     <p className="ui-card-note">{t('punch_numbers_none_mapped')}</p>
                 ) : (
-                    <Rows label={t('punch_numbers_mapped')}>
+                    // Straight in the card, as on Public holidays: a panel in it was a box in a box (found in the interface audit, PR 152).
+                    <ul className="ui-rows" aria-label={t('punch_numbers_mapped')}>
                         {codes.mapped.map(m => (
                             <Row key={m.id} title={<bdi>{m.code}</bdi>} detail={m.name}
                                 end={m.userId !== me ? <Button size="sm" disabled={action.running} onClick={() => setRemoving(m)}>{t('punch_number_remove')}</Button> : undefined} />
                         ))}
-                    </Rows>
+                    </ul>
                 )}
             </Card>
 

@@ -841,7 +841,9 @@ a.ui-file-open:focus-visible,
   gap: var(--space-6);
 }
 /* Fields side by side in a card, as a file's columns and a number saved by
-   hand: each at least 180px, wrapping on phones (Attendance part 6, PR 152). */
+   hand (Attendance part 6, PR 152), sized as the period bar's: one alone
+   isn't the card's whole width (found in the interface audit), and on
+   phones two to a line. */
 .ui-field-row {
   display: flex;
   flex-wrap: wrap;
@@ -849,7 +851,12 @@ a.ui-file-open:focus-visible,
   gap: var(--space-3);
 }
 .ui-field-row > .ui-field {
-  flex: 1 1 180px;
+  flex: 0 1 240px;
+}
+@media (max-width: 767px) {
+  .ui-field-row > .ui-field {
+    flex: 1 1 calc(50% - var(--space-3) / 2);
+  }
 }
 /* What a file holds before it's imported, a line each, those to look at in
    their status colour (DESIGN.md §2.3). */
