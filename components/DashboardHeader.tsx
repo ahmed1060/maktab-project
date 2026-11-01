@@ -112,7 +112,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         // still carry for the company the link takes the page away from.
         const linked = searchParams.get('companyId')
         if (linked !== companyLeftBehind.current) companyLeftBehind.current = null
-        const putInView = companyToPutInView({ linked, inView: selectedCompanyId, known: companies.map(c => c.id), leftBehind: companyLeftBehind.current })
+        const putInView = companyToPutInView({ pathname, linked, inView: selectedCompanyId, known: companies.map(c => c.id), leftBehind: companyLeftBehind.current })
         if (putInView) {
             setSelectedCompanyId(putInView)
             // Followed once, and taken out of the address (lib/company-link.ts).

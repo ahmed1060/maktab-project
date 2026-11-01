@@ -8,28 +8,40 @@ import { companyToPutInView, addressWithCompanyInView } from "./company-link"
  * in the top bar for the Super Admin (DESIGN.md §5.3; Attendance part 2).
  */
 const known = ["delta", "nile"]
+const ATTENDANCE = "/dashboard/attendance"
 
 describe("the company a link puts in view", () => {
     it("is the one the link names, when another, or none, is in view", () => {
-        expect(companyToPutInView({ linked: "delta", inView: "nile", known, leftBehind: null })).toBe("delta")
-        expect(companyToPutInView({ linked: "delta", inView: null, known, leftBehind: null })).toBe("delta")
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known, leftBehind: null })).toBe("delta")
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: null, known, leftBehind: null })).toBe("delta")
     })
 
     it("is none when the link names none, or the one in view already", () => {
-        expect(companyToPutInView({ linked: null, inView: "nile", known, leftBehind: null })).toBeNull()
-        expect(companyToPutInView({ linked: "nile", inView: "nile", known, leftBehind: null })).toBeNull()
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: null, inView: "nile", known, leftBehind: null })).toBeNull()
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "nile", inView: "nile", known, leftBehind: null })).toBeNull()
     })
 
     it("is none for a company the top bar doesn't know, or before it knows any", () => {
-        expect(companyToPutInView({ linked: "gone", inView: "nile", known, leftBehind: null })).toBeNull()
-        expect(companyToPutInView({ linked: "delta", inView: "nile", known: [], leftBehind: null })).toBeNull()
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "gone", inView: "nile", known, leftBehind: null })).toBeNull()
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known: [], leftBehind: null })).toBeNull()
     })
 
     it("is none for the company a pick in the top bar has just left in the address", () => {
         // The Requests page keeps the company in view in its own address, so
         // for a moment after picking Nile it still names Delta: taking that
         // for a link would undo the pick.
-        expect(companyToPutInView({ linked: "delta", inView: "nile", known, leftBehind: "delta" })).toBeNull()
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known, leftBehind: "delta" })).toBeNull()
+    })
+})
+
+describe("which addresses are links", () => {
+    it("only the pages links open: a page that keeps the company in view in its own address isn't one (review on PR 148)", () => {
+        // Requests keeps companyId in step with the company in view. When
+        // another tab picks Nile, this tab's Requests still names Delta, and
+        // taking that for a link wrote Delta back over the other tab's pick.
+        expect(companyToPutInView({ pathname: "/dashboard/requests", linked: "delta", inView: "nile", known, leftBehind: null })).toBeNull()
+        expect(companyToPutInView({ pathname: "/dashboard/payroll", linked: "delta", inView: "nile", known, leftBehind: null })).toBeNull()
+        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known, leftBehind: null })).toBe("delta")
     })
 })
 
@@ -48,6 +60,7 @@ describe("the top bar follows such a link", () => {
     it("before it matches the company named in the address, and remembers what a pick leaves behind", () => {
         const sync = HEADER.slice(HEADER.indexOf("// Sync URL <-> Context"), HEADER.indexOf("lastProcessedCompany.current = companyNameFromUrl"))
         expect(sync.indexOf("companyToPutInView(")).toBeGreaterThan(-1)
+        expect(sync).toContain("companyToPutInView({ pathname, linked,")
         expect(sync.indexOf("companyToPutInView(")).toBeLessThan(sync.indexOf("if (companyNameFromUrl === lastProcessedCompany.current) return"))
         expect(sync).toMatch(/if \(putInView\) \{\s*setSelectedCompanyId\(putInView\)/)
         expect(sync).toContain("router.replace(`${pathname}?${addressWithCompanyInView(searchParams.toString(), name)}`)")

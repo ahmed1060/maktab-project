@@ -1993,3 +1993,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     a moment after a pick it still names the last one. The top bar doesn't
     take that for a link, which would undo the pick.
   - Until a company is picked, the page says to pick one at the top.
+- **2026-11-01:** From Codex's review of #148: the Requests page keeps the
+  company in view in its own address, and the top bar took that for a
+  link. When another tab picked a company, an open Requests tab still
+  named the last one, and wrote it back over the other tab's pick. Only
+  the pages such links open, Attendance today, are links now.

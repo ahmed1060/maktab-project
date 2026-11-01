@@ -4,18 +4,26 @@
  * company to put in view in the top bar (DESIGN.md §5.3), so the page it opens,
  * and the pages after it, are about that company.
  *
- * None when the link names no company the top bar knows, or the one already in
- * view, or the one a pick in the top bar has just left in the address: the
- * Requests page keeps the company in view in its own address, and for a moment
- * after a pick it still names the last one. Taking that for a link would undo
- * the pick.
+ * Only on the pages such links open (LINKED_PAGES). A page that keeps the
+ * company in view in its own address, as Requests does, isn't one: when
+ * another tab picks a company, that address still names the last one, and
+ * taking it for a link wrote it back over the other tab's pick (review on
+ * PR 148).
+ *
+ * None, too, when the link names no company the top bar knows, or the one
+ * already in view, or the one a pick in the top bar has just left in the
+ * address, which would undo the pick.
  */
-export function companyToPutInView({ linked, inView, known, leftBehind }: {
+export const LINKED_PAGES = ['/dashboard/attendance']
+
+export function companyToPutInView({ pathname, linked, inView, known, leftBehind }: {
+    pathname: string
     linked: string | null
     inView: string | null
     known: string[]
     leftBehind: string | null
 }): string | null {
+    if (!LINKED_PAGES.includes(pathname)) return null
     if (!linked || linked === inView || linked === leftBehind) return null
     return known.includes(linked) ? linked : null
 }
