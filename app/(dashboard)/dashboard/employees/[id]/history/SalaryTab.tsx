@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { CalendarCheckIcon, CoinsIcon, HourglassIcon, MinusCircleIcon, PlusCircleIcon, ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { Button, Card, DataList, Details, EmptyState, ListCard, Row, Rows, Section, StatusBadge, type Column, type StatusTone } from '@/components/ui'
@@ -44,13 +45,15 @@ export type Debt = {
 
 const DEBT_TONE: Record<Debt['status'], StatusTone> = { OUTSTANDING: 'waiting', SETTLED: 'good', WAIVED: 'neutral' }
 
-export function SalaryTab({ employee, records, loading, error, retrying, retry, settlements, debts }: {
+export function SalaryTab({ employee, records, loading, error, retrying, retry, adjustments, settlements, debts }: {
     employee: { salary?: number } | null
     records: SalaryRecord[]
     loading: boolean
     error: unknown
     retrying: boolean
     retry: () => void
+    /** The bonuses and deductions behind the months, for who can see them (part 3). */
+    adjustments?: ReactNode
     settlements: Settlement[]
     debts: Debt[]
 }) {
@@ -140,6 +143,8 @@ export function SalaryTab({ employee, records, loading, error, retrying, retry, 
             )}
 
             {months}
+
+            {adjustments}
 
             {/* The only route to an ended contract's statement: the person it
                 is about can't sign in, so if it isn't reachable from their

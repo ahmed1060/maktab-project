@@ -474,9 +474,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      §5.5, merged in #156 on 2026-11-01. The twelfth is an employee's
      history, in three parts: its frame (the page header, the tabs, kept
      in the address) and its Salary tab, merged in #157 on 2026-11-01;
-     then its Day off credit and Costs tabs, which open for review in
-     #158; then its bonuses and deductions. Then company settings, then
-     the Super Admin's pages;
+     then its Day off credit and Costs tabs, merged in #158 on
+     2026-11-01; then its bonuses and deductions, which open for review
+     in #159. Then company settings, then the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2369,3 +2369,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Enter in the dialog's field did nothing, and a refused number left
     the focus on Save. It's a form now, so Enter saves, and a refused
     number takes the focus to its field, under which it says why.
+- **2026-11-01:** An employee's history part 2 was merged in #158. Its
+  bonuses and deductions move onto the building blocks in #159 (part 3):
+  - they're a section of the Salary tab, under the months they explain,
+    for who can see salary, as their route asks. They were a window of
+    their own, opened from the page header, or by a notification's
+    link. The header's button is gone, and a notification's link opens
+    the Salary tab with its adjustment marked and brought into view;
+  - each says what it was ("2 days bonus"), the month it counts in,
+    where it came from, why, and when it was entered, and a reversed or
+    rolled back one says so in a badge. The amount was a coloured "+2"
+    or "-1.5", a finished one was struck through with a drawn line, and
+    the month and where it came from were one line with a chip;
+  - Reverse and Roll back are behind each one's More actions menu, for
+    who can adjust this person's pay. Each asks first in a dialog that
+    says which it is for and stays open until it's done, the
+    authenticator code a high-risk action asks for coming over it.
+    Roll back is in the danger colour; it acted on one click. A refusal,
+    such as a month already approved, says why;
+  - the 12 labels only the old windows read are gone from both
+    languages, and so is `--accent-solid-deep`, the colour of its "+2".

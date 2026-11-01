@@ -130,7 +130,8 @@ describe("the reversal route exists beside the rollback one", () => {
 })
 
 describe("the screen tells the two terminal states apart", () => {
-    const page = read("app/(dashboard)/dashboard/employees/[id]/history/page.tsx")
+    // The bonuses and deductions are a section of the Salary tab of their own (PR 159).
+    const page = read("app/(dashboard)/dashboard/employees/[id]/history/page.tsx") + read("app/(dashboard)/dashboard/employees/[id]/history/Adjustments.tsx")
 
     it("knows a reversed adjustment is finished", () => {
         // Without this the row renders as live and offers a Rollback button the
@@ -148,6 +149,7 @@ describe("the screen tells the two terminal states apart", () => {
     })
 
     it("offers the reversal as its own action", () => {
-        expect(page).toContain("handleUndo(target.id, 'reverse'")
+        expect(page).toContain("{ key: 'reverse', label: t('reverse_adjustment')")
+        expect(page).toContain("/adjustments/${adjustment.id}/${action}")
     })
 })
