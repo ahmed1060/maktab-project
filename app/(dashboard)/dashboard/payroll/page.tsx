@@ -3,15 +3,15 @@ import { useCallback, useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { BuildingsIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import ConfirmModal from '@/components/ConfirmModal'
 import DatePickerSingle from '@/components/DatePickerSingle'
-import { Button, Card, Details, Dialog, EmptyState, Field, Page, PageHeader, PeriodBar, Row, Section, SectionLink, Select, StatusBadge, TextArea, TotalTiles, type StatusTone, type Tile } from '@/components/ui'
+import { Button, Card, Details, Dialog, DisclosureRow, EmptyState, Field, Page, PageHeader, PeriodBar, Row, Section, SectionLink, Select, StatusBadge, TextArea, TotalTiles, type StatusTone, type Tile } from '@/components/ui'
 import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { dayLabel } from '@/lib/cash-advances'
@@ -28,12 +28,13 @@ import type { TranslationKey } from '@/lib/translations'
  * not be computed — before the list itself, so nothing that needs a decision is
  * below a long table.
  *
- * On the building blocks from the top down (UI_PLAN.md §5 step 5): the page
- * header, the month it's for (DESIGN.md §5.3), paying and sending, and the
- * totals so far; the review cards, the list and the debts follow.
+ * On the building blocks throughout (UI_PLAN.md §5 step 5): the page header,
+ * the month it's for (DESIGN.md §5.3), paying and sending, the totals, the
+ * review cards, everyone on the register, and what people owe.
  */
 
 type Line = { kind: 'EARNING' | 'DEDUCTION'; label: string; amountMinor: number; source: string; sourceId?: string | null }
+type Debt = { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; dueDay: string; source: string }
 type AttendanceMoney = { lateness: number; earlyLeave: number; absence: number; overtime: number }
 type Discrepancy = { id: string; userId: string; name: string; date: string; paidStatus: string; nowStatus: string | null; differenceMinor: number; resolvedAt: string | null; resolution: string | null }
 type Entry = {
@@ -71,7 +72,8 @@ type View = {
     variance: { previousTotalMinor: number; currentTotalMinor: number; deltaMinor: number; people: PersonVariance[] } | null
     sinceDraft: { deltaMinor: number; people: PersonVariance[] } | null
     draftSavedAt: string | null
-    debts: { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; source: string }[]
+    /** `dueDay` is the day it's due in the company's zone (PR 145). */
+    debts: Debt[]
     /** What attendance costs this month: on the payslips once it reaches payroll, else the dry run (ATTENDANCE_PLAN.md §12, §20). */
     attendance?: { reachesPayroll: boolean; from: string | null; byPerson: Record<string, AttendanceMoney>; discrepanciesOpen: number }
 }
@@ -109,14 +111,13 @@ export default function PayrollRegisterPage() {
     // own, so they picked it twice. All companies is none, and nothing is
     // chosen for them.
     const { selectedCompanyId } = useCompany()
-    const [waiving, setWaiving] = useState<string | null>(null)
     // Which confirmation is open, if any. One piece of state rather than three
     // booleans: only ever one of these is on screen, and three flags is three
     // chances for two to be true at once.
     const [confirming, setConfirming] = useState<
         | { kind: 'approve' }
         | { kind: 'paid' }
-        | { kind: 'waive'; debt: { id: string; name: string; amount: number } }
+        | { kind: 'waive'; debt: Debt }
         | { kind: 'resolve'; discrepancy: Discrepancy }
         | null
     >(null)
@@ -299,21 +300,37 @@ export default function PayrollRegisterPage() {
         }
     }
 
-    const waive = async (debt: { id: string; name: string; amount: number }, reason: string) => {
-        setWaiving(debt.id)
+    // Why a debt is written off, said in the dialog that does it: kept
+    // against the name of whoever did, so a few words at least, as the server
+    // asks.
+    const [writeOffReason, setWriteOffReason] = useState('')
+    const [writeOffMissing, setWriteOffMissing] = useState(false)
+    const openWriteOff = (debt: Debt) => {
+        setWriteOffReason('')
+        setWriteOffMissing(false)
+        setConfirming({ kind: 'waive', debt })
+    }
+    const waive = async (debt: Debt) => {
+        if (writeOffReason.trim().length < 3) {
+            setWriteOffMissing(true)
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('textarea[name="write_off_reason"]')?.focus())
+            return
+        }
         try {
             const res = await fetch(`/api/debts/${debt.id}/waive`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason }),
+                body: JSON.stringify({ reason: writeOffReason.trim() }),
             })
-            const body = await res.json()
+            const body = await res.json().catch(() => null)
             showToast(res.ok ? t('payroll_debt_waived') : (body?.error || t('error_generic')), res.ok ? 'success' : 'error')
-            if (res.ok) load()
+            // Refused, it stays open with what was typed, to try again.
+            if (res.ok) {
+                load()
+                setConfirming(null)
+            }
         } catch {
             showToast(t('error_generic'), 'error')
-        } finally {
-            setWaiving(null)
         }
     }
 
@@ -338,15 +355,6 @@ export default function PayrollRegisterPage() {
     const delivery = view?.delivery
     const today = new Date().toISOString().slice(0, 10)
     const forCompany = companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''
-
-    const card = (children: React.ReactNode, tone?: 'warn' | 'danger') => (
-        <div className="card" style={{
-            padding: '1.25rem',
-            background: tone === 'warn' ? 'var(--warn-bg)' : tone === 'danger' ? 'var(--danger-bg)' : 'var(--surface)',
-            border: `1px solid ${tone === 'warn' ? 'var(--warn-border, var(--border))' : tone === 'danger' ? 'var(--danger-border)' : 'var(--border)'}`,
-            borderRadius: '1rem',
-        }}>{children}</div>
-    )
 
     // Who moved since the draft was saved, and since last month, the unchanged
     // left out; last month's change lists the first few and says how many more.
@@ -615,74 +623,58 @@ export default function PayrollRegisterPage() {
                 </Card>
             )}
 
-            {register && card(
-                register.entries.length === 0 ? (
-                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('payroll_empty')}</p>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {register.entries.map(entry => (
-                            <div key={entry.userId} style={{
-                                borderTop: '1px solid var(--border)',
-                                padding: '0.75rem 0',
-                                opacity: entry.excluded ? 0.6 : 1,
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                                    <button
-                                        onClick={() => setOpen(open === entry.userId ? null : entry.userId)}
-                                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: isRtl ? 'right' : 'left' }}
-                                    >
-                                        <strong>{entry.name}</strong>
-                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
-                                            {entry.daysPaid} {t('payroll_days_paid')}
-                                            {entry.undecidedDays > 0 && ` · ${t('payroll_undecided_days').replace('{n}', String(entry.undecidedDays))}`}
-                                        </span>
-                                        {entry.excluded && (
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                {t('payroll_excluded')}: {entry.exclusionReason}
-                                            </div>
-                                        )}
-                                    </button>
-                                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
-                                        {/* G5: the document existed at a URL
-                                            nothing linked to. Shown only once a
-                                            draft has been saved — a computed row
-                                            that was never stored has no payslip,
-                                            and a link to one that does not exist
-                                            is worse than no link. */}
-                                        {view?.payslipIds?.[entry.userId] && !entry.excluded && (
-                                            <a
-                                                href={`/dashboard/documents/payslip/${view.payslipIds[entry.userId]}`}
-                                                style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--brand-primary-text)' }}
-                                                onClick={e => e.stopPropagation()}
-                                            >
-                                                {t('payroll_view_payslip')}
-                                            </a>
-                                        )}
-                                        {money(entry.totals.netMinor)}
-                                        {entry.totals.carriedMinor > 0 && (
-                                            <span style={{ color: 'var(--danger-fg-strong)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
-                                                +{money(entry.totals.carriedMinor)} {t('payroll_carried')}
-                                            </span>
-                                        )}
-                                    </span>
-                                </div>
-
-                                {open === entry.userId && (
-                                    <div style={{ marginTop: '0.5rem', paddingInlineStart: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        {entry.lines.map((line, i) => (
-                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                <span>{line.source === 'ATTENDANCE' && line.sourceId ? t(`attpay_line_${line.sourceId}` as any) : line.label}</span>
-                                                <span style={{ fontVariantNumeric: 'tabular-nums', color: line.kind === 'DEDUCTION' ? 'var(--danger-fg-strong)' : 'inherit' }}>
-                                                    {line.kind === 'DEDUCTION' ? '−' : ''}{money(line.amountMinor)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )
+            {/* Everyone on the register, below what needs a decision: a long
+                list of names is where a warning goes to be scrolled past. Each
+                name opens that person's pay, line by line. */}
+            {register && (
+                <Card title={t('payroll_people')}>
+                    {register.entries.length === 0 ? (
+                        <p className="ui-card-note">{t('payroll_empty')}</p>
+                    ) : (
+                        <ul className="ui-rows" aria-label={t('payroll_people')}>
+                            {register.entries.map(entry => {
+                                // G5: the document existed at a URL nothing
+                                // linked to. Only once a draft is saved: a
+                                // computed row never stored has no payslip, and
+                                // a link to one that doesn't exist is worse than
+                                // none. An excluded person isn't paid.
+                                const payslipId = view?.payslipIds?.[entry.userId] && !entry.excluded ? view.payslipIds[entry.userId] : null
+                                return (
+                                    <DisclosureRow
+                                        key={entry.userId}
+                                        open={open === entry.userId}
+                                        onToggle={() => setOpen(open === entry.userId ? null : entry.userId)}
+                                        // Excluded says so in words, with why,
+                                        // rather than fading the row out.
+                                        title={<>{entry.name}{entry.excluded && <StatusBadge tone="neutral">{t('payroll_excluded')}</StatusBadge>}</>}
+                                        detail={[
+                                            t('payroll_days_paid_n').replace('{n}', count(entry.daysPaid)),
+                                            entry.undecidedDays > 0 ? t('payroll_undecided_days').replace('{n}', count(entry.undecidedDays)) : null,
+                                            entry.excluded ? entry.exclusionReason : null,
+                                        ].filter(Boolean).join(' · ')}
+                                        end={<>
+                                            {payslipId && (
+                                                <Link className="ui-row-link" aria-label={t('payroll_payslip_for').replace('{name}', entry.name)} href={`/dashboard/documents/payslip/${payslipId}`}>
+                                                    {t('payroll_view_payslip')}
+                                                </Link>
+                                            )}
+                                            <strong className="ui-num">{money(entry.totals.netMinor)}</strong>
+                                            {entry.totals.carriedMinor > 0 && (
+                                                <span className="ui-row-carried">{t('payroll_carried_amount').replace('{amount}', money(entry.totals.carriedMinor))}</span>
+                                            )}
+                                        </>}
+                                        label={t('payroll_lines_of').replace('{name}', entry.name)}
+                                        lines={entry.lines.map(line => ({
+                                            label: line.source === 'ATTENDANCE' && line.sourceId ? t(`attpay_line_${line.sourceId}` as TranslationKey) : line.label,
+                                            // A deduction's sign as every other amount's on the page.
+                                            value: line.kind === 'DEDUCTION' ? signedMoney(-line.amountMinor) : money(line.amountMinor),
+                                        }))}
+                                    />
+                                )
+                            })}
+                        </ul>
+                    )}
+                </Card>
             )}
 
             {/* Marking a difference settled says how, for the record. */}
@@ -738,64 +730,63 @@ export default function PayrollRegisterPage() {
                 <Details items={[{ label: t('payroll_paid_date'), value: dayLabel(paidAt, locale) }]} />
             </Dialog>
             {/* Writing off a debt can't be undone either, and records why. */}
-            <ConfirmModal
-                isOpen={confirming?.kind === 'waive'}
-                variant="warning"
+            <Dialog
+                open={confirming?.kind === 'waive'}
+                onClose={closeConfirm}
                 title={confirming?.kind === 'waive' ? t('payroll_debt_waive_title').replace('{name}', confirming.debt.name) : ''}
-                message={t('payroll_debt_waive_msg')}
-                confirmText={t('payroll_debt_waive')}
-                reason={{ label: t('payroll_debt_waive_reason_label'), placeholder: t('payroll_debt_waive_reason_hint') }}
-                onCancel={() => setConfirming(null)}
-                onConfirm={async (reason) => {
-                    const pending = confirming
-                    if (pending?.kind === 'waive') await waive(pending.debt, reason ?? '')
-                    setConfirming(null)
-                }}
-            />
+                actions={<>
+                    <Button onClick={closeConfirm} disabled={action.running}>{t('cancel')}</Button>
+                    <Button variant="danger" onClick={() => { if (confirming?.kind === 'waive') void action.run('waive', () => waive(confirming.debt)) }} disabled={action.running} busy={action.is('waive')}>
+                        {t('payroll_debt_waive')}
+                    </Button>
+                </>}
+            >
+                <p>{t('payroll_debt_waive_msg')}</p>
+                {confirming?.kind === 'waive' && (
+                    <Details items={[{ label: t('payroll_debt_still_owed'), value: <span className="ui-num">{money(Math.round(confirming.debt.amount * 100))}</span> }]} />
+                )}
+                <Field label={t('payroll_debt_waive_reason_label')} error={writeOffMissing ? t('payroll_debt_waive_needs_reason') : undefined}>{p => (
+                    <TextArea {...p} name="write_off_reason" dir="auto" maxLength={500} value={writeOffReason} disabled={action.running}
+                        onChange={e => { setWriteOffReason(e.target.value); setWriteOffMissing(false) }} />
+                )}</Field>
+            </Dialog>
 
-            {view && card(
-                <>
-                    <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>{t('payroll_debts')}</h2>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('payroll_debts_msg')}</p>
+            {/* What people owe the company, soonest due first. */}
+            {view && (
+                <Card title={t('payroll_debts')}>
+                    <p className="ui-card-note">{t('payroll_debts_msg')}</p>
                     {view.debts.length === 0 ? (
-                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t('payroll_no_debts')}</p>
-                    ) : view.debts.map(d => (
-                        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.9rem', padding: '0.35rem 0', alignItems: 'baseline' }}>
-                            <span>
-                                {d.name}
-                                {/* Only where they differ. On a debt nothing has
-                                    been taken from, the original is the
-                                    outstanding figure and saying it twice is
-                                    noise. */}
-                                {d.recoveredAmount > 0 && (
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginInlineStart: '0.5rem' }}>
-                                        {t('payroll_debt_recovered')
+                        <p className="ui-card-note">{t('payroll_no_debts')}</p>
+                    ) : (
+                        <ul className="ui-rows" aria-label={t('payroll_debts')}>
+                            {view.debts.map(d => (
+                                <Row
+                                    key={d.id}
+                                    title={d.name}
+                                    // What's been recovered only where some has:
+                                    // on a debt nothing has been taken from, the
+                                    // original is what's left, and saying it
+                                    // twice is noise.
+                                    detail={[
+                                        t('payroll_debt_due').replace('{date}', dayLabel(d.dueDay, locale)),
+                                        d.recoveredAmount > 0 && t('payroll_debt_recovered')
                                             .replace('{paid}', money(Math.round(d.recoveredAmount * 100)))
-                                            .replace('{total}', money(Math.round(d.originalAmount * 100)))}
-                                    </span>
-                                )}
-                            </span>
-                            <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
-                                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                    {new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2 }).format(d.amount)}
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
-                                        {new Date(d.dueDate).toLocaleDateString(isRtl ? 'ar-EG' : 'en-GB')}
-                                    </span>
-                                </span>
-                                {canWaive && (
-                                    <button
-                                        className="btn"
-                                        style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem' }}
-                                        disabled={waiving === d.id}
-                                        onClick={() => setConfirming({ kind: 'waive', debt: d })}
-                                    >
-                                        {waiving === d.id ? '…' : t('payroll_debt_waive')}
-                                    </button>
-                                )}
-                            </span>
-                        </div>
-                    ))}
-                </>
+                                            .replace('{total}', money(Math.round(d.originalAmount * 100))),
+                                    ].filter(Boolean).join(' · ')}
+                                    end={<>
+                                        <span className="ui-num">{money(Math.round(d.amount * 100))}</span>
+                                        {/* Named for its person, so a screen reader tells one row's from the next. */}
+                                        {canWaive && (
+                                            <Button size="sm" aria-label={t('payroll_debt_waive_title').replace('{name}', d.name)} onClick={() => openWriteOff(d)} disabled={action.running}>
+                                                {t('payroll_debt_waive')}
+                                            </Button>
+                                        )}
+                                    </>}
+                                />
+                            ))}
+                        </ul>
+                    )}
+                </Card>
             )}
         </Page>
     )

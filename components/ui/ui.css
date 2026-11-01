@@ -896,6 +896,90 @@ a.ui-row:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* A row that opens (§5.5): its title and detail are the button, with a
+   caret that turns while it's open, and its lines are listed under it. */
+.ui-row-toggle {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.ui-row-toggle:hover .ui-item-title {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+.ui-row-toggle:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.ui-row-caret {
+  margin-inline-start: var(--space-1);
+  vertical-align: middle;
+  color: var(--muted);
+  transition: transform 150ms ease-out;
+}
+.ui-row-toggle[aria-expanded="true"] .ui-row-caret {
+  transform: rotate(180deg);
+}
+.ui-row-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding-block: 0 var(--space-3);
+  padding-inline: var(--space-8) var(--space-4);
+}
+.ui-row-lines[hidden] {
+  display: none;
+}
+.ui-row-lines > li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+.ui-row-lines > li > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ui-row-lines > li > .ui-num {
+  flex: none;
+}
+.ui-card .ui-row-lines {
+  padding-inline: var(--space-4) 0;
+}
+/* A link of the row's own at its end, such as a person's payslip. */
+.ui-row-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--brand-text);
+  text-decoration: none;
+}
+.ui-row-link:hover {
+  text-decoration: underline;
+}
+.ui-row-link:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* What a person's pay couldn't cover, carried to a debt. */
+.ui-row-carried {
+  font-size: var(--text-sm);
+  color: var(--problem-text);
+}
+
 /* An item's actions at the end of its row: a button and its row menu. */
 .ui-row-actions {
   display: inline-flex;
@@ -1877,6 +1961,7 @@ html[lang="ar"] .ui-empty-title {
   .ui-btn,
   .ui-tab,
   .ui-row,
+  .ui-row-caret,
   .ui-donut-row,
   .ui-donut-arc {
     transition: none;

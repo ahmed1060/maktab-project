@@ -2126,3 +2126,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** The attendance tests were merged in #143. Payroll keeps
   its month in its address and follows the top bar's company in view, in
   #144 (`UI_PLAN.md` §5). Neither touches clients or locations.
+- **2026-11-01:** Payroll's month in its address was merged in #144. The
+  rest of Payroll, the list of everyone on the register and what people
+  owe, moves onto the building blocks in #145 (`UI_PLAN.md` §5). Neither
+  touches clients or locations.
