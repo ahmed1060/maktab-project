@@ -139,6 +139,28 @@ describe("the General tab", () => {
     })
 })
 
+describe("found in the browser (the audit, company settings part 1)", () => {
+    it("keeps a card's flush rows inset from its edges, in line with its title", () => {
+        // Stretched to the card's edges and stripped of their padding, the
+        // rows' text sat against the card's border (cash advances' too).
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-card > \.ui-rows-flush > li > \.ui-row \{\s*padding-inline: var\(--space-4\);/)
+    })
+
+    it("has no row of tabs when there's one tab to show", async () => {
+        // A company that shows its people General alone had a tab row of one.
+        const one = await own({ swr: { "/api/company-settings": { data: { data: { company: COMPANY, tabs: ["general"], canEdit: true } } } } })
+        expect(one).not.toContain('role="tablist"')
+        expect(one).not.toContain('role="tabpanel"')
+        expect(one).toContain(en.settings_task_locations)
+        expect(await own()).toContain('role="tablist"')
+    })
+
+    it("names the page in sentence case", () => {
+        expect(en.company_settings_title).toBe("Company settings")
+    })
+})
+
 describe("nothing of the old frame is left", () => {
     it("has no hand-drawn header, toggle, centred paragraphs or old confirmation", () => {
         const sa = readFileSync("app/(dashboard)/dashboard/companies/[id]/settings/page.tsx", "utf8")

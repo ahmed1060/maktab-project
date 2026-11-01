@@ -1329,6 +1329,12 @@ a.ui-row:focus-visible {
 .ui-card .ui-rows > li > .ui-row {
   padding-inline: 0;
 }
+/* Rows a card stretches to its edges, as settings' are, keep their inset:
+   without it their text sat against the card's border (company settings
+   part 1). */
+.ui-card > .ui-rows-flush > li > .ui-row {
+  padding-inline: var(--space-4);
+}
 /* A titled part inside a card, such as a task's costs paid person by person. */
 .ui-subsection {
   margin-block-start: var(--space-6);

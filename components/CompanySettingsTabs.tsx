@@ -77,6 +77,10 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     useGuardLinks(dirty, href => setLeavingFor({ href }))
 
     const tabs = COMPANY_SETTINGS_TABS.filter(x => shown.includes(x.key))
+    // A row of tabs holding one says nothing a heading doesn't: a company
+    // that shows its people General alone just has its cards (company
+    // settings part 1).
+    const tabbed = tabs.length > 1
     const asked = searchParams.get('tab')
     const tab: CompanySettingsTabKey | undefined = tabs.find(x => x.key === asked)?.key ?? tabs[0]?.key
 
@@ -106,7 +110,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     }
     return (
         <>
-            {tab && <Tabs
+            {tab && tabbed && <Tabs
                 label={t('company_settings_title')}
                 idPrefix="settings-tab"
                 value={tab}
@@ -114,7 +118,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                 items={tabs.map(x => ({ value: x.key, label: t(x.labelKey as TranslationKey), controls: 'settings-panel' }))}
             />}
 
-            <div role="tabpanel" id="settings-panel" className="ui-tab-panel ui-settings" aria-labelledby={tab ? `settings-tab-${tab}` : undefined}>
+            <div role={tabbed ? 'tabpanel' : undefined} id="settings-panel" className="ui-tab-panel ui-settings" aria-labelledby={tab && tabbed ? `settings-tab-${tab}` : undefined}>
             <UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>
                 {tab === 'general' && (
                     <>

@@ -2430,3 +2430,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     checked automatically, is a row in a card saying whether it's on,
     with a button to turn it off or on, as cash advances beside it say
     theirs. It was a checkbox that saved as it was ticked.
+- **2026-11-01:** Found in the browser and the interface audit on #160:
+  - a card's rows stretched to its edges, as settings' are, lost their
+    own padding to the rule that lines rows up with a card's text, so
+    their text sat against the card's border, cash advances' and a
+    client's record sections' too. They keep their inset now;
+  - a company that shows its people the General tab alone had a row of
+    tabs holding one. It has just the cards now;
+  - the page was "Company Settings", in the side bar too. It's "Company
+    settings" now, in sentence case (`DESIGN.md` §3.4).

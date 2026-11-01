@@ -1649,7 +1649,7 @@ export const en = {
         system_settings: "System Settings",
         system_settings_subtitle: "Platform-wide defaults that apply across all companies",
         settings_saved_success: "Settings saved",
-        company_settings_title: "Company Settings",
+        company_settings_title: "Company settings",
         settings_tab_general: "General",
         settings_tab_branding: "Branding",
         settings_tab_payroll: "Payroll",
