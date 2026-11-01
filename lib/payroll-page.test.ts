@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
 
@@ -407,5 +408,19 @@ describe("attendance changed after a month was approved", () => {
     it("points its arrow the way Arabic reads", async () => {
         const part = reviewCard(await page({ shows, locale: "ar", discrepancies: [{ data: { open: [changed()], openCount: 1, nextCursor: null } }] }), ar.attpay_changed_title)
         expect(part).toContain(`${ar.audit_value_ABSENT} ← ${ar.audit_value_PRESENT}`)
+    })
+})
+
+describe("a confirmation is for the register it was opened on", () => {
+    const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
+
+    it("closes, and the acknowledgement clears, when the company or month changes under it", () => {
+        // Review on PR 144: the company in view follows the top bar in every
+        // tab, so a Super Admin who opened Approve for one company and
+        // switched in another tab would have approved the other's register,
+        // unseen. Reset while rendering, so the new register is never drawn
+        // with the old one's dialog open.
+        expect(PAGE).toContain("const scope = `${companyId}/${year}/${month}`")
+        expect(PAGE).toMatch(/if \(scope !== scopeShown\) \{\s*setScopeShown\(scope\)\s*setConfirming\(null\)\s*setAcknowledged\(false\)\s*\}/)
     })
 })

@@ -1884,3 +1884,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   goes; with it, they picked the company twice. Both are written into
   `DESIGN.md` (§5.3), for Attendance's month and Public holidays' year
   too, and Payroll follows them in #144.
+- **2026-11-01:** From Codex's review of #144: the company in view
+  follows the top bar in every tab, so a Super Admin who opened Approve
+  or Mark as paid for one company, then picked another in a second tab,
+  would have confirmed it for the other company's register, unseen. A
+  confirmation now closes when the company or month changes under it,
+  and "approve anyway" is unticked, so neither carries over to a register
+  nobody reviewed.

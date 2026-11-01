@@ -129,6 +129,19 @@ export default function PayrollRegisterPage() {
 
     const isSuper = (session?.user as any)?.role === 'SUPER_ADMIN'
     const companyId = isSuper ? (selectedCompanyId ?? '') : ''
+    // A confirmation, and the acknowledgement, are about the register they
+    // were given on. The company in view follows the top bar in every tab, so
+    // it can change under an open Approve: when the company or month changes,
+    // they go, rather than carry over to a register nobody reviewed (review
+    // on PR 144). Reset while rendering, so the new register is never drawn
+    // with the old one's dialog open.
+    const scope = `${companyId}/${year}/${month}`
+    const [scopeShown, setScopeShown] = useState(scope)
+    if (scope !== scopeShown) {
+        setScopeShown(scope)
+        setConfirming(null)
+        setAcknowledged(false)
+    }
     const { can } = useCan()
 
     const money = useCallback((minor: number) =>
