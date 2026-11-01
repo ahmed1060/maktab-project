@@ -1756,6 +1756,7 @@ export const ar = {
         punch_withdrawn: "تم سحب البصمة",
         punch_reason: "السبب",
         punch_reason_example: "مثال: نسي بصمة الخروج، وأكد ذلك مديره",
+        punch_add_reason_placeholder: "مثل أنه نسي بصمة الخروج، وأكد ذلك مديره…",
         punch_choose_person: "اختر موظفًا",
         punch_import_hint: "ارفع الملف الذي يصدّره جهاز البصمة (‎.xlsx أو ‎.csv). افحصه أولًا: لا يُحفظ شيء حتى تضغط استيراد. الملف المرسل مرتين يُحفظ مرة واحدة.",
         punch_file: "الملف",

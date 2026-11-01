@@ -797,11 +797,12 @@ a.ui-file-open:focus-visible,
 }
 
 /* ── Face photos (Attendance, ATTENDANCE_PLAN.md §9.5) ── */
-/* The new photo beside the approved one, to compare: side by side where
-   both fit, one under the other on a phone. */
+/* The new photo beside the approved one, to compare: side by side in a
+   dialog, on a phone too. One under the other, comparing them meant
+   scrolling between them (found in the interface audit, PR 153). */
 .ui-face-photos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(192px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));
   gap: var(--space-3);
 }
 .ui-face-photo {
@@ -811,9 +812,12 @@ a.ui-file-open:focus-visible,
   gap: var(--space-1);
 }
 /* Not to be dragged out or selected. A screenshot still can be taken, so the
-   viewer's name and the time are over it. */
+   viewer's name and the time are over it. A phone's photo is upright, 3 by
+   4: the frame is that size before it loads, so the dialog doesn't grow as
+   the photos come in (found in the interface audit, PR 153). */
 .ui-face-photo-frame {
   position: relative;
+  aspect-ratio: 3 / 4;
   overflow: hidden;
   border-radius: var(--radius-panel);
   background: var(--page);
@@ -822,7 +826,7 @@ a.ui-file-open:focus-visible,
 .ui-face-photo-frame > img {
   display: block;
   width: 100%;
-  max-height: 352px;
+  height: 100%;
   object-fit: contain;
 }
 .ui-face-photo-marks {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { CalendarCheckIcon, CheckCircleIcon, ClockIcon, HourglassIcon, IdentificationBadgeIcon, InfoIcon, UsersIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
@@ -42,6 +42,9 @@ export default function FaceTab({ q }: { q: string }) {
     const peopleList = useSWR(`/api/attendance/face/people?${q}`, fetcher)
     const [openId, setOpenId] = useState<string | null>(params.get('review'))
     const [askingReverify, setAskingReverify] = useState<Person | null>(null)
+    // Whom it's being asked of, or not, while that saves: shown at once. Waiting on the server, a box
+    // looked like it hadn't taken the click (found in the interface audit, PR 153).
+    const [saving, setSaving] = useState<Record<string, boolean>>({})
     const action = useBusyAction()
 
     const failed = reviewsList.error ?? peopleList.error
@@ -58,9 +61,15 @@ export default function FaceTab({ q }: { q: string }) {
     const open = reviews.find(r => r.id === openId) ?? null
 
     const setRequired = (person: Person, required: boolean) => action.run(`required-${person.id}`, async () => {
-        const r = await send('/api/attendance/face/people', json('PUT', { userId: person.id, required }), t('error_generic'))
-        if (!r.ok) return showToast(r.error, 'error')
-        await peopleList.mutate()
+        setSaving(x => ({ ...x, [person.id]: required }))
+        try {
+            const r = await send('/api/attendance/face/people', json('PUT', { userId: person.id, required }), t('error_generic'))
+            // Refused, the box goes back to what it was.
+            if (!r.ok) return showToast(r.error, 'error')
+            await peopleList.mutate()
+        } finally {
+            setSaving(x => Object.fromEntries(Object.entries(x).filter(([id]) => id !== person.id)))
+        }
     })
     // Not while it works: closing then would hide the answer.
     const closeReverify = () => { if (!action.running) setAskingReverify(null) }
@@ -95,7 +104,7 @@ export default function FaceTab({ q }: { q: string }) {
     // Not asked of anyone new while the company can't offer it; whoever is asked can still be let off.
     const asked = (x: Person) => (
         <label className="ui-check-target">
-            <input type="checkbox" className="ui-check" aria-label={t('face_ask_of').replace('{name}', x.name)} checked={x.required}
+            <input type="checkbox" className="ui-check" aria-label={t('face_ask_of').replace('{name}', x.name)} checked={saving[x.id] ?? x.required}
                 disabled={action.running || (!company.allowed && !x.required)} onChange={e => { void setRequired(x, e.target.checked) }} />
         </label>
     )
@@ -173,6 +182,10 @@ function ReviewDialog({ review, onClose, onDecided }: { review: Review; onClose:
     const [reason, setReason] = useState('')
     // Fixed when the photos open: the time a screenshot would show.
     const mark = useWatermark()
+    // Reject and Back each take away the button that had focus: it goes where the next step starts, not to the
+    // page behind, from where Escape didn't close the dialog (found in the interface audit, PR 153).
+    const photos = useRef<HTMLDivElement>(null)
+    const focusIn = (selector: string) => requestAnimationFrame(() => photos.current?.closest('[role=dialog]')?.querySelector<HTMLElement>(selector)?.focus())
 
     const decide = (approve: boolean) => action.run(approve ? 'approve' : 'reject', async () => {
         const r = await send(`/api/attendance/face/reviews/${review.id}/decide`, json('POST', { approve, reason: approve ? null : reason.trim() || null }), t('error_generic'))
@@ -190,14 +203,14 @@ function ReviewDialog({ review, onClose, onDecided }: { review: Review; onClose:
             onClose={close}
             title={rejecting ? t('face_reject_title') : t('face_review_title').replace('{name}', review.name)}
             actions={rejecting ? undefined : <>
-                <Button onClick={() => setRejecting(true)} disabled={action.running}>{t('chk_reject')}</Button>
+                <Button data-step="reject" onClick={() => { setRejecting(true); focusIn('textarea[name="reason"]') }} disabled={action.running}>{t('chk_reject')}</Button>
                 <Button variant="primary" onClick={() => { void decide(true) }} disabled={action.running} busy={action.is('approve')}>{t('face_approve')}</Button>
             </>}
         >
             {/* Where the decision is made, not only in the list behind it (review on #28). */}
             {review.prototype && <p role="alert"><StatusBadge tone="waiting">{t('face_review_prototype')}</StatusBadge></p>}
             <p>{t(review.hasReference ? 'face_review_compare' : 'face_review_first')}</p>
-            <div className="ui-face-photos">
+            <div className="ui-face-photos" ref={photos}>
                 <Photo src={`/api/attendance/face/reviews/${review.id}/photo?which=new`} label={t('face_photo_new')} mark={mark} />
                 {review.hasReference && <Photo src={`/api/attendance/face/reviews/${review.id}/photo?which=reference`} label={t('face_photo_reference')} mark={mark} />}
             </div>
@@ -208,7 +221,7 @@ function ReviewDialog({ review, onClose, onDecided }: { review: Review; onClose:
                         <TextArea {...f} name="reason" dir="auto" maxLength={500} value={reason} disabled={action.running} onChange={e => setReason(e.target.value)} />
                     )}</Field>
                     <DialogActions>
-                        <Button onClick={() => setRejecting(false)} disabled={action.running}>{t('go_back')}</Button>
+                        <Button onClick={() => { setRejecting(false); focusIn('[data-step="reject"]') }} disabled={action.running}>{t('go_back')}</Button>
                         <Button variant="danger" type="submit" disabled={action.running} busy={action.is('reject')}>{t('chk_reject')}</Button>
                     </DialogActions>
                 </form>

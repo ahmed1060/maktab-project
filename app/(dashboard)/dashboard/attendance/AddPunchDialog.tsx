@@ -113,7 +113,7 @@ export function AddPunchForm({ companyId, today, people, initial, onRunning, onC
                     options={[{ value: '', label: t('punch_direction_unknown') }, { value: 'IN', label: t('punch_in') }, { value: 'OUT', label: t('punch_out') }]} />
             )}</Field>
             <Field label={t('punch_reason')} hint={t('ui_characters_used').replace('{used}', num(note.length)).replace('{max}', num(NOTE_MAX))} error={errors.note}>{f => (
-                <TextArea {...f} name="reason" dir="auto" placeholder={t('punch_reason_example')} maxLength={NOTE_MAX} value={note} disabled={action.running}
+                <TextArea {...f} name="reason" dir="auto" placeholder={t('punch_add_reason_placeholder')} maxLength={NOTE_MAX} value={note} disabled={action.running}
                     onChange={e => { setNote(e.target.value); clear('note') }} />
             )}</Field>
             <DialogActions>

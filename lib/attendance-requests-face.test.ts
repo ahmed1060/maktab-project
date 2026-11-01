@@ -109,7 +109,8 @@ describe("the Requests tab: one's phone", () => {
     })
 
     it("says when there's no phone yet, and isn't there for a company without the app", async () => {
-        expect(card(await page({ phone: { active: null, pending: null } }), "Your check-in phone")).toContain(`<p class="ui-card-note">${en.req_my_phone_none}</p>`)
+        // What the card says, as the other cards say theirs, not a settings card's note (found in the interface audit, PR 153).
+        expect(card(await page({ phone: { active: null, pending: null } }), "Your check-in phone")).toContain(`<p>${en.req_my_phone_none}</p>`)
         expect(await page({ phone: "failed" })).not.toContain("Your check-in phone")
     })
 })
@@ -248,7 +249,7 @@ describe("adding a punch", () => {
         expect(html).toContain('ui-date-trigger">')
         expect(html).toMatch(/<input[^>]*type="time"[^>]*name="time"/)
         expect(html).toContain(`<option value="" selected="">${en.punch_direction_unknown}</option>`)
-        expect(html).toContain(`placeholder="${en.punch_reason_example}"`)
+        expect(html).toContain('placeholder="')
         expect(html).toContain('<div class="ui-dialog-actions"><button type="button" class="ui-btn ui-btn-secondary">Cancel</button><button type="submit" class="ui-btn ui-btn-primary">Add a punch</button></div>')
     })
 
@@ -359,7 +360,7 @@ describe("face verification", () => {
         expect(tab).not.toContain("style={")
         // Rejecting keeps the photos open, so they aren't fetched, and recorded, again.
         expect(tab).toContain("title={rejecting ? t('face_reject_title') : t('face_review_title').replace('{name}', review.name)}")
-        expect(tab).toContain('<div className="ui-face-photos">')
+        expect(tab).toContain('<div className="ui-face-photos"')
         expect(tab).toMatch(/<Button variant="danger" type="submit"[^>]*busy=\{action\.is\('reject'\)\}>\{t\('chk_reject'\)\}<\/Button>/)
         // Asking to re-verify asks first.
         expect(tab).toContain("title={t('face_reverify')}")
@@ -378,5 +379,39 @@ describe("a face photo", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")
         expect(css).toContain(".ui-face-photos {")
         expect(css).toContain(".ui-face-photo-frame {")
+    })
+})
+
+describe("found in the interface audit (PR 153)", () => {
+    it("keeps focus in the review dialog when Reject or Back takes away the button that had it", () => {
+        const tab = source("FaceTab.tsx")
+        // Reject: to the reason. Back: to Reject again. Lost to the page, Escape didn't close the dialog.
+        expect(tab).toContain("setRejecting(true); focusIn('textarea[name=\"reason\"]')")
+        expect(tab).toContain("setRejecting(false); focusIn('[data-step=\"reject\"]')")
+        expect(tab).toContain('<Button data-step="reject"')
+        expect(tab).toContain('<div className="ui-face-photos" ref={photos}>')
+    })
+
+    it("puts the two photos side by side in the dialog, each its size before it loads", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rule = (name: string) => css.slice(css.indexOf(`${name} {`), css.indexOf("}", css.indexOf(`${name} {`)))
+        expect(rule(".ui-face-photos")).toContain("grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));")
+        expect(rule(".ui-face-photo-frame")).toContain("aspect-ratio: 3 / 4;")
+        expect(rule(".ui-face-photo-frame > img")).toContain("height: 100%;")
+    })
+
+    it("ticks or unticks whoever is asked at once, while it saves: waiting on the server, a box looked like it hadn't taken the click", () => {
+        const tab = source("FaceTab.tsx")
+        expect(tab).toContain("checked={saving[x.id] ?? x.required}")
+        expect(tab).toContain("setSaving(x => ({ ...x, [person.id]: required }))")
+    })
+
+    it("gives adding a punch's reason a placeholder as the other forms' are", async () => {
+        expect(en.punch_add_reason_placeholder).toMatch(/^Such as .*…$/)
+        expect(ar.punch_add_reason_placeholder).toMatch(/…$/)
+        state.locale = "en"
+        const { AddPunchForm } = await import("@/app/(dashboard)/dashboard/attendance/AddPunchDialog")
+        const html = renderToStaticMarkup(h(AddPunchForm, { today: "2026-10-31", companyId: null, people: [], onCancel: () => {}, onAdded: () => {} }))
+        expect(html).toContain(`placeholder="${en.punch_add_reason_placeholder}"`)
     })
 })

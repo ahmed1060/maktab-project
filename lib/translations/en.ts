@@ -1758,6 +1758,7 @@ export const en = {
         punch_withdrawn: "Punch withdrawn",
         punch_reason: "Why?",
         punch_reason_example: "e.g. Forgot to punch out; confirmed with their manager",
+        punch_add_reason_placeholder: "Such as they forgot to punch out, and their manager confirmed it…",
         punch_choose_person: "Choose a person",
         punch_import_hint: "Upload the spreadsheet your fingerprint terminal exports (.xlsx or .csv). Check it first: nothing is saved until you import. A file sent twice is stored once.",
         punch_file: "File",

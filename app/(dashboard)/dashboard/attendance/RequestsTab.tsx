@@ -68,7 +68,8 @@ function MyPhone() {
     })
     return (
         <Card title={t('req_my_phone')}>
-            {!active && !pending && <p className="ui-card-note">{t('req_my_phone_none')}</p>}
+            {/* What the card says, as the other cards say theirs (found in the interface audit, PR 153). */}
+            {!active && !pending && <p>{t('req_my_phone_none')}</p>}
             {active && <p>{t('req_my_phone_in_use').replace('{model}', label(active))}</p>}
             {pending && <p>{t('req_my_phone_waiting').replace('{model}', label(pending))}</p>}
             {pending && <div className="ui-card-actions"><Button onClick={() => setCancelling(true)}>{t('req_my_phone_withdraw')}</Button></div>}

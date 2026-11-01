@@ -2176,3 +2176,20 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     flagged check-ins on the Requests page too;
   - while face verification loads, and when it can't, it says so, with
     the server's word and Try again. It was a spinner, or nothing.
+- **2026-11-01:** Found in the interface audit of #153:
+  - in a photo's dialog, Reject and Back each took away the button that
+    had focus, which went to the page behind: Escape didn't close the
+    dialog, and Tab started from the top of the page. Reject puts it in
+    the reason now, and Back on Reject again;
+  - the two photos sat one under the other in the dialog, so comparing
+    them meant scrolling between them, and each had no size until it
+    loaded, so the dialog grew as they came in. They're side by side,
+    on a phone too, each 3 by 4 from the start;
+  - adding a punch's reason had "e.g." for its placeholder, where the
+    other forms have "Such as …";
+  - "No phone yet" was a settings card's note, small and grey, where the
+    other cards say theirs as the card's text.
+  - ticking or unticking whoever is asked for face verification waited
+    on the server before the box changed, so it looked as if the click
+    hadn't taken. It shows at once while it saves, and goes back if it's
+    refused.
