@@ -1266,6 +1266,11 @@ a.ui-row:focus-visible {
   justify-content: flex-end;
   gap: var(--space-1);
 }
+/* A note under an amount at the end of a row, such as whether a month's
+   salary is from its payslip, lines up under it (PR 157). */
+.ui-table td.ui-end .ui-item-detail {
+  justify-content: flex-end;
+}
 /* An item's name that opens it. */
 .ui-item-link {
   color: inherit;

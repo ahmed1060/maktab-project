@@ -123,8 +123,10 @@ export function SalaryTab({ employee, records, loading, error, retrying, retry, 
                             { icon: CalendarCheckIcon, text: daysPaid(r) },
                             ...(r.deductions > 0 ? [{ icon: MinusCircleIcon, text: t('hist_deducted_n').replace('{days}', days(r.deductions)) }] : []),
                             ...(r.bonusDays > 0 ? [{ icon: PlusCircleIcon, text: t('hist_bonus_n').replace('{days}', days(r.bonusDays)) }] : []),
-                            { icon: CoinsIcon, text: <>{amount(net(r))}{figureNote(r)}</> },
+                            { icon: CoinsIcon, text: amount(net(r)) },
                         ]}
+                        // On its own line: beside the amount, the amount wrapped mid-number (PR 157).
+                        foot={<span className="ui-hint">{t(payslip(r) ? 'salary_figure_payslip' : 'salary_figure_estimate')}</span>}
                     />
                 )}
             />

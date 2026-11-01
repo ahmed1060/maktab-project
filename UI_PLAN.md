@@ -2325,3 +2325,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Each tab says it's loading now, and the Salary tab that it didn't
     load, with Try again. The messages of the dialogs still to come are
     the app's toasts, not a box of its own in the corner.
+- **2026-11-01:** Found in the browser and the interface audit on #157:
+  - on a phone, a month's salary sat beside its note, "From the payslip"
+    or that it's an estimate, and wrapped mid-number. The note is on a
+    line of its own under the card's details now, in the muted hint's
+    size;
+  - in the table, the note under an amount at the end of a row began at
+    the start of its cell. A note in a column of amounts at the end
+    lines up under them now, on every list that has one.

@@ -150,6 +150,22 @@ describe("the Salary tab", () => {
     })
 })
 
+describe("found in the browser (the audit, PR 157)", () => {
+    it("keeps a month's salary whole on a phone's card, with what it is on its own line", async () => {
+        // Beside its note, the amount wrapped mid-number: "12,000." then "00".
+        const html = await salary()
+        const cards = html.slice(html.indexOf('<ul class="ui-cards"'))
+        expect(cards).toContain(`<div class="ui-list-card-foot"><span class="ui-hint">${en.salary_figure_payslip}</span></div>`)
+        expect(cards).not.toContain(`<span class="ui-num">${money(11750)}</span><span class="ui-item-detail">`)
+    })
+
+    it("lines a note up under its amount at the end of the row", () => {
+        // In a column whose amounts are at the end, the note under each began at the start.
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-table td\.ui-end \.ui-item-detail \{\s*justify-content: flex-end;/)
+    })
+})
+
 describe("nothing of the old frame is left", () => {
     it("has no spinner, hand-made back button, tab buttons or corner alert", () => {
         const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
