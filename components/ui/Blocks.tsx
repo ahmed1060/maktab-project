@@ -138,10 +138,15 @@ export function Panel({ children, className }: { children: ReactNode; className?
     return <div className={cx('ui-panel', className)}>{children}</div>
 }
 
-/** A panel with its own padding, for things that aren't lists, such as a settings section. */
-export function Card({ title, actions, children, className }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }) {
+/**
+ * A panel with its own padding, for things that aren't lists, such as a
+ * settings section. One that needs someone before going on, or says
+ * something is wrong, takes that tone: a bar on its start edge in the
+ * meaning's colour (DESIGN.md §5.5). Its title says what it is.
+ */
+export function Card({ title, actions, children, className, tone }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; tone?: 'waiting' | 'problem' }) {
     return (
-        <section className={cx('ui-panel ui-card', className)}>
+        <section className={cx('ui-panel ui-card', className)} data-tone={tone}>
             {(title || actions) && (
                 <div className="ui-card-head">
                     {title && <h2 className="ui-card-title">{title}</h2>}

@@ -160,7 +160,8 @@ describe("E1: what changed since the draft you read", () => {
 
     it("interrupts only when something actually moved", () => {
         expect(REGISTER).toContain("view?.sinceDraft?.people.filter(p => p.kind !== 'SAME')")
-        expect(REGISTER).toContain("if (!isDraft || changed.length === 0) return null")
+        // On the building blocks, a card only then (UI_PLAN.md §5 step 5).
+        expect(REGISTER).toContain("{isDraft && sinceDraft.length > 0 && (")
     })
 
     it("says approval freezes what is on screen now", () => {

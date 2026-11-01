@@ -163,9 +163,10 @@ describe("the register screen asks before it freezes", () => {
         // Asserted on containment rather than on position: the buttons live in
         // the page header, above everything, so "after the list" and "not in
         // the button group" are different claims and only the second is true.
-        const cardStart = PAGE.indexOf("register.pendingDecisions.length > 0 && card(")
+        // On the building blocks, the card's own Card (UI_PLAN.md §5 step 5).
+        const cardStart = PAGE.indexOf("register.pendingDecisions.length > 0 && (")
         expect(cardStart).toBeGreaterThan(-1)
-        const pendingCard = PAGE.slice(cardStart, PAGE.indexOf("'warn')}", cardStart))
+        const pendingCard = PAGE.slice(cardStart, PAGE.indexOf("</Card>", cardStart))
         expect(pendingCard, "the acknowledgement is no longer inside the pending list")
             .toContain("payroll_acknowledge_pending")
 
