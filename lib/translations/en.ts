@@ -1702,6 +1702,7 @@ export const en = {
         attendance_title: "Attendance",
         punch_page_hint: "Clock-ins and clock-outs as they came in. A wrong one is withdrawn, never edited.",
         punch_pick_company: "Open a company's punches from its Attendance settings.",
+        attendance_load_failed: "Attendance didn't load.",
         punch_open: "Punches and imports",
         punch_tab_punches: "Punches",
         punch_tab_import: "Import a file",

@@ -242,13 +242,15 @@ describe("the screen's dates (review on #12)", () => {
 
     it("says so when the company's date can't be had, instead of waiting for it for good", () => {
         const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
-        expect(page).toContain("const { data: peopleBody, error: peopleError } = useSWR(")
-        expect(page).toMatch(/if \(peopleError && !today && [^\n]*\) return <p role="alert"[^\n]*t\('error_generic'\)/)
+        // On the building blocks since Attendance part 1: the failure says so with Try again.
+        expect(page).toContain("const { data: peopleBody, error: peopleError, isValidating: peopleRetrying, mutate: reloadPeople } = useSWR(")
+        expect(page).toMatch(/if \(peopleError && !today\) \{\s*return before\(/)
+        expect(page).toContain("title={t('attendance_load_failed')}")
         // Not before the session says who is asking: a Super Admin's request went without the company, and its
         // refusal showed as an error for a moment (review on #49).
         expect(page).toContain("useSWR(status !== 'loading' && (!isSuperAdmin || companyId) ? `/api/attendance/people?${q}` : null, fetcher)")
-        expect(page.indexOf("if (status === 'loading') return <LoadingSpinner />")).toBeGreaterThan(-1)
-        expect(page.indexOf("if (status === 'loading') return <LoadingSpinner />")).toBeLessThan(page.indexOf("if (peopleError && !today"))
+        expect(page.indexOf("if (status === 'loading') return before(")).toBeGreaterThan(-1)
+        expect(page.indexOf("if (status === 'loading') return before(")).toBeLessThan(page.indexOf("if (peopleError && !today"))
     })
 })
 

@@ -2133,3 +2133,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** Payroll's last part was merged in #145. Public holidays
   moves onto the building blocks in #146 (`UI_PLAN.md` §5). Neither
   touches clients or locations.
+- **2026-11-01:** Public holidays was merged in #146. Attendance's frame
+  moves onto the building blocks in #147, the first of seven parts
+  (`UI_PLAN.md` §5). Neither touches clients or locations.

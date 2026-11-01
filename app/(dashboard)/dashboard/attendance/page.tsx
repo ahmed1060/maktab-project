@@ -1,14 +1,16 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
-import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
+import { BuildingsIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, EmptyState, Page, PageHeader, Tabs } from '@/components/ui'
+import type { SWRError } from '@/lib/swr-fetcher'
 import { send, json } from './send'
 import FaceTab from './FaceTab'
 import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
@@ -31,6 +33,10 @@ import { useBusyAction } from '@/lib/useBusyAction'
  * Nothing here is edited: a wrong punch, or a whole wrong file, is withdrawn
  * and stays on record. Days and their deductions are worked out from these by
  * the engine; this screen shows the evidence.
+ *
+ * On the building blocks in parts (UI_PLAN.md §5 step 5), the frame first:
+ * the page header, the tabs, and what the page says before them. What each
+ * tab holds follows, one or two tabs at a time.
  */
 
 type Punch = {
@@ -57,7 +63,6 @@ const monthStart = (date: string) => `${date.slice(0, 8)}01`
 
 export default function AttendancePage() {
     const { t } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
     const { data: session, status } = useSession()
     const params = useSearchParams()
     const router = useRouter()
@@ -67,17 +72,11 @@ export default function AttendancePage() {
     const companyId = isSuperAdmin ? params.get('companyId') : null
     const q = companyId ? `companyId=${encodeURIComponent(companyId)}&` : ''
 
-    useEffect(() => {
-        setTitle(t('attendance_title'))
-        setSubtitle(t('punch_page_hint'))
-        return () => { setTitle(null); setSubtitle(null) }
-    }, [t, setTitle, setSubtitle])
-
     const correctsCompany = p.companyWide('attendance.correct')
     // The company's date, not the device's: around midnight, or for somebody
     // abroad, they differ, and every default date below starts from it (review on #12).
     // Asked once the session says who is asking: before, a Super Admin's request went without the company (review on #49).
-    const { data: peopleBody, error: peopleError } = useSWR(status !== 'loading' && (!isSuperAdmin || companyId) ? `/api/attendance/people?${q}` : null, fetcher)
+    const { data: peopleBody, error: peopleError, isValidating: peopleRetrying, mutate: reloadPeople } = useSWR(status !== 'loading' && (!isSuperAdmin || companyId) ? `/api/attendance/people?${q}` : null, fetcher)
     const today: string | undefined = peopleBody?.data?.today
     // Whoever sees other people's attendance starts on what needs a decision (§13.1).
     const seesOthers = p.can('attendance.view_team')
@@ -99,38 +98,51 @@ export default function AttendancePage() {
     }
     const tab: Tab = linked && tabs.includes(linked) ? linked : seesOthers ? 'exceptions' : 'days'
 
-    if (status === 'loading') return <LoadingSpinner />
-    // Failed, it says so: everything below waits on the company's date, and a spinner would wait for good (review on #12).
-    if (peopleError && !today && !(isSuperAdmin && !companyId)) return <p role="alert" style={{ color: 'var(--danger-fg)' }}>{t('error_generic')}</p>
-    if (!today && !(isSuperAdmin && !companyId)) return <LoadingSpinner />
-    if (isSuperAdmin && !companyId) {
-        return <p style={{ color: 'var(--text-soft)' }}>{t('punch_pick_company')}</p>
-    }
-
     const label: Record<Tab, TranslationKey> = { exceptions: 'exc_tab', days: 'day_tab_days', punches: 'punch_tab_punches', requests: 'req_tab', face: 'face_tab', import: 'punch_tab_import', numbers: 'punch_tab_numbers' }
+    const header = <PageHeader title={t('attendance_title')} subtitle={t('punch_page_hint')} />
+    // What the page says before its tabs, under its header (DESIGN.md §5.5).
+    const before = (body: React.ReactNode) => <Page>{header}{body}</Page>
+
+    // Not before the session says who is asking: a Super Admin's request went
+    // without the company, and its refusal showed as an error (review on #49).
+    if (status === 'loading') return before(<div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>)
+    if (isSuperAdmin && !companyId) return before(<div className="ui-panel"><EmptyState icon={BuildingsIcon} title={t('punch_pick_company')} /></div>)
+    // Failed, it says so: everything below waits on the company's date, and a spinner would wait for good (review on #12).
+    if (peopleError && !today) {
+        return before(
+            <div className="ui-panel">
+                <EmptyState
+                    icon={WarningCircleIcon}
+                    title={t('attendance_load_failed')}
+                    detail={(peopleError as SWRError).info?.error}
+                    action={<Button busy={peopleRetrying} onClick={() => { void reloadPeople() }}>{t('try_again')}</Button>}
+                />
+            </div>,
+        )
+    }
+    if (!today) return before(<div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>)
+
     return (
-        <div style={{ display: 'grid', gap: '1rem' }}>
+        <Page>
+            {header}
             {tabs.length > 1 && (
-                <div role="tablist" style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto' }}>
-                    {tabs.map(k => (
-                        <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab(k)}>
-                            {t(label[k])}
-                        </button>
-                    ))}
-                </div>
+                <Tabs label={t('attendance_title')} idPrefix="attendance-tab" value={tab} onChange={setTab}
+                    items={tabs.map(k => ({ value: k, label: t(label[k]), controls: 'attendance-panel' }))} />
             )}
             {/* Another company, picked without leaving the page, starts afresh: the tabs' dates were the last
                 company's, from its own calendar, and a file chosen for import was meant for it (review on #13). */}
-            <Fragment key={companyId ?? ''}>
-                {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
-                {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
-                {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
-                {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
-                {tab === 'face' && <FaceTab q={q} />}
-                {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
-                {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
-            </Fragment>
-        </div>
+            <div role="tabpanel" id="attendance-panel" aria-labelledby={`attendance-tab-${tab}`}>
+                <Fragment key={companyId ?? ''}>
+                    {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
+                    {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
+                    {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
+                    {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
+                    {tab === 'face' && <FaceTab q={q} />}
+                    {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
+                    {tab === 'numbers' && correctsCompany && <NumbersTab q={q} companyId={companyId} />}
+                </Fragment>
+            </div>
+        </Page>
     )
 }
 
