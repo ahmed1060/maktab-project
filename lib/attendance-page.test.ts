@@ -92,7 +92,7 @@ describe("Attendance's tabs", () => {
     it("hold what the tab shows in a panel named by the tab", async () => {
         const html = await page({ search: "tab=days" })
         expect(html).toMatch(/<button type="button" role="tab" id="attendance-tab-days"[^>]*aria-controls="attendance-panel"/)
-        expect(html).toContain('<div role="tabpanel" id="attendance-panel" aria-labelledby="attendance-tab-days">')
+        expect(html).toContain('<div role="tabpanel" id="attendance-panel" class="ui-tab-panel" aria-labelledby="attendance-tab-days">')
     })
 })
 

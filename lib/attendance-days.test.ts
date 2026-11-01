@@ -238,6 +238,30 @@ describe("the month so far", () => {
     })
 })
 
+describe("found in the interface audit (PR 149)", () => {
+    it("gives a deduction's days to the eighth, as they're kept, not rounded to two places", async () => {
+        // An eighth of a day showed as 0.13, and a month's 1.375 as 1.38.
+        const html = panel(await page({ shows: [day({ deductionDays: 0.125, deductionMinor: 6250 }), absent, day({ id: "d5", date: "2026-10-17", deductionDays: 0.25, deductionMinor: 12500 })] }))
+        expect(table(html)).toContain("0.125 days")
+        expect(tiles(html)).toContain("1.375 days")
+    })
+
+    it("spaces the tab's blocks as the page spaces its own", async () => {
+        const html = await page()
+        expect(html).toContain('<div role="tabpanel" id="attendance-panel" class="ui-tab-panel" aria-labelledby="attendance-tab-days">')
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-tab-panel \{\s*display: flex;\s*flex-direction: column;\s*gap: var\(--space-6\);/)
+    })
+
+    it("writes a phone card's times as one line, and none for a day with no punch", async () => {
+        // Each piece was spaced apart as its own item: "In 09:12 , Out 17:00".
+        const list = cards(panel(await page()))
+        expect(list).toContain("<span>In <bdi>09:12</bdi>, Out <bdi>17:00</bdi></span>")
+        const absentCard = list.slice(list.indexOf("Fri 16 Oct"))
+        expect(absentCard.slice(0, absentCard.indexOf("</li>"))).not.toContain("In ")
+    })
+})
+
 describe("Days is on the building blocks", () => {
     const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
     const days = SOURCE.slice(SOURCE.indexOf("// --- Days"), SOURCE.indexOf("// --- Punches"))

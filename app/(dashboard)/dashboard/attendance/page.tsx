@@ -140,7 +140,7 @@ export default function AttendancePage() {
             )}
             {/* Another company, picked without leaving the page, starts afresh: the tabs' dates were the last
                 company's, from its own calendar, and a file chosen for import was meant for it (review on #13). */}
-            <div role="tabpanel" id="attendance-panel" aria-labelledby={`attendance-tab-${tab}`}>
+            <div role="tabpanel" id="attendance-panel" className="ui-tab-panel" aria-labelledby={`attendance-tab-${tab}`}>
                 <Fragment key={companyId ?? ''}>
                     {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
                     {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
@@ -184,7 +184,8 @@ function useFigures() {
         num,
         amount: (minor: number) => (minor / 100).toLocaleString(digits, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         minutes: (n: number) => t('req_minutes').replace('{n}', num(n)),
-        days: (n: number) => countOf(t, locale, n, 'days'),
+        // To the eighth of a day, as they're kept: 0.125, not 0.13 (found in the interface audit, PR 149).
+        days: (n: number) => countOf(t, locale, n, 'days', 4),
         // "09:12" as the punch has it, in the page's digits.
         clock: (at: string) => at.slice(11, 16).replace(/\d/g, c => num(Number(c))),
     }
@@ -311,11 +312,12 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
             status={badge(d)}
             details={[
                 ...(everyone ? [{ icon: UserIcon, text: d.name }] : []),
-                { icon: ClockIcon, text: <>{t('punch_in')} {time(d.firstIn)}, {t('punch_out')} {time(d.lastOut)}</> },
+                // One line, as a span: the line spaces its pieces apart (found in the interface audit, PR 149).
+                ...(d.firstIn || d.lastOut ? [{ icon: ClockIcon, text: <span>{t('punch_in')} {time(d.firstIn)}, {t('punch_out')} {time(d.lastOut)}</span> }] : []),
                 ...(d.lateMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_late')}: ${minutes(d.lateMinutes)}` }] : []),
                 ...(d.earlyLeaveMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_early')}: ${minutes(d.earlyLeaveMinutes)}` }] : []),
                 ...(d.overtimeMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_overtime')}: ${minutes(d.overtimeMinutes)}` }] : []),
-                ...(showsMoney && (d.deductionMinor || d.deductionDays > 0) ? [{ icon: CoinsIcon, text: <>{t('day_deduction')}: {d.deductionMinor ? <bdi>{amount(d.deductionMinor)}</bdi> : daysWord(d.deductionDays)}</> }] : []),
+                ...(showsMoney && (d.deductionMinor || d.deductionDays > 0) ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: {d.deductionMinor ? <bdi>{amount(d.deductionMinor)}</bdi> : daysWord(d.deductionDays)}</span> }] : []),
                 ...notes(d).map(n => ({ icon: InfoIcon, text: n })),
             ]}
             foot={asks(d)}

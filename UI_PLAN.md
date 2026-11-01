@@ -2029,3 +2029,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     and Try again. It was a spinner, and a red line;
   - a day's status is in sentence case in English ("On leave", "Rest
     day"), wherever it's shown.
+- **2026-11-01:** Found in the interface audit of #149:
+  - a deduction's days were rounded to two places, so an eighth of a day
+    showed as 0.13, and a month's 1.375 as 1.38. They're shown to the
+    eighth now, as they're kept;
+  - the tab's blocks, the month bar, the tiles and the list, sat against
+    each other. A tab's panel spaces its blocks as the page does;
+  - on a phone, a day's times read "In 09:12 , Out 17:00", each piece
+    spaced apart, and a day with no punch said "In —, Out —". The times
+    are one line now, and only on a day with a punch.
