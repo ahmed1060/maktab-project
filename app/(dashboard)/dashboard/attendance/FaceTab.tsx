@@ -102,12 +102,14 @@ export default function FaceTab({ q }: { q: string }) {
         ? new Date(x.consentedAt).toLocaleDateString(digits, { day: 'numeric', month: 'short', year: 'numeric' })
         : t('face_consent_none')
     // Not asked of anyone new while the company can't offer it; whoever is asked can still be let off.
-    const asked = (x: Person) => (
-        <label className="ui-check-target">
-            <input type="checkbox" className="ui-check" aria-label={t('face_ask_of').replace('{name}', x.name)} checked={saving[x.id] ?? x.required}
-                disabled={action.running || (!company.allowed && !x.required)} onChange={e => { void setRequired(x, e.target.checked) }} />
-        </label>
+    const box = (x: Person, named: boolean) => (
+        <input type="checkbox" className="ui-check" aria-label={named ? t('face_ask_of').replace('{name}', x.name) : undefined} checked={saving[x.id] ?? x.required}
+            disabled={action.running || (!company.allowed && !x.required)} onChange={e => { void setRequired(x, e.target.checked) }} />
     )
+    // In the table, under its column, named for the person.
+    const asked = (x: Person) => <label className="ui-check-target">{box(x, true)}</label>
+    // On a phone's card, with what it is beside it: alone at the card's foot, it said nothing (found in the interface audit, PR 153).
+    const askedOnCard = (x: Person) => <label className="ui-choice">{box(x, false)}{t('face_asked_label')}</label>
     // Only once it's asked of them and they consented.
     const reverifyButton = (x: Person) => x.required && x.consentedAt
         ? <Button size="sm" disabled={action.running} onClick={() => setAskingReverify(x)}>{t('face_reverify')}</Button>
@@ -147,7 +149,7 @@ export default function FaceTab({ q }: { q: string }) {
                 <p className="ui-hint">{t('face_people_hint')}</p>
                 <DataList caption={t('face_people')} columns={peopleColumns} rows={people} rowKey={x => x.id}
                     card={x => <ListCard title={x.name} details={[{ icon: CalendarCheckIcon, text: `${t('face_consent')}: ${consented(x)}` }]}
-                        foot={<span className="ui-row-actions">{asked(x)}{reverifyButton(x)}</span>} />}
+                        foot={<>{askedOnCard(x)}{x.required && x.consentedAt && <span className="ui-row-actions">{reverifyButton(x)}</span>}</>} />}
                     empty={<EmptyState icon={UsersIcon} title={t('face_people_none')} />} />
             </Section>
 

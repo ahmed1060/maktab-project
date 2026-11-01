@@ -2140,6 +2140,7 @@ export const en = {
         face_people_none: "Nobody else is in the company yet.",
         face_asked: "Asked",
         face_ask_of: "Ask {name} for face verification",
+        face_asked_label: "Asked for face verification",
         face_load_failed: "Face verification didn't load.",
         face_consent: "Consented",
         face_consent_none: "Not yet",

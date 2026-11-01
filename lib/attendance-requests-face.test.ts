@@ -406,6 +406,17 @@ describe("found in the interface audit (PR 153)", () => {
         expect(tab).toContain("setSaving(x => ({ ...x, [person.id]: required }))")
     })
 
+    it("says what the box is on a phone's card, where it stood alone at the card's foot", async () => {
+        const html = await page({ tab: "face", grants: FACE })
+        const cards = html.slice(html.indexOf('<ul class="ui-cards" aria-label="Who is asked for face verification">'))
+        expect(cards).toContain(`<label class="ui-choice"><input type="checkbox" class="ui-check" checked=""/>${en.face_asked_label}</label>`)
+        expect(cards).toContain(`<label class="ui-choice"><input type="checkbox" class="ui-check"/>${en.face_asked_label}</label>`)
+        // The table's column says it, and its box is named for the person.
+        expect(html).toContain('<label class="ui-check-target"><input type="checkbox" class="ui-check" aria-label="Ask Sami Nabil for face verification" checked=""/></label>')
+        const ar_ = await page({ tab: "face", grants: FACE, locale: "ar" })
+        expect(ar_).toContain(`/>${ar.face_asked_label}</label>`)
+    })
+
     it("gives adding a punch's reason a placeholder as the other forms' are", async () => {
         expect(en.punch_add_reason_placeholder).toMatch(/^Such as .*…$/)
         expect(ar.punch_add_reason_placeholder).toMatch(/…$/)

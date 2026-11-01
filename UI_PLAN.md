@@ -2193,3 +2193,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     on the server before the box changed, so it looked as if the click
     hadn't taken. It shows at once while it saves, and goes back if it's
     refused.
+- **2026-11-01:** Found in the interface audit of #153, on a phone: in
+  the cards of who is asked for face verification, the checkbox stood
+  alone at the card's foot, saying nothing. It says "Asked for face
+  verification" beside it now. The table's column says it on a computer,
+  and its box is named for the person.

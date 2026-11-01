@@ -2138,6 +2138,7 @@ export const ar = {
         face_people_none: "لا يوجد أحد آخر في الشركة بعد.",
         face_asked: "مطلوب",
         face_ask_of: "طلب التحقق بالوجه من {name}",
+        face_asked_label: "مطلوب منه التحقق بالوجه",
         face_load_failed: "لم يتم تحميل التحقق بالوجه.",
         face_consent: "وافق",
         face_consent_none: "ليس بعد",
