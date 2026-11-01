@@ -11,7 +11,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import type { TranslationKey } from '@/lib/translations'
 import { useBusyAction } from '@/lib/useBusyAction'
-import AddPunchModal from './AddPunchModal'
+import AddPunchDialog from './AddPunchDialog'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
 import { send, json } from './send'
 import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from './period'
@@ -317,7 +317,7 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
             </Section>
 
             {adding && (
-                <AddPunchModal
+                <AddPunchDialog
                     today={today}
                     companyId={companyId}
                     people={people.filter(x => x.id === adding.userId)}

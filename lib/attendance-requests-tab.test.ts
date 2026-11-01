@@ -42,7 +42,8 @@ describe("the Attendance page's Requests tab", () => {
     it("keeps Approve overtime ahead, which isn't a request (decided on 2026-10-31)", () => {
         // A button that looks like the link beside it (found in the browser).
         expect(tab).toContain("<Button onClick={() => setApprovingAhead(true)}>{t('req_overtime_ahead')}</Button>")
-        expect(tab).toContain("<OvertimeAheadModal")
+        // In the building blocks' dialog since Attendance part 7 (PR 153).
+        expect(tab).toContain("<OvertimeAheadForm")
         expect(tab).toContain("/api/attendance/people?")
     })
 
@@ -54,7 +55,8 @@ describe("the Attendance page's Requests tab", () => {
     })
 
     it("still offers asking from a day, which the Days tab and the check-in page open", () => {
-        expect(tab).toContain("export function AskPermissionModal(")
-        expect(tab).toContain("export function ReportMissingModal(")
+        // The Requests page's own forms, in the building blocks' dialog, since Attendance part 7 (PR 153).
+        expect(tab).toContain("export function AskPermissionDialog(")
+        expect(tab).toContain("export function ReportMissingDialog(")
     })
 })

@@ -316,9 +316,11 @@ type Errors = { date?: string; start?: string; end?: string; reason?: string }
  * whose limits and what's left of its month's show once it's picked; the
  * type the policy allows; the hours; and why.
  */
-export function AskPermission({ today, onCancel, onAsked }: {
+export function AskPermission({ today, initial, onCancel, onAsked }: {
     /** Today, as the company's calendar has it (found by Codex on PR 131). */
     today: string
+    /** Where to start, asked from a day on Attendance or the check-in page: its date, type and hours (PR 153). */
+    initial?: { date: string; type: 'LATE_ARRIVAL' | 'EARLY_LEAVE'; start: string; end: string }
     onCancel: () => void
     onAsked: () => void
 }) {
@@ -326,10 +328,10 @@ export function AskPermission({ today, onCancel, onAsked }: {
     const { showToast } = useToast()
     const action = useBusyAction()
     const num = digits(locale)
-    const [date, setDate] = useState(today)
-    const [picked, setPicked] = useState('')
-    const [start, setStart] = useState('')
-    const [end, setEnd] = useState('')
+    const [date, setDate] = useState(initial?.date ?? today)
+    const [picked, setPicked] = useState<string>(initial?.type ?? '')
+    const [start, setStart] = useState(initial?.start ?? '')
+    const [end, setEnd] = useState(initial?.end ?? '')
     const [reason, setReason] = useState('')
     const [errors, setErrors] = useState<Errors>({})
     const { data } = useSWR(date ? `/api/attendance/permissions/balance?date=${date}` : null, fetcher)
@@ -410,9 +412,11 @@ type ReportErrors = { date?: string; time?: string; reason?: string }
  * latest, the time, whether in or out if they know, and why. Once approved
  * it's added as a punch, and the day is worked out again.
  */
-export function ReportMissingPunch({ today, onCancel, onReported }: {
+export function ReportMissingPunch({ today, initial, onCancel, onReported }: {
     /** Today, as the company's calendar has it: the browser's can be a day behind (found by Codex on PR 131). */
     today: string
+    /** Where to start, reported from a day on Attendance: its date, and that it's the way out (PR 153). */
+    initial?: { date: string; direction?: 'IN' | 'OUT' }
     onCancel: () => void
     onReported: () => void
 }) {
@@ -420,9 +424,9 @@ export function ReportMissingPunch({ today, onCancel, onReported }: {
     const { showToast } = useToast()
     const action = useBusyAction()
     const num = digits(locale)
-    const [date, setDate] = useState(today)
+    const [date, setDate] = useState(initial?.date ?? today)
     const [time, setTime] = useState('')
-    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('')
+    const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>(initial?.direction ?? '')
     const [reason, setReason] = useState('')
     const [errors, setErrors] = useState<ReportErrors>({})
 

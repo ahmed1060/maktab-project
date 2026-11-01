@@ -18,7 +18,7 @@ import { FACE_CHECK, faceCheckVerifier } from '@/lib/mobile/face-check/verifier'
 import { useFaceCamera } from '@/components/FaceCamera'
 import { enablePush, pushPlugin } from '@/lib/mobile/push'
 import { send, json } from '../attendance/send'
-import { AskPermissionModal } from '../attendance/RequestsTab'
+import { AskPermissionDialog } from '../attendance/RequestsTab'
 
 /**
  * Checking in, inside the Nizmo app (ATTENDANCE_PLAN.md §9). The app opens
@@ -240,7 +240,7 @@ export default function CheckInPage() {
             )}
 
             {asking && answer && answer.outcome !== 'REFUSED' && late && (
-                <AskPermissionModal
+                <AskPermissionDialog
                     today={answer.at.slice(0, 10)}
                     initial={{ date: late.date, type: 'LATE_ARRIVAL', start: late.ask.start, end: late.ask.end }}
                     onClose={() => setAsking(false)}

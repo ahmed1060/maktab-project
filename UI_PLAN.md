@@ -463,9 +463,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      a Super Admin's company, the company in view from the top bar,
      merged in #148 on 2026-11-01; Days, with its month, merged in #149
      on 2026-11-01; Punches, merged in #150 on 2026-11-01; Exceptions,
-     merged in #151 on 2026-11-01; Import and employee numbers, which
-     opens for review in #152; and face checks, the Requests tab and
-     adding a punch;
+     merged in #151 on 2026-11-01; Import and employee numbers, merged
+     in #152 on 2026-11-01; and face checks, the Requests tab and adding
+     a punch, which opens for review in #153;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2141,3 +2141,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   sized as the period bar's now, two to a line on phones. And the files
   imported and the numbers saved were a panel in their card, a box in a
   box: they're rows straight in it, as on Public holidays.
+- **2026-11-01:** Import and employee numbers were merged in #152. Face
+  checks, the Requests tab and adding a punch move onto the building
+  blocks in #153 (part 7, the last):
+  - the Requests tab is a card each: one's check-in phone, with Cancel
+    the new phone while one waits; one's requests, and what waits on
+    whoever decides, each pointing to the Requests page; and, for
+    whoever approves overtime, Overtime ahead. They were glass boxes
+    with typed-in styles;
+  - cancelling a new phone asks first in the building blocks' dialog,
+    whose other button keeps the request, not another "Cancel" beside
+    "Cancel the new phone". It was the old confirm box;
+  - asking for permission hours or reporting a missing punch from a day,
+    on Days or the check-in page, opens the Requests page's own forms in
+    the building blocks' dialog, the day's date, type and hours filled
+    in: one form each, not two, with what's missing said under its field
+    and the server's refusals in the page's language;
+  - approving overtime ahead and adding a punch are forms in the
+    building blocks' dialog, each saying what's missing under its field.
+    A punch's day can't be after today;
+  - face verification's photos waiting and who it's asked of are lists
+    (§5.4), a table on computers and a card for each on phones, each
+    photo with what it's for, when it was sent, on the viewer's clock and
+    in the page's language, and what to know before deciding. Whoever is
+    asked has a checkbox named for them. The overdue are a card that
+    waits on someone (§5.5), each since when. They were glass boxes,
+    tables and dates as the server wrote them;
+  - deciding a photo is in the building blocks' dialog, and rejecting
+    asks why in the same dialog, so the photos stay open: closed and
+    opened again they'd be fetched, and recorded, again. Asking to
+    re-verify asks first there too. They were the old modal and confirm
+    box;
+  - a face photo has the building blocks' look wherever it's shown,
+    flagged check-ins on the Requests page too;
+  - while face verification loads, and when it can't, it says so, with
+    the server's word and Try again. It was a spinner, or nothing.
