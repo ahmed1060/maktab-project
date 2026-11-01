@@ -119,7 +119,8 @@ export default function SettlementDocumentPage() {
                     it. */}
                 <DocGroup>
                     <DocLine label={t('doc_earned')} amount={money(doc.earned)} />
-                    <DocLine label={t('doc_already_paid')} amount={money(doc.paid)} minus />
+                    {/* No minus sign on nothing: a settled statement said "−0.00" (PR 155). */}
+                    <DocLine label={t('doc_already_paid')} amount={money(doc.paid)} minus={doc.paid !== 0} />
                     <DocTotal label={t('doc_net')} amount={money(doc.net)} />
                 </DocGroup>
 

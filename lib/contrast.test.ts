@@ -232,7 +232,9 @@ describe("the two themes are actually different", () => {
         // is a sheet of paper and the ink is toner, and neither follows what
         // the reader has their display set to. A dark value would produce a
         // payslip printed white on black: unreadable, and expensive in a way
-        // whoever pressed Print finds out about afterwards.
+        // whoever pressed Print finds out about afterwards. The same goes for
+        // --neutral-on-paper and the rest, a document's notes' bars on paper
+        // (PR 155): dark mode's pale ones all but vanished on it.
         //
         // --map-* are invariant because they are drawn on map tiles, which
         // are light in both themes: a dark-mode ink would vanish into them.
@@ -245,6 +247,7 @@ describe("the two themes are actually different", () => {
             "--text-on-accent", "--hero-from", "--hero-to",
             "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong", "--sidebar-ring", "--sidebar-accent",
             "--paper", "--ink-on-paper",
+            "--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper",
             "--button-from", "--button-to",
             "--map-pin", "--map-ink", "--map-halo", "--map-shadow",
             "--cam-ground", "--cam-ink", "--cam-done", "--cam-warn",
@@ -252,6 +255,14 @@ describe("the two themes are actually different", () => {
 
         const missing = Object.keys(LIGHT).filter(t => !(t in DARK) && !INVARIANT.has(t))
         expect(missing, `tokens with no dark value:\n${missing.join("\n")}`).toEqual([])
+    })
+
+    it("gives a document's notes' bars colours that show on paper (PR 155)", () => {
+        // A bar is a part of the page somebody has to see, not text: 3:1.
+        for (const bar of ["--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper"]) {
+            const r = ratio(LIGHT[bar], LIGHT["--paper"])
+            expect(r, `${bar} ${LIGHT[bar]} on paper is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+        }
     })
 })
 

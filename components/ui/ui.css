@@ -883,6 +883,12 @@ a.ui-file-open:focus-visible,
 .ui-doc-note[data-tone="problem"] {
   border-inline-start-color: var(--problem-text);
 }
+/* Screens only: a page of A4 between its margins is as narrow as a phone. */
+@media screen and (max-width: 767px) {
+  .ui-doc {
+    padding: var(--space-4);
+  }
+}
 /* On paper the sheet is the page: no panel around it, black on white, and the
    page's own 18mm margins (app/globals.css, @page). Here rather than in the
    print styles there, because these load after them and would win. */
@@ -2307,9 +2313,6 @@ html[lang="ar"] .ui-empty-title {
   cursor: progress;
 }
 @media (max-width: 767px) {
-  .ui-doc {
-    padding: var(--space-4);
-  }
   .ui-suggestion {
     min-height: 44px;
   }

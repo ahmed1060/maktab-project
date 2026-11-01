@@ -2249,3 +2249,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - a document that didn't load said it didn't exist, or wasn't theirs.
     It says it didn't load now, with the server's word and Try again,
     and one that isn't there, or isn't theirs, still says so.
+- **2026-11-01:** Found in the browser and the interface audit on #155:
+  - printed from a phone, the sheet kept its phone padding inside the
+    paper's margins: the phone rule came after the print one. A page of
+    A4 between its margins is as narrow as a phone, so it's for screens
+    only now;
+  - printed from dark mode, the notes' bars were dark mode's pale
+    colours, which all but vanish on white. On paper they're the light
+    theme's;
+  - a settled statement said "−0.00" for what was already paid, and a
+    deduction of nothing had a minus sign too. Nothing has none.

@@ -168,6 +168,35 @@ describe("a settlement statement", () => {
     })
 })
 
+describe("on paper (the audit, PR 155)", () => {
+    it("has no phone padding: paper is narrower than a computer's screen too", () => {
+        // The phone rule matched a page as narrow as A4 between its margins,
+        // and came after the print one, so a printed sheet was inset twice.
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/@media screen and \(max-width: 767px\) \{\s*\.ui-doc \{\s*padding: var\(--space-4\);/)
+        const phones = css.split("@media (max-width: 767px)").slice(1).map(block => block.slice(0, block.indexOf("\n}")))
+        for (const block of phones) expect(block).not.toMatch(/\.ui-doc \{/)
+    })
+
+    it("has its notes' bars in colours that show on white, from dark mode too", () => {
+        // Dark mode's are pale, for a dark ground: on paper they all but vanished.
+        const global = readFileSync("app/globals.css", "utf8")
+        const print = global.slice(global.indexOf("@media print"))
+        for (const [token, paper] of [["--status-neutral-fg", "--neutral-on-paper"], ["--status-waiting-fg", "--waiting-on-paper"], ["--status-good-fg", "--good-on-paper"], ["--problem-text", "--problem-on-paper"]]) {
+            expect(print.slice(0, print.indexOf("@page"))).toContain(`${token}: var(${paper});`)
+            expect(global.match(new RegExp(`${paper}: #[0-9a-f]{6};`, "g"))).toHaveLength(1)
+        }
+    })
+
+    it("puts no minus sign on nothing", async () => {
+        const doc = sheet(await settlement({ shown: { data: { data: { ...SETTLEMENT, earned: 0, paid: 0, net: 0, debtRecovered: 0, payable: 0, direction: "SETTLED" } } } }))
+        expect(doc).toContain(`<span>${en.doc_already_paid}</span><bdi class="ui-doc-amount">${amount(0)}</bdi>`)
+        const slip = sheet(await payslip({ shown: { data: { data: { ...PAYSLIP, deductions: 0, lines: [...PAYSLIP.lines, { kind: "DEDUCTION", label: "Advance", amount: 0 }].filter(l => l.label !== "Lateness") } } } }))
+        expect(slip).toContain(`<span>Advance</span><bdi class="ui-doc-amount">${amount(0)}</bdi>`)
+        expect(slip).toContain(`<span>${en.doc_deductions}</span><bdi class="ui-doc-amount">${amount(0)}</bdi>`)
+    })
+})
+
 describe("nothing of the old sheets is left", () => {
     it("has no styles typed in, spinner or old buttons", () => {
         for (const file of ["app/(dashboard)/dashboard/documents/payslip/[id]/page.tsx", "app/(dashboard)/dashboard/documents/settlement/[id]/page.tsx", "components/ui/Document.tsx"]) {

@@ -311,6 +311,13 @@
      one place colour is allowed to be named. */
   --paper: #ffffff;
   --ink-on-paper: #000000;
+  /* A note's bar on paper (DESIGN.md §5.5, Document): the light theme's
+     status colours, which show on white. Dark mode's are pale, for a dark
+     ground, and all but vanished on paper. */
+  --neutral-on-paper: #3c4257;
+  --waiting-on-paper: #7a4b0a;
+  --good-on-paper: #05690d;
+  --problem-on-paper: #b3093c;
 
   --hairline: rgba(0, 0, 0, 0.05);
   --hairline-firm: rgba(0, 0, 0, 0.1);
@@ -1439,6 +1446,10 @@ input::-webkit-credentials-auto-fill-button {
            black, whatever the screen is set to. */
         --ink: var(--ink-on-paper);
         --muted: var(--ink-on-paper);
+        --status-neutral-fg: var(--neutral-on-paper);
+        --status-waiting-fg: var(--waiting-on-paper);
+        --status-good-fg: var(--good-on-paper);
+        --problem-text: var(--problem-on-paper);
     }
 
     @page {

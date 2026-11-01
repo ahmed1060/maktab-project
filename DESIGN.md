@@ -669,7 +669,8 @@ These are built once, in the building-blocks PR, and every page uses them
     wouldn't.
   - It's in the page's language, digits too.
   - Printed, the sheet is all there is: black on white, without the app
-    around it, with 18mm margins.
+    around it, with 18mm margins, and its notes' bars in the colours they
+    have on a light screen, from dark mode too.
   - One that isn't there, or isn't theirs, says so. One that didn't load
     says that instead, with Try again (§5.5, A list that didn't load).
 

@@ -97,8 +97,9 @@ export default function PayslipDocumentPage() {
 
                 {deductions.length > 0 && (
                     <DocGroup title={t('doc_deductions')}>
-                        {deductions.map((l, i) => <DocLine key={i} label={l.label} amount={money(l.amount)} minus />)}
-                        <DocTotal label={t('doc_deductions')} amount={money(doc.deductions)} minus />
+                        {/* Taken off, so a minus sign, but none on nothing: "−0.00" (PR 155). */}
+                        {deductions.map((l, i) => <DocLine key={i} label={l.label} amount={money(l.amount)} minus={l.amount !== 0} />)}
+                        <DocTotal label={t('doc_deductions')} amount={money(doc.deductions)} minus={doc.deductions !== 0} />
                     </DocGroup>
                 )}
 
