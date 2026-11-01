@@ -460,9 +460,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      The ninth was Public holidays, merged in #146 on 2026-11-01. The
      tenth is Attendance, in seven parts: its frame (the page header, the
      tabs, and what it says before them), merged in #147 on 2026-11-01;
-     a Super Admin's company, the company in view from the top bar, which
-     opens for review in #148; Days,
-     with its month; Punches; Exceptions; Import and employee numbers; and
+     a Super Admin's company, the company in view from the top bar,
+     merged in #148 on 2026-11-01; Days, with its month, which opens for
+     review in #149; Punches; Exceptions; Import and employee numbers; and
      face checks, the Requests tab and adding a punch;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
@@ -2003,3 +2003,29 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   change. The page went on preferring it, and put that company back after
   another tab picked a different one. Such a link is now followed all the
   same, which takes it out of the address.
+- **2026-11-01:** A Super Admin's company on Attendance was merged in
+  #148. Days moves onto the building blocks in #149 (part 3):
+  - the month it's about is picked under the page header, in a month
+    select and a year select, and kept in the address
+    (`?tab=days&year=2026&month=10`), so a reload or a link opens on it
+    (`DESIGN.md` §5.3). With none, it's the company's this month, from its
+    date, not the device's. It was a browser month field, in English;
+  - whose days, for whoever sees other people's, is picked beside the
+    month, with its visible label, since it decides the whole tab: the
+    list and the month so far;
+  - one person's month so far is total tiles above the list. Everyone's
+    is their deductions in one tile. A list cut short has none, and says
+    so above it, as before;
+  - the days are a list (§5.4), a table on computers and a card for each
+    on phones, under a heading naming the month. Each day's status is a
+    badge at the end, with what explains it a line each below it. They
+    were run together with a dot, which beside Arabic digits reads as a
+    zero;
+  - Recalculate this month is the list heading's button;
+  - dates, times, minutes, amounts and counts are in the page's language,
+    and a deduction's days in words ("1 day", "0.25 days") where it said
+    "day(s)";
+  - while it loads, and when it can't, it says so, with the server's word
+    and Try again. It was a spinner, and a red line;
+  - a day's status is in sentence case in English ("On leave", "Rest
+    day"), wherever it's shown.

@@ -832,6 +832,10 @@ a.ui-file-open:focus-visible,
   font-weight: 500;
   color: var(--ink);
 }
+/* What a section's list is, under its heading. */
+.ui-section > .ui-hint {
+  margin: 0;
+}
 /* Sections side by side on computers, one under the other on phones. */
 .ui-columns {
   display: grid;
