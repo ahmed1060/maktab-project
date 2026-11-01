@@ -131,11 +131,9 @@ export default function PublicHolidaysPage() {
         { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => openEdit(h) },
         { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setRemoving(h) },
     ]
-    const add = <Button variant="primary" icon={PlusIcon} onClick={openAdd}>{t('public_holidays_add')}</Button>
-
     return (
         <Page>
-            <PageHeader title={t('public_holidays_title')} subtitle={t('public_holidays_hint')} action={add} />
+            <PageHeader title={t('public_holidays_title')} subtitle={t('public_holidays_hint')} action={<Button variant="primary" icon={PlusIcon} onClick={openAdd}>{t('public_holidays_add')}</Button>} />
 
             <PeriodBar>
                 <Field label={t('year')}>{p => (
@@ -157,7 +155,8 @@ export default function PublicHolidaysPage() {
             ) : (
                 <Card title={listTitle}>
                     {holidays.length === 0 ? (
-                        <EmptyState icon={CalendarBlankIcon} title={t('attendance_no_holidays')} action={add} />
+                        // Add is the header's, right above: offered once, as on the Tasks list.
+                        <EmptyState icon={CalendarBlankIcon} title={t('attendance_no_holidays')} />
                     ) : (
                         <ul className="ui-rows" aria-label={listTitle}>
                             {holidays.map(h => (

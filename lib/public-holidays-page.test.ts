@@ -128,10 +128,15 @@ describe("the year's holidays", () => {
         expect(part).toContain("تعمل فيها ٣ شركات")
     })
 
-    it("says there are none yet, with Add, when the year has none", async () => {
-        const part = card(await page({ shows: [] }))
+    it("says there are none yet when the year has none, Add staying the header's alone", async () => {
+        // Found in the interface audit (PR 146): Add was offered twice, in
+        // the header and again under it, where the Tasks and Obligations
+        // lists offer it once.
+        const html = await page({ shows: [] })
+        const part = card(html)
         expect(part).toContain(`<p class="ui-empty-title">${en.attendance_no_holidays}</p>`)
-        expect(part).toContain("Add a public holiday</button>")
+        expect(part).not.toContain("<button")
+        expect(html.match(/Add a public holiday<\/button>/g)).toHaveLength(1)
     })
 
     it("says while they load, and when they didn't, with the server's word and Try again", async () => {

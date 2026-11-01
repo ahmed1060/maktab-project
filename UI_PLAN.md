@@ -1945,3 +1945,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     again. A year that didn't load kept its spinner for good.
   - The helpers that keep a period in the address move from Payroll's
     file to their own, `lib/period-address.ts`, for both pages.
+- **2026-11-01:** Found in the interface audit, in #146: a year with no
+  holidays offered Add twice, in the header and again under it. It's the
+  header's alone now, as on the Tasks and Obligations lists.
