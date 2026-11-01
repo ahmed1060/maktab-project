@@ -589,6 +589,13 @@ describe("the stylesheet keeps the rules", () => {
         expect(css).toMatch(/\.ui-row-toggle:focus-visible \{[^}]*outline: 2px solid var\(--brand-text\);/)
     })
 
+    it("an opened row's long line wraps, and its amount stays whole beside it", () => {
+        // Found in the interface audit (PR 145): a label with no spaces in it
+        // pushed its amount out of the row.
+        expect(css).toMatch(/\.ui-row-lines > li > :first-child \{\s*min-width: 0;\s*overflow-wrap: anywhere;\s*\}/)
+        expect(css).toMatch(/\.ui-row-lines > li > \.ui-num \{\s*flex: none;\s*\}/)
+    })
+
     it("a card spaces what's in it itself: a paragraph in it keeps no margins of its own", () => {
         // Found in the browser on Payroll (PR 141): an approved month's one
         // line stood in a card twice its height.

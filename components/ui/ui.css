@@ -946,6 +946,13 @@ a.ui-row:focus-visible {
   line-height: var(--leading-sm);
   color: var(--muted);
 }
+.ui-row-lines > li > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ui-row-lines > li > .ui-num {
+  flex: none;
+}
 .ui-card .ui-row-lines {
   padding-inline: var(--space-4) 0;
 }

@@ -1923,3 +1923,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   read as one number. Days undecided say their label first in Arabic now,
   as days paid do. The dot separates parts of a line in 17 places; where
   a number can meet another across it elsewhere is a follow-up.
+- **2026-11-01:** Found in the interface audit, in #145: in a row that's
+  open, a line's label with no spaces in it, such as a long name, pushed
+  its amount out of the row. The label wraps now, and the amount stays
+  whole beside it.
