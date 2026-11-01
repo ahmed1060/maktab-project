@@ -2198,3 +2198,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   alone at the card's foot, saying nothing. It says "Asked for face
   verification" beside it now. The table's column says it on a computer,
   and its box is named for the person.
+- **2026-11-01:** Found by Codex on #153: a write on Attendance whose
+  connection failed, or dropped before the answer was read, threw. The
+  busy button reset and nothing was said, so whoever decided a face photo,
+  asked it of someone or asked them to re-verify couldn't tell whether it
+  was saved. The face tab had caught it before. Every Attendance write
+  (`attendance/send.ts`) now says so, as a refusal does.
