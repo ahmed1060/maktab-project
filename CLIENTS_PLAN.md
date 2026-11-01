@@ -2130,3 +2130,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   rest of Payroll, the list of everyone on the register and what people
   owe, moves onto the building blocks in #145 (`UI_PLAN.md` §5). Neither
   touches clients or locations.
+- **2026-11-01:** Payroll's last part was merged in #145. Public holidays
+  moves onto the building blocks in #146 (`UI_PLAN.md` §5). Neither
+  touches clients or locations.

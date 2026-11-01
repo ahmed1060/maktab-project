@@ -1,8 +1,9 @@
 /**
- * Which month a page is about, kept in its address (DESIGN.md §5.3, decided
- * on 2026-10-31): `?year=2026&month=10`, so a reload or a link opens on it.
- * Each part is read on its own, and one that isn't a year or month it could
- * be is this month's, as no part at all is.
+ * Which period a page is about, kept in its address (DESIGN.md §5.3, decided
+ * on 2026-10-31): `?year=2026&month=10` for Payroll's month, `?year=2027` for
+ * Public holidays' year, so a reload or a link opens on it. Each part is read
+ * on its own, and one that isn't a year or month it could be is this one's,
+ * as no part at all is.
  */
 
 type Params = { get(name: string): string | null }
@@ -25,6 +26,18 @@ export function addressWithPeriod(pathname: string, current: string, year: numbe
     const next = new URLSearchParams(current)
     next.set('year', String(year))
     next.set('month', String(month))
+    return `${pathname}?${next.toString()}`
+}
+
+/** A page about a year alone, such as Public holidays (PR 146). */
+export function yearFromAddress(params: Params, now: Date): number {
+    return whole(params.get('year'), 2000, 2100) ?? now.getFullYear()
+}
+
+/** The address with this year in it, the rest kept. */
+export function addressWithYear(pathname: string, current: string, year: number): string {
+    const next = new URLSearchParams(current)
+    next.set('year', String(year))
     return `${pathname}?${next.toString()}`
 }
 

@@ -31,8 +31,13 @@ describe("a count with its word", () => {
         expect([1, 2, 3, 11, 100].map(n => countOf(tAr as any, "ar", n, "held"))).toEqual(["تسجيل حضور واحد معلّق", "تسجيلا حضور معلّقان", "٣ تسجيلات حضور معلّقة", "١١ تسجيل حضور معلّقًا", "١٠٠ تسجيل حضور معلّق"])
     })
 
+    it("says how many companies work through a public holiday, in both languages (PR 146)", () => {
+        expect([1, 3].map(n => countOf(tEn as any, "en", n, "companies"))).toEqual(["1 company", "3 companies"])
+        expect([1, 2, 3, 11, 100].map(n => countOf(tAr as any, "ar", n, "companies"))).toEqual(["شركة واحدة", "شركتان", "٣ شركات", "١١ شركةً", "١٠٠ شركة"])
+    })
+
     it("has every form in both languages, so none falls back to its key", () => {
-        for (const word of ["days", "pts", "employees", "requests", "records", "files", "held"]) for (const form of ["zero", "one", "two", "few", "many", "other"]) {
+        for (const word of ["days", "pts", "employees", "requests", "records", "files", "held", "companies"]) for (const form of ["zero", "one", "two", "few", "many", "other"]) {
             expect(en).toHaveProperty(`count_${word}_${form}`)
             expect(ar).toHaveProperty(`count_${word}_${form}`)
         }
