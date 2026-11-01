@@ -9,9 +9,9 @@ import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import { BuildingsIcon, CalendarBlankIcon, ClockIcon, CoinsIcon, HourglassIcon, InfoIcon, TimerIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { Button, Card, DataList, EmptyState, Field, ItemTitle, ListCard, Page, PageHeader, PeriodBar, Section, Select, StatusBadge, Tabs, TotalTiles, type Column, type StatusTone, type Tile } from '@/components/ui'
-import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-address'
+import { ArrowsLeftRightIcon, BuildingsIcon, CalendarBlankIcon, ClockIcon, CoinsIcon, DevicesIcon, FingerprintIcon, HourglassIcon, InfoIcon, TimerIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, Card, DataList, Details, Dialog, DialogActions, EmptyState, Field, ItemTitle, ListCard, Page, PageHeader, PeriodBar, Section, Select, StatusBadge, Tabs, TextArea, TotalTiles, type Column, type StatusTone, type Tile } from '@/components/ui'
+import { addressWithDay, addressWithPeriod, dayFromAddress, periodFromAddress, yearsAround } from '@/lib/period-address'
 import { countOf } from '@/lib/plural'
 import type { SWRError } from '@/lib/swr-fetcher'
 import { send, json } from './send'
@@ -62,7 +62,6 @@ type Codes = { mapped: { id: string; code: string; userId: string; name: string 
 type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'face' | 'import' | 'numbers'
 
 const pad = (n: number) => String(n).padStart(2, '0')
-const monthStart = (date: string) => `${date.slice(0, 8)}01`
 
 export default function AttendancePage() {
     const { t } = useLanguage()
@@ -192,6 +191,28 @@ function useFigures() {
 }
 
 /**
+ * The month Attendance's tabs are about, kept in the address (DESIGN.md §5.3),
+ * so a reload or a link opens on it, and Days and Punches share it. With
+ * none, the company's this month: its date, not the device's, which around
+ * midnight or abroad is another (review on #12).
+ */
+function useMonthInAddress(today: string) {
+    const { digits } = useFigures()
+    const params = useSearchParams()
+    const pathname = usePathname()
+    const router = useRouter()
+    const { year, month: monthNumber } = periodFromAddress(params, new Date(`${today}T12:00:00`))
+    const setPeriod = (y: number, m: number) => router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })
+    return {
+        params, pathname, router, year, monthNumber, setPeriod,
+        month: `${year}-${pad(monthNumber)}`,
+        monthName: new Date(year, monthNumber - 1).toLocaleString(digits, { month: 'long', year: 'numeric' }),
+        months: Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleString(digits, { month: 'long' }) })),
+        years: yearsAround(Number(today.slice(0, 4)), year).map(y => ({ value: String(y), label: y.toLocaleString(digits, { useGrouping: false }) })),
+    }
+}
+
+/**
  * Days (§13.3): one's own, or everyone's this person sees, over a month.
  *
  * On the building blocks (UI_PLAN.md §5 step 5, Attendance part 3, PR 149):
@@ -207,15 +228,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
     const p = useCan()
     const seesOthers = p.can('attendance.view_team')
     const correctsCompany = p.companyWide('attendance.correct')
-    // The month, kept in the address (DESIGN.md §5.3), so a reload or a link
-    // opens on it. With none, the company's this month: its date, not the
-    // device's, which around midnight or abroad is another (review on #12).
-    const params = useSearchParams()
-    const pathname = usePathname()
-    const router = useRouter()
-    const { year, month: monthNumber } = periodFromAddress(params, new Date(`${today}T12:00:00`))
-    const setPeriod = (y: number, m: number) => router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })
-    const month = `${year}-${pad(monthNumber)}`
+    const { year, monthNumber, month, monthName, setPeriod, months, years } = useMonthInAddress(today)
     const [who, setWho] = useState('')
     const action = useBusyAction()
     const { data: peopleBody } = useSWR(seesOthers ? `/api/attendance/people?${q}` : null, fetcher)
@@ -268,9 +281,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                 : null
     )
 
-    const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleString(digits, { month: 'long' }) }))
-    const years = yearsAround(Number(today.slice(0, 4)), year).map(y => ({ value: String(y), label: y.toLocaleString(digits, { useGrouping: false }) }))
-    const listTitle = t('day_list_title').replace('{month}', new Date(year, monthNumber - 1).toLocaleString(digits, { month: 'long', year: 'numeric' }))
+    const listTitle = t('day_list_title').replace('{month}', monthName)
     const dateText = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(digits, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
     const time = (at: string | null) => (at ? <bdi>{clock(at)}</bdi> : '—')
     const mins = (n: number) => (n > 0 ? minutes(n) : '—')
@@ -402,8 +413,28 @@ function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | nu
 
 // --- Punches -------------------------------------------------------------------
 
+/** The Person select's choice for the punches whose number is nobody's yet. */
+const UNMATCHED = 'unmatched'
+/** What a punch that doesn't count, or no longer does, is, as a badge (DESIGN.md §2.3). */
+const PUNCH_BADGE: Record<string, { tone: StatusTone; label: TranslationKey }> = {
+    FLAGGED: { tone: 'waiting', label: 'punch_badge_FLAGGED' },
+    PENDING_DEVICE: { tone: 'waiting', label: 'punch_badge_PENDING_DEVICE' },
+    REJECTED: { tone: 'problem', label: 'punch_badge_REJECTED' },
+}
+
+/**
+ * Punches (§13.2): what came in, as it came in. A wrong one is withdrawn,
+ * never edited.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, Attendance part 4, PR 150):
+ * the month picked under the page header, the one Days is about, with a day
+ * of it and whose punches beside it (DESIGN.md §5.3); the punches as a list,
+ * a table on computers and a card for each on phones (§5.4); and withdrawing
+ * one in the building blocks' dialog, which asks why.
+ */
 function PunchesTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
+    const { digits, num } = useFigures()
     const { showToast } = useToast()
     const p = useCan()
     const { data: session } = useSession()
@@ -411,17 +442,24 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
     const seesOthers = p.can('attendance.view_team')
     const correctsCompany = p.companyWide('attendance.correct')
 
-    const [from, setFrom] = useState(() => monthStart(today))
-    const [to, setTo] = useState(today)
+    // The month Days is about, and a day of it, kept in the address so a
+    // reload or a link opens on them. Whose punches is picked here.
+    const { params, pathname, router, year, monthNumber, month, monthName, setPeriod, months, years } = useMonthInAddress(today)
+    const day = dayFromAddress(params, year, monthNumber)
+    const setDay = (d: number | null) => router.replace(addressWithDay(pathname, params.toString(), d), { scroll: false })
     const [who, setWho] = useState('')
-    const [waiting, setWaiting] = useState(false)
-    const [adding, setAdding] = useState(false)
     const [withdrawing, setWithdrawing] = useState<Punch | null>(null)
+    const [reason, setReason] = useState('')
+    const [reasonError, setReasonError] = useState<string | undefined>()
+    const [adding, setAdding] = useState(false)
+    const action = useBusyAction()
 
     const { data: peopleBody } = useSWR(seesOthers || p.can('attendance.correct') ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
-    const listUrl = `/api/attendance/punches?${q}from=${from}&to=${to}${waiting ? '&unmatched=1' : who ? `&userId=${encodeURIComponent(who)}` : ''}`
-    const { data: body, error, mutate } = useSWR(from && to && from <= to ? listUrl : null, fetcher)
+    const from = day ? `${month}-${pad(day)}` : `${month}-01`
+    const to = day ? from : lastDayOf(month)
+    const listUrl = `/api/attendance/punches?${q}from=${from}&to=${to}${who === UNMATCHED ? '&unmatched=1' : who ? `&userId=${encodeURIComponent(who)}` : ''}`
+    const { data: body, error, isValidating, mutate } = useSWR(listUrl, fetcher)
     const punches: Punch[] | null = body ? body.data?.punches ?? [] : null
     const truncated: boolean = !!body?.data?.truncated
 
@@ -429,101 +467,125 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
     const mayCorrect = (punch: Punch) => !punch.voidedAt && (punch.userId
         ? p.canFor('attendance.correct', punch.userId, leaderOf.get(punch.userId) ?? null)
         : correctsCompany)
+    // Nobody withdraws their own.
+    const mayWithdraw = (punch: Punch) => mayCorrect(punch) && punch.userId !== me
+    // Whose each is, when the list has other people's.
+    const showsWhose = seesOthers || who === UNMATCHED
 
-    const withdraw = async (reason?: string) => {
+    const openWithdraw = (punch: Punch) => { setReason(''); setReasonError(undefined); setWithdrawing(punch) }
+    // Not while it works: closing then would hide the answer.
+    const closeWithdraw = () => { if (!action.running) setWithdrawing(null) }
+    const withdraw = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
         if (!withdrawing) return
-        const r = await send(`/api/attendance/punches/${withdrawing.id}/void`, json('POST', { reason }), t('punch_failed'))
-        setWithdrawing(null)
-        if (!r.ok) return showToast(r.error, 'error')
-        showToast(t('punch_withdrawn'), 'success')
-        mutate()
+        const form = e.currentTarget
+        if (reason.trim().length < 3) {
+            setReasonError(t('punch_reason_required'))
+            requestAnimationFrame(() => form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+            return
+        }
+        void action.run('withdraw', async () => {
+            const r = await send(`/api/attendance/punches/${withdrawing.id}/void`, json('POST', { reason: reason.trim() }), t('punch_failed'))
+            // Refused, it stays open with the reason typed, to try again.
+            if (!r.ok) return showToast(r.error, 'error')
+            showToast(t('punch_withdrawn'), 'success')
+            setWithdrawing(null)
+            await mutate()
+        })
     }
 
-    return (
-        <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    <span className="label">{t('punch_from')}</span>
-                    <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
-                </label>
-                <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    <span className="label">{t('punch_to')}</span>
-                    <input className="input" type="date" value={to} onChange={e => setTo(e.target.value)} />
-                </label>
-                {seesOthers && (
-                    <label style={{ display: 'grid', gap: '0.25rem', minWidth: '12rem' }}>
-                        <span className="label">{t('punch_person')}</span>
-                        <select className="input" value={waiting ? '' : who} disabled={waiting} onChange={e => setWho(e.target.value)}>
-                            <option value="">{t('punch_everyone')}</option>
-                            {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-                        </select>
-                    </label>
-                )}
-                {correctsCompany && (
-                    <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.86rem' }}>
-                        <input type="checkbox" checked={waiting} onChange={e => setWaiting(e.target.checked)} />
-                        {t('punch_only_unmatched')}
-                    </label>
-                )}
-                <div style={{ flex: 1 }} />
-                {p.can('attendance.correct') && (
-                    <button className="btn btn-primary" onClick={() => setAdding(true)}>{t('punch_add')}</button>
-                )}
-            </div>
+    const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate()
+    const days = [
+        { value: '', label: t('punch_every_day') },
+        ...Array.from({ length: lastDay }, (_, i) => ({
+            value: String(i + 1),
+            label: new Date(Date.UTC(year, monthNumber - 1, i + 1)).toLocaleDateString(digits, { weekday: 'short', day: 'numeric', timeZone: 'UTC' }),
+        })),
+    ]
+    const whoOptions = [
+        { value: '', label: t('punch_everyone') },
+        ...(correctsCompany ? [{ value: UNMATCHED, label: t('punch_no_person') }] : []),
+        ...(seesOthers ? people.map(x => ({ value: x.id, label: x.name })) : []),
+    ]
+    const listTitle = day
+        ? t('punch_list_title_day').replace('{day}', new Date(Date.UTC(year, monthNumber - 1, day)).toLocaleDateString(digits, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }))
+        : t('punch_list_title').replace('{period}', monthName)
+    // The punch's day and time on the company's clock, as it came in.
+    const when = (x: Punch) => new Date(`${x.at.slice(0, 16)}:00Z`).toLocaleString(digits, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' })
+    const whose = (x: Punch) => x.name ?? t('punch_number').replace('{code}', x.hardwareUserId ?? '')
+    const direction = (x: Punch) => (x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : t('punch_direction_unknown'))
+    const source = (x: Punch) => (x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
+        // From the app, with the place it was at when there's one (found in the interface audit, PR 150).
+        : x.source === 'MOBILE' ? (x.placeName ? t('punch_source_app').replace('{place}', x.placeName) : t('punch_source_app_only'))
+            : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import'))
+    // One that doesn't count yet, or won't, or no longer does: a badge, and why below it (§9.6).
+    const badge = (x: Punch) => {
+        if (x.voidedAt) return <StatusBadge tone="neutral">{t('punch_badge_WITHDRAWN')}</StatusBadge>
+        const b = x.status ? PUNCH_BADGE[x.status] : undefined
+        return b ? <StatusBadge tone={b.tone}>{t(b.label)}</StatusBadge> : null
+    }
+    const notes = (x: Punch) => [
+        x.voidedAt ? x.voidReason : null,
+        !x.voidedAt && x.status && PUNCH_BADGE[x.status] ? t(`punch_status_${x.status}` as TranslationKey) : null,
+        !x.voidedAt && (x.flagReasons ?? []).length > 0 ? (x.flagReasons ?? []).map(r => t(`att_flag_${r}` as TranslationKey)).join(', ') : null,
+        x.note,
+    ].filter((n): n is string => !!n)
+    const withdrawButton = (x: Punch) => (mayWithdraw(x) ? <Button size="sm" onClick={() => openWithdraw(x)}>{t('punch_withdraw')}</Button> : null)
+    const columns: Column<Punch>[] = [
+        { key: 'when', header: t('punch_time'), cell: x => <ItemTitle title={when(x)} detail={showsWhose ? whose(x) : undefined} /> },
+        { key: 'direction', header: t('punch_direction'), cell: direction },
+        { key: 'source', header: t('punch_source'), cell: source },
+        // The status and what can be done at the end (DESIGN.md §5.4).
+        { key: 'status', header: t('day_status'), cell: x => <>{badge(x)}{notes(x).map(n => <div key={n} className="ui-item-detail">{n}</div>)}</> },
+        ...(p.can('attendance.correct') ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: withdrawButton }] : []),
+    ]
+    const card = (x: Punch) => (
+        <ListCard
+            title={when(x)}
+            status={badge(x) ?? undefined}
+            details={[
+                ...(showsWhose ? [{ icon: UserIcon, text: whose(x) }] : []),
+                { icon: ArrowsLeftRightIcon, text: direction(x) },
+                { icon: DevicesIcon, text: source(x) },
+                ...notes(x).map(n => ({ icon: InfoIcon, text: n })),
+            ]}
+            foot={withdrawButton(x) ?? undefined}
+        />
+    )
 
-            {truncated && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.86rem' }}>{t('punch_truncated').replace('{n}', String(body?.data?.limit ?? ''))}</p>}
-            {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
-                : punches === null ? <LoadingSpinner />
-                    : punches.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('punch_none')}</p>
-                        : (
-                            <div style={{ overflowX: 'auto' }}>
-                                <table className="table" style={{ width: '100%', fontSize: '0.86rem' }}>
-                                    <thead>
-                                        <tr>
-                                            <th>{t('punch_time')}</th>
-                                            {(seesOthers || waiting) && <th>{t('punch_person')}</th>}
-                                            <th>{t('punch_direction')}</th>
-                                            <th>{t('punch_source')}</th>
-                                            <th />
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {punches.map(x => (
-                                            <tr key={x.id} style={{ opacity: x.voidedAt ? 0.5 : 1 }}>
-                                                <td style={{ whiteSpace: 'nowrap', textDecoration: x.voidedAt ? 'line-through' : 'none' }}>
-                                                    <bdi>{x.at.slice(0, 10)} {x.at.slice(11, 16)}</bdi>
-                                                </td>
-                                                {(seesOthers || waiting) && (
-                                                    <td>{x.name ?? <span style={{ color: 'var(--text-soft)' }}>{t('punch_number').replace('{code}', x.hardwareUserId ?? '')}</span>}</td>
-                                                )}
-                                                <td>{x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : '—'}</td>
-                                                <td>
-                                                    {x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
-                                                        : x.source === 'MOBILE' ? t('punch_source_app').replace('{place}', x.placeName ?? '—')
-                                                        : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import')}
-                                                    {/* A check-in that doesn't count yet, or won't: why (§9.6). */}
-                                                    {x.status && x.status !== 'ACCEPTED' && (
-                                                        <div style={{ color: x.status === 'REJECTED' ? 'var(--danger-fg)' : 'var(--warn-fg)', fontSize: '0.78rem' }}>
-                                                            {t(`punch_status_${x.status}` as TranslationKey)}
-                                                            {(x.flagReasons ?? []).length > 0 && ` · ${(x.flagReasons ?? []).map(r => t(`att_flag_${r}` as TranslationKey)).join(', ')}`}
-                                                        </div>
-                                                    )}
-                                                    {x.note && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{x.note}</div>}
-                                                    {x.voidedAt && <div style={{ color: 'var(--text-soft)', fontSize: '0.78rem' }}>{t('punch_withdrawn_because').replace('{reason}', x.voidReason ?? '')}</div>}
-                                                </td>
-                                                <td style={{ textAlign: 'end' }}>
-                                                    {mayCorrect(x) && x.userId !== me && (
-                                                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem' }} onClick={() => setWithdrawing(x)}>
-                                                            {t('punch_withdraw')}
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+    return (
+        <>
+            <PeriodBar>
+                <Field label={t('day_month')}>{f => (
+                    <Select {...f} value={String(monthNumber)} onChange={e => setPeriod(year, Number(e.target.value))} options={months} />
+                )}</Field>
+                <Field label={t('year')}>{f => (
+                    <Select {...f} value={String(year)} onChange={e => setPeriod(Number(e.target.value), monthNumber)} options={years} />
+                )}</Field>
+                <Field label={t('punch_day')}>{f => (
+                    <Select {...f} value={day ? String(day) : ''} onChange={e => setDay(e.target.value ? Number(e.target.value) : null)} options={days} />
+                )}</Field>
+                {(seesOthers || correctsCompany) && (
+                    <Field label={t('punch_person')}>{f => (
+                        <Select {...f} value={who} onChange={e => setWho(e.target.value)} options={whoOptions} />
+                    )}</Field>
+                )}
+            </PeriodBar>
+
+            <Section title={listTitle} action={p.can('attendance.correct') ? <Button variant="primary" size="sm" onClick={() => setAdding(true)}>{t('punch_add')}</Button> : undefined}>
+                {truncated && <Card tone="waiting"><p role="status">{t('punch_truncated').replace('{n}', num(body?.data?.limit ?? 0))}</p></Card>}
+                {error ? (
+                    <div className="ui-panel">
+                        <EmptyState icon={WarningCircleIcon} title={t('punch_load_failed')} detail={(error as SWRError).info?.error}
+                            action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+                    </div>
+                ) : punches === null ? (
+                    <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+                ) : (
+                    <DataList caption={listTitle} columns={columns} rows={punches} rowKey={x => x.id} card={card}
+                        empty={<EmptyState icon={FingerprintIcon} title={day ? t('punch_none_day') : t('punch_none')} />} />
+                )}
+            </Section>
 
             {adding && (
                 <AddPunchModal
@@ -531,20 +593,35 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                     companyId={companyId}
                     people={people.filter(x => x.id !== me && p.canFor('attendance.correct', x.id, x.teamLeaderId))}
                     onClose={() => setAdding(false)}
-                    onAdded={() => { setAdding(false); mutate() }}
+                    onAdded={() => { setAdding(false); void mutate() }}
                 />
             )}
-            <ConfirmModal
-                isOpen={!!withdrawing}
-                title={t('punch_withdraw')}
-                message={t('punch_withdraw_hint')}
-                confirmText={t('punch_withdraw')}
-                variant="danger"
-                reason={{ label: t('punch_reason') }}
-                onConfirm={withdraw}
-                onCancel={() => setWithdrawing(null)}
-            />
-        </section>
+
+            {/* Withdrawing asks why: the punch stays on record, with its reason. */}
+            <Dialog open={withdrawing !== null} onClose={closeWithdraw} title={t('punch_withdraw')}>
+                {withdrawing && (
+                    <form className="ui-form" noValidate onSubmit={withdraw}>
+                        {/* Which punch, so the one meant is the one withdrawn (found in the interface audit, PR 150). */}
+                        <Details items={[
+                            ...(showsWhose ? [{ label: t('punch_person'), value: whose(withdrawing) }] : []),
+                            { label: t('punch_time'), value: when(withdrawing) },
+                            { label: t('punch_direction'), value: direction(withdrawing) },
+                        ]} />
+                        <p>{t('punch_withdraw_hint')}</p>
+                        <Field label={t('punch_reason')} hint={t('punch_reason_example')} error={reasonError}>{f => (
+                            <TextArea {...f} name="reason" value={reason} disabled={action.running}
+                                onChange={e => { setReason(e.target.value); setReasonError(undefined) }} />
+                        )}</Field>
+                        <DialogActions>
+                            <Button onClick={closeWithdraw} disabled={action.running}>{t('cancel')}</Button>
+                            <Button variant="danger" type="submit" disabled={action.running} busy={action.is('withdraw')}>
+                                {t('punch_withdraw')}
+                            </Button>
+                        </DialogActions>
+                    </form>
+                )}
+            </Dialog>
+        </>
     )
 }
 

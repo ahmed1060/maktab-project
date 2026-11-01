@@ -2142,3 +2142,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** A Super Admin's company on Attendance was merged in
   #148. Attendance's Days moves onto the building blocks in #149
   (`UI_PLAN.md` §5). Neither touches clients or locations.
+- **2026-11-01:** Attendance's Days was merged in #149. Its Punches moves
+  onto the building blocks in #150 (`UI_PLAN.md` §5). Neither touches
+  clients or locations.
