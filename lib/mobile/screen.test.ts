@@ -170,7 +170,7 @@ describe("face templates and re-verification on this phone", () => {
         expect(checksFace(status({ active: false }), here)).toBe(false)
         expect(checksFace(status({ phone: { faceStatus: "APPROVED", modelVersion: "prototype-dlib-resnet-v1" } }), here)).toBe(false)
         expect(checksFace(undefined, here)).toBe(false)
-        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")
         expect(page).toContain("checkIn(device!, post, direction, checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? face : null)")
         expect(page).toContain("const working = face && checksFace(faceStatus, { phoneActive, modelVersion: faceModel }) ? t('face_ci_checking')")
     })
@@ -238,7 +238,7 @@ describe("templates waiting on their photo (§9.5)", () => {
 
     it("offers permission hours under the late shift's own date, not the check-in's (review on #61)", () => {
         // A Sunday 22:00 night checked into at 00:30 Monday: Monday's balance and a Monday 22:00 request were another night's.
-        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")
         expect(page).toContain("`/api/attendance/permissions/balance?date=${late.date}`")
         expect(page).toContain("initial={{ date: late.date, type: 'LATE_ARRIVAL'")
         // And for the stretch no permission already asked for covers, which a request for the whole lateness would overlap.
@@ -247,7 +247,7 @@ describe("templates waiting on their photo (§9.5)", () => {
     })
 
     it("stamps the face status with when the page asked for it (review on #49)", () => {
-        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")
         expect(page).toMatch(/const askedAt = Date\.now\(\)\s*const body = await fetcher\(url\)\s*return body\?\.data \? \{ \.\.\.body, data: \{ \.\.\.body\.data, askedAt \} \} : body/)
     })
 })
@@ -264,7 +264,7 @@ describe("Check in waiting for the face model (review on #49)", () => {
         expect(faceModelNeeded(status({ required: false }), here)).toBe(false)
         expect(faceModelNeeded(status({ consent: null }), here)).toBe(false)
         expect(faceModelNeeded(undefined, here)).toBe(false)
-        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")
         expect(page).toContain("face && faceModelNeeded(faceStatus, { phoneActive }) ? { data: faceModel, error: faceModelError } : undefined")
     })
 
@@ -275,9 +275,10 @@ describe("Check in waiting for the face model (review on #49)", () => {
         expect(setUpFirst(status(), { ...pending, verifier: true })).toBe(false)
         expect(checksFace(status({ active: true }), pending)).toBe(false)
         // The buttons show only once this phone is known, so phoneActive is settled by then.
-        const page = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        const page = readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")
         expect(page.indexOf("const phoneActive =")).toBeLessThan(page.indexOf("const ready = faceReady("))
-        expect(page).toContain("if (!which) return <LoadingSpinner />")
+        // Until then it says it's loading (PR 156: the building blocks' loading panel, not a spinner).
+        expect(page).toContain("if (!which) return alone(<EmptyState icon={HourglassIcon} title={t('loading')} />, true)")
     })
 
     it("gives up on a face plugin that never answers, so Check in isn't held for good", async () => {
@@ -296,6 +297,6 @@ describe("Check in waiting for the face model (review on #49)", () => {
         // The set-up and the check each wait on it so, and nothing waits on it otherwise.
         expect(face.match(/const \{ modelVersion \} = await faceInfo\(face\)/g)).toHaveLength(2)
         expect(face).not.toMatch(/await face\.info\(\)\)?\.modelVersion|const \{ modelVersion \} = await face\.info\(\)/)
-        expect(readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")).toContain("(await faceInfo(face!)).modelVersion")
+        expect(readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")).toContain("(await faceInfo(face!)).modelVersion")
     })
 })

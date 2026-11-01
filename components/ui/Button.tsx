@@ -6,20 +6,21 @@ import { cx } from './cx'
 /**
  * Buttons (DESIGN.md §5.2). One primary per area; the rest secondary or
  * quiet; danger only to confirm something destructive. Pill-shaped, 36px on
- * computers (30px in a table row) and 44px on phones.
+ * computers (30px in a table row) and 44px on phones; large, 56px, only for
+ * the check-in page's Check in and Check out.
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'danger'
 
 type Look = {
     variant?: ButtonVariant
-    size?: 'md' | 'sm'
+    size?: 'md' | 'sm' | 'lg'
     /** Goes before the label. The label stays: an icon alone isn't a name. */
     icon?: PhosphorIcon
     children: ReactNode
 }
 
-function classes(variant: ButtonVariant, size: 'md' | 'sm', className?: string) {
-    return cx('ui-btn', `ui-btn-${variant}`, size === 'sm' && 'ui-btn-sm', className)
+function classes(variant: ButtonVariant, size: 'md' | 'sm' | 'lg', className?: string) {
+    return cx('ui-btn', `ui-btn-${variant}`, size === 'sm' && 'ui-btn-sm', size === 'lg' && 'ui-btn-lg', className)
 }
 
 export function Button({ variant = 'secondary', size = 'md', icon, busy = false, className, children, disabled, type = 'button', ...rest }:

@@ -229,7 +229,7 @@ describe("asking from a day", () => {
         const days = source("page.tsx")
         expect(days).toContain("<AskPermissionDialog")
         expect(days).toContain("<ReportMissingDialog")
-        const checkIn = readFileSync("app/(dashboard)/dashboard/check-in/page.tsx", "utf8")
+        const checkIn = readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")
         expect(checkIn).toContain("import { AskPermissionDialog } from '../attendance/RequestsTab'")
         expect(checkIn).toContain("<AskPermissionDialog")
     })

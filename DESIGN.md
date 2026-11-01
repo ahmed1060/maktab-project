@@ -360,7 +360,9 @@ These are built once, in the building-blocks PR, and every page uses them
 | Danger | `#b3093c` fill, white text | Only the confirm button of a destructive action |
 
 - All buttons are pill-shaped. They're 36px tall on computers (30px for
-  buttons inside a table row) and 44px on phones.
+  buttons inside a table row) and 44px on phones. The one exception is the
+  check-in page's Check in and Check out, 56px with `--text-lg` (§5.5,
+  Check-in).
 - An icon is optional and goes before the label. The label is never only
   an icon, unless the button has an accessible name and a tooltip.
 - **Busy and disabled states** follow the existing rules from the buttons
@@ -673,6 +675,34 @@ These are built once, in the building-blocks PR, and every page uses them
     have on a light screen, from dark mode too.
   - One that isn't there, or isn't theirs, says so. One that didn't load
     says that instead, with Try again (§5.5, A list that didn't load).
+- **Check-in:** the Nizmo app's first screen, for one task: recording
+  arrival and departure.
+  - The page header names it, with a line on what it's for. Its cards are
+    at most 640px wide, as a form is.
+  - Check in (primary) and Check out (secondary) share a card, side by
+    side, each half its width, 56px tall with `--text-lg`: they're the
+    app's most-pressed buttons, often pressed outdoors and in a hurry.
+    While one works, it says what it's doing, such as "Finding your
+    location…", and neither can be pressed again.
+  - A phone not registered yet, or waiting for approval, says so in that
+    card. Registering is the card's primary button.
+  - What became of the check-in is a card under them, read out by screen
+    readers:
+    - recorded: a check icon in the Good colour (§2.3) beside the words;
+    - recorded, but waiting on someone (a review, or the phone's
+      approval): the Waiting on someone bar, as a card has;
+    - not recorded: the Problem bar, and why.
+    - Its time and distance are in the page's digits.
+  - Arriving late is a card with the Waiting on someone bar: how late,
+    the permission left this month, and Ask for permission hours.
+  - Face verification is a titled card of its own, one step at a time:
+    consent, set-up, waiting for approval, verifying again. Withdrawing
+    consent, like using this phone instead of another, is confirmed in a
+    dialog first.
+  - In a browser it says to use the app, as an empty state. So does it,
+    in its own words, for the Super Admin, who has no attendance, and
+    where the company's package hasn't the app. One whose phone details
+    didn't load says so, with Try again.
 
 ---
 
@@ -963,3 +993,8 @@ changed:
   capitals, totals and colours typed in, the settlement's verdict a
   coloured fill that doesn't print, and a document that didn't load
   saying it didn't exist.
+- **2026-11-01:** Check-in (§5.5), the app's first screen, and the large
+  button it alone uses (§5.2). It was a screen of its own making: emoji
+  for icons, sizes and colours typed in, the old confirmation window, and
+  a failed load that said only "Something went wrong", with no way to try
+  again.

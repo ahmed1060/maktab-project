@@ -469,9 +469,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      person's own payslips and the payslip and settlement they open, in
      two parts: My payslips, merged in #154 on 2026-11-01; then the
      payslip and settlement sheets, with a document in `DESIGN.md` §5.5,
-     which open for review in #155. The pages after it go most used
-     first: the check-in page, an
-     employee's history, company settings, then the Super Admin's pages;
+     merged in #155 on 2026-11-01. The pages after it go most used
+     first: the check-in page, with a section of its own in `DESIGN.md`
+     §5.5, which opens for review in #156; then an employee's history,
+     company settings, then the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2259,3 +2260,42 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     theme's;
   - a settled statement said "−0.00" for what was already paid, and a
     deduction of nothing had a minus sign too. Nothing has none.
+- **2026-11-01:** The payslip and the settlement statement were merged
+  in #155, so Documents is done. The check-in page, the Nizmo app's first
+  screen, moves onto the building blocks in #156, with a section of its
+  own in `DESIGN.md` §5.5:
+  - the page header, then the phone's card: Check in and Check out side
+    by side, each half the card, in the large button only this page
+    has (56px). While one works it says what it's doing, and neither
+    can be pressed again. A phone to register, or one waiting for
+    approval, says so in that card;
+  - what became of a check-in is a card under them, read out by screen
+    readers: recorded, with a check in the Good colour; recorded but
+    waiting on a review or the phone's approval, with the Waiting bar;
+    not recorded, with the Problem bar and why. Its time and distance
+    are in the page's digits, as arriving late's minutes and start are;
+  - arriving late is a card with the Waiting bar and Ask for permission
+    hours; face verification a titled card, one step at a time;
+  - using this phone instead, and withdrawing consent, are asked in the
+    building blocks' dialog, not the old confirmation window;
+  - in a browser, for the Super Admin, and where the package hasn't the
+    app, each says so as an empty state. Phone details that didn't load
+    said only "Something went wrong"; they say what didn't load now,
+    with the server's word and Try again;
+  - the screen is its own file (`check-in/CheckInScreen.tsx`), given
+    the phone, so it's tested without one. Emoji, typed-in sizes and
+    colours, and the header set from inside the page are gone.
+- **2026-11-01:** Found in the browser and the interface audit on #156,
+  in Arabic:
+  - Check in and Check out each wrapped onto two lines at half a
+    phone's width. The large button has 12px either side now, not 24px,
+    and both fit on one line;
+  - a place's name ran into the Arabic sentence around it, so its full
+    stop could land at the wrong end. It keeps its own direction now;
+  - the reasons a check-in waits for a review were joined with ", ",
+    which reads as English inside Arabic. They're listed as each
+    language lists things.
+- **2026-11-01:** Found by Codex on #156: Escape closed Use this phone
+  instead, or Withdraw my consent, while the request went on, so it
+  looked called off when it wasn't. The old confirmation window waited;
+  both dialogs now stay open until it's done, as Attendance's do.
