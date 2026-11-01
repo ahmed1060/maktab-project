@@ -1006,6 +1006,7 @@ export const ar = {
         doc_excluded_note: "تم استبعاد هذا الشخص من الدورة: {reason}",
         doc_draft_note: "هذه مسودة. تُعاد الأرقام حتى يُعتمد الشهر.",
         doc_not_found: "هذا المستند غير موجود، أو لا تملك صلاحية الاطلاع عليه.",
+        doc_load_failed: "لم يتم تحميل المستند.",
         doc_last_working_day: "آخر يوم عمل",
         doc_earned: "المستحق عن الشهر الأخير",
         doc_already_paid: "المدفوع بالفعل عن ذلك الشهر",

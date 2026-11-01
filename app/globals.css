@@ -1434,12 +1434,11 @@ input::-webkit-credentials-auto-fill-button {
         border: none;
         background: var(--paper);
         color: var(--ink-on-paper);
-    }
-
-    /* Controls belong to the screen. A printed payslip with a "Print" button on
-       it reads as a screenshot rather than as a document. */
-    .no-print {
-        display: none !important;
+        /* The sheet's own words and rules (DESIGN.md §5.5, Document) are in
+           the screen's ink, which is light in dark mode: on paper they're
+           black, whatever the screen is set to. */
+        --ink: var(--ink-on-paper);
+        --muted: var(--ink-on-paper);
     }
 
     @page {

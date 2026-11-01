@@ -12,7 +12,7 @@ const SETTLEMENT_API = stripComments(readFileSync("app/api/settlements/[id]/rout
 const RESEND_API = stripComments(readFileSync("app/api/settlements/[id]/resend/route.ts", "utf8"))
 const PAYSLIP_PAGE = readFileSync("app/(dashboard)/dashboard/documents/payslip/[id]/page.tsx", "utf8")
 const SETTLEMENT_PAGE = readFileSync("app/(dashboard)/dashboard/documents/settlement/[id]/page.tsx", "utf8")
-const FRAME = readFileSync("components/DocumentFrame.tsx", "utf8")
+const SHEET = readFileSync("components/ui/Document.tsx", "utf8")
 const CSS = readFileSync("app/globals.css", "utf8")
 const MIDDLEWARE = stripComments(readFileSync("proxy.ts", "utf8"))
 
@@ -79,14 +79,16 @@ describe("the document prints as a document", () => {
 
     it("drops its own controls", () => {
         // A printed payslip with a Print button on it reads as a screenshot.
-        expect(CSS).toMatch(/\.no-print[\s\S]*?display: none/)
-        expect(FRAME).toContain('className="no-print"')
-        expect(FRAME).toContain('className="print-document"')
+        // The buttons are in the page header, above the sheet, and only the
+        // sheet prints (PR 155).
+        expect(SHEET).toContain('className="ui-panel ui-doc print-document"')
+        expect(SHEET).not.toContain("<button")
+        for (const page of [PAYSLIP_PAGE, SETTLEMENT_PAGE]) expect(page).toMatch(/<PageHeader[\s\S]*?window\.print\(\)[\s\S]*?<DocumentSheet/)
     })
 
-    it("uses one frame, so two documents from one employer look like it", () => {
-        expect(PAYSLIP_PAGE).toContain("DocumentFrame")
-        expect(SETTLEMENT_PAGE).toContain("DocumentFrame")
+    it("uses one sheet, so two documents from one employer look like it", () => {
+        expect(PAYSLIP_PAGE).toContain("<DocumentSheet")
+        expect(SETTLEMENT_PAGE).toContain("<DocumentSheet")
     })
 })
 

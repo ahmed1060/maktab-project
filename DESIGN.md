@@ -643,6 +643,35 @@ These are built once, in the building-blocks PR, and every page uses them
     example is the people whose month couldn't be worked out.
   - Its title says what it is, so the colour is never the only signal,
     and its background stays the panel's, so its text keeps its contrast.
+- **Document:** a paper the app issues, such as a payslip or a settlement
+  statement, read on screen and printed.
+  - The page header names it, with Print as its primary button and
+    anything else that acts on it, such as Send again, beside it. They sit
+    above the sheet, never on it, so none of them is printed.
+  - The sheet is a level-1 panel at reading width (736px), with 32px
+    inside (16px on phones). Its head has the company's name in
+    `--text-xl`, weight 500, with the document's name below it in
+    `--text-sm` and `--muted`, and the company's logo on the end side,
+    over a 2px rule in `--ink`.
+  - Its facts, such as who it's for and the period, are details (below).
+  - Its lines are a label on the start side and the amount on the end
+    side, in even-width digits. An amount taken off has a minus sign (−).
+    A group of lines, such as Earnings, has a heading in `--text-sm`,
+    weight 500.
+  - A total is in `--text-lg`, weight 600, under a 2px rule in `--ink`.
+    The figure the document is for, such as the net, is its last total.
+  - What to know about it is a note with its meaning's colour (§2.3) as a
+    3px bar on its start edge, as a card has: a payslip not final yet
+    waits on someone. A settlement says who owes whom in the colour of
+    what it means for the person: good when the company owes them, a
+    problem when they owe, neutral when it's settled. The words say it,
+    so the colour is never the only signal, and a bar prints where a fill
+    wouldn't.
+  - It's in the page's language, digits too.
+  - Printed, the sheet is all there is: black on white, without the app
+    around it, with 18mm margins.
+  - One that isn't there, or isn't theirs, says so. One that didn't load
+    says that instead, with Try again (§5.5, A list that didn't load).
 
 ---
 
@@ -928,3 +957,8 @@ changed:
   too, but as a plain button with nothing to say it opened, or whether it
   was open, and an excluded person's row was faded below a readable
   contrast. Excluded is said in words now, with why.
+- **2026-11-01:** A document (§5.5), for the payslip and the settlement
+  statement. Each was a sheet of its own making: headings in small
+  capitals, totals and colours typed in, the settlement's verdict a
+  coloured fill that doesn't print, and a document that didn't load
+  saying it didn't exist.

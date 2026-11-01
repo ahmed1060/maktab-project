@@ -467,9 +467,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in #152 on 2026-11-01; and face checks, the Requests tab and adding
      a punch, merged in #153 on 2026-11-01. The eleventh is Documents, a
      person's own payslips and the payslip and settlement they open, in
-     two parts: My payslips, which opens for review in #154; then the
-     documents themselves, once `DESIGN.md` says how a printed document
-     looks. The pages after it go most used first: the check-in page, an
+     two parts: My payslips, merged in #154 on 2026-11-01; then the
+     payslip and settlement sheets, with a document in `DESIGN.md` §5.5,
+     which open for review in #155. The pages after it go most used
+     first: the check-in page, an
      employee's history, company settings, then the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
@@ -2227,3 +2228,24 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     there are none yet, and when they didn't load, each says so. A
     failed load passed for none, saying there were no payslips when
     there were; it now says so, with the server's word and Try again.
+- **2026-11-01:** My payslips was merged in #154. The payslip and the
+  settlement statement move onto the building blocks in #155 (Documents
+  part 2), with a document in `DESIGN.md` §5.5:
+  - one sheet for both, `DocumentSheet` and its lines, totals and notes
+    (`components/ui/Document.tsx`), in place of `DocumentFrame`: the
+    company's name and the document's above a rule, the facts as details,
+    each group's lines with their total, and the figure the document is
+    for last. Its headings were small capitals, and its sizes, colours
+    and rules typed in;
+  - Print, and Send by email on a settlement, are in the page header,
+    above the sheet, so neither is on the paper;
+  - who owes whom on a settlement is said in words, with its colour as a
+    bar on the note's start edge. It was a coloured fill, which doesn't
+    print. A draft payslip's note waits on someone in the same way;
+  - the period and the days paid are in the page's language, digits too;
+  - printed, the sheet is the page, black on white, in dark mode too:
+    the building blocks' styles load after the print ones, so the
+    panel's padding, border and dark fill would have printed;
+  - a document that didn't load said it didn't exist, or wasn't theirs.
+    It says it didn't load now, with the server's word and Try again,
+    and one that isn't there, or isn't theirs, still says so.

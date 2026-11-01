@@ -1043,6 +1043,7 @@ export const en = {
         doc_excluded_note: "This person was excluded from the run: {reason}",
         doc_draft_note: "This is a draft. Figures are recalculated until the month is approved.",
         doc_not_found: "This document does not exist, or you do not have access to it.",
+        doc_load_failed: "The document didn't load.",
         doc_last_working_day: "Last working day",
         doc_earned: "Earned for the final month",
         doc_already_paid: "Already paid for that month",

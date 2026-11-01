@@ -1,10 +1,21 @@
 'use client'
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { useParams } from 'next/navigation'
+import { FileXIcon, HourglassIcon, PrinterIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, Details, DocGroup, DocLine, DocNote, DocTotal, DocumentSheet, EmptyState, Page, PageHeader } from '@/components/ui'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import DocumentFrame from '@/components/DocumentFrame'
-import { fetchRetrying } from '@/lib/swr-fetcher'
+
+/**
+ * One payslip, to read and to print.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, Documents part 2, PR 155;
+ * DESIGN.md §5.5, Document): the page header with Print above the sheet, so
+ * Print is never on the paper, and the sheet in the page's language, digits
+ * too. One that isn't there, or isn't theirs, says so; one that didn't load
+ * says that instead, with Try again. Saying "doesn't exist" for a failed load
+ * sent people to ask HR about a payslip that was there all along.
+ */
 
 type Doc = {
     person: { name: string; email: string }
@@ -24,114 +35,80 @@ type Doc = {
 export default function PayslipDocumentPage() {
     const { t, locale } = useLanguage()
     const params = useParams()
-    const isRtl = locale === 'ar'
+    const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
 
-    const [doc, setDoc] = useState<Doc | null>(null)
-    const [error, setError] = useState(false)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        (async () => {
-            try {
-                const res = await fetchRetrying(`/api/payslips/${params.id}`)
-                if (!res.ok) { setError(true); return }
-                setDoc((await res.json()).data)
-            } catch {
-                setError(true)
-            } finally {
-                setLoading(false)
-            }
-        })()
-    }, [params.id])
+    const { data, error, isLoading, isValidating, mutate } = useSWR(`/api/payslips/${params.id}`, fetcher)
+    const doc: Doc | null = data?.data ?? null
+    const status = (error as SWRError | undefined)?.status
+    // Refused or missing is the answer; anything else might pass.
+    const missing = status === 403 || status === 404
 
     const money = (n: number) =>
-        new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+        new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+    // "October 2026", the year in the page's digits too.
+    const period = doc ? new Date(doc.period.year, doc.period.month - 1).toLocaleString(digits, { month: 'long', year: 'numeric' }) : undefined
 
-    if (loading) return <LoadingSpinner />
-    if (error || !doc) return <p style={{ padding: '2rem' }}>{t('doc_not_found')}</p>
-
-    const monthName = new Date(2000, doc.period.month - 1)
-        .toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' })
-
-    const field = (label: string, value: string) => (
-        <div>
-            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>{label}</div>
-            <div style={{ fontWeight: 600 }}>{value}</div>
-        </div>
+    const header = (
+        <PageHeader
+            title={t('doc_payslip')}
+            subtitle={period}
+            action={doc && <Button variant="primary" icon={PrinterIcon} onClick={() => window.print()}>{t('doc_print')}</Button>}
+        />
     )
 
-    const row = (label: string, value: string, opts: { strong?: boolean; negative?: boolean; key?: string } = {}) => (
-        <div key={opts.key} style={{
-            display: 'flex', justifyContent: 'space-between', gap: '1rem',
-            padding: opts.strong ? '0.6rem 0 0' : '0.3rem 0',
-            borderTop: opts.strong ? '2px solid var(--text-strong)' : undefined,
-            marginTop: opts.strong ? '0.5rem' : undefined,
-            fontSize: opts.strong ? '1.05rem' : '0.95rem',
-            fontWeight: opts.strong ? 700 : 400,
-        }}>
-            <span>{label}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {opts.negative ? '−' : ''}{value}
-            </span>
-        </div>
-    )
+    if (!doc) {
+        if (isLoading) return <Page>{header}<div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div></Page>
+        return (
+            <Page>
+                {header}
+                <div className="ui-panel">
+                    {missing || !error
+                        ? <EmptyState icon={FileXIcon} title={t('doc_not_found')} />
+                        : <EmptyState icon={WarningCircleIcon} title={t('doc_load_failed')} detail={(error as SWRError).info?.error}
+                            action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />}
+                </div>
+            </Page>
+        )
+    }
 
     const earnings = doc.lines.filter(l => l.kind === 'EARNING')
     const deductions = doc.lines.filter(l => l.kind === 'DEDUCTION')
 
     return (
-        <DocumentFrame title={t('doc_payslip')} company={doc.company}>
-            {/* A draft says so on its face. A payslip that turns out to have been
-                provisional, without having said so, is worse than no payslip. */}
-            {doc.status === 'DRAFT' && (
-                <p style={{
-                    margin: '0 0 1rem', padding: '0.6rem 0.9rem', borderRadius: '0.5rem',
-                    background: 'var(--warn-bg)', color: 'var(--warn-fg)', fontSize: '0.85rem',
-                }}>
-                    {t('doc_draft_note')}
-                </p>
-            )}
+        <Page>
+            {header}
+            <DocumentSheet title={t('doc_payslip')} company={doc.company}>
+                {/* A draft says so on its face. A payslip that turns out to have been
+                    provisional, without having said so, is worse than no payslip. */}
+                {doc.status === 'DRAFT' && <DocNote tone="waiting">{t('doc_draft_note')}</DocNote>}
 
-            <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', marginBottom: '1.75rem' }}>
-                {field(t('doc_issued_to'), doc.person.name)}
-                {field(t('doc_period'), `${monthName} ${doc.period.year}`)}
-                {field(t('doc_days_paid'), String(doc.daysPaid))}
-            </div>
+                <Details items={[
+                    { label: t('doc_issued_to'), value: doc.person.name },
+                    { label: t('doc_period'), value: period },
+                    { label: t('doc_days_paid'), value: doc.daysPaid.toLocaleString(digits) },
+                ]} />
 
-            {doc.excluded && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                    {t('doc_excluded_note').replace('{reason}', doc.exclusionReason || '')}
-                </p>
-            )}
+                {doc.excluded && <DocNote tone="neutral">{t('doc_excluded_note').replace('{reason}', doc.exclusionReason || '')}</DocNote>}
 
-            <section style={{ marginBottom: '1.25rem' }}>
-                <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', margin: '0 0 0.35rem' }}>
-                    {t('doc_earnings')}
-                </h3>
-                {earnings.map((l, i) => row(l.label, money(l.amount), { key: `e${i}` }))}
-                {row(t('doc_earnings'), money(doc.earnings), { strong: true })}
-            </section>
+                <DocGroup title={t('doc_earnings')}>
+                    {earnings.map((l, i) => <DocLine key={i} label={l.label} amount={money(l.amount)} />)}
+                    <DocTotal label={t('doc_earnings')} amount={money(doc.earnings)} />
+                </DocGroup>
 
-            {deductions.length > 0 && (
-                <section style={{ marginBottom: '1.25rem' }}>
-                    <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', margin: '0 0 0.35rem' }}>
-                        {t('doc_deductions')}
-                    </h3>
-                    {deductions.map((l, i) => row(l.label, money(l.amount), { negative: true, key: `d${i}` }))}
-                    {row(t('doc_deductions'), money(doc.deductions), { strong: true, negative: true })}
-                </section>
-            )}
+                {deductions.length > 0 && (
+                    <DocGroup title={t('doc_deductions')}>
+                        {deductions.map((l, i) => <DocLine key={i} label={l.label} amount={money(l.amount)} minus />)}
+                        <DocTotal label={t('doc_deductions')} amount={money(doc.deductions)} minus />
+                    </DocGroup>
+                )}
 
-            {row(t('doc_net'), money(doc.net), { strong: true })}
+                <DocTotal label={t('doc_net')} amount={money(doc.net)} />
 
-            {/* The net floors at zero, so what the deductions could not take has
-                to be said somewhere or it simply disappears from the document
-                that was supposed to account for it. */}
-            {doc.carried > 0 && (
-                <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    {t('doc_carried_note').replace('{amount}', money(doc.carried))}
-                </p>
-            )}
-        </DocumentFrame>
+                {/* The net floors at zero, so what the deductions could not take has
+                    to be said somewhere or it simply disappears from the document
+                    that was supposed to account for it. */}
+                {doc.carried > 0 && <DocNote tone="neutral">{t('doc_carried_note').replace('{amount}', money(doc.carried))}</DocNote>}
+            </DocumentSheet>
+        </Page>
     )
 }
