@@ -48,7 +48,8 @@ describe("the Attendance page's Requests tab", () => {
 
     it("has the Exceptions tab's waiting requests open the Requests page, not the tab that points there (part 4d)", () => {
         const exceptions = readFileSync("app/(dashboard)/dashboard/attendance/ExceptionsTab.tsx", "utf8")
-        expect(exceptions).toContain('<ButtonLink href="/dashboard/requests?tab=review"')
+        // A tile since Attendance part 5 (PR 151), still opening the Requests page.
+        expect(exceptions).toContain("href: '/dashboard/requests?tab=review'")
         expect(exceptions).not.toContain("onOpen('requests')")
     })
 

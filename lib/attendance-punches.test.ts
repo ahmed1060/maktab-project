@@ -252,7 +252,8 @@ describe("Punches is on the building blocks", () => {
     })
 
     it("keeps the day in the address, beside the month, and asks for whose punches were picked", () => {
-        expect(punches).toContain("dayFromAddress(params, year, monthNumber)")
+        expect(punches).toContain("useDayInAddress(period)")
+        expect(readFileSync("app/(dashboard)/dashboard/attendance/period.ts", "utf8")).toContain("const day = dayFromAddress(params, year, monthNumber)")
         expect(punches).toContain("who === UNMATCHED ? '&unmatched=1' : who ? `&userId=${encodeURIComponent(who)}` : ''")
     })
 })

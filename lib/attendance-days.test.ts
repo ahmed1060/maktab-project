@@ -286,8 +286,12 @@ describe("Days is on the building blocks", () => {
     })
 
     it("keeps the month in the address, from the company's date", () => {
-        expect(days).toContain("periodFromAddress(params, new Date(`${today}T12:00:00`))")
-        expect(days).toContain("router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })")
+        // Shared with Punches and Exceptions since PR 151 (attendance/period.ts).
+        const PERIOD = readFileSync("app/(dashboard)/dashboard/attendance/period.ts", "utf8")
+        expect(days).toContain("useMonthInAddress(today)")
+        expect(PERIOD).toContain("export function useMonthInAddress(today: string, opening: string = today)")
+        expect(PERIOD).toContain("periodFromAddress(params, new Date(`${opening}T12:00:00`))")
+        expect(PERIOD).toContain("router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })")
     })
 })
 
