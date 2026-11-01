@@ -2002,6 +2002,7 @@ export const ar = {
         exc_none: "لا شيء هنا يحتاج إلى قرار.",
         exc_kinds: "ما يحتاج إلى قرار",
         exc_list_title: "للبتّ في {period}",
+        exc_list_title_day: "للبتّ في {day}",
         exc_not_over: "لم ينتهِ أي يوم من هذه الفترة بعد.",
         exc_load_failed: "لم يتم تحميل الاستثناءات.",
         exc_tile_requests: "طلبات بانتظار قرار",

@@ -218,6 +218,21 @@ describe("each kind's list", () => {
     })
 })
 
+describe("found in the interface audit (PR 151)", () => {
+    it("gives no times for a day with no punch, where it said —–—", async () => {
+        const noPunch = { ...DATA, overtime: [row({ id: "d5", date: "2026-10-29", overtimeMinutes: 45, lateMinutes: 0, firstIn: null, lastOut: null })] }
+        const one = row_(panel(await page({ shows: noPunch, search: "tab=exceptions&kind=overtime" })), "d5")
+        expect(one).toContain("45 min")
+        expect(one).not.toContain("—–—")
+        expect(one).not.toContain("<bdi>")
+    })
+
+    it("names one day's list as on that day, not in it", async () => {
+        expect(panel(await page({ search: "tab=exceptions&year=2026&month=10&day=15" }))).toContain('<h2 class="ui-section-title">To decide on Thursday 15 October</h2>')
+        expect(panel(await page())).toContain('<h2 class="ui-section-title">To decide in October 2026</h2>')
+    })
+})
+
 describe("Exceptions is on the building blocks", () => {
     const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/ExceptionsTab.tsx", "utf8")
 

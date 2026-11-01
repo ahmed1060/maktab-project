@@ -2004,6 +2004,7 @@ export const en = {
         exc_none: "Nothing here needs a decision.",
         exc_kinds: "What needs a decision",
         exc_list_title: "To decide in {period}",
+        exc_list_title_day: "To decide on {day}",
         exc_not_over: "No day of this period is over yet.",
         exc_load_failed: "The exceptions didn't load.",
         exc_tile_requests: "Requests to decide",

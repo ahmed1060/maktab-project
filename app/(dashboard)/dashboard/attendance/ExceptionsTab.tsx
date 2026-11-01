@@ -166,8 +166,10 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
         ...((c?.faceOverdue ?? 0) > 0 ? [{ label: t('exc_tile_face'), value: num(c!.faceOverdue!), href: tabHref('face') }] : []),
     ]
 
-    const listTitle = t('exc_list_title').replace('{period}', dayName ?? monthName)
-    const times = (r: Row) => <bdi>{r.firstIn ? clock(r.firstIn) : '—'}–{r.lastOut ? clock(r.lastOut) : '—'}</bdi>
+    // One day's list is on that day, a month's in it (found in the interface audit, PR 151).
+    const listTitle = dayName ? t('exc_list_title_day').replace('{day}', dayName) : t('exc_list_title').replace('{period}', monthName)
+    // A day's punches, from and to; none for a day with no punch, where it said —–— (found in the interface audit, PR 151).
+    const times = (r: Row) => (r.firstIn || r.lastOut ? <bdi>{r.firstIn ? clock(r.firstIn) : '—'}–{r.lastOut ? clock(r.lastOut) : '—'}</bdi> : null)
     const note = (rule: RuleOutcome) => (rule.note && NOTE_KEY[rule.note] ? t(NOTE_KEY[rule.note]).replace('{n}', num(rule.occurrence)) : null)
     const who = (r: { date: string; name: string }) => <ItemTitle title={date(r.date)} detail={r.name} />
     const busyKey = (key: string) => action.is(key)
@@ -194,13 +196,13 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
             <DataList<LateEarly> caption={label} rows={lateEarly} rowKey={x => x.key} empty={empty}
                 columns={[
                     { key: 'date', header: t('punch_date'), cell: x => who(x.r) },
-                    { key: 'what', header: t('exc_what'), cell: x => <>{lateWhat(x)}<div className="ui-item-detail">{times(x.r)}</div>{note(x.rule) && <div className="ui-item-detail">{note(x.rule)}</div>}</> },
+                    { key: 'what', header: t('exc_what'), cell: x => <>{lateWhat(x)}{times(x.r) && <div className="ui-item-detail">{times(x.r)}</div>}{note(x.rule) && <div className="ui-item-detail">{note(x.rule)}</div>}</> },
                     { key: 'deduction', header: t('day_deduction'), align: 'end', cell: x => ruleDays(x.rule) },
                     actionsColumn<LateEarly>(x => decisionButtons(x.r, x.subject)),
                 ]}
                 card={x => <ListCard title={date(x.r.date)} details={[
                     { icon: UserIcon, text: x.r.name },
-                    { icon: ClockIcon, text: <span>{lateWhat(x)}, {times(x.r)}</span> },
+                    { icon: ClockIcon, text: <span>{lateWhat(x)}{times(x.r) && <>, {times(x.r)}</>}</span> },
                     ...(note(x.rule) ? [{ icon: InfoIcon, text: note(x.rule) }] : []),
                     ...(x.rule.days > 0 ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: {ruleDays(x.rule)}</span> }] : []),
                 ]} foot={decisionButtons(x.r, x.subject) ?? undefined} />} />
@@ -244,12 +246,12 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
                 <DataList<Row> caption={label} rows={data.overtime} rowKey={r => r.id} empty={empty}
                     columns={[
                         { key: 'date', header: t('punch_date'), cell: who },
-                        { key: 'overtime', header: t('day_overtime'), cell: r => <>{minutesText(r.overtimeMinutes)}<div className="ui-item-detail">{times(r)}</div></> },
+                        { key: 'overtime', header: t('day_overtime'), cell: r => <>{minutesText(r.overtimeMinutes)}{times(r) && <div className="ui-item-detail">{times(r)}</div>}</> },
                         actionsColumn<Row>(decideOvertime),
                     ]}
                     card={r => <ListCard title={date(r.date)} details={[
                         { icon: UserIcon, text: r.name },
-                        { icon: ClockIcon, text: <span>{minutesText(r.overtimeMinutes)}, {times(r)}</span> },
+                        { icon: ClockIcon, text: <span>{minutesText(r.overtimeMinutes)}{times(r) && <>, {times(r)}</>}</span> },
                     ]} foot={decideOvertime(r) ?? undefined} />} />
             )
         }

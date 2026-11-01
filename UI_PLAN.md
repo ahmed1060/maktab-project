@@ -2104,3 +2104,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     and Try again. It was a spinner, and a red line;
   - the month, the day and numbers in the page's language are one module
     the tabs share (`attendance/period.ts`).
+- **2026-11-01:** Found in the interface audit of #151:
+  - a day with no punch, such as overtime asked for ahead, gave its
+    times as "—–—". It gives none;
+  - one day's list was "To decide in Wednesday 14 October". It's "on"
+    a day, and "in" a month.
