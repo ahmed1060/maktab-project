@@ -2396,3 +2396,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - after Reverse or Roll back, the focus went back to the row's menu,
     which an undone row no longer has, and so fell to the page's start.
     It goes to the section's heading now.
+- **2026-11-01:** Found by Codex on #159: a notification's link brought
+  its adjustment into view only while it was marked, for six seconds, so
+  a list that took longer to load stayed where it was. It's brought into
+  view once it's listed, however long that takes, as the Tasks page
+  does; the mark still fades after six seconds.

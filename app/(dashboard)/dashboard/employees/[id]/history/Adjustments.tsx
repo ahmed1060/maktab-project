@@ -59,7 +59,7 @@ function useAdjustmentWords() {
     }
 }
 
-export function Adjustments({ userId, adjustments, loading, error, retrying, retry, canUndo, highlighted, onUndone }: {
+export function Adjustments({ userId, adjustments, loading, error, retrying, retry, canUndo, highlighted, scrollTo, onUndone }: {
     userId: string
     adjustments: SalaryAdjustment[]
     loading: boolean
@@ -70,6 +70,12 @@ export function Adjustments({ userId, adjustments, loading, error, retrying, ret
     canUndo: boolean
     /** The one a notification opened, while it's marked. */
     highlighted: string | null
+    /**
+     * The one a notification's link names, for as long as the page is open:
+     * brought into view once it's listed, however long the list takes. The
+     * six-second mark ran out first on a slow one (Codex on PR 159).
+     */
+    scrollTo: string | null
     onUndone: () => void
 }) {
     const { t, what, monthLabel, entered } = useAdjustmentWords()
@@ -89,12 +95,12 @@ export function Adjustments({ userId, adjustments, loading, error, retrying, ret
     // The one a notification opened, brought into view once it's listed. The
     // list has it twice, as a table row and as a phone card, so it's the one
     // showing at this width.
-    const shown = !!highlighted && adjustments.some(adj => adj.id === highlighted)
+    const shown = !!scrollTo && adjustments.some(adj => adj.id === scrollTo)
     useEffect(() => {
-        if (!highlighted || !shown) return
+        if (!scrollTo || !shown) return
         const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        visibleRow(highlighted)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
-    }, [highlighted, shown])
+        visibleRow(scrollTo)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+    }, [scrollTo, shown])
 
     const source = (adj: SalaryAdjustment) => t(`adjustment_source_${adj.source}` as TranslationKey)
     const reason = (adj: SalaryAdjustment) => (adj.reason ? <bdi>{adj.reason}</bdi> : null)

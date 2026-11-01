@@ -396,7 +396,7 @@ async function adjustments(props: Record<string, unknown> = {}, locale: "en" | "
     const { Adjustments } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/Adjustments")
     return renderToStaticMarkup(h(Adjustments, {
         userId: "u2", adjustments: ADJUSTMENTS, loading: false, error: undefined, retrying: false, retry: () => {},
-        canUndo: false, highlighted: null, onUndone: () => {}, ...props,
+        canUndo: false, highlighted: null, scrollTo: null, onUndone: () => {}, ...props,
     } as never))
 }
 async function undo(action: "reverse" | "rollback", locale: "en" | "ar" = "en") {
@@ -500,6 +500,18 @@ describe("found in the browser (the audit, PR 159)", () => {
         expect(html).toMatch(new RegExp(`<h2 class="ui-section-title"><span id="[^"]+" tabindex="-1">${en.hist_adjustments}</span></h2>`))
         const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/Adjustments.tsx", "utf8")
         expect(src).toContain("document.getElementById(headingId)?.focus()")
+    })
+})
+
+describe("found by Codex on PR 159", () => {
+    it("brings a notification's adjustment into view however long the list takes, not only while it's marked", () => {
+        // It scrolled by the six-second mark: a list that took longer to load stayed where it was.
+        const page = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+        expect(page).toContain("scrollTo={highlightId}")
+        expect(page).toContain("highlighted={visualHighlightId}")
+        const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/Adjustments.tsx", "utf8")
+        expect(src).toContain("visibleRow(scrollTo)")
+        expect(src).not.toContain("visibleRow(highlighted)")
     })
 })
 

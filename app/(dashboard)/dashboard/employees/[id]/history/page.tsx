@@ -151,6 +151,7 @@ export default function EmployeeHistoryPage() {
                             retry={() => { void adjustmentsQuery.mutate() }}
                             canUndo={canAdjust}
                             highlighted={visualHighlightId}
+                            scrollTo={highlightId}
                             // An undone one moves its month's figures too. Through the
                             // same key as the first load, so it is unwrapped the same
                             // way; the hand-written re-fetch this replaced stored the
