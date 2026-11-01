@@ -1701,7 +1701,7 @@ export const en = {
         attendance_default_from: "{name} becomes the default from {date}",
         attendance_title: "Attendance",
         punch_page_hint: "Clock-ins and clock-outs as they came in. A wrong one is withdrawn, never edited.",
-        punch_pick_company: "Open a company's punches from its Attendance settings.",
+        punch_pick_company: "Pick a company at the top to see its attendance.",
         attendance_load_failed: "Attendance didn't load.",
         punch_open: "Punches and imports",
         punch_tab_punches: "Punches",

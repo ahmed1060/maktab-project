@@ -2136,3 +2136,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** Public holidays was merged in #146. Attendance's frame
   moves onto the building blocks in #147, the first of seven parts
   (`UI_PLAN.md` §5). Neither touches clients or locations.
+- **2026-11-01:** Attendance's frame was merged in #147. A Super Admin's
+  company on Attendance is the company in view from the top bar, in #148
+  (`UI_PLAN.md` §5). Neither touches clients or locations.

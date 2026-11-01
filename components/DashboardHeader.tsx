@@ -6,6 +6,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Image from 'next/image'
 import type { TranslationKey } from '@/lib/translations'
 import NotificationBell from './NotificationBell'
+import { addressWithCompanyInView, companyToPutInView } from '@/lib/company-link'
 import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -62,6 +63,9 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const currentUser = session?.user || user
     const [headerAvatar, setHeaderAvatar] = useState<string | null>(currentUser.avatar || currentUser.image || currentUser.picture || null)
     const lastProcessedCompany = useRef<string | null | undefined>(undefined)
+    // The company a pick in the switcher has just left in the address, until
+    // the address changes (lib/company-link.ts).
+    const companyLeftBehind = useRef<string | null>(null)
 
     // Using SWR for data fetching with deduplication
     const { mutate } = useSWR(
@@ -102,6 +106,23 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
 
     // Sync URL <-> Context
     useEffect(() => {
+        // A link that names its company (?companyId=), from a company's
+        // attendance settings or a face check's notice, puts it in view
+        // (Attendance part 2). Before the name below, which the address may
+        // still carry for the company the link takes the page away from.
+        const linked = searchParams.get('companyId')
+        if (linked !== companyLeftBehind.current) companyLeftBehind.current = null
+        const putInView = companyToPutInView({ linked, inView: selectedCompanyId, known: companies.map(c => c.id), leftBehind: companyLeftBehind.current })
+        if (putInView) {
+            setSelectedCompanyId(putInView)
+            // Followed once, and taken out of the address (lib/company-link.ts).
+            const name = companies.find(c => c.id === putInView)?.name
+            lastProcessedCompany.current = name
+            router.replace(`${pathname}?${addressWithCompanyInView(searchParams.toString(), name)}`)
+            router.refresh()
+            return
+        }
+
         const companyNameFromUrl = searchParams.get('company')
 
         // If the URL matches what we last processed (manually or via sync), 
@@ -161,6 +182,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     }, [])
 
     const handleSelectCompany = (val: string | null) => {
+        // The address names the last company until the pick lands.
+        companyLeftBehind.current = searchParams.get('companyId')
         setSelectedCompanyId(val)
         setIsCompanyDropdownOpen(false)
 

@@ -8,6 +8,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useCompany } from '@/context/CompanyContext'
 import { BuildingsIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { Button, EmptyState, Page, PageHeader, Tabs } from '@/components/ui'
 import type { SWRError } from '@/lib/swr-fetcher'
@@ -69,7 +70,13 @@ export default function AttendancePage() {
     const pathname = usePathname()
     const p = useCan()
     const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
-    const companyId = isSuperAdmin ? params.get('companyId') : null
+    // A Super Admin's company is the company in view, picked in the top bar
+    // as on every other page (DESIGN.md §5.3). A link that names one, from a
+    // company's attendance settings or a face check's notice, is put in view
+    // by the top bar, and taken out of the address; until then it's the one
+    // asked about, so nothing is asked about the last company first.
+    const { selectedCompanyId } = useCompany()
+    const companyId = isSuperAdmin ? (params.get('companyId') ?? selectedCompanyId) : null
     const q = companyId ? `companyId=${encodeURIComponent(companyId)}&` : ''
 
     const correctsCompany = p.companyWide('attendance.correct')
