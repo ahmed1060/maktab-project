@@ -192,6 +192,20 @@ describe("in Arabic (the audit, PR 156)", () => {
     })
 })
 
+describe("its confirmations (Codex on PR 156)", () => {
+    it("can't be closed while what they asked for is still being done", () => {
+        // Escape closed Use this phone instead, or Withdraw my consent, while it went on: it looked
+        // called off when it wasn't. The old confirmation window waited; so does this one.
+        const src = readFileSync("app/(dashboard)/dashboard/check-in/CheckInScreen.tsx", "utf8")
+        expect(src).toContain("const closeSwitching = () => { if (!busy) setSwitching(false) }")
+        expect(src).toContain("const closeWithdrawing = () => { if (!busy) setWithdrawing(false) }")
+        expect(src).toMatch(/open=\{switching\}\s*onClose=\{closeSwitching\}/)
+        expect(src).toMatch(/open=\{withdrawing\}\s*onClose=\{closeWithdrawing\}/)
+        expect(src).not.toContain("onClose={() => setSwitching(false)}")
+        expect(src).not.toContain("onClose={() => setWithdrawing(false)}")
+    })
+})
+
 describe("its look", () => {
     it("has the large button, and the two side by side, in the building blocks' styles", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")

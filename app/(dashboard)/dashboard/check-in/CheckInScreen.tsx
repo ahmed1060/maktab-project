@@ -184,6 +184,11 @@ export default function CheckInScreen({ device }: { device: CheckInDevice | null
         } catch (e) { problem(e) } finally { setBusy(null) }
     }
 
+    // Not while what they asked for is still being done: closed by Escape, it looked called off
+    // when it wasn't (Codex on PR 156). The old confirmation window waited too.
+    const closeSwitching = () => { if (!busy) setSwitching(false) }
+    const closeWithdrawing = () => { if (!busy) setWithdrawing(false) }
+
     const header = <PageHeader title={t('ci_title')} subtitle={t('ci_hint')} />
     const alone = (body: React.ReactNode, status = false) => <Page>{header}<div className="ui-panel" role={status ? 'status' : undefined}>{body}</div></Page>
 
@@ -250,10 +255,10 @@ export default function CheckInScreen({ device }: { device: CheckInDevice | null
 
             <Dialog
                 open={switching}
-                onClose={() => setSwitching(false)}
+                onClose={closeSwitching}
                 title={t('ci_switch')}
                 actions={<>
-                    <Button onClick={() => setSwitching(false)} disabled={!!busy}>{t('cancel')}</Button>
+                    <Button onClick={closeSwitching} disabled={!!busy}>{t('cancel')}</Button>
                     <Button variant="primary" busy={busy === 'register'} disabled={!!busy} onClick={() => { void register() }}>{t('ci_switch')}</Button>
                 </>}
             >
@@ -262,10 +267,10 @@ export default function CheckInScreen({ device }: { device: CheckInDevice | null
 
             <Dialog
                 open={withdrawing}
-                onClose={() => setWithdrawing(false)}
+                onClose={closeWithdrawing}
                 title={t('face_ci_withdraw')}
                 actions={<>
-                    <Button onClick={() => setWithdrawing(false)} disabled={!!busy}>{t('cancel')}</Button>
+                    <Button onClick={closeWithdrawing} disabled={!!busy}>{t('cancel')}</Button>
                     <Button variant="danger" busy={busy === 'face'} disabled={!!busy} onClick={async () => { await consent(false); setWithdrawing(false) }}>{t('face_ci_withdraw')}</Button>
                 </>}
             >

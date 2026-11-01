@@ -2295,3 +2295,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the reasons a check-in waits for a review were joined with ", ",
     which reads as English inside Arabic. They're listed as each
     language lists things.
+- **2026-11-01:** Found by Codex on #156: Escape closed Use this phone
+  instead, or Withdraw my consent, while the request went on, so it
+  looked called off when it wasn't. The old confirmation window waited;
+  both dialogs now stay open until it's done, as Attendance's do.
