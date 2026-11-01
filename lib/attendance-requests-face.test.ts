@@ -426,3 +426,11 @@ describe("found in the interface audit (PR 153)", () => {
         expect(html).toContain(`placeholder="${en.punch_add_reason_placeholder}"`)
     })
 })
+
+describe("found by Codex on PR 153", () => {
+    it("lets a photo's dialog be closed without deciding, where there's no Escape key, as on a phone", () => {
+        const tab = source("FaceTab.tsx")
+        // Close first, the main one last (DESIGN.md §5.5).
+        expect(tab).toMatch(/actions=\{rejecting \? undefined : <>\s*<Button onClick=\{close\} disabled=\{action\.running\}>\{t\('close'\)\}<\/Button>\s*<Button data-step="reject"/)
+    })
+})

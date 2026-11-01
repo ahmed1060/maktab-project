@@ -2204,3 +2204,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   asked it of someone or asked them to re-verify couldn't tell whether it
   was saved. The face tab had caught it before. Every Attendance write
   (`attendance/send.ts`) now says so, as a refusal does.
+- **2026-11-01:** Found by Codex on #153: a face photo's dialog had only
+  Reject and Approve, and the building blocks' dialog has no close button
+  of its own, so on a phone, with no Escape key, it couldn't be closed
+  without deciding. It has Close too, first, as Cancel is elsewhere.

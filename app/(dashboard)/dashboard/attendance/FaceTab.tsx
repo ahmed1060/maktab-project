@@ -204,7 +204,9 @@ function ReviewDialog({ review, onClose, onDecided }: { review: Review; onClose:
             open
             onClose={close}
             title={rejecting ? t('face_reject_title') : t('face_review_title').replace('{name}', review.name)}
+            // Close, to look and come back later: on a phone there's no Escape key (found by Codex on PR 153).
             actions={rejecting ? undefined : <>
+                <Button onClick={close} disabled={action.running}>{t('close')}</Button>
                 <Button data-step="reject" onClick={() => { setRejecting(true); focusIn('textarea[name="reason"]') }} disabled={action.running}>{t('chk_reject')}</Button>
                 <Button variant="primary" onClick={() => { void decide(true) }} disabled={action.running} busy={action.is('approve')}>{t('face_approve')}</Button>
             </>}
