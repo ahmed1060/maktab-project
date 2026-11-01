@@ -465,7 +465,12 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      on 2026-11-01; Punches, merged in #150 on 2026-11-01; Exceptions,
      merged in #151 on 2026-11-01; Import and employee numbers, merged
      in #152 on 2026-11-01; and face checks, the Requests tab and adding
-     a punch, which opens for review in #153;
+     a punch, merged in #153 on 2026-11-01. The eleventh is Documents, a
+     person's own payslips and the payslip and settlement they open, in
+     two parts: My payslips, which opens for review in #154; then the
+     documents themselves, once `DESIGN.md` says how a printed document
+     looks. The pages after it go most used first: the check-in page, an
+     employee's history, company settings, then the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2208,3 +2213,17 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Reject and Approve, and the building blocks' dialog has no close button
   of its own, so on a phone, with no Escape key, it couldn't be closed
   without deciding. It has Close too, first, as Cancel is elsewhere.
+- **2026-11-01:** Attendance's face checks, Requests tab and adding a
+  punch were merged in #153, so all of Attendance is on the building
+  blocks. Documents is next, most used first, in two parts. My payslips
+  moves onto them in #154 (part 1):
+  - the page header, then a row for each payslip that opens it: the
+    month in the page's language, the year in its digits too, the days
+    paid, and the net, lined up down the list. It was a hand-made list;
+  - one approved but not paid yet says so in a badge, "Not paid yet", so
+    it isn't read as money already sent. The dot that ran it into the
+    days paid, which beside Arabic digits reads as a zero, is gone;
+  - while it loads, when the company hasn't switched payslips on, when
+    there are none yet, and when they didn't load, each says so. A
+    failed load passed for none, saying there were no payslips when
+    there were; it now says so, with the server's word and Try again.

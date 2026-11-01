@@ -1041,6 +1041,8 @@ export const ar = {
         my_payslips_hint: "كل قسيمة راتب صدرت لك، الأحدث أولاً. افتح أيًا منها لقراءتها أو طباعتها.",
         my_payslips_empty: "لا توجد قسائم بعد. تظهر هنا بمجرد اعتماد شهر.",
         my_payslips_off: "لم تفعّل شركتك الاطلاع على قسائم الراتب داخل التطبيق. ما زالت القسائم تصلك بالبريد.",
+        my_payslips_not_paid: "لم يُدفع بعد",
+        my_payslips_load_failed: "لم يتم تحميل قسائم راتبك.",
         payroll_debt_recovered: "حُصّل {paid} من {total}",
         payroll_debt_waive: "إعفاء",
         payroll_debt_waive_title: "إعفاء {name} من المديونية",

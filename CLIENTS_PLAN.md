@@ -2155,3 +2155,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   in #152. Its face checks, Requests tab and adding a punch move onto the
   building blocks in #153 (`UI_PLAN.md` §5). Neither touches clients or
   locations.
+- **2026-11-01:** Attendance's face checks, Requests tab and adding a
+  punch were merged in #153. My payslips moves onto the building blocks
+  in #154 (`UI_PLAN.md` §5). Neither touches clients or locations.
