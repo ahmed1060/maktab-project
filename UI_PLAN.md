@@ -462,9 +462,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      tabs, and what it says before them), merged in #147 on 2026-11-01;
      a Super Admin's company, the company in view from the top bar,
      merged in #148 on 2026-11-01; Days, with its month, merged in #149
-     on 2026-11-01; Punches, which opens for review in #150; Exceptions;
-     Import and employee numbers; and face checks, the Requests tab and
-     adding a punch;
+     on 2026-11-01; Punches, merged in #150 on 2026-11-01; Exceptions,
+     which opens for review in #151; Import and employee numbers; and face
+     checks, the Requests tab and adding a punch;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2078,3 +2078,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     whose it is, when, and in or out, above why;
   - on a phone, a punch's card gave its in or out a clock, and where it
     came from the notes' icon. Each has an icon of its own.
+- **2026-11-01:** Punches was merged in #150. Exceptions moves onto the
+  building blocks in #151 (part 5):
+  - its period is the month the other tabs are about, and a day of it,
+    picked under the page header and kept in the address (`DESIGN.md`
+    §5.3). Only days that are over have exceptions, so it goes up to
+    yesterday: with no month in the address it opens on yesterday's
+    month, a day not over yet is listed but can't be picked, and a period
+    with none over says so. They were two browser date fields;
+  - what waits elsewhere (requests to decide, punches with no person,
+    face checks overdue) is a tile each that opens where it's decided.
+    They were buttons beside the dates;
+  - the kinds (late or left early, absent, punch missing, overtime,
+    decided) are the building blocks' tabs, each with how many, kept in
+    the address (`?kind=absent`), so a reload or a link opens on one;
+  - each kind is a list (§5.4), a table on computers and a card for each
+    on phones, each day dated in the page's language and whose;
+  - a decision is a badge, Excused or Accepted as charged, with its
+    reason;
+  - excusing asks why in the building blocks' dialog, said under its
+    field when it's missing, and turning overtime down asks why too, the
+    reason its own to give. Each names the day and what it's about. They
+    were the old confirm box;
+  - while it loads, and when it can't, it says so, with the server's word
+    and Try again. It was a spinner, and a red line;
+  - the month, the day and numbers in the page's language are one module
+    the tabs share (`attendance/period.ts`).
+- **2026-11-01:** Found in the interface audit of #151:
+  - a day with no punch, such as overtime asked for ahead, gave its
+    times as "—–—". It gives none;
+  - one day's list was "To decide in Wednesday 14 October". It's "on"
+    a day, and "in" a month.

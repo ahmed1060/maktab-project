@@ -11,14 +11,13 @@ import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { ArrowsLeftRightIcon, BuildingsIcon, CalendarBlankIcon, ClockIcon, CoinsIcon, DevicesIcon, FingerprintIcon, HourglassIcon, InfoIcon, TimerIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { Button, Card, DataList, Details, Dialog, DialogActions, EmptyState, Field, ItemTitle, ListCard, Page, PageHeader, PeriodBar, Section, Select, StatusBadge, Tabs, TextArea, TotalTiles, type Column, type StatusTone, type Tile } from '@/components/ui'
-import { addressWithDay, addressWithPeriod, dayFromAddress, periodFromAddress, yearsAround } from '@/lib/period-address'
-import { countOf } from '@/lib/plural'
 import type { SWRError } from '@/lib/swr-fetcher'
 import { send, json } from './send'
 import FaceTab from './FaceTab'
 import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
 import AddPunchModal from './AddPunchModal'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
+import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from './period'
 import ExceptionsTab from './ExceptionsTab'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -61,7 +60,6 @@ type Codes = { mapped: { id: string; code: string; userId: string; name: string 
 
 type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'face' | 'import' | 'numbers'
 
-const pad = (n: number) => String(n).padStart(2, '0')
 
 export default function AttendancePage() {
     const { t } = useLanguage()
@@ -141,7 +139,7 @@ export default function AttendancePage() {
                 company's, from its own calendar, and a file chosen for import was meant for it (review on #13). */}
             <div role="tabpanel" id="attendance-panel" className="ui-tab-panel" aria-labelledby={`attendance-tab-${tab}`}>
                 <Fragment key={companyId ?? ''}>
-                    {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
+                    {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} />}
                     {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
                     {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
                     {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
@@ -170,46 +168,6 @@ type Day = {
 const STATUS_TONE: Record<string, StatusTone> = {
     PRESENT: 'good', ABSENT: 'problem', SUSPENDED: 'problem', INCOMPLETE: 'waiting',
     WORKED_REST_DAY: 'progress', WORKED_HOLIDAY: 'progress',
-}
-const lastDayOf = (month: string) => { const [y, m] = month.split('-').map(Number); return `${month}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}` }
-
-/** Numbers, amounts and clock times in the page's language (DESIGN.md §7). */
-function useFigures() {
-    const { t, locale } = useLanguage()
-    const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
-    const num = (n: number) => n.toLocaleString(digits)
-    return {
-        digits,
-        num,
-        amount: (minor: number) => (minor / 100).toLocaleString(digits, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        minutes: (n: number) => t('req_minutes').replace('{n}', num(n)),
-        // To the eighth of a day, as they're kept: 0.125, not 0.13 (found in the interface audit, PR 149).
-        days: (n: number) => countOf(t, locale, n, 'days', 4),
-        // "09:12" as the punch has it, in the page's digits.
-        clock: (at: string) => at.slice(11, 16).replace(/\d/g, c => num(Number(c))),
-    }
-}
-
-/**
- * The month Attendance's tabs are about, kept in the address (DESIGN.md §5.3),
- * so a reload or a link opens on it, and Days and Punches share it. With
- * none, the company's this month: its date, not the device's, which around
- * midnight or abroad is another (review on #12).
- */
-function useMonthInAddress(today: string) {
-    const { digits } = useFigures()
-    const params = useSearchParams()
-    const pathname = usePathname()
-    const router = useRouter()
-    const { year, month: monthNumber } = periodFromAddress(params, new Date(`${today}T12:00:00`))
-    const setPeriod = (y: number, m: number) => router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })
-    return {
-        params, pathname, router, year, monthNumber, setPeriod,
-        month: `${year}-${pad(monthNumber)}`,
-        monthName: new Date(year, monthNumber - 1).toLocaleString(digits, { month: 'long', year: 'numeric' }),
-        months: Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleString(digits, { month: 'long' }) })),
-        years: yearsAround(Number(today.slice(0, 4)), year).map(y => ({ value: String(y), label: y.toLocaleString(digits, { useGrouping: false }) })),
-    }
 }
 
 /**
@@ -444,9 +402,9 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
 
     // The month Days is about, and a day of it, kept in the address so a
     // reload or a link opens on them. Whose punches is picked here.
-    const { params, pathname, router, year, monthNumber, month, monthName, setPeriod, months, years } = useMonthInAddress(today)
-    const day = dayFromAddress(params, year, monthNumber)
-    const setDay = (d: number | null) => router.replace(addressWithDay(pathname, params.toString(), d), { scroll: false })
+    const period = useMonthInAddress(today)
+    const { monthNumber, year, month, monthName, setPeriod, months, years } = period
+    const { day, setDay, days, dayName } = useDayInAddress(period)
     const [who, setWho] = useState('')
     const [withdrawing, setWithdrawing] = useState<Punch | null>(null)
     const [reason, setReason] = useState('')
@@ -494,22 +452,12 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
         })
     }
 
-    const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate()
-    const days = [
-        { value: '', label: t('punch_every_day') },
-        ...Array.from({ length: lastDay }, (_, i) => ({
-            value: String(i + 1),
-            label: new Date(Date.UTC(year, monthNumber - 1, i + 1)).toLocaleDateString(digits, { weekday: 'short', day: 'numeric', timeZone: 'UTC' }),
-        })),
-    ]
     const whoOptions = [
         { value: '', label: t('punch_everyone') },
         ...(correctsCompany ? [{ value: UNMATCHED, label: t('punch_no_person') }] : []),
         ...(seesOthers ? people.map(x => ({ value: x.id, label: x.name })) : []),
     ]
-    const listTitle = day
-        ? t('punch_list_title_day').replace('{day}', new Date(Date.UTC(year, monthNumber - 1, day)).toLocaleDateString(digits, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }))
-        : t('punch_list_title').replace('{period}', monthName)
+    const listTitle = dayName ? t('punch_list_title_day').replace('{day}', dayName) : t('punch_list_title').replace('{period}', monthName)
     // The punch's day and time on the company's clock, as it came in.
     const when = (x: Punch) => new Date(`${x.at.slice(0, 16)}:00Z`).toLocaleString(digits, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' })
     const whose = (x: Punch) => x.name ?? t('punch_number').replace('{code}', x.hardwareUserId ?? '')
