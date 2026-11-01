@@ -137,6 +137,13 @@
   padding-inline: var(--space-3);
   font-size: var(--text-sm);
 }
+/* The check-in page's Check in and Check out only (§5.2, §5.5 Check-in):
+   the app's most-pressed buttons, often pressed outdoors and in a hurry. */
+.ui-btn-lg {
+  height: 56px;
+  padding-inline: var(--space-6);
+  font-size: var(--text-lg);
+}
 .ui-btn:disabled,
 .ui-btn[aria-disabled="true"] {
   opacity: 0.55;
@@ -901,6 +908,42 @@ a.ui-file-open:focus-visible,
     box-shadow: none;
     background: var(--paper);
   }
+}
+
+/* ── Check-in (§5.5) ── */
+/* The app's first screen: its cards at a form's width, and Check in and
+   Check out side by side, each half the card. */
+.ui-checkin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 640px;
+}
+.ui-checkin-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.ui-checkin-buttons .ui-btn {
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+  line-height: var(--leading-md);
+}
+/* Recorded: the check in the Good colour beside the words (§2.3). */
+.ui-checkin-answer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.ui-checkin-ok {
+  flex: none;
+  margin-top: 2px;
+  color: var(--status-good-fg);
+}
+/* The consent's own paragraphs, as written. */
+.ui-checkin-consent {
+  white-space: pre-line;
 }
 
 /* ── Face photos (Attendance, ATTENDANCE_PLAN.md §9.5) ── */
@@ -2055,6 +2098,9 @@ html[lang="ar"] .ui-empty-title {
   .ui-btn-sm {
     height: 44px;
     font-size: var(--text-lg);
+  }
+  .ui-btn-lg {
+    height: 56px;
   }
   .ui-input,
   .ui-select {

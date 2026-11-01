@@ -143,9 +143,13 @@ export function Panel({ children, className }: { children: ReactNode; className?
  * something is wrong, takes that tone: a bar on its start edge in the
  * meaning's colour (DESIGN.md §5.5). Its title says what it is.
  */
-export function Card({ title, actions, children, className, tone }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; tone?: 'waiting' | 'problem' }) {
+export function Card({ title, actions, children, className, tone, role }: {
+    title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; tone?: 'waiting' | 'problem'
+    /** status: read out when it appears, such as what became of a check-in. */
+    role?: 'status'
+}) {
     return (
-        <section className={cx('ui-panel ui-card', className)} data-tone={tone}>
+        <section className={cx('ui-panel ui-card', className)} data-tone={tone} role={role}>
             {(title || actions) && (
                 <div className="ui-card-head">
                     {title && <h2 className="ui-card-title">{title}</h2>}
