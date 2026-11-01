@@ -2389,3 +2389,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     such as a month already approved, says why;
   - the 12 labels only the old windows read are gone from both
     languages, and so is `--accent-solid-deep`, the colour of its "+2".
+- **2026-11-01:** Found in the browser and the interface audit on #159:
+  - each More actions menu is named for its bonus or deduction and its
+    month, and in Arabic the two were joined with an English comma.
+    They're joined as each language joins them now;
+  - after Reverse or Roll back, the focus went back to the row's menu,
+    which an undone row no longer has, and so fell to the page's start.
+    It goes to the section's heading now.

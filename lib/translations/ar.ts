@@ -1597,6 +1597,7 @@ export const ar = {
         hist_adj_reversed: "تم إلغاء التعديل",
         hist_adj_rolled_back: "تم التراجع عن التعديل",
         hist_adj_undo_failed: "لم يتغير التعديل.",
+        hist_adj_named: "{what}، {month}",
         download_template: "تحميل النموذج",
         upload_tasks_excel: "رفع مهام (إكسيل)",
         upload_en_template: "رفع النموذج الإنجليزي",

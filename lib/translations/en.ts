@@ -1636,6 +1636,7 @@ export const en = {
         hist_adj_reversed: "Adjustment reversed",
         hist_adj_rolled_back: "Adjustment rolled back",
         hist_adj_undo_failed: "The adjustment wasn't changed.",
+        hist_adj_named: "{what}, {month}",
         username_label: "Username",
         username_placeholder: "Enter username...",
         choose_file: "Choose File",

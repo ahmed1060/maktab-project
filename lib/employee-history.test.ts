@@ -115,7 +115,7 @@ describe("the frame", () => {
         // Bonuses and deductions are a section of the Salary tab, each with its own actions (part 3).
         const salaryTab = await page({ perms: ["salary.view", "salary_adjustments.manage"], swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
         expect(salaryTab).not.toContain("ui-page-actions")
-        expect(salaryTab).toContain(`<h2 class="ui-section-title">${en.hist_adjustments}</h2>`)
+        expect(salaryTab).toMatch(new RegExp(`<h2 class="ui-section-title">(<span[^>]*>)?${en.hist_adjustments}(</span>)?</h2>`))
         // Day off credit has none: Reconsider is on each day off it can change (part 2).
         const dayOff = await page({ query: "tab=day-off", perms: ["dayoff.approve"], swr: { "/api/users/u2/day-off-history": { data: { data: HISTORY } } } })
         expect(dayOff).not.toContain("ui-page-actions")
@@ -414,7 +414,7 @@ async function undo(action: "reverse" | "rollback", locale: "en" | "ar" = "en") 
 describe("bonuses and deductions (part 3)", () => {
     it("are a section of the Salary tab, for who can see salary", async () => {
         const html = await page({ swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
-        expect(html).toContain(`<h2 class="ui-section-title">${en.hist_adjustments}</h2>`)
+        expect(html).toMatch(new RegExp(`<h2 class="ui-section-title">(<span[^>]*>)?${en.hist_adjustments}(</span>)?</h2>`))
         expect(await page({ perms: [] })).not.toContain(en.hist_adjustments)
     })
 
@@ -479,6 +479,27 @@ describe("bonuses and deductions (part 3)", () => {
         expect(html).not.toContain("<textarea")
         expect(html).toContain(`<button type="submit" class="ui-btn ui-btn-danger">${en.hist_adj_rollback}</button>`)
         expect(await undo("rollback", "ar")).toContain(ar.hist_adj_rollback_title)
+    })
+})
+
+describe("found in the browser (the audit, PR 159)", () => {
+    it("names each More actions in the page's language, Arabic comma too", async () => {
+        // "مكافأة يومان, نوفمبر": an English comma inside Arabic.
+        const html = await adjustments({ canUndo: true }, "ar")
+        const labels = [...html.matchAll(/aria-label="([^"]*)" title="[^"]*" aria-haspopup="menu"/g)].map(m => m[1])
+        expect(labels.length).toBeGreaterThan(0)
+        for (const label of labels) {
+            expect(label).toContain("، ")
+            expect(label).not.toContain(", ")
+        }
+    })
+
+    it("takes the focus to the section's heading after an undo, as the row's menu goes with it", async () => {
+        // It went back to the menu, which the undone row no longer has, and so to the page's start.
+        const html = await adjustments()
+        expect(html).toMatch(new RegExp(`<h2 class="ui-section-title"><span id="[^"]+" tabindex="-1">${en.hist_adjustments}</span></h2>`))
+        const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/Adjustments.tsx", "utf8")
+        expect(src).toContain("document.getElementById(headingId)?.focus()")
     })
 })
 

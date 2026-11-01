@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowCounterClockwiseIcon, ArrowUUpLeftIcon, CalendarBlankIcon, ClockIcon, HourglassIcon, PlusMinusIcon, TagIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import {
     Button, DataList, Dialog, DialogActions, EmptyState, Field, ListCard, RowMenu, Section, StatusBadge, TextArea, visibleRow,
@@ -74,6 +74,17 @@ export function Adjustments({ userId, adjustments, loading, error, retrying, ret
 }) {
     const { t, what, monthLabel, entered } = useAdjustmentWords()
     const [undoing, setUndoing] = useState<{ adj: SalaryAdjustment; action: Undo } | null>(null)
+    // After an undo the row's menu goes with it, so the focus would fall to
+    // the page's start: it goes to the section's heading instead (PR 159).
+    // After the render that closes the dialog, whose own clean-up gives the
+    // focus back to the menu first.
+    const headingId = useId()
+    const refocus = useRef(false)
+    useEffect(() => {
+        if (!refocus.current) return
+        refocus.current = false
+        document.getElementById(headingId)?.focus()
+    })
 
     // The one a notification opened, brought into view once it's listed. The
     // list has it twice, as a table row and as a phone card, so it's the one
@@ -98,7 +109,9 @@ export function Adjustments({ userId, adjustments, loading, error, retrying, ret
             // It rolled back on one click; now it asks first, as a destructive action does.
             { key: 'rollback', label: t('hist_adj_rollback'), icon: ArrowUUpLeftIcon, danger: true, onSelect: () => setUndoing({ adj, action: 'rollback' }) },
         ]
-        return <RowMenu label={t('ui_more_actions_for').replace('{name}', `${what(adj)}, ${monthLabel(adj.year, adj.month)}`)} tooltip={t('ui_more_actions')} items={items} />
+        // Joined as each language joins them: an English comma read wrong in Arabic (PR 159).
+        const named = t('hist_adj_named').replace('{what}', what(adj)).replace('{month}', monthLabel(adj.year, adj.month))
+        return <RowMenu label={t('ui_more_actions_for').replace('{name}', named)} tooltip={t('ui_more_actions')} items={items} />
     }
 
     const columns: Column<SalaryAdjustment>[] = [
@@ -146,7 +159,7 @@ export function Adjustments({ userId, adjustments, loading, error, retrying, ret
     })()
 
     return (
-        <Section title={t('hist_adjustments')}>
+        <Section title={<span id={headingId} tabIndex={-1}>{t('hist_adjustments')}</span>}>
             {body}
             {undoing && (
                 <UndoAdjustment
@@ -154,7 +167,7 @@ export function Adjustments({ userId, adjustments, loading, error, retrying, ret
                     adjustment={undoing.adj}
                     action={undoing.action}
                     onClose={() => setUndoing(null)}
-                    onDone={() => { setUndoing(null); onUndone() }}
+                    onDone={() => { refocus.current = true; setUndoing(null); onUndone() }}
                 />
             )}
         </Section>
