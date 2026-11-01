@@ -461,9 +461,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      tenth is Attendance, in seven parts: its frame (the page header, the
      tabs, and what it says before them), merged in #147 on 2026-11-01;
      a Super Admin's company, the company in view from the top bar,
-     merged in #148 on 2026-11-01; Days, with its month, which opens for
-     review in #149; Punches; Exceptions; Import and employee numbers; and
-     face checks, the Requests tab and adding a punch;
+     merged in #148 on 2026-11-01; Days, with its month, merged in #149
+     on 2026-11-01; Punches, which opens for review in #150; Exceptions;
+     Import and employee numbers; and face checks, the Requests tab and
+     adding a punch;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2048,3 +2049,26 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   below the amount, so 62.50 couldn't be checked against the policy's
   0.125 of a day. The card gives both now: "Deduction: 62.50 (0.125
   days)".
+- **2026-11-01:** Days was merged in #149. Punches moves onto the building
+  blocks in #150 (part 4):
+  - its period is the month Days is about, picked under the page header
+    and kept in the address, so the two tabs share it (`DESIGN.md` §5.3).
+    A day of it is picked beside the month, and kept in the address too
+    (`?day=15`), so a big company's month, cut short at 2,000 punches,
+    can be read a day at a time (decided on 2026-11-01). They were two
+    browser date fields, from and to, in English;
+  - whose punches is picked beside the day. The punches whose number is
+    nobody's yet are one of its choices, "With no person yet", for
+    whoever corrects the company's attendance. They were a checkbox;
+  - the punches are a list (§5.4), a table on computers and a card for
+    each on phones, under a heading naming the month or the day. Each
+    one's day and time are in the page's language;
+  - a punch that doesn't count, or no longer does, is a badge at the end:
+    Flagged, Held, Not counted or Withdrawn, with what it means and why
+    below it. A withdrawn one was greyed and struck through;
+  - Add a punch is the list heading's button; Withdraw is each row's;
+  - withdrawing is in the building blocks' dialog: why, said under its
+    field when it's missing, and the danger button, which stays while it
+    works. It was the old confirm box;
+  - while they load, and when they can't, the list says so, with the
+    server's word and Try again. It was a spinner, and a red line.

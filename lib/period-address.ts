@@ -47,3 +47,21 @@ export function yearsAround(thisYear: number, picked?: number): number[] {
     if (picked !== undefined && !years.includes(picked)) years.push(picked)
     return years.sort((a, b) => a - b)
 }
+
+/**
+ * A day of the month the address names (`?day=15`), as Attendance's punches
+ * are narrowed to (PR 150): null for every day, as for none at all or one the
+ * month hasn't got.
+ */
+export function dayFromAddress(params: Params, year: number, month: number): number | null {
+    const last = new Date(Date.UTC(year, month, 0)).getUTCDate()
+    return whole(params.get('day'), 1, last)
+}
+
+/** The address with this day in it, or none for every day, the rest kept. */
+export function addressWithDay(pathname: string, current: string, day: number | null): string {
+    const next = new URLSearchParams(current)
+    if (day === null) next.delete('day')
+    else next.set('day', String(day))
+    return `${pathname}?${next.toString()}`
+}

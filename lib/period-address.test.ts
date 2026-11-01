@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { periodFromAddress, addressWithPeriod, yearFromAddress, addressWithYear, yearsAround } from "./period-address"
+import { periodFromAddress, addressWithPeriod, yearFromAddress, addressWithYear, yearsAround, dayFromAddress, addressWithDay } from "./period-address"
 
 /**
  * Which period a page is about lives in its address (DESIGN.md §5.3,
@@ -60,5 +60,27 @@ describe("the years offered", () => {
         expect(yearsAround(2026, 2019)).toEqual([2019, 2024, 2025, 2026, 2027, 2028])
         expect(yearsAround(2026, 2031)).toEqual([2024, 2025, 2026, 2027, 2028, 2031])
         expect(yearsAround(2026, 2025)).toEqual([2024, 2025, 2026, 2027, 2028])
+    })
+})
+
+describe("a day of the month, as Attendance's punches' (PR 150)", () => {
+    const params = (search: string) => new URLSearchParams(search)
+
+    it("is the day the address names, when the month has it", () => {
+        expect(dayFromAddress(params("year=2026&month=10&day=15"), 2026, 10)).toBe(15)
+        expect(dayFromAddress(params("day=31"), 2026, 10)).toBe(31)
+    })
+
+    it("is every day when the address names none, or one the month hasn't", () => {
+        expect(dayFromAddress(params(""), 2026, 10)).toBeNull()
+        expect(dayFromAddress(params("day=31"), 2026, 11)).toBeNull()
+        expect(dayFromAddress(params("day=29"), 2026, 2)).toBeNull()
+        expect(dayFromAddress(params("day=29"), 2028, 2)).toBe(29)
+        for (const bad of ["0", "-1", "1.5", "abc", "015x"]) expect(dayFromAddress(params(`day=${bad}`), 2026, 10)).toBeNull()
+    })
+
+    it("goes into the address, the rest kept, and out of it for every day", () => {
+        expect(addressWithDay("/dashboard/attendance", "tab=punches&year=2026&month=10", 15)).toBe("/dashboard/attendance?tab=punches&year=2026&month=10&day=15")
+        expect(addressWithDay("/dashboard/attendance", "tab=punches&day=15&company=Delta+Sites", null)).toBe("/dashboard/attendance?tab=punches&company=Delta+Sites")
     })
 })
