@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { companyToPutInView, addressWithCompanyInView } from "./company-link"
+import { companyLinkToFollow, addressWithCompanyInView } from "./company-link"
 
 /**
  * A link that names the company it's about (`?companyId=`), as a company's
@@ -9,39 +9,40 @@ import { companyToPutInView, addressWithCompanyInView } from "./company-link"
  */
 const known = ["delta", "nile"]
 const ATTENDANCE = "/dashboard/attendance"
+const follow = (fields: Partial<Parameters<typeof companyLinkToFollow>[0]>) =>
+    companyLinkToFollow({ pathname: ATTENDANCE, linked: "delta", known, leftBehind: null, ...fields })
 
-describe("the company a link puts in view", () => {
-    it("is the one the link names, when another, or none, is in view", () => {
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known, leftBehind: null })).toBe("delta")
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: null, known, leftBehind: null })).toBe("delta")
+describe("the link to follow", () => {
+    it("is the company the link names", () => {
+        expect(follow({})).toBe("delta")
     })
 
-    it("is none when the link names none, or the one in view already", () => {
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: null, inView: "nile", known, leftBehind: null })).toBeNull()
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "nile", inView: "nile", known, leftBehind: null })).toBeNull()
+    it("is followed even when its company is in view already, so it leaves the address (review on PR 148)", () => {
+        // Left in the address, the page went on preferring it, and put that
+        // company back after another tab picked a different one. Which company
+        // is in view isn't asked: following it is the same either way.
+        expect(companyLinkToFollow.length).toBe(1)
+        expect(follow({ linked: "nile" })).toBe("nile")
     })
 
-    it("is none for a company the top bar doesn't know, or before it knows any", () => {
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "gone", inView: "nile", known, leftBehind: null })).toBeNull()
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known: [], leftBehind: null })).toBeNull()
+    it("is none when the link names none, or a company the top bar doesn't know, or before it knows any", () => {
+        expect(follow({ linked: null })).toBeNull()
+        expect(follow({ linked: "gone" })).toBeNull()
+        expect(follow({ known: [] })).toBeNull()
     })
 
     it("is none for the company a pick in the top bar has just left in the address", () => {
-        // The Requests page keeps the company in view in its own address, so
-        // for a moment after picking Nile it still names Delta: taking that
-        // for a link would undo the pick.
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known, leftBehind: "delta" })).toBeNull()
+        // For a moment after picking Nile the address still names Delta:
+        // taking that for a link would undo the pick.
+        expect(follow({ leftBehind: "delta" })).toBeNull()
     })
-})
 
-describe("which addresses are links", () => {
-    it("only the pages links open: a page that keeps the company in view in its own address isn't one (review on PR 148)", () => {
+    it("is none but on the pages links open: a page that keeps the company in view in its own address isn't one (review on PR 148)", () => {
         // Requests keeps companyId in step with the company in view. When
         // another tab picks Nile, this tab's Requests still names Delta, and
         // taking that for a link wrote Delta back over the other tab's pick.
-        expect(companyToPutInView({ pathname: "/dashboard/requests", linked: "delta", inView: "nile", known, leftBehind: null })).toBeNull()
-        expect(companyToPutInView({ pathname: "/dashboard/payroll", linked: "delta", inView: "nile", known, leftBehind: null })).toBeNull()
-        expect(companyToPutInView({ pathname: ATTENDANCE, linked: "delta", inView: "nile", known, leftBehind: null })).toBe("delta")
+        expect(follow({ pathname: "/dashboard/requests" })).toBeNull()
+        expect(follow({ pathname: "/dashboard/payroll" })).toBeNull()
     })
 })
 
@@ -59,10 +60,10 @@ describe("the top bar follows such a link", () => {
 
     it("before it matches the company named in the address, and remembers what a pick leaves behind", () => {
         const sync = HEADER.slice(HEADER.indexOf("// Sync URL <-> Context"), HEADER.indexOf("lastProcessedCompany.current = companyNameFromUrl"))
-        expect(sync.indexOf("companyToPutInView(")).toBeGreaterThan(-1)
-        expect(sync).toContain("companyToPutInView({ pathname, linked,")
-        expect(sync.indexOf("companyToPutInView(")).toBeLessThan(sync.indexOf("if (companyNameFromUrl === lastProcessedCompany.current) return"))
-        expect(sync).toMatch(/if \(putInView\) \{\s*setSelectedCompanyId\(putInView\)/)
+        expect(sync).toContain("const follow = companyLinkToFollow({ pathname, linked: searchParams.get('companyId'),")
+        expect(sync.indexOf("companyLinkToFollow(")).toBeLessThan(sync.indexOf("if (companyNameFromUrl === lastProcessedCompany.current) return"))
+        // Puts it in view only when it isn't, and takes it out of the address either way.
+        expect(sync).toMatch(/if \(follow\) \{\s*const moving = follow !== selectedCompanyId\s*if \(moving\) setSelectedCompanyId\(follow\)/)
         expect(sync).toContain("router.replace(`${pathname}?${addressWithCompanyInView(searchParams.toString(), name)}`)")
         const pick = HEADER.slice(HEADER.indexOf("const handleSelectCompany"), HEADER.indexOf("router.push(`${pathname}?${params.toString()}`)"))
         expect(pick).toContain("companyLeftBehind.current = searchParams.get('companyId')")

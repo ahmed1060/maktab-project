@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Image from 'next/image'
 import type { TranslationKey } from '@/lib/translations'
 import NotificationBell from './NotificationBell'
-import { addressWithCompanyInView, companyToPutInView } from '@/lib/company-link'
+import { addressWithCompanyInView, companyLinkToFollow } from '@/lib/company-link'
 import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -110,16 +110,17 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         // attendance settings or a face check's notice, puts it in view
         // (Attendance part 2). Before the name below, which the address may
         // still carry for the company the link takes the page away from.
-        const linked = searchParams.get('companyId')
-        if (linked !== companyLeftBehind.current) companyLeftBehind.current = null
-        const putInView = companyToPutInView({ pathname, linked, inView: selectedCompanyId, known: companies.map(c => c.id), leftBehind: companyLeftBehind.current })
-        if (putInView) {
-            setSelectedCompanyId(putInView)
-            // Followed once, and taken out of the address (lib/company-link.ts).
-            const name = companies.find(c => c.id === putInView)?.name
+        if (searchParams.get('companyId') !== companyLeftBehind.current) companyLeftBehind.current = null
+        const follow = companyLinkToFollow({ pathname, linked: searchParams.get('companyId'), known: companies.map(c => c.id), leftBehind: companyLeftBehind.current })
+        if (follow) {
+            const moving = follow !== selectedCompanyId
+            if (moving) setSelectedCompanyId(follow)
+            // Followed once, and taken out of the address (lib/company-link.ts),
+            // even when its company is in view already (review on PR 148).
+            const name = companies.find(c => c.id === follow)?.name
             lastProcessedCompany.current = name
             router.replace(`${pathname}?${addressWithCompanyInView(searchParams.toString(), name)}`)
-            router.refresh()
+            if (moving) router.refresh()
             return
         }
 

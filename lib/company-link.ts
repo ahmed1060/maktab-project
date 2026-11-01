@@ -10,21 +10,23 @@
  * taking it for a link wrote it back over the other tab's pick (review on
  * PR 148).
  *
- * None, too, when the link names no company the top bar knows, or the one
- * already in view, or the one a pick in the top bar has just left in the
- * address, which would undo the pick.
+ * None, too, when the link names no company the top bar knows, or the one a
+ * pick in the top bar has just left in the address, which would undo the pick.
+ *
+ * Followed even when its company is in view already: following it takes it out
+ * of the address, and left in, the page went on preferring it and put that
+ * company back after another tab picked a different one (review on PR 148).
  */
 export const LINKED_PAGES = ['/dashboard/attendance']
 
-export function companyToPutInView({ pathname, linked, inView, known, leftBehind }: {
+export function companyLinkToFollow({ pathname, linked, known, leftBehind }: {
     pathname: string
     linked: string | null
-    inView: string | null
     known: string[]
     leftBehind: string | null
 }): string | null {
     if (!LINKED_PAGES.includes(pathname)) return null
-    if (!linked || linked === inView || linked === leftBehind) return null
+    if (!linked || linked === leftBehind) return null
     return known.includes(linked) ? linked : null
 }
 

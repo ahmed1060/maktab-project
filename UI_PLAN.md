@@ -1998,3 +1998,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   link. When another tab picked a company, an open Requests tab still
   named the last one, and wrote it back over the other tab's pick. Only
   the pages such links open, Attendance today, are links now.
+- **2026-11-01:** From Codex's review of #148: a link naming the company
+  already in view stayed in the address, since there was nothing to
+  change. The page went on preferring it, and put that company back after
+  another tab picked a different one. Such a link is now followed all the
+  same, which takes it out of the address.
