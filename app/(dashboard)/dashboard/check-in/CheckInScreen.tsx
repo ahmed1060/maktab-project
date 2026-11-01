@@ -281,20 +281,24 @@ export default function CheckInScreen({ device }: { device: CheckInDevice | null
  * recorded but waiting on someone; or not recorded, and why.
  */
 export function Answer({ answer }: { answer: CheckInAnswer }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const digits = useDigits()
     if (answer.outcome === 'REFUSED') {
         const reason = t(`ci_refusal_${answer.reason}` as TranslationKey)
         return <Card tone="problem" role="status"><p>{t('ci_refused').replace('{reason}', reason)}</p></Card>
     }
-    const said = t(answerKey(answer))
+    // The reasons listed as the language lists things: ", " read as English inside Arabic (PR 156).
+    const reasons = new Intl.ListFormat(locale === 'ar' ? 'ar' : 'en', { type: 'conjunction' })
+        .format(answer.reasons.map(r => t(`att_flag_${r}` as TranslationKey)))
+    const [before, after = ''] = t(answerKey(answer))
         .replace('{time}', digits.text(answer.at.slice(11, 16)))
-        .replace('{place}', answer.place.name)
-        .replace('{reasons}', answer.reasons.map(r => t(`att_flag_${r}` as TranslationKey)).join(', '))
+        .replace('{reasons}', reasons)
+        .split('{place}')
     const accepted = answer.outcome === 'ACCEPTED'
     return (
         <Card tone={accepted ? undefined : 'waiting'} role="status">
-            <p className="ui-checkin-answer">{accepted && <Icon icon={CheckCircleIcon} size={20} className="ui-checkin-ok" />}{said}</p>
+            {/* The place's name keeps its own direction: an English one ran into the Arabic sentence (PR 156). */}
+            <p className="ui-checkin-answer">{accepted && <Icon icon={CheckCircleIcon} size={20} className="ui-checkin-ok" />}<span>{before}<bdi>{answer.place.name}</bdi>{after}</span></p>
             <p className="ui-card-note">{t('ci_distance').replace('{n}', digits.number(answer.distanceMeters))}</p>
         </Card>
     )

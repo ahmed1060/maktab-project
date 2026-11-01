@@ -2285,3 +2285,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the screen is its own file (`check-in/CheckInScreen.tsx`), given
     the phone, so it's tested without one. Emoji, typed-in sizes and
     colours, and the header set from inside the page are gone.
+- **2026-11-01:** Found in the browser and the interface audit on #156,
+  in Arabic:
+  - Check in and Check out each wrapped onto two lines at half a
+    phone's width. The large button has 12px either side now, not 24px,
+    and both fit on one line;
+  - a place's name ran into the Arabic sentence around it, so its full
+    stop could land at the wrong end. It keeps its own direction now;
+  - the reasons a check-in waits for a review were joined with ", ",
+    which reads as English inside Arabic. They're listed as each
+    language lists things.

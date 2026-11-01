@@ -135,12 +135,12 @@ describe("what became of a check-in", () => {
     it("is a card read out by screen readers: recorded, with a check in the Good colour", async () => {
         const html = await render(answer)
         expect(html).toMatch(/^<section class="ui-panel ui-card" role="status"><p class="ui-checkin-answer"><svg[^>]*class="ui-icon ui-checkin-ok"/)
-        expect(html).toContain(en.ci_accepted.replace("{time}", "08:58").replace("{place}", "Head office"))
+        expect(html).toContain(en.ci_accepted.replace("{time}", "08:58").replace("{place}", "<bdi>Head office</bdi>"))
         expect(html).toContain(en.ci_distance.replace("{n}", "42"))
     })
 
     it("waits on someone when it counts only once reviewed, and is a problem when not recorded", async () => {
-        expect(await render({ ...answer, outcome: "FLAGGED", reasons: ["OUTSIDE_RADIUS"] })).toContain('<section class="ui-panel ui-card" data-tone="waiting" role="status">')
+        expect(await render({ ...answer, outcome: "FLAGGED", reasons: ["OUTSIDE_AREA"] })).toContain('<section class="ui-panel ui-card" data-tone="waiting" role="status">')
         const refusedHtml = await render({ outcome: "REFUSED", reason: "MOCK_LOCATION" })
         expect(refusedHtml).toContain('<section class="ui-panel ui-card" data-tone="problem" role="status">')
         expect(refusedHtml).toContain(en.ci_refused.replace("{reason}", en.ci_refusal_MOCK_LOCATION))
@@ -148,7 +148,7 @@ describe("what became of a check-in", () => {
 
     it("gives its time and distance in the page's digits", async () => {
         const html = await render(answer, "ar")
-        expect(html).toContain(ar.ci_accepted.replace("{time}", "٠٨:٥٨").replace("{place}", "Head office"))
+        expect(html).toContain(ar.ci_accepted.replace("{time}", "٠٨:٥٨").replace("{place}", "<bdi>Head office</bdi>"))
         expect(html).toContain(ar.ci_distance.replace("{n}", "٤٢"))
     })
 
@@ -160,6 +160,35 @@ describe("what became of a check-in", () => {
         expect(html).toContain(ar.ci_late.replace("{n}", "١٧").replace("{start}", "٠٨:٣٠"))
         expect(html).toContain(ar.ci_late_balance.replace("{left}", "١٢٠"))
         expect(html).toContain(`>${ar.ci_ask_permission}</button>`)
+    })
+})
+
+describe("in Arabic (the audit, PR 156)", () => {
+    const at = "2026-11-01T18:39:00"
+    const flagged = { outcome: "FLAGGED", reasons: ["OUTSIDE_AREA", "ATTESTATION_UNVERIFIED"], place: { id: "p", name: "Head office, Nasr City" }, distanceMeters: 15, at, late: null }
+    const render = async (locale: "en" | "ar") => {
+        state.locale = locale
+        const { Answer } = await import("@/app/(dashboard)/dashboard/check-in/CheckInScreen")
+        return renderToStaticMarkup(h(Answer, { answer: flagged as never }))
+    }
+
+    it("keeps a place's own name in its own direction", async () => {
+        // An English name ran into the Arabic sentence: its full stop went to the wrong end.
+        expect(await render("ar")).toContain("<bdi>Head office, Nasr City</bdi>")
+    })
+
+    it("lists the reasons for a review as each language does", async () => {
+        // Joined with ", " they read as English inside Arabic.
+        for (const [locale, words] of [["en", en], ["ar", ar]] as const) {
+            const reasons = new Intl.ListFormat(locale, { type: "conjunction" }).format([words.att_flag_OUTSIDE_AREA, words.att_flag_ATTESTATION_UNVERIFIED])
+            expect(await render(locale)).toContain(reasons)
+        }
+    })
+
+    it("fits Check in and Check out on one line each, at half a phone's width", () => {
+        // 24px either side left an Arabic label 112px on a 390px phone: both wrapped onto two lines.
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-btn-lg \{[^}]*padding-inline: var\(--space-3\);/)
     })
 })
 

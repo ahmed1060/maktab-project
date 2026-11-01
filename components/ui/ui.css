@@ -141,7 +141,9 @@
    the app's most-pressed buttons, often pressed outdoors and in a hurry. */
 .ui-btn-lg {
   height: 56px;
-  padding-inline: var(--space-6);
+  /* 12px either side, so an Arabic label fits on one line at half a
+     phone's width: at 24px both wrapped (PR 156). */
+  padding-inline: var(--space-3);
   font-size: var(--text-lg);
 }
 .ui-btn:disabled,
