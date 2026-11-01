@@ -2120,3 +2120,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-10-31:** Payroll's top was merged in #141, and its review cards
   move onto the building blocks in #142 (`UI_PLAN.md` §5). Neither touches
   clients or locations.
+- **2026-11-01:** Payroll's review cards were merged in #142, and four
+  attendance tests that depended on the date are fixed in #143
+  (`UI_PLAN.md`). Neither touches clients or locations.

@@ -1862,3 +1862,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   after approval had a Mark resolved button with the same name, so a
   screen reader couldn't tell one row's from the next. Each is named for
   its day and person now.
+- **2026-11-01:** Payroll's review cards were merged in #142. Next, before
+  the rest of Payroll, four attendance tests that depended on the date are
+  fixed, in #143. None of them is about the product: the code counts days
+  and months in the company's time zone, as it should, and the tests
+  didn't.
+  - The agent's test, and two of the nightly rebuild's, took today's day or
+    month from UTC. In the last two hours of a month in UTC it's already
+    the next month in Cairo, so they failed then, the agent's in CI too.
+    They take the company's now, as the code does.
+  - A night shift's test was fixed at November 2026, the month after the
+    one an earlier test approves, which was October when it was written.
+    That month is the month of a check-in made today, so from 1 November
+    the two clashed, and it failed on every run. It picks its months after
+    the one approved, with a Monday at the month's end as before, and
+    takes Cairo's own offset, +03:00 in summer.
