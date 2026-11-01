@@ -2164,3 +2164,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** The payslip and the settlement statement were merged in
   #155. The check-in page moves onto the building blocks in #156
   (`UI_PLAN.md` §5). Neither touches clients or locations.
+- **2026-11-01:** The check-in page was merged in #156. An employee's
+  history moves onto the building blocks in three parts, the first in
+  #157 (`UI_PLAN.md` §5). Neither touches clients or locations.

@@ -21,7 +21,8 @@ const STATEMENT = readFileSync("app/(dashboard)/dashboard/documents/settlement/[
 const MODAL = readFileSync("components/EndContractModal.tsx", "utf8")
 const REGISTER = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
 const DEBTS_API = stripComments(readFileSync("app/api/users/[id]/debts/route.ts", "utf8"))
-const EMPLOYEE = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+// The page and its Salary tab, its own file since PR 157.
+const EMPLOYEE = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8") + readFileSync("app/(dashboard)/dashboard/employees/[id]/history/SalaryTab.tsx", "utf8")
 const BACKUP = readFileSync(".github/workflows/backup.yml", "utf8")
 const SCHEMA = readFileSync("prisma/schema.prisma", "utf8")
 
