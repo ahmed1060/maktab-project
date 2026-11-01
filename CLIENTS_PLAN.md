@@ -2172,3 +2172,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   (`UI_PLAN.md` §5). The Costs tab lists the tasks a person paid for and
   links each one, as the Costs page does; it doesn't touch clients or
   locations.
+- **2026-11-01:** An employee's history part 2 was merged in #158. Its
+  bonuses and deductions move onto the building blocks in #159
+  (`UI_PLAN.md` §5). It doesn't touch clients or locations.

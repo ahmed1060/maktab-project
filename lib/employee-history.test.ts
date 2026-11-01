@@ -65,6 +65,11 @@ const COSTS = [
     { id: "t1", title: "Fix the gate", amount: 1250, status: "PAID", date: "2026-10-20T12:00:00Z" },
     { id: "t2", title: "Buy cable", amount: 80.5, status: "PENDING_PAYMENT", date: "2026-10-22T12:00:00Z" },
 ]
+const ADJUSTMENTS = [
+    { id: "a1", type: "BONUS", amount: 2, reason: "Weekend shift", status: "ACTIVE", month: 10, year: 2026, source: "MANUAL", createdAt: "2026-10-28T12:30:00Z" },
+    { id: "a2", type: "DEDUCTION", amount: 1.5, reason: null, status: "ACTIVE", month: 10, year: 2026, source: "TASK_PENALTY", createdAt: "2026-10-20T12:30:00Z" },
+    { id: "a3", type: "BONUS", amount: 1, reason: "Typed twice", status: "REVERSED", month: 9, year: 2026, source: "MANUAL", createdAt: "2026-09-12T12:30:00Z" },
+]
 const egp = (n: number, locale = "en-GB") => `${n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${locale === "ar-EG" ? ar.egp : en.egp}`
 const money = (n: number, locale = "en-EG") => new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 const refused = (status: number) => ({ error: Object.assign(new Error("Request failed"), { status, info: { error: "Database unavailable" } }) })
@@ -106,9 +111,11 @@ describe("the frame", () => {
         expect(await page({ perms: [] })).toMatch(new RegExp(`aria-selected="true"[^>]*>${en.history}</button>`))
     })
 
-    it("puts the tab's own action in the page header", async () => {
-        const adjust = await page({ perms: ["salary.view", "salary_adjustments.manage"] })
-        expect(adjust).toMatch(new RegExp(`<div class="ui-page-actions"><button type="button" class="ui-btn ui-btn-primary">${en.hist_adjustments}</button></div>`))
+    it("has no action in the page header: each tab's actions are on its rows", async () => {
+        // Bonuses and deductions are a section of the Salary tab, each with its own actions (part 3).
+        const salaryTab = await page({ perms: ["salary.view", "salary_adjustments.manage"], swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
+        expect(salaryTab).not.toContain("ui-page-actions")
+        expect(salaryTab).toMatch(new RegExp(`<h2 class="ui-section-title">(<span[^>]*>)?${en.hist_adjustments}(</span>)?</h2>`))
         // Day off credit has none: Reconsider is on each day off it can change (part 2).
         const dayOff = await page({ query: "tab=day-off", perms: ["dayoff.approve"], swr: { "/api/users/u2/day-off-history": { data: { data: HISTORY } } } })
         expect(dayOff).not.toContain("ui-page-actions")
@@ -384,12 +391,143 @@ describe("found in the browser (the audit, PR 158)", () => {
     })
 })
 
+async function adjustments(props: Record<string, unknown> = {}, locale: "en" | "ar" = "en") {
+    state.locale = locale
+    const { Adjustments } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/Adjustments")
+    return renderToStaticMarkup(h(Adjustments, {
+        userId: "u2", adjustments: ADJUSTMENTS, loading: false, error: undefined, retrying: false, retry: () => {},
+        canUndo: false, highlighted: null, scrollTo: null, onUndone: () => {}, ...props,
+    } as never))
+}
+async function undo(action: "reverse" | "rollback", locale: "en" | "ar" = "en") {
+    state.locale = locale
+    const { UndoAdjustment } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/Adjustments")
+    // Portalled to the body, which a static render doesn't have.
+    vi.stubGlobal("document", { body: {} })
+    try {
+        return renderToStaticMarkup(h(UndoAdjustment, { userId: "u2", adjustment: ADJUSTMENTS[0], action, onClose: () => {}, onDone: () => {} } as never))
+    } finally {
+        vi.unstubAllGlobals()
+    }
+}
+
+describe("bonuses and deductions (part 3)", () => {
+    it("are a section of the Salary tab, for who can see salary", async () => {
+        const html = await page({ swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
+        expect(html).toMatch(new RegExp(`<h2 class="ui-section-title">(<span[^>]*>)?${en.hist_adjustments}(</span>)?</h2>`))
+        expect(await page({ perms: [] })).not.toContain(en.hist_adjustments)
+    })
+
+    it("list each: what it was, the month it counts in, where it came from, why, and when it was entered", async () => {
+        const html = await adjustments()
+        expect(html).toContain(`<caption class="ui-visually-hidden">${en.hist_adjustments}</caption>`)
+        expect(html).toContain(en.hist_bonus_n.replace("{days}", "2 days"))
+        expect(html).toContain(en.hist_deducted_n.replace("{days}", "1.5 days"))
+        expect(html).toContain(">October 2026<")
+        expect(html).toContain(en.adjustment_source_MANUAL)
+        expect(html).toContain(en.adjustment_source_TASK_PENALTY)
+        expect(html).toContain("<bdi>Weekend shift</bdi>")
+        expect(html).toContain("28 October 2026")
+        // The month and its source were one line joined by a chip; the sign was a "+" or "-".
+        expect(html).not.toContain(">+")
+    })
+
+    it("say in a badge that a reversed or rolled back one is finished, and offer it nothing", async () => {
+        const html = await adjustments({ canUndo: true })
+        expect(html).toContain(`<span class="ui-badge ui-badge-neutral">${en.reversed_label}</span>`)
+        const table = html.slice(0, html.indexOf('<ul class="ui-cards"'))
+        // A menu on each of the two still in effect, named for it; none on the reversed one.
+        expect(table.match(/aria-haspopup="menu"/g)).toHaveLength(2)
+        expect(table).toContain(`aria-label="${en.ui_more_actions_for.replace("{name}", `${en.hist_bonus_n.replace("{days}", "2 days")}, October 2026`)}"`)
+        expect(await adjustments()).not.toContain('aria-haspopup="menu"')
+    })
+
+    it("mark the one a notification opened", async () => {
+        const html = await adjustments({ highlighted: "a2" })
+        expect(html).toContain('<tr data-key="a2" data-tone="selected">')
+    })
+
+    it("are in the page's language, digits too", async () => {
+        const html = await adjustments({}, "ar")
+        expect(html).toContain(new Date(2026, 9).toLocaleString("ar-EG", { month: "long", year: "numeric" }))
+        expect(html).toContain(ar.adjustment_source_MANUAL)
+    })
+
+    it("say they're loading, that they didn't load, with Try again, or that there are none yet", async () => {
+        expect(await adjustments({ adjustments: [], loading: true })).toContain('<div class="ui-panel" role="status">')
+        const failed = await adjustments({ adjustments: [], error: refused(500).error })
+        expect(failed).toContain(en.hist_adj_load_failed.replace(/'/g, "&#x27;"))
+        expect(failed).toContain(">Try again</button>")
+        expect(await adjustments({ adjustments: [] })).toContain(`<p class="ui-empty-title">${en.hist_adj_none}</p>`)
+    })
+
+    it("reverse in a dialog that says what reversing is, and asks why, if there's a reason", async () => {
+        const html = await undo("reverse")
+        expect(html).toContain(`class="ui-dialog-title">${en.hist_adj_reverse_title}</h2>`)
+        expect(html).toContain(en.hist_adj_reverse_msg.replace(/'/g, "&#x27;"))
+        expect(html).toContain(en.hist_adj_what.replace("{what}", en.hist_bonus_n.replace("{days}", "2 days")).replace("{month}", "October 2026"))
+        expect(html).toContain(en.reverse_reason)
+        expect(html).toContain("<textarea")
+        expect(html).toContain(`<button type="submit" class="ui-btn ui-btn-primary">${en.reverse_adjustment}</button>`)
+    })
+
+    it("roll back only after asking, in the danger colour, with nothing to type", async () => {
+        // It rolled back on one click.
+        const html = await undo("rollback")
+        expect(html).toContain(`class="ui-dialog-title">${en.hist_adj_rollback_title}</h2>`)
+        expect(html).toContain(en.hist_adj_rollback_msg.replace(/'/g, "&#x27;"))
+        expect(html).not.toContain("<textarea")
+        expect(html).toContain(`<button type="submit" class="ui-btn ui-btn-danger">${en.hist_adj_rollback}</button>`)
+        expect(await undo("rollback", "ar")).toContain(ar.hist_adj_rollback_title)
+    })
+})
+
+describe("found in the browser (the audit, PR 159)", () => {
+    it("names each More actions in the page's language, Arabic comma too", async () => {
+        // "مكافأة يومان, نوفمبر": an English comma inside Arabic.
+        const html = await adjustments({ canUndo: true }, "ar")
+        const labels = [...html.matchAll(/aria-label="([^"]*)" title="[^"]*" aria-haspopup="menu"/g)].map(m => m[1])
+        expect(labels.length).toBeGreaterThan(0)
+        for (const label of labels) {
+            expect(label).toContain("، ")
+            expect(label).not.toContain(", ")
+        }
+    })
+
+    it("takes the focus to the section's heading after an undo, as the row's menu goes with it", async () => {
+        // It went back to the menu, which the undone row no longer has, and so to the page's start.
+        const html = await adjustments()
+        expect(html).toMatch(new RegExp(`<h2 class="ui-section-title"><span id="[^"]+" tabindex="-1">${en.hist_adjustments}</span></h2>`))
+        const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/Adjustments.tsx", "utf8")
+        expect(src).toContain("document.getElementById(headingId)?.focus()")
+    })
+})
+
+describe("found by Codex on PR 159", () => {
+    it("brings a notification's adjustment into view however long the list takes, not only while it's marked", () => {
+        // It scrolled by the six-second mark: a list that took longer to load stayed where it was.
+        const page = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+        expect(page).toContain("scrollTo={highlightId}")
+        expect(page).toContain("highlighted={visualHighlightId}")
+        const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/Adjustments.tsx", "utf8")
+        expect(src).toContain("visibleRow(scrollTo)")
+        expect(src).not.toContain("visibleRow(highlighted)")
+    })
+})
+
 describe("nothing of the old frame is left", () => {
     it("has no spinner, hand-made back button, tab buttons or corner alert", () => {
         const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
         for (const old of ["LoadingSpinner", "router.back()", "className={`btn ${activeTab", "slideInRight", "setAlert("]) expect(src, old).not.toContain(old)
         const tab = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/SalaryTab.tsx", "utf8")
         for (const old of ["style={", "className=\"card", "toFixed(", "<table"]) expect(tab, old).not.toContain(old)
+    })
+
+    it("has no window of its own for the bonuses and deductions (part 3)", () => {
+        const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+        for (const old of ["isAdjustmentsModalOpen", "className=\"glass", "position: 'fixed'", "SafeDate", "style={", "' · '", "useDialog("]) expect(src, old).not.toContain(old)
+        const list = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/Adjustments.tsx", "utf8")
+        for (const old of ["style={", "className=\"btn", "rotate(-2deg)", "' · '"]) expect(list, old).not.toContain(old)
     })
 
     it("has no hand-made tables, Manage deductions window or old Reconsider window (part 2)", () => {

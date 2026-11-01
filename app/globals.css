@@ -139,7 +139,6 @@
   --info-fg-indigo: #1e40af;
 
   --accent-solid: #a855f7;
-  --accent-solid-deep: #7c3aed;
   --accent-deep: #4338ca;
   --accent-deepest: #3730a3;
 
@@ -1229,7 +1228,6 @@ input::-webkit-credentials-auto-fill-button {
 
     --lifetime-fg: #c4a8f5;
     --accent-solid: #a86ef0;
-    --accent-solid-deep: #9457e0;
     --accent-deep: #7c6ae0;
     /* Text on the dark surfaces (the audit log's action names): #6a5ad0 read
        at 2.85:1 there. */

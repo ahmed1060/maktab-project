@@ -337,11 +337,10 @@ export const OLD_PAGE_SHADES = [
     { token: '--accent-fill', light: '#942ff5', dark: '#9047ec', role: 'fill' },
     { token: '--brand-primary-text', light: '#4f46e5', dark: '#a5b4fc', role: 'text' },
     { token: '--link', light: '#4f46e5', dark: '#a5b4fc', role: 'text' },
-    { token: '--accent-solid-deep', light: '#7c3aed', dark: '#9457e0', role: 'text' },
     { token: '--accent-deep', light: '#4338ca', dark: '#7c6ae0', role: 'text' },
     { token: '--accent-deepest', light: '#3730a3', dark: '#b3a6f2', role: 'text' },
     { token: '--focus-ring', light: '#4338ca', dark: '#a5b4fc', role: 'edge' },
-    // A highlight bar, and a link's colour too (an employee's history), so held as text.
+    // A highlight bar (an obligation's card), held as text as it was a link's colour too.
     { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'text' },
     { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
     { token: '--sidebar-ring', light: '#c7d2fe', role: 'edge', behind: 'sidebar' },
