@@ -463,8 +463,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      a Super Admin's company, the company in view from the top bar,
      merged in #148 on 2026-11-01; Days, with its month, merged in #149
      on 2026-11-01; Punches, merged in #150 on 2026-11-01; Exceptions,
-     which opens for review in #151; Import and employee numbers; and face
-     checks, the Requests tab and adding a punch;
+     merged in #151 on 2026-11-01; Import and employee numbers, which
+     opens for review in #152; and face checks, the Requests tab and
+     adding a punch;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2109,3 +2110,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     times as "—–—". It gives none;
   - one day's list was "To decide in Wednesday 14 October". It's "on"
     a day, and "in" a month.
+- **2026-11-01:** Exceptions was merged in #151. Import and employee
+  numbers move onto the building blocks in #152 (part 6), each in a file
+  of its own:
+  - importing is one card: what it's for, the building blocks' file
+    picker ("Choose a file"), how the file's dates are written, then
+    Check the file. Once checked, which column is which, each a labelled
+    select, and what importing would do, a line each, those to look at
+    in their status colour, in the page's language; then Import (n).
+    The rows that couldn't be read are behind a disclosure. They were a
+    browser file field and hand-made rows;
+  - the files imported are rows, each with its day and what it brought
+    in, and Withdraw this import, or a Withdrawn badge with why. The
+    counts no longer run together with a dot, which beside Arabic digits
+    reads as a zero;
+  - withdrawing a file is in the building blocks' dialog, naming it, and
+    asking why under its field. It was the old confirm box;
+  - the numbers waiting for a person are a list (§5.4), a table on
+    computers and a card for each on phones, each with whose it is to
+    pick and Save. Nobody is offered their own;
+  - a number saved by hand is a form above the numbers saved, which are
+    rows with Remove on anybody else's; removing asks first, in the
+    building blocks' dialog, its confirm the danger button. It was a red
+    link and the old confirm box;
+  - while they load, and when they can't, each says so, with the
+    server's word and Try again. They were a spinner, or nothing.

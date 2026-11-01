@@ -63,7 +63,9 @@ describe("every confirmation", () => {
     const handlers = confirmHandlers().filter(h => !NOT_WORK.some(f => h.where.startsWith(f)))
 
     it("finds them all", () => {
-        expect(handlers.length).toBeGreaterThan(40)
+        // Only that the search finds them: there are fewer as pages move onto
+        // the building blocks' dialog (UI_PLAN.md §5 step 5), 39 at PR 152.
+        expect(handlers.length).toBeGreaterThan(30)
     })
 
     it("keeps its dialog open until the work is done", () => {

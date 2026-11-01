@@ -283,7 +283,8 @@ describe("a long list (review on #12)", () => {
 })
 
 describe("the import preview (review on #12)", () => {
-    const page = () => readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+    // Its own file since Attendance part 6 (PR 152).
+    const page = () => readFileSync("app/(dashboard)/dashboard/attendance/ImportTab.tsx", "utf8")
     it("drops a reply to an older request instead of showing it over a newer one", () => {
         expect(page()).toContain("const mine = ++generation.current")
         expect(page()).toContain("if (mine !== generation.current) return")
