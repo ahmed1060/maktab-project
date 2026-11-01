@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Image from 'next/image'
 import type { TranslationKey } from '@/lib/translations'
 import NotificationBell from './NotificationBell'
-import { addressWithCompanyInView, companyLinkToFollow } from '@/lib/company-link'
+import { addressWithCompanyInView, companyLinkToFollow, companyNameStep } from '@/lib/company-link'
 import { useCompany } from '@/context/CompanyContext'
 import { useHeader } from '@/context/HeaderContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -130,36 +130,23 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         // we skip to avoid race conditions between Context update and Route update.
         if (companyNameFromUrl === lastProcessedCompany.current) return
 
-        if (companyNameFromUrl && companies.length > 0) {
-            // URL has priority
-            // Find company by name
-            const matchingCompany = companies.find(c => c.name === companyNameFromUrl)
-            if (matchingCompany && matchingCompany.id !== selectedCompanyId) {
-                setSelectedCompanyId(matchingCompany.id)
-                // A deep link into another company: the server already rendered
-                // this page against whatever the scope cookie said before that
-                // call rewrote it, so the sidebar would be describing the wrong
-                // company. Safe against looping because the guard above only
-                // lets this run when the selection actually changed, and the
-                // early return at the top of the effect covers the re-run.
-                router.refresh()
-            }
-        } else if (selectedCompanyId && companies.length > 0) {
-            // URL is missing param, but we have a selection (persistence)
-            // Re-apply the param to the current URL
-            const matchingCompany = companies.find(c => c.id === selectedCompanyId)
-            if (matchingCompany) {
-                const params = new URLSearchParams(searchParams ? searchParams.toString() : '')
-                params.set('company', matchingCompany.name)
-                // Remove legacy ID param if exists to be clean
-                params.delete('companyId')
-
-                // Only replace if the URL actually needs changing
-                const currentName = searchParams.get('company')
-                if (currentName !== matchingCompany.name) {
-                    router.replace(`${pathname}?${params.toString()}`)
-                }
-            }
+        // A company the address names is put in view, and any other name, or
+        // none, is made the company in view's (lib/company-link.ts).
+        const step = companyNameStep({ named: companyNameFromUrl, known: companies, inView: selectedCompanyId })
+        // Not recorded until the companies arrive, or a reload's name was
+        // taken for handled and never applied (seen while checking PR 148).
+        if (step.kind === 'wait') return
+        if (step.kind === 'put-in-view') {
+            setSelectedCompanyId(step.id)
+            // A deep link into another company: the server already rendered
+            // this page against whatever the scope cookie said before that
+            // call rewrote it, so the sidebar would be describing the wrong
+            // company. Safe against looping because the step is only this when
+            // the selection actually changes, and the early return at the top
+            // of the effect covers the re-run.
+            router.refresh()
+        } else if (step.kind === 'rewrite') {
+            router.replace(`${pathname}?${addressWithCompanyInView(searchParams.toString(), step.name)}`)
         }
 
         lastProcessedCompany.current = companyNameFromUrl

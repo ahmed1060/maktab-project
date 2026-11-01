@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { companyLinkToFollow, addressWithCompanyInView } from "./company-link"
+import { companyLinkToFollow, addressWithCompanyInView, companyNameStep } from "./company-link"
 
 /**
  * A link that names the company it's about (`?companyId=`), as a company's
@@ -53,6 +53,47 @@ describe("the address once the link is followed", () => {
         expect(addressWithCompanyInView("tab=face&companyId=delta&review=r1", "Delta Sites")).toBe("tab=face&review=r1&company=Delta+Sites")
         expect(addressWithCompanyInView("companyId=delta&company=Nile+Works", "Delta Sites")).toBe("company=Delta+Sites")
     })
+
+    it("names none when All companies is in view", () => {
+        expect(addressWithCompanyInView("tab=face&company=Gone&companyId=gone", null)).toBe("tab=face")
+    })
+})
+
+/**
+ * The company the address names by name (`?company=`), as the top bar keeps it
+ * there for the company in view, and as a pasted link or a reload brings it.
+ */
+const COMPANIES = [{ id: "delta", name: "Delta Sites" }, { id: "nile", name: "Nile Works" }]
+const step = (fields: Partial<Parameters<typeof companyNameStep>[0]>) =>
+    companyNameStep({ named: "Delta Sites", known: COMPANIES, inView: "nile", ...fields })
+
+describe("what the top bar does with the company the address names", () => {
+    it("waits while the top bar doesn't know its companies yet", () => {
+        // They arrive after the page loads. Deciding before then took the name
+        // for handled, so a reload kept the stored company in view under
+        // another company's name (seen in the browser while checking PR 148).
+        expect(step({ known: [] })).toEqual({ kind: "wait" })
+        expect(step({ known: [], named: null })).toEqual({ kind: "wait" })
+    })
+
+    it("puts a company the top bar knows in view, and does nothing when it's in view already", () => {
+        expect(step({})).toEqual({ kind: "put-in-view", id: "delta" })
+        expect(step({ inView: null })).toEqual({ kind: "put-in-view", id: "delta" })
+        expect(step({ inView: "delta" })).toEqual({ kind: "none" })
+    })
+
+    it("rewrites a name the top bar doesn't know to the company in view, or takes it out for All companies", () => {
+        expect(step({ named: "Gone" })).toEqual({ kind: "rewrite", name: "Nile Works" })
+        expect(step({ named: "Gone", inView: null })).toEqual({ kind: "rewrite", name: null })
+        // A company in view that the top bar doesn't know is shown as All companies.
+        expect(step({ named: "Gone", inView: "gone" })).toEqual({ kind: "rewrite", name: null })
+    })
+
+    it("names the company in view when the address names none, and leaves it be for All companies", () => {
+        expect(step({ named: null })).toEqual({ kind: "rewrite", name: "Nile Works" })
+        expect(step({ named: null, inView: null })).toEqual({ kind: "none" })
+        expect(step({ named: null, inView: "gone" })).toEqual({ kind: "none" })
+    })
 })
 
 describe("the top bar follows such a link", () => {
@@ -67,5 +108,26 @@ describe("the top bar follows such a link", () => {
         expect(sync).toContain("router.replace(`${pathname}?${addressWithCompanyInView(searchParams.toString(), name)}`)")
         const pick = HEADER.slice(HEADER.indexOf("const handleSelectCompany"), HEADER.indexOf("router.push(`${pathname}?${params.toString()}`)"))
         expect(pick).toContain("companyLeftBehind.current = searchParams.get('companyId')")
+    })
+})
+
+describe("the top bar applies the company the address names", () => {
+    const HEADER = readFileSync("components/DashboardHeader.tsx", "utf8")
+    const start = HEADER.indexOf("const companyNameFromUrl = searchParams.get('company')")
+    const RECORDED = "lastProcessedCompany.current = companyNameFromUrl"
+    const sync = HEADER.slice(start, HEADER.indexOf(RECORDED, start) + RECORDED.length)
+
+    it("only once it knows its companies, so a fresh tab, a reload or a pasted link still puts it in view", () => {
+        // Before, the name was recorded as handled while the companies were
+        // still on their way, and when they came the guard turned it away.
+        expect(sync).toContain("const step = companyNameStep({ named: companyNameFromUrl, known: companies, inView: selectedCompanyId })")
+        expect(sync).toMatch(/if \(step\.kind === 'wait'\) return\n/)
+        expect(sync.indexOf("if (companyNameFromUrl === lastProcessedCompany.current) return")).toBeLessThan(sync.indexOf("companyNameStep("))
+        expect(sync.indexOf("if (step.kind === 'wait') return")).toBeLessThan(sync.indexOf("lastProcessedCompany.current = companyNameFromUrl"))
+    })
+
+    it("puts it in view and has the server render again, or makes the address name the company in view", () => {
+        expect(sync).toMatch(/if \(step\.kind === 'put-in-view'\) \{\s*setSelectedCompanyId\(step\.id\)\s*(\/\/.*\n\s*)*router\.refresh\(\)/)
+        expect(sync).toMatch(/else if \(step\.kind === 'rewrite'\) \{\s*router\.replace\(`\$\{pathname\}\?\$\{addressWithCompanyInView\(searchParams\.toString\(\), step\.name\)\}`\)/)
     })
 })

@@ -35,10 +35,46 @@ export function companyLinkToFollow({ pathname, linked, known, leftBehind }: {
  * and no `companyId` left. Left in, the link would undo a pick made in
  * another tab, whose pick reaches this one only for this address to put its
  * own company back in view.
+ *
+ * With no name, for All companies, it names none.
  */
-export function addressWithCompanyInView(current: string, name: string): string {
+export function addressWithCompanyInView(current: string, name: string | null): string {
     const next = new URLSearchParams(current)
     next.delete('companyId')
-    next.set('company', name)
+    if (name) next.set('company', name)
+    else next.delete('company')
     return next.toString()
+}
+
+/**
+ * What the top bar does with the company the address names by name,
+ * `?company=`, which it keeps there for the company in view, and which a
+ * reload, a new tab or a pasted link brings with it.
+ *
+ * Nothing until the top bar knows its companies, which arrive after the page
+ * loads. Deciding before then took the name for handled, so once they came a
+ * reload kept the stored company in view under another company's name in the
+ * address (seen in the browser while checking PR 148).
+ *
+ * Then a name it knows puts that company in view, unless it's there already.
+ * Any other name, or none, is rewritten to the company in view's, or taken
+ * out for All companies. A company in view that the top bar doesn't know
+ * counts as All companies, as the switcher shows it.
+ */
+export type CompanyNameStep =
+    | { kind: 'wait' }
+    | { kind: 'none' }
+    | { kind: 'put-in-view'; id: string }
+    | { kind: 'rewrite'; name: string | null }
+
+export function companyNameStep({ named, known, inView }: {
+    named: string | null
+    known: { id: string; name: string }[]
+    inView: string | null
+}): CompanyNameStep {
+    if (known.length === 0) return { kind: 'wait' }
+    const match = known.find(c => c.name === named)
+    if (match) return match.id === inView ? { kind: 'none' } : { kind: 'put-in-view', id: match.id }
+    const name = known.find(c => c.id === inView)?.name ?? null
+    return name === named ? { kind: 'none' } : { kind: 'rewrite', name }
 }

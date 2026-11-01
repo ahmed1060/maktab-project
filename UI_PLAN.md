@@ -2003,3 +2003,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   change. The page went on preferring it, and put that company back after
   another tab picked a different one. Such a link is now followed all the
   same, which takes it out of the address.
+- **2026-11-01:** Found in the browser, in #148: a company named in the
+  address, `?company=`, was ignored on a fresh load: a new tab, a reload
+  or a pasted link. The top bar learns its companies after the page loads,
+  and it took the name for handled before they came, so the company stored
+  from before stayed in view under another company's name. This was on
+  every dashboard page, not only Attendance. The top bar now waits for its
+  companies before it decides (`lib/company-link.ts`):
+  - a name it knows puts that company in view;
+  - a name it doesn't know is changed to the company in view's, or taken
+    out for All companies;
+  - an address with no name gets the company in view's, as it already did
+    after moving between pages.
+
+  Picking a company in the top bar, and links on Attendance that name
+  their company by id, work as before.
