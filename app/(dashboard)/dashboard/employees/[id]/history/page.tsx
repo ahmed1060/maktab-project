@@ -2,19 +2,19 @@
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
-import { HourglassIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import SafeDate from '@/components/SafeDate'
-import { Button, EmptyState, Page, PageHeader, Tabs } from '@/components/ui'
+import { Button, Page, PageHeader, Tabs } from '@/components/ui'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
-import { apiErrorText } from "@/lib/api-error-text"
 import { useDialog } from '@/lib/useDialog'
 import { SalaryTab, type Debt, type SalaryRecord, type Settlement } from './SalaryTab'
+import { DayOffTab, ReconsiderDayOff, type DayOffHistory, type DayOffRequest } from './DayOffTab'
+import { CostsTab, type UserCost } from './CostsTab'
 
 /**
  * An employee's history: their salary by month, their day off credit and
@@ -23,37 +23,14 @@ import { SalaryTab, type Debt, type SalaryRecord, type Settlement } from './Sala
  *
  * On the building blocks in parts (UI_PLAN.md §5 step 5). Part 1, PR 157:
  * the page header with the person's name, the tabs, kept in the address,
- * and the Salary tab (./SalaryTab.tsx). The Day off credit and Costs tabs,
- * and the dialogs, follow.
+ * and the Salary tab (./SalaryTab.tsx). Part 2: the Day off credit tab, with
+ * Reconsider on each day off taken from the credit (./DayOffTab.tsx), and
+ * the Costs tab (./CostsTab.tsx). The bonuses and deductions dialogs follow.
  */
 
 type Tab = 'salary' | 'day-off' | 'costs'
 const TABS: Tab[] = ['salary', 'day-off', 'costs']
 
-
-interface DayOffRequest {
-    id: string
-    type: string
-    date: string
-    daysDeducted: number
-    deductionType: string
-    reason?: string
-}
-
-interface DayOffCreditSnapshot {
-    id: string
-    year: number
-    baseCredit: number
-    remainingCredit: number
-    /** Set when the reset had to reconstruct this year rather than measure it. */
-    note?: string | null
-}
-
-interface DayOffHistoryYear {
-    year: number
-    snapshot: DayOffCreditSnapshot | null
-    requests: DayOffRequest[]
-}
 
 interface SalaryAdjustment {
     id: string
@@ -82,14 +59,6 @@ interface Employee {
     salary?: number
 }
 
-interface UserCost {
-    id: string
-    title: string
-    amount: number
-    status: string
-    date: string
-}
-
 // One empty list per kind, so an effect depending on a list does not re-run
 // just because a fresh [] was made on a render with no data yet.
 const NO_RECORDS: SalaryRecord[] = []
@@ -111,14 +80,11 @@ export default function EmployeeHistoryPage() {
     const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)
     const canReevaluateDayOff = can('dayoff.approve')
 
-    const [reevaluating, setReevaluating] = useState(false)
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
     const [reversing, setReversing] = useState<SalaryAdjustment | null>(null)
     const [reverseReason, setReverseReason] = useState('')
-    const [isReevaluateModalOpen, setIsReevaluateModalOpen] = useState(false)
-    const [selectedRequest, setSelectedRequest] = useState<DayOffRequest | null>(null)
-    const [reevaluateValue, setReevaluateValue] = useState('')
-    const [isManageDeductionsOpen, setIsManageDeductionsOpen] = useState(false)
+    // The day off whose days are being reconsidered, from its row on the Day off credit tab.
+    const [reconsidering, setReconsidering] = useState<DayOffRequest | null>(null)
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
     // The tab is in the address, so a reload or a link opens it; ?highlight= keeps its place beside it.
@@ -146,16 +112,15 @@ export default function EmployeeHistoryPage() {
     }
     const quiet = { onError: onNetworkError }
     const employeeQuery = useSWR(id ? `/api/users?id=${id}` : null, fetcher, quiet)
-    // The Salary tab says itself when its list didn't load, with Try again (PR 157).
+    // Each tab says itself when its list didn't load, with Try again (PR 157, part 2).
     const recordsQuery = useSWR(id ? `/api/users/${id}/salary-history` : null, fetcher)
-    const dayOffQuery = useSWR(id ? `/api/users/${id}/day-off-history` : null, fetcher, quiet)
-    const costsQuery = useSWR(id ? `/api/users/${id}/costs-history` : null, fetcher, quiet)
+    const dayOffQuery = useSWR(id ? `/api/users/${id}/day-off-history` : null, fetcher)
+    const costsQuery = useSWR(id ? `/api/users/${id}/costs-history` : null, fetcher)
     const unwrap = (r: any) => r ? (r.data || r) : undefined
     const employee: Employee | null = unwrap(employeeQuery.data) ?? null
     const records: SalaryRecord[] = unwrap(recordsQuery.data) ?? NO_RECORDS
-    const dayOffHistory: { baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null = unwrap(dayOffQuery.data) ?? null
+    const dayOffHistory: DayOffHistory | null = unwrap(dayOffQuery.data) ?? null
     const userCosts: UserCost[] = unwrap(costsQuery.data) ?? NO_COSTS
-    const fetchData = () => Promise.all([employeeQuery.mutate(), recordsQuery.mutate(), dayOffQuery.mutate(), costsQuery.mutate()])
 
     // The only route to an ended contract's statement. The person it is about
     // cannot sign in, so if it is not reachable from their page it is not
@@ -172,8 +137,6 @@ export default function EmployeeHistoryPage() {
     const [isAdjustmentsModalOpen, setIsAdjustmentsModalOpen] = useState(Boolean(highlightId))
     const adjustmentsDialog = useDialog(isAdjustmentsModalOpen, () => setIsAdjustmentsModalOpen(false))
     const reverseDialog = useDialog(!!reversing, () => setReversing(null))
-    const reevaluateDialog = useDialog(isReevaluateModalOpen && !!selectedRequest, () => setIsReevaluateModalOpen(false))
-    const deductionsDialog = useDialog(isManageDeductionsOpen, () => setIsManageDeductionsOpen(false))
     useAdjustOnChange([highlightId], () => { if (highlightId) setIsAdjustmentsModalOpen(true) })
     const { data: adjustmentsResult, mutate: fetchAdjustments } = useSWR(
         isAdjustmentsModalOpen && id ? `/api/users/${id}/adjustments` : null, fetcher,
@@ -222,32 +185,6 @@ export default function EmployeeHistoryPage() {
 
     const handleRollback = (adjId: string) => handleUndo(adjId, 'rollback')
 
-    const handleReevaluate = async () => {
-        if (!selectedRequest || !reevaluateValue) return
-
-        try {
-            setReevaluating(true)
-            const res = await fetch(`/api/admin/day-off-requests/${selectedRequest.id}/reevaluate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newDays: parseFloat(reevaluateValue) })
-            })
-
-            if (res.ok) {
-                showToast(t('update_success' as any) || 'Re-evaluation successful', 'success')
-                await fetchData()
-                setIsReevaluateModalOpen(false)
-            } else {
-                const err = await res.text()
-                showToast(apiErrorText(err, t('update_failed' as any)), 'error')
-            }
-        } catch {
-            showToast(t('update_failed' as any), 'error')
-        } finally {
-            setReevaluating(false)
-        }
-    }
-
     const getMonthName = (month: number) => {
         return new Date(2000, month - 1).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'long' })
     }
@@ -271,14 +208,11 @@ export default function EmployeeHistoryPage() {
         'day-off': t('hist_tab_day_off'),
         costs: t('costs_tab'),
     }
-    // Each tab's own action, in the page header (DESIGN.md §5.5).
+    // The tab's own action, in the page header (DESIGN.md §5.5). Day off
+    // credit has none: Reconsider is on each day off it can change (part 2).
     const action = activeTab === 'salary' && canAdjust
         ? <Button variant="primary" onClick={() => setIsAdjustmentsModalOpen(true)}>{t('hist_adjustments')}</Button>
-        : activeTab === 'day-off' && canReevaluateDayOff
-            ? <Button variant="primary" onClick={() => setIsManageDeductionsOpen(true)}>{t('hist_manage_deductions')}</Button>
-            : undefined
-    // The tabs not on the building blocks yet (part 2) say they're loading the same way.
-    const waiting = <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+        : undefined
 
     return (
         <Page>
@@ -302,120 +236,24 @@ export default function EmployeeHistoryPage() {
                     settlements={settlements}
                     debts={debts}
                 />
-            ) : activeTab === 'costs' ? (costsQuery.isLoading ? waiting : (
-                <div className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'var(--panel-70)' }}>
-                    <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-                        {t('costs_tab' as any) || 'Costs'}
-                    </h2>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: 'var(--surface-subtle)', borderBottom: '2px solid var(--border)' }}>
-                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('date_label')}</th>
-                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('task_title' as any) || 'Task'}</th>
-                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('amount_label' as any) || 'Amount'}</th>
-                                <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status' as any) || 'Status'}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {userCosts.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
-                                        {t('no_records_found')}
-                                    </td>
-                                </tr>
-                            ) : (
-                                userCosts.map(cost => (
-                                    <tr key={cost.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            <SafeDate date={cost.date} locale={locale} format="dateOnly" />
-                                        </td>
-                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {cost.title}
-                                        </td>
-                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left', fontWeight: 'bold' }}>
-                                            {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(cost.amount)}
-                                        </td>
-                                        <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            <span style={{
-                                                padding: '0.25rem 0.75rem',
-                                                borderRadius: '1rem',
-                                                fontSize: '0.875rem',
-                                                fontWeight: 'bold',
-                                                background: cost.status === 'PAID' ? 'var(--ok-bg)' : 'var(--danger-bg)',
-                                                color: cost.status === 'PAID' ? 'var(--ok-fg)' : 'var(--danger-fg)'
-                                            }}>
-                                                {cost.status === 'PAID' ? t('payment_status_paid' as any) : t('payment_status_pending' as any)}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )) : dayOffQuery.isLoading ? waiting : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {dayOffHistory && (
-                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>
-                                    {t('assigned_day_off_credit_label' as any) || 'Assigned Credit'}: <strong>{dayOffHistory.baseCredit}</strong> |
-                                    {t('remaining_day_off_credit_label' as any) || ' Remaining'}: <strong style={{ color: 'var(--ok-fg)' }}>{dayOffHistory.remainingCredit}</strong>
-                                </p>
-                    )}
-                    {dayOffHistory?.history.map(yearData => (
-                        <div key={yearData.year} className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'var(--panel-70)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-                                <h2 style={{ margin: 0 }}>{yearData.year}</h2>
-                                {yearData.snapshot && (
-                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                                        <div>
-                                            {t('base_credit' as any) || 'Base'}: <strong>{yearData.snapshot.baseCredit}</strong> |
-                                            {t('remaining_before_reset' as any) || ' Remaining (End of Year)'}: <strong>{yearData.snapshot.remainingCredit}</strong>
-                                        </div>
-                                        {/*
-                                          A reconstructed year says so on the
-                                          screen, not only in the column. The
-                                          figures beside it are carried, not
-                                          measured, and somebody reading a leave
-                                          balance from years ago should be told
-                                          which kind of number they are looking at.
-                                        */}
-                                        {yearData.snapshot.note && (
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--warn-fg)', marginTop: '0.35rem', maxWidth: '420px' }}>
-                                                {yearData.snapshot.note}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ background: 'var(--surface-subtle)', borderBottom: '2px solid var(--border)' }}>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('date_label')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('type_label')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('reason_label')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('days_label')}</th>
-                                        <th style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deducted_from' as any) || 'Deducted From'}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {yearData.requests.length === 0 ? (
-                                        <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>{t('no_records_found')}</td></tr>
-                                    ) : (
-                                        yearData.requests.map(req => (
-                                            <tr key={req.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></td>
-                                                <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t(req.type as any) || req.type}</td>
-                                                <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.reason || '-'}</td>
-                                                <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left', fontWeight: 'bold' }}>{req.daysDeducted}</td>
-                                                <td style={{ padding: '0.75rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{req.deductionType === 'CREDIT' ? t('day_off_credit') : t('salary_label' as any)}</td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    ))}
-                </div>
+            ) : activeTab === 'costs' ? (
+                <CostsTab
+                    costs={userCosts}
+                    loading={costsQuery.isLoading}
+                    error={costsQuery.error}
+                    retrying={costsQuery.isValidating}
+                    retry={() => { void costsQuery.mutate() }}
+                />
+            ) : (
+                <DayOffTab
+                    history={dayOffHistory}
+                    loading={dayOffQuery.isLoading}
+                    error={dayOffQuery.error}
+                    retrying={dayOffQuery.isValidating}
+                    retry={() => { void dayOffQuery.mutate() }}
+                    canReconsider={canReevaluateDayOff}
+                    onReconsider={setReconsidering}
+                />
             )}
             </div>
 
@@ -642,118 +480,11 @@ export default function EmployeeHistoryPage() {
                 </div>
             )}
 
-            {/* ReEvaluate Modal */}
-            {isReevaluateModalOpen && selectedRequest && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 1100,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'var(--scrim)',
-                    backdropFilter: 'blur(4px)',
-                    padding: '1rem'
-                }}>
-                    <div {...reevaluateDialog.panelProps} className="glass" style={{
-                        width: '100%',
-                        maxWidth: '400px',
-                        padding: '2rem',
-                        background: 'var(--panel-95)',
-                        borderRadius: '1.5rem',
-                        boxShadow: '0 20px 25px -5px var(--shadow-weak)',
-                        direction: locale === 'ar' ? 'rtl' : 'ltr'
-                    }}>
-                        <h2 id={reevaluateDialog.titleId} style={{ marginBottom: '1rem' }}>{t('reevaluate')}</h2>
-                        <p style={{ color: 'var(--text-soft)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                            <SafeDate date={selectedRequest.date} locale={locale} format="dateOnly" /> - {t(selectedRequest.type as any) || selectedRequest.type}
-                        </p>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                                {t('days_label')}
-                            </label>
-                            <input aria-label={t('days_label')}
-                                type="number"
-                                step="0.5"
-                                value={reevaluateValue}
-                                onChange={(e) => setReevaluateValue(e.target.value)}
-                                className="input"
-                                style={{ width: '100%' }}
-                                autoFocus
-                            />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                            <button onClick={() => setIsReevaluateModalOpen(false)} className="btn glass">{t('cancel_button')}</button>
-                            <button
-                                onClick={handleReevaluate}
-                                className="btn btn-primary"
-                                disabled={reevaluating}
-                                aria-busy={reevaluating || undefined}
-                            >
-                                {t('confirm')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Manage Deductions Modal */}
-            {isManageDeductionsOpen && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 1000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'var(--scrim)',
-                    backdropFilter: 'blur(4px)',
-                    padding: '1rem'
-                }}>
-                    <div {...deductionsDialog.panelProps} className="glass" style={{
-                        width: '100%',
-                        maxWidth: '700px',
-                        maxHeight: '85vh',
-                        overflowY: 'auto',
-                        padding: '2rem',
-                        background: 'var(--panel-95)',
-                        borderRadius: '2rem',
-                        direction: locale === 'ar' ? 'rtl' : 'ltr'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 id={deductionsDialog.titleId} style={{ margin: 0 }}>{t('manage_deductions')}</h2>
-                            <button aria-label={t('close')} onClick={() => setIsManageDeductionsOpen(false)} style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-soft)' }}>×</button>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {dayOffHistory?.history.flatMap(y => y.requests).filter(r => r.deductionType === 'CREDIT').length === 0 ? (
-                                <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>{t('no_records_found')}</p>
-                            ) : (
-                                dayOffHistory?.history.flatMap(y => y.requests).filter(r => r.deductionType === 'CREDIT')
-                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                    .map(req => (
-                                        <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: 'var(--surface)', borderRadius: '1.25rem', border: '1px solid var(--border)' }}>
-                                            <div>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1.05rem' }}>{t(req.type as any) || req.type}</div>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}><SafeDate date={req.date} locale={locale} format="dateOnly" /></div>
-                                                {req.reason && <div style={{ fontSize: '0.85rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>{req.reason}</div>}
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                <div style={{ fontWeight: '800', fontSize: '1.2rem', color: 'var(--danger-fg-strong)' }}>-{req.daysDeducted}</div>
-                                                <button
-                                                    onClick={() => { setSelectedRequest(req); setReevaluateValue(req.daysDeducted.toString()); setIsReevaluateModalOpen(true); }}
-                                                    className="btn glass"
-                                                    style={{ fontSize: '0.85rem' }}
-                                                >
-                                                    {t('reevaluate')}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ReconsiderDayOff
+                request={reconsidering}
+                onClose={() => setReconsidering(null)}
+                onDone={() => { setReconsidering(null); void dayOffQuery.mutate() }}
+            />
         </Page>
     )
 }

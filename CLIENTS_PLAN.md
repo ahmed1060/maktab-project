@@ -2167,3 +2167,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** The check-in page was merged in #156. An employee's
   history moves onto the building blocks in three parts, the first in
   #157 (`UI_PLAN.md` §5). Neither touches clients or locations.
+- **2026-11-01:** An employee's history part 1 was merged in #157. Its
+  Day off credit and Costs tabs move onto the building blocks in #158
+  (`UI_PLAN.md` §5). The Costs tab lists the tasks a person paid for and
+  links each one, as the Costs page does; it doesn't touch clients or
+  locations.

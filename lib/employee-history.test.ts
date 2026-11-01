@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
+import { RECONSTRUCTED_NOTE } from "./leave-reset"
 
 /**
  * An employee's history on the building blocks, part 1 (UI_PLAN.md §5 step
@@ -35,6 +36,9 @@ vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {
 vi.mock("@/lib/useCan", () => ({
     useCan: () => ({ can: (p: string) => state.perms.includes(p), canFor: (p: string) => state.perms.includes(p) }),
 }))
+// A dialog renders in place, after hydration, so its contents are in the markup.
+vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
+vi.mock("react-dom", async importOriginal => ({ ...(await importOriginal<typeof import("react-dom")>()), createPortal: (children: unknown) => children }))
 vi.mock("swr", () => ({
     default: (key: string | null) => {
         const shown = key ? state.swr[key] : undefined
@@ -46,6 +50,22 @@ const YOUSSEF = { id: "u2", firstName: "Youssef", lastName: "Adel", salary: 1200
 const OCT = { id: "r10", month: 10, year: 2026, totalDays: 31, deductions: 1.5, baseSalary: 12000, bonusDays: 1, createdAt: "2026-10-01T00:00:00Z", figure: { source: "PAYSLIP", netMinor: 1175000, payslipId: "p10", status: "APPROVED" } }
 const SEP = { id: "r9", month: 9, year: 2026, totalDays: 30, deductions: 0, baseSalary: 12000, bonusDays: 0, createdAt: "2026-09-01T00:00:00Z", figure: { source: "ESTIMATE", netMinor: 1200000 } }
 const DEBT = { id: "d1", amount: 500, recovered: 200, outstanding: 300, writtenOff: 0, status: "OUTSTANDING", source: "CASH_ADVANCE", reason: "Kept the change", dueDate: "2026-11-25T00:00:00Z", settledAt: null }
+const HISTORY = {
+    baseCredit: 21, remainingCredit: 15.5, history: [
+        {
+            year: 2026, snapshot: null, requests: [
+                { id: "o1", type: "REGULAR", date: "2026-03-05T12:00:00Z", daysDeducted: 2, deductionType: "CREDIT", reason: "Family visit" },
+                { id: "o2", type: "SICK", date: "2026-02-10T12:00:00Z", daysDeducted: 1, deductionType: "SALARY", reason: null },
+            ],
+        },
+        { year: 2025, snapshot: { id: "y25", year: 2025, baseCredit: 21, remainingCredit: 4, note: RECONSTRUCTED_NOTE }, requests: [] },
+    ],
+}
+const COSTS = [
+    { id: "t1", title: "Fix the gate", amount: 1250, status: "PAID", date: "2026-10-20T12:00:00Z" },
+    { id: "t2", title: "Buy cable", amount: 80.5, status: "PENDING_PAYMENT", date: "2026-10-22T12:00:00Z" },
+]
+const egp = (n: number, locale = "en-GB") => `${n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${locale === "ar-EG" ? ar.egp : en.egp}`
 const money = (n: number, locale = "en-EG") => new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 const refused = (status: number) => ({ error: Object.assign(new Error("Request failed"), { status, info: { error: "Database unavailable" } }) })
 
@@ -89,9 +109,21 @@ describe("the frame", () => {
     it("puts the tab's own action in the page header", async () => {
         const adjust = await page({ perms: ["salary.view", "salary_adjustments.manage"] })
         expect(adjust).toMatch(new RegExp(`<div class="ui-page-actions"><button type="button" class="ui-btn ui-btn-primary">${en.hist_adjustments}</button></div>`))
-        const deductions = await page({ query: "tab=day-off", perms: ["dayoff.approve"] })
-        expect(deductions).toContain(`>${en.hist_manage_deductions}</button></div>`)
-        expect(deductions).not.toContain(en.hist_adjustments)
+        // Day off credit has none: Reconsider is on each day off it can change (part 2).
+        const dayOff = await page({ query: "tab=day-off", perms: ["dayoff.approve"], swr: { "/api/users/u2/day-off-history": { data: { data: HISTORY } } } })
+        expect(dayOff).not.toContain("ui-page-actions")
+        expect(dayOff).not.toContain("Manage deductions")
+        expect(dayOff).toContain(`>${en.reevaluate}</button>`)
+    })
+
+    it("opens each tab from its own list, and says when that list didn't load", async () => {
+        const dayOff = await page({ query: "tab=day-off", swr: { "/api/users/u2/day-off-history": { data: { data: HISTORY } } } })
+        expect(dayOff).toContain(`<dt>${en.hist_dayoff_base}</dt>`)
+        const costs = await page({ query: "tab=costs", swr: { "/api/users/u2/costs-history": { data: { data: COSTS } } } })
+        expect(costs).toContain(`href="/dashboard/tasks/t1"`)
+        const failed = await page({ query: "tab=costs", swr: { "/api/users/u2/costs-history": refused(500) } })
+        expect(failed).toContain(en.hist_costs_load_failed.replace(/'/g, "&#x27;"))
+        expect(failed).toContain(">Try again</button>")
     })
 })
 
@@ -150,6 +182,136 @@ describe("the Salary tab", () => {
     })
 })
 
+async function dayOff(props: Record<string, unknown> = {}, locale: "en" | "ar" = "en") {
+    state.locale = locale
+    const { DayOffTab } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/DayOffTab")
+    return renderToStaticMarkup(h(DayOffTab, {
+        history: HISTORY, loading: false, error: undefined, retrying: false, retry: () => {},
+        canReconsider: false, onReconsider: () => {}, ...props,
+    } as never))
+}
+async function costs(props: Record<string, unknown> = {}, locale: "en" | "ar" = "en") {
+    state.locale = locale
+    const { CostsTab } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/CostsTab")
+    return renderToStaticMarkup(h(CostsTab, { costs: COSTS, loading: false, error: undefined, retrying: false, retry: () => {}, ...props } as never))
+}
+
+describe("the Day off credit tab (part 2)", () => {
+    it("gives the credit a year and what's left, in days", async () => {
+        const html = await dayOff()
+        expect(html).toContain(`<dt>${en.hist_dayoff_base}</dt><dd>21 days</dd>`)
+        expect(html).toContain(`<dt>${en.hist_dayoff_left}</dt><dd>15.5 days</dd>`)
+    })
+
+    it("lists each year's days off: the date, the type in words, the days, what they came out of, and why", async () => {
+        const html = await dayOff()
+        expect(html).toContain(`<h2 class="ui-section-title">2026</h2>`)
+        expect(html).toContain(`<caption class="ui-visually-hidden">${en.hist_dayoff_days_off.replace("{year}", "2026")}</caption>`)
+        expect(html).toContain("5 March 2026")
+        expect(html).toContain(en.regular_day_off)
+        expect(html).toContain(en.sick_day_off)
+        // It said REGULAR and SICK, as the database spells them.
+        expect(html).not.toContain(">REGULAR<")
+        expect(html).toContain(">2 days<")
+        expect(html).toContain(en.deduct_from_credit)
+        expect(html).toContain(en.deduct_from_salary)
+        expect(html).toContain("<bdi>Family visit</bdi>")
+        // " | " between the two figures read as one string of things.
+        expect(html).not.toContain(" | ")
+    })
+
+    it("gives a closed year's credit and what was left at its end, and says, in the page's language, when the year was carried rather than measured", async () => {
+        const html = await dayOff()
+        expect(html).toContain(`<dt>${en.hist_dayoff_year_base}</dt><dd>21 days</dd>`)
+        expect(html).toContain(`<dt>${en.hist_dayoff_year_left.replace(/'/g, "&#x27;")}</dt><dd>4 days</dd>`)
+        expect(html).toContain(en.hist_dayoff_reconstructed.replace(/'/g, "&#x27;"))
+        expect(html).toContain(`<p class="ui-empty-title">${en.hist_dayoff_none_year}</p>`)
+        const arabic = await dayOff({}, "ar")
+        expect(arabic).toContain(ar.hist_dayoff_reconstructed)
+        expect(arabic).not.toContain(RECONSTRUCTED_NOTE)
+    })
+
+    it("is in the page's language, digits too", async () => {
+        const html = await dayOff({}, "ar")
+        expect(html).toContain(`<h2 class="ui-section-title">${new Intl.NumberFormat("ar-EG", { useGrouping: false }).format(2026)}</h2>`)
+        expect(html).toContain(new Date("2026-03-05T12:00:00Z").toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" }))
+        expect(html).toContain(ar.regular_day_off)
+    })
+
+    it("offers Reconsider on each day taken from the credit, to who can approve days off, and only on those", async () => {
+        expect(await dayOff()).not.toContain(en.reevaluate)
+        const html = await dayOff({ canReconsider: true })
+        const table = html.slice(0, html.indexOf('<ul class="ui-cards"'))
+        expect(table.match(new RegExp(`>${en.reevaluate}</button>`, "g"))).toHaveLength(1)
+    })
+
+    it("says it's loading, that it didn't load, with Try again, or that there are no days off yet", async () => {
+        expect(await dayOff({ history: null, loading: true })).toContain('<div class="ui-panel" role="status">')
+        const failed = await dayOff({ history: null, error: refused(500).error })
+        expect(failed).toContain(en.hist_dayoff_load_failed.replace(/'/g, "&#x27;"))
+        expect(failed).toContain("Database unavailable")
+        expect(failed).toContain(">Try again</button>")
+        expect(await dayOff({ history: { baseCredit: 21, remainingCredit: 21, history: [] } })).toContain(`<p class="ui-empty-title">${en.hist_dayoff_none}</p>`)
+    })
+})
+
+describe("reconsidering a day off (part 2)", () => {
+    async function dialog(locale: "en" | "ar" = "en") {
+        state.locale = locale
+        const { ReconsiderDayOff } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/DayOffTab")
+        // Portalled to the body, which a static render doesn't have.
+        vi.stubGlobal("document", { body: {} })
+        try {
+            return renderToStaticMarkup(h(ReconsiderDayOff, { request: HISTORY.history[0].requests[0], onClose: () => {}, onDone: () => {} } as never))
+        } finally {
+            vi.unstubAllGlobals()
+        }
+    }
+
+    it("names the day off and asks for its days, from 0 in halves, with Cancel and Save", async () => {
+        const html = await dialog()
+        expect(html).toContain(`<h2 id="`)
+        expect(html).toContain(`class="ui-dialog-title">${en.hist_reconsider_title}</h2>`)
+        expect(html).toContain(en.hist_reconsider_what.replace("{type}", en.regular_day_off).replace("{date}", "5 March 2026"))
+        expect(html).toContain(en.hist_reconsider_days)
+        expect(html).toMatch(/type="number"[^>]*min="0"[^>]*step="0.5"[^>]*value="2"/)
+        expect(html).toContain(`>${en.cancel}</button>`)
+        expect(html).toContain(`>${en.save}</button>`)
+    })
+
+    it("is in the page's language", async () => {
+        const html = await dialog("ar")
+        expect(html).toContain(ar.hist_reconsider_title)
+        expect(html).toContain(ar.regular_day_off)
+    })
+})
+
+describe("the Costs tab (part 2)", () => {
+    it("lists each task's cost: the task, which opens, its date, what's to pay back, and whether it's been paid back", async () => {
+        const html = await costs()
+        expect(html).toContain(`<caption class="ui-visually-hidden">${en.hist_costs_list}</caption>`)
+        expect(html).toContain(`<a class="ui-item-link" href="/dashboard/tasks/t1"><bdi>Fix the gate</bdi></a>`)
+        expect(html).toContain("20 October 2026")
+        expect(html).toContain(egp(1250))
+        expect(html).toContain(`<span class="ui-badge ui-badge-good">${en.payment_status_paid}</span>`)
+        expect(html).toContain(`<span class="ui-badge ui-badge-waiting">${en.payment_status_pending}</span>`)
+    })
+
+    it("is in the page's language, digits too", async () => {
+        const html = await costs({}, "ar")
+        expect(html).toContain(egp(1250, "ar-EG"))
+        expect(html).toContain(ar.payment_status_paid)
+    })
+
+    it("says it's loading, that it didn't load, with Try again, or that there are no costs yet", async () => {
+        expect(await costs({ costs: [], loading: true })).toContain('<div class="ui-panel" role="status">')
+        const failed = await costs({ costs: [], error: refused(500).error })
+        expect(failed).toContain(en.hist_costs_load_failed.replace(/'/g, "&#x27;"))
+        expect(failed).toContain(">Try again</button>")
+        expect(await costs({ costs: [] })).toContain(`<p class="ui-empty-title">${en.hist_costs_none}</p>`)
+    })
+})
+
 describe("found in the browser (the audit, PR 157)", () => {
     it("keeps a month's salary whole on a phone's card, with what it is on its own line", async () => {
         // Beside its note, the amount wrapped mid-number: "12,000." then "00".
@@ -172,5 +334,14 @@ describe("nothing of the old frame is left", () => {
         for (const old of ["LoadingSpinner", "router.back()", "className={`btn ${activeTab", "slideInRight", "setAlert("]) expect(src, old).not.toContain(old)
         const tab = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/SalaryTab.tsx", "utf8")
         for (const old of ["style={", "className=\"card", "toFixed(", "<table"]) expect(tab, old).not.toContain(old)
+    })
+
+    it("has no hand-made tables, Manage deductions window or old Reconsider window (part 2)", () => {
+        const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+        for (const old of ["<table", "isManageDeductionsOpen", "isReevaluateModalOpen", "hist_manage_deductions", "t(req.type"]) expect(src, old).not.toContain(old)
+        for (const file of ["DayOffTab", "CostsTab"]) {
+            const tab = readFileSync(`app/(dashboard)/dashboard/employees/[id]/history/${file}.tsx`, "utf8")
+            for (const old of ["style={", "className=\"card", "<table", "' | '"]) expect(tab, `${file}: ${old}`).not.toContain(old)
+        }
     })
 })

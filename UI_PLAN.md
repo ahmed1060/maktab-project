@@ -473,9 +473,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      first: the check-in page, with a section of its own in `DESIGN.md`
      §5.5, merged in #156 on 2026-11-01. The twelfth is an employee's
      history, in three parts: its frame (the page header, the tabs, kept
-     in the address) and its Salary tab, which open for review in #157;
-     then its Day off credit and Costs tabs; then its bonuses and
-     deductions. Then company settings, then the Super Admin's pages;
+     in the address) and its Salary tab, merged in #157 on 2026-11-01;
+     then its Day off credit and Costs tabs, which open for review in
+     #158; then its bonuses and deductions. Then company settings, then
+     the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2333,3 +2334,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - in the table, the note under an amount at the end of a row began at
     the start of its cell. A note in a column of amounts at the end
     lines up under them now, on every list that has one.
+- **2026-11-01:** An employee's history part 1 was merged in #157. Its
+  Day off credit and Costs tabs move onto the building blocks in #158
+  (part 2):
+  - the Day off credit tab gives the credit a year and what's left, in
+    days, then each year's days off as a list: the date, the type in
+    words, the days, what they came out of, and why. A closed year
+    gives its credit and what was left at its end, and a year the reset
+    had to carry rather than measure says so in the page's language.
+    The types read as the database spells them, REGULAR and SICK, and
+    the two figures were joined with " | ";
+  - Reconsider is on each day off taken from the credit, for who can
+    approve days off, and opens a dialog asking for its days, from 0 in
+    halves, that stays open until they're saved. The Manage deductions
+    window, which listed the same days off again, each with Reconsider,
+    is gone, and so is its button in the page header;
+  - the Costs tab lists each task they paid for: the task, which opens,
+    its date, what's to pay them back, and whether it's been paid, in a
+    badge, as the Costs page and a task's own costs say them;
+  - each tab says it's loading, and that it didn't load, with Try
+    again. Both were hand-made tables, aligned by language by hand. The
+    13 labels only they and the old window read are gone from both
+    languages.
