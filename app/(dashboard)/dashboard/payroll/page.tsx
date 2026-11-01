@@ -15,7 +15,7 @@ import { Button, Card, Details, Dialog, DisclosureRow, EmptyState, Field, Page, 
 import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { dayLabel } from '@/lib/cash-advances'
-import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/payroll-period'
+import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-address'
 import type { TranslationKey } from '@/lib/translations'
 
 /**

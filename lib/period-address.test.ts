@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { periodFromAddress, addressWithPeriod, yearsAround } from "./payroll-period"
+import { periodFromAddress, addressWithPeriod, yearFromAddress, addressWithYear, yearsAround } from "./period-address"
 
 /**
- * Which month Payroll is about lives in its address (DESIGN.md §5.3,
- * decided on 2026-10-31), so a reload or a link opens on it.
+ * Which period a page is about lives in its address (DESIGN.md §5.3,
+ * decided on 2026-10-31), so a reload or a link opens on it: Payroll's
+ * month, and Public holidays' year.
  */
 const NOW = new Date(2026, 9, 15)
 const params = (query: string) => new URLSearchParams(query)
@@ -34,6 +35,19 @@ describe("the address with a period in it", () => {
         expect(addressWithPeriod("/dashboard/payroll", "company=Delta+Sites", 2026, 9)).toBe("/dashboard/payroll?company=Delta+Sites&year=2026&month=9")
         expect(addressWithPeriod("/dashboard/payroll", "year=2025&month=3&company=Delta+Sites", 2026, 9)).toBe("/dashboard/payroll?year=2026&month=9&company=Delta+Sites")
         expect(addressWithPeriod("/dashboard/payroll", "", 2026, 9)).toBe("/dashboard/payroll?year=2026&month=9")
+    })
+})
+
+describe("a year alone, as Public holidays' (PR 146)", () => {
+    it("is the year the address says, or this one when it names none it could be", () => {
+        expect(yearFromAddress(params("year=2027"), NOW)).toBe(2027)
+        expect(yearFromAddress(params(""), NOW)).toBe(2026)
+        for (const query of ["year=abc", "year=99", "year=20260", "year=2026.5"]) expect(yearFromAddress(params(query), NOW)).toBe(2026)
+    })
+
+    it("goes in the address with the rest kept, and no month added", () => {
+        expect(addressWithYear("/dashboard/public-holidays", "", 2027)).toBe("/dashboard/public-holidays?year=2027")
+        expect(addressWithYear("/dashboard/public-holidays", "year=2025&company=Delta+Sites", 2027)).toBe("/dashboard/public-holidays?year=2027&company=Delta+Sites")
     })
 })
 

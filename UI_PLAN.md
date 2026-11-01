@@ -456,7 +456,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      is Payroll, in three parts: its top (the page header, the month it's
      for, paying and sending, and the totals), merged in #141 on
      2026-10-31; its review cards, merged in #142 on 2026-11-01; then the
-     list of everyone paid and the debts, which open for review in #145;
+     list of everyone paid and the debts, merged in #145 on 2026-11-01.
+     The ninth is Public holidays, which opens for review in #146;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -1927,3 +1928,20 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   open, a line's label with no spaces in it, such as a long name, pushed
   its amount out of the row. The label wraps now, and the amount stays
   whole beside it.
+- **2026-11-01:** Payroll's last part was merged in #145, so Payroll is
+  on the building blocks throughout. Public holidays follows in #146.
+  - The year it's about is picked under the header and kept in the
+    address, as Payroll's month is (`DESIGN.md` §5.3), so a reload or a
+    link opens on it. It was two arrows either side of the year.
+  - Add is the header's button. Adding and editing are in the building
+    blocks' dialog, not a form above the list, and a day or English name
+    left out is said under its field; Save used to stay greyed with no
+    reason given. A holiday saved into another year takes the page there.
+  - Each holiday is a row with its day, how many companies work through
+    it, counted with its word (it said "1 companies"), and a menu with
+    Edit and Delete. Delete asks in the building blocks' dialog, which
+    stays open while it works, and says when it's done.
+  - While the year loads, and if it doesn't, the page says so, with Try
+    again. A year that didn't load kept its spinner for good.
+  - The helpers that keep a period in the address move from Payroll's
+    file to their own, `lib/period-address.ts`, for both pages.
