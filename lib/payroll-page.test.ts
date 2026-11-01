@@ -477,6 +477,15 @@ describe("everyone on the register", () => {
         expect(part).toContain("١٧٬٧٠٠٫٠٠")
     })
 
+    it("never sets two numbers either side of the dot in Arabic, where it reads as a zero", async () => {
+        // Found in the browser (PR 145): "٣١ · ١١" read as one number, the
+        // middle dot drawn like the Arabic zero beside Arabic digits.
+        const part = reviewCard(await page({ shows: view({}, { entries: [entry({ undecidedDays: 11 })] }), locale: "ar" }), ar.payroll_people)
+        const detail = part.match(/<span class="ui-item-detail">([^<]*)<\/span>/)![1]
+        expect(detail).toContain("١١")
+        expect(detail).not.toMatch(/[٠-٩] · [٠-٩]/)
+    })
+
     it("says when there's nobody to pay", async () => {
         const part = reviewCard(await page({ shows: view() }), en.payroll_people)
         expect(part).toContain(`<p class="ui-card-note">${en.payroll_empty}</p>`)

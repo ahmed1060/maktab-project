@@ -1092,7 +1092,7 @@ export const ar = {
         payroll_variance_SAME: "دون تغيير",
         payroll_pending_decisions: "بانتظار قرار",
         payroll_pending_decisions_msg: "تتضمن هذه الشهور أياماً ضمن إيقاف لم يُبتّ فيه. تُحتسب مدفوعة الآن، والإجمالي أعلاه يشملها.",
-        payroll_undecided_days: "{n} يوم/أيام دون قرار",
+        payroll_undecided_days: "دون قرار: {n} يوم/أيام",
         payroll_refused: "تعذّر الحساب",
         payroll_refused_msg: "هؤلاء خارج الإجماليات لتعذّر حساب شهرهم. لا يتأثر أحد غيرهم.",
         payroll_debts: "المستحق على الموظفين",

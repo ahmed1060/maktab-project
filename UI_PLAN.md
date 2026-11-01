@@ -1917,3 +1917,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     start of payday in the company's, which is the day before in UTC, so
     anyone outside Egypt saw the day before. The server sends the day
     itself now.
+- **2026-11-01:** Found in the browser, in #145: in Arabic, a person's
+  detail line read "٣١ · ١١", days paid then days undecided, and beside
+  Arabic digits the middle dot looks like the Arabic zero, so the two
+  read as one number. Days undecided say their label first in Arabic now,
+  as days paid do. The dot separates parts of a line in 17 places; where
+  a number can meet another across it elsewhere is a follow-up.
