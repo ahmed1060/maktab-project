@@ -2043,3 +2043,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   deduction of 1.0004 days, shown to four places, read "1 day", and in
   Arabic 1.9999 days read "يومان". The word is picked for the number as
   it's shown now.
+- **2026-11-01:** From Codex's review of #149: on a phone, a day's card
+  gave its deduction's amount without its days, which the table gives
+  below the amount, so 62.50 couldn't be checked against the policy's
+  0.125 of a day. The card gives both now: "Deduction: 62.50 (0.125
+  days)".

@@ -317,7 +317,8 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                 ...(d.lateMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_late')}: ${minutes(d.lateMinutes)}` }] : []),
                 ...(d.earlyLeaveMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_early')}: ${minutes(d.earlyLeaveMinutes)}` }] : []),
                 ...(d.overtimeMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_overtime')}: ${minutes(d.overtimeMinutes)}` }] : []),
-                ...(showsMoney && (d.deductionMinor || d.deductionDays > 0) ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: {d.deductionMinor ? <bdi>{amount(d.deductionMinor)}</bdi> : daysWord(d.deductionDays)}</span> }] : []),
+                // The amount with its days, as the table has them, to check against the policy (review on PR 149).
+                ...(showsMoney && (d.deductionMinor || d.deductionDays > 0) ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: {d.deductionMinor ? <><bdi>{amount(d.deductionMinor)}</bdi>{d.deductionDays > 0 && ` (${daysWord(d.deductionDays)})`}</> : daysWord(d.deductionDays)}</span> }] : []),
                 ...notes(d).map(n => ({ icon: InfoIcon, text: n })),
             ]}
             foot={asks(d)}

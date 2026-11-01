@@ -262,6 +262,17 @@ describe("found in the interface audit (PR 149)", () => {
     })
 })
 
+describe("a day's deduction on a phone (review on PR 149)", () => {
+    it("gives its days beside its amount, as the table does, so it can be checked against the policy", async () => {
+        const list = cards(panel(await page({ shows: [day({ deductionDays: 0.125, deductionMinor: 6250 }), absent] })))
+        expect(list).toContain("<span>Deduction: <bdi>62.50</bdi> (0.125 days)</span>")
+        expect(list).toContain("<span>Deduction: <bdi>500.00</bdi> (1 day)</span>")
+        // With no amount to show, the days alone.
+        const daysOnly = cards(panel(await page({ shows: [day({ deductionDays: 0.25, deductionMinor: 0 }), absent] })))
+        expect(daysOnly).toContain("<span>Deduction: 0.25 days</span>")
+    })
+})
+
 describe("Days is on the building blocks", () => {
     const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
     const days = SOURCE.slice(SOURCE.indexOf("// --- Days"), SOURCE.indexOf("// --- Punches"))
