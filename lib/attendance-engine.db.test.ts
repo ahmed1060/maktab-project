@@ -7,6 +7,7 @@ import { AttendanceCalendarService as Calendar } from "@/lib/services/attendance
 import { AttendancePolicyService as Policy } from "@/lib/services/attendance-policy.service"
 import { STANDARD_OFFICE } from "@/lib/attendance/policy"
 import { addDays, weekdayOf } from "@/lib/attendance/calendar"
+import { calendarDateStr } from "@/lib/time"
 import type { Cell } from "@/lib/attendance/punch-import"
 
 /**
@@ -67,6 +68,8 @@ function terminalFile(): Cell[][] {
 describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => {
     const dbName = `engine_test_${Date.now()}`
     let db: Client
+    /** A company's time zone, the one the job counts its months in. */
+    const zoneOf = async (companyId: string) => (await db.query(`SELECT timezone FROM "Company" WHERE id = $1`, [companyId])).rows[0].timezone as string
 
     beforeAll(async () => {
         const admin = new Client({ connectionString: ADMIN_URL })
@@ -233,7 +236,9 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         expect(both.failed.length).toBeGreaterThan(0)
         expect(both.failed.every(f => f.companyId === "c2")).toBe(true)
         // c1 alone: from July, the month s9 reaches back to, to this month.
-        const today = new Date().toISOString().slice(0, 7)
+        // This month in the company's zone, as the job counts it: UTC's is a month
+        // behind in the last hours of one in Cairo (found 2026-10-31).
+        const today = calendarDateStr(new Date(), await zoneOf("c1")).slice(0, 7)
         const expected = (Number(today.slice(0, 4)) - 2026) * 12 + Number(today.slice(5, 7)) - 7 + 1
         expect((await Engine.reconcileAll(["c1"]))).toMatchObject({ months: expected, failed: [] })
         await db.query(`DELETE FROM "AttendancePolicy" WHERE id = 'bad'`)
@@ -246,7 +251,9 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom", "createdAt") VALUES ('s10', 'e3', 9400, '2026-05-31T21:00:00Z', now() - interval '5 days')`)
         await db.query(`INSERT INTO "JobHeartbeat"(job, "lastRunAt", "lastSuccessAt", "updatedAt") VALUES ('attendance', now(), now() - interval '6 days', now())`)
         // From June, the month s10 reaches back to, to this month.
-        const today = new Date().toISOString().slice(0, 7)
+        // This month in the company's zone, as the job counts it: UTC's is a month
+        // behind in the last hours of one in Cairo (found 2026-10-31).
+        const today = calendarDateStr(new Date(), await zoneOf("c1")).slice(0, 7)
         const expected = (Number(today.slice(0, 4)) - 2026) * 12 + Number(today.slice(5, 7)) - 6 + 1
         expect(await Engine.reconcileAll(["c1"])).toMatchObject({ months: expected, failed: [] })
         // Run before, but never through: every change counts, as far back as a rebuild reaches — the salaries

@@ -28,7 +28,11 @@ describe("nizmo-agent", () => {
         expect(await main(["enrol"])).toBe(2)
         expect(await main(["enrol", "k7qd-2mxp".toUpperCase()])).toBe(0)
         expect(JSON.parse(readFileSync(join(home, "state.json"), "utf8")).token).toBe("mka_1")
-        device.scan("7", `${new Date().toISOString().slice(0, 10)}T09:00:00`)
+        // On the company's day, as the agent sends from the first of the company's
+        // month: on UTC's, at a month's end in UTC it's already the next month in
+        // Cairo, and the check-in was before the agent's start (found 2026-10-31).
+        const companyToday = new Intl.DateTimeFormat("en-CA", { timeZone: server.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())
+        device.scan("7", `${companyToday}T09:00:00`)
         expect(await main(["check"])).toBe(0)
         expect(server.stored.size).toBe(1)
         expect(existsSync(join(home, "logs", "agent.log"))).toBe(true)
