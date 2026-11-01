@@ -459,8 +459,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      list of everyone paid and the debts, merged in #145 on 2026-11-01.
      The ninth was Public holidays, merged in #146 on 2026-11-01. The
      tenth is Attendance, in seven parts: its frame (the page header, the
-     tabs, and what it says before them), which opens for review in #147;
-     a Super Admin's company, the company in view from the top bar; Days,
+     tabs, and what it says before them), merged in #147 on 2026-11-01;
+     a Super Admin's company, the company in view from the top bar, which
+     opens for review in #148; Days,
      with its month; Punches; Exceptions; Import and employee numbers; and
      face checks, the Requests tab and adding a punch;
    - the one Requests page (§2.3), in five parts, the last merged in #139
@@ -1978,3 +1979,27 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     again; it says so with the server's word and Try again;
   - a Super Admin who hasn't opened a company is told how, in an empty
     state under the header.
+- **2026-11-01:** Attendance's frame was merged in #147. Part 2 follows in
+  #148: a Super Admin's company on Attendance is the company in view from
+  the top bar, as on Payroll (`DESIGN.md` §5.3).
+  - A link that names its company, from a company's attendance settings
+    or a face check's notice, puts that company in view in the top bar,
+    for the page it opens and the ones after. Before, with another company
+    in view, the top bar took the link's company out of the address, and
+    the page asked to open a company.
+  - The link is followed once and taken out of the address. Left in, it
+    would put its company back in view after a pick in another tab.
+  - The Requests page keeps the company in view in its own address, so for
+    a moment after a pick it still names the last one. The top bar doesn't
+    take that for a link, which would undo the pick.
+  - Until a company is picked, the page says to pick one at the top.
+- **2026-11-01:** From Codex's review of #148: the Requests page keeps the
+  company in view in its own address, and the top bar took that for a
+  link. When another tab picked a company, an open Requests tab still
+  named the last one, and wrote it back over the other tab's pick. Only
+  the pages such links open, Attendance today, are links now.
+- **2026-11-01:** From Codex's review of #148: a link naming the company
+  already in view stayed in the address, since there was nothing to
+  change. The page went on preferring it, and put that company back after
+  another tab picked a different one. Such a link is now followed all the
+  same, which takes it out of the address.

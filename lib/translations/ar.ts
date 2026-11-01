@@ -1699,7 +1699,7 @@ export const ar = {
         attendance_default_from: "يصبح {name} الجدول الافتراضي اعتبارًا من {date}",
         attendance_title: "الحضور",
         punch_page_hint: "بصمات الدخول والخروج كما وصلت. البصمة الخاطئة تُسحب ولا تُعدَّل.",
-        punch_pick_company: "افتح بصمات الشركة من إعدادات الحضور الخاصة بها.",
+        punch_pick_company: "اختر شركة من الأعلى لترى حضورها.",
         attendance_load_failed: "لم يتم تحميل الحضور.",
         punch_open: "البصمات والاستيراد",
         punch_tab_punches: "البصمات",

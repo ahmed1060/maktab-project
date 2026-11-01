@@ -19,6 +19,8 @@ const state = {
     keys: [] as (string | null)[],
     people: {} as { data?: unknown; error?: unknown },
     search: "",
+    /** The company in view, from the top bar's switcher; null is All companies. */
+    company: null as string | null,
 }
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: state.sessionStatus === "loading" ? null : { user: { id: "u1", role: state.role } }, status: state.sessionStatus }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => en[key as keyof typeof en] ?? key }) }))
@@ -33,6 +35,7 @@ vi.mock("swr", () => ({
         return key?.startsWith("/api/attendance/people") ? { ...idle, ...state.people } : idle
     },
 }))
+vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: state.company, setSelectedCompanyId: () => {} }) }))
 vi.mock("swr/infinite", () => ({ default: () => ({ data: undefined, mutate: async () => {}, size: 1, setSize: () => {} }) }))
 vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(state.search),
@@ -42,7 +45,8 @@ vi.mock("next/navigation", () => ({
 
 const today = { data: { data: { today: "2026-10-15", people: [] } } }
 
-async function page({ role = "ADMIN", grants = [] as string[], wide = [] as string[], people = today as typeof state.people | "loading" | "failed", search = "", sessionStatus = "authenticated" as "authenticated" | "loading" } = {}) {
+async function page({ role = "ADMIN", grants = [] as string[], wide = [] as string[], people = today as typeof state.people | "loading" | "failed", search = "", sessionStatus = "authenticated" as "authenticated" | "loading", company = null as string | null } = {}) {
+    state.company = company
     state.role = role
     state.grants = new Set(grants)
     state.wide = new Set(wide)
@@ -108,13 +112,31 @@ describe("what Attendance says before its tabs", () => {
         expect(html).not.toContain('role="tablist"')
     })
 
-    it("asks a Super Admin to open a company, and asks the server nothing until then", async () => {
+    it("asks a Super Admin to pick a company at the top, and asks the server nothing until then", async () => {
         const html = await page({ role: "SUPER_ADMIN" })
-        expect(html).toContain(`<p class="ui-empty-title">${en.punch_pick_company.replace("'", "&#x27;")}</p>`)
+        expect(html).toContain(`<p class="ui-empty-title">${en.punch_pick_company}</p>`)
+        expect(en.punch_pick_company).toBe("Pick a company at the top to see its attendance.")
         expect(state.keys.filter(Boolean)).toEqual([])
-        // Opened for a company, it asks about that one.
-        await page({ role: "SUPER_ADMIN", search: "companyId=c9" })
-        expect(state.keys).toContain("/api/attendance/people?companyId=c9&")
+    })
+})
+
+describe("a Super Admin's company (part 2)", () => {
+    it("is the company in view, picked in the top bar as on every other page (DESIGN.md §5.3)", async () => {
+        await page({ role: "SUPER_ADMIN", company: "delta" })
+        expect(state.keys).toContain("/api/attendance/people?companyId=delta&")
+    })
+
+    it("is the one a link names while it's in the address, so nothing is asked about the last one first", async () => {
+        // The top bar puts it in view and takes it out of the address; until
+        // then the page already asks about the right company.
+        await page({ role: "SUPER_ADMIN", company: "nile", search: "companyId=delta&tab=face" })
+        expect(state.keys).toContain("/api/attendance/people?companyId=delta&")
+        expect(state.keys).not.toContain("/api/attendance/people?companyId=nile&")
+    })
+
+    it("is nobody's for anyone else, whatever the address says", async () => {
+        await page({ company: "delta", search: "companyId=delta" })
+        expect(state.keys).toContain("/api/attendance/people?")
     })
 })
 
