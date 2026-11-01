@@ -185,12 +185,14 @@ describe("the older pages' shades", () => {
         }
     })
 
-    // Codex on #81: --accent-solid is a highlight bar but also the
+    // Codex on #81: --accent-solid is a highlight bar but was also the
     // settlement links' colour on an employee's history, so 3:1 wasn't
     // enough: navy's was about 3.5:1 on the dark surface, Nizmo's indigo 5:1.
-    it("hold the highlight colour as text, since it's a link's colour too", () => {
-        const history = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
-        expect(history).toContain("style={{ color: 'var(--accent-solid)', textDecoration: 'underline' }}")
+    // The links are the building blocks' rows now (PR 157); the shade keeps
+    // the floor it was given, for the older pages still using it.
+    it("hold the highlight colour as text, since it was a link's colour too", () => {
+        const history = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/SalaryTab.tsx", "utf8")
+        expect(history).toContain("<Row key={s.id} href={`/dashboard/documents/settlement/${s.id}`}")
         const shade = OLD_PAGE_SHADES.find(s => s.token === "--accent-solid")!
         for (const picked of ["#1e3a8a", "#475569", "#000000"]) {
             const now = oldPageShades(picked).dark["--accent-solid"]!

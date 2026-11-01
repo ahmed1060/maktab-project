@@ -17,7 +17,8 @@ import { ar } from "@/lib/translations/ar"
 const SERVICE = stripComments(readFileSync("lib/services/salary.service.ts", "utf8"))
 const RUN_SERVICE = stripComments(readFileSync("lib/services/payroll-run.service.ts", "utf8"))
 const HISTORY_API = stripComments(readFileSync("app/api/users/[id]/salary-history/route.ts", "utf8"))
-const HISTORY_PAGE = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+// The page and its Salary tab, its own file since PR 157.
+const HISTORY_PAGE = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8") + readFileSync("app/(dashboard)/dashboard/employees/[id]/history/SalaryTab.tsx", "utf8")
 const REGISTER = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
 const WAIVE = stripComments(readFileSync("app/api/debts/[id]/waive/route.ts", "utf8"))
 

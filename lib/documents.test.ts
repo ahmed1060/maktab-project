@@ -129,7 +129,8 @@ describe("a settlement is reachable from the person it is about", () => {
     it("is listed on their history page", () => {
         // They cannot sign in. If HR cannot open it from that person's page, the
         // document exists and nobody can get to it.
-        const history = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
+        // The page asks for them; its Salary tab, its own file since PR 157, lists them.
+        const history = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8") + readFileSync("app/(dashboard)/dashboard/employees/[id]/history/SalaryTab.tsx", "utf8")
         expect(history).toMatch(/\/api\/users\/\$\{(params\.)?id\}\/settlements/)
         expect(history).toContain("/dashboard/documents/settlement/")
     })

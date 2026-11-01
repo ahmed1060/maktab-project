@@ -54,8 +54,9 @@ describe("the bar", () => {
     })
 
     it("starts for the buttons that go back, which can't be links", () => {
-        // The Profile requests page sends people to the Requests page now, with no back button of its own (UI_PLAN.md §2.3, part 5a).
-        for (const f of ["app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "components/EmployeeProfileForm.tsx"]) {
+        // The Profile requests page sends people to the Requests page now, with no back button of its own (UI_PLAN.md §2.3, part 5a),
+        // and an employee's history has a back link in its page header, a link (PR 157).
+        for (const f of ["components/EmployeeProfileForm.tsx"]) {
             expect(readFileSync(f, "utf8"), f).toMatch(/startNavigationProgress\(\); router\.back\(\)/)
         }
     })

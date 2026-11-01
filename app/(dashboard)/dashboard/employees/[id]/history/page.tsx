@@ -1,38 +1,35 @@
 'use client'
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
+import { useSession } from 'next-auth/react'
+import { HourglassIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
+import { useToast } from '@/context/ToastContext'
 import SafeDate from '@/components/SafeDate'
-import Link from 'next/link'
+import { Button, EmptyState, Page, PageHeader, Tabs } from '@/components/ui'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { useCan } from '@/lib/useCan'
 import { apiErrorText } from "@/lib/api-error-text"
 import { useDialog } from '@/lib/useDialog'
-import { startNavigationProgress } from '@/components/NavigationProgress'
+import { SalaryTab, type Debt, type SalaryRecord, type Settlement } from './SalaryTab'
 
+/**
+ * An employee's history: their salary by month, their day off credit and
+ * their costs, and the bonuses and deductions behind them. Also each
+ * person's own history, from the account menu.
+ *
+ * On the building blocks in parts (UI_PLAN.md §5 step 5). Part 1, PR 157:
+ * the page header with the person's name, the tabs, kept in the address,
+ * and the Salary tab (./SalaryTab.tsx). The Day off credit and Costs tabs,
+ * and the dialogs, follow.
+ */
 
-interface SalaryRecord {
-    id: string
-    month: number
-    year: number
-    totalDays: number
-    deductions: number // Deductions in DAYS
-    baseSalary: number
-    bonusDays: number // Bonus in DAYS
-    createdAt: string
-    /**
-     * Which number this month's total actually is. PAYSLIP means payroll ran
-     * and this is what it produced; ESTIMATE means it did not, and the figure
-     * is this screen's own approximation of a month it cannot see inside.
-     */
-    figure?:
-    | { source: 'PAYSLIP'; netMinor: number; payslipId: string; status: 'APPROVED' | 'PAID' }
-    | { source: 'ESTIMATE'; netMinor: number }
-}
+type Tab = 'salary' | 'day-off' | 'costs'
+const TABS: Tab[] = ['salary', 'day-off', 'costs']
+
 
 interface DayOffRequest {
     id: string
@@ -102,8 +99,11 @@ const NO_ROWS: never[] = []
 
 export default function EmployeeHistoryPage() {
     const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const { data: session } = useSession()
     const params = useParams()
     const router = useRouter()
+    const pathname = usePathname()
     const { can, canFor } = useCan()
     // Each part of the page asks for the permission its route checks.
     const canSeeSalary = can('salary.view')
@@ -115,14 +115,20 @@ export default function EmployeeHistoryPage() {
     const [rollbackLoading, setRollbackLoading] = useState<string | null>(null)
     const [reversing, setReversing] = useState<SalaryAdjustment | null>(null)
     const [reverseReason, setReverseReason] = useState('')
-    const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-    const [activeTab, setActiveTab] = useState<'SALARY' | 'DAY_OFF' | 'COSTS'>('SALARY')
     const [isReevaluateModalOpen, setIsReevaluateModalOpen] = useState(false)
     const [selectedRequest, setSelectedRequest] = useState<DayOffRequest | null>(null)
     const [reevaluateValue, setReevaluateValue] = useState('')
     const [isManageDeductionsOpen, setIsManageDeductionsOpen] = useState(false)
     const searchParams = useSearchParams()
     const highlightId = searchParams.get('highlight')
+    // The tab is in the address, so a reload or a link opens it; ?highlight= keeps its place beside it.
+    const linkedTab = searchParams.get('tab') as Tab | null
+    const activeTab: Tab = linkedTab && TABS.includes(linkedTab) ? linkedTab : 'salary'
+    const setTab = (next: Tab) => {
+        const q = new URLSearchParams(searchParams.toString())
+        q.set('tab', next)
+        router.replace(`${pathname}?${q.toString()}`, { scroll: false })
+    }
     // Shown for six seconds after arriving via ?highlight=. See
     // lib/useFadingHighlight.ts for why this is not an effect any more.
     const visualHighlightId = useFadingHighlight(highlightId, 6000)
@@ -136,12 +142,12 @@ export default function EmployeeHistoryPage() {
     const onNetworkError = (err: unknown) => {
         if (err instanceof SWRError) return
         console.error('Error fetching data')
-        setAlert({ type: 'error', message: t('failed_fetch_data') })
-        setTimeout(() => setAlert(null), 3000)
+        showToast(t('failed_fetch_data'), 'error')
     }
     const quiet = { onError: onNetworkError }
     const employeeQuery = useSWR(id ? `/api/users?id=${id}` : null, fetcher, quiet)
-    const recordsQuery = useSWR(id ? `/api/users/${id}/salary-history` : null, fetcher, quiet)
+    // The Salary tab says itself when its list didn't load, with Try again (PR 157).
+    const recordsQuery = useSWR(id ? `/api/users/${id}/salary-history` : null, fetcher)
     const dayOffQuery = useSWR(id ? `/api/users/${id}/day-off-history` : null, fetcher, quiet)
     const costsQuery = useSWR(id ? `/api/users/${id}/costs-history` : null, fetcher, quiet)
     const unwrap = (r: any) => r ? (r.data || r) : undefined
@@ -149,22 +155,17 @@ export default function EmployeeHistoryPage() {
     const records: SalaryRecord[] = unwrap(recordsQuery.data) ?? NO_RECORDS
     const dayOffHistory: { baseCredit: number, remainingCredit: number, history: DayOffHistoryYear[] } | null = unwrap(dayOffQuery.data) ?? null
     const userCosts: UserCost[] = unwrap(costsQuery.data) ?? NO_COSTS
-    const loading = employeeQuery.isLoading || recordsQuery.isLoading || dayOffQuery.isLoading || costsQuery.isLoading || reevaluating
     const fetchData = () => Promise.all([employeeQuery.mutate(), recordsQuery.mutate(), dayOffQuery.mutate(), costsQuery.mutate()])
 
     // The only route to an ended contract's statement. The person it is about
     // cannot sign in, so if it is not reachable from their page it is not
     // reachable at all.
     const { data: settlementsResult } = useSWR(can('settlements.manage') && id ? `/api/users/${id}/settlements` : null, fetcher)
-    const settlements: { id: string; lastWorkingDay: string; net: number; status: string }[] = settlementsResult?.data || NO_ROWS
+    const settlements: Settlement[] = settlementsResult?.data || NO_ROWS
     // E2: raised when, recovered from which months, settled or written off by
     // whom. Every one of those was recorded and none of them was assembled.
     const { data: debtsResult } = useSWR(can('debts.view') && id ? `/api/users/${id}/debts` : null, fetcher)
-    const debts: {
-        id: string; amount: number; recovered: number; outstanding: number; writtenOff: number
-        status: 'OUTSTANDING' | 'SETTLED' | 'WAIVED'; source: string; reason: string | null
-        dueDate: string; settledAt: string | null
-    }[] = debtsResult?.data || NO_ROWS
+    const debts: Debt[] = debtsResult?.data || NO_ROWS
 
     // Arriving with ?highlight= opens the adjustments, which may be what it
     // points at; the list itself is only asked for while they are open.
@@ -202,30 +203,20 @@ export default function EmployeeHistoryPage() {
                 body: JSON.stringify({ reason: reason || undefined }),
             })
             if (res.ok) {
-                setAlert({
-                    type: 'success',
-                    message: action === 'reverse' ? t('reverse_success' as any) : t('rollback_success' as any),
-                })
+                showToast(action === 'reverse' ? t('reverse_success' as any) : t('rollback_success' as any), 'success')
                 fetchAdjustments()
                 // Refresh records too. Through the same key as the first load,
                 // so it is unwrapped the same way; the hand-written re-fetch
                 // this replaces stored the whole { success, data } envelope.
                 recordsQuery.mutate()
             } else {
-                setAlert({
-                    type: 'error',
-                    message: action === 'reverse' ? t('failed_reverse' as any) : t('failed_rollback' as any),
-                })
+                showToast(action === 'reverse' ? t('failed_reverse' as any) : t('failed_rollback' as any), 'error')
             }
         } catch {
             console.error(`Error applying ${action}`)
-            setAlert({
-                type: 'error',
-                message: action === 'reverse' ? t('failed_reverse' as any) : t('failed_rollback' as any),
-            })
+            showToast(action === 'reverse' ? t('failed_reverse' as any) : t('failed_rollback' as any), 'error')
         } finally {
             setRollbackLoading(null)
-            setTimeout(() => setAlert(null), 3000)
         }
     }
 
@@ -243,18 +234,17 @@ export default function EmployeeHistoryPage() {
             })
 
             if (res.ok) {
-                setAlert({ type: 'success', message: t('update_success' as any) || 'Re-evaluation successful' })
+                showToast(t('update_success' as any) || 'Re-evaluation successful', 'success')
                 await fetchData()
                 setIsReevaluateModalOpen(false)
             } else {
                 const err = await res.text()
-                setAlert({ type: 'error', message: apiErrorText(err, t('update_failed' as any)) })
+                showToast(apiErrorText(err, t('update_failed' as any)), 'error')
             }
         } catch {
-            setAlert({ type: 'error', message: t('update_failed' as any) })
+            showToast(t('update_failed' as any), 'error')
         } finally {
             setReevaluating(false)
-            setTimeout(() => setAlert(null), 3000)
         }
     }
 
@@ -273,280 +263,46 @@ export default function EmployeeHistoryPage() {
         return `${days} ${days === 1 ? t('day_singular' as any) : t('days_label')}`
     }
 
-    if (loading) return <LoadingSpinner />
+    // Someone else's history goes back to Employees; one's own, opened from the account menu, has nowhere to go back to.
+    const own = session?.user?.id === id
+    const name = employee ? `${employee.firstName} ${employee.lastName}`.trim() : ''
+    const tabLabel: Record<Tab, string> = {
+        salary: canSeeSalary ? t('salary_label') : t('history'),
+        'day-off': t('hist_tab_day_off'),
+        costs: t('costs_tab'),
+    }
+    // Each tab's own action, in the page header (DESIGN.md §5.5).
+    const action = activeTab === 'salary' && canAdjust
+        ? <Button variant="primary" onClick={() => setIsAdjustmentsModalOpen(true)}>{t('hist_adjustments')}</Button>
+        : activeTab === 'day-off' && canReevaluateDayOff
+            ? <Button variant="primary" onClick={() => setIsManageDeductionsOpen(true)}>{t('hist_manage_deductions')}</Button>
+            : undefined
+    // The tabs not on the building blocks yet (part 2) say they're loading the same way.
+    const waiting = <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
 
     return (
-        <div style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ marginBottom: '2rem' }}>
-                <button aria-label={t('go_back')}
-                    onClick={() => { startNavigationProgress(); router.back() }}
-                    className="glass"
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '0.75rem',
-                        color: 'var(--brand-primary-text)',
-                        textDecoration: 'none',
-                        transition: 'all 0.3s ease',
-                        border: '1px solid var(--veil-40)',
-                        transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
-                        float: locale === 'ar' ? 'right' : 'left',
-                        marginInlineEnd: '1.25rem',
-                        cursor: 'pointer',
-                        padding: 0
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'var(--panel-90)'
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'var(--panel-70)'
-                    }}
-                    title={t('back_to_employees')}
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
-                    </svg>
-                </button>
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    flexWrap: 'wrap',
-                    marginBottom: '1rem'
-                }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                            onClick={() => setActiveTab('SALARY')}
-                            className={`btn ${activeTab === 'SALARY' ? 'btn-primary' : 'glass'}`}
-                            style={{ borderRadius: '1rem', padding: '0.5rem 1.5rem', height: '42px' }}
-                        >
-                            {canSeeSalary ? t('salary_label' as any) : t('history')}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('DAY_OFF')}
-                            className={`btn ${activeTab === 'DAY_OFF' ? 'btn-primary' : 'glass'}`}
-                            style={{ borderRadius: '1rem', padding: '0.5rem 1.5rem', height: '42px' }}
-                        >
-                            {t('day_off_credit_tab' as any) || 'Day Off Credit'}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('COSTS')}
-                            className={`btn ${activeTab === 'COSTS' ? 'btn-primary' : 'glass'}`}
-                            style={{ borderRadius: '1rem', padding: '0.5rem 1.5rem', height: '42px' }}
-                        >
-                            {t('costs_tab' as any) || 'Costs'}
-                        </button>
-                    </div>
-                    {canAdjust && activeTab === 'SALARY' && (
-                        <button
-                            onClick={() => setIsAdjustmentsModalOpen(true)}
-                            className="btn btn-primary"
-                        >
-                            {t('manage_adjustments' as any)}
-                        </button>
-                    )}
-                    {canReevaluateDayOff && activeTab === 'DAY_OFF' && (
-                        <button
-                            onClick={() => setIsManageDeductionsOpen(true)}
-                            className="btn btn-primary"
-                        >
-                            {t('manage_deductions' as any) || 'Manage Deductions'}
-                        </button>
-                    )}
-                </div>
-                {employee && (
-                    <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <p style={{ margin: 0 }}>{t('for_label')}: <strong>{employee.firstName} {employee.lastName}</strong></p>
-                        {activeTab === 'SALARY' ? (
-                            <>
-                                {employee.salary !== undefined && (
-                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>{t('current_base_salary')}: <strong>{employee.salary} {t('egp')}</strong></p>
-                                )}
-                                {settlements.length > 0 && (
-                                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.95rem' }}>
-                                        {t('doc_settlements')}:{' '}
-                                        {settlements.map((s, i) => (
-                                            <span key={s.id}>
-                                                {i > 0 && ', '}
-                                                <Link
-                                                    href={`/dashboard/documents/settlement/${s.id}`}
-                                                    prefetch={false}
-                                                    style={{ color: 'var(--accent-solid)', textDecoration: 'underline' }}
-                                                >
-                                                    <SafeDate date={s.lastWorkingDay} locale={locale} />
-                                                </Link>
-                                            </span>
-                                        ))}
-                                    </p>
-                                )}
-
-                                {/* Closed debts are listed too. A list of open
-                                    ones answers what is left; this answers what
-                                    happened, and a written-off debt is the entry
-                                    most worth being able to find a year later. */}
-                                {debts.length > 0 && (
-                                    <div style={{ marginTop: '0.75rem' }}>
-                                        <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                                            {t('debts_title')}
-                                        </div>
-                                        {debts.map(d => (
-                                            <div key={d.id} style={{ fontSize: '0.9rem', padding: '0.2rem 0' }}>
-                                                <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                                    {d.status === 'OUTSTANDING' ? d.outstanding.toFixed(2) : d.amount.toFixed(2)}
-                                                </strong>{' '}
-                                                <span style={{
-                                                    fontSize: '0.75rem', fontWeight: 600,
-                                                    color: d.status === 'OUTSTANDING' ? 'var(--warn-fg)'
-                                                        : d.status === 'WAIVED' ? 'var(--text-muted)' : 'var(--ok-fg)',
-                                                }}>
-                                                    {t(`debt_status_${d.status}` as any)}
-                                                </span>
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginInlineStart: '0.5rem' }}>
-                                                    {d.recovered > 0 && `${t('debt_recovered_so_far').replace('{n}', d.recovered.toFixed(2))} · `}
-                                                    {d.writtenOff > 0 && `${t('debt_written_off').replace('{n}', d.writtenOff.toFixed(2))} · `}
-                                                    <SafeDate date={d.dueDate} locale={locale} />
-                                                    {/* What someone still held of a cash advance on leaving (CLIENTS_PLAN.md §7.3). */}
-                                                    {d.source === 'CASH_ADVANCE' ? ` · ${t('debt_source_CASH_ADVANCE')}` : ''}
-                                                    {d.reason ? ` · ${d.reason}` : ''}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        ) : activeTab === 'DAY_OFF' ? (
-                            dayOffHistory && (
-                                <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>
-                                    {t('assigned_day_off_credit_label' as any) || 'Assigned Credit'}: <strong>{dayOffHistory.baseCredit}</strong> |
-                                    {t('remaining_day_off_credit_label' as any) || ' Remaining'}: <strong style={{ color: 'var(--ok-fg)' }}>{dayOffHistory.remainingCredit}</strong>
-                                </p>
-                            )
-                        ) : null}
-                    </div>
-                )}
-            </div>
-
-            {/* Alert Toast */}
-            {alert && (
-                <div style={{
-                    position: 'fixed',
-                    top: '2rem',
-                    right: '2rem',
-                    zIndex: 2000,
-                    padding: '1rem 1.5rem',
-                    borderRadius: '1rem',
-                    background: alert.type === 'success' ? 'var(--ok-bg)' : 'var(--danger-bg)',
-                    color: alert.type === 'success' ? 'var(--ok-fg)' : 'var(--danger-fg)',
-                    boxShadow: '0 10px 15px -3px var(--shadow-weak)',
-                    // 0x33/255 is 20%. Written as color-mix rather than an
-                    // eight-digit hex so the colour itself can be a token:
-                    // var(--ok-fg)33 is not a colour.
-                    border: `1px solid ${alert.type === 'success'
-                        ? 'color-mix(in srgb, var(--ok-fg) 20%, transparent)'
-                        : 'color-mix(in srgb, var(--danger-fg) 20%, transparent)'}`,
-                    animation: 'slideInRight 0.3s ease-out'
-                }}>
-                    {alert.message}
-                </div>
-            )}
-
-            {activeTab === 'SALARY' ? (
-                <div className="card" style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                        <thead>
-                            <tr style={{ background: 'var(--surface-subtle)', borderBottom: '2px solid var(--border)' }}>
-                                <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('month_year_column')}</th>
-                                <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('base_salary_column')}</th>
-                                <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('values_net_total_column')}</th>
-                                <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deduction_days_column')}</th>
-                                <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('bonus_days_column')}</th>
-                                <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('calculated_salary_column')}</th>
-                                <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('details_column')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {records.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-soft)' }}>
-                                        {t('no_records_found')}
-                                    </td>
-                                </tr>
-                            ) : (
-                                records.map(record => {
-                                    // Net Days = Total - Deductions
-                                    const netDays = record.totalDays - record.deductions
-                                    const fractionDisplay = netDays % 1 !== 0 ? netDays.toFixed(2) : netDays
-
-                                    // H1: this used to be a second payroll calculation, written
-                                    // inline — base ÷ days × payable days — which knew nothing about
-                                    // employment timelines, mid-month rate changes, suspensions or
-                                    // debt recovery, and disagreed with the payslip for every month
-                                    // where any of those happened. The figure now comes from the API,
-                                    // which reads the payslip where payroll produced one and falls
-                                    // back to that same estimate only for months predating it.
-                                    const figure = record.figure
-                                    const baseSalaryToUse = record.baseSalary || employee?.salary || 0
-                                    const calculatedSalary = (figure?.netMinor ?? 0) / 100
-                                    const isEstimate = !figure || figure.source === 'ESTIMATE'
-
-                                    const formattedCalculated = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(calculatedSalary)
-                                    const formattedBase = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { style: 'currency', currency: 'EGP' }).format(baseSalaryToUse)
-
-                                    return (
-                                        <tr key={record.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                            <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                {getMonthName(record.month)} {record.year}
-                                            </td>
-                                            <td style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                {formattedBase}
-                                            </td>
-                                            <td style={{ padding: '1rem', fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                <span style={{ fontWeight: 'bold' }}>{fractionDisplay}</span>
-                                                <span style={{ color: 'var(--text-faint)' }}> / {record.totalDays}</span>
-                                            </td>
-                                            <td style={{ padding: '1rem', color: 'var(--danger-fg-strong)', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                {record.deductions > 0 ? `-${formatDays(record.deductions)}` : '-'}
-                                            </td>
-                                            <td style={{ padding: '1rem', color: 'var(--accent-solid-deep)', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                {record.bonusDays ? `+${formatDays(record.bonusDays)}` : '-'}
-                                            </td>
-                                            <td style={{ padding: '1rem', fontWeight: '600', color: 'var(--ok-fg)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                {formattedCalculated}
-                                                {/* Said, rather than left to be assumed. An estimate
-                                                    that looks identical to a settled figure is the
-                                                    reason this screen and the payslip could disagree
-                                                    for months without anybody noticing. */}
-                                                {isEstimate ? (
-                                                    <div style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-faint)' }}>
-                                                        {t('salary_figure_estimate')}
-                                                    </div>
-                                                ) : (
-                                                    <a
-                                                        href={`/dashboard/documents/payslip/${figure!.source === 'PAYSLIP' ? figure!.payslipId : ''}`}
-                                                        style={{ display: 'block', fontSize: '0.7rem', fontWeight: 400, color: 'var(--brand-primary-text)' }}
-                                                    >
-                                                        {t('salary_figure_payslip')}
-                                                    </a>
-                                                )}
-                                            </td>
-                                            <td style={{ padding: '1rem', color: 'var(--text-soft)', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                {t('created_label')}: <SafeDate date={record.createdAt} locale={locale} format="dateOnly" />
-                                            </td>
-                                        </tr>
-                                    )
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            ) : activeTab === 'COSTS' ? (
+        <Page>
+            <PageHeader
+                back={own ? undefined : { href: '/dashboard/employees', label: t('employees') }}
+                title={name ? <bdi>{name}</bdi> : t('history')}
+                subtitle={name ? t('history') : undefined}
+                action={action}
+            />
+            <Tabs label={t('history')} idPrefix="history-tab" value={activeTab} onChange={setTab}
+                items={TABS.map(k => ({ value: k, label: tabLabel[k], controls: 'history-panel' }))} />
+            <div role="tabpanel" id="history-panel" className="ui-tab-panel" aria-labelledby={`history-tab-${activeTab}`}>
+            {activeTab === 'salary' ? (
+                <SalaryTab
+                    employee={employee}
+                    records={records}
+                    loading={recordsQuery.isLoading}
+                    error={recordsQuery.error}
+                    retrying={recordsQuery.isValidating}
+                    retry={() => { void recordsQuery.mutate() }}
+                    settlements={settlements}
+                    debts={debts}
+                />
+            ) : activeTab === 'costs' ? (costsQuery.isLoading ? waiting : (
                 <div className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'var(--panel-70)' }}>
                     <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
                         {t('costs_tab' as any) || 'Costs'}
@@ -597,8 +353,14 @@ export default function EmployeeHistoryPage() {
                         </tbody>
                     </table>
                 </div>
-            ) : (
+            )) : dayOffQuery.isLoading ? waiting : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {dayOffHistory && (
+                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '1rem' }}>
+                                    {t('assigned_day_off_credit_label' as any) || 'Assigned Credit'}: <strong>{dayOffHistory.baseCredit}</strong> |
+                                    {t('remaining_day_off_credit_label' as any) || ' Remaining'}: <strong style={{ color: 'var(--ok-fg)' }}>{dayOffHistory.remainingCredit}</strong>
+                                </p>
+                    )}
                     {dayOffHistory?.history.map(yearData => (
                         <div key={yearData.year} className="card" style={{ overflowX: 'auto', padding: '1.5rem', background: 'var(--panel-70)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
@@ -655,6 +417,7 @@ export default function EmployeeHistoryPage() {
                     ))}
                 </div>
             )}
+            </div>
 
             {/* Adjustments Modal */}
             {isAdjustmentsModalOpen && (
@@ -924,7 +687,7 @@ export default function EmployeeHistoryPage() {
                             <button
                                 onClick={handleReevaluate}
                                 className="btn btn-primary"
-                                disabled={loading || reevaluating}
+                                disabled={reevaluating}
                                 aria-busy={reevaluating || undefined}
                             >
                                 {t('confirm')}
@@ -991,6 +754,6 @@ export default function EmployeeHistoryPage() {
                     </div>
                 </div>
             )}
-        </div>
+        </Page>
     )
 }

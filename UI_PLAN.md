@@ -471,8 +471,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      payslip and settlement sheets, with a document in `DESIGN.md` §5.5,
      merged in #155 on 2026-11-01. The pages after it go most used
      first: the check-in page, with a section of its own in `DESIGN.md`
-     §5.5, which opens for review in #156; then an employee's history,
-     company settings, then the Super Admin's pages;
+     §5.5, merged in #156 on 2026-11-01. The twelfth is an employee's
+     history, in three parts: its frame (the page header, the tabs, kept
+     in the address) and its Salary tab, which open for review in #157;
+     then its Day off credit and Costs tabs; then its bonuses and
+     deductions. Then company settings, then the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2299,3 +2302,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   instead, or Withdraw my consent, while the request went on, so it
   looked called off when it wasn't. The old confirmation window waited;
   both dialogs now stay open until it's done, as Attendance's do.
+- **2026-11-01:** The check-in page was merged in #156. An employee's
+  history is next, in three parts. Its frame and Salary tab move onto
+  the building blocks in #157 (part 1):
+  - the page header names the person, under a link back to Employees,
+    which one's own history, opened from the account menu, doesn't
+    have. Its tabs are the building blocks' and are kept in the
+    address, so a reload or a link opens the same one; each tab's own
+    action, Bonuses and deductions or Manage deductions, is in the
+    header. They were hand-made buttons, the back button a lone arrow,
+    and the labels Title Case;
+  - the Salary tab: the current base salary as a detail, then a list of
+    the months: each month's name opens its payslip where there is one,
+    the days paid of the month's, what was deducted and added in days,
+    and the salary, saying whether it's from the payslip or an estimate.
+    In the page's language, digits too;
+  - settlements are rows, each opening its statement, and debts a list:
+    what's left, its state in a badge, when it's due, what was
+    recovered or written off, and why. They were one line each, joined
+    with " · ";
+  - the whole page waited behind one spinner for all four of its lists.
+    Each tab says it's loading now, and the Salary tab that it didn't
+    load, with Try again. The messages of the dialogs still to come are
+    the app's toasts, not a box of its own in the corner.
+- **2026-11-01:** Found in the browser and the interface audit on #157:
+  - on a phone, a month's salary sat beside its note, "From the payslip"
+    or that it's an estimate, and wrapped mid-number. The note is on a
+    line of its own under the card's details now, in the muted hint's
+    size;
+  - in the table, the note under an amount at the end of a row began at
+    the start of its cell. A note in a column of amounts at the end
+    lines up under them now, on every list that has one.
