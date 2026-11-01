@@ -457,7 +457,12 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      for, paying and sending, and the totals), merged in #141 on
      2026-10-31; its review cards, merged in #142 on 2026-11-01; then the
      list of everyone paid and the debts, merged in #145 on 2026-11-01.
-     The ninth is Public holidays, which opens for review in #146;
+     The ninth was Public holidays, merged in #146 on 2026-11-01. The
+     tenth is Attendance, in seven parts: its frame (the page header, the
+     tabs, and what it says before them), which opens for review in #147;
+     a Super Admin's company, the company in view from the top bar; Days,
+     with its month; Punches; Exceptions; Import and employee numbers; and
+     face checks, the Requests tab and adding a punch;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -1948,3 +1953,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-01:** Found in the interface audit, in #146: a year with no
   holidays offered Add twice, in the header and again under it. It's the
   header's alone now, as on the Tasks and Obligations lists.
+- **2026-11-01:** Public holidays was merged in #146. Attendance is the
+  tenth page and the biggest left, so it moves in seven parts:
+  1. its frame: the page header, the tabs, and what it says before them,
+     in #147;
+  2. a Super Admin's company: the company in view from the top bar, as on
+     Payroll (`DESIGN.md` §5.3). Links that name a company today, from a
+     company's attendance settings and face checks' notices, pick it
+     there. The top bar already rewrites the address when a company is in
+     view, dropping the company such a link named, so this gets a PR of
+     its own and its own checks in the browser;
+  3. Days, with its month picked under the header (§5.3);
+  4. Punches;
+  5. Exceptions;
+  6. Import and employee numbers;
+  7. face checks, the Requests tab, and adding a punch.
+
+  In part 1:
+  - the tabs are the building blocks' (§5.5): text, with a line under the
+    one picked, the arrow keys moving between them, and what they show in
+    a panel named by its tab. They were a row of buttons;
+  - while it finds out the company's date, and if it can't, the page says
+    so under its header. A failure was a red line with no way to try
+    again; it says so with the server's word and Try again;
+  - a Super Admin who hasn't opened a company is told how, in an empty
+    state under the header.

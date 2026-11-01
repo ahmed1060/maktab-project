@@ -1700,6 +1700,7 @@ export const ar = {
         attendance_title: "الحضور",
         punch_page_hint: "بصمات الدخول والخروج كما وصلت. البصمة الخاطئة تُسحب ولا تُعدَّل.",
         punch_pick_company: "افتح بصمات الشركة من إعدادات الحضور الخاصة بها.",
+        attendance_load_failed: "لم يتم تحميل الحضور.",
         punch_open: "البصمات والاستيراد",
         punch_tab_punches: "البصمات",
         punch_tab_import: "استيراد ملف",
