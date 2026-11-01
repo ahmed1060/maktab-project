@@ -14,8 +14,8 @@ import { Button, Card, DataList, Details, Dialog, DialogActions, EmptyState, Fie
 import type { SWRError } from '@/lib/swr-fetcher'
 import { send, json } from './send'
 import FaceTab from './FaceTab'
-import RequestsTab, { AskPermissionModal, ReportMissingModal } from './RequestsTab'
-import AddPunchModal from './AddPunchModal'
+import RequestsTab, { AskPermissionDialog, ReportMissingDialog } from './RequestsTab'
+import AddPunchDialog from './AddPunchDialog'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
 import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from './period'
 import ExceptionsTab from './ExceptionsTab'
@@ -195,7 +195,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
     // Everyone's list says whose each day is.
     const everyone = seesOthers && !who
     const { data: balanceBody, mutate: refreshBalance } = useSWR(oneself && me && !companyId ? `/api/attendance/permissions/balance?month=${month}` : null, fetcher)
-    const [asking, setAsking] = useState<Parameters<typeof AskPermissionModal>[0]['initial'] | null>(null)
+    const [asking, setAsking] = useState<Parameters<typeof AskPermissionDialog>[0]['initial'] | null>(null)
     const [reporting, setReporting] = useState<string | null>(null)
 
     const recompute = () => action.run('recompute', async () => {
@@ -322,8 +322,8 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                         empty={<EmptyState icon={CalendarBlankIcon} title={t('day_none')} />} />
                 )}
             </Section>
-            {asking && <AskPermissionModal today={today} initial={asking} onClose={() => setAsking(null)} onDone={() => { setAsking(null); void refreshBalance() }} />}
-            {reporting && <ReportMissingModal today={today} initial={{ date: reporting, direction: 'OUT' }} onClose={() => setReporting(null)} onDone={() => setReporting(null)} />}
+            {asking && <AskPermissionDialog today={today} initial={asking} onClose={() => setAsking(null)} onDone={() => { setAsking(null); void refreshBalance() }} />}
+            {reporting && <ReportMissingDialog today={today} initial={{ date: reporting, direction: 'OUT' }} onClose={() => setReporting(null)} onDone={() => setReporting(null)} />}
         </>
     )
 }
@@ -527,7 +527,7 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
             </Section>
 
             {adding && (
-                <AddPunchModal
+                <AddPunchDialog
                     today={today}
                     companyId={companyId}
                     people={people.filter(x => x.id !== me && p.canFor('attendance.correct', x.id, x.teamLeaderId))}

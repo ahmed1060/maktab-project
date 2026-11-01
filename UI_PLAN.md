@@ -463,9 +463,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      a Super Admin's company, the company in view from the top bar,
      merged in #148 on 2026-11-01; Days, with its month, merged in #149
      on 2026-11-01; Punches, merged in #150 on 2026-11-01; Exceptions,
-     merged in #151 on 2026-11-01; Import and employee numbers, which
-     opens for review in #152; and face checks, the Requests tab and
-     adding a punch;
+     merged in #151 on 2026-11-01; Import and employee numbers, merged
+     in #152 on 2026-11-01; and face checks, the Requests tab and adding
+     a punch, which opens for review in #153;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2141,3 +2141,70 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   sized as the period bar's now, two to a line on phones. And the files
   imported and the numbers saved were a panel in their card, a box in a
   box: they're rows straight in it, as on Public holidays.
+- **2026-11-01:** Import and employee numbers were merged in #152. Face
+  checks, the Requests tab and adding a punch move onto the building
+  blocks in #153 (part 7, the last):
+  - the Requests tab is a card each: one's check-in phone, with Cancel
+    the new phone while one waits; one's requests, and what waits on
+    whoever decides, each pointing to the Requests page; and, for
+    whoever approves overtime, Overtime ahead. They were glass boxes
+    with typed-in styles;
+  - cancelling a new phone asks first in the building blocks' dialog,
+    whose other button keeps the request, not another "Cancel" beside
+    "Cancel the new phone". It was the old confirm box;
+  - asking for permission hours or reporting a missing punch from a day,
+    on Days or the check-in page, opens the Requests page's own forms in
+    the building blocks' dialog, the day's date, type and hours filled
+    in: one form each, not two, with what's missing said under its field
+    and the server's refusals in the page's language;
+  - approving overtime ahead and adding a punch are forms in the
+    building blocks' dialog, each saying what's missing under its field.
+    A punch's day can't be after today;
+  - face verification's photos waiting and who it's asked of are lists
+    (§5.4), a table on computers and a card for each on phones, each
+    photo with what it's for, when it was sent, on the viewer's clock and
+    in the page's language, and what to know before deciding. Whoever is
+    asked has a checkbox named for them. The overdue are a card that
+    waits on someone (§5.5), each since when. They were glass boxes,
+    tables and dates as the server wrote them;
+  - deciding a photo is in the building blocks' dialog, and rejecting
+    asks why in the same dialog, so the photos stay open: closed and
+    opened again they'd be fetched, and recorded, again. Asking to
+    re-verify asks first there too. They were the old modal and confirm
+    box;
+  - a face photo has the building blocks' look wherever it's shown,
+    flagged check-ins on the Requests page too;
+  - while face verification loads, and when it can't, it says so, with
+    the server's word and Try again. It was a spinner, or nothing.
+- **2026-11-01:** Found in the interface audit of #153:
+  - in a photo's dialog, Reject and Back each took away the button that
+    had focus, which went to the page behind: Escape didn't close the
+    dialog, and Tab started from the top of the page. Reject puts it in
+    the reason now, and Back on Reject again;
+  - the two photos sat one under the other in the dialog, so comparing
+    them meant scrolling between them, and each had no size until it
+    loaded, so the dialog grew as they came in. They're side by side,
+    on a phone too, each 3 by 4 from the start;
+  - adding a punch's reason had "e.g." for its placeholder, where the
+    other forms have "Such as …";
+  - "No phone yet" was a settings card's note, small and grey, where the
+    other cards say theirs as the card's text.
+  - ticking or unticking whoever is asked for face verification waited
+    on the server before the box changed, so it looked as if the click
+    hadn't taken. It shows at once while it saves, and goes back if it's
+    refused.
+- **2026-11-01:** Found in the interface audit of #153, on a phone: in
+  the cards of who is asked for face verification, the checkbox stood
+  alone at the card's foot, saying nothing. It says "Asked for face
+  verification" beside it now. The table's column says it on a computer,
+  and its box is named for the person.
+- **2026-11-01:** Found by Codex on #153: a write on Attendance whose
+  connection failed, or dropped before the answer was read, threw. The
+  busy button reset and nothing was said, so whoever decided a face photo,
+  asked it of someone or asked them to re-verify couldn't tell whether it
+  was saved. The face tab had caught it before. Every Attendance write
+  (`attendance/send.ts`) now says so, as a refusal does.
+- **2026-11-01:** Found by Codex on #153: a face photo's dialog had only
+  Reject and Approve, and the building blocks' dialog has no close button
+  of its own, so on a phone, with no Escape key, it couldn't be closed
+  without deciding. It has Close too, first, as Cancel is elsewhere.

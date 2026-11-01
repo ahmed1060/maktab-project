@@ -2,8 +2,16 @@ import { apiErrorText } from '@/lib/api-error-text'
 
 /** A write to the attendance API: the body's data, or the error to show. */
 export async function send(url: string, init: RequestInit, fallback: string): Promise<{ ok: true; body: any } | { ok: false; error: string; code?: string }> {
-    const res = await fetch(url, init)
-    const text = await res.text()
+    // A connection that fails, or drops before the answer is read, is a refusal like any other. Thrown, the
+    // busy button reset and nothing was said, so nobody could tell whether it was saved (found by Codex on PR 153).
+    let res: Response
+    let text: string
+    try {
+        res = await fetch(url, init)
+        text = await res.text()
+    } catch {
+        return { ok: false, error: fallback }
+    }
     if (!res.ok) return { ok: false, error: apiErrorText(text, fallback), code: codeOf(text) }
     try { return { ok: true, body: JSON.parse(text)?.data } } catch { return { ok: true, body: null } }
 }

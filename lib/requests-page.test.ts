@@ -329,8 +329,8 @@ describe("missing punches on it (UI_PLAN.md §2.3, part 3b)", () => {
         expect(server).toContain("attendanceToday={attendanceToday}")
         expect(client).toContain("<ReportMissingPunch today={today}")
         expect(client).toContain("<AskPermission today={today}")
-        // Both forms start on it, and a missing punch can't be after it.
-        expect(dialogs).toContain("const [date, setDate] = useState(today)")
+        // Both forms start on it, or on the day they're asked from on Attendance (PR 153), and a missing punch can't be after it.
+        expect(dialogs).toContain("const [date, setDate] = useState(initial?.date ?? today)")
         expect(dialogs).not.toMatch(/function today\(\)/)
     })
 

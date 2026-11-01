@@ -2151,3 +2151,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** Attendance's Exceptions was merged in #151. Its Import
   and Employee numbers move onto the building blocks in #152
   (`UI_PLAN.md` §5). Neither touches clients or locations.
+- **2026-11-01:** Attendance's Import and Employee numbers were merged
+  in #152. Its face checks, Requests tab and adding a punch move onto the
+  building blocks in #153 (`UI_PLAN.md` §5). Neither touches clients or
+  locations.
