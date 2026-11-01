@@ -383,6 +383,26 @@ describe("page layout, sections, rows and tiles", () => {
         expect(html).toContain('<li><div class="ui-row">')
     })
 
+    it("a row that opens has its title and detail as the button, says whether it's open, and keeps its own links beside it", () => {
+        const row = (open: boolean) => render(h("ul", { className: "ui-rows" }, h(ui.DisclosureRow, {
+            title: "Hana Ali", detail: "Days paid: 30", open, onToggle: () => {},
+            end: h("a", { href: "/payslip/1" }, "Payslip"),
+            label: "Hana Ali's pay",
+            lines: [{ label: "Basic salary", value: "18,000.00" }, { label: "Late arrival", value: "−300.00" }],
+        })))
+        const closed = row(false)
+        const id = closed.match(/aria-controls="([^"]+)"/)![1]
+        expect(closed).toMatch(/<li><div class="ui-row"><button type="button" class="ui-row-main ui-row-toggle" aria-expanded="false" aria-controls="[^"]+"><span class="ui-item-title">Hana Ali<svg[^>]*class="ui-icon ui-row-caret"[^>]*>.*?<\/svg><\/span><span class="ui-item-detail">Days paid: 30<\/span><\/button>/)
+        // Its link is at its end, outside the button: never one inside another.
+        expect(closed).toContain('</button><span class="ui-row-end"><a href="/payslip/1">Payslip</a></span></div>')
+        // What it opens is there, hidden, so the button names what it controls.
+        expect(closed).toContain(`<ul id="${id}" class="ui-row-lines" aria-label="Hana Ali&#x27;s pay" hidden="">`)
+        expect(closed).toContain('<li><span>Basic salary</span><span class="ui-num">18,000.00</span></li>')
+        const opened = row(true)
+        expect(opened).toContain('aria-expanded="true"')
+        expect(opened).toMatch(/<ul id="[^"]+" class="ui-row-lines" aria-label="Hana Ali&#x27;s pay">/)
+    })
+
     it("a tile can link to what it counts and carry a note", () => {
         const html = render(h(ui.TotalTiles, { items: [
             { label: "Task reviews", value: 3, href: "/dashboard/tasks?status=PENDING_CONFIRMATION" },
@@ -561,6 +581,12 @@ describe("the stylesheet keeps the rules", () => {
         expect(css).toMatch(/\.ui-card\[data-tone="waiting"\] \{\s*border-inline-start: 3px solid var\(--status-waiting-fg\);\s*\}/)
         expect(css).toMatch(/\.ui-card\[data-tone="problem"\] \{\s*border-inline-start: 3px solid var\(--problem-text\);\s*\}/)
         expect(css).not.toMatch(/\.ui-card\[data-tone="[a-z]+"\] \{[^}]*background/)
+    })
+
+    it("a row that opens turns its caret when it's open, without motion for whoever asked for none", () => {
+        expect(css).toMatch(/\.ui-row-toggle\[aria-expanded="true"\] \.ui-row-caret \{\s*transform: rotate\(180deg\);\s*\}/)
+        expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^@]*\.ui-row-caret[^{]*\{\s*transition: none;/)
+        expect(css).toMatch(/\.ui-row-toggle:focus-visible \{[^}]*outline: 2px solid var\(--brand-text\);/)
     })
 
     it("a card spaces what's in it itself: a paragraph in it keeps no margins of its own", () => {

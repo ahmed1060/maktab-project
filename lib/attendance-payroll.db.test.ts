@@ -335,4 +335,19 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         const { rows: audits } = await db.query(`SELECT count(*)::int AS n FROM "AuditLog" WHERE action = 'RESOLVE_ATTENDANCE_DISCREPANCY' AND "entityId" = 'page-01'`)
         expect(audits[0].n).toBe(1)
     })
+
+    it("names the day a debt is due as the company's day, not UTC's (PR 145)", async () => {
+        // Due at the start of the 25th in Cairo, which is still the 24th in
+        // UTC: a page that read the day off the instant said the 24th.
+        const { paydayIn } = await import("@/lib/payday")
+        const due = paydayIn(2026, 11, 25, "Africa/Cairo")
+        expect(due.toISOString()).toBe("2026-11-24T22:00:00.000Z")
+        await db.query(`INSERT INTO "Debt"(id, "userId", "companyId", amount, source, "dueDate", "updatedAt") VALUES ('debt-due', 'e1', 'c1', 500, 'PAYSLIP_CARRY', $1, now())`, [due])
+        try {
+            const debt = (await Payroll.view("c1", 2026, 9)).debts.find(d => d.id === "debt-due")
+            expect(debt).toMatchObject({ dueDay: "2026-11-25", amount: 500 })
+        } finally {
+            await db.query(`DELETE FROM "Debt" WHERE id = 'debt-due'`)
+        }
+    })
 })

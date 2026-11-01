@@ -516,6 +516,13 @@ These are built once, in the building-blocks PR, and every page uses them
   - An overdue row gets the red start-edge bar and the faint red background,
     as in a table.
   - A full list, with filters and pages, uses the table (§5.4) instead.
+  - **A row that opens** shows its item's lines under it, such as a
+    person's pay on Payroll, line by line. Its title and detail are the
+    button that opens it, with a caret after the title that turns while
+    it's open, and screen readers hear whether it is. The row's own links,
+    such as the person's payslip, sit at its end, beside the button and
+    never inside it. Its lines are indented, in `--text-sm` and `--muted`,
+    each with its amount at the end.
 - **Row menu:** the actions on one item that don't fit in its row, behind a
   quiet "More actions" button.
   - The pop-up is level 2 (§4.3) with 8px corners, on the end side of the
@@ -916,3 +923,8 @@ changed:
   and the Super Admin's company is the company in view from the top bar.
   Payroll had a company select of its own, so a Super Admin picked the
   company twice.
+- **2026-11-01:** A row that opens (§5.5, Rows), for Payroll's list of
+  everyone on the register. Each name opened that person's lines before
+  too, but as a plain button with nothing to say it opened, or whether it
+  was open, and an excluded person's row was faded below a readable
+  contrast. Excluded is said in words now, with why.

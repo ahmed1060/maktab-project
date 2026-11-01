@@ -8,7 +8,7 @@ import { timelineForMonth } from "@/lib/employment"
 import { ratesForMonth } from "@/lib/salary-history"
 import { toMajor, toMinor } from "@/lib/payroll"
 import { paydayIn } from "@/lib/payday"
-import { startOfMonthIn } from "@/lib/time"
+import { calendarDateStr, startOfMonthIn } from "@/lib/time"
 import { resolveTimeZone } from "@/lib/timezone"
 import { checkApproval, type ApprovalRefusal } from "@/lib/approval"
 
@@ -224,7 +224,7 @@ export class PayrollRunService {
         // An approved run shows attendance as it was approved, whatever the
         // switch says now (review on #16).
         const recorded = run && run.status !== "DRAFT" ? run.attendanceIncluded : undefined
-        const [{ register, refused, payrollDay, attendance }, discrepanciesOpen, previous, debts] = await Promise.all([
+        const [{ register, refused, payrollDay, attendance, timeZone }, discrepanciesOpen, previous, debts] = await Promise.all([
             this.compute(companyId, year, month, prisma, recorded),
             // Owed whether or not attendance reaches payroll now: a run approved
             // with it keeps producing these after the switch is stopped.
@@ -309,6 +309,10 @@ export class PayrollRunService {
                 originalAmount: Number(d.amount),
                 recoveredAmount: Number(d.recoveredAmount),
                 dueDate: d.dueDate,
+                // The day it's due, in the company's zone: due at the start of
+                // payday there, which in UTC can still be the day before
+                // (PR 145).
+                dueDay: calendarDateStr(d.dueDate, timeZone),
                 source: d.source,
             })),
         }
@@ -433,7 +437,6 @@ export class PayrollRunService {
         if (!verdict.ok) return { refusal: verdict.refusal }
 
         const { timeZone } = await this.policy(companyId)
-        const { calendarDateStr } = await import("@/lib/time")
         const { AttendanceEngineService } = await import("./attendance-engine.service")
 
         // One transaction, in this order (ATTENDANCE_PLAN.md §12.1): take the

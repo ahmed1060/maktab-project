@@ -455,8 +455,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      page and the account check, merged in #140 on 2026-10-31, the eighth
      is Payroll, in three parts: its top (the page header, the month it's
      for, paying and sending, and the totals), merged in #141 on
-     2026-10-31; its review cards, which open for review in #142; then the
-     list of everyone paid and the debts;
+     2026-10-31; its review cards, merged in #142 on 2026-11-01; then the
+     list of everyone paid and the debts, which open for review in #145;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -1891,3 +1891,29 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   confirmation now closes when the company or month changes under it,
   and "approve anyway" is unticked, so neither carries over to a register
   nobody reviewed.
+- **2026-11-01:** Payroll's month in its address and the company in view
+  were merged in #144. Payroll's last part moves onto the building blocks
+  in #145: the list of everyone on the register, and what people owe.
+  Nothing on the page is styled by hand any more.
+  - Everyone on the register is a card with a row for each person. Each
+    name opens that person's pay, line by line, as it did; now it says it
+    opens, and whether it's open, with a caret that turns. That's a new
+    rule in `DESIGN.md` (§5.5, Rows).
+  - An excluded person was faded, below a readable contrast. They're shown
+    as everyone else is, with the word Excluded beside their name and why
+    in their detail line.
+  - Each payslip link is named for its person, so a screen reader tells
+    one from the next. Days paid are counted in the page's digits, as every
+    other number is; they were always in English digits.
+  - A deduction is no longer red: its minus says it, as on attendance's
+    dry run above it.
+  - What people owe is a card with a row for each debt: who, when it's
+    due, what's been recovered and what's left. Write off is named for its
+    person, and asks why in the building blocks' dialog, which stays open
+    while it works, so the code it asks for comes up over it. Fewer than
+    three characters is no reason, as the server says, and the dialog now
+    says so under the field.
+  - A debt's due day was read in the browser's time zone. It's due at the
+    start of payday in the company's, which is the day before in UTC, so
+    anyone outside Egypt saw the day before. The server sends the day
+    itself now.

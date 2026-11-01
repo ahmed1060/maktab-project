@@ -98,13 +98,13 @@ describe("what replaced them says the same thing", () => {
     const REQUEST = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
     const MODAL = readFileSync("components/ConfirmModal.tsx", "utf8")
 
-    it("the payroll screen confirms through the themed modal", () => {
-        // Anchored on the tag boundary: toContain("<ConfirmModal") is satisfied
-        // by "<ConfirmModalX", so it could not fail on a renamed or unmounted
-        // component. Third time this trap has appeared in this repository — the
-        // first two are recorded in the plan.
-        expect(PAYROLL).toMatch(/<ConfirmModal[\s/>]/)
-        expect(PAYROLL).toContain("import ConfirmModal from '@/components/ConfirmModal'")
+    it("the payroll screen confirms through the building blocks' dialog", () => {
+        // Anchored on the tag boundary: toContain("<Dialog") is satisfied by
+        // "<DialogActions", so it could not fail on an unmounted dialog. The
+        // themed modal was the step before; Payroll left it in PR 145.
+        expect(PAYROLL).toMatch(/<Dialog\s+open=\{confirming\?\.kind === 'approve'\}/)
+        expect(PAYROLL).toMatch(/<Dialog\s+open=\{confirming\?\.kind === 'paid'\}/)
+        expect(PAYROLL).toMatch(/<Dialog\s+open=\{confirming\?\.kind === 'waive'\}/)
         expect(PAYROLL).toContain("payroll_approve_title")
         expect(PAYROLL).toContain("payroll_mark_paid_title")
         expect(PAYROLL).toContain("payroll_debt_waive_title")
@@ -116,11 +116,13 @@ describe("what replaced them says the same thing", () => {
 
     it("the write-off still records a reason, now in the dialog", () => {
         // It was a window.prompt, which is the one native dialog that also
-        // cannot be styled, translated or cancelled meaningfully.
+        // cannot be styled, translated or cancelled meaningfully. The themed
+        // modal still asks for one where other pages use it.
         expect(MODAL).toContain("reason?: {")
         expect(MODAL).toContain("reasonValue.trim().length < (reason.minLength ?? 3)")
         expect(PAYROLL).toContain("payroll_debt_waive_reason_label")
-        expect(PAYROLL).toContain("waive(pending.debt, reason ?? '')")
+        expect(PAYROLL).toContain("if (writeOffReason.trim().length < 3)")
+        expect(PAYROLL).toContain("waive(confirming.debt)")
     })
 
     it("and the reason gates the confirm button rather than being optional", () => {

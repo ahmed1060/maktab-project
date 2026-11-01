@@ -424,3 +424,111 @@ describe("a confirmation is for the register it was opened on", () => {
         expect(PAGE).toMatch(/if \(scope !== scopeShown\) \{\s*setScopeShown\(scope\)\s*setConfirming\(null\)\s*setAcknowledged\(false\)\s*\}/)
     })
 })
+
+// ── Part 3: everyone on the register, and what people owe (UI_PLAN.md §5 step 5) ──
+
+const entry = (fields: View = {}) => ({
+    userId: "a", name: "Hana Ali",
+    lines: [
+        { kind: "EARNING", label: "Basic salary", amountMinor: 1800000, source: "SALARY" },
+        { kind: "DEDUCTION", label: "Late arrival", amountMinor: 30000, source: "ATTENDANCE", sourceId: "LATENESS" },
+    ],
+    totals: { earningsMinor: 1800000, deductionsMinor: 30000, netMinor: 1770000, carriedMinor: 0 },
+    daysPaid: 31, wholeMonth: true, undecidedDays: 0, excluded: false,
+    ...fields,
+})
+
+describe("everyone on the register", () => {
+    it("is a card with a row for each person, whose name opens their pay lines", async () => {
+        const part = reviewCard(await page({ shows: view({}, { entries: [entry()] }) }), en.payroll_people)
+        expect(part).toMatch(/^<section class="ui-panel ui-card"><div class="ui-card-head"><h2 class="ui-card-title">Everyone on the register<\/h2><\/div><ul class="ui-rows" aria-label="Everyone on the register">/)
+        expect(part).toMatch(/<button type="button" class="ui-row-main ui-row-toggle" aria-expanded="false" aria-controls="[^"]+"><span class="ui-item-title">Hana Ali<svg/)
+        expect(part).toContain('<span class="ui-item-detail">Days paid: 31</span>')
+        expect(part).toContain('<span class="ui-row-end"><strong class="ui-num">17,700.00</strong></span>')
+        // The lines are there, closed: an earning as it is, a deduction with its minus.
+        expect(part).toContain(`aria-label="${en.payroll_lines_of.replace("{name}", "Hana Ali").replace("'", "&#x27;")}" hidden="">`)
+        expect(part).toContain('<li><span>Basic salary</span><span class="ui-num">18,000.00</span></li>')
+        expect(part).toContain(`<li><span>${en.attpay_line_LATENESS}</span><span class="ui-num">−300.00</span></li>`)
+        expect(part).not.toContain("style=")
+    })
+
+    it("links each stored payslip, named for its person, and says what's carried as a debt", async () => {
+        const shows = view({ payslipIds: { a: "p1" } }, { entries: [entry({ totals: { earningsMinor: 0, deductionsMinor: 50000, netMinor: 0, carriedMinor: 50000 } })] })
+        const part = reviewCard(await page({ shows }), en.payroll_people)
+        expect(part).toContain('<a class="ui-row-link" aria-label="Payslip: Hana Ali" href="/dashboard/documents/payslip/p1">Payslip</a>')
+        expect(part).toContain('<span class="ui-row-carried">500.00 carried as debt</span>')
+        // None for a person not stored yet: a link to nothing is worse than none.
+        expect(reviewCard(await page({ shows: view({}, { entries: [entry()] }) }), en.payroll_people)).not.toContain("/dashboard/documents/payslip/")
+    })
+
+    it("shows an excluded person with the word and why, rather than fading them out", async () => {
+        const shows = view({ payslipIds: { a: "p1" } }, { entries: [entry({ excluded: true, exclusionReason: "On unpaid leave", undecidedDays: 2 })] })
+        const part = reviewCard(await page({ shows }), en.payroll_people)
+        expect(part).toContain('<span class="ui-item-title">Hana Ali<span class="ui-badge ui-badge-neutral">Excluded</span>')
+        expect(part).toContain(`<span class="ui-item-detail">Days paid: 31 · ${en.payroll_undecided_days.replace("{n}", "2")} · On unpaid leave</span>`)
+        // Excluded is not paid, so there's no payslip to open.
+        expect(part).not.toContain("/dashboard/documents/payslip/")
+        expect(part).not.toContain("opacity")
+    })
+
+    it("counts and pays in the page's language", async () => {
+        const part = reviewCard(await page({ shows: view({}, { entries: [entry()] }), locale: "ar" }), ar.payroll_people)
+        expect(part).toContain(ar.payroll_days_paid_n.replace("{n}", "٣١"))
+        expect(part).toContain("١٧٬٧٠٠٫٠٠")
+    })
+
+    it("says when there's nobody to pay", async () => {
+        const part = reviewCard(await page({ shows: view() }), en.payroll_people)
+        expect(part).toContain(`<p class="ui-card-note">${en.payroll_empty}</p>`)
+        expect(part).not.toContain("ui-rows")
+    })
+})
+
+describe("what people owe", () => {
+    const debt = (fields: View = {}) => ({ id: "d1", userId: "a", name: "Hana Ali", amount: 3000, originalAmount: 5000, recoveredAmount: 2000, dueDate: "2026-11-24T22:00:00.000Z", dueDay: "2026-11-25", source: "PAYSLIP_CARRY", ...fields })
+
+    it("is a card with a row for each debt: who, when it's due, what's been recovered, and what's left", async () => {
+        const part = reviewCard(await page({ shows: view({ debts: [debt()] }) }), en.payroll_debts)
+        expect(part).toMatch(/^<section class="ui-panel ui-card"><div class="ui-card-head"><h2 class="ui-card-title">Outstanding<\/h2><\/div><p class="ui-card-note">/)
+        expect(part).toContain('<span class="ui-item-title">Hana Ali</span>')
+        // Due on the company's day, not the browser's: the 25th, though it
+        // starts on the 24th in UTC.
+        expect(part).toContain(`<span class="ui-item-detail">Due 25 Nov 2026 · ${en.payroll_debt_recovered.replace("{paid}", "2,000.00").replace("{total}", "5,000.00")}</span>`)
+        expect(part).toContain('<span class="ui-num">3,000.00</span>')
+        expect(part).not.toContain("style=")
+    })
+
+    it("leaves out what's been recovered when nothing has", async () => {
+        const part = reviewCard(await page({ shows: view({ debts: [debt({ amount: 5000, recoveredAmount: 0 })] }) }), en.payroll_debts)
+        expect(part).toContain('<span class="ui-item-detail">Due 25 Nov 2026</span>')
+    })
+
+    it("offers Write off, named for its person, only to whoever may write debts off", async () => {
+        const shows = view({ debts: [debt()] })
+        expect(reviewCard(await page({ shows, grants: ["debts.waive"] }), en.payroll_debts)).toContain(`<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm" aria-label="${en.payroll_debt_waive_title.replace("{name}", "Hana Ali").replace("'", "&#x27;")}">Write off</button>`)
+        expect(reviewCard(await page({ shows }), en.payroll_debts)).not.toContain("Write off")
+    })
+
+    it("says when nobody owes anything", async () => {
+        expect(reviewCard(await page({ shows: view() }), en.payroll_debts)).toContain(`<p class="ui-card-note">${en.payroll_no_debts}</p>`)
+    })
+})
+
+describe("Payroll is on the building blocks throughout", () => {
+    const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
+
+    it("has no hand-made cards, buttons or styles left", () => {
+        expect(PAGE).not.toContain("style={{")
+        expect(PAGE).not.toMatch(/const card = |className="card"|className="btn"/)
+    })
+
+    it("writes a debt off in the building blocks' dialog, which asks why and stays open while it works", () => {
+        expect(PAGE).not.toContain("ConfirmModal")
+        expect(PAGE).toMatch(/<Dialog\s+open=\{confirming\?\.kind === 'waive'\}/)
+        expect(PAGE).toContain('name="write_off_reason"')
+        // Fewer than three characters is no reason: said under the field, as the server would.
+        expect(PAGE).toContain("if (writeOffReason.trim().length < 3)")
+        expect(PAGE).toContain("t('payroll_debt_waive_needs_reason')")
+        expect(PAGE).toContain("action.run('waive'")
+    })
+})
