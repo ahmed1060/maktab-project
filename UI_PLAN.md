@@ -2038,3 +2038,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - on a phone, a day's times read "In 09:12 , Out 17:00", each piece
     spaced apart, and a day with no punch said "In —, Out —". The times
     are one line now, and only on a day with a punch.
+- **2026-11-01:** From Codex's review of #149: a count's word was picked
+  for the number rounded to three places, whatever it was shown to. A
+  deduction of 1.0004 days, shown to four places, read "1 day", and in
+  Arabic 1.9999 days read "يومان". The word is picked for the number as
+  it's shown now.
