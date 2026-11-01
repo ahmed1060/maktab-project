@@ -52,7 +52,7 @@ export function CostsTab({ costs, loading, error, retrying, retry }: {
     const columns: Column<UserCost>[] = [
         { key: 'task', header: t('costs_col_task'), cell: c => <span className="ui-item-title">{task(c)}</span> },
         { key: 'date', header: t('date_label'), cell: c => date(c.date) },
-        { key: 'amount', header: t('advances_to_pay_back'), cell: amount, align: 'end' },
+        { key: 'amount', header: t('hist_cost_col_amount'), cell: amount, align: 'end' },
         { key: 'status', header: t('status_label'), cell: badge },
     ]
 
@@ -69,7 +69,8 @@ export function CostsTab({ costs, loading, error, retrying, retry }: {
                     status={badge(c)}
                     details={[
                         { icon: CalendarBlankIcon, text: date(c.date) },
-                        { icon: CoinsIcon, text: <span>{t('advances_to_pay_back')}: {amount(c)}</span> },
+                        // Paid back once it's paid: "To pay back" beside "Paid" said the opposite of its badge (PR 158).
+                        { icon: CoinsIcon, text: <span>{t(c.status === 'PAID' ? 'hist_cost_paid_back' : 'advances_to_pay_back')}: {amount(c)}</span> },
                     ]}
                 />
             )}

@@ -1,9 +1,10 @@
 'use client'
 import { useState } from 'react'
 import { CalendarBlankIcon, HourglassIcon, TagIcon, UmbrellaIcon, WalletIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { Button, Card, DataList, Details, Dialog, EmptyState, Field, ListCard, Section, TextInput, type Column } from '@/components/ui'
+import { Button, Card, DataList, Details, Dialog, DialogActions, EmptyState, Field, ListCard, Section, TextInput, type Column } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { spansDays } from '@/lib/day-off-range'
 import { DAY_OFF_TYPE_LABEL } from '@/lib/day-off-types'
 import { RECONSTRUCTED_NOTE } from '@/lib/leave-reset'
 import { countOf } from '@/lib/plural'
@@ -20,6 +21,8 @@ export type DayOffRequest = {
     id: string
     type: string
     date: string
+    /** The last day of a day off of several days. */
+    endDate?: string | null
     daysDeducted: number
     /** CREDIT or SALARY: what the days came out of. */
     deductionType: string
@@ -45,9 +48,13 @@ export type DayOffHistory = {
 function useDayOffWords() {
     const { t, locale } = useLanguage()
     const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    // A day off's days are calendar days, kept at midnight UTC: read as such
+    // wherever the screen is, as the Requests page reads them (PR 158).
+    const day = (d: string) => new Date(d).toLocaleDateString(digits, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
     return {
         t, locale,
-        date: (d: string) => new Date(d).toLocaleDateString(digits, { day: 'numeric', month: 'long', year: 'numeric' }),
+        /** The day, or the first and last of a day off of several days. */
+        date: (r: DayOffRequest) => (spansDays(r.date, r.endDate) ? `${day(r.date)} – ${day(r.endDate!)}` : day(r.date)),
         days: (n: number) => countOf(t, locale, n, 'days'),
         // "2026", never "2,026", in the page's digits.
         year: (y: number) => new Intl.NumberFormat(digits, { useGrouping: false }).format(y),
@@ -79,13 +86,15 @@ export function DayOffTab({ history, loading, error, retrying, retry, canReconsi
     const from = (r: DayOffRequest) => t(r.deductionType === 'CREDIT' ? 'deduct_from_credit' : 'deduct_from_salary')
     // Only a day taken from the credit: the old Manage deductions window
     // offered no others, and the server's refusal names only those.
+    // Named for its day off: a column of buttons all called Reconsider says
+    // nothing to who hears them out of their rows (PR 158).
     const reconsider = (r: DayOffRequest) => canReconsider && r.deductionType === 'CREDIT'
-        ? <Button size="sm" onClick={() => onReconsider(r)}>{t('reevaluate')}</Button>
+        ? <Button size="sm" aria-label={t('hist_reconsider_for').replace('{date}', date(r))} onClick={() => onReconsider(r)}>{t('reevaluate')}</Button>
         : null
     const reason = (r: DayOffRequest) => (r.reason ? <bdi>{r.reason}</bdi> : null)
 
     const columns: Column<DayOffRequest>[] = [
-        { key: 'date', header: t('hist_dayoff_col_date'), cell: r => <span className="ui-item-title">{date(r.date)}</span> },
+        { key: 'date', header: t('hist_dayoff_col_date'), cell: r => <span className="ui-item-title">{date(r)}</span> },
         { key: 'type', header: t('hist_dayoff_col_type'), cell: type },
         { key: 'days', header: t('hist_dayoff_col_days'), cell: r => days(r.daysDeducted), align: 'end' },
         { key: 'from', header: t('hist_dayoff_col_from'), cell: from },
@@ -132,7 +141,7 @@ export function DayOffTab({ history, loading, error, retrying, retry, canReconsi
                         empty={<EmptyState icon={CalendarBlankIcon} title={t('hist_dayoff_none_year')} />}
                         card={r => (
                             <ListCard
-                                title={date(r.date)}
+                                title={date(r)}
                                 details={[
                                     { icon: TagIcon, text: type(r) },
                                     { icon: CalendarBlankIcon, text: days(r.daysDeducted) },
@@ -174,12 +183,16 @@ export function ReconsiderDayOff({ request, onClose, onDone }: {
         onClose()
     }
 
-    const save = () => {
+    const save = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        const form = e.currentTarget
         if (!request) return
         const days = Number(value)
         // The server takes any number; a day off is taken in halves, from none up.
         if (value.trim() === '' || !Number.isFinite(days) || days < 0 || (days * 2) % 1 !== 0) {
             setError(t('requests_day_off_days_invalid'))
+            // To the field, once it says under it why (PR 158), as the Requests page does.
+            requestAnimationFrame(() => form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
             return
         }
         void action.run('save', async () => {
@@ -203,23 +216,20 @@ export function ReconsiderDayOff({ request, onClose, onDone }: {
     }
 
     return (
-        <Dialog
-            open={!!request}
-            onClose={close}
-            title={t('hist_reconsider_title')}
-            actions={<>
-                <Button onClick={close} disabled={action.running}>{t('cancel')}</Button>
-                <Button variant="primary" onClick={save} disabled={action.running} busy={action.is('save')}>{t('save')}</Button>
-            </>}
-        >
+        <Dialog open={!!request} onClose={close} title={t('hist_reconsider_title')}>
+            {/* A form, so Enter in the field saves, as its Save button does (PR 158). */}
             {request && (
-                <>
-                    <p>{t('hist_reconsider_what').replace('{type}', type(request)).replace('{date}', date(request.date))}</p>
+                <form className="ui-form" noValidate onSubmit={save}>
+                    <p>{t('hist_reconsider_what').replace('{type}', type(request)).replace('{date}', date(request))}</p>
                     <Field label={t('hist_reconsider_days')} hint={t('hist_reconsider_hint')} error={error}>{p => (
                         <TextInput {...p} type="number" autoComplete="off" inputMode="decimal" min="0" step="0.5" value={value}
                             onChange={e => { setTyped({ id: request.id, value: e.target.value }); setError(undefined) }} />
                     )}</Field>
-                </>
+                    <DialogActions>
+                        <Button onClick={close} disabled={action.running}>{t('cancel')}</Button>
+                        <Button type="submit" variant="primary" disabled={action.running} busy={action.is('save')}>{t('save')}</Button>
+                    </DialogActions>
+                </form>
             )}
         </Dialog>
     )

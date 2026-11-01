@@ -2356,3 +2356,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     again. Both were hand-made tables, aligned by language by hand. The
     13 labels only they and the old window read are gone from both
     languages.
+- **2026-11-01:** Found in the browser and the interface audit on #158:
+  - a day off's date was read on the screen's clock. A day off is a
+    calendar day kept at midnight UTC, so west of UTC it read as the day
+    before. It's read as the calendar day now, as the Requests page reads
+    it, and a day off of several days gives its last day too: the
+    wedding leave of 3 to 5 November read as 3 November alone;
+  - a paid cost's card said "To pay back" beside its Paid badge. It says
+    "Paid back" once it's paid, and the table's column is "Amount";
+  - every Reconsider button was called just that. Each is named for its
+    day off now, for who hears them out of their rows;
+  - Enter in the dialog's field did nothing, and a refused number left
+    the focus on Save. It's a form now, so Enter saves, and a refused
+    number takes the focus to its field, under which it says why.

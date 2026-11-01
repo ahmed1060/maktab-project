@@ -328,6 +328,62 @@ describe("found in the browser (the audit, PR 157)", () => {
     })
 })
 
+describe("found in the browser (the audit, PR 158)", () => {
+    it("says a paid cost was paid back, and one waiting is to pay back", async () => {
+        // "To pay back" beside "Paid" said the opposite of its badge.
+        const html = await costs()
+        expect(html).toContain(`<th scope="col" class="ui-end">${en.hist_cost_col_amount}</th>`)
+        const cards = html.slice(html.indexOf('<ul class="ui-cards"'))
+        expect(cards).toContain(`<span>${en.hist_cost_paid_back}: <strong class="ui-nowrap ui-num">${egp(1250)}</strong></span>`)
+        expect(cards).toContain(`<span>${en.advances_to_pay_back}: <strong class="ui-nowrap ui-num">${egp(80.5)}</strong></span>`)
+    })
+
+    it("reads a day off's date as the calendar day it is, wherever the screen is, and gives a day off of several days its last day too", async () => {
+        // Kept at midnight UTC, as the Requests page reads it: west of UTC it was the day before.
+        const zone = process.env.TZ
+        process.env.TZ = "America/New_York"
+        try {
+            const html = await dayOff({
+                history: {
+                    baseCredit: 21, remainingCredit: 18, history: [{
+                        year: 2026, snapshot: null, requests: [
+                            { id: "o3", type: "REGULAR", date: "2026-03-05T00:00:00Z", endDate: "2026-03-07T00:00:00Z", daysDeducted: 3, deductionType: "CREDIT", reason: null },
+                            { id: "o4", type: "SICK", date: "2026-04-01T00:00:00Z", endDate: null, daysDeducted: 1, deductionType: "CREDIT", reason: null },
+                        ],
+                    }],
+                },
+            })
+            expect(html).toContain(">5 March 2026 – 7 March 2026<")
+            expect(html).toContain(">1 April 2026<")
+            expect(html).not.toContain("4 March 2026")
+        } finally {
+            process.env.TZ = zone
+        }
+    })
+
+    it("names each Reconsider for its day off, for who can't see the row", async () => {
+        const html = await dayOff({ canReconsider: true })
+        expect(html).toContain(`aria-label="${en.hist_reconsider_for.replace("{date}", "5 March 2026")}"`)
+    })
+
+    it("saves the days with Enter, as a form", async () => {
+        state.locale = "en"
+        const { ReconsiderDayOff } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/DayOffTab")
+        vi.stubGlobal("document", { body: {} })
+        let html: string
+        try {
+            html = renderToStaticMarkup(h(ReconsiderDayOff, { request: HISTORY.history[0].requests[0], onClose: () => {}, onDone: () => {} } as never))
+        } finally {
+            vi.unstubAllGlobals()
+        }
+        const form = html.slice(html.indexOf('<form class="ui-form" noValidate="">'))
+        expect(form.slice(0, form.indexOf("</form>")), "the Save button is the form's").toContain(`<button type="submit" class="ui-btn ui-btn-primary">${en.save}</button>`)
+        // A refused number takes the focus to its field, under which it says why.
+        const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/DayOffTab.tsx", "utf8")
+        expect(src).toContain(`form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()`)
+    })
+})
+
 describe("nothing of the old frame is left", () => {
     it("has no spinner, hand-made back button, tab buttons or corner alert", () => {
         const src = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/page.tsx", "utf8")
