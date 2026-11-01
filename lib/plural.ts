@@ -10,10 +10,12 @@ import type { TranslationKey } from '@/lib/translations'
  */
 export type CountWord = 'days' | 'pts' | 'employees' | 'requests' | 'records' | 'files' | 'clients' | 'companies' | 'locations' | 'names' | 'times' | 'charges' | 'entries' | 'tasks' | 'obligations' | 'held'
 
-export function countOf(t: (key: TranslationKey) => string, locale: string, n: number, word: CountWord): string {
+/** `places`: the most decimal places shown, two unless the count is kept finer, as a deduction's days are (PR 149). */
+export function countOf(t: (key: TranslationKey) => string, locale: string, n: number, word: CountWord, places = 2): string {
     const lang = locale === 'ar' ? 'ar' : 'en'
-    const form = new Intl.PluralRules(lang).select(n)
-    const digits = n.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { maximumFractionDigits: 2 })
+    // The form for the number as it's shown: rounded to other places, 1.0004 picked "1 day" (review on PR 149).
+    const form = new Intl.PluralRules(lang, { maximumFractionDigits: places }).select(n)
+    const digits = n.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { maximumFractionDigits: places })
     let words = t(`count_${word}_${form}` as TranslationKey)
     // The forms that write the number out ("1 pt", نقطتان) are for 1 and 2.
     // Intl.PluralRules gives -1 and -2 the same forms, so a negative count

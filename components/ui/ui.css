@@ -832,6 +832,18 @@ a.ui-file-open:focus-visible,
   font-weight: 500;
   color: var(--ink);
 }
+/* A tab's panel spaces its blocks as the page does: a period bar, tiles
+   and a list under one tab are the page's blocks (found in the interface
+   audit, PR 149). */
+.ui-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+/* What a section's list is, under its heading. */
+.ui-section > .ui-hint {
+  margin: 0;
+}
 /* Sections side by side on computers, one under the other on phones. */
 .ui-columns {
   display: grid;

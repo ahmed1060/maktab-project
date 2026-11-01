@@ -36,6 +36,14 @@ describe("a count with its word", () => {
         expect([1, 2, 3, 11, 100].map(n => countOf(tAr as any, "ar", n, "companies"))).toEqual(["شركة واحدة", "شركتان", "٣ شركات", "١١ شركةً", "١٠٠ شركة"])
     })
 
+    it("picks the form for the number as shown, to the places it's shown to (review on PR 149)", () => {
+        // A deduction's days shown to four places: 1.0004 isn't "1 day", nor 1.9999 "يومان".
+        expect(countOf(tEn as any, "en", 1.0004, "days", 4)).toBe("1.0004 days")
+        expect(countOf(tAr as any, "ar", 1.9999, "days", 4)).toBe("١٫٩٩٩٩ يوم")
+        // And to the two places shown by default, what shows as 1 is one.
+        expect(countOf(tEn as any, "en", 1.004, "days")).toBe("1 day")
+    })
+
     it("has every form in both languages, so none falls back to its key", () => {
         for (const word of ["days", "pts", "employees", "requests", "records", "files", "held", "companies"]) for (const form of ["zero", "one", "two", "few", "many", "other"]) {
             expect(en).toHaveProperty(`count_${word}_${form}`)

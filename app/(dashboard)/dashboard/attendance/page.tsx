@@ -9,8 +9,10 @@ import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import { BuildingsIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { Button, EmptyState, Page, PageHeader, Tabs } from '@/components/ui'
+import { BuildingsIcon, CalendarBlankIcon, ClockIcon, CoinsIcon, HourglassIcon, InfoIcon, TimerIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, Card, DataList, EmptyState, Field, ItemTitle, ListCard, Page, PageHeader, PeriodBar, Section, Select, StatusBadge, Tabs, TotalTiles, type Column, type StatusTone, type Tile } from '@/components/ui'
+import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-address'
+import { countOf } from '@/lib/plural'
 import type { SWRError } from '@/lib/swr-fetcher'
 import { send, json } from './send'
 import FaceTab from './FaceTab'
@@ -138,7 +140,7 @@ export default function AttendancePage() {
             )}
             {/* Another company, picked without leaving the page, starts afresh: the tabs' dates were the last
                 company's, from its own calendar, and a file chosen for import was meant for it (review on #13). */}
-            <div role="tabpanel" id="attendance-panel" aria-labelledby={`attendance-tab-${tab}`}>
+            <div role="tabpanel" id="attendance-panel" className="ui-tab-panel" aria-labelledby={`attendance-tab-${tab}`}>
                 <Fragment key={companyId ?? ''}>
                     {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} onOpen={setTab} />}
                     {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
@@ -165,26 +167,61 @@ type Day = {
     breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean }
 }
 
-const STATUS_COLOR: Record<string, string> = {
-    PRESENT: 'var(--ok-fg)', ABSENT: 'var(--danger-fg)', INCOMPLETE: 'var(--warn-fg)', LEAVE: 'var(--info-fg)',
-    WORKED_REST_DAY: 'var(--info-fg)', WORKED_HOLIDAY: 'var(--info-fg)',
+/** What a day's status means, which decides its badge's colour (DESIGN.md §2.3); the rest are neutral. */
+const STATUS_TONE: Record<string, StatusTone> = {
+    PRESENT: 'good', ABSENT: 'problem', SUSPENDED: 'problem', INCOMPLETE: 'waiting',
+    WORKED_REST_DAY: 'progress', WORKED_HOLIDAY: 'progress',
 }
-const money = (minor: number) => (minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const lastDayOf = (month: string) => { const [y, m] = month.split('-').map(Number); return `${month}-${pad(new Date(Date.UTC(y, m, 0)).getUTCDate())}` }
 
+/** Numbers, amounts and clock times in the page's language (DESIGN.md §7). */
+function useFigures() {
+    const { t, locale } = useLanguage()
+    const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const num = (n: number) => n.toLocaleString(digits)
+    return {
+        digits,
+        num,
+        amount: (minor: number) => (minor / 100).toLocaleString(digits, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        minutes: (n: number) => t('req_minutes').replace('{n}', num(n)),
+        // To the eighth of a day, as they're kept: 0.125, not 0.13 (found in the interface audit, PR 149).
+        days: (n: number) => countOf(t, locale, n, 'days', 4),
+        // "09:12" as the punch has it, in the page's digits.
+        clock: (at: string) => at.slice(11, 16).replace(/\d/g, c => num(Number(c))),
+    }
+}
+
+/**
+ * Days (§13.3): one's own, or everyone's this person sees, over a month.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, Attendance part 3, PR 149):
+ * the month picked under the page header and kept in the address, with whose
+ * days beside it (DESIGN.md §5.3); one person's month so far as total tiles;
+ * and the days as a list, a table on computers and a card for each on phones
+ * (§5.4), in the page's language throughout.
+ */
 function DaysTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
     const { t } = useLanguage()
+    const { digits, num, amount, minutes, days: daysWord, clock } = useFigures()
     const { showToast } = useToast()
     const p = useCan()
     const seesOthers = p.can('attendance.view_team')
     const correctsCompany = p.companyWide('attendance.correct')
-    const [month, setMonth] = useState(() => today.slice(0, 7))
+    // The month, kept in the address (DESIGN.md §5.3), so a reload or a link
+    // opens on it. With none, the company's this month: its date, not the
+    // device's, which around midnight or abroad is another (review on #12).
+    const params = useSearchParams()
+    const pathname = usePathname()
+    const router = useRouter()
+    const { year, month: monthNumber } = periodFromAddress(params, new Date(`${today}T12:00:00`))
+    const setPeriod = (y: number, m: number) => router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })
+    const month = `${year}-${pad(monthNumber)}`
     const [who, setWho] = useState('')
-    const [busy, setBusy] = useState(false)
+    const action = useBusyAction()
     const { data: peopleBody } = useSWR(seesOthers ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
-    const url = month ? `/api/attendance/days?${q}from=${month}-01&to=${lastDayOf(month)}${who ? `&userId=${encodeURIComponent(who)}` : ''}` : null
-    const { data: body, error, mutate } = useSWR(url, fetcher)
+    const url = `/api/attendance/days?${q}from=${month}-01&to=${lastDayOf(month)}${who ? `&userId=${encodeURIComponent(who)}` : ''}`
+    const { data: body, error, isValidating, mutate } = useSWR(url, fetcher)
     const days: Day[] | null = body ? body.data?.days ?? [] : null
     const daysTruncated: boolean = !!body?.data?.truncated
     const rules: Rules | null = body?.data?.rules ?? null
@@ -193,126 +230,141 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
     // One person's month — one's own, or the person picked — gets its summary (§13.3).
     const onePerson = !seesOthers || !!who
     const oneself = !seesOthers || who === me
+    // Everyone's list says whose each day is.
+    const everyone = seesOthers && !who
     const { data: balanceBody, mutate: refreshBalance } = useSWR(oneself && me && !companyId ? `/api/attendance/permissions/balance?month=${month}` : null, fetcher)
     const [asking, setAsking] = useState<Parameters<typeof AskPermissionModal>[0]['initial'] | null>(null)
     const [reporting, setReporting] = useState<string | null>(null)
 
-    const recompute = async () => {
-        setBusy(true)
-        try {
-            const r = await send('/api/attendance/recompute', json('POST', { ...(companyId ? { companyId } : {}), month }), t('punch_failed'))
-            if (!r.ok) return showToast(r.error, 'error')
-            showToast(r.body?.locked ? t('day_recompute_locked') : t('day_recomputed'), r.body?.locked ? 'info' : 'success')
-            mutate()
-        } finally { setBusy(false) }
-    }
+    const recompute = () => action.run('recompute', async () => {
+        const r = await send('/api/attendance/recompute', json('POST', { ...(companyId ? { companyId } : {}), month }), t('punch_failed'))
+        if (!r.ok) return showToast(r.error, 'error')
+        showToast(r.body?.locked ? t('day_recompute_locked') : t('day_recomputed'), r.body?.locked ? 'info' : 'success')
+        void mutate()
+    })
 
     const ruleNote = (label: TranslationKey, r: RuleOutcome) => {
         if (!r.note || r.note === 'CHARGED' || r.note === 'OFF') return null
         const key = ({ WITHIN_GRACE: 'day_note_grace', FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' } as Record<string, TranslationKey>)[r.note]
-        return key ? `${t(label)}: ${t(key).replace('{n}', String(r.occurrence))}` : null
+        return key ? `${t(label)}: ${t(key).replace('{n}', num(r.occurrence))}` : null
     }
+    // What explains a day's status, a line each: run together with a dot, one
+    // beside Arabic digits read as a zero.
     const notes = (d: Day) => [
         d.breakdown.holiday,
         ruleNote('day_late', d.breakdown.lateness),
         ruleNote('day_early', d.breakdown.earlyLeave),
         d.breakdown.unpriced ? t(({ INCOMPLETE: 'day_unpriced_incomplete', NO_POLICY: 'day_unpriced_no_policy', NO_SALARY: 'day_unpriced_no_salary' } as Record<string, TranslationKey>)[d.breakdown.unpriced] ?? 'day_unpriced_no_policy') : null,
         d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'REJECTED' ? t('day_overtime_rejected') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
-        d.excusedMinutes > 0 ? t('day_excused').replace('{n}', String(d.excusedMinutes)) : null,
+        d.excusedMinutes > 0 ? t('day_excused').replace('{n}', num(d.excusedMinutes)) : null,
         d.breakdown.excusedAbsence ? t('day_absence_excused') : null,
-    ].filter(Boolean).join(' · ')
+    ].filter((n): n is string => !!n)
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
     const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)
-    const mins = (n: number) => (n > 0 ? String(n) : '—')
-    const hhmm = (minutes: number) => `${pad(Math.floor(minutes / 60) % 24)}:${pad(minutes % 60)}`
+    const hhmm = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
     const askFor = (d: Day) => d.status === 'PRESENT' && d.expectedStartMinutes !== null && d.expectedEndMinutes !== null && (
         d.lateMinutes > 0 && d.firstIn ? { date: d.date, type: 'LATE_ARRIVAL' as const, start: hhmm(d.expectedStartMinutes), end: d.firstIn.slice(11, 16) }
             : d.earlyLeaveMinutes > 0 && d.lastOut ? { date: d.date, type: 'EARLY_LEAVE' as const, start: d.lastOut.slice(11, 16), end: hhmm(d.expectedEndMinutes) }
                 : null
     )
 
-    return (
-        <section className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'grid', gap: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    <span className="label">{t('day_month')}</span>
-                    <input className="input" type="month" value={month} onChange={e => setMonth(e.target.value)} />
-                </label>
-                {seesOthers && (
-                    <label style={{ display: 'grid', gap: '0.25rem', minWidth: '12rem' }}>
-                        <span className="label">{t('punch_person')}</span>
-                        <select className="input" value={who} onChange={e => setWho(e.target.value)}>
-                            <option value="">{t('punch_everyone')}</option>
-                            {people.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-                        </select>
-                    </label>
-                )}
-                <div style={{ flex: 1 }} />
-                {correctsCompany && <button className="btn btn-secondary" disabled={busy || !month} onClick={recompute}>{t('day_recompute')}</button>}
-            </div>
-            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('day_hint')}</p>
-            {daysTruncated && <p role="status" style={{ margin: 0, color: 'var(--warn-fg)', fontSize: '0.86rem' }}>{t('day_truncated').replace('{n}', String(body?.data?.limit ?? ''))}</p>}
-            {onePerson && days && days.length > 0 && !daysTruncated && <MonthSummary days={days} rules={rules} balance={oneself ? balanceBody?.data ?? null : null} />}
+    const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleString(digits, { month: 'long' }) }))
+    const years = yearsAround(Number(today.slice(0, 4)), year).map(y => ({ value: String(y), label: y.toLocaleString(digits, { useGrouping: false }) }))
+    const listTitle = t('day_list_title').replace('{month}', new Date(year, monthNumber - 1).toLocaleString(digits, { month: 'long', year: 'numeric' }))
+    const dateText = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(digits, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+    const time = (at: string | null) => (at ? <bdi>{clock(at)}</bdi> : '—')
+    const mins = (n: number) => (n > 0 ? minutes(n) : '—')
+    const badge = (d: Day) => <StatusBadge tone={STATUS_TONE[d.status] ?? 'neutral'}>{t(`audit_value_${d.status}` as TranslationKey)}</StatusBadge>
+    const deduction = (d: Day) => (
+        <>
+            {d.deductionMinor ? <bdi>{amount(d.deductionMinor)}</bdi> : '—'}
+            {d.deductionDays > 0 && <div className="ui-item-detail">{daysWord(d.deductionDays)}</div>}
+        </>
+    )
+    // What one can ask about one's own day: permission for the minutes, or the punch that's missing.
+    const asks = (d: Day) => {
+        if (d.userId !== me) return null
+        const ask = askFor(d)
+        const missing = d.status === 'INCOMPLETE'
+        if (!ask && !missing) return null
+        return (
+            <>
+                {ask && <Button size="sm" onClick={() => setAsking(ask)}>{t('req_ask_permission')}</Button>}
+                {missing && <Button size="sm" onClick={() => setReporting(checkoutDate(d.date, d.expectedEndMinutes))}>{t('req_report_missing')}</Button>}
+            </>
+        )
+    }
+    const columns: Column<Day>[] = [
+        { key: 'date', header: t('punch_date'), cell: d => <ItemTitle title={dateText(d.date)} detail={everyone ? d.name : undefined} /> },
+        { key: 'in', header: t('punch_in'), cell: d => time(d.firstIn) },
+        { key: 'out', header: t('punch_out'), cell: d => time(d.lastOut) },
+        { key: 'late', header: t('day_late'), align: 'end', cell: d => mins(d.lateMinutes) },
+        { key: 'early', header: t('day_early'), align: 'end', cell: d => mins(d.earlyLeaveMinutes) },
+        { key: 'overtime', header: t('day_overtime'), align: 'end', cell: d => mins(d.overtimeMinutes) },
+        ...(showsMoney ? [{ key: 'deduction', header: t('day_deduction'), align: 'end' as const, cell: deduction }] : []),
+        // The status and what can be done at the end (DESIGN.md §5.4).
+        { key: 'status', header: t('day_status'), cell: d => <>{badge(d)}{notes(d).map(n => <div key={n} className="ui-item-detail">{n}</div>)}</> },
+        ...(oneself ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: asks }] : []),
+    ]
+    const card = (d: Day) => (
+        <ListCard
+            title={dateText(d.date)}
+            status={badge(d)}
+            details={[
+                ...(everyone ? [{ icon: UserIcon, text: d.name }] : []),
+                // One line, as a span: the line spaces its pieces apart (found in the interface audit, PR 149).
+                ...(d.firstIn || d.lastOut ? [{ icon: ClockIcon, text: <span>{t('punch_in')} {time(d.firstIn)}, {t('punch_out')} {time(d.lastOut)}</span> }] : []),
+                ...(d.lateMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_late')}: ${minutes(d.lateMinutes)}` }] : []),
+                ...(d.earlyLeaveMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_early')}: ${minutes(d.earlyLeaveMinutes)}` }] : []),
+                ...(d.overtimeMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_overtime')}: ${minutes(d.overtimeMinutes)}` }] : []),
+                // The amount with its days, as the table has them, to check against the policy (review on PR 149).
+                ...(showsMoney && (d.deductionMinor || d.deductionDays > 0) ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: {d.deductionMinor ? <><bdi>{amount(d.deductionMinor)}</bdi>{d.deductionDays > 0 && ` (${daysWord(d.deductionDays)})`}</> : daysWord(d.deductionDays)}</span> }] : []),
+                ...notes(d).map(n => ({ icon: InfoIcon, text: n })),
+            ]}
+            foot={asks(d)}
+        />
+    )
 
-            {error ? <p style={{ color: 'var(--danger-fg)' }}>{t('punch_failed')}</p>
-                : days === null ? <LoadingSpinner />
-                    : days.length === 0 ? <p style={{ margin: 0, color: 'var(--text-soft)' }}>{t('day_none')}</p>
-                        : (
-                            <div style={{ overflowX: 'auto' }}>
-                                <table className="table" style={{ width: '100%', fontSize: '0.84rem' }}>
-                                    <thead>
-                                        <tr>
-                                            <th>{t('punch_date')}</th>
-                                            {seesOthers && <th>{t('punch_person')}</th>}
-                                            <th>{t('day_status')}</th>
-                                            <th>{t('punch_in')}</th>
-                                            <th>{t('punch_out')}</th>
-                                            <th>{t('day_late')}</th>
-                                            <th>{t('day_early')}</th>
-                                            <th>{t('day_overtime')}</th>
-                                            {showsMoney && <th>{t('day_deduction')}</th>}
-                                            {oneself && <th />}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {days.map(d => (
-                                            <tr key={d.id}>
-                                                <td style={{ whiteSpace: 'nowrap' }}><bdi>{d.date}</bdi></td>
-                                                {seesOthers && <td>{d.name}</td>}
-                                                <td>
-                                                    <span style={{ color: STATUS_COLOR[d.status] ?? 'var(--text-soft)', fontWeight: 600 }}>{t(`audit_value_${d.status}` as TranslationKey)}</span>
-                                                    {notes(d) && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{notes(d)}</div>}
-                                                </td>
-                                                <td><bdi>{d.firstIn ? d.firstIn.slice(11, 16) : '—'}</bdi></td>
-                                                <td><bdi>{d.lastOut ? d.lastOut.slice(11, 16) : '—'}</bdi></td>
-                                                <td>{mins(d.lateMinutes)}</td>
-                                                <td>{mins(d.earlyLeaveMinutes)}</td>
-                                                <td>{mins(d.overtimeMinutes)}</td>
-                                                {showsMoney && <td>{d.deductionMinor ? <bdi>{money(d.deductionMinor)}</bdi> : '—'}{d.deductionDays > 0 && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{t('day_days').replace('{n}', String(d.deductionDays))}</div>}</td>}
-                                                {oneself && (
-                                                    <td style={{ textAlign: 'end' }}>
-                                                        {d.userId === me && askFor(d) && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setAsking(askFor(d) || null)}>{t('req_ask_permission')}</button>}
-                                                        {d.userId === me && d.status === 'INCOMPLETE' && <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }} onClick={() => setReporting(checkoutDate(d.date, d.expectedEndMinutes))}>{t('req_report_missing')}</button>}
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    {showsMoney && !daysTruncated && (
-                                        <tfoot>
-                                            <tr>
-                                                <td colSpan={seesOthers ? 8 : 7} style={{ textAlign: 'end', fontWeight: 600 }}>{t('day_total')}</td>
-                                                <td style={{ fontWeight: 600 }}><bdi>{money(totalMinor)}</bdi></td>
-                                                {oneself && <td />}
-                                            </tr>
-                                        </tfoot>
-                                    )}
-                                </table>
-                            </div>
-                        )}
-            {asking && <AskPermissionModal today={today} initial={asking} onClose={() => setAsking(null)} onDone={() => { setAsking(null); refreshBalance() }} />}
+    return (
+        <>
+            <PeriodBar>
+                <Field label={t('day_month')}>{f => (
+                    <Select {...f} value={String(monthNumber)} onChange={e => setPeriod(year, Number(e.target.value))} options={months} />
+                )}</Field>
+                <Field label={t('year')}>{f => (
+                    <Select {...f} value={String(year)} onChange={e => setPeriod(Number(e.target.value), monthNumber)} options={years} />
+                )}</Field>
+                {seesOthers && (
+                    <Field label={t('punch_person')}>{f => (
+                        <Select {...f} value={who} onChange={e => setWho(e.target.value)} options={[{ value: '', label: t('punch_everyone') }, ...people.map(x => ({ value: x.id, label: x.name }))]} />
+                    )}</Field>
+                )}
+            </PeriodBar>
+
+            {/* The month so far, not from a list cut short. */}
+            {days && days.length > 0 && !daysTruncated && (
+                onePerson ? <MonthSummary days={days} rules={rules} balance={oneself ? balanceBody?.data ?? null : null} />
+                    : showsMoney && <TotalTiles items={[{ label: t('day_total'), value: amount(totalMinor) }]} />
+            )}
+
+            <Section title={listTitle} action={correctsCompany ? <Button size="sm" onClick={() => { void recompute() }} disabled={action.running} busy={action.is('recompute')}>{t('day_recompute')}</Button> : undefined}>
+                <p className="ui-hint">{t('day_hint')}</p>
+                {daysTruncated && <Card tone="waiting"><p role="status">{t('day_truncated').replace('{n}', num(body?.data?.limit ?? 0))}</p></Card>}
+                {error ? (
+                    <div className="ui-panel">
+                        <EmptyState icon={WarningCircleIcon} title={t('day_load_failed')} detail={(error as SWRError).info?.error}
+                            action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+                    </div>
+                ) : days === null ? (
+                    <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+                ) : (
+                    <DataList caption={listTitle} columns={columns} rows={days} rowKey={d => d.id} card={card}
+                        empty={<EmptyState icon={CalendarBlankIcon} title={t('day_none')} />} />
+                )}
+            </Section>
+            {asking && <AskPermissionModal today={today} initial={asking} onClose={() => setAsking(null)} onDone={() => { setAsking(null); void refreshBalance() }} />}
             {reporting && <ReportMissingModal today={today} initial={{ date: reporting, direction: 'OUT' }} onClose={() => setReporting(null)} onDone={() => setReporting(null)} />}
-        </section>
+        </>
     )
 }
 
@@ -321,12 +373,13 @@ type Balance = { enabled: boolean; remainingMinutes: number; allowanceMinutes: n
 const COUNTED = new Set(['FREE_OCCURRENCE', 'CHARGED', 'ESCALATED', 'CAPPED'])
 
 /**
- * One person's month so far (§13.3): deductions to date, lateness and early
- * leave against the free allowance, absences, overtime pay, and — for one's
- * own — the permission hours left.
+ * One person's month so far (§13.3), as total tiles above the list: deductions
+ * to date, lateness and early leave against the free allowance, absences,
+ * overtime pay, and — for one's own — the permission hours left.
  */
 function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | null; balance: Balance | null }) {
     const { t } = useLanguage()
+    const { num, amount, minutes, days: daysWord } = useFigures()
     const deducted = days.reduce((s, d) => s + (d.deductionMinor ?? 0), 0)
     const deductedDays = Math.round(days.reduce((s, d) => s + d.deductionDays, 0) * 10_000) / 10_000
     const overtimeMinor = days.reduce((s, d) => s + (d.overtimeMinor ?? 0), 0)
@@ -335,24 +388,16 @@ function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | nu
     const earlies = days.filter(d => COUNTED.has(d.breakdown.earlyLeave.note ?? ''))
     const absences = days.filter(d => d.status === 'ABSENT' && !d.breakdown.excusedAbsence).length
     const freeLine = (used: number, rule: { enabled: boolean; freePerMonth: number } | undefined) =>
-        rule?.enabled && rule.freePerMonth > 0 ? t('sum_free_used').replace('{used}', String(Math.min(used, rule.freePerMonth))).replace('{free}', String(rule.freePerMonth)) : null
-    const tile = (label: TranslationKey, value: string, note?: string | null) => (
-        <div style={{ border: '1px solid var(--border)', borderRadius: '0.75rem', padding: '0.6rem 0.8rem', minWidth: '9rem', flex: '1 1 9rem' }}>
-            <div className="label" style={{ fontSize: '0.75rem' }}>{t(label)}</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 600 }}><bdi>{value}</bdi></div>
-            {note && <div style={{ color: 'var(--text-soft)', fontSize: '0.75rem' }}>{note}</div>}
-        </div>
-    )
-    return (
-        <div role="group" aria-label={t('sum_title')} style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            {tile('sum_deductions', hidesMoney ? t('day_days').replace('{n}', String(deductedDays)) : money(deducted), hidesMoney ? null : t('day_days').replace('{n}', String(deductedDays)))}
-            {tile('sum_lates', String(lates.length), freeLine(lates.filter(d => d.breakdown.lateness.note === 'FREE_OCCURRENCE').length, rules?.lateness))}
-            {tile('sum_early', String(earlies.length), freeLine(earlies.filter(d => d.breakdown.earlyLeave.note === 'FREE_OCCURRENCE').length, rules?.earlyLeave))}
-            {tile('sum_absences', String(absences))}
-            {!hidesMoney && overtimeMinor > 0 && tile('sum_overtime', money(overtimeMinor))}
-            {balance?.enabled && tile('sum_permission_left', t('req_minutes').replace('{n}', String(balance.remainingMinutes)), t('sum_of_total').replace('{n}', String(balance.allowanceMinutes + balance.carriedMinutes)))}
-        </div>
-    )
+        rule?.enabled && rule.freePerMonth > 0 ? t('sum_free_used').replace('{used}', num(Math.min(used, rule.freePerMonth))).replace('{free}', num(rule.freePerMonth)) : undefined
+    const items: Tile[] = [
+        { label: t('sum_deductions'), value: hidesMoney ? daysWord(deductedDays) : amount(deducted), note: hidesMoney ? undefined : daysWord(deductedDays) },
+        { label: t('sum_lates'), value: num(lates.length), note: freeLine(lates.filter(d => d.breakdown.lateness.note === 'FREE_OCCURRENCE').length, rules?.lateness) },
+        { label: t('sum_early'), value: num(earlies.length), note: freeLine(earlies.filter(d => d.breakdown.earlyLeave.note === 'FREE_OCCURRENCE').length, rules?.earlyLeave) },
+        { label: t('sum_absences'), value: num(absences) },
+        ...(!hidesMoney && overtimeMinor > 0 ? [{ label: t('sum_overtime'), value: amount(overtimeMinor) }] : []),
+        ...(balance?.enabled ? [{ label: t('sum_permission_left'), value: minutes(balance.remainingMinutes), note: t('sum_of_total').replace('{n}', num(balance.allowanceMinutes + balance.carriedMinutes)) }] : []),
+    ]
+    return <TotalTiles items={items} />
 }
 
 // --- Punches -------------------------------------------------------------------
