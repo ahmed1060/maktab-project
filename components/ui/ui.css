@@ -1014,6 +1014,14 @@ a.ui-row:focus-visible {
   max-width: 60%;
   font-variant-numeric: tabular-nums;
 }
+/* An amount at a row's end, such as a payslip's net: figures line up down the
+   list, and it stays on one line. */
+.ui-row-amount {
+  font-weight: 500;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 /* A row that opens (§5.5): its title and detail are the button, with a
    caret that turns while it's open, and its lines are listed under it. */

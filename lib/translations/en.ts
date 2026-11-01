@@ -1078,6 +1078,8 @@ export const en = {
         my_payslips_hint: "Every payslip issued to you, newest first. Open one to read or print it.",
         my_payslips_empty: "No payslips yet. One appears here once a month has been approved.",
         my_payslips_off: "Your company has not switched on payslip access in the app. Your payslips are still emailed to you.",
+        my_payslips_not_paid: "Not paid yet",
+        my_payslips_load_failed: "Your payslips didn't load.",
         payroll_debt_recovered: "{paid} of {total} recovered",
         payroll_debt_waive: "Write off",
         payroll_debt_waive_title: "Write off {name}'s debt",

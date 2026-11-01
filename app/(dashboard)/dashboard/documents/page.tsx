@@ -1,9 +1,10 @@
 'use client'
 import useSWR from 'swr'
-import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
+import { HourglassIcon, LockSimpleIcon, ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, EmptyState, Page, PageHeader, Row, Rows, StatusBadge } from '@/components/ui'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
 
 /**
  * A person's own payslips.
@@ -16,6 +17,10 @@ import LoadingSpinner from '@/components/LoadingSpinner'
  * Deliberately the whole of /dashboard/documents rather than a page beneath it.
  * A folder whose index 404s while its children work is a folder somebody
  * eventually links to by accident.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, Documents part 1, PR 154): the
+ * page header, a row for each payslip that opens it, in the page's language,
+ * and loading, switched off, failed and empty each saying so.
  */
 
 type Row = {
@@ -31,7 +36,7 @@ type Row = {
 export default function MyPayslipsPage() {
     const { t, locale } = useLanguage()
     const { data: session } = useSession()
-    const isRtl = locale === 'ar'
+    const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
 
     const userId = (session?.user as any)?.id
     // The Super Admin is nobody's employee: there are no payslips of theirs to
@@ -40,66 +45,54 @@ export default function MyPayslipsPage() {
     const previewing = !!(session?.user as any)?.preview
     const nobodysEmployee = previewing || (session?.user as any)?.role === 'SUPER_ADMIN'
 
-    const { data, error, isLoading } = useSWR(userId && !nobodysEmployee ? `/api/users/${userId}/payslips` : null, fetcher)
+    const { data, error, isLoading, isValidating, mutate } = useSWR(userId && !nobodysEmployee ? `/api/users/${userId}/payslips` : null, fetcher)
     // Not an error: a company that has not switched payslips on is a policy,
     // and telling somebody "access denied" for a setting their employer chose
     // reads like a fault in the app.
     const unavailable = (error as SWRError | undefined)?.status === 403
-    const rows: Row[] | null = data ? (data.data ?? []) : error || nobodysEmployee ? [] : null
+    // Anything else that failed says so: passing for none, it said there were
+    // no payslips when there were (PR 154).
+    const failed = !!error && !unavailable
+    const rows: Row[] | null = data ? (data.data ?? []) : nobodysEmployee ? [] : null
     // No user id yet means the session is still arriving, not an empty list.
     const loading = !userId || (!nobodysEmployee && isLoading)
 
-    const monthName = (m: number) =>
-        new Date(2000, m - 1).toLocaleString(isRtl ? 'ar-EG' : 'en-US', { month: 'long' })
-
+    // "October 2026", the year in the page's digits too.
+    const period = (row: Row) => new Date(row.year, row.month - 1).toLocaleString(digits, { month: 'long', year: 'numeric' })
     const money = (n: number) =>
-        new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+        new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 
-    if (loading) return <LoadingSpinner />
+    const header = <PageHeader title={t('my_payslips')} subtitle={t('my_payslips_hint')} />
+    const panel = (body: React.ReactNode) => <Page>{header}<div className="ui-panel">{body}</div></Page>
+
+    if (loading) return <Page>{header}<div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div></Page>
+    if (unavailable) return panel(<EmptyState icon={LockSimpleIcon} title={t('my_payslips_off')} />)
+    if (failed) return panel(
+        <EmptyState icon={WarningCircleIcon} title={t('my_payslips_load_failed')} detail={(error as SWRError).info?.error}
+            action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />,
+    )
+    if (!rows || rows.length === 0) return panel(<EmptyState icon={ReceiptIcon} title={t('my_payslips_empty')} />)
 
     return (
-        <div style={{ direction: isRtl ? 'rtl' : 'ltr', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-                <h1 style={{ margin: 0 }}>{t('my_payslips')}</h1>
-                <p style={{ margin: '0.25rem 0 0', color: 'var(--text-muted)' }}>{t('my_payslips_hint')}</p>
-            </div>
-
-            <div className="card" style={{ padding: '1.25rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '1rem' }}>
-                {unavailable ? (
-                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('my_payslips_off')}</p>
-                ) : !rows || rows.length === 0 ? (
-                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>{t('my_payslips_empty')}</p>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {rows.map(row => (
-                            <a
-                                key={row.id}
-                                href={`/dashboard/documents/payslip/${row.id}`}
-                                style={{
-                                    display: 'flex', justifyContent: 'space-between', gap: '1rem',
-                                    alignItems: 'baseline', flexWrap: 'wrap',
-                                    padding: '0.85rem 0', borderTop: '1px solid var(--border)',
-                                    color: 'inherit', textDecoration: 'none',
-                                }}
-                            >
-                                <span>
-                                    <strong>{monthName(row.month)} {row.year}</strong>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginInlineStart: '0.5rem' }}>
-                                        {row.daysPaid} {t('payroll_days_paid')}
-                                        {/* Approved but not paid is a real and
-                                            visible state: the figures are final
-                                            and the money has not moved. Saying
-                                            only "payslip" would let somebody
-                                            read it as money already sent. */}
-                                        {row.status === 'APPROVED' && ` · ${t('payroll_status_APPROVED')}`}
-                                    </span>
-                                </span>
-                                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money(row.net)}</span>
-                            </a>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
+        <Page>
+            {header}
+            <Rows label={t('my_payslips')}>
+                {rows.map(row => (
+                    <Row
+                        key={row.id}
+                        href={`/dashboard/documents/payslip/${row.id}`}
+                        title={period(row)}
+                        detail={t('payroll_days_paid_n').replace('{n}', row.daysPaid.toLocaleString(digits))}
+                        end={<>
+                            {/* Approved but not paid is a real and visible state: the figures are final and the
+                                money has not moved. Saying only "payslip" would let somebody read it as money
+                                already sent. */}
+                            {row.status === 'APPROVED' && <StatusBadge tone="waiting">{t('my_payslips_not_paid')}</StatusBadge>}
+                            <bdi className="ui-row-amount">{money(row.net)}</bdi>
+                        </>}
+                    />
+                ))}
+            </Rows>
+        </Page>
     )
 }

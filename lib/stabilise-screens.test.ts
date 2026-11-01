@@ -39,7 +39,8 @@ describe("the menu", () => {
         // which asked for the Super Admin's payslips and got a 404.
         const page = readFileSync("app/(dashboard)/dashboard/documents/page.tsx", "utf8")
         expect(page).toContain("(session?.user as any)?.role === 'SUPER_ADMIN'")
-        expect(page).toContain("error || nobodysEmployee ? [] : null")
+        // Their list is empty, not asked for. A failed load says so on its own since PR 154 (lib/my-payslips.test.ts).
+        expect(page).toContain("nobodysEmployee ? [] : null")
     })
 })
 
