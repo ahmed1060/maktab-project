@@ -9,8 +9,8 @@ import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import { BuildingsIcon, CalendarBlankIcon, ClockIcon, CoinsIcon, FingerprintIcon, HourglassIcon, InfoIcon, TimerIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { Button, Card, DataList, Dialog, DialogActions, EmptyState, Field, ItemTitle, ListCard, Page, PageHeader, PeriodBar, Section, Select, StatusBadge, Tabs, TextArea, TotalTiles, type Column, type StatusTone, type Tile } from '@/components/ui'
+import { ArrowsLeftRightIcon, BuildingsIcon, CalendarBlankIcon, ClockIcon, CoinsIcon, DevicesIcon, FingerprintIcon, HourglassIcon, InfoIcon, TimerIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, Card, DataList, Details, Dialog, DialogActions, EmptyState, Field, ItemTitle, ListCard, Page, PageHeader, PeriodBar, Section, Select, StatusBadge, Tabs, TextArea, TotalTiles, type Column, type StatusTone, type Tile } from '@/components/ui'
 import { addressWithDay, addressWithPeriod, dayFromAddress, periodFromAddress, yearsAround } from '@/lib/period-address'
 import { countOf } from '@/lib/plural'
 import type { SWRError } from '@/lib/swr-fetcher'
@@ -515,7 +515,8 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
     const whose = (x: Punch) => x.name ?? t('punch_number').replace('{code}', x.hardwareUserId ?? '')
     const direction = (x: Punch) => (x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : t('punch_direction_unknown'))
     const source = (x: Punch) => (x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
-        : x.source === 'MOBILE' ? t('punch_source_app').replace('{place}', x.placeName ?? '—')
+        // From the app, with the place it was at when there's one (found in the interface audit, PR 150).
+        : x.source === 'MOBILE' ? (x.placeName ? t('punch_source_app').replace('{place}', x.placeName) : t('punch_source_app_only'))
             : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import'))
     // One that doesn't count yet, or won't, or no longer does: a badge, and why below it (§9.6).
     const badge = (x: Punch) => {
@@ -544,8 +545,8 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
             status={badge(x) ?? undefined}
             details={[
                 ...(showsWhose ? [{ icon: UserIcon, text: whose(x) }] : []),
-                { icon: ClockIcon, text: direction(x) },
-                { icon: InfoIcon, text: source(x) },
+                { icon: ArrowsLeftRightIcon, text: direction(x) },
+                { icon: DevicesIcon, text: source(x) },
                 ...notes(x).map(n => ({ icon: InfoIcon, text: n })),
             ]}
             foot={withdrawButton(x) ?? undefined}
@@ -600,6 +601,12 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
             <Dialog open={withdrawing !== null} onClose={closeWithdraw} title={t('punch_withdraw')}>
                 {withdrawing && (
                     <form className="ui-form" noValidate onSubmit={withdraw}>
+                        {/* Which punch, so the one meant is the one withdrawn (found in the interface audit, PR 150). */}
+                        <Details items={[
+                            ...(showsWhose ? [{ label: t('punch_person'), value: whose(withdrawing) }] : []),
+                            { label: t('punch_time'), value: when(withdrawing) },
+                            { label: t('punch_direction'), value: direction(withdrawing) },
+                        ]} />
                         <p>{t('punch_withdraw_hint')}</p>
                         <Field label={t('punch_reason')} hint={t('punch_reason_example')} error={reasonError}>{f => (
                             <TextArea {...f} name="reason" value={reason} disabled={action.running}

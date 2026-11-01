@@ -2072,3 +2072,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     works. It was the old confirm box;
   - while they load, and when they can't, the list says so, with the
     server's word and Try again. It was a spinner, and a red line.
+- **2026-11-01:** Found in the interface audit of #150:
+  - a check-in from the app with no place said "App, —". It says "App";
+  - withdrawing didn't say which punch it was about. Its dialog names
+    whose it is, when, and in or out, above why;
+  - on a phone, a punch's card gave its in or out a clock, and where it
+    came from the notes' icon. Each has an icon of its own.

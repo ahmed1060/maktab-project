@@ -207,6 +207,30 @@ describe("the punches", () => {
     })
 })
 
+describe("found in the interface audit (PR 150)", () => {
+    const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+    const punches = SOURCE.slice(SOURCE.indexOf("// --- Punches"), SOURCE.indexOf("// --- Import"))
+
+    it("says a check-in came from the app, with no dash where it had no place", async () => {
+        const one = row(panel(await page({ shows: [punch({ placeName: null })] })), "p1")
+        expect(one).toContain("<td>App</td>")
+        expect(one).not.toContain("App, —")
+    })
+
+    it("names the punch being withdrawn in its dialog: whose, when, and in or out", () => {
+        const dialog = punches.slice(punches.indexOf("<Dialog open={withdrawing !== null}"))
+        expect(dialog).toContain("<Details items={[")
+        expect(dialog).toContain("value: whose(withdrawing)")
+        expect(dialog).toContain("value: when(withdrawing)")
+        expect(dialog).toContain("value: direction(withdrawing)")
+    })
+
+    it("gives a phone card's in or out and where it came from icons of their own, not the notes'", () => {
+        expect(punches).toContain("{ icon: ArrowsLeftRightIcon, text: direction(x) }")
+        expect(punches).toContain("{ icon: DevicesIcon, text: source(x) }")
+    })
+})
+
 describe("Punches is on the building blocks", () => {
     const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
     const punches = SOURCE.slice(SOURCE.indexOf("// --- Punches"), SOURCE.indexOf("// --- Import"))

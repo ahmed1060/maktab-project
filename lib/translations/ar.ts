@@ -1736,6 +1736,7 @@ export const ar = {
         punch_source_import: "مستوردة",
         punch_source_manual: "مضافة يدويًا",
         punch_source_app: "التطبيق، {place}",
+        punch_source_app_only: "التطبيق",
         punch_status_FLAGGED: "لا يُحتسب حتى يقبله أحد.",
         punch_status_PENDING_DEVICE: "يُحتسب بعد الموافقة على الهاتف الجديد.",
         punch_status_REJECTED: "رُفض، فلا يُحتسب.",

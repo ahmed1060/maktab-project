@@ -1738,6 +1738,7 @@ export const en = {
         punch_source_import: "Imported",
         punch_source_manual: "Added by hand",
         punch_source_app: "App, {place}",
+        punch_source_app_only: "App",
         punch_status_FLAGGED: "Doesn't count until someone accepts it.",
         punch_status_PENDING_DEVICE: "Counts once the new phone is approved.",
         punch_status_REJECTED: "Turned down, so it doesn't count.",
