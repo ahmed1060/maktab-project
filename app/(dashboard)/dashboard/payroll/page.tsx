@@ -1,18 +1,21 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { BuildingsIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { fetcher, fetchRetrying, SWRError } from '@/lib/swr-fetcher'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useCompany } from '@/context/CompanyContext'
 import ConfirmModal from '@/components/ConfirmModal'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Card, Details, Dialog, EmptyState, Field, Page, PageHeader, PeriodBar, Row, Section, SectionLink, Select, StatusBadge, TextArea, TotalTiles, type StatusTone, type Tile } from '@/components/ui'
 import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { dayLabel } from '@/lib/cash-advances'
+import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/payroll-period'
 import type { TranslationKey } from '@/lib/translations'
 
 /**
@@ -86,19 +89,26 @@ export default function PayrollRegisterPage() {
     const isRtl = locale === 'ar'
 
     const now = new Date()
-    const [year, setYear] = useState(now.getFullYear())
-    const [month, setMonth] = useState(now.getMonth() + 1)
+    // The month the page is about, kept in its address (DESIGN.md §5.3), so a
+    // reload or a link opens on it: picking one replaces the address, keeping
+    // the rest, the top bar's company among them.
+    const params = useSearchParams()
+    const pathname = usePathname()
+    const router = useRouter()
+    const { year, month } = periodFromAddress(params, now)
+    const setPeriod = (y: number, m: number) => router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })
     const [open, setOpen] = useState<string | null>(null)
     const [acknowledged, setAcknowledged] = useState(false)
     // Saving, approving, sending and marking paid: one at a time, and the
     // button that started it says so.
     const action = useBusyAction()
     // G3: a Super Admin has no companyId of their own — SuperAdmin has no such
-    // column — so without a picker the register resolved to no company and
-    // answered 400. The API always supported naming one; this is the control
-    // that was missing.
-    const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
-    const [companyId, setCompanyId] = useState<string>('')
+    // column — so without one named the register resolved to no company and
+    // answered 400. It's the company in view, picked in the top bar as on
+    // every other page (decided on 2026-10-31): the page had a picker of its
+    // own, so they picked it twice. All companies is none, and nothing is
+    // chosen for them.
+    const { selectedCompanyId } = useCompany()
     const [waiving, setWaiving] = useState<string | null>(null)
     // Which confirmation is open, if any. One piece of state rather than three
     // booleans: only ever one of these is on screen, and three flags is three
@@ -118,6 +128,20 @@ export default function PayrollRegisterPage() {
     const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10))
 
     const isSuper = (session?.user as any)?.role === 'SUPER_ADMIN'
+    const companyId = isSuper ? (selectedCompanyId ?? '') : ''
+    // A confirmation, and the acknowledgement, are about the register they
+    // were given on. The company in view follows the top bar in every tab, so
+    // it can change under an open Approve: when the company or month changes,
+    // they go, rather than carry over to a register nobody reviewed (review
+    // on PR 144). Reset while rendering, so the new register is never drawn
+    // with the old one's dialog open.
+    const scope = `${companyId}/${year}/${month}`
+    const [scopeShown, setScopeShown] = useState(scope)
+    if (scope !== scopeShown) {
+        setScopeShown(scope)
+        setConfirming(null)
+        setAcknowledged(false)
+    }
     const { can } = useCan()
 
     const money = useCallback((minor: number) =>
@@ -127,30 +151,6 @@ export default function PayrollRegisterPage() {
 
     const signedMoney = useCallback((minor: number) =>
         `${minor > 0 ? '+' : minor < 0 ? '−' : ''}${money(Math.abs(minor))}`, [money])
-
-    useEffect(() => {
-        if (!isSuper) return
-        (async () => {
-            try {
-                const res = await fetchRetrying('/api/companies?limit=200')
-                if (!res.ok) return
-                const body = await res.json()
-                // The envelope is { data: { data: [...], total, ... } } — the
-                // list route returns a paginated object, and ApiResponse wraps
-                // it. Reaching for the wrong level yields an empty picker and
-                // no error, which is how this would have shipped looking fine.
-                const rows: any[] = Array.isArray(body?.data?.data) ? body.data.data : []
-                setCompanies(rows.map(c => ({ id: c.id, name: c.name })).filter(c => c.id && c.name))
-                // Nothing is chosen for them. Picking the first company would
-                // mean a Super Admin opens payroll and is shown somebody's
-                // register they did not ask for.
-            } catch {
-                // A failed list leaves the picker empty and the screen says so.
-                // It is not worth a toast on a screen that has not been asked
-                // for anything yet.
-            }
-        })()
-    }, [isSuper])
 
     // A Super Admin with no company chosen has not asked a question yet, and
     // nobody has until the session says who they are. Firing anyway is what
@@ -323,7 +323,7 @@ export default function PayrollRegisterPage() {
         value: String(i + 1),
         label: new Date(2000, i).toLocaleString(digits, { month: 'long' }),
     }))
-    const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => ({
+    const years = yearsAround(now.getFullYear(), year).map(y => ({
         value: String(y),
         label: y.toLocaleString(digits, { useGrouping: false }),
     }))
@@ -395,19 +395,11 @@ export default function PayrollRegisterPage() {
             />
 
             <PeriodBar>
-                {isSuper && (
-                    <Field label={t('payroll_company')} className="ui-period-wide">{p => (
-                        <Select {...p} value={companyId} onChange={e => setCompanyId(e.target.value)} options={[
-                            { value: '', label: t('payroll_pick_company') },
-                            ...companies.map(c => ({ value: c.id, label: c.name })),
-                        ]} />
-                    )}</Field>
-                )}
                 <Field label={t('payroll_month')}>{p => (
-                    <Select {...p} value={String(month)} onChange={e => setMonth(Number(e.target.value))} options={months} />
+                    <Select {...p} value={String(month)} onChange={e => setPeriod(year, Number(e.target.value))} options={months} />
                 )}</Field>
                 <Field label={t('payroll_year')}>{p => (
-                    <Select {...p} value={String(year)} onChange={e => setYear(Number(e.target.value))} options={years} />
+                    <Select {...p} value={String(year)} onChange={e => setPeriod(Number(e.target.value), month)} options={years} />
                 )}</Field>
             </PeriodBar>
 

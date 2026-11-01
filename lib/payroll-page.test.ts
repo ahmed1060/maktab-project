@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
 
@@ -19,6 +20,10 @@ const state = {
     result: {} as { data?: unknown; error?: unknown; isLoading?: boolean },
     /** Pages of attendance changed after payroll, as the server sends them. */
     discrepancies: undefined as unknown[] | undefined,
+    /** The page's address, after the "?" (DESIGN.md §5.3). */
+    search: "",
+    /** The company in view, from the top bar's switcher; null is All companies. */
+    company: null as string | null,
 }
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u1", role: state.role } }, status: "authenticated" }) }))
 vi.mock("@/context/LanguageContext", () => ({
@@ -33,6 +38,12 @@ vi.mock("swr", () => ({
         return key ? { ...idle, ...state.result } : idle
     },
 }))
+vi.mock("next/navigation", () => ({
+    useSearchParams: () => new URLSearchParams(state.search),
+    usePathname: () => "/dashboard/payroll",
+    useRouter: () => ({ replace: () => {}, push: () => {}, refresh: () => {} }),
+}))
+vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: state.company }) }))
 vi.mock("swr/infinite", () => ({ default: () => ({ data: state.discrepancies, mutate: async () => {}, size: 1, setSize: () => {} }) }))
 
 type View = Record<string, unknown>
@@ -45,8 +56,10 @@ const view = (fields: View = {}, register: View = {}): View => ({
 })
 const delivery = (fields: View = {}) => ({ paidAt: null, batchSize: 25, sent: 3, sendable: 12, unsent: 9, ...fields })
 
-async function page({ shows, role = "ADMIN", grants = [], locale = "en", discrepancies }: { shows?: View | "loading" | "failed"; role?: string; grants?: string[]; locale?: "en" | "ar"; discrepancies?: unknown[] } = {}) {
+async function page({ shows, role = "ADMIN", grants = [], locale = "en", discrepancies, search = "", company = null }: { shows?: View | "loading" | "failed"; role?: string; grants?: string[]; locale?: "en" | "ar"; discrepancies?: unknown[]; search?: string; company?: string | null } = {}) {
     state.discrepancies = discrepancies
+    state.search = search
+    state.company = company
     state.role = role
     state.grants = new Set(grants)
     state.locale = locale
@@ -143,18 +156,37 @@ describe("the month Payroll is for", () => {
         expect(picker).toContain('<option value="2026" selected="">٢٠٢٦</option>')
     })
 
-    it("has the Super Admin pick the company first", async () => {
-        const picker = period(await page({ role: "SUPER_ADMIN" }))
-        expect(picker).toMatch(/<div class="ui-field ui-period-wide"><label for="[^"]+" class="ui-label">Company<\/label>/)
-        expect(picker.indexOf(">Company<")).toBeLessThan(picker.indexOf(">Month<"))
-        expect(picker).toContain('<option value="" selected="">Choose a company…</option>')
+    it("opens on the month its address names, so a reload or a link keeps it", async () => {
+        const html = await page({ shows: view(), search: "year=2025&month=3" })
+        expect(header(html)).toContain('<p class="ui-page-subtitle">March 2025 · Payday: 25</p>')
+        expect(period(html)).toContain('<option value="3" selected="">March</option>')
+        expect(period(html)).toContain('<option value="2025" selected="">2025</option>')
+        expect(state.keys).toContain("/api/payroll/2025/3")
+    })
+
+    it("offers the year a link opened even when it's further off", async () => {
+        const picker = period(await page({ shows: view(), search: "year=2019&month=3" }))
+        expect(picker).toContain('<option value="2019" selected="">2019</option>')
+    })
+
+    it("opens on this month when its address names none it could be", async () => {
+        await page({ shows: view(), search: "year=2026&month=13" })
+        expect(state.keys).toContain("/api/payroll/2026/10")
+    })
+
+    it("has no company picker of its own: the Super Admin's is the company in view, from the top bar", async () => {
+        const html = await page({ role: "SUPER_ADMIN", company: "c1", shows: view({ delivery: delivery() }) })
+        expect(period(html)).not.toContain(">Company<")
+        expect(state.keys).toContain("/api/payroll/2026/10?companyId=c1")
+        expect(html).toContain('href="/api/payroll/2026/10/export?companyId=c1"')
     })
 })
 
 describe("what Payroll shows before its register", () => {
-    it("asks the Super Admin to pick a company, and asks the server nothing until then", async () => {
+    it("asks the Super Admin to pick a company at the top, and asks the server nothing until then", async () => {
         const html = await page({ role: "SUPER_ADMIN" })
-        expect(html).toContain('<p class="ui-empty-title">Pick a company to see its register.</p>')
+        expect(html).toContain(`<p class="ui-empty-title">${en.payroll_pick_company_hint}</p>`)
+        expect(en.payroll_pick_company_hint).toBe("Pick a company at the top to see its register.")
         expect(state.keys.filter(k => k?.startsWith("/api/payroll"))).toEqual([])
     })
 
@@ -376,5 +408,19 @@ describe("attendance changed after a month was approved", () => {
     it("points its arrow the way Arabic reads", async () => {
         const part = reviewCard(await page({ shows, locale: "ar", discrepancies: [{ data: { open: [changed()], openCount: 1, nextCursor: null } }] }), ar.attpay_changed_title)
         expect(part).toContain(`${ar.audit_value_ABSENT} ← ${ar.audit_value_PRESENT}`)
+    })
+})
+
+describe("a confirmation is for the register it was opened on", () => {
+    const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
+
+    it("closes, and the acknowledgement clears, when the company or month changes under it", () => {
+        // Review on PR 144: the company in view follows the top bar in every
+        // tab, so a Super Admin who opened Approve for one company and
+        // switched in another tab would have approved the other's register,
+        // unseen. Reset while rendering, so the new register is never drawn
+        // with the old one's dialog open.
+        expect(PAGE).toContain("const scope = `${companyId}/${year}/${month}`")
+        expect(PAGE).toMatch(/if \(scope !== scopeShown\) \{\s*setScopeShown\(scope\)\s*setConfirming\(null\)\s*setAcknowledged\(false\)\s*\}/)
     })
 })

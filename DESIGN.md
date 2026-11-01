@@ -457,12 +457,15 @@ These are built once, in the building-blocks PR, and every page uses them
   chosen in a panel straight under the page header:
   - a select for the month and one for the year, each with its visible
     label, the month and year names in the page's language;
-  - where the Super Admin picks a company too, its select comes first;
-  - it opens on this month.
+  - the page's address keeps the period picked (`?year=2026&month=10`),
+    so a reload or a link opens on it. With none, it opens on this month;
+  - the Super Admin's company is the company in view, picked in the top
+    bar as on every other page. The page has no company select of its
+    own, and until a company is picked it says to pick one.
 
   It isn't a filter bar: it doesn't narrow a list, it picks what the whole
   page shows. So it's never folded away. On phones the selects share the
-  row, two to a line, and the company's takes a line of its own.
+  row, two to a line.
 
 ### 5.4 Lists: a table on computers, cards on phones
 
@@ -908,3 +911,8 @@ changed:
   (§5.5, Card), for Payroll's review: a bar on its start edge in its
   meaning's colour, as an overdue row has. Payroll's old cards filled the
   whole card with the colour.
+- **2026-10-31:** Which period a page is about (§5.3), decided the same
+  day: its address keeps the period, so a reload or a link opens on it,
+  and the Super Admin's company is the company in view from the top bar.
+  Payroll had a company select of its own, so a Super Admin picked the
+  company twice.
