@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { useSWRConfig } from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import ConfirmModal from '@/components/ConfirmModal'
-import { Button, Card, Row, StatusBadge } from '@/components/ui'
+import { Button, Card, Dialog, Row, StatusBadge } from '@/components/ui'
 import { refusalText } from '@/lib/cash-advances'
 
 type Switches = { cashAdvancesAllowed: boolean; cashAdvancesOn: boolean }
@@ -93,19 +92,24 @@ export default function CashAdvancesCard({ companyId, allowed, on, held, superAd
                     />
                 )}
             </ul>
-            <ConfirmModal
-                isOpen={!!switchingOff}
+            {/* The building blocks' dialog (company settings part 1): it stays
+                open, its button busy, until the switch is saved. */}
+            <Dialog
+                open={!!switchingOff}
+                onClose={() => { if (!saving) setSwitchingOff(null) }}
                 title={t(switchingOff === 'cashAdvancesAllowed' ? 'advances_stop_allowing' : 'advances_switch_off')}
-                message={t('advances_switch_off_question')}
-                confirmText={t(switchingOff === 'cashAdvancesAllowed' ? 'advances_stop_allowing' : 'advances_switch_off')}
-                cancelText={t('cancel')}
-                variant="warning"
-                onConfirm={async () => {
-                    if (switchingOff) await save({ [switchingOff]: false })
-                    setSwitchingOff(null)
-                }}
-                onCancel={() => setSwitchingOff(null)}
-            />
+                actions={<>
+                    <Button onClick={() => setSwitchingOff(null)} disabled={saving}>{t('cancel')}</Button>
+                    <Button variant="danger" busy={saving} onClick={async () => {
+                        if (switchingOff) await save({ [switchingOff]: false })
+                        setSwitchingOff(null)
+                    }}>
+                        {t(switchingOff === 'cashAdvancesAllowed' ? 'advances_stop_allowing' : 'advances_switch_off')}
+                    </Button>
+                </>}
+            >
+                <p>{t('advances_switch_off_question')}</p>
+            </Dialog>
         </Card>
     )
 }

@@ -3,8 +3,15 @@
 import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { Button, Card, Row, StatusBadge } from '@/components/ui'
 
-/** The company's general settings: whether submitted task locations are checked automatically. */
+/**
+ * The company's general settings: whether a task's submitted location is
+ * checked automatically (Company Settings → General). On the building
+ * blocks (UI_PLAN.md §5 step 5, company settings part 1): a row saying
+ * whether it's on, with a button to turn it off or on, as the cash advances
+ * beside it say theirs.
+ */
 export default function CompanyGeneralCard({ companyId, autoVerifyLocation, onSaved, readOnly = false }: {
     companyId: string
     autoVerifyLocation: boolean
@@ -12,22 +19,21 @@ export default function CompanyGeneralCard({ companyId, autoVerifyLocation, onSa
     /** Shown, not changed: someone who holds settings.view without settings.edit. */
     readOnly?: boolean
 }) {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     const { showToast } = useToast()
     const [saving, setSaving] = useState(false)
 
-    const handleToggleAutoVerify = async () => {
-        const next = !autoVerifyLocation
+    const save = async (next: boolean) => {
         setSaving(true)
         try {
             const res = await fetch('/api/company-settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ companyId, tab: 'general', autoVerifyLocation: next })
+                body: JSON.stringify({ companyId, tab: 'general', autoVerifyLocation: next }),
             })
             if (res.ok) {
                 onSaved({ autoVerifyLocation: next })
-                showToast(t('settings_saved_success') || 'Settings saved', 'success')
+                showToast(t('settings_saved_success'), 'success')
             } else {
                 const data = await res.json().catch(() => ({}))
                 showToast(data.error || t('error_generic'), 'error')
@@ -40,30 +46,23 @@ export default function CompanyGeneralCard({ companyId, autoVerifyLocation, onSa
     }
 
     return (
-        <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-            {/* Not a <label> wrapping the whole row on purpose — a label
-                wrapping the description text means clicking anywhere in
-                the row toggles a live setting, which is too easy to hit
-                by accident. Only the checkbox itself is interactive. */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexDirection: locale === 'ar' ? 'row-reverse' : 'row' }}>
-                <input
-                    // Named by its own text, without a <label> around the row
-                    // (see above), and described by the hint under it.
-                    aria-label={t('auto_verify_location_label') || 'Auto-verify submitted task locations'}
-                    aria-describedby="auto-verify-location-hint"
-                    type="checkbox"
-                    checked={autoVerifyLocation}
-                    disabled={saving || readOnly}
-                    onChange={handleToggleAutoVerify}
-                    style={{ width: '1.1rem', height: '1.1rem', marginTop: '0.15rem', cursor: saving ? 'not-allowed' : readOnly ? 'default' : 'pointer', flexShrink: 0 }}
+        <Card title={t('settings_task_locations')}>
+            <ul className="ui-rows ui-rows-flush" aria-label={t('settings_task_locations')}>
+                <Row
+                    title={t('auto_verify_location_label')}
+                    detail={t('auto_verify_location_hint')}
+                    end={<>
+                        <StatusBadge tone={autoVerifyLocation ? 'good' : 'neutral'}>{t(autoVerifyLocation ? 'advances_on' : 'advances_off_badge')}</StatusBadge>
+                        {/* A button, not a box that saves when ticked: it says what it does,
+                            and only it acts, never the row's text around it. */}
+                        {!readOnly && (
+                            <Button size="sm" variant={autoVerifyLocation ? 'secondary' : 'primary'} busy={saving} onClick={() => { void save(!autoVerifyLocation) }}>
+                                {t(autoVerifyLocation ? 'settings_turn_off' : 'settings_turn_on')}
+                            </Button>
+                        )}
+                    </>}
                 />
-                <div>
-                    <div style={{ fontWeight: 500 }}>{t('auto_verify_location_label') || 'Auto-verify submitted task locations'}</div>
-                    <div id="auto-verify-location-hint" style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.15rem' }}>
-                        {t('auto_verify_location_hint') || 'When on, a location submitted within the system’s distance setting is marked correct automatically. When off, every submitted location needs manual review.'}
-                    </div>
-                </div>
-            </div>
-        </div>
+            </ul>
+        </Card>
     )
 }

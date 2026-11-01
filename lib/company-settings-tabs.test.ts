@@ -109,7 +109,8 @@ describe("the company settings tabs", () => {
         // Discarding switched the guard off before Preview's session update,
         // which can wait or fail: meanwhile, or for good after a failure, the
         // edits still on screen could be left by a link without a word.
-        const confirm = TABS.slice(TABS.indexOf("onConfirm={() => {"))
+        // The building blocks' dialog's Discard runs leave() (company settings part 1).
+        const confirm = TABS.slice(TABS.indexOf("const leave = () => {"))
         expect(confirm.indexOf("if ('go' in next) return next.go()")).toBeGreaterThan(-1)
         expect(confirm.indexOf("if ('go' in next) return next.go()")).toBeLessThan(confirm.indexOf("setDirty(false)"))
         // A failed update comes back without the preview: it says so and stays.
@@ -162,16 +163,17 @@ describe("the company settings tabs", () => {
 
         it("is wired to the tabs, and the back link is a link", () => {
             expect(TABS).toContain("useGuardLinks(dirty, href => setLeavingFor({ href }))")
-            expect(PAGE).toMatch(/<Link\s+href="\/dashboard\/companies"/)
+            // The page header's back link, a Link (company settings part 1).
+            expect(PAGE).toContain("back={{ href: '/dashboard/companies'")
         })
     })
 
-    it("the General tab's checkbox has a name a screen reader can say", () => {
-        // Found by running axe on every page: it sat beside its text without
-        // a label, so it was announced as an unnamed checkbox.
+    it("the General tab's control has a name a screen reader can say", () => {
+        // Found by running axe on every page: a checkbox sat beside its text
+        // without a label. It's a button now (company settings part 1), named
+        // by its own text, in a row named by the setting it changes.
         const card = readFileSync("components/CompanyGeneralCard.tsx", "utf8")
-        expect(card).toContain("aria-label={t('auto_verify_location_label') || 'Auto-verify submitted task locations'}")
-        expect(card).toContain('aria-describedby="auto-verify-location-hint"')
-        expect(card).toContain('id="auto-verify-location-hint"')
+        expect(card).toContain("title={t('auto_verify_location_label')}")
+        expect(card).toContain("{t(autoVerifyLocation ? 'settings_turn_off' : 'settings_turn_on')}")
     })
 })

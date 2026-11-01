@@ -1052,6 +1052,12 @@ a.ui-file-open:focus-visible,
   flex-direction: column;
   gap: var(--space-6);
 }
+/* A tab of settings cards, such as Company Settings': one column at a
+   width that reads, the cards closer together than a page's sections. */
+.ui-tab-panel.ui-settings {
+  gap: var(--space-4);
+  max-width: 640px;
+}
 /* Fields side by side in a card, as a file's columns and a number saved by
    hand (Attendance part 6, PR 152), sized as the period bar's: one alone
    isn't the card's whole width (found in the interface audit), and on
