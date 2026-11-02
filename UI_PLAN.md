@@ -2784,8 +2784,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     stays open until the delete is done. The old window closed even
     when the delete failed;
   - each page says while its templates load, and when they didn't with
-    the server's reason and Try again, where a failed load showed an
-    empty page;
+    the server's reason and Try again, where a failed load said there
+    were no templates yet;
   - offering a role template's change is the building blocks' dialog,
     named for the template, a box for each company role with what
     applying it would change, a scope change in words ("from Their team
