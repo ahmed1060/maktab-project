@@ -490,8 +490,13 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in #165 on 2026-11-02; then the Roles tab, its copy dialog and its
      access review, merged in #166 on 2026-11-02; then the role editor
      and its permission matrix, which the role templates page shares,
-     which open for review in #167 and finish company settings. Then
-     the Super Admin's pages;
+     merged in #167 on 2026-11-02, which finished company settings. The
+     fourteenth is the Super Admin's pages, a side bar group (§2.2) at a
+     time: Templates first, whose role templates and policy templates
+     open for review in #168 (public holidays moved in #146); then
+     Access (Super Admins, Role changes, Access reviews, Who can); then
+     Customers (Companies, Packages, All users); then Operations
+     (Check-ins, Audit logs, System health, System settings);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2757,3 +2762,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - why a permission is greyed or marked (needed by another, not in the
     package, different from the template) wasn't tied to its checkbox,
     so a screen reader on a greyed box didn't say why. It is now.
+- **2026-11-02:** Company settings part 4c was merged in #167, which
+  finished company settings. The Super Admin's pages follow, a side bar
+  group (§2.2) at a time, Templates first in #168: the role templates
+  and attendance policy templates pages, whose editors moved with
+  company settings:
+  - each has the page header with New template, where the page's name
+    was the old top bar's and the button sat alone above the list;
+  - the templates are rows in a card, each with a menu named for it
+    (Edit, Offer this change or Copy, Delete), where every card had its
+    own links or buttons side by side;
+  - a role template's row says what it's based on and how many
+    permissions, counted as the language counts. A policy template's
+    says the policy in words: its other name, the working days,
+    lateness, absence and permission hours, each a fact of its own,
+    where they ran together with " · " and said "1 day(s)" and "Off";
+  - what a template is for is a note under its row, a new part of a row
+    (`DESIGN.md` §5.5, Rows);
+  - deleting one asks first in the building blocks' dialog, in the
+    danger colour, saying what becomes of the companies' copies, and
+    stays open until the delete is done. The old window closed even
+    when the delete failed;
+  - each page says while its templates load, and when they didn't with
+    the server's reason and Try again, where a failed load showed an
+    empty page;
+  - offering a role template's change is the building blocks' dialog,
+    named for the template, a box for each company role with what
+    applying it would change, a scope change in words ("from Their team
+    to Whole company", where it was drawn with an arrow). Apply with
+    nothing picked says so under the list, where the button was off
+    without a word, and the dialog says while the roles load and when
+    they didn't.

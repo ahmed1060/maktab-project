@@ -515,6 +515,8 @@ These are built once, in the building-blocks PR, and every page uses them
   - Rows are split by hairlines. Each row is a link, with the title (and an
     optional detail line in `--muted`) on the start side, and its status,
     date or count on the end side.
+  - A row may carry a note under its detail line, such as what a template
+    is for, in the detail's size and colour.
   - An overdue row gets the red start-edge bar and the faint red background,
     as in a table.
   - A full list, with filters and pages, uses the table (§5.4) instead.
@@ -1000,3 +1002,6 @@ changed:
   for icons, sizes and colours typed in, the old confirmation window, and
   a failed load that said only "Something went wrong", with no way to try
   again.
+- **2026-11-02:** A row's note (§5.5, Rows), under its detail line, for
+  what an item is for, such as a template's description. The templates
+  pages showed it in cards of their own making.

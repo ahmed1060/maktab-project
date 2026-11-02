@@ -591,6 +591,15 @@
   display: flex;
   flex-direction: column;
 }
+/* A box beside lines of its own, such as a company role and what a template
+   would change in it: the box sits by the first line (the Super Admin's
+   pages part 1). */
+.ui-choice-top {
+  align-items: flex-start;
+}
+.ui-choice-top > .ui-check {
+  margin-block-start: calc((var(--leading-md) - 18px) / 2);
+}
 /* What a policy change makes of one person's month, beside their row. */
 .ui-sim-difference {
   font-weight: 600;
@@ -2033,6 +2042,15 @@ a.ui-row:focus-visible {
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+/* A row's note, under its detail line: what an item is for, such as a
+   template's description (the Super Admin's pages part 1). */
+.ui-item-note {
+  overflow-wrap: anywhere;
   margin-top: 2px;
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
