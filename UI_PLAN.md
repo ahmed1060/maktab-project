@@ -2958,3 +2958,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - 29 labels, and the --danger-bg-tint and --danger-fill-hover colours,
     only the old page used, are removed; the subscription states' colours
     of their own are the meaning colours now.
+- **2026-11-02:** Found in the browser and the interface audit on #171:
+  - the subscription's badge was set in from the start of its line, as a
+    badge beside a name is. Badges that start a line have a line of their
+    own;
+  - on a phone, Banned was in the card's foot, away from the name the
+    table puts it beside, and the package's line had a gap before its
+    comma ("Growth , HR"). Both read as the table does;
+  - two trials ending on the same day said 4 and 5 days: the server's
+    count rounds hours up. The days are counted on the calendar to the
+    date shown;
+  - a tab's count was on a pill the colour of the page, so it couldn't be
+    seen unless its tab was selected. It's in the neutral badge's colours.

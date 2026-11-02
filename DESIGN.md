@@ -569,7 +569,8 @@ These are built once, in the building-blocks PR, and every page uses them
   long label on two lines, so every tab shows; a row of more than fit
   scrolls sideways within itself. A tab can say how many it holds, such as the
   companies that need attention: a pill after its label in `--text-xs`,
-  on `--page`, on `--brand-tint` when it's the selected tab.
+  in the neutral badge's colours, and the brand tint's when it's the
+  selected tab.
 - **Total tiles:**
   - a label in `--text-sm` and `--muted`, above the value in `--text-2xl`
     and weight 600 with even-width digits;

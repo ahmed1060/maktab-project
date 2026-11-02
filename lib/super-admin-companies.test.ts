@@ -154,6 +154,35 @@ describe("the Companies page", () => {
         expect(nile.items.find(i => i.key === "ban")).toMatchObject({ label: en.companies_unban, danger: undefined })
     })
 
+    it("starts the subscription's line with its badge, not set in as a badge beside a name is (found in the browser on part 3a)", async () => {
+        const html = await companies({ [ATTENTION]: listed([company()]) })
+        expect(html).toContain(`<div class="ui-badge-line"><span class="ui-badge ui-badge-progress">${en.state_trial}</span></div>`)
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-badge-line \{[^}]*display: flex;[^}]*gap: var\(--space-2\);/)
+    })
+
+    it("says on a phone card what the table says beside the name, and its package in one piece (found in the browser on part 3a)", async () => {
+        const html = await companies({ [ATTENTION]: listed([company({ name: "Nile Works", isBanned: true })]) })
+        const cards = html.slice(html.indexOf('<ul class="ui-cards"'))
+        expect(cards).toContain(`<span class="ui-item-title"><bdi>Nile Works</bdi> <span class="ui-badge ui-badge-problem">${en.companies_banned}</span></span>`)
+        expect(cards).toContain(`<span><bdi>Growth</bdi>, ${en.bundle_hr}, ${en.bundle_attendance_mobile}</span>`)
+    })
+
+    it("counts the days to the date it shows, not the server's hours rounded up (found in the browser on part 3a)", async () => {
+        // 23:30 four days from now: the server's rounding says 5 days, the calendar 4.
+        const late = new Date()
+        late.setHours(23, 30, 0, 0)
+        late.setDate(late.getDate() + 4)
+        const html = await companies({ [ATTENTION]: listed([company({ subscription: { state: "TRIAL", date: late.toISOString(), daysRemaining: 5 } })]) })
+        expect(html).toContain(en.companies_ends_in.replace("{days}", "4 days"))
+        expect(html).not.toContain("5 days")
+    })
+
+    it("shows a tab's count on a pill that can be seen, selected or not (audit on part 3a)", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-tab-count \{[^}]*background: var\(--status-neutral-bg\);[^}]*color: var\(--status-neutral-fg\);/)
+    })
+
     it("says how many in the pager, with its pages when there's more than one", async () => {
         const html = await companies({ [ATTENTION]: listed([company()], { total: 23, totalPages: 3 }) })
         expect(html).toContain("23 companies")

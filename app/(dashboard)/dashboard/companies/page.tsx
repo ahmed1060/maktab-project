@@ -137,10 +137,7 @@ export default function CompaniesPage() {
         ]
         return <RowMenu label={t('ui_more_actions_for').replace('{name}', c.name)} tooltip={t('ui_more_actions')} items={items} />
     }
-    const badges = (c: Company) => [
-        c.isBanned && <StatusBadge key="banned" tone="problem">{t('companies_banned')}</StatusBadge>,
-        c.hasUnpaidPayment && <StatusBadge key="unpaid" tone="waiting">{t('unpaid_record')}</StatusBadge>,
-    ].filter(Boolean)
+    const banned = (c: Company) => c.isBanned && <>{' '}<StatusBadge tone="problem">{t('companies_banned')}</StatusBadge></>
     // What its package grants, in words: who is on Company Management alone and could be sold HR.
     const grants = (c: Company) => {
         if (!c.package) return null
@@ -151,13 +148,14 @@ export default function CompaniesPage() {
     const dated = (c: Company) => !!c.subscription && (!!c.subscription.date || c.subscription.state === 'LIFETIME')
 
     const columns: Column<Company>[] = [
-        { key: 'name', header: t('companies_name'), cell: c => <ItemTitle title={<><bdi>{c.name}</bdi>{c.isBanned && <>{' '}<StatusBadge tone="problem">{t('companies_banned')}</StatusBadge></>}</>} /> },
+        { key: 'name', header: t('companies_name'), cell: c => <ItemTitle title={<><bdi>{c.name}</bdi>{banned(c)}</>} /> },
         {
             key: 'subscription', header: t('subscription_state'), cell: c => c.subscription && (
                 <>
-                    <div className="ui-item-title">
+                    {/* Its badges lead the line, so not the title's, which sets a badge in from a name (found in the browser). */}
+                    <div className="ui-badge-line">
                         <SubscriptionBadge subscription={c.subscription} />
-                        {c.hasUnpaidPayment && <>{' '}<StatusBadge tone="waiting">{t('unpaid_record')}</StatusBadge></>}
+                        {c.hasUnpaidPayment && <StatusBadge tone="waiting">{t('unpaid_record')}</StatusBadge>}
                     </div>
                     {dated(c) && <div className="ui-item-detail"><SubscriptionDates subscription={c.subscription} /></div>}
                 </>
@@ -192,14 +190,17 @@ export default function CompaniesPage() {
                 rowKey={c => c.id}
                 empty={empty}
                 card={c => (
+                    // Banned beside the name, as in the table; the package and
+                    // what it grants one piece, so the line's gap doesn't fall
+                    // before the comma (found in the browser).
                     <ListCard
-                        title={<bdi>{c.name}</bdi>}
+                        title={<><bdi>{c.name}</bdi>{banned(c)}</>}
                         status={c.subscription && <SubscriptionBadge subscription={c.subscription} />}
                         details={[
                             ...(c.subscription && dated(c) ? [{ icon: CalendarBlankIcon, text: <SubscriptionDates subscription={c.subscription} /> }] : []),
-                            { icon: PackageIcon, text: <>{packageName(c)}{grants(c) && <>{t('list_separator')}{grants(c)}</>}</> },
+                            { icon: PackageIcon, text: <span>{packageName(c)}{grants(c) && <>{t('list_separator')}{grants(c)}</>}</span> },
                         ]}
-                        foot={<><span>{badges(c)}</span>{menu(c)}</>}
+                        foot={<><span>{c.hasUnpaidPayment && <StatusBadge tone="waiting">{t('unpaid_record')}</StatusBadge>}</span>{menu(c)}</>}
                     />
                 )}
                 footer={<Pager page={page} pageCount={listed.totalPages} onPage={setPage} summary={countOf(t, locale, listed.total, 'companies')} />}

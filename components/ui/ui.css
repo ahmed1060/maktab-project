@@ -2071,6 +2071,15 @@ a.ui-row:focus-visible {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* Badges that start a line of their own, as a company's subscription and an
+   unpaid record (the Super Admin's pages part 3a): not set in, as a badge
+   beside a name is. */
+.ui-badge-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
 /* A badge beside a name, as a client's HQ. */
 .ui-item-title > .ui-badge {
   margin-inline-start: var(--space-2);
@@ -2251,14 +2260,15 @@ a.ui-row:focus-visible {
   height: 20px;
   padding-inline: 6px;
   border-radius: var(--radius-pill);
-  background: var(--page);
-  color: inherit;
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral-fg);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 .ui-tab[aria-current="page"] > .ui-tab-count,
 .ui-tab[aria-selected="true"] > .ui-tab-count {
   background: var(--brand-tint);
+  color: var(--brand-text);
 }
 
 /* ── Total tiles (§5.5) ── */
