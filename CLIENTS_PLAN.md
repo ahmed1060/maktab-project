@@ -2191,3 +2191,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   attendance policy moves onto the building blocks in #163
   (`UI_PLAN.md` §5), with the dialog the policy templates page shares.
   It doesn't touch clients or locations.
+- **2026-11-02:** Company settings part 3b was merged in #163. The four
+  panels above the Attendance tab's policy move onto the building
+  blocks in #164 (`UI_PLAN.md` §5). They don't touch clients or
+  locations: the check-in places are attendance's, not the clients'.

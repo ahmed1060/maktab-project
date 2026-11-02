@@ -483,10 +483,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Attendance tab, itself in three parts: its calendar (the
      schedules, who works which and the holidays), merged in #162 on
      2026-11-02; then the attendance policy, whose dialog the policy
-     templates page shares, which opens for review in #163; then the
-     panels for
-     attendance in pay, the terminals, the check-in places and face
-     checks; then the Super Admin's
+     templates page shares, merged in #163 on 2026-11-02; then the
+     panels for attendance in pay, the terminals, the check-in places
+     and face checks, which open for review in #164; then the Super
+     Admin's
      own tabs, Roles, Modules and Admin access. Then the Super Admin's
      pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
@@ -2584,3 +2584,36 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   up to a day. A saved policy with a longer one was refused under its
   field, so it couldn't be saved again without changing it. Each field
   takes the policy's own range now.
+- **2026-11-02:** Company settings part 3b was merged in #163. The four
+  panels above the Attendance tab's policy move onto the building blocks
+  in #164, the last of the tab:
+  - attendance in payroll is a card saying whether attendance reaches
+    pay and from which month. The month is a labelled field with the
+    earliest under it; one missing, or before the earliest, is said
+    under it, where Use attendance in payroll stayed off. Using it and
+    stopping it ask first in the building blocks' dialog, which stays
+    open until it's saved;
+  - face verification's legal readiness says whether it's confirmed in
+    a badge, with the day in the page's language, where it showed the
+    date as stored ("2026-10-05"). The card stands out while face checks
+    are paused. Confirming and withdrawing ask first, withdrawing in the
+    danger colour;
+  - the fingerprint terminals list the agents and the terminals as rows,
+    each with its state as a badge, its facts joined as the language
+    joins them, and what can be done to it in a menu named for it. A
+    terminal's reading mode was a select in its row, changed as it was
+    picked; it's in the terminal's Edit dialog with its name now, and
+    its row says it. The one-time code is shown large and spaced, chosen
+    whole with one click. Revoking and retiring ask first;
+  - the check-in places list each place as a row, its radius, office
+    IPs and who, with its map, and a menu named for it. The place
+    dialog's fields each have their label above and their hint or error
+    below; a missing name, a point that isn't one, or a radius outside
+    20 to 5,000 metres is said under its field, where Save stayed off.
+    Who may check in there is picked from a list that can be searched,
+    as a task's assignees are. "↗" after the map link is gone, and "1
+    people" says "1 employee";
+  - each panel says when it didn't load, with the server's reason and
+    Try again. Three showed nothing at all, and the places' said
+    "Something went wrong" beside their title, without the server's
+    reason. One the package doesn't have still isn't there.
