@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { useRef, useState, type FormEvent } from 'react'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
@@ -40,6 +41,15 @@ export function addErrors(a: NewAdmin): Wrong {
     if (!EMAIL.test(a.email.trim())) wrong.email = 'super_admins_email_invalid'
     if (a.password.length < 12) wrong.password = 'super_admins_password_short'
     return wrong
+}
+
+/**
+ * What your session should now say, when the one saved is you: the top bar
+ * reads your name from it, and kept the old one until you signed in again
+ * (audit on part 2b). Null for anyone else.
+ */
+export function ownSessionChange<T extends { firstName: string; lastName: string; gender: Gender }>(adminId: string, viewerId: string | undefined, sent: T): T | null {
+    return adminId === viewerId ? sent : null
 }
 
 function useGenders() {
@@ -124,6 +134,7 @@ export function EditSuperAdminDialog({ admin, onClose, onSaved }: { admin: Super
     const { t } = useLanguage()
     const { showToast } = useToast()
     const viewer = useViewer()
+    const { update } = useSession()
     const genders = useGenders()
     const formRef = useRef<HTMLFormElement>(null)
     const [firstName, setFirstName] = useState(admin.firstName)
@@ -147,6 +158,8 @@ export function EditSuperAdminDialog({ admin, onClose, onSaved }: { admin: Super
                 showToast(await refusalOf(res, t('error_generic')), 'error')
                 return
             }
+            const change = ownSessionChange(admin.id, viewer?.id, sent)
+            if (change) await update(change)
             onSaved(`${sent.firstName} ${sent.lastName}`)
         } catch {
             showToast(t('error_generic'), 'error')
@@ -165,7 +178,7 @@ export function EditSuperAdminDialog({ admin, onClose, onSaved }: { admin: Super
                     <TextInput {...p} name="lastName" autoComplete="off" value={lastName} onChange={e => { setLastName(e.target.value); setWrong(w => ({ ...w, lastName: undefined })) }} />
                 )}</Field>
                 <Field label={t('email')} hint={own ? <>{before}<Link href="/dashboard/security-settings">{t('security_settings_nav')}</Link>{after}</> : t('super_admins_email_theirs')}>{p => (
-                    <TextInput {...p} type="email" name="email" value={admin.email} disabled dir="ltr" />
+                    <TextInput {...p} type="email" name="email" value={admin.email} disabled />
                 )}</Field>
                 <Choice legend={t('super_admins_gender')} name="gender" value={gender} onChange={setGender} options={genders} />
                 <DialogActions>

@@ -2912,3 +2912,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     load said nobody held it;
   - 8 labels only the old pages used, and the --info-bg-indigo-subtle and
     --accent-deep colours only the Protected badge used, are removed.
+- **2026-11-02:** Found in the browser and the interface audit on #170:
+  - renaming yourself on the Super Admins page left your old name in the
+    top bar until you signed in again, as the old page did. Your session
+    takes the new name when it's saved, as your profile's does;
+  - the box of people on Who can lists the first 20, and said nothing
+    when there were more. With 20 listed, the search's hint says to type
+    a name to find someone else;
+  - the email in the edit dialog was set left to right, unlike every
+    other field on the page. It follows the page, as the add dialog's
+    does.

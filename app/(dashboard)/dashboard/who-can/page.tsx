@@ -34,6 +34,7 @@ type PersonAccess = {
     grants: { permission: Permission; scope: Scope }[]
 }
 type Found = { id: string; firstName: string; lastName: string }
+const PEOPLE_LISTED = 20
 
 export default function WhoCanPage() {
     const { t } = useLanguage()
@@ -68,7 +69,7 @@ export default function WhoCanPage() {
     const holders = useSWR(asking && mode === 'permission' && permission
         ? `/api/roles/who-can?companyId=${company}&permission=${encodeURIComponent(permission)}` : null, fetcher)
     const found = useSWR(asking && mode === 'person'
-        ? `/api/users?companyId=${company}&includeDeleted=false&limit=20&search=${encodeURIComponent(search)}` : null, fetcher, { keepPreviousData: true })
+        ? `/api/users?companyId=${company}&includeDeleted=false&limit=${PEOPLE_LISTED}&search=${encodeURIComponent(search)}` : null, fetcher, { keepPreviousData: true })
     const person = useSWR(asking && mode === 'person' && personId ? `/api/roles/who-can?userId=${personId}` : null, fetcher)
 
     if (!isSuperAdmin) return <AccessDenied />
@@ -126,7 +127,8 @@ export default function WhoCanPage() {
         const [before, after] = t('who_can_through').split('{role}')
         body = <>
             <Card>
-                <Field label={t('who_can_find_person')}>{p => (
+                {/* The server lists so many at a time: with that many shown, there may be more to find by name (audit on part 2b). */}
+                <Field label={t('who_can_find_person')} hint={people?.length === PEOPLE_LISTED ? t('who_can_more_people') : undefined}>{p => (
                     <SearchInput {...p} name="search" autoComplete="off" value={typed} onChange={e => setTyped(e.target.value)} />
                 )}</Field>
                 <fieldset className="ui-field ui-fieldset">

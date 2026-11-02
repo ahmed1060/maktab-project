@@ -3001,6 +3001,7 @@ export const ar = {
         who_can_find_person: "ابحث عن شخص",
         who_can_pick_person: "ابحث عن شخص واختره لترى ما يستطيع فعله.",
         who_can_no_people: "لا أحد في هذه الشركة يطابق البحث.",
+        who_can_more_people: "يظهر أول ٢٠ فقط. اكتب اسماً لتجد شخصاً آخر.",
         who_can_load_failed: "تعذّر تحميل الإجابة.",
         super_admins_hint: "من يديرون نظمو لكل الشركات. لا يغيّر مسؤولاً عاماً آخر أو يحذفه إلا مسؤول عام محمي.",
         super_admins_add: "إضافة مسؤول عام",

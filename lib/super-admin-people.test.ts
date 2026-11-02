@@ -23,7 +23,7 @@ const state = {
     menus: [] as { label: string; items: { key: string; label: string; danger?: boolean }[] }[],
 }
 
-vi.mock("next-auth/react", () => ({ useSession: () => ({ data: state.viewer ? { user: state.viewer } : null, status: "authenticated" }) }))
+vi.mock("next-auth/react", () => ({ useSession: () => ({ data: state.viewer ? { user: state.viewer } : null, status: "authenticated", update: async () => null }) }))
 vi.mock("@/lib/useCan", () => ({ useViewer: () => state.viewer, useCan: () => ({ can: () => true }) }))
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: state.company }) }))
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(state.search), usePathname: () => "/dashboard/who-can", useRouter: () => ({ replace: () => {}, push: () => {} }) }))
@@ -179,6 +179,22 @@ describe("the Super Admins page", () => {
         expect(own).toContain(`<a href="/dashboard/security-settings">${en.security_settings_nav}</a>`)
     })
 
+    it("renames you in the top bar when you rename yourself, and nobody else's change touches your session (audit on part 2b)", async () => {
+        const { ownSessionChange } = await import("@/components/SuperAdminDialogs")
+        const sent = { firstName: "Sami", lastName: "Admin", gender: "MALE" as const }
+        expect(ownSessionChange("sa1", "sa1", sent)).toEqual(sent)
+        expect(ownSessionChange("sa2", "sa1", sent)).toBeNull()
+        const source = readFileSync("components/SuperAdminDialogs.tsx", "utf8")
+        expect(source).toContain("const change = ownSessionChange(admin.id, viewer?.id, sent)")
+        expect(source).toContain("if (change) await update(change)")
+    })
+
+    it("shows the email in the edit dialog as the page's other fields are, not set left to right (audit on part 2b)", async () => {
+        const { EditSuperAdminDialog } = await import("@/components/SuperAdminDialogs")
+        const html = render(h(EditSuperAdminDialog, { admin: admin(), onClose: () => {}, onSaved: () => {} }))
+        expect(html.match(/<input[^>]*name="email"[^>]*>/)![0]).not.toContain('dir="ltr"')
+    })
+
     it("writes its words in the page's language, not typed in English and Arabic beside each other", () => {
         const source = readFileSync("app/(dashboard)/dashboard/super-admins/page.tsx", "utf8") + readFileSync("components/SuperAdminDialogs.tsx", "utf8")
         expect(source).not.toMatch(/locale === 'ar' \?/)
@@ -237,6 +253,13 @@ describe("Who can do this", () => {
         expect(html).toContain(`<h3 class="ui-subsection-title">${en.perm_group_employees}</h3>`)
         expect(html).toContain(`<span class="ui-item-title">${en.perm_employees_view}</span><span class="ui-item-detail">${en.scope_TEAM}</span>`)
         expect(html).not.toContain("✕")
+    })
+
+    it("says when the box holds as many as it lists, so there may be more to find by name (audit on part 2b)", async () => {
+        const people = "/api/users?companyId=c1&includeDeleted=false&limit=20&search="
+        const many = Array.from({ length: 20 }, (_, i) => ({ id: `u${i}`, firstName: "Person", lastName: String(i) }))
+        expect(await whoCan({ [people]: ok({ data: many }) }, { company: "c1", search: "by=person" })).toContain(esc(en.who_can_more_people))
+        expect(await whoCan({ [people]: ok({ data: many.slice(0, 2) }) }, { company: "c1", search: "by=person" })).not.toContain(esc(en.who_can_more_people))
     })
 
     it("says to pick a person until one is, and doesn't show one of another company when the top bar changes", async () => {

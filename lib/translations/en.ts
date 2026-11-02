@@ -3009,6 +3009,7 @@ export const en = {
         who_can_find_person: "Find a person",
         who_can_pick_person: "Find a person and pick them to see what they may do.",
         who_can_no_people: "Nobody in this company matches.",
+        who_can_more_people: "The first 20 are listed. Type a name to find someone else.",
         who_can_load_failed: "Couldn't load the answer.",
         super_admins_hint: "The people who run Nizmo for every company. Only a protected Super Admin can change or delete another.",
         super_admins_add: "Add a Super Admin",
