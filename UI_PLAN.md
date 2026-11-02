@@ -2468,3 +2468,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the danger colour, since showing it again means uploading it again;
   - the logo's preview has its size before it loads, so the card doesn't
     move, and the payday and the debt cap don't offer saved entries.
+- **2026-11-02:** Found by Codex on #161: a payday or debt cap typed with
+  a leading zero, such as "05", was saved as 5, but the card compared the
+  text it held with the 5 it was given back. So Save stayed on, and
+  leaving the tab asked about edits already kept. A typed number is
+  compared as the number it is now, and after a save the field shows
+  what was saved.

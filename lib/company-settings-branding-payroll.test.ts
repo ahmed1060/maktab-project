@@ -203,3 +203,23 @@ describe("found in the browser and the audit (company settings part 2)", () => {
         }
     })
 })
+
+describe("found by Codex on #161", () => {
+    it("counts a number typed with a leading zero as the number saved, so Save turns off once it's saved", async () => {
+        // "05" was saved as 5, but the card compared the text it held with
+        // the 5 it was given back: Save stayed on, and leaving asked about
+        // edits already kept.
+        const { sameWhole } = await import("@/components/CompanyPayrollCard")
+        expect(sameWhole("05", 5)).toBe(true)
+        expect(sameWhole("025", 25)).toBe(true)
+        expect(sameWhole("5", 5)).toBe(true)
+        expect(sameWhole("6", 5)).toBe(false)
+        // Empty or not a whole number is a change, to be said to be wrong.
+        expect(sameWhole("", 0)).toBe(false)
+        expect(sameWhole("5.0", 5)).toBe(false)
+        const src = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
+        expect(src).toMatch(/const dirty = !sameWhole\(dayText, payrollDay\)[^\n]*!sameWhole\(capText, debtRecoveryPercent\)/)
+        // And the field shows what was saved.
+        expect(src).toMatch(/setDayText\(String\(day\)\)/)
+    })
+})

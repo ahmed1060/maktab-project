@@ -71,6 +71,15 @@ export function payrollFieldErrors(day: string, cap: string): Partial<Record<'pa
 }
 
 /**
+ * Whether a typed number is the one saved: "05" is 5. Compared as text, a
+ * payday typed with a leading zero stayed a change after it was saved
+ * (found by Codex on PR 161).
+ */
+export function sameWhole(text: string, saved: number): boolean {
+    return WHOLE.test(text.trim()) && Number(text) === saved
+}
+
+/**
  * The server's refusal, each field's reason under that field. The zone's
  * explains that the scheduled jobs are global and what that costs a company
  * far behind UTC: "Validation Error" alone would throw away the whole point
@@ -106,7 +115,7 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
     // do (found in the browser on company settings part 2).
     const clear = (field: PayrollField) => setErrors(x => ({ ...x, [field]: undefined }))
 
-    const dirty = dayText !== String(payrollDay) || visible !== payslipsVisible || zone !== timezone || capText !== String(debtRecoveryPercent)
+    const dirty = !sameWhole(dayText, payrollDay) || visible !== payslipsVisible || zone !== timezone || !sameWhole(capText, debtRecoveryPercent)
     useReportUnsaved('payroll', dirty)
 
     // Focus the first field said to be wrong, once it says so.
@@ -142,6 +151,9 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                 return
             }
             onSaved({ payrollDay: day, payslipsVisible: visible, timezone: zone, debtRecoveryPercent: debtRecoveryEditable ? cap : debtRecoveryPercent })
+            // The fields show what was saved: 5, where "05" was typed.
+            setDayText(String(day))
+            if (debtRecoveryEditable) setCapText(String(cap))
             showToast(t('settings_saved_success'), 'success')
         } catch {
             showToast(t('error_generic'), 'error')
