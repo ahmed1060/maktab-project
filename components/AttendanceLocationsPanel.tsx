@@ -1,20 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
-import { fetcher } from '@/lib/swr-fetcher'
+import { ArchiveIcon, ArrowCounterClockwiseIcon, PencilSimpleIcon, PlusIcon, UsersThreeIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import Modal from '@/components/Modal'
-import ConfirmModal from '@/components/ConfirmModal'
 import PointPicker from '@/components/PointPicker'
+import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
 import { apiErrorText } from '@/lib/api-error-text'
 import { googleMapsLink, parsePoint } from '@/lib/attendance/geo'
+import { countOf } from '@/lib/plural'
+import type { TranslationKey } from '@/lib/translations'
+import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, RowMenu, StatusBadge, TextArea, TextInput, type MenuItem } from '@/components/ui'
+import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 
 /**
  * Where people check in with the app (ATTENDANCE_PLAN.md §8.5, §9.4), on the
  * Attendance tab of a company holding the Mobile App add-on: a circle on the
  * map, optionally the office's public IPs, and who may check in there.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, company settings part 3c): a
+ * card listing each place as a row, what can be done to it in a menu named
+ * for it, and each change in the building blocks' dialog.
  */
 
 type Location = {
@@ -22,178 +30,243 @@ type Location = {
     officeIpRanges: string[]; everyone: boolean; archivedAt: string | null; userIds: string[]
 }
 type Person = { id: string; name: string }
-type Draft = { id: string | null; name: string; point: string; radius: string; ips: string; everyone: boolean }
+export type Draft = { id: string | null; name: string; point: string; radius: string; ips: string; everyone: boolean }
+type PlaceErrors = Partial<Record<'name' | 'point' | 'radius', TranslationKey>>
 
 const mapLink = (l: Pick<Location, 'latitude' | 'longitude'>) => googleMapsLink(l.latitude, l.longitude)
 
+/** What's wrong with a place before it's sent, each under its field. */
+export function placeErrors(draft: Draft): PlaceErrors {
+    const errors: PlaceErrors = {}
+    if (!draft.name.trim()) errors.name = 'att_loc_name_required'
+    if (!parsePoint(draft.point)) errors.point = 'att_loc_point_invalid'
+    const radius = draft.radius.trim()
+    if (!/^\d+$/.test(radius) || Number(radius) < 20 || Number(radius) > 5000) errors.radius = 'att_loc_radius_invalid'
+    return errors
+}
+
 export default function AttendanceLocationsPanel({ companyId, readOnly }: { companyId: string; readOnly: boolean }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
-    const { data: body, error, mutate } = useSWR(`/api/attendance/locations?companyId=${encodeURIComponent(companyId)}`, fetcher)
+    const { data: body, error, isValidating, mutate } = useSWR(`/api/attendance/locations?companyId=${encodeURIComponent(companyId)}`, fetcher)
     const [draft, setDraft] = useState<Draft | null>(null)
-    const [staffing, setStaffing] = useState<{ location: Location; chosen: Set<string>; search: string } | null>(null)
+    const [staffing, setStaffing] = useState<Location | null>(null)
     const [archiving, setArchiving] = useState<Location | null>(null)
     const [busy, setBusy] = useState(false)
+    // One change at a time, as a restore chosen twice (Codex on PR 164).
+    const inFlight = useRef(false)
 
     // Not sold to this company, or not this person's to see: nothing here.
-    // Anything else is a failure to load, and says so rather than vanishing.
-    if (error && (error.status === 403 || error.status === 404)) return null
-    if (error) {
-        return (
-            <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.88rem' }}>{t('att_loc_title')}: {t('error_generic')}</span>
-                <button className="btn btn-secondary" onClick={() => mutate()}>{t('att_loc_retry')}</button>
-            </section>
-        )
-    }
+    // Anything else is a failure to load, and says so rather than vanishing;
+    // once loaded, a failed refresh keeps the panel (below).
+    const status = (error as SWRError | undefined)?.status
+    if (error && (status === 403 || status === 404)) return null
+    if (error && !body) return (
+        <div className="ui-panel">
+            <EmptyState icon={WarningCircleIcon} title={t('att_loc_load_failed')} detail={(error as SWRError).info?.error}
+                action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+        </div>
+    )
     if (!body?.data) return null
     const locations: Location[] = body.data.locations
     const people: Person[] = body.data.people
     const nameOf = new Map(people.map(p => [p.id, p.name]))
+    const number = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
 
-    const send = async (url: string, init: RequestInit, done: string, then?: () => void) => {
+    /** Sends one change, then reloads; the server's refusal is shown as it said it. */
+    const send = async (url: string, init: RequestInit, done: TranslationKey, then?: () => void) => {
+        if (inFlight.current) return
+        inFlight.current = true
         setBusy(true)
         try {
             const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...init })
             const text = await res.text()
-            if (!res.ok) return showToast(apiErrorText(text, t('error_generic')), 'error')
-            showToast(t(done as any), 'success')
+            if (!res.ok) {
+                showToast(apiErrorText(text, t('error_generic')), 'error')
+                return
+            }
+            showToast(t(done), 'success')
             then?.()
-            mutate()
+            void mutate()
         } catch {
             // The connection dropped: nothing was confirmed, and the form stays open to try again.
             showToast(t('error_generic'), 'error')
-        } finally { setBusy(false) }
-    }
-
-    const point = draft ? parsePoint(draft.point) : null
-    const save = () => {
-        if (!draft || !point) return
-        const input = {
-            name: draft.name, ...point, radiusMeters: Number(draft.radius),
-            officeIpRanges: draft.ips.split(/[\n,]/).map(s => s.trim()).filter(Boolean), everyone: draft.everyone,
+        } finally {
+            inFlight.current = false
+            setBusy(false)
         }
-        if (draft.id) send(`/api/attendance/locations/${draft.id}`, { method: 'PATCH', body: JSON.stringify(input) }, 'att_loc_saved', () => setDraft(null))
-        else send('/api/attendance/locations', { method: 'POST', body: JSON.stringify({ companyId, ...input }) }, 'att_loc_added', () => setDraft(null))
     }
+
+    /** Who may check in there: everyone, nobody, up to three by name, or how many. */
+    const who = (l: Location): string[] => l.everyone ? [t('att_loc_everyone_short')]
+        : l.userIds.length === 0 ? [t('att_loc_nobody')]
+            : l.userIds.length <= 3 ? l.userIds.map(id => nameOf.get(id) ?? '–')
+                : [countOf(t, locale, l.userIds.length, 'employees')]
     const edit = (l: Location) => setDraft({ id: l.id, name: l.name, point: `${l.latitude}, ${l.longitude}`, radius: String(l.radiusMeters), ips: l.officeIpRanges.join('\n'), everyone: l.everyone })
-
-    const who = (l: Location) => l.everyone ? t('att_loc_everyone_short')
-        : l.userIds.length === 0 ? t('att_loc_nobody')
-        : l.userIds.length <= 3 ? l.userIds.map(id => nameOf.get(id) ?? '…').join(', ')
-        : t('att_loc_people_n').replace('{n}', String(l.userIds.length))
-
-    const shownPeople = staffing ? people.filter(p => p.name.toLowerCase().includes(staffing.search.trim().toLowerCase())) : []
+    const menu = (l: Location): MenuItem[] => l.archivedAt
+        ? [{ key: 'restore', label: t('att_loc_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/locations/${l.id}/restore`, { method: 'POST' }, 'att_loc_restored') }, disabled: busy }]
+        : [
+            { key: 'edit', label: t('att_loc_edit'), icon: PencilSimpleIcon, onSelect: () => edit(l) },
+            ...(!l.everyone ? [{ key: 'people', label: t('att_loc_choose_people'), icon: UsersThreeIcon, onSelect: () => setStaffing(l) }] : []),
+            { key: 'archive', label: t('att_loc_archive'), icon: ArchiveIcon, danger: true, onSelect: () => setArchiving(l) },
+        ]
 
     return (
-        <section className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', display: 'grid', gap: '1rem' }} aria-labelledby="attendance-locations">
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                <div style={{ minWidth: 0, flex: '1 1 18rem' }}>
-                    <h3 id="attendance-locations" style={{ margin: 0, fontSize: '1rem' }}>{t('att_loc_title')}</h3>
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.84rem', color: 'var(--text-soft)' }}>{t('att_loc_hint')}</p>
+        <Card
+            title={t('att_loc_title')}
+            actions={!readOnly && (
+                <Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setDraft({ id: null, name: '', point: '', radius: '150', ips: '', everyone: false })}>{t('att_loc_add')}</Button>
+            )}
+        >
+            {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
+            {error && <p className="ui-card-note" role="status">{t('ui_refresh_failed')} <Button size="sm" busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button></p>}
+            <p className="ui-card-note">{t('att_loc_hint')}</p>
+            {locations.length === 0 ? <p className="ui-card-note">{t('att_loc_none')}</p> : (
+                <ul className="ui-rows ui-rows-flush" aria-label={t('att_loc_title')}>
+                    {locations.map(l => (
+                        <Row
+                            key={l.id}
+                            title={<>
+                                <bdi>{l.name}</bdi>
+                                {l.archivedAt && <>{' '}<StatusBadge tone="neutral">{t('att_loc_archived_badge')}</StatusBadge></>}
+                            </>}
+                            // Each fact kept apart from the next, a person's name among them (audit on part 3c),
+                            // all in one span: the detail line puts a gap between its children.
+                            detail={<span>
+                                {[
+                                    t('att_loc_radius_m').replace('{n}', number(l.radiusMeters)),
+                                    ...(l.officeIpRanges.length > 0 ? [t('att_loc_ip_line').replace('{n}', number(l.officeIpRanges.length))] : []),
+                                    ...who(l),
+                                ].map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}
+                                {t('list_separator')}
+                                <a href={mapLink(l)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a>
+                            </span>}
+                            end={!readOnly && <RowMenu label={t('ui_more_actions_for').replace('{name}', l.name)} tooltip={t('ui_more_actions')} items={menu(l)} />}
+                        />
+                    ))}
+                </ul>
+            )}
+
+            {draft && (
+                <PlaceDialog draft={draft} busy={busy} onClose={() => setDraft(null)} onSubmit={async (d, point) => {
+                    const input = {
+                        name: d.name.trim(), ...point, radiusMeters: Number(d.radius),
+                        officeIpRanges: d.ips.split(/[\n,]/).map(s => s.trim()).filter(Boolean), everyone: d.everyone,
+                    }
+                    if (d.id) await send(`/api/attendance/locations/${d.id}`, { method: 'PATCH', body: JSON.stringify(input) }, 'att_loc_saved', () => setDraft(null))
+                    else await send('/api/attendance/locations', { method: 'POST', body: JSON.stringify({ companyId, ...input }) }, 'att_loc_added', () => setDraft(null))
+                }} />
+            )}
+
+            {staffing && (
+                <PeopleDialog location={staffing} people={people} busy={busy} onClose={() => setStaffing(null)} onSubmit={async userIds => {
+                    await send(`/api/attendance/locations/${staffing.id}/people`, { method: 'PUT', body: JSON.stringify({ userIds }) }, 'att_loc_saved', () => setStaffing(null))
+                }} />
+            )}
+
+            {/* Archiving stops check-ins there until it's restored: asked about first. */}
+            <Dialog
+                open={!!archiving}
+                onClose={() => { if (!busy) setArchiving(null) }}
+                title={t('att_loc_archive_title').replace('{name}', archiving?.name ?? '')}
+                actions={<>
+                    <Button onClick={() => setArchiving(null)} disabled={busy}>{t('cancel')}</Button>
+                    <Button variant="danger" busy={busy} onClick={() => { if (archiving) void send(`/api/attendance/locations/${archiving.id}`, { method: 'DELETE' }, 'att_loc_archived', () => setArchiving(null)) }}>{t('att_loc_archive')}</Button>
+                </>}
+            >
+                <p>{t('att_loc_archive_body')}</p>
+            </Dialog>
+        </Card>
+    )
+}
+
+/**
+ * A place: its name, the point (typed, or set on the map), how far around it
+ * counts, the office's IPs, and whether everyone may check in there. What's
+ * wrong is said under each field when it's saved.
+ */
+export function PlaceDialog({ draft: start, busy, onClose, onSubmit }: {
+    draft: Draft
+    busy: boolean
+    onClose: () => void
+    onSubmit: (draft: Draft, point: { latitude: number; longitude: number }) => Promise<void>
+}) {
+    const { t } = useLanguage()
+    const formRef = useRef<HTMLFormElement>(null)
+    const [draft, setDraft] = useState<Draft>(start)
+    const [errors, setErrors] = useState<PlaceErrors>({})
+    const point = parsePoint(draft.point)
+    const edit = (change: Partial<Draft>, field?: keyof PlaceErrors) => {
+        setDraft(d => ({ ...d, ...change }))
+        if (field) setErrors(e => ({ ...e, [field]: undefined }))
+    }
+    const submit = async (e: FormEvent) => {
+        e.preventDefault()
+        const found = placeErrors(draft)
+        setErrors(found)
+        if (Object.keys(found).length > 0 || !point) { focusFirstWrong(formRef.current); return }
+        await onSubmit(draft, point)
+    }
+    return (
+        <Dialog open onClose={() => { if (!busy) onClose() }} title={start.id ? t('att_loc_edit_title').replace('{name}', start.name) : t('att_loc_add')}>
+            <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
+                <Field label={t('att_loc_name')} hint={t('att_loc_name_hint')} error={errors.name && t(errors.name)}>{p => (
+                    <TextInput {...p} name="name" autoComplete="off" maxLength={80} value={draft.name} onChange={e => edit({ name: e.target.value }, 'name')} />
+                )}</Field>
+                <div className="ui-field">
+                    <Field label={t('att_loc_point')} hint={t('att_loc_point_hint')} error={errors.point && t(errors.point)}>{p => (
+                        // Not a decimal keypad: on a phone it has no comma or minus (audit on part 3c).
+                        <TextInput {...p} name="point" dir="ltr" autoComplete="off" value={draft.point} onChange={e => edit({ point: e.target.value }, 'point')} />
+                    )}</Field>
+                    {point && <a className="ui-field-link" href={mapLink(point)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a>}
                 </div>
-                {!readOnly && <button className="btn btn-primary" disabled={busy} onClick={() => setDraft({ id: null, name: '', point: '', radius: '150', ips: '', everyone: false })}>{t('att_loc_add')}</button>}
-            </div>
+                <PointPicker value={draft.point} radius={Number(draft.radius) || 0} onChange={text => edit({ point: text }, 'point')} />
+                <Field label={t('att_loc_radius')} hint={t('att_loc_radius_hint')} error={errors.radius && t(errors.radius)}>{p => (
+                    <TextInput {...p} name="radius" type="number" inputMode="numeric" autoComplete="off" min={20} max={5000} step={10} value={draft.radius} onChange={e => edit({ radius: e.target.value }, 'radius')} />
+                )}</Field>
+                <Field label={t('att_loc_ips')} hint={t('att_loc_ips_hint')}>{p => (
+                    <TextArea {...p} name="ips" dir="ltr" rows={3} spellCheck={false} value={draft.ips} onChange={e => edit({ ips: e.target.value })} />
+                )}</Field>
+                <label className="ui-choice">
+                    <input type="checkbox" className="ui-check" checked={draft.everyone} onChange={e => edit({ everyone: e.target.checked })} />
+                    {t('att_loc_everyone')}
+                </label>
+                <DialogActions>
+                    <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
+                    <Button type="submit" variant="primary" busy={busy}>{t('save')}</Button>
+                </DialogActions>
+            </form>
+        </Dialog>
+    )
+}
 
-            {locations.length === 0 && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-soft)' }}>{t('att_loc_none')}</p>}
-            {locations.map(l => (
-                <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', opacity: l.archivedAt ? 0.65 : 1 }}>
-                    <div style={{ minWidth: 0, display: 'grid', gap: '0.2rem' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <strong>{l.name}</strong>
-                            {l.archivedAt && <span style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '999px' }}>{t('att_loc_archived_badge')}</span>}
-                        </div>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-soft)' }}>
-                            {[t('att_loc_radius_m').replace('{n}', String(l.radiusMeters)), l.officeIpRanges.length > 0 && t('att_loc_ip_n').replace('{n}', String(l.officeIpRanges.length)), who(l)].filter(Boolean).join(' · ')}
-                            {' · '}
-                            <a href={mapLink(l)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a>
-                        </span>
-                    </div>
-                    {!readOnly && (
-                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                            {!l.archivedAt && <button className="btn btn-secondary" style={{ fontSize: '0.8rem' }} disabled={busy} onClick={() => edit(l)}>{t('att_loc_edit')}</button>}
-                            {!l.archivedAt && !l.everyone && <button className="btn btn-secondary" style={{ fontSize: '0.8rem' }} disabled={busy} onClick={() => setStaffing({ location: l, chosen: new Set(l.userIds), search: '' })}>{t('att_loc_choose_people')}</button>}
-                            {!l.archivedAt && <button className="btn btn-secondary" style={{ fontSize: '0.8rem', color: 'var(--danger-fg)' }} disabled={busy} onClick={() => setArchiving(l)}>{t('att_loc_archive')}</button>}
-                            {l.archivedAt && <button className="btn btn-secondary" style={{ fontSize: '0.8rem' }} disabled={busy} onClick={() => send(`/api/attendance/locations/${l.id}/restore`, { method: 'POST' }, 'att_loc_restored')}>{t('att_loc_restore')}</button>}
-                        </div>
-                    )}
-                </div>
-            ))}
-
-            <Modal isOpen={!!draft} onClose={() => setDraft(null)} title={draft?.id ? t('att_loc_edit') : t('att_loc_add')}>
-                {draft && (
-                    <div style={{ display: 'grid', gap: '0.75rem' }}>
-                        <label style={{ display: 'grid', gap: '0.25rem' }}>
-                            <span className="label">{t('att_loc_name')}</span>
-                            <input className="input" autoFocus maxLength={80} value={draft.name} placeholder={t('att_loc_name_placeholder')} onChange={e => setDraft({ ...draft, name: e.target.value })} />
-                        </label>
-                        <label style={{ display: 'grid', gap: '0.25rem' }}>
-                            <span className="label">{t('att_loc_point')}</span>
-                            <input className="input" dir="ltr" inputMode="decimal" value={draft.point} placeholder="30.0444, 31.2357" onChange={e => setDraft({ ...draft, point: e.target.value })} aria-invalid={draft.point.trim() !== '' && !point} />
-                            <span style={{ fontSize: '0.75rem', color: draft.point.trim() && !point ? 'var(--danger-fg)' : 'var(--text-soft)' }}>{draft.point.trim() && !point ? t('att_loc_point_invalid') : t('att_loc_point_hint')}</span>
-                            {point && <a href={mapLink(point)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.78rem' }}>{t('att_loc_map')} ↗</a>}
-                        </label>
-                        <PointPicker value={draft.point} radius={Number(draft.radius) || 0} onChange={text => setDraft(d => d && { ...d, point: text })} />
-                        <label style={{ display: 'grid', gap: '0.25rem' }}>
-                            <span className="label">{t('att_loc_radius')}</span>
-                            <input className="input" type="number" min={20} max={5000} step={10} value={draft.radius} onChange={e => setDraft({ ...draft, radius: e.target.value })} style={{ maxWidth: '10rem' }} />
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{t('att_loc_radius_hint')}</span>
-                        </label>
-                        <label style={{ display: 'grid', gap: '0.25rem' }}>
-                            <span className="label">{t('att_loc_ips')}</span>
-                            <textarea className="input" dir="ltr" rows={3} value={draft.ips} placeholder="203.0.113.7" onChange={e => setDraft({ ...draft, ips: e.target.value })} />
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{t('att_loc_ips_hint')}</span>
-                        </label>
-                        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <input type="checkbox" checked={draft.everyone} onChange={e => setDraft({ ...draft, everyone: e.target.checked })} />
-                            <span>{t('att_loc_everyone')}</span>
-                        </label>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                            <button className="btn btn-secondary" onClick={() => setDraft(null)}>{t('cancel')}</button>
-                            <button className="btn btn-primary" disabled={busy || !draft.name.trim() || !point || !draft.radius} onClick={save}>{t('save')}</button>
-                        </div>
-                    </div>
-                )}
-            </Modal>
-
-            <Modal isOpen={!!staffing} onClose={() => setStaffing(null)} title={`${t('att_loc_people')}: ${staffing?.location.name ?? ''}`}>
-                {staffing && (
-                    <div style={{ display: 'grid', gap: '0.75rem' }}>
-                        <input className="input" value={staffing.search} placeholder={t('att_loc_search')} onChange={e => setStaffing({ ...staffing, search: e.target.value })} />
-                        <div style={{ maxHeight: '18rem', overflowY: 'auto', display: 'grid', gap: '0.25rem' }}>
-                            {shownPeople.map(p => (
-                                <label key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.88rem' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={staffing.chosen.has(p.id)}
-                                        onChange={e => {
-                                            const chosen = new Set(staffing.chosen)
-                                            if (e.target.checked) chosen.add(p.id)
-                                            else chosen.delete(p.id)
-                                            setStaffing({ ...staffing, chosen })
-                                        }}
-                                    />
-                                    <span>{p.name}</span>
-                                </label>
-                            ))}
-                        </div>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-soft)' }}>{t('att_loc_people_n').replace('{n}', String(staffing.chosen.size))}</span>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                            <button className="btn btn-secondary" onClick={() => setStaffing(null)}>{t('cancel')}</button>
-                            <button className="btn btn-primary" disabled={busy} onClick={() => send(`/api/attendance/locations/${staffing.location.id}/people`, { method: 'PUT', body: JSON.stringify({ userIds: [...staffing.chosen] }) }, 'att_loc_saved', () => setStaffing(null))}>{t('save')}</button>
-                        </div>
-                    </div>
-                )}
-            </Modal>
-
-            <ConfirmModal
-                isOpen={!!archiving}
-                title={t('att_loc_archive')}
-                message={t('att_loc_archive_confirm').replace('{name}', archiving?.name ?? '')}
-                confirmText={t('att_loc_archive')}
-                onConfirm={async () => { const l = archiving; if (l) await send(`/api/attendance/locations/${l.id}`, { method: 'DELETE' }, 'att_loc_archived'); setArchiving(null) }}
-                onCancel={() => setArchiving(null)}
+/** Who may check in at a place, picked from a list that can be searched, as a task's assignees are. */
+function PeopleDialog({ location, people, busy, onClose, onSubmit }: {
+    location: Location
+    people: Person[]
+    busy: boolean
+    onClose: () => void
+    onSubmit: (userIds: string[]) => Promise<void>
+}) {
+    const { t } = useLanguage()
+    const [chosen, setChosen] = useState<string[]>(location.userIds)
+    return (
+        <Dialog
+            open
+            onClose={() => { if (!busy) onClose() }}
+            title={t('att_loc_people_title').replace('{name}', location.name)}
+            actions={<>
+                <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
+                <Button variant="primary" busy={busy} onClick={() => { void onSubmit(chosen) }}>{t('save')}</Button>
+            </>}
+        >
+            <AssigneeChecklist
+                legend={t('att_loc_people')}
+                people={people.map(p => ({ id: p.id, firstName: p.name, lastName: '' }))}
+                value={chosen}
+                onChange={setChosen}
+                onRetry={() => {}}
             />
-        </section>
+        </Dialog>
     )
 }

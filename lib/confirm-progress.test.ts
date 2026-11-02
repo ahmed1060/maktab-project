@@ -64,8 +64,14 @@ describe("every confirmation", () => {
 
     it("finds them all", () => {
         // Only that the search finds them: there are fewer as pages move onto
-        // the building blocks' dialog (UI_PLAN.md §5 step 5), 39 at PR 152.
-        expect(handlers.length).toBeGreaterThan(30)
+        // the building blocks' dialog (UI_PLAN.md §5 step 5), 39 at PR 152 and
+        // 26 at PR 164. So it's every one written, however many are left: a
+        // tag that starts a line, as JSX is written and a comment's isn't.
+        const files = execSync("grep -rl '<ConfirmModal' app components --include=*.tsx").toString().trim().split("\n")
+        const written = files.filter(f => !NOT_WORK.includes(f))
+            .reduce((n, f) => n + (readFileSync(f, "utf8").match(/^\s*<ConfirmModal\b/gm)?.length ?? 0), 0)
+        expect(handlers.length).toBe(written)
+        expect(handlers.length).toBeGreaterThan(0)
     })
 
     it("keeps its dialog open until the work is done", () => {

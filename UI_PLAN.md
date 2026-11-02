@@ -483,10 +483,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Attendance tab, itself in three parts: its calendar (the
      schedules, who works which and the holidays), merged in #162 on
      2026-11-02; then the attendance policy, whose dialog the policy
-     templates page shares, which opens for review in #163; then the
-     panels for
-     attendance in pay, the terminals, the check-in places and face
-     checks; then the Super Admin's
+     templates page shares, merged in #163 on 2026-11-02; then the
+     panels for attendance in pay, the terminals, the check-in places
+     and face checks, which open for review in #164; then the Super
+     Admin's
      own tabs, Roles, Modules and Admin access. Then the Super Admin's
      pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
@@ -2584,3 +2584,74 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   up to a day. A saved policy with a longer one was refused under its
   field, so it couldn't be saved again without changing it. Each field
   takes the policy's own range now.
+- **2026-11-02:** Company settings part 3b was merged in #163. The four
+  panels above the Attendance tab's policy move onto the building blocks
+  in #164, the last of the tab:
+  - attendance in payroll is a card saying whether attendance reaches
+    pay and from which month. The month is a labelled field with the
+    earliest under it; one missing, or before the earliest, is said
+    under it, where Use attendance in payroll stayed off. Using it and
+    stopping it ask first in the building blocks' dialog, which stays
+    open until it's saved;
+  - face verification's legal readiness says whether it's confirmed in
+    a badge, with the day in the page's language, where it showed the
+    date as stored ("2026-10-05"). The card stands out while face checks
+    are paused. Confirming and withdrawing ask first, withdrawing in the
+    danger colour;
+  - the fingerprint terminals list the agents and the terminals as rows,
+    each with its state as a badge, its facts joined as the language
+    joins them, and what can be done to it in a menu named for it. A
+    terminal's reading mode was a select in its row, changed as it was
+    picked; it's in the terminal's Edit dialog with its name now, and
+    its row says it. The one-time code is shown large and spaced, chosen
+    whole with one click. Revoking and retiring ask first;
+  - the check-in places list each place as a row, its radius, office
+    IPs and who, with its map, and a menu named for it. The place
+    dialog's fields each have their label above and their hint or error
+    below; a missing name, a point that isn't one, or a radius outside
+    20 to 5,000 metres is said under its field, where Save stayed off.
+    Who may check in there is picked from a list that can be searched,
+    as a task's assignees are. "↗" after the map link is gone, and "1
+    people" says "1 employee";
+  - each panel says when it didn't load, with the server's reason and
+    Try again. Three showed nothing at all, and the places' said
+    "Something went wrong" beside their title, without the server's
+    reason. One the package doesn't have still isn't there.
+- **2026-11-02:** Found in the browser and the interface audit on #164:
+  - a link in a row's detail, such as a check-in place's map, was the
+    browser's own blue. It's in the link colour, as a detail's is;
+  - a row's facts, a host name, a version, a serial number or a
+    person's name among them, weren't kept apart from each other, so
+    one ending in a number could swap places with the words beside it
+    in Arabic. Each is isolated now;
+  - with no terminal yet, how a terminal reads scans ran on from "No
+    terminal yet" as one paragraph. It's said once there's a terminal,
+    and in its Edit dialog;
+  - a place's point opened a decimal keypad on a phone, which has no
+    comma or minus, so a point couldn't be typed there; the old panel
+    asked for it the same way. It takes text now;
+  - the place dialog's title, editing one, said only "Edit". It names
+    the place.
+- **2026-11-02:** With #164, 26 of the old confirm windows are left,
+  where the test that each keeps its window open until its work is done
+  checked its search by finding more than 30. It checks now that it
+  finds every one written, however many are left.
+- **2026-11-02:** Found in the browser on #164: a terminal's or a
+  place's facts read "150 m , Everyone , Map", with a gap before each
+  comma. A row's detail line puts a gap between its children, for its
+  icon, and each fact and comma was a child of its own. They're one
+  line of text in one span now.
+- **2026-11-02:** Found in Codex's review of #164:
+  - New code and Move to another PC, and a terminal's or a place's
+    Restore, act straight from the menu, and could be chosen again
+    before the first one was done. Each new code replaces the last, so
+    the slower answer could leave a code on screen that no longer
+    works. The old buttons were greyed while busy; these menu items
+    are now too, and the panel sends one change at a time;
+  - a refresh that failed after a panel had loaded swapped the whole
+    panel for "didn't load", closing a half-done edit of a terminal or
+    a place and losing it. The terminals refresh every minute, and
+    every panel refreshes when the window comes back into focus. Once
+    loaded, a panel keeps what it had, and anything open in it, and
+    says it couldn't refresh, with Try again. "Didn't load" is for a
+    panel that never loaded.
