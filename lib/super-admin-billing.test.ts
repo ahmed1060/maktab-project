@@ -52,7 +52,7 @@ const ok = (data: unknown) => ({ data: { data } })
 const failed = { error: Object.assign(new Error("x"), { status: 500, info: { error: "Database unavailable" } }) }
 const header = (html: string) => html.slice(html.indexOf('class="ui-page-header"'), html.indexOf("</header>"))
 const day = (iso: string, locale = "en-GB") => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
-const usd = (n: number, locale = "en-GB") => n.toLocaleString(locale, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" })
+const usd = (n: number, locale = "en-GB") => n.toLocaleString(locale, { style: "currency", currency: "USD", currencyDisplay: locale === "ar-EG" ? "code" : "narrowSymbol" })
 
 function render(element: Parameters<typeof renderToStaticMarkup>[0], swr: Record<string, Loaded> = {}, options: { locale?: "en" | "ar"; viewer?: Record<string, unknown> | null } = {}) {
     Object.assign(state, { swr, keys: [], menus: [], locale: options.locale ?? "en" })
@@ -143,6 +143,14 @@ describe("a company's payments", () => {
         expect(html).toContain(ar.payments_paid)
     })
 
+    it("writes dollars in Arabic as USD after the number, which can't turn around as \"US$\" did to \"$US\" (found in the browser on part 3b)", async () => {
+        const { platformMoney } = await import("@/lib/subscription-display")
+        expect(platformMoney(1250.5, "ar")).toBe((1250.5).toLocaleString("ar-EG", { style: "currency", currency: "USD", currencyDisplay: "code" }))
+        expect(platformMoney(1250.5, "ar")).toContain("USD")
+        expect(platformMoney(1250.5, "ar")).not.toContain("$")
+        expect(platformMoney(1250.5, "en")).toBe("$1,250.50")
+    })
+
     it("offers Mark as paid and Delete on an unpaid payment, each named for it, and nothing on a paid one, which stays as it is", async () => {
         const html = await paymentsPage({ ...company, [PAYMENTS]: ok([unpaid(), payment()]) })
         const name = en.payments_the_payment.replace("{amount}", usd(500))
@@ -192,6 +200,25 @@ describe("the payment dialogs", () => {
         expect(amountError(" 49.99 ", { zero: false })).toBeNull()
         expect(amountError("0", { zero: true })).toBeNull()
         expect(amountError("-1", { zero: true })).toBe("wrong")
+    })
+
+    it("reads an amount typed in Arabic digits, as an Arabic phone's keypad types it, and sends it as read (audit on part 3b)", async () => {
+        const { amountError, typedAmount } = await import("@/lib/subscription-display")
+        expect(amountError("٤٩٫٩٩", { zero: false })).toBeNull()
+        expect(amountError("٤٩٫٩٩٩", { zero: false })).toBe("places")
+        expect(amountError("٠", { zero: false })).toBe("wrong")
+        expect(typedAmount("٤٩٫٩٩")).toBe(49.99)
+        expect(typedAmount("۱۲۰")).toBe(120)
+        expect(typedAmount(" 50 ")).toBe(50)
+        expect(readFileSync("components/PaymentDialogs.tsx", "utf8")).toContain("cost: typedAmount(cost)")
+        const { packagePayload, emptyPackage } = await import("@/components/PackageDialog")
+        expect(packagePayload({ ...emptyPackage(), name: "Growth", priceMonthly: "٥٠", priceAnnual: "٥٠٠", priceLifetime: "١٥٠٠٫٥" }, null))
+            .toMatchObject({ priceMonthly: 50, priceAnnual: 500, priceLifetime: 1500.5 })
+    })
+
+    it("has no placeholder that only repeats what the label and its example say (audit on part 3b)", async () => {
+        const { AddPaymentDialog } = await import("@/components/PaymentDialogs")
+        expect(render(h(AddPaymentDialog, { companyId: "c1", onClose: () => {}, onAdded: () => {} }))).not.toContain("placeholder=")
     })
 
     it("asks before marking one paid, saying the period it will pay for and that it can't be deleted after", async () => {
@@ -278,6 +305,16 @@ describe("the Packages page", () => {
         expect(html).toContain('<ul class="ui-cards"')
     })
 
+    it("says a package's description on its card under its name, as the table does, not in the foot by its menu (found in the browser on part 3b)", async () => {
+        const html = await packagesPage({ [PACKAGES]: ok([pkg()]) })
+        const card = html.slice(html.indexOf('<ul class="ui-cards"'))
+        const top = card.indexOf('class="ui-list-card-top"')
+        const description = card.indexOf("For teams that run payroll")
+        expect(description).toBeGreaterThan(top)
+        expect(description).toBeLessThan(card.indexOf(en.bundle_hr))
+        expect(card.slice(card.indexOf('class="ui-list-card-foot"'))).not.toContain("For teams that run payroll")
+    })
+
     it("puts Edit and Delete in each package's menu, and Delete can't be picked while companies are on it, saying why", async () => {
         await packagesPage({ [PACKAGES]: ok([pkg(), pkg({ id: "p2", name: "Basic", _count: { companies: 0 } })]) })
         const growth = state.menus.find(m => m.label === en.ui_more_actions_for.replace("{name}", "Growth"))!
@@ -325,6 +362,13 @@ describe("the package dialog", () => {
         expect(html).toContain(esc(en.packages_active_hint))
         expect(html).toContain(esc(en.packages_public))
         expect(html).toMatch(new RegExp(`<button type="submit" class="ui-btn ui-btn-primary">${en.packages_add_submit}</button>`))
+    })
+
+    it("spaces its boxes as a group of choices, not a field's gap apart (found in the browser on part 3b)", async () => {
+        const { PackageDialog } = await import("@/components/PackageDialog")
+        const html = render(h(PackageDialog, { pkg: null, onClose: () => {}, onSaved: () => {} }))
+        expect(html).toContain(`<fieldset class="ui-choices"><legend class="ui-label">${en.packages_grants_legend}</legend><label class="ui-choice">`)
+        expect(html).toContain(`<fieldset class="ui-choices"><legend class="ui-label">${en.packages_selling_legend}</legend><label class="ui-choice">`)
     })
 
     it("changes one, named for it, its values filled in, and says first how many companies it reaches", async () => {

@@ -3025,3 +3025,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     reason and Try again, and when there's nothing yet;
   - 37 labels, and the --lifetime-fg colour, only the old pages used are
     removed.
+- **2026-11-02:** Found in the browser and the interface audit on #172:
+  - an amount typed in Arabic digits, as an Arabic phone's number pad
+    types them, was refused as not a number. Amounts and prices are read
+    in either digits, and the Arabic decimal mark, as the attendance import
+    reads them;
+  - in Arabic, the dollar sign turned round: "US$" read "$US" in a
+    right-to-left line. Amounts say USD after the number, as Egyptian
+    pounds say ج.م;
+  - on a phone, a package's description was in its card's foot, by the
+    menu and away from its name. It's the first line under the name, as
+    in the table;
+  - the package dialog's boxes were a field's gap apart. They're a group
+    of choices, spaced as radio buttons are;
+  - the amount field's placeholder only said what its label and its
+    example already do, and goes.

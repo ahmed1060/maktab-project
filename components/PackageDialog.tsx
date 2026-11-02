@@ -7,7 +7,7 @@ import { Button, Dialog, DialogActions, Field, TextArea, TextInput } from '@/com
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { countOf } from '@/lib/plural'
-import { amountError } from '@/lib/subscription-display'
+import { amountError, typedAmount } from '@/lib/subscription-display'
 import type { TranslationKey } from '@/lib/translations'
 
 /**
@@ -108,9 +108,9 @@ export function packagePayload(form: PackageForm, pkg: ListedPackage | null) {
         description: form.description.trim(),
         isActive: form.isActive,
         isPublic: form.isPublic,
-        priceMonthly: Number(form.priceMonthly.trim()),
-        priceAnnual: Number(form.priceAnnual.trim()),
-        priceLifetime: form.priceLifetime.trim() === '' ? null : Number(form.priceLifetime.trim()),
+        priceMonthly: typedAmount(form.priceMonthly),
+        priceAnnual: typedAmount(form.priceAnnual),
+        priceLifetime: form.priceLifetime.trim() === '' ? null : typedAmount(form.priceLifetime),
         hasCompanyManagement: form.hasCompanyManagement,
         hasHR: form.hasHR,
         hasAttendanceTerminals: form.hasAttendanceTerminals,
@@ -200,27 +200,25 @@ export function PackageDialog({ pkg, onClose, onSaved }: {
                 {price('priceMonthly', 'price_monthly')}
                 {price('priceAnnual', 'price_annual')}
                 {price('priceLifetime', 'price_lifetime', 'packages_lifetime_hint')}
-                <fieldset className="ui-fieldset">
+                {/* A group of choices, spaced as the building blocks' radio
+                    buttons are, where they were a field's gap apart (found in the browser). */}
+                <fieldset className="ui-choices">
                     <legend className="ui-label">{t('packages_grants_legend')}</legend>
-                    <div className="ui-field-group">
-                        {box('hasCompanyManagement', 'bundle_company_management')}
-                        {box('hasHR', 'bundle_hr')}
-                        {box('hasAttendanceTerminals', 'bundle_attendance_terminals', true)}
-                        {box('hasAttendanceMobile', 'bundle_attendance_mobile', true)}
-                        <p id={`${id}-needs-hr`} className="ui-hint">{t('attendance_requires_hr')}</p>
-                        {!form.hasCompanyManagement && !form.hasHR && <p className="ui-hint">{t('packages_core_only_hint')}</p>}
-                        {losesAttendance(pkg, form) && (
-                            <div className="ui-dialog-note" data-tone="waiting" role="status"><p>{t('attendance_removed_with_hr')}</p></div>
-                        )}
-                    </div>
+                    {box('hasCompanyManagement', 'bundle_company_management')}
+                    {box('hasHR', 'bundle_hr')}
+                    {box('hasAttendanceTerminals', 'bundle_attendance_terminals', true)}
+                    {box('hasAttendanceMobile', 'bundle_attendance_mobile', true)}
+                    <p id={`${id}-needs-hr`} className="ui-hint">{t('attendance_requires_hr')}</p>
+                    {!form.hasCompanyManagement && !form.hasHR && <p className="ui-hint">{t('packages_core_only_hint')}</p>}
+                    {losesAttendance(pkg, form) && (
+                        <div className="ui-dialog-note" data-tone="waiting" role="status"><p>{t('attendance_removed_with_hr')}</p></div>
+                    )}
                 </fieldset>
-                <fieldset className="ui-fieldset">
+                <fieldset className="ui-choices">
                     <legend className="ui-label">{t('packages_selling_legend')}</legend>
-                    <div className="ui-field-group">
-                        {box('isActive', 'packages_active')}
-                        <p className="ui-hint ui-choice-hint">{t('packages_active_hint')}</p>
-                        {box('isPublic', 'packages_public')}
-                    </div>
+                    {box('isActive', 'packages_active')}
+                    <p className="ui-hint ui-choice-hint">{t('packages_active_hint')}</p>
+                    {box('isPublic', 'packages_public')}
                 </fieldset>
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>

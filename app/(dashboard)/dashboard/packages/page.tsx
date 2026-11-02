@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react'
 import useSWR from 'swr'
-import { BuildingsIcon, CurrencyDollarIcon, HourglassIcon, PackageIcon, PencilSimpleIcon, PlusIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { BuildingsIcon, CurrencyDollarIcon, HourglassIcon, NoteIcon, PackageIcon, PencilSimpleIcon, PlusIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
@@ -112,12 +112,15 @@ export default function PackagesPage() {
                 card={p => (
                     <ListCard
                         title={name(p)}
+                        // Its description under its name, as the table has it, where
+                        // it was in the foot by the menu (found in the browser).
                         details={[
+                            ...(p.description ? [{ icon: NoteIcon, text: p.description }] : []),
                             { icon: PackageIcon, text: grants(p) },
                             { icon: CurrencyDollarIcon, text: prices(p).join(t('list_separator')) },
                             { icon: BuildingsIcon, text: countOf(t, locale, companiesOn(p), 'companies') },
                         ]}
-                        foot={<><span className="ui-hint">{p.description}</span>{menu(p)}</>}
+                        foot={<span className="ui-row-actions">{menu(p)}</span>}
                     />
                 )}
             />

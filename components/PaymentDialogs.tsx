@@ -8,7 +8,7 @@ import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/compo
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { periodIfPaid, SUBSCRIPTION_TYPES, type SubscriptionType } from '@/lib/billing/period'
-import { amountError, platformMoney } from '@/lib/subscription-display'
+import { amountError, platformMoney, typedAmount } from '@/lib/subscription-display'
 import type { TranslationKey } from '@/lib/translations'
 
 /**
@@ -77,7 +77,7 @@ export function AddPaymentDialog({ companyId, onClose, onAdded }: {
             const res = await fetch(`/api/companies/${encodeURIComponent(companyId)}/payments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cost: Number(cost.trim()), subscriptionType: type }),
+                body: JSON.stringify({ cost: typedAmount(cost), subscriptionType: type }),
             })
             if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
             showToast(t('payments_added'), 'success')
@@ -97,7 +97,7 @@ export function AddPaymentDialog({ companyId, onClose, onAdded }: {
                         options={SUBSCRIPTION_TYPES.map(value => ({ value, label: t(PERIOD_LABEL_KEY[value]) }))} />
                 )}</Field>
                 <Field label={t('payments_amount')} error={wrong && t(wrong)}>{p => (
-                    <TextInput {...p} icon={CurrencyDollarIcon} inputMode="decimal" autoComplete="off" name="cost" placeholder="0.00"
+                    <TextInput {...p} icon={CurrencyDollarIcon} inputMode="decimal" autoComplete="off" name="cost"
                         value={cost} onChange={e => { setCost(e.target.value); setWrong(null) }} />
                 )}</Field>
                 <DialogActions>
