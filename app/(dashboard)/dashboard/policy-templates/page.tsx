@@ -6,7 +6,8 @@ import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import { PolicyEditor } from '@/components/AttendancePolicyPanel'
+import PolicyDialog from '@/components/attendance-policy/PolicyDialog'
+import TemplateFields from '@/components/attendance-policy/TemplateFields'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
@@ -37,6 +38,8 @@ export default function PolicyTemplatesPage() {
     const templates: Template[] = data?.data?.templates ?? []
     const [editing, setEditing] = useState<Editing | null>(null)
     const [removing, setRemoving] = useState<Template | null>(null)
+    // A template needs a name, said under its field (company settings part 3b).
+    const [nameError, setNameError] = useState<string | undefined>()
 
     useEffect(() => {
         setTitle(t('ptpl_title'))
@@ -48,7 +51,6 @@ export default function PolicyTemplatesPage() {
     if (!session || isLoading) return <LoadingSpinner />
 
     const weekday = (d: number) => new Date(Date.UTC(2026, 2, 1 + d)).toLocaleDateString(intl, { weekday: 'short', timeZone: 'UTC' })
-    const fraction = (f: number) => f === 1 ? t('attendance_day_1') : f === 0.5 ? t('attendance_day_half') : f === 0.25 ? t('attendance_day_quarter') : f === 0.75 ? t('attendance_day_three_quarters') : String(f)
     const summary = (b: PolicyBody) => [
         b.workWeek.map(weekday).join(' '),
         b.lateness.enabled ? t('attendance_grace_n').replace('{n}', String(b.lateness.graceMinutes)) : t('attendance_rule_off'),
@@ -110,30 +112,17 @@ export default function PolicyTemplatesPage() {
             ))}
 
             {editing && (
-                <PolicyEditor
+                <PolicyDialog
                     start={editing.body}
-                    weekday={weekday}
-                    fraction={fraction}
+                    weekdayName={weekday}
                     title={editing.id ? t('ptpl_edit') : t('ptpl_new')}
-                    canSave={editing.name.trim().length > 0}
-                    header={
-                        <div style={{ display: 'grid', gap: '0.6rem' }}>
-                            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-soft)' }}>{t('ptpl_copied_hint')}</p>
-                            <label style={{ display: 'grid', gap: '0.25rem' }}>
-                                <span className="label">{t('ptpl_name')}</span>
-                                <input className="input" value={editing.name} maxLength={80} onChange={e => setEditing({ ...editing, name: e.target.value })} />
-                            </label>
-                            <label style={{ display: 'grid', gap: '0.25rem' }}>
-                                <span className="label">{t('ptpl_name_ar')}</span>
-                                <input className="input" dir="rtl" value={editing.nameAr} maxLength={80} onChange={e => setEditing({ ...editing, nameAr: e.target.value })} />
-                            </label>
-                            <label style={{ display: 'grid', gap: '0.25rem' }}>
-                                <span className="label">{t('ptpl_description')}</span>
-                                <textarea className="input" rows={2} value={editing.description} maxLength={500} onChange={e => setEditing({ ...editing, description: e.target.value })} />
-                            </label>
-                        </div>
-                    }
-                    onClose={() => setEditing(null)}
+                    header={<TemplateFields value={editing} error={nameError} onChange={v => { setEditing({ ...editing, ...v }); setNameError(undefined) }} />}
+                    checkHeader={() => {
+                        const named = editing.name.trim().length > 0
+                        setNameError(named ? undefined : t('attendance_template_name_required'))
+                        return named
+                    }}
+                    onClose={() => { setEditing(null); setNameError(undefined) }}
                     onSave={async (_from, body) => { await save(body) }}
                 />
             )}

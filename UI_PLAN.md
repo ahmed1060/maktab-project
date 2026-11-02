@@ -481,8 +481,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      its General tab, merged in #160 on 2026-11-02; then its Branding
      and Payroll tabs, merged in #161 on 2026-11-02; then its
      Attendance tab, itself in three parts: its calendar (the
-     schedules, who works which and the holidays), which opens for
-     review in #162; then the attendance policy; then the panels for
+     schedules, who works which and the holidays), merged in #162 on
+     2026-11-02; then the attendance policy, whose dialog the policy
+     templates page shares, which opens for review in #163; then the
+     panels for
      attendance in pay, the terminals, the check-in places and face
      checks; then the Super Admin's
      own tabs, Roles, Modules and Admin access. Then the Super Admin's
@@ -2524,3 +2526,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     around it, so a name ending in a number or a mark could swap places
     with them in Arabic. It's isolated now, as in the card's title;
   - the holidays' year select had no name.
+- **2026-11-02:** Company settings part 3a was merged in #162. The
+  attendance policy moves onto the building blocks in #163, with the
+  dialog that changes it, which the policy templates page shares:
+  - the policy is a card saying what it's for, with the policy in force
+    as details: since when, the working days, and each rule in lines of
+    its own words, its grace, each band ("16 to 30 min: ¼ day"), the
+    free ones and the cap. They were one run of facts joined by " · ",
+    with a "→" in each band;
+  - its numbers are in the page's digits, as its dates were, and its
+    counts in the page's language: "1 day for each day absent", where
+    it said "1 day(s) per absent day", and "4 hours a month";
+  - Change policy and Start from a template are the card's buttons.
+    Start from a template was a select whose first option was its label;
+    it's a dialog now, each template with what it's for under its name;
+  - the policies to come are listed under Changes to come, each
+    withdrawn after asking in the building blocks' dialog, which stays
+    open until it's done;
+  - the dialog groups each rule under its heading with a box to switch
+    it on, each field labelled above it with its hint or error below.
+    An empty cap or limit says in its hint that it means none, where a
+    placeholder said so;
+  - each band is named by where it starts, for its end, its cost and
+    Remove, and the last says it runs on;
+  - every number is checked under its field before anything is sent,
+    with the focus on the first that's wrong. An emptied field was sent
+    as 0, which the server refused in English, or saved: an emptied
+    grace became none. The server's own checks, the shortest permission
+    longer than the longest or than the month's hours and no kind of
+    permission left, are said under their fields too. A field left
+    wrong in a rule switched off keeps the number it had;
+  - the preview on last month is a group of its own, each person a row
+    saying what they'd lose now and under these rules, where it was a
+    table; and it checks the rules first, as saving does;
+  - a template's name is asked for under its field, where Save stayed
+    off until one was typed.

@@ -510,6 +510,40 @@
   flex: 1 1 120px;
   min-width: 0;
 }
+/* A lateness rule's bands (company settings part 3b), one under the other,
+   each with where it starts, where it ends or that it runs on, what it
+   costs, and Remove, wrapping on a phone. */
+.ui-bands {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-band > .ui-band-from {
+  min-width: 112px;
+  color: var(--ink);
+  font-size: var(--text-md);
+}
+.ui-band > .ui-control {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+/* A choice's name with what it's for under it, such as a policy template's
+   description (company settings part 3b). */
+.ui-choice-text {
+  display: flex;
+  flex-direction: column;
+}
+/* What a policy change makes of one person's month, beside their row. */
+.ui-sim-difference {
+  font-weight: 600;
+  white-space: nowrap;
+}
 /* A checkbox with a line under it saying what it means: the line starts
    where the checkbox's label does. */
 .ui-choice-hint {
@@ -787,6 +821,13 @@
 }
 .ui-detail a {
   color: var(--brand-text);
+}
+/* A detail of several lines, such as a policy rule's grace, bands and cap
+   (company settings part 3b): one under the other, with no marks. */
+.ui-detail-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .ui-detail a:focus-visible {
   outline: 2px solid var(--brand-text);
