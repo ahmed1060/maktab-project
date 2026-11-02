@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { Button, EmptyState, Field, SearchInput } from '@/components/ui'
@@ -14,8 +14,10 @@ export type Assignable = { id: string; firstName: string; lastName: string; role
  * `people` is undefined while they load, and null when they couldn't be,
  * which offers Try again as a list that didn't load does (DESIGN.md §5.5).
  */
-export default function AssigneeChecklist({ people, value, onChange, onRetry, retrying = false, disabled = false, error, id }: {
+export default function AssigneeChecklist({ people, value, onChange, onRetry, retrying = false, disabled = false, error, id, legend }: {
     people: Assignable[] | null | undefined
+    /** What the people are picked for; "Assigned to" unless said, as for a task. */
+    legend?: ReactNode
     onRetry: () => void
     /** While Try again is trying. */
     retrying?: boolean
@@ -29,10 +31,12 @@ export default function AssigneeChecklist({ people, value, onChange, onRetry, re
     const { t } = useLanguage()
     const [searchTerm, setSearchTerm] = useState('')
     const errorId = id ? `${id}-error` : undefined
-    const shown = (people ?? []).filter(u => `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()))
+    // A name in one part, as the attendance calendar has them, gets no space after it.
+    const nameOf = (u: Assignable) => [u.firstName, u.lastName].filter(Boolean).join(' ')
+    const shown = (people ?? []).filter(u => nameOf(u).toLowerCase().includes(searchTerm.toLowerCase()))
     return (
         <fieldset id={id} className="ui-field ui-fieldset" aria-describedby={error ? errorId : undefined}>
-            <legend className="ui-label">{t('assignees_label')}</legend>
+            <legend className="ui-label">{legend ?? t('assignees_label')}</legend>
             <Field label={t('assignees_search')} hideLabel>{p => (
                 <SearchInput {...p} autoComplete="off" placeholder={t('assignees_search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             )}</Field>
@@ -56,7 +60,7 @@ export default function AssigneeChecklist({ people, value, onChange, onRetry, re
                                         disabled={disabled}
                                         onChange={e => onChange(e.target.checked ? [...value, u.id] : value.filter(picked => picked !== u.id))}
                                     />
-                                    <bdi>{u.firstName} {u.lastName}</bdi>
+                                    <bdi>{nameOf(u)}</bdi>
                                     {u.role && <span className="ui-hint">{t(`role_${String(u.role).toLowerCase()}` as TranslationKey)}</span>}
                                 </label>
                             ))}

@@ -479,8 +479,12 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-01. The thirteenth is company settings, in four parts: its
      frame (both ways in, the tabs, and the unsaved-changes question) and
      its General tab, merged in #160 on 2026-11-02; then its Branding
-     and Payroll tabs, which open for review in #161; then its
-     Attendance tab; then the Super Admin's
+     and Payroll tabs, merged in #161 on 2026-11-02; then its
+     Attendance tab, itself in three parts: its calendar (the
+     schedules, who works which and the holidays), which opens for
+     review in #162; then the attendance policy; then the panels for
+     attendance in pay, the terminals, the check-in places and face
+     checks; then the Super Admin's
      own tabs, Roles, Modules and Admin access. Then the Super Admin's
      pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
@@ -2480,3 +2484,33 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the newer number was lost without a word. The field shows what was
   saved only if it still holds what was sent; otherwise the newer number
   stays, still a change to save.
+- **2026-11-02:** Company settings part 2 was merged in #161. The
+  Attendance tab is the largest part, about 2,000 lines across six files,
+  so it moves in three: its calendar first, in #162, then the policy,
+  then the four smaller panels above it. The calendar on the building
+  blocks:
+  - the schedules are a card saying what they're for, with New schedule
+    and the default changes to come, then a card for each schedule: its
+    name and Default, its hours, break, working days, any weekday with
+    hours of its own, and how many work it, counted in the page's
+    language ("1 employee", never "1 people"). Its changes to come and
+    its seasonal hours are listed under their own headings, and what can
+    be done to it is in a menu named for it;
+  - who works which schedule lists each person with the schedule they're
+    on and the move to come. Moving people is a dialog: who, picked from
+    a list that can be searched as a task's assignees are, to which
+    schedule, and from when;
+  - the holidays have their year picked with a labelled select. The
+    public ones are boxes ticked while observed, with Worked through
+    beside one that isn't; the company's own each have Remove, and Add
+    holiday is a dialog;
+  - every change is made in the building blocks' dialog, each error under
+    its field with the focus on the first. A break that isn't a whole
+    number of minutes is said to be wrong, where it was sent as 0;
+  - withdrawing a change, archiving a schedule and removing seasonal
+    hours or a holiday each ask first, saying what it does, with the
+    button in the danger colour. Withdrawing a move and removing a
+    holiday used to happen at once;
+  - a range of times or dates is written as the page's language writes
+    one, "من 09:00 إلى 17:00" in Arabic, where a bare dash let the
+    direction swap its ends; and the " · " between facts is gone.

@@ -489,6 +489,27 @@
   flex-direction: column;
   gap: var(--space-4);
 }
+/* The days of the week as boxes, side by side, wrapping on a phone
+   (company settings part 3a). */
+.ui-weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-4);
+}
+/* A weekday with hours of its own: its box, then when it starts and ends. */
+.ui-day-hours {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-day-hours > .ui-choice {
+  min-width: 96px;
+}
+.ui-day-hours > .ui-control {
+  flex: 1 1 120px;
+  min-width: 0;
+}
 /* A checkbox with a line under it saying what it means: the line starts
    where the checkbox's label does. */
 .ui-choice-hint {
