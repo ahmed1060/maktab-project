@@ -1,19 +1,23 @@
 import type { SubscriptionState } from "@/lib/billing/state"
+import type { StatusTone } from "@/components/ui/StatusBadge"
+import type { TranslationKey } from "@/lib/translations"
 
 /**
- * Presentation for a subscription state: colour and label key, in one place, so
- * the companies list, the settings page and anything added later cannot drift
- * apart. Same pattern as lib/recurrence.ts, for the same reason.
+ * Presentation for a subscription state: its meaning, as a status badge's
+ * tone, and its label key, in one place, so the companies list, the settings
+ * page and anything added later cannot drift apart. Same pattern as
+ * lib/recurrence.ts, for the same reason.
  *
- * Colours reuse the palette already in use across this app's badges: amber for
- * "acting soon", green for healthy, red for stopped.
+ * The tones are the status badges' meaning colours (DESIGN.md §2.3): a trial
+ * in progress, healthy, acting soon, stopped. They had colours of their own
+ * (the Super Admin's pages part 3a).
  */
-export const SUBSCRIPTION_STYLE: Record<SubscriptionState, { bg: string; color: string; labelKey: string }> = {
-    TRIAL: { bg: '#e0f2fe', color: '#0369a1', labelKey: 'state_trial' },
-    ACTIVE: { bg: '#dcfce7', color: '#166534', labelKey: 'state_active' },
-    GRACE: { bg: '#fef3c7', color: '#b45309', labelKey: 'state_grace' },
-    LOCKED: { bg: '#fee2e2', color: '#b91c1c', labelKey: 'state_locked' },
-    LIFETIME: { bg: '#ede9fe', color: '#6d28d9', labelKey: 'state_lifetime' },
+export const SUBSCRIPTION_TONE: Record<SubscriptionState, { tone: StatusTone; labelKey: TranslationKey }> = {
+    TRIAL: { tone: 'progress', labelKey: 'state_trial' },
+    ACTIVE: { tone: 'good', labelKey: 'state_active' },
+    GRACE: { tone: 'waiting', labelKey: 'state_grace' },
+    LOCKED: { tone: 'problem', labelKey: 'state_locked' },
+    LIFETIME: { tone: 'good', labelKey: 'state_lifetime' },
 }
 
 /**
@@ -26,7 +30,7 @@ export function isGrandfathered(state: SubscriptionState, date: string | Date | 
     return state === 'ACTIVE' && date === null
 }
 
-export const TRIAL_PRESET_LABEL_KEY: Record<string, string> = {
+export const TRIAL_PRESET_LABEL_KEY: Record<string, TranslationKey> = {
     TWO_DAYS: 'trial_2_days',
     SEVEN_DAYS: 'trial_7_days',
     FOURTEEN_DAYS: 'trial_14_days',
@@ -40,9 +44,9 @@ export function bundleLabelKeys(pkg: {
     hasHR: boolean
     hasAttendanceTerminals?: boolean
     hasAttendanceMobile?: boolean
-} | null | undefined): string[] {
+} | null | undefined): TranslationKey[] {
     if (!pkg) return []
-    const keys: string[] = []
+    const keys: TranslationKey[] = []
     if (pkg.hasCompanyManagement) keys.push('bundle_company_management')
     if (pkg.hasHR) keys.push('bundle_hr')
     if (pkg.hasAttendanceTerminals) keys.push('bundle_attendance_terminals')

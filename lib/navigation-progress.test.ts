@@ -63,9 +63,12 @@ describe("the bar", () => {
 
     it("buttons that only went to another page are links now", () => {
         // A link starts loading the page ahead of the click, and shows where it goes.
+        // The Companies list's two are items in its row's menu, each with the
+        // address it goes to (the Super Admin's pages part 3a).
+        const list = readFileSync("app/(dashboard)/dashboard/companies/page.tsx", "utf8")
+        for (const to of ["settings", "payments"]) expect(list).toContain(`href: \`/dashboard/companies/\${c.id}/${to}\``)
+        expect(list).not.toContain("router.push(")
         const was: [string, string][] = [
-            ["app/(dashboard)/dashboard/companies/page.tsx", "/payments`"],
-            ["app/(dashboard)/dashboard/companies/page.tsx", "/settings`"],
             ["app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", "'/dashboard/companies'"],
             ["app/(dashboard)/dashboard/employees/new/page.tsx", "'/dashboard/employees'"],
         ]

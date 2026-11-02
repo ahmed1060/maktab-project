@@ -65,6 +65,6 @@ describe("no passcode anywhere", () => {
         const page = stripComments(readFileSync("app/(dashboard)/dashboard/companies/page.tsx", "utf8"))
         expect(page).not.toMatch(/passcode/i)
         expect(page).not.toContain("'2025'")
-        expect(page).toContain("fetch(`/api/companies?id=${companyToDelete.id}`, { method: 'DELETE' })")
+        expect(page).toContain("fetch(`/api/companies?id=${encodeURIComponent(c.id)}`, { method: 'DELETE' })")
     })
 })

@@ -112,7 +112,6 @@
   --ok-border: #86efac;
 
   --danger-border-firm: #fca5a5;
-  --danger-bg-tint: #fff1f2;
 
   /* Orange and yellow both read as "warning" here but were never the same
      pair, so they keep separate scales rather than being merged. */
@@ -150,7 +149,6 @@
   --warn-fill: #966006;
   --warn-fill-warm: #ae5104;
   --danger-fill: #d71212;
-  --danger-fill-hover: #ae1c1c;
   --accent-fill: #942ff5;
 
   /* Plain greys written as shorthand or as the odd one-off. */
@@ -1186,7 +1184,6 @@ input::-webkit-credentials-auto-fill-button {
 
     --danger-bg: #3a161a;
     --danger-bg-subtle: #2a1013;
-    --danger-bg-tint: #2a1013;
     --danger-border: #6b2328;
     --danger-border-firm: #8a2d33;
     --danger-fg: #ff9d9d;
@@ -1241,7 +1238,6 @@ input::-webkit-credentials-auto-fill-button {
     --warn-fill: #936916;
     --warn-fill-warm: #ae5a1f;
     --danger-fill: #e11117;
-    --danger-fill-hover: #c0282c;
     --accent-fill: #9047ec;
 
     --grey-100: #21262d;

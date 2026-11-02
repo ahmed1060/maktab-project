@@ -297,7 +297,7 @@ describe("fills: white text on a status colour meets AA 4.5:1", () => {
     // are also text and strokes on the page, so the grounds under white text
     // are their own tokens, the same hues darkened.
     const FILLS = ["--ok-fill", "--info-fill",
-        "--warn-fill", "--warn-fill-warm", "--danger-fill", "--danger-fill-hover", "--accent-fill"]
+        "--warn-fill", "--warn-fill-warm", "--danger-fill", "--accent-fill"]
 
     for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
         for (const fill of FILLS) {

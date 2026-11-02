@@ -536,9 +536,11 @@ export class CompanyService {
         limit?: number
         filter?: 'all' | 'needs-attention'
         sort?: 'name' | 'date'
+        /** Part of a name, any case (the Super Admin's pages part 3a). The counts stay the whole list's. */
+        search?: string
         now?: Date
     } = {}) {
-        const { page = 1, limit = 10, filter = 'all', sort = 'name', now = new Date() } = options
+        const { page = 1, limit = 10, filter = 'all', sort = 'name', search = '', now = new Date() } = options
 
         const companies = await prisma.company.findMany({
             orderBy: { name: 'asc' },
@@ -590,7 +592,9 @@ export class CompanyService {
             }
         })
 
-        const filtered = filter === 'needs-attention' ? rows.filter(r => r.needsAttention) : rows
+        const wanted = search.trim().toLocaleLowerCase()
+        const found = wanted ? rows.filter(r => r.name.toLocaleLowerCase().includes(wanted)) : rows
+        const filtered = filter === 'needs-attention' ? found.filter(r => r.needsAttention) : found
 
         const sorted = sort === 'date'
             ? [...filtered].sort((a, b) => {

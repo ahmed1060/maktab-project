@@ -206,8 +206,11 @@ describe("the older pages' shades", () => {
     // 10% --primary tint; cyan's cleared 4.5:1 on white but was about
     // 4.4:1 on the tint, where Nizmo's indigo is about 5.6:1.
     it("keep text readable on the brand tints drawn behind it", () => {
+        // The Companies list's link is an item in its row's menu now, in the
+        // menu's own colours (the Super Admin's pages part 3a); the shades
+        // still hold on the tint for the older pages that draw one.
         const companies = readFileSync("app/(dashboard)/dashboard/companies/page.tsx", "utf8")
-        expect(companies).toMatch(/background: 'color-mix\(in srgb, var\(--primary\) 10%, transparent\)',\s*color: 'var\(--brand-primary-text\)'/)
+        expect(companies).not.toContain("color-mix(")
         for (const picked of ["#0891b2", "#0d9488", "#16a34a", "#facc15"]) {
             const shades = oldPageShades(picked)
             for (const share of [0.1, 0.2]) {

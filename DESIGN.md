@@ -567,7 +567,10 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Tabs:** text tabs with a 2px `--brand` line under the selected one, and
   a hairline under the whole row. On phones, the tabs share the row, a
   long label on two lines, so every tab shows; a row of more than fit
-  scrolls sideways within itself.
+  scrolls sideways within itself. A tab can say how many it holds, such as the
+  companies that need attention: a pill after its label in `--text-xs`,
+  in the neutral badge's colours, and the brand tint's when it's the
+  selected tab.
 - **Total tiles:**
   - a label in `--text-sm` and `--muted`, above the value in `--text-2xl`
     and weight 600 with even-width digits;
@@ -1023,3 +1026,6 @@ changed:
 - **2026-11-02:** A password field (§5.3): a button at its end shows the
   password and hides it again. The Super Admins page had an eye of its
   own making, placed by hand on each side for each language.
+- **2026-11-02:** A tab can say how many it holds (§5.5, Tabs), as the
+  Companies list's two do. The list's subscription states take the status
+  badges' meaning colours (§2.3), where they had colours of their own.

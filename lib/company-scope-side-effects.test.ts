@@ -38,8 +38,8 @@ describe("only the switcher moves the switcher", () => {
 
     it("still reaches settings by company id", () => {
         // Dropping the side effect must not drop the navigation with it.
-        // A link now (lib/navigation-progress.test.ts), with nothing else on the click.
-        expect(LIST).toMatch(/<Link href=\{`\/dashboard\/companies\/\$\{company\.id\}\/settings`\}/)
+        // A link in the row's menu (the Super Admin's pages part 3a), with nothing else on it.
+        expect(LIST).toContain("{ key: 'settings', label: t('company_settings_title'), icon: GearSixIcon, href: `/dashboard/companies/${c.id}/settings` }")
     })
 })
 
