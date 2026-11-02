@@ -1,26 +1,28 @@
 'use client'
 
-import { useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AccessDenied from '@/components/AccessDenied'
 import RoleChangeRequests from '@/components/RoleChangeRequests'
+import { Page, PageHeader } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
-import { useHeader } from '@/context/HeaderContext'
 
-/** The Super Admin's queue of companies' role change requests (ROLES_PLAN.md §6.9). */
+/**
+ * The Super Admin's queue of companies' role change requests (ROLES_PLAN.md
+ * §6.9). On the building blocks' page header (UI_PLAN.md §5 step 5, the Super
+ * Admin's pages part 2a), where its name was the old top bar's.
+ */
 export default function RoleChangeRequestsPage() {
     const { t } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
-    const { data: session } = useSession()
+    const { data: session, status } = useSession()
     const highlight = useSearchParams().get('highlight')
 
-    useEffect(() => {
-        setTitle(t('role_changes_title'))
-        setSubtitle(t('role_changes_hint'))
-        return () => { setTitle(null); setSubtitle(null) }
-    }, [t, setTitle, setSubtitle])
-
-    if (session && session.user?.role !== 'SUPER_ADMIN') return <AccessDenied />
-    return <RoleChangeRequests side="superAdmin" highlight={highlight} />
+    if (status === 'loading') return null
+    if (session?.user?.role !== 'SUPER_ADMIN') return <AccessDenied />
+    return (
+        <Page>
+            <PageHeader title={t('role_changes_title')} subtitle={t('role_changes_hint')} />
+            <RoleChangeRequests side="superAdmin" highlight={highlight} />
+        </Page>
+    )
 }

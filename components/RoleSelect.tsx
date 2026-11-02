@@ -39,8 +39,12 @@ type Props = {
     ariaLabel?: string
 }
 
-export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, emptyLabel, locked, style, ariaLabel }: Props) {
-    const { t } = useLanguage()
+/**
+ * The roles the signed-in person may hand out in a company, as the server
+ * decides them: what RoleSelect offers, for a form on the building blocks'
+ * Select (the Super Admin's pages part 2a, asking for a role change).
+ */
+export function useAssignableRoles(companyId?: string | null): AssignableRole[] {
     // Nothing until it is known who is asking: before the session loads, a
     // Super Admin would look like anyone else and ask without a company.
     const { data: session } = useSession()
@@ -49,7 +53,12 @@ export default function RoleSelect({ companyId, value, current, onChange, disabl
         : viewer === 'SUPER_ADMIN' ? (companyId ? `/api/roles/assignable?companyId=${companyId}` : null)
         : '/api/roles/assignable'
     const { data } = useSWR(url, fetcher)
-    const roles: AssignableRole[] = data?.data ?? []
+    return data?.data ?? []
+}
+
+export default function RoleSelect({ companyId, value, current, onChange, disabled, allowDefault, emptyLabel, locked, style, ariaLabel }: Props) {
+    const { t } = useLanguage()
+    const roles = useAssignableRoles(companyId)
     const offered = roles.some(r => r.id === value)
 
     return (

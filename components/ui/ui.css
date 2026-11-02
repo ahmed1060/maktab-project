@@ -1504,6 +1504,10 @@ a.ui-file-open:focus-visible,
   background: var(--overdue-row);
   border-inline-start: 3px solid var(--problem-text);
 }
+/* The row you came to see, such as the one a notification opened. */
+.ui-rows > li[data-tone="selected"] {
+  background: var(--brand-tint);
+}
 .ui-row {
   display: flex;
   align-items: center;

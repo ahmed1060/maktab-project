@@ -10,7 +10,9 @@ describe("RoleSelect", () => {
     it("is named: \"Role\", or what the form's own label says", () => {
         const select = readFileSync("components/RoleSelect.tsx", "utf8")
         expect(select).toContain("aria-label={ariaLabel ?? t('role_label')}")
-        expect(readFileSync("components/RoleChangeRequests.tsx", "utf8")).toContain("ariaLabel={t('role_changes_role')}")
+        // Role change requests ask on the building blocks since the Super Admin's
+        // pages part 2a: the Role select is a Field, labelled on screen.
+        expect(readFileSync("components/RoleChangeRequests.tsx", "utf8")).toContain("<Field label={t('role_changes_role')}>")
     })
 
     it("and the access review's interval says what it is", () => {
