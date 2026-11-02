@@ -2183,3 +2183,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-02:** Company settings part 1 was merged in #160. Its
   Branding and Payroll tabs move onto the building blocks in #161
   (`UI_PLAN.md` §5). They don't touch clients or locations.
+- **2026-11-02:** Company settings part 2 was merged in #161. Its
+  Attendance tab moves onto the building blocks in three parts, the
+  calendar first in #162 (`UI_PLAN.md` §5). It doesn't touch clients or
+  locations.
