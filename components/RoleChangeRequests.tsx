@@ -120,7 +120,8 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                             r.response ? <Fragment key="response">{t('role_changes_response_line').split('{text}')[0]}<bdi>{r.response}</bdi>{t('role_changes_response_line').split('{text}')[1]}</Fragment> : null,
                         ]}
                         end={side === 'superAdmin' && r.status === 'OPEN' && (
-                            <RowMenu label={t('ui_more_actions_for').replace('{name}', roleName(r))} tooltip={t('ui_more_actions')} items={menu(r)} />
+                            // Named for the role and the company: two companies asking for "A new role" are told apart (audit on part 2a).
+                            <RowMenu label={t('ui_more_actions_for').replace('{name}', `${roleName(r)}${t('list_separator')}${r.company.name}`)} tooltip={t('ui_more_actions')} items={menu(r)} />
                         )}
                     />
                 ))}

@@ -1705,8 +1705,17 @@ a.ui-row:focus-visible {
 }
 /* Rows a card stretches to its edges, as settings' are, keep their inset:
    without it their text sat against the card's border (company settings
-   part 1). */
-.ui-card > .ui-rows-flush > li > .ui-row {
+   part 1). A titled part's rows stretch the same, so a marked row's tint
+   doesn't touch its words (the Super Admin's pages part 2a). */
+.ui-card > .ui-subsection > .ui-rows-flush {
+  margin-inline: calc(-1 * var(--space-4));
+  border-top: 1px solid var(--rule);
+}
+.ui-card > .ui-subsection:last-child > .ui-rows-flush {
+  margin-block-end: calc(-1 * var(--space-4));
+}
+.ui-card > .ui-rows-flush > li > .ui-row,
+.ui-card > .ui-subsection > .ui-rows-flush > li > .ui-row {
   padding-inline: var(--space-4);
 }
 /* A titled part inside a card, such as a task's costs paid person by person. */

@@ -116,7 +116,7 @@ describe("role change requests", () => {
     it("offers the Super Admin Mark done and Decline on an open request only, and a company nothing to do", async () => {
         await changes({}, { [OPEN_REQUESTS]: ok([request(), request({ id: "q2", status: "DONE" })]) })
         expect(state.menus).toHaveLength(1)
-        expect(state.menus[0].label).toBe(en.ui_more_actions_for.replace("{name}", "Collector"))
+        expect(state.menus[0].label).toBe(en.ui_more_actions_for.replace("{name}", `Collector${en.list_separator}Delta Sites`))
         expect(state.menus[0].items.map(i => i.label)).toEqual([en.role_changes_done, en.role_changes_decline])
         expect(state.menus[0].items.at(-1)?.danger).toBe(true)
         await changes({ side: "company" }, { [ALL_REQUESTS]: ok([request()]) }, { role: "ADMIN", userId: "a1" })
@@ -278,5 +278,26 @@ describe("nothing of the old lists is left", () => {
             expect(source, file).not.toContain(" · ")
             expect(source, file).not.toContain("isRtl")
         }
+    })
+})
+
+describe("found in the browser and the audit (the Super Admin's pages part 2a)", () => {
+    it("stretches each review's rows to the card's edges, so a marked row's tint doesn't touch its words", async () => {
+        // A review's rows sat inside the card's padding, the brand tint against the names.
+        const html = await reviews({}, { [OPEN_REVIEWS]: ok([review()]) })
+        expect(html).toMatch(/<section class="ui-subsection" aria-labelledby="review-v1">/)
+        expect(html).toContain('<ul class="ui-rows ui-rows-flush">')
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-card > \.ui-subsection > \.ui-rows-flush \{\s*margin-inline: calc\(-1 \* var\(--space-4\)\);/)
+        expect(css).toMatch(/\.ui-card > \.ui-rows-flush > li > \.ui-row,\s*\.ui-card > \.ui-subsection > \.ui-rows-flush > li > \.ui-row \{\s*padding-inline: var\(--space-4\);/)
+    })
+
+    it("names the Super Admin's menu on a request for its role and company, so two companies' are told apart", async () => {
+        // Two companies asking for "A new role" had menus both named "More actions for A new role".
+        await changes({}, { [OPEN_REQUESTS]: ok([request({ role: null }), request({ id: "q2", role: null, company: { name: "Nile Works" } })]) })
+        expect(state.menus.map(m => m.label)).toEqual([
+            en.ui_more_actions_for.replace("{name}", `${en.role_changes_new_role}${en.list_separator}Delta Sites`),
+            en.ui_more_actions_for.replace("{name}", `${en.role_changes_new_role}${en.list_separator}Nile Works`),
+        ])
     })
 })

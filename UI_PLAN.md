@@ -2856,3 +2856,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     or an outline that stayed;
   - each list says while it loads, and when it didn't with the server's
     reason and Try again, where a failed load said there was nothing.
+- **2026-11-02:** Found in the browser and the interface audit on #169:
+  - a review's rows sat inside the card's padding, so the brand tint on
+    the review a notification opened touched the names. A titled part's
+    rows stretch to the card's edges, as a card's own rows do;
+  - the Super Admin's menu on a request was named for its role only, so
+    two companies asking for "A new role" had menus of the same name. It's
+    named for the role and the company.

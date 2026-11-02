@@ -136,7 +136,8 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
             const remaining = review.lines.filter(l => !l.decision).length
             const title = heading(review)
             return (
-                <section key={review.id} aria-labelledby={`review-${review.id}`}>
+                // A titled part of the card, its rows stretched to the card's edges (audit on part 2a).
+                <section key={review.id} className="ui-subsection" aria-labelledby={`review-${review.id}`}>
                     <h3 className="ui-subsection-title" id={`review-${review.id}`}>
                         {title}{' '}
                         {review.status === 'COMPLETED'
