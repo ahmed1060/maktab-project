@@ -1,67 +1,49 @@
-"use client"
+'use client'
 
-import { useLanguage } from "@/context/LanguageContext"
-import { SUBSCRIPTION_STYLE, isGrandfathered } from "@/lib/subscription-display"
-import type { SubscriptionState } from "@/lib/billing/state"
+import { Fragment } from 'react'
+import { StatusBadge } from '@/components/ui'
+import { useLanguage } from '@/context/LanguageContext'
+import type { SubscriptionState } from '@/lib/billing/state'
+import { countOf } from '@/lib/plural'
+import { SUBSCRIPTION_TONE, isGrandfathered } from '@/lib/subscription-display'
 
-type Props = {
-    state: SubscriptionState
-    date?: string | null
-    daysRemaining?: number | null
-    /** Hidden on narrow surfaces where only the badge fits. */
-    showDate?: boolean
+/**
+ * A company's subscription: its state as a status badge, in its meaning's
+ * colour, and the one date that goes with it. Which date it is depends on the
+ * state (trial end, subscription end, when grace runs out, when it locked);
+ * the server has already decided that, and this only says it.
+ *
+ * On the building blocks (the Super Admin's pages part 3a): the badge is the
+ * building blocks', and the date is a line of its own, so a table cell and a
+ * phone card each put it where their details go.
+ */
+type Subscription = { state: SubscriptionState; date: string | null; daysRemaining: number | null }
+
+export function SubscriptionBadge({ subscription }: { subscription: Subscription }) {
+    const { t } = useLanguage()
+    const look = SUBSCRIPTION_TONE[subscription.state]
+    if (!look) return null
+    // No subscription at all is not a premium one: it says so, without the healthy colour.
+    if (isGrandfathered(subscription.state, subscription.date)) return <StatusBadge tone="neutral">{t('state_grandfathered')}</StatusBadge>
+    return <StatusBadge tone={look.tone}>{t(look.labelKey)}</StatusBadge>
 }
 
 /**
- * The state badge and its one date. Which date it is depends on the state —
- * trial end, subscription end, when grace runs out, when it locked — and the
- * server has already decided that; this only renders it.
- *
- * The date is never blank except where there genuinely is not one: a lifetime
- * subscription, and a grandfathered company. Both say so in words rather than
- * leaving a gap that reads as missing data.
+ * The date, and how far off it is: "16 Nov 2026, Ends in 14 days". A lifetime
+ * subscription never ends and says so; a grandfathered company has no date,
+ * and nothing is said rather than a dash.
  */
-export default function SubscriptionBadge({ state, date, daysRemaining, showDate = true }: Props) {
+export function SubscriptionDates({ subscription }: { subscription: Subscription }) {
     const { t, locale } = useLanguage()
-    const style = SUBSCRIPTION_STYLE[state]
-    if (!style) return null
-
-    const grandfathered = isGrandfathered(state, date ?? null)
-    const label = grandfathered ? t('state_grandfathered' as any) : t(style.labelKey as any)
-
-    const formatted = date
-        ? new Date(date).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', {
-            day: 'numeric', month: 'short', year: 'numeric',
-        })
-        : null
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-            <span style={{
-                padding: '0.25rem 0.6rem',
-                borderRadius: '999px',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                background: grandfathered ? 'var(--surface-sunk)' : style.bg,
-                color: grandfathered ? 'var(--text-muted)' : style.color,
-            }}>
-                {label}
-            </span>
-
-            {showDate && (
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>
-                    {formatted ?? (state === 'LIFETIME' ? `∞ ${t('never_expires' as any)}` : '—')}
-                    {formatted && typeof daysRemaining === 'number' && (
-                        <span style={{ color: daysRemaining < 0 ? 'var(--danger-fg-strong)' : daysRemaining <= 14 ? 'var(--warn-fg-mid)' : 'var(--text-faint)' }}>
-                            {' · '}
-                            {daysRemaining < 0
-                                ? t('ended_days_ago' as any).replace('{days}', String(Math.abs(daysRemaining)))
-                                : `${daysRemaining} ${t('days_left' as any)}`}
-                        </span>
-                    )}
-                </span>
-            )}
-        </div>
-    )
+    const { state, date, daysRemaining } = subscription
+    if (!date) return state === 'LIFETIME' ? <span>{t('never_expires')}</span> : null
+    const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const day = new Date(date).toLocaleDateString(intl, { day: 'numeric', month: 'short', year: 'numeric' })
+    const days = (n: number) => countOf(t, locale, n, 'days')
+    const when = daysRemaining === null ? null
+        : daysRemaining < 0 ? t('companies_ended_ago').replace('{days}', days(-daysRemaining))
+        : daysRemaining === 0 ? t('companies_ends_today')
+        : t('companies_ends_in').replace('{days}', days(daysRemaining))
+    // Each kept apart from the next, so the date can't swap places with the words in Arabic.
+    return <span>{[day, when].filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
 }

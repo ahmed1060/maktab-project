@@ -6,10 +6,12 @@ import { ar } from "@/lib/translations/ar"
 // missing key puts the raw key in the control, and nothing in typecheck or
 // build notices because a key is just a string.
 
-describe("the companies toolbar labels exist in both locales", () => {
+// The Companies list moved off the toggle onto tabs and a sort select (the
+// Super Admin's pages part 3a); its labels are still checked here.
+describe("the companies list's tab and sort labels exist in both locales", () => {
     for (const key of [
-        'needs_attention_filter', 'show_all_companies',
-        'sort_label', 'date', 'name_label',
+        'needs_attention_filter', 'companies_tab_all',
+        'companies_sort', 'companies_sort_date', 'companies_sort_name',
         'subscription_state', 'nothing_needs_attention',
     ]) {
         it(key, () => {
@@ -20,12 +22,11 @@ describe("the companies toolbar labels exist in both locales", () => {
         })
     }
 
-    it("the sort segments are short enough not to repeat the group label", () => {
+    it("the sort options are short enough not to repeat the select's label", () => {
         // "Sort by date | Sort by name" says the word twice in one control.
-        // These name only what differs; the group label carries the rest.
         for (const dict of [en, ar]) {
-            expect(dict.date).not.toContain(dict.sort_label)
-            expect(dict.name_label).not.toContain(dict.sort_label)
+            expect(dict.companies_sort_date).not.toContain(dict.companies_sort)
+            expect(dict.companies_sort_name).not.toContain(dict.companies_sort)
         }
     })
 })

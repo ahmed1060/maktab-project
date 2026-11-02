@@ -2242,6 +2242,24 @@ a.ui-row:focus-visible {
   outline-offset: 2px;
   border-radius: 4px;
 }
+/* How many a tab holds, such as the companies that need attention (the
+   Super Admin's pages part 3a): a pill after its label, in the tab's colour. */
+.ui-tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--page);
+  color: inherit;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.ui-tab[aria-current="page"] > .ui-tab-count,
+.ui-tab[aria-selected="true"] > .ui-tab-count {
+  background: var(--brand-tint);
+}
 
 /* ── Total tiles (§5.5) ── */
 .ui-tiles {

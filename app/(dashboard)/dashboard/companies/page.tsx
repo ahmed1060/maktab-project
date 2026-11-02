@@ -1,28 +1,38 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
-import { useCompany } from '@/context/CompanyContext'
-import { useViewer } from '@/lib/useCan'
+import { usePathname, useSearchParams } from 'next/navigation'
+import {
+    BuildingsIcon, CalendarBlankIcon, CheckCircleIcon, CreditCardIcon, GearSixIcon, HourglassIcon, MagnifyingGlassIcon,
+    PackageIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, TrashIcon, WarningCircleIcon,
+} from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import Modal from '@/components/Modal'
-import { useToast } from '@/context/ToastContext'
-import ConfirmModal from '@/components/ConfirmModal'
+import { refusalOf } from '@/components/CompanyRolesCard'
+import { BanCompanyDialog, CompanyDialog } from '@/components/CompanyDialogs'
+import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
+import { SubscriptionBadge, SubscriptionDates } from '@/components/SubscriptionBadge'
+import {
+    Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, RowMenu,
+    SearchInput, Select, StatusBadge, TabLinks, pageInRange, type Column, type MenuItem,
+} from '@/components/ui'
+import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
-import Pagination from '@/components/Pagination'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import { useHeader } from '@/context/HeaderContext'
-import { fetcher } from '@/lib/swr-fetcher'
-import SubscriptionBadge from '@/components/SubscriptionBadge'
-import SegmentedToggle from '@/components/SegmentedToggle'
+import { useToast } from '@/context/ToastContext'
+import type { SubscriptionState } from '@/lib/billing/state'
+import { countOf } from '@/lib/plural'
 import { bundleLabelKeys } from '@/lib/subscription-display'
-import type { SubscriptionState, TrialPreset } from '@/lib/billing/state'
-import { DEFAULT_TRIAL_PRESET, computeTrialEnd, TRIAL_PRESETS } from '@/lib/billing/state'
-import { TRIAL_PRESET_LABEL_KEY } from '@/lib/subscription-display'
-import NoticeModal, { Notice } from '@/components/NoticeModal'
-import Link from 'next/link'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
+import { useViewer } from '@/lib/useCan'
 
+/**
+ * The Companies (the Super Admin's pages part 3a, UI_PLAN.md §5 step 5): a
+ * list, a table on computers and cards on phones, of each company's
+ * subscription and package. It opens on the ones that need attention, the
+ * only question worth asking on a Monday morning; All companies is the other
+ * tab, kept in the address (`?show=all`). Each company's settings, payments,
+ * Edit, Ban and Delete are in its menu.
+ */
 type Company = {
     id: string
     name: string
@@ -30,544 +40,220 @@ type Company = {
     package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
     hasUnpaidPayment?: boolean
     subscription?: { state: SubscriptionState; date: string | null; daysRemaining: number | null }
-    needsAttention?: boolean
 }
+type Listed = { data: Company[]; total: number; totalPages: number; totalCompanies: number; needsAttentionCount: number }
+type Sort = 'date' | 'name'
+const LIMIT = 10
 
 export default function CompaniesPage() {
     const { t, locale } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
-    const [showModal, setShowModal] = useState(false)
-    const [editingCompany, setEditingCompany] = useState<Company | null>(null)
-    const [formData, setFormData] = useState<{ name: string; trialPreset: TrialPreset; packageId: string }>({
-        name: '',
-        // 14 days preselected: whichever option sits at the top of the list is
-        // what gets chosen when nobody is thinking about it, and two days is a
-        // demo, not a trial.
-        trialPreset: DEFAULT_TRIAL_PRESET,
-        packageId: '',
-    })
-    const [submitLoading, setSubmitLoading] = useState(false)
-    const [error, setError] = useState('')
-    const { triggerRefresh } = useCompany()
-
-    // Who is looking comes from the layout on the first paint (useViewer), so a
-    // Super Admin never sees "Access Restricted" while the session loads.
-    const viewer = useViewer()
-    const userRole = viewer?.role || ''
-
-    const { data: packagesResult } = useSWR(userRole === 'SUPER_ADMIN' ? '/api/packages' : null, fetcher)
-    const assignablePackages: { id: string; name: string }[] = packagesResult?.data || []
-
-    // Delete State
-    const [showDeleteModal, setShowDeleteModal] = useState(false)
-    const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null)
-    const [deleteError, setDeleteError] = useState('')
     const { showToast } = useToast()
-    const [isDeleting, setIsDeleting] = useState(false)
-    const [banConfirm, setBanConfirm] = useState<{ isOpen: boolean, company: Company | null, action: 'ban' | 'unban' | null }>({ isOpen: false, company: null, action: null })
-    // Replaces alert(): a native dialog ignores the palette entirely, and it
-    // blocks the main thread for as long as it is up.
-    const [notice, setNotice] = useState<Notice | null>(null)
+    const { triggerRefresh } = useCompany()
+    // Who is looking comes from the layout on the first paint, so a Super
+    // Admin never sees "Access restricted" while the session loads.
+    const viewer = useViewer()
+    const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
+    const params = useSearchParams()
+    const pathname = usePathname()
+    const all = params.get('show') === 'all'
 
-    const [page, setPage] = useState(1)
-    const limit = 10
-
-    // On by default: this screen should open already answering the only
-    // question worth asking on a Monday morning, rather than showing everybody
-    // and leaving you to scan. One click clears it.
-    const [filter, setFilter] = useState<'needs-attention' | 'all'>('needs-attention')
-    const [sort, setSort] = useState<'name' | 'date'>('date')
-
-    const { data: result, isLoading: loading, mutate: fetchCompanies } = useSWR(
-        `/api/companies?page=${page}&limit=${limit}&filter=${filter}&sort=${sort}`,
-        fetcher
-    )
-    const companies: Company[] = result?.data?.data || result?.data || []
-    const totalPages: number = result?.data?.totalPages || result?.totalPages || 0
-    const needsAttentionCount: number = result?.data?.needsAttentionCount ?? 0
-    const totalCompanies: number = result?.data?.totalCompanies ?? 0
-
-    // Changing either control re-pages from the top; staying on page 3 of a
-    // list that just became four rows long shows an empty table.
-    const changeFilter = (next: 'needs-attention' | 'all') => { setFilter(next); setPage(1) }
-    const changeSort = (next: 'name' | 'date') => { setSort(next); setPage(1) }
-
+    const [sort, setSort] = useState<Sort>('date')
+    // Asked of the server a moment after the typing stops, not per letter.
+    const [typed, setTyped] = useState('')
+    const [search, setSearch] = useState('')
     useEffect(() => {
-        setTitle(t('companies'))
-        setSubtitle(t('companies_subtitle' as any))
-        return () => {
-            setTitle(null)
-            setSubtitle(null)
-        }
-    }, [setTitle, setSubtitle, t])
-
-    const handleOpenModal = (company?: Company) => {
-        setError('')
-        if (company) {
-            setEditingCompany(company)
-            // Trial length is fixed at creation; editing only reassigns the
-            // package. Extending a trial is its own action, not a field here.
-            setFormData({ name: company.name, trialPreset: DEFAULT_TRIAL_PRESET, packageId: company.package?.id || '' })
-        } else {
-            setEditingCompany(null)
-            setFormData({ name: '', trialPreset: DEFAULT_TRIAL_PRESET, packageId: '' })
-        }
-        setShowModal(true)
+        const id = setTimeout(() => setSearch(typed.trim()), 250)
+        return () => clearTimeout(id)
+    }, [typed])
+    // Another tab, sort or search starts from its first page: page 3 of a
+    // list that just became four rows long would show nothing.
+    const [page, setPage] = useState(1)
+    const scope = `${all}/${sort}/${search}`
+    const [scopeShown, setScopeShown] = useState(scope)
+    if (scope !== scopeShown) {
+        setScopeShown(scope)
+        setPage(1)
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setSubmitLoading(true)
-        setError('')
+    const [editing, setEditing] = useState<Company | 'new' | null>(null)
+    const [banning, setBanning] = useState<Company | null>(null)
+    const [removing, setRemoving] = useState<Company | null>(null)
+    const [busy, setBusy] = useState(false)
 
+    const { data, error, isValidating, mutate } = useSWR(
+        isSuperAdmin ? `/api/companies?page=${page}&limit=${LIMIT}&filter=${all ? 'all' : 'needs-attention'}&sort=${sort}&search=${encodeURIComponent(search)}` : null,
+        fetcher,
+        { keepPreviousData: true },
+    )
+    const listed: Listed | null = data?.data ?? null
+
+    if (!isSuperAdmin) return <AccessDenied />
+
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const tab = (label: string, count: number | undefined) => <>{label}{count !== undefined && <>{' '}<span className="ui-tab-count">{num(count)}</span></>}</>
+    const said = (key: Parameters<typeof t>[0], name: string) => t(key).replace('{name}', name)
+
+    const act = async (run: () => Promise<Response>, done: string, after?: () => void) => {
+        setBusy(true)
         try {
-            const endpoint = '/api/companies'
-            const method = editingCompany ? 'PUT' : 'POST'
-            const body = editingCompany
-                ? { id: editingCompany.id, name: formData.name }
-                : { name: formData.name, trialPreset: formData.trialPreset, packageId: formData.packageId || null }
-
-            const res = await fetch(endpoint, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            })
-
-            const data = await res.json()
-
-            if (!res.ok) {
-                throw new Error(data.error || t('error_generic'))
-            }
-
-            if (editingCompany && (formData.packageId || '') !== (editingCompany.package?.id || '')) {
-                await fetch(`/api/companies/${editingCompany.id}/package`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ packageId: formData.packageId || null }),
-                })
-            }
-
-            // Success
-            showToast(editingCompany ? t('company_updated_success') : t('company_created_success'), 'success')
-            setShowModal(false)
-            fetchCompanies()
-            triggerRefresh()
-        } catch (err: any) {
-            if (err.message === 'Company already exists') {
-                setError(t('error_company_exists'))
-            } else {
-                setError(err.message)
-            }
+            const res = await run()
+            if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
+            showToast(done, 'success')
+            after?.()
+            await mutate()
+        } catch {
+            showToast(t('error_generic'), 'error')
         } finally {
-            setSubmitLoading(false)
+            setBusy(false)
         }
     }
-
-    const openDeleteModal = (company: Company) => {
-        setCompanyToDelete(company)
-        setDeleteError('')
-        setShowDeleteModal(true)
-    }
-
-    const handleDelete = async (e: React.FormEvent) => {
-        e.preventDefault()
-        // No passcode here: the server asks for a recent authenticator code
-        // (lib/step-up.ts), and StepUpInterceptor prompts for it and re-sends.
-        if (!companyToDelete) return
-
-        setIsDeleting(true)
-        setDeleteError('')
-
-        try {
-            const res = await fetch(`/api/companies?id=${companyToDelete.id}`, { method: 'DELETE' })
-            const data = await res.json()
-
-            if (!res.ok) throw new Error(data.error || t('error_generic'))
-
-            showToast(t('company_deleted_success'), 'success')
-            setShowDeleteModal(false)
-            setCompanyToDelete(null)
-            fetchCompanies()
+    const ban = (c: Company) => act(
+        () => fetch('/api/companies', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, isBanned: !c.isBanned }) }),
+        said(c.isBanned ? 'companies_unbanned_done' : 'companies_banned_done', c.name),
+        () => setBanning(null),
+    )
+    // The server asks for a recent authenticator code first (lib/step-up.ts),
+    // and the code prompt asks for it and sends this again.
+    const remove = (c: Company) => act(
+        () => fetch(`/api/companies?id=${encodeURIComponent(c.id)}`, { method: 'DELETE' }),
+        said('companies_deleted', c.name),
+        () => {
+            setRemoving(null)
             triggerRefresh()
-        } catch (err: any) {
-            setDeleteError(err.message)
-        } finally {
-            setIsDeleting(false)
-        }
-    }
+            // The last on its page gone, the page before it is shown.
+            if (listed?.data.length === 1 && page > 1) setPage(pageInRange(page - 1, listed.totalPages))
+        },
+    )
 
-    if (userRole !== 'SUPER_ADMIN') {
-        return <AccessDenied />
+    const menu = (c: Company) => {
+        const items: MenuItem[] = [
+            // Goes there and nothing else: it doesn't change the company in
+            // view in the top bar, as Payments doesn't.
+            { key: 'settings', label: t('company_settings_title'), icon: GearSixIcon, href: `/dashboard/companies/${c.id}/settings` },
+            { key: 'payments', label: t('companies_payments'), icon: CreditCardIcon, href: `/dashboard/companies/${c.id}/payments` },
+            { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) },
+            { key: 'ban', label: t(c.isBanned ? 'companies_unban' : 'companies_ban'), icon: c.isBanned ? CheckCircleIcon : ProhibitIcon, danger: !c.isBanned || undefined, onSelect: () => setBanning(c) },
+            { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setRemoving(c) },
+        ]
+        return <RowMenu label={t('ui_more_actions_for').replace('{name}', c.name)} tooltip={t('ui_more_actions')} items={items} />
+    }
+    const badges = (c: Company) => [
+        c.isBanned && <StatusBadge key="banned" tone="problem">{t('companies_banned')}</StatusBadge>,
+        c.hasUnpaidPayment && <StatusBadge key="unpaid" tone="waiting">{t('unpaid_record')}</StatusBadge>,
+    ].filter(Boolean)
+    // What its package grants, in words: who is on Company Management alone and could be sold HR.
+    const grants = (c: Company) => {
+        if (!c.package) return null
+        const keys = bundleLabelKeys(c.package)
+        return keys.length === 0 ? t('core_only') : keys.map(k => t(k)).join(t('list_separator'))
+    }
+    const packageName = (c: Company) => c.package ? <bdi>{c.package.name}</bdi> : t('no_package')
+    const dated = (c: Company) => !!c.subscription && (!!c.subscription.date || c.subscription.state === 'LIFETIME')
+
+    const columns: Column<Company>[] = [
+        { key: 'name', header: t('companies_name'), cell: c => <ItemTitle title={<><bdi>{c.name}</bdi>{c.isBanned && <>{' '}<StatusBadge tone="problem">{t('companies_banned')}</StatusBadge></>}</>} /> },
+        {
+            key: 'subscription', header: t('subscription_state'), cell: c => c.subscription && (
+                <>
+                    <div className="ui-item-title">
+                        <SubscriptionBadge subscription={c.subscription} />
+                        {c.hasUnpaidPayment && <>{' '}<StatusBadge tone="waiting">{t('unpaid_record')}</StatusBadge></>}
+                    </div>
+                    {dated(c) && <div className="ui-item-detail"><SubscriptionDates subscription={c.subscription} /></div>}
+                </>
+            ),
+        },
+        { key: 'package', header: t('package_label'), cell: c => <ItemTitle title={packageName(c)} detail={grants(c)} /> },
+        { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: menu },
+    ]
+
+    const empty = search
+        ? <EmptyState icon={MagnifyingGlassIcon} title={t('companies_none_match')} />
+        : !all
+            ? <EmptyState icon={CheckCircleIcon} title={t('nothing_needs_attention')} action={<ButtonLink href={`${pathname}?show=all`}>{t('companies_show_all')}</ButtonLink>} />
+            : <EmptyState icon={BuildingsIcon} title={t('companies_none')} />
+
+    let list: ReactNode
+    if (!listed) {
+        list = error ? (
+            <div className="ui-panel">
+                <EmptyState icon={WarningCircleIcon} title={t('companies_load_failed')} detail={(error as SWRError).info?.error}
+                    action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+            </div>
+        ) : (
+            <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+        )
+    } else {
+        list = (
+            <DataList
+                caption={t('companies')}
+                columns={columns}
+                rows={listed.data}
+                rowKey={c => c.id}
+                empty={empty}
+                card={c => (
+                    <ListCard
+                        title={<bdi>{c.name}</bdi>}
+                        status={c.subscription && <SubscriptionBadge subscription={c.subscription} />}
+                        details={[
+                            ...(c.subscription && dated(c) ? [{ icon: CalendarBlankIcon, text: <SubscriptionDates subscription={c.subscription} /> }] : []),
+                            { icon: PackageIcon, text: <>{packageName(c)}{grants(c) && <>{t('list_separator')}{grants(c)}</>}</> },
+                        ]}
+                        foot={<><span>{badges(c)}</span>{menu(c)}</>}
+                    />
+                )}
+                footer={<Pager page={page} pageCount={listed.totalPages} onPage={setPage} summary={countOf(t, locale, listed.total, 'companies')} />}
+            />
+        )
     }
 
     return (
-        <>
-            <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {/* Both options visible with the selected one marked,
-                            rather than one button that renames itself. A
-                            self-renaming button cannot say what is selected and
-                            what clicking would do at once, so it has to be
-                            clicked to find out which reading was true. */}
-                        <SegmentedToggle
-                            ariaLabel={t('subscription_state' as any)}
-                            value={filter}
-                            onChange={changeFilter}
-                            options={[
-                                { value: 'needs-attention', label: t('needs_attention_filter' as any), count: needsAttentionCount },
-                                { value: 'all', label: t('show_all_companies' as any), count: totalCompanies },
-                            ]}
-                        />
-
-                        {/* "Sort by date | Sort by name" repeats the word in
-                            both halves; the group's own label carries it once,
-                            and the segments name only what differs. */}
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '0.82rem', color: 'var(--text-soft)', fontWeight: 500 }}>
-                                {t('sort_label' as any)}
-                            </span>
-                            <SegmentedToggle
-                                ariaLabel={t('sort_label' as any)}
-                                value={sort}
-                                onChange={changeSort}
-                                options={[
-                                    { value: 'date', label: t('date' as any) },
-                                    { value: 'name', label: t('name_label' as any) },
-                                ]}
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => handleOpenModal()}
-                        style={{ height: '48px', display: 'flex', alignItems: 'center', borderRadius: '1.25rem' }}
-                    >
-                        + {t('add_company')}
-                    </button>
-                </div>
-
-                {loading ? <LoadingSpinner message={t('loading_companies')} /> : companies.length === 0 && filter === 'needs-attention' ? (
-                    /* Said plainly, not as an empty table — an empty table reads
-                       as a loading failure, and "nothing needs attention" is the
-                       most valuable answer this screen can ever give. */
-                    <div style={{ background: 'var(--surface)', borderRadius: '12px', boxShadow: '0 1px 3px var(--shadow-weak)', padding: '3rem 1.5rem', textAlign: 'center' }}>
-                        <div aria-hidden="true" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
-                        <div style={{ fontWeight: 600, color: 'var(--ok-fg)', marginBottom: '0.75rem' }}>{t('nothing_needs_attention' as any)}</div>
-                        <button className="btn btn-secondary" onClick={() => changeFilter('all')} style={{ fontSize: '0.85rem' }}>
-                            {t('show_all_companies' as any)}
-                        </button>
-                    </div>
-                ) : (
-                    <div style={{ background: 'var(--surface)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 1px 3px var(--shadow-weak)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', direction: locale === 'ar' ? 'rtl' : 'ltr', minWidth: '800px' }}>
-                            <thead style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
-                                <tr>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('name_label')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('subscription_state' as any)}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('bundles' as any)}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('status_label')}</th>
-                                    <th style={{ textAlign: 'center', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('costs')}</th>
-                                    <th style={{ textAlign: locale === 'ar' ? 'left' : 'right', padding: '1rem', fontSize: '0.875rem', color: 'var(--text-soft)' }}>{t('quick_actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {companies.map(company => (
-                                    <tr key={company.id} style={{ borderBottom: '1px solid var(--surface-sunk)', background: (company as any).isBanned ? 'var(--danger-bg-tint)' : 'var(--surface)' }}>
-                                        <td style={{ padding: '1rem', fontWeight: '500', textAlign: locale === 'ar' ? 'right' : 'left' }}>{company.name}</td>
-                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {company.subscription ? (
-                                                <SubscriptionBadge
-                                                    state={company.subscription.state}
-                                                    date={company.subscription.date}
-                                                    daysRemaining={company.subscription.daysRemaining}
-                                                />
-                                            ) : '—'}
-                                            {company.hasUnpaidPayment && (
-                                                <div style={{ marginTop: '0.3rem' }}>
-                                                    <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: 'var(--warn-bg)', color: 'var(--warn-fg)' }}>
-                                                        {t('unpaid_record' as any)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {/* How you read your own book of business: who is on
-                                                Company Management alone and could be sold HR. */}
-                                            {!company.package ? (
-                                                <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>{t('no_package' as any)}</span>
-                                            ) : (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-body)' }}>{company.package.name}</span>
-                                                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                                        {bundleLabelKeys(company.package).length === 0 ? (
-                                                            <span style={{ padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: 'var(--surface-sunk)', color: 'var(--text-muted)' }}>
-                                                                {t('core_only' as any)}
-                                                            </span>
-                                                        ) : bundleLabelKeys(company.package).map(key => (
-                                                            <span key={key} style={{
-                                                                padding: '0.15rem 0.45rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600,
-                                                                background: key === 'bundle_hr' ? 'var(--ok-bg)' : 'var(--info-bg)',
-                                                                color: key === 'bundle_hr' ? 'var(--ok-fg)' : 'var(--info-fg)',
-                                                            }}>
-                                                                {t(key as any)}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {(company as any).isBanned ? (
-                                                <span style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg-strong)', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_banned')}</span>
-                                            ) : (
-                                                <span style={{ background: 'var(--ok-bg)', color: 'var(--ok-fg)', padding: '0.25rem 0.5rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 'bold' }}>{t('status_active')}</span>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <Link href={`/dashboard/companies/${company.id}/payments`}
-                                                className="btn"
-                                                style={{ textDecoration: 'none',
-                                                    background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                                                    color: 'var(--brand-primary-text)',
-                                                    padding: '0.4rem 0.8rem',
-                                                    fontSize: '0.8rem',
-                                                    border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)'
-                                                }}
-                                            >
-                                                <span aria-hidden="true">💳</span> {t('payments_history')}
-                                            </Link>
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: locale === 'ar' ? 'left' : 'right' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: locale === 'ar' ? 'flex-start' : 'flex-end' }}>
-                                                {/* Icon-only, and in the row-actions group rather than next to
-                                                    Payments History — it's a different concern (company policy,
-                                                    not billing), so it reads as "manage this company" alongside
-                                                    Edit/Ban/Delete instead of looking bundled with Payments. */}
-                                                <Link href={`/dashboard/companies/${company.id}/settings`} aria-label={t('company_settings_title') || 'Settings'}
-                                                    // Navigates, and nothing else. It used to set the global
-                                                    // company scope on the way, so that Clients and Tasks —
-                                                    // which read only the switcher — would follow you into the
-                                                    // company you had just opened. That traded a navigation
-                                                    // problem for a persistent one: setSelectedCompanyId writes
-                                                    // a year-long cookie and localStorage, so one click on a
-                                                    // gear silently re-scoped the whole product until somebody
-                                                    // changed it back by hand. It also made this the only one
-                                                    // of five row actions with a global side effect — Payments
-                                                    // is reached by id in exactly the same way and never did
-                                                    // this. Which company you are editing is answered on the
-                                                    // settings page itself instead.
-                                                    className="btn"
-                                                    title={t('company_settings_title') || 'Settings'}
-                                                    style={{ textDecoration: 'none',
-                                                        background: 'color-mix(in srgb, var(--ok-fg-deep) 10%, transparent)',
-                                                        color: 'var(--ok-fg)',
-                                                        padding: '0.4rem 0.6rem',
-                                                        fontSize: '0.9rem',
-                                                        border: '1px solid color-mix(in srgb, var(--ok-fg-deep) 20%, transparent)'
-                                                    }}
-                                                >
-                                                    <span aria-hidden="true">⚙️</span>
-                                                </Link>
-                                                <button
-                                                    onClick={() => handleOpenModal(company)}
-                                                    className="btn"
-                                                    style={{ background: 'var(--surface-sunk)', color: 'var(--text-strong)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                                                >
-                                                    {t('edit')}
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setBanConfirm({
-                                                            isOpen: true,
-                                                            company,
-                                                            action: (company as any).isBanned ? 'unban' : 'ban'
-                                                        })
-                                                    }}
-                                                    className="btn"
-                                                    style={{
-                                                        background: (company as any).isBanned ? 'var(--ok-bg)' : 'var(--danger-bg)',
-                                                        color: (company as any).isBanned ? 'var(--ok-fg)' : 'var(--danger-fg-strong)',
-                                                        padding: '0.4rem 0.8rem',
-                                                        fontSize: '0.8rem',
-                                                    }}
-                                                >
-                                                    {(company as any).isBanned ? t('unban_company') : t('ban_company')}
-                                                </button>
-                                                <button
-                                                    onClick={() => openDeleteModal(company)}
-                                                    className="btn"
-                                                    style={{
-                                                        background: 'var(--danger-bg)',
-                                                        color: 'var(--danger-fg-strong)',
-                                                        padding: '0.4rem 0.8rem',
-                                                        fontSize: '0.8rem',
-                                                    }}
-                                                >
-                                                    {t('delete')}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                <Pagination
-                    currentPage={page}
-                    totalPages={totalPages}
-                    onPageChange={(p) => setPage(p)}
-                />
-
-                <Modal
-                    isOpen={showModal}
-                    onClose={() => setShowModal(false)}
-                    title={editingCompany ? t('edit_company_title') : t('add_company')}
-                    hideFooter={true}
-                >
-                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        {error && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
-
-                        <form onSubmit={handleSubmit}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('company_name_label')}</label>
-                                <input aria-label={t('company_name_label')}
-                                    className="input"
-                                    required
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                />
-                            </div>
-
-                            {/* Trial length is chosen once, at creation. Changing
-                                it afterwards would move an end date somebody has
-                                already been told — extending is a separate action. */}
-                            {!editingCompany && (
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('trial_length' as any)}</label>
-                                    <select aria-label={t('trial_length' as any)}
-                                        className="input"
-                                        value={formData.trialPreset}
-                                        onChange={e => setFormData({ ...formData, trialPreset: e.target.value as TrialPreset })}
-                                        style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    >
-                                        {TRIAL_PRESETS.map(preset => (
-                                            <option key={preset} value={preset}>{t(TRIAL_PRESET_LABEL_KEY[preset] as any)}</option>
-                                        ))}
-                                    </select>
-
-                                    {/* "1 month" is abstract; a date is checkable.
-                                        Computed with the same helper the server
-                                        uses — a preview computed a second way is a
-                                        preview that can lie, and this is the only
-                                        way a clamping surprise (31 January + 1
-                                        month) gets noticed by you rather than by a
-                                        customer. */}
-                                    <div style={{ marginTop: '0.5rem', fontSize: '0.82rem', color: 'var(--text-soft)' }}>
-                                        {t('trial_ends_on' as any)}:{' '}
-                                        <b style={{ color: 'var(--text-body)' }}>
-                                            {computeTrialEnd(new Date(), formData.trialPreset, 0)
-                                                ?.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                        </b>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('package_label' as any)}</label>
-                                <select aria-label={t('package_label' as any)}
-                                    className="input"
-                                    value={formData.packageId}
-                                    onChange={e => setFormData({ ...formData, packageId: e.target.value })}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                >
-                                    {/* Empty means grandfathered — everything on,
-                                        nothing gated. Spelled out rather than left
-                                        as a blank line, because it is a choice with
-                                        consequences, not the absence of one. */}
-                                    <option value="">{t('no_package' as any)}</option>
-                                    {assignablePackages.map(pkg => (
-                                        <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                                <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
-                                    {t('cancel')}
-                                </button>
-                                <button type="submit" className="btn btn-primary" disabled={submitLoading}>
-                                    {submitLoading ? t('saving') : t('save')}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </Modal>
-
-                <Modal
-                    isOpen={showDeleteModal}
-                    onClose={() => setShowDeleteModal(false)}
-                    title={t('delete_company_title')}
-                    hideFooter={true}
-                >
-                    <div style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-soft)' }}>
-                            {t('delete_company_warning')} <strong>{companyToDelete?.name}</strong>?
-                            <br /><br />
-                            <span style={{ fontWeight: 'bold', color: 'var(--danger-fg-strong)' }}>{t('delete_company_critical_warning')}</span>
-                        </p>
-
-                        {deleteError && <div style={{ color: 'var(--danger-fg-strong)', marginBottom: '1rem', fontSize: '0.9rem' }}>{deleteError}</div>}
-
-                        <form onSubmit={handleDelete}>
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexDirection: 'row' }}>
-                                <button type="button" onClick={() => setShowDeleteModal(false)} className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }}>
-                                    {t('cancel')}
-                                </button>
-                                <button type="submit" className="btn" disabled={isDeleting} aria-busy={isDeleting || undefined} style={{ background: 'var(--danger-fill-hover)', color: 'var(--text-on-accent)', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer' }}>
-                                    {isDeleting ? t('deleting') : t('delete_permanently')}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </Modal>
-            </div>
-
-            <ConfirmModal
-                isOpen={banConfirm.isOpen}
-                title={banConfirm.action === 'ban' ? t('ban_company') : t('unban_company')}
-                message={banConfirm.action === 'ban'
-                    ? `${t('ban_warning')}${banConfirm.company?.name}${t('ban_warning_suffix')}`
-                    : `${t('unban_warning')}${banConfirm.company?.name}${t('unban_warning_suffix')}`
-                }
-                confirmText={banConfirm.action === 'ban' ? t('ban_company') : t('unban_company')}
-                onConfirm={async () => {
-                    if (banConfirm.company) {
-                        try {
-                            const res = await fetch('/api/companies', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ id: banConfirm.company.id, isBanned: banConfirm.action === 'ban' })
-                            })
-                            if (res.ok) {
-                                fetchCompanies()
-                                setBanConfirm({ isOpen: false, company: null, action: null })
-                            } else {
-                                setNotice({ variant: 'error', title: t('failed_change_ban_status') })
-                            }
-                        } catch {
-                            setNotice({ variant: 'error', title: t('error_changing_status') })
-                        }
-                    }
-                }}
-                onCancel={() => setBanConfirm({ isOpen: false, company: null, action: null })}
-                variant={banConfirm.action === 'ban' ? 'danger' : 'warning'}
+        <Page>
+            <PageHeader
+                title={t('companies')}
+                subtitle={t('companies_hint')}
+                action={<Button variant="primary" icon={PlusIcon} onClick={() => setEditing('new')}>{t('companies_add')}</Button>}
             />
-            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
-        </>
+            <TabLinks label={t('companies_tabs')} items={[
+                { href: pathname, label: tab(t('needs_attention_filter'), listed?.needsAttentionCount), current: !all },
+                { href: `${pathname}?show=all`, label: tab(t('companies_tab_all'), listed?.totalCompanies), current: all },
+            ]} />
+            <FilterBar
+                search={<Field label={t('companies_search')} hideLabel>{p => (
+                    <SearchInput {...p} name="search" autoComplete="off" placeholder={t('companies_search')} value={typed} onChange={e => setTyped(e.target.value)} />
+                )}</Field>}
+                activeCount={sort === 'date' ? 0 : 1}
+                onReset={typed || sort !== 'date' ? () => { setTyped(''); setSort('date') } : undefined}
+            >
+                <Field label={t('companies_sort')} hideLabel>{p => (
+                    <Select {...p} name="sort" value={sort} onChange={e => setSort(e.target.value as Sort)}
+                        options={[{ value: 'date', label: t('companies_sort_date') }, { value: 'name', label: t('companies_sort_name') }]} />
+                )}</Field>
+            </FilterBar>
+            {list}
+
+            {editing && (
+                <CompanyDialog
+                    company={editing === 'new' ? null : editing}
+                    onClose={() => setEditing(null)}
+                    onSaved={(name, added) => {
+                        setEditing(null)
+                        showToast(said(added ? 'companies_added' : 'companies_saved', name), 'success')
+                        triggerRefresh()
+                        void mutate()
+                    }}
+                />
+            )}
+            {banning && <BanCompanyDialog company={banning} busy={busy} onCancel={() => setBanning(null)} onConfirm={() => { void ban(banning) }} />}
+            {removing && (
+                <DeleteTemplateDialog
+                    name={removing.name}
+                    body={t('companies_delete_body')}
+                    busy={busy}
+                    onCancel={() => setRemoving(null)}
+                    onConfirm={() => { void remove(removing) }}
+                />
+            )}
+        </Page>
     )
 }

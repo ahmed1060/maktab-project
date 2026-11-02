@@ -496,9 +496,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #168 on 2026-11-02 (public holidays moved in #146); then
      Access, in two parts: Role changes and Access reviews, whose lists
      the company's Roles and access page shares, merged in #169 on
-     2026-11-02; then Super Admins and Who can, which open for review in
-     #170 and finish Access; then Customers (Companies,
-     Packages, All users); then Operations (Check-ins, Audit logs,
+     2026-11-02; then Super Admins and Who can, merged in #170 on
+     2026-11-02, which finished Access; then Customers, in three parts:
+     the Companies list, which opens for review in #171, then a company's
+     payments with Packages, then All users; then Operations (Check-ins, Audit logs,
      System health, System settings);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
@@ -2922,3 +2923,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the email in the edit dialog was set left to right, unlike every
     other field on the page. It follows the page, as the add dialog's
     does.
+- **2026-11-02:** The Super Admin's pages part 2b was merged in #170, which
+  finished the Access group. Customers follows, in three parts: the
+  Companies list first, in #171, then a company's payments with Packages,
+  then All users.
+  - the Companies list has the page header, Add a company in it, where its
+    name was the old top bar's;
+  - it still opens on the companies that need attention. That and All
+    companies are tabs, each with how many it holds, and the one shown is
+    kept in the address (`?show=all`), where they were a toggle a reload
+    forgot;
+  - a filter bar finds a company by part of its name, which the list had
+    no way to, and holds the sort, soonest date first or by name. The
+    tabs' counts stay the whole list's;
+  - the list is a table on computers and cards on phones: the company,
+    Banned as a badge; its subscription as a badge in its meaning's colour
+    (`DESIGN.md` §2.3), its date and how far off it is, and Unpaid record
+    when there's one; its package and what it grants, or Core only. The
+    Status column, which said "Active" of every company not banned, goes;
+  - each company's settings, payments, Edit, Ban or Unban, and Delete are
+    in its menu, named for it. They were five buttons of their own
+    colours, the settings one only a gear;
+  - adding and editing are the building blocks' dialog: the name, said
+    under its field when it's too short or taken; the trial when it's new,
+    the day it ends as its hint; the package. A package change that failed
+    after the name saved is said, where it was dropped without a word;
+  - banning asks first in the danger colour, saying what it does to the
+    company's people, and lifting a ban asks too; deleting asks in the
+    building blocks' dialog, and the authenticator code is asked for as
+    before. Each stays open until it's done;
+  - the pager says how many, and the list says while it loads, and when it
+    didn't with the server's reason and Try again. Nothing needing
+    attention is said, with a way to all of them;
+  - 29 labels, and the --danger-bg-tint and --danger-fill-hover colours,
+    only the old page used, are removed; the subscription states' colours
+    of their own are the meaning colours now.

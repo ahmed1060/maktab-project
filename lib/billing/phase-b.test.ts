@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { resolveSubscriptionState, needsAttention } from "./state"
-import { bundleLabelKeys, isGrandfathered, SUBSCRIPTION_STYLE, TRIAL_PRESET_LABEL_KEY } from "@/lib/subscription-display"
+import { bundleLabelKeys, isGrandfathered, SUBSCRIPTION_TONE, TRIAL_PRESET_LABEL_KEY } from "@/lib/subscription-display"
 import { TRIAL_PRESETS } from "./state"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
@@ -11,13 +11,13 @@ import { ar } from "@/lib/translations/ar"
 
 describe("every label key the UI reaches for exists in both locales", () => {
     const keys = [
-        ...Object.values(SUBSCRIPTION_STYLE).map(s => s.labelKey),
+        ...Object.values(SUBSCRIPTION_TONE).map(s => s.labelKey),
         ...Object.values(TRIAL_PRESET_LABEL_KEY),
         'state_grandfathered', 'bundle_company_management', 'bundle_hr', 'core_only',
         'no_package', 'package_label', 'packages', 'bundles', 'subscription_state',
-        'needs_attention_filter', 'show_all_companies', 'nothing_needs_attention',
-        'sort_by_date', 'sort_by_name', 'days_left', 'ended_days_ago', 'unpaid_record',
-        'trial_length', 'trial_ends_on', 'never_expires', 'not_sold_as_lifetime',
+        'needs_attention_filter', 'companies_show_all', 'nothing_needs_attention',
+        'companies_sort_date', 'companies_sort_name', 'companies_ends_in', 'companies_ended_ago', 'unpaid_record',
+        'trial_length', 'companies_trial_ends', 'never_expires', 'not_sold_as_lifetime',
         'package_edit_warning', 'package_retired', 'companies_on_package',
         'package_created_success', 'package_updated_success', 'package_deleted_success',
     ]
@@ -30,18 +30,21 @@ describe("every label key the UI reaches for exists in both locales", () => {
     }
 
     it("covers every state and every trial preset, not just the ones in use", () => {
-        expect(Object.keys(SUBSCRIPTION_STYLE).sort())
+        expect(Object.keys(SUBSCRIPTION_TONE).sort())
             .toEqual(['ACTIVE', 'GRACE', 'LIFETIME', 'LOCKED', 'TRIAL'])
         expect(Object.keys(TRIAL_PRESET_LABEL_KEY).sort()).toEqual([...TRIAL_PRESETS].sort())
     })
 
-    it("the two interpolated strings keep their placeholder in both locales", () => {
+    it("the interpolated strings keep their placeholder in both locales", () => {
         // These are rendered with .replace('{count}', …) — a translation that
         // drops the token silently loses the number.
         expect(en.package_edit_warning).toContain('{count}')
         expect(ar.package_edit_warning).toContain('{count}')
-        expect(en.ended_days_ago).toContain('{days}')
-        expect(ar.ended_days_ago).toContain('{days}')
+        for (const dict of [en, ar]) {
+            expect(dict.companies_ended_ago).toContain('{days}')
+            expect(dict.companies_ends_in).toContain('{days}')
+            expect(dict.companies_trial_ends).toContain('{date}')
+        }
     })
 })
 

@@ -2221,3 +2221,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   #170 (`UI_PLAN.md` §5), which finishes the Access group. They don't
   touch clients or locations; the clients and locations permissions are
   asked about in Who can like the others.
+- **2026-11-02:** The Super Admin's pages part 2b was merged in #170. The
+  Customers group follows, the Companies list first in #171
+  (`UI_PLAN.md` §5). It doesn't touch clients or locations.

@@ -42,9 +42,11 @@ export const GET = withStandardHandler(async (req, session) => {
     // should fall back to the default view, not decide behaviour.
     const filter = searchParams.get('filter') === 'needs-attention' ? 'needs-attention' : 'all'
     const sort = searchParams.get('sort') === 'date' ? 'date' : 'name'
+    // Part of a name: only ever compared, never queried with.
+    const search = (searchParams.get('search') ?? '').slice(0, 100)
 
     return ApiResponse.success(
-        await CompanyService.listWithSubscription({ page, limit, filter, sort })
+        await CompanyService.listWithSubscription({ page, limit, filter, sort, search })
     )
 })
 
