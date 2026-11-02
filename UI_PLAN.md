@@ -2749,3 +2749,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - what greys or marks a permission is said under it: not in the
     company's package, needed by another, or different from the template
     it was copied from, where the last two were only a tooltip.
+- **2026-11-02:** Found in the browser and the interface audit on #167:
+  - in the building blocks' 440px dialog, each permission's scope
+    wrapped under it, doubling the list on a computer. The role editor's
+    dialog is up to 640px wide, so the scope sits beside it (`DESIGN.md`
+    §5.5, Dialog); on a phone it's under it still;
+  - why a permission is greyed or marked (needed by another, not in the
+    package, different from the template) wasn't tied to its checkbox,
+    so a screen reader on a greyed box didn't say why. It is now.

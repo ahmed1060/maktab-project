@@ -144,3 +144,23 @@ describe("nothing of the old editor is left", () => {
         }
     })
 })
+
+describe("found in the browser and the audit (company settings part 4c)", () => {
+    it("widens the editor's dialog so each permission's scope sits beside it on a computer", () => {
+        // In the 440px dialog the scope wrapped under every permission, doubling the list.
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-dialog:has\(\.ui-perm-matrix\) \{\s*width: min\(100%, 640px\);/)
+        expect(readFileSync("DESIGN.md", "utf8").replace(/\s+/g, " ")).toContain("such as a role's permissions, is up to 640px wide")
+    })
+
+    it("ties why a permission is greyed to its checkbox, so a screen reader says it", async () => {
+        const { default: PermissionMatrix } = await import("@/components/PermissionMatrix")
+        const html = render(h(PermissionMatrix, { grants: { "employees.create": "COMPANY", "employees.view": "TEAM" }, onChange: () => {} } as never))
+        const box = html.match(/<input[^>]*name="perm-employees.view"[^>]*>/)![0]
+        const described = box.match(/aria-describedby="([^"]+)"/)
+        expect(described).not.toBeNull()
+        expect(html).toContain(`<span id="${described![1]}" class="ui-hint ui-choice-hint">${esc(en.roles_needed_by.replace("{name}", en.perm_employees_create))}</span>`)
+        // A box with nothing to say has nothing to point at.
+        expect(html.match(/<input[^>]*name="perm-employees.create"[^>]*>/)![0]).not.toContain("aria-describedby")
+    })
+})

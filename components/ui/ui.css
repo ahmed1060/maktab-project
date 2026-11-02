@@ -733,6 +733,12 @@
   white-space: nowrap;
 }
 
+/* The role editor (company settings part 4c): wide enough that each
+   permission's scope sits beside it on a computer; in 440px it wrapped
+   under every one, doubling the list. */
+.ui-dialog:has(.ui-perm-matrix) {
+  width: min(100%, 640px);
+}
 /* What a dialog needs the person to know before saving, such as a role's
    separation of duties (company settings part 4c): its meaning's bar on the
    start edge, as a card's. */
@@ -781,7 +787,8 @@
   flex-direction: column;
   gap: var(--space-3);
   margin: 0;
-  padding: 0 0 var(--space-3);
+  /* Under its group's heading, which a row's padding indents. */
+  padding: 0 var(--space-4) var(--space-3);
   list-style: none;
 }
 .ui-perm-rows[hidden] {

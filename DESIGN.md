@@ -539,6 +539,8 @@ These are built once, in the building-blocks PR, and every page uses them
   - The buttons are at the bottom on the end side, the main one last. On
     phones they stack full width, the main one on top.
   - Escape closes it, and focus goes back to what opened it.
+  - One that holds a long list of controls, such as a role's permissions,
+    is up to 640px wide, so each control sits beside what it's for.
   - One that opens from an older page's modal, as "+ New location" from a
     task's edit window, sits above that modal, and under the toasts.
   - The code a high-risk action asks for (two-factor sign-in) sits above

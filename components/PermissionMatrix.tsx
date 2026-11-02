@@ -86,11 +86,20 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                     const requiredBy = scope ? needed[p] : undefined
                                     const risk = riskLabelKey(p)
                                     const differs = drifted.has(p)
+                                    // Why it's greyed or marked, tied to its box so a screen
+                                    // reader says it too (audit on part 4c).
+                                    const notes = [
+                                        ...(requiredBy?.length ? [t('roles_needed_by').replace('{name}', requiredBy.map(label).join(t('list_separator')))] : []),
+                                        ...(outside ? [t('roles_not_in_package')] : []),
+                                        ...(differs ? [t('roles_differs')] : []),
+                                    ]
+                                    const noteId = (i: number) => `${listId}-${p}-${i}`
                                     return (
                                         <li key={p} data-outside={outside || undefined} data-drift={differs || undefined}>
                                             <span className="ui-perm-main">
                                                 <label className="ui-choice">
                                                     <input type="checkbox" className="ui-check" name={`perm-${p}`}
+                                                        aria-describedby={notes.length ? notes.map((_, i) => noteId(i)).join(' ') : undefined}
                                                         checked={!!scope}
                                                         // A row another ticked row needs would only come back.
                                                         disabled={disabled || !!requiredBy?.length}
@@ -98,9 +107,7 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                                     {label(p)}
                                                 </label>
                                                 {risk && <StatusBadge tone="problem">{t(risk)}</StatusBadge>}
-                                                {!!requiredBy?.length && <span className="ui-hint ui-choice-hint">{t('roles_needed_by').replace('{name}', requiredBy.map(label).join(t('list_separator')))}</span>}
-                                                {outside && <span className="ui-hint ui-choice-hint">{t('roles_not_in_package')}</span>}
-                                                {differs && <span className="ui-hint ui-choice-hint">{t('roles_differs')}</span>}
+                                                {notes.map((note, i) => <span key={i} id={noteId(i)} className="ui-hint ui-choice-hint">{note}</span>)}
                                             </span>
                                             {scopes.length > 1 ? (
                                                 <Select
