@@ -14,6 +14,7 @@ describe("RoleSelect", () => {
     })
 
     it("and the access review's interval says what it is", () => {
-        expect(readFileSync("components/AccessReviewSetting.tsx", "utf8")).toContain("<select aria-label={`${t('access_review_setting')}: ${t('access_review_every')}`}")
+        // A labelled field in the access review's own card since part 4b.
+        expect(readFileSync("components/AccessReviewSetting.tsx", "utf8")).toContain("<Field label={t('access_review_every')}>")
     })
 })

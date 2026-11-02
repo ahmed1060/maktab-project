@@ -2200,3 +2200,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   blocks in #165 (`UI_PLAN.md` §5), and Roles after them. The Modules
   tab is where a company calls Clients something else; what it does is
   unchanged.
+- **2026-11-02:** Company settings part 4a was merged in #165. The Roles
+  tab moves onto the building blocks in #166 (`UI_PLAN.md` §5), and its
+  role editor after it. It doesn't touch clients or locations.
