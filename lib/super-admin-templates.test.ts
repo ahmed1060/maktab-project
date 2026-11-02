@@ -283,25 +283,17 @@ describe("nothing of the old templates pages is left", () => {
 })
 
 describe("found in the browser and the audit (the Super Admin's pages part 1)", () => {
-    it("keeps focus in the offer dialog after Apply, so Escape and Tab still work in it", async () => {
-        // Apply turns busy, which turns it off, and the browser drops focus to
-        // the page; the dialog stays open to show what changed, so focus came back to nothing.
-        const { refocusIfLost } = await import("@/components/attendance-calendar/focus")
-        const focusApply = vi.fn()
-        const form = { querySelector: (s: string) => (s === 'button[type="submit"]' ? { focus: focusApply } : null) } as unknown as HTMLFormElement
-        const body = {}
-        vi.stubGlobal("document", { body, activeElement: body })
-        try {
-            refocusIfLost(form, 'button[type="submit"]')
-            expect(focusApply).toHaveBeenCalledOnce()
-            // Not when the person has moved focus somewhere themselves.
-            vi.stubGlobal("document", { body, activeElement: { tagName: "INPUT" } })
-            refocusIfLost(form, 'button[type="submit"]')
-            expect(focusApply).toHaveBeenCalledOnce()
-        } finally {
-            vi.unstubAllGlobals()
+    it("keeps focus in the offer and delete dialogs after a busy button, so Escape and Tab still work in them", () => {
+        // Apply, or a Delete that failed, turns busy, which turns it off, and
+        // the browser drops focus to the page while the dialog stays open.
+        // The building blocks' dialog takes it back on its next redraw, for
+        // every dialog (lib/useDialog.ts, tested in dialog-semantics.test.ts;
+        // the offer dialog's own fix gave way to it in the Codex review of #168).
+        expect(readFileSync("components/ui/Dialog.tsx", "utf8")).toContain("useDialog(open, onClose)")
+        expect(readFileSync("lib/useDialog.ts", "utf8")).toContain("regainFocus(ref.current, document.activeElement, document.body)")
+        for (const file of ["components/TemplateOfferModal.tsx", "components/DeleteTemplateDialog.tsx"]) {
+            expect(readFileSync(file, "utf8"), file).toMatch(/import \{[^}]*\bDialog\b[^}]*\} from '@\/components\/ui'/)
         }
-        expect(readFileSync("components/TemplateOfferModal.tsx", "utf8")).toMatch(/refocusIfLost\(formRef\.current, 'button\[type="submit"\]'\)/)
     })
 
     it("lists the templates in a panel of rows, with no empty strip above the first", async () => {

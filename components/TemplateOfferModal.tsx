@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { Button, Dialog, DialogActions } from '@/components/ui'
-import { focusFirstWrong, refocusIfLost } from '@/components/attendance-calendar/focus'
+import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -46,13 +46,6 @@ function OfferDialog({ template, onClose }: { template: { id: string; name: stri
     const [applyNow, setApplyNow] = useState(false)
     const [applying, setApplying] = useState(false)
     const { data, error, isValidating, mutate } = useSWR(`/api/role-templates/push?id=${template.id}`, fetcher)
-    // The dialog stays open after Apply, to show what changed: focus goes back
-    // to Apply once it isn't busy, where turning busy had dropped it to the page.
-    const wasApplying = useRef(false)
-    useEffect(() => {
-        if (wasApplying.current && !applying) refocusIfLost(formRef.current, 'button[type="submit"]')
-        wasApplying.current = applying
-    }, [applying])
     const roles: Offer[] | null = data ? data.data?.roles ?? [] : null
 
     const label = (p: string) => isPermission(p) ? t(permissionLabelKey(p)) : p

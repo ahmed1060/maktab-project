@@ -2797,7 +2797,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - after Apply in the template offer dialog, which stays open to show
     what changed, the busy button had turned itself off and the browser
     dropped focus to the page, so Escape and Tab no longer reached the
-    dialog. Focus goes back to Apply once it's done;
+    dialog. Focus goes back into the dialog once it's done (made general
+    in Codex's review, below);
   - the templates sat in a card with no title, which kept its padding
     above the first row as an empty strip. They're a panel of rows (the
     `Rows` block) now;
@@ -2808,3 +2809,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     5 minutes", "مهلة التأخير: ٥ دقائق");
   - a company role already the same as the template had its box greyed
     but its words not. They're greyed too.
+- **2026-11-02:** From Codex's review of #168: a delete that failed left
+  its dialog open, as it should, but the busy Delete had turned itself off
+  and the browser dropped focus to the page, so Escape no longer closed
+  it and Tab walked the page behind. It's what Apply did in the offer
+  dialog, so it's fixed once for every dialog: the building blocks'
+  dialog (and the older windows, through the same `useDialog`) takes
+  focus back to itself when it's redrawn with focus lost to the page,
+  once its first focus is placed. The offer dialog's own fix gave way to
+  it.

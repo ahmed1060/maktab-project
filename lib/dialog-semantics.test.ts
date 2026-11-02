@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 
@@ -51,5 +51,24 @@ describe("useDialog", () => {
         // What had focus as it was first drawn, read while rendering: before an autoFocus field inside takes it.
         expect(hook).toMatch(/const \[focusedAtMount\] = useState\(\(\) =>/)
         expect(hook).toMatch(/const opener = lastOutside\.current \?\? /)
+    })
+
+    it("takes focus back when it's lost while open, as a busy button turns itself off (Codex review of #168)", async () => {
+        // A delete that failed left its dialog open, but the busy Delete had
+        // turned itself off and the browser dropped focus to the page: Escape
+        // no longer closed it and Tab walked the page behind.
+        const { regainFocus } = await import("./focus-trap")
+        const body = {}
+        const panel = { focus: vi.fn() }
+        expect(regainFocus(panel, body, body)).toBe(true)
+        expect(regainFocus(panel, null, body)).toBe(true)
+        expect(panel.focus).toHaveBeenCalledTimes(2)
+        // Not when focus is somewhere, in the dialog or a pop-up opened from it.
+        expect(regainFocus(panel, { tagName: "BUTTON" }, body)).toBe(false)
+        expect(regainFocus(null, body, body)).toBe(false)
+        expect(panel.focus).toHaveBeenCalledTimes(2)
+        // After every redraw while open, once its first focus is placed, so opening still lands on the first field.
+        expect(hook).toMatch(/useEffect\(\(\) => \{\s*if \(isOpen && settled\.current\) regainFocus\(ref\.current, document\.activeElement, document\.body\)\s*\}\)/)
+        expect(hook).toMatch(/settled\.current = true/)
     })
 })
