@@ -112,14 +112,18 @@ describe("G2: the payroll settings can actually be set", () => {
         expect(SETTINGS_TABS).toContain("import CompanyPayrollCard from '@/components/CompanyPayrollCard'")
     })
 
-    it("shows the zone's own refusal instead of a generic one", () => {
-        expect(CARD).toContain("details?.timezone?._errors?.[0]")
+    it("shows the zone's own refusal instead of a generic one", async () => {
+        // Under the Calendar field since company settings part 2.
+        const { refusalsByField } = await import("@/components/CompanyPayrollCard")
+        const reason = "Zones far behind UTC miss the nightly jobs."
+        expect(refusalsByField({ error: "Validation Error", details: { timezone: { _errors: [reason] } } }).fields.timezone).toBe(reason)
+        expect(CARD).toContain("error={errors.timezone}")
     })
 
     it("keeps a stored zone selectable even when it is not on the list", () => {
         // Otherwise opening the page silently reassigns a company set through
         // the API to whatever the first option happens to be.
-        expect(CARD).toContain("!ZONES.includes(zone) && <option value={zone}>")
+        expect(CARD).toContain("...(ZONES.includes(zone) ? [] : [zone]),")
     })
 })
 
