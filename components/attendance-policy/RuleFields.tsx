@@ -57,7 +57,7 @@ export default function RuleFields({ name, rule, errorOf, fraction, number, onCh
                     <>
                         <div className="ui-field-row">
                             <Field label={t('attendance_grace_minutes')} error={errorOf(path('graceMinutes'))}>{p => (
-                                <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={240} name={path('graceMinutes')} value={rule.graceMinutes}
+                                <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={24 * 60} name={path('graceMinutes')} value={rule.graceMinutes}
                                     // The bands start from the grace, so their errors go with it.
                                     onChange={e => set({ graceMinutes: e.target.value }, 'graceMinutes', 'bands')} />
                             )}</Field>

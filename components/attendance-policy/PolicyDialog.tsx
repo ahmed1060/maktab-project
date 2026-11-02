@@ -169,7 +169,7 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                             <>
                                 <div className="ui-field-row">
                                     <Field label={t('attendance_overtime_minimum')} error={errorOf('overtime.minimumMinutes')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={240} name="overtime.minimumMinutes" value={o.minimumMinutes}
+                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={24 * 60} name="overtime.minimumMinutes" value={o.minimumMinutes}
                                             onChange={e => edit(f => ({ ...f, overtime: { ...f.overtime, minimumMinutes: e.target.value } }), 'overtime.minimumMinutes')} />
                                     )}</Field>
                                     {(['workday', 'restDay', 'holiday'] as const).map(kind => (

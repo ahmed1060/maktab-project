@@ -254,7 +254,7 @@ describe("the policy form", () => {
             return result.ok ? {} : result.errors
         }
         // An emptied field was sent as 0.
-        expect(wrong(f => { f.lateness.graceMinutes = "" })).toEqual({ "lateness.graceMinutes": { key: "number_whole_between", min: 0, max: 240 } })
+        expect(wrong(f => { f.lateness.graceMinutes = "" })).toEqual({ "lateness.graceMinutes": { key: "number_whole_between", min: 0, max: 1440 } })
         expect(wrong(f => { f.overtime.multipliers.workday = "0.5" })).toEqual({ "overtime.multipliers.workday": { key: "number_between", min: 1, max: 5 } })
         expect(wrong(f => { f.lateness.bands[0].toMinutes = "10" })).toEqual({ "lateness.bands.0": { key: "number_whole_between", min: 16, max: 1440 } })
         expect(wrong(f => { f.permissionHours.minPerRequestMinutes = "200" })).toEqual({ "permissionHours.maxPerRequestMinutes": { key: "attendance_permission_limits_reversed" } })
@@ -370,5 +370,26 @@ describe("the focus on the first field that's wrong", () => {
             vi.unstubAllGlobals()
         }
         expect(focused).toEqual(["end"])
+    })
+})
+
+describe("found by Codex on #163", () => {
+    it("takes every number the policy itself takes, so a saved policy saves again unchanged", async () => {
+        // A grace or an overtime minimum over 240 minutes is a policy the server takes (up to a day),
+        // which the dialog refused, so it couldn't be saved again without changing it.
+        const { bodyFromForm, formFromBody } = await import("@/components/attendance-policy/policy-form")
+        const { policyBodySchema } = await import("@/lib/attendance/policy")
+        const long = {
+            ...STANDARD_OFFICE,
+            lateness: { ...STANDARD_OFFICE.lateness, graceMinutes: 300, bands: [{ fromMinutes: 301, toMinutes: null, dayFraction: 1 }] },
+            overtime: { ...STANDARD_OFFICE.overtime, minimumMinutes: 300 },
+        }
+        expect(policyBodySchema.safeParse(long).success).toBe(true)
+        expect(bodyFromForm(formFromBody(long), long)).toEqual({ ok: true, body: long })
+        // Past a day is still said to be wrong.
+        const form = formFromBody(long)
+        form.overtime.minimumMinutes = "1441"
+        const result = bodyFromForm(form, long)
+        expect(result.ok ? {} : result.errors).toEqual({ "overtime.minimumMinutes": { key: "number_whole_between", min: 0, max: 1440 } })
     })
 })

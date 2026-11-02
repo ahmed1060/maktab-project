@@ -2579,3 +2579,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the preview wrote its month as "2026-10", in Latin digits in Arabic
     too. It's "October 2026", "أكتوبر ٢٠٢٦";
   - the dialog's number fields had no names.
+- **2026-11-02:** Found by Codex on #163: the policy dialog took a grace
+  and an overtime minimum of up to 240 minutes, where the policy takes
+  up to a day. A saved policy with a longer one was refused under its
+  field, so it couldn't be saved again without changing it. Each field
+  takes the policy's own range now.

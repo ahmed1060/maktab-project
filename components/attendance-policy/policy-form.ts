@@ -160,6 +160,8 @@ function readBands(rule: RuleForm, graceMinutes: number): { bands: DeductionRule
 export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; body: PolicyBody } | { ok: false; errors: FormErrors } {
     const errors: FormErrors = {}
 
+    // Each field's range is the policy's own (lib/attendance/policy.ts), so a
+    // version the server took saves again unchanged (found by Codex on PR 163).
     /** Checks a field: wrong in a part that's on is an error; in one that's off, the base's number stands. */
     const read = (on: boolean, path: string, value: number | null, fallback: number | null, error: FieldError): number | null => {
         if (value !== null) return value
@@ -178,7 +180,7 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
 
     const rule = (name: 'lateness' | 'earlyLeave'): DeductionRule => {
         const f = form[name], was = base[name], on = f.enabled
-        const graceMinutes = wholeIn(on, `${name}.graceMinutes`, f.graceMinutes, 0, 240, was.graceMinutes)
+        const graceMinutes = wholeIn(on, `${name}.graceMinutes`, f.graceMinutes, 0, 24 * 60, was.graceMinutes)
         // Bands as the form holds them, from the grace on. Charged in bands, an
         // end that isn't a number past its start is wrong; otherwise the
         // version's own bands stand in for ones that don't read.
@@ -206,7 +208,7 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
     const o = form.overtime, oWas = base.overtime, oOn = o.enabled
     const overtime: PolicyBody['overtime'] = {
         enabled: oOn,
-        minimumMinutes: wholeIn(oOn, 'overtime.minimumMinutes', o.minimumMinutes, 0, 240, oWas.minimumMinutes),
+        minimumMinutes: wholeIn(oOn, 'overtime.minimumMinutes', o.minimumMinutes, 0, 24 * 60, oWas.minimumMinutes),
         multipliers: {
             workday: decimalIn(oOn, 'overtime.multipliers.workday', o.multipliers.workday, 1, 5, oWas.multipliers.workday),
             restDay: decimalIn(oOn, 'overtime.multipliers.restDay', o.multipliers.restDay, 1, 5, oWas.multipliers.restDay),
