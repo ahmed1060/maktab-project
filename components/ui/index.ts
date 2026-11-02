@@ -4,7 +4,7 @@
  */
 export { Icon, type PhosphorIcon } from './Icon'
 export { Button, ButtonLink, type ButtonVariant } from './Button'
-export { Field, TextInput, TextArea, SearchInput, Select, Choice, type FieldControlProps, type SelectOption } from './Field'
+export { Field, TextInput, PasswordInput, TextArea, SearchInput, Select, Choice, type FieldControlProps, type SelectOption } from './Field'
 export { ColourChoice } from './ColourChoice'
 export { Dialog, DialogActions } from './Dialog'
 export { FilterBar } from './FilterBar'

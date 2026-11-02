@@ -1,182 +1,177 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
-import { useSession } from 'next-auth/react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { BuildingsIcon, HourglassIcon, KeyIcon, ShieldCheckIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import SegmentedToggle from '@/components/SegmentedToggle'
+import { Button, Card, EmptyState, Field, Page, PageHeader, Panel, Row, SearchInput, Select, TabLinks } from '@/components/ui'
+import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { isPermission, type Permission, type Scope } from '@/lib/permissions/catalogue'
+import { PERMISSION_GROUPS, groupLabelKey, permissionLabelKey, scopeLabelKey } from '@/lib/permissions/matrix'
 import { roleLabel } from '@/lib/role-label'
-import { useHeader } from '@/context/HeaderContext'
-import { fetcher } from '@/lib/swr-fetcher'
-import type { Permission, Scope } from '@/lib/permissions/catalogue'
-import { PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey } from '@/lib/permissions/matrix'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
+import { useViewer } from '@/lib/useCan'
 
 /**
- * "Who can do this?" (ROLES_PLAN.md §6.5), for the Super Admin. A company and
- * a permission → everyone holding it, at which scope, through which role. A
- * person → everything they may do and through which role. What it shows is
+ * "Who can do this?" (ROLES_PLAN.md §6.5), for the Super Admin. A permission
+ * → everyone in the company holding it, at which scope, through which role.
+ * A person → everything they may do and through which role. What it shows is
  * read from the grants can() reads, so it is the answer, not a description.
+ *
+ * On the building blocks (the Super Admin's pages part 2b, UI_PLAN.md §5 step
+ * 5): the company is the one in view, picked in the top bar as on every other
+ * page, so it isn't picked twice (as Payroll, decided on 2026-10-31). The two
+ * questions are tabs, and the question asked is kept in the address
+ * (`?by=person&person=…`, `?permission=…`), so a reload or a link opens on it.
  */
 
-type Holder = { user: { id: string; name: string; status: string }; role: { id: string; name: string }; scope: Scope }
-type PersonAccess = { user: { id: string; name: string; status: string }; role: { name: string } | null; grants: { permission: Permission; scope: Scope }[] }
-type Mode = 'permission' | 'person'
+type Holder = { user: { id: string; name: string; status: string }; role: { id: string; name: string; builtIn?: string | null }; scope: Scope }
+type PersonAccess = {
+    user: { id: string; name: string; status: string; companyId?: string | null }
+    role: { name: string; builtIn?: string | null } | null
+    grants: { permission: Permission; scope: Scope }[]
+}
+type Found = { id: string; firstName: string; lastName: string }
 
 export default function WhoCanPage() {
-    const { t, locale } = useLanguage()
-    const isRtl = locale === 'ar'
-    const { setTitle, setSubtitle } = useHeader()
-    const { data: session } = useSession()
-    const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
+    const { t } = useLanguage()
+    const viewer = useViewer()
+    const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
+    const { selectedCompanyId: company } = useCompany()
+    const params = useSearchParams()
+    const pathname = usePathname()
+    const router = useRouter()
+    const mode = params.get('by') === 'person' ? 'person' : 'permission'
+    const asked = params.get('permission') ?? ''
+    const permission = isPermission(asked) ? asked : ''
+    const personId = params.get('person') ?? ''
+    const go = (next: Record<string, string>) => {
+        const q = new URLSearchParams(params.toString())
+        for (const [key, value] of Object.entries(next)) {
+            if (value) q.set(key, value)
+            else q.delete(key)
+        }
+        router.replace(`${pathname}?${q}`, { scroll: false })
+    }
 
-    const [mode, setMode] = useState<Mode>('permission')
-    const [companyId, setCompanyId] = useState('')
-    const [permission, setPermission] = useState('')
+    // Asked of the server a moment after the typing stops, not per letter.
+    const [typed, setTyped] = useState('')
     const [search, setSearch] = useState('')
-    const [userId, setUserId] = useState('')
-
     useEffect(() => {
-        setTitle(t('who_can_title'))
-        setSubtitle(t('who_can_hint'))
-        return () => { setTitle(null); setSubtitle(null) }
-    }, [t, setTitle, setSubtitle])
+        const id = setTimeout(() => setSearch(typed.trim()), 250)
+        return () => clearTimeout(id)
+    }, [typed])
 
-    const { data: companiesResult } = useSWR(isSuperAdmin ? '/api/companies?limit=100' : null, fetcher)
-    const companies: { id: string; name: string }[] = companiesResult?.data?.data || companiesResult?.data || []
+    const asking = isSuperAdmin && !!company
+    const holders = useSWR(asking && mode === 'permission' && permission
+        ? `/api/roles/who-can?companyId=${company}&permission=${encodeURIComponent(permission)}` : null, fetcher)
+    const found = useSWR(asking && mode === 'person'
+        ? `/api/users?companyId=${company}&includeDeleted=false&limit=20&search=${encodeURIComponent(search)}` : null, fetcher, { keepPreviousData: true })
+    const person = useSWR(asking && mode === 'person' && personId ? `/api/roles/who-can?userId=${personId}` : null, fetcher)
 
-    const { data: holdersResult, isLoading: holdersLoading } = useSWR(
-        isSuperAdmin && mode === 'permission' && companyId && permission
-            ? `/api/roles/who-can?companyId=${companyId}&permission=${encodeURIComponent(permission)}` : null,
-        fetcher,
+    if (!isSuperAdmin) return <AccessDenied />
+
+    const tabs = (
+        <TabLinks label={t('who_can_title')} items={[
+            { href: `${pathname}?by=permission`, label: t('who_can_by_permission'), current: mode === 'permission' },
+            { href: `${pathname}?by=person`, label: t('who_can_by_person'), current: mode === 'person' },
+        ]} />
     )
-    const holders: Holder[] = holdersResult?.data?.holders ?? []
 
-    const { data: peopleResult } = useSWR(
-        isSuperAdmin && mode === 'person' && companyId
-            ? `/api/users?companyId=${companyId}&includeDeleted=false&limit=20&search=${encodeURIComponent(search)}` : null,
-        fetcher,
+    // Each fact kept apart from the next, so a name can't swap places with
+    // the words beside it in Arabic (company settings part 3c).
+    const facts = (items: string[]) => (
+        <span>{items.map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
     )
-    const people: { id: string; firstName: string; lastName: string }[] = peopleResult?.data?.data ?? []
-
-    const { data: personResult, isLoading: personLoading } = useSWR(
-        isSuperAdmin && mode === 'person' && userId ? `/api/roles/who-can?userId=${userId}` : null,
-        fetcher,
+    /** What's on screen while an answer loads, and when it didn't, with Try again. */
+    const pending = (answer: { error?: unknown; isValidating: boolean; mutate: () => unknown }) => answer.error ? (
+        <EmptyState icon={WarningCircleIcon} title={t('who_can_load_failed')} detail={(answer.error as SWRError).info?.error}
+            action={<Button busy={answer.isValidating} onClick={() => { void answer.mutate() }}>{t('try_again')}</Button>} />
+    ) : (
+        <div role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
     )
-    const person: PersonAccess | null = personResult?.data ?? null
 
-    if (session && !isSuperAdmin) return <AccessDenied />
-
-    const field = { display: 'flex', flexDirection: 'column' as const, gap: '0.3rem', flex: 1, minWidth: '14rem' }
-    const cell = { padding: '0.6rem 0.75rem', borderTop: '1px solid var(--veil-40)', textAlign: (isRtl ? 'right' : 'left') as 'right' | 'left' }
+    let body: ReactNode
+    if (!company) {
+        body = <Panel><EmptyState icon={BuildingsIcon} title={t('who_can_pick_company')} /></Panel>
+    } else if (mode === 'permission') {
+        const list: Holder[] | null = holders.data ? holders.data.data?.holders ?? [] : null
+        body = <>
+            <Card>
+                <Field label={t('who_can_permission')}>{p => (
+                    <Select {...p} name="permission" value={permission} onChange={e => go({ permission: e.target.value })}
+                        options={[{ value: '', label: t('who_can_permission_none') }]}
+                        groups={PERMISSION_GROUPS.map(g => ({ label: t(groupLabelKey(g.key)), options: g.permissions.map(code => ({ value: code, label: t(permissionLabelKey(code)) })) }))} />
+                )}</Field>
+            </Card>
+            {!permission ? (
+                <Panel><EmptyState icon={KeyIcon} title={t('who_can_choose_permission')} /></Panel>
+            ) : (
+                <Card title={t(permissionLabelKey(permission))}>
+                    {!list ? pending(holders) : list.length === 0 ? <EmptyState icon={ShieldCheckIcon} title={t('who_can_nobody')} /> : (
+                        <ul className="ui-rows ui-rows-flush" aria-label={t(permissionLabelKey(permission))}>
+                            {list.map(h => <Row key={h.user.id} title={<bdi>{h.user.name}</bdi>} detail={facts([roleLabel(h.role, t), t(scopeLabelKey(h.scope))])} />)}
+                        </ul>
+                    )}
+                </Card>
+            )}
+        </>
+    } else {
+        const people: Found[] | null = found.data ? found.data.data?.data ?? [] : null
+        const access: PersonAccess | null = person.data?.data ?? null
+        // A person of the company in view: the top bar can change under one picked.
+        const shown = access && (access.user.companyId === undefined || access.user.companyId === company) ? access : null
+        const [before, after] = t('who_can_through').split('{role}')
+        body = <>
+            <Card>
+                <Field label={t('who_can_find_person')}>{p => (
+                    <SearchInput {...p} name="search" autoComplete="off" value={typed} onChange={e => setTyped(e.target.value)} />
+                )}</Field>
+                <fieldset className="ui-field ui-fieldset">
+                    <legend className="ui-label">{t('who_can_person')}</legend>
+                    <div className="ui-checklist">
+                        {!people ? (found.error ? pending(found) : <p className="ui-hint" role="status">{t('loading')}</p>)
+                            : people.length === 0 ? <p className="ui-hint">{t('who_can_no_people')}</p>
+                            : people.map(p => (
+                                <label key={p.id} className="ui-choice">
+                                    <input type="radio" className="ui-radio" name="person" value={p.id} checked={p.id === personId} onChange={() => go({ person: p.id })} />
+                                    <bdi>{[p.firstName, p.lastName].filter(Boolean).join(' ')}</bdi>
+                                </label>
+                            ))}
+                    </div>
+                </fieldset>
+            </Card>
+            {!personId || (access && !shown) ? (
+                <Panel><EmptyState icon={UserIcon} title={t('who_can_pick_person')} /></Panel>
+            ) : !shown ? (
+                <Panel>{pending(person)}</Panel>
+            ) : (
+                <Card title={<bdi>{shown.user.name}</bdi>}>
+                    {shown.role && <p className="ui-card-note">{before}<bdi>{roleLabel(shown.role, t)}</bdi>{after}</p>}
+                    {shown.grants.length === 0 ? <EmptyState icon={ShieldCheckIcon} title={t('who_can_holds_nothing')} /> : PERMISSION_GROUPS.map(g => {
+                        const held = shown.grants.filter(gr => g.permissions.includes(gr.permission))
+                        if (held.length === 0) return null
+                        return (
+                            <section key={g.key} className="ui-subsection">
+                                <h3 className="ui-subsection-title">{t(groupLabelKey(g.key))}</h3>
+                                <ul className="ui-rows ui-rows-flush">
+                                    {held.map(gr => <Row key={gr.permission} title={t(permissionLabelKey(gr.permission))} detail={t(scopeLabelKey(gr.scope))} />)}
+                                </ul>
+                            </section>
+                        )
+                    })}
+                </Card>
+            )}
+        </>
+    }
 
     return (
-        <div style={{ direction: isRtl ? 'rtl' : 'ltr', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '56rem' }}>
-            <SegmentedToggle
-                value={mode}
-                onChange={(next: Mode) => { setMode(next); setUserId('') }}
-                ariaLabel={t('who_can_title')}
-                options={[
-                    { value: 'permission', label: t('who_can_by_permission') },
-                    { value: 'person', label: t('who_can_by_person') },
-                ]}
-            />
-
-            <div className="glass" style={{ padding: '1.25rem', borderRadius: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={field}>
-                    <label htmlFor="who-company">{t('who_can_company')}</label>
-                    <select id="who-company" className="input" value={companyId} onChange={e => { setCompanyId(e.target.value); setUserId('') }}>
-                        <option value="">—</option>
-                        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </div>
-                {mode === 'permission' ? (
-                    <div style={field}>
-                        <label htmlFor="who-permission">{t('who_can_permission')}</label>
-                        <select id="who-permission" className="input" value={permission} onChange={e => setPermission(e.target.value)}>
-                            <option value="">—</option>
-                            {PERMISSION_GROUPS.map(g => (
-                                <optgroup key={g.key} label={t(groupLabelKey(g.key))}>
-                                    {g.permissions.map(p => <option key={p} value={p}>{t(permissionLabelKey(p))}</option>)}
-                                </optgroup>
-                            ))}
-                        </select>
-                    </div>
-                ) : (
-                    <div style={field}>
-                        <label htmlFor="who-person">{t('who_can_person')}</label>
-                        <input id="who-person" className="input" value={search} disabled={!companyId} onChange={e => setSearch(e.target.value)} placeholder="…" />
-                        {companyId && !userId && people.length > 0 && (
-                            <div style={{ border: '1px solid var(--veil-40)', borderRadius: '0.5rem', maxHeight: '14rem', overflowY: 'auto' }}>
-                                {people.map(p => (
-                                    <button key={p.id} type="button" onClick={() => setUserId(p.id)}
-                                        style={{ display: 'block', width: '100%', textAlign: isRtl ? 'right' : 'left', padding: '0.5rem 0.75rem', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', font: 'inherit' }}>
-                                        {p.firstName} {p.lastName}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            <div className="glass" style={{ padding: '1.25rem', borderRadius: '1rem' }}>
-                {mode === 'permission' ? (
-                    !companyId || !permission ? <p style={{ color: 'var(--text-soft)', margin: 0 }}>{t('who_can_choose')}</p>
-                    : holdersLoading ? <LoadingSpinner />
-                    : holders.length === 0 ? <p style={{ margin: 0 }}>{t('who_can_nobody')}</p>
-                    : (
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr>
-                                    <th style={cell}>{t('who_can_person')}</th>
-                                    <th style={cell}>{t('who_can_role')}</th>
-                                    <th style={cell}>{t('who_can_scope')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {holders.map(h => (
-                                    <tr key={h.user.id}>
-                                        <td style={cell}>{h.user.name}</td>
-                                        <td style={cell}>{roleLabel(h.role, t)}</td>
-                                        <td style={cell}>{t(scopeLabelKey(h.scope))}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )
-                ) : (
-                    !userId ? <p style={{ color: 'var(--text-soft)', margin: 0 }}>{t('who_can_choose_person')}</p>
-                    : personLoading || !person ? <LoadingSpinner />
-                    : (
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                                <strong>{person.user.name}</strong>
-                                {person.role && <span style={{ color: 'var(--text-soft)' }}>{t('who_can_through').replace('{role}', roleLabel(person.role, t))}</span>}
-                                <button aria-label={t('change_person' as any)} type="button" onClick={() => setUserId('')} style={{ background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer' }}>✕</button>
-                            </div>
-                            {person.grants.length === 0 ? <p style={{ margin: 0 }}>{t('who_can_holds_nothing')}</p> : (
-                                PERMISSION_GROUPS.map(g => {
-                                    const held = person.grants.filter(gr => g.permissions.includes(gr.permission))
-                                    if (held.length === 0) return null
-                                    return (
-                                        <div key={g.key} style={{ marginBottom: '0.75rem' }}>
-                                            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{t(groupLabelKey(g.key))}</div>
-                                            {held.map(gr => (
-                                                <div key={gr.permission} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', borderTop: '1px solid var(--veil-40)' }}>
-                                                    <span>{t(permissionLabelKey(gr.permission))}</span>
-                                                    <span style={{ color: 'var(--text-soft)' }}>{t(scopeLabelKey(gr.scope))}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )
-                                })
-                            )}
-                        </div>
-                    )
-                )}
-            </div>
-        </div>
+        <Page>
+            <PageHeader title={t('who_can_title')} subtitle={t('who_can_hint')} />
+            {tabs}
+            {body}
+        </Page>
     )
 }

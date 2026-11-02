@@ -230,6 +230,33 @@
 .ui-control.has-start-icon > .ui-select {
   padding-inline-start: 36px;
 }
+/* A button inside the field's end, such as a password's Show (part 2b). */
+.ui-control.has-end-button > .ui-input {
+  padding-inline-end: 40px;
+}
+.ui-control-button {
+  position: absolute;
+  inset-inline-end: var(--space-1);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ui-control-button:hover {
+  color: var(--ink);
+}
+.ui-control-button:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 0;
+}
 .ui-input::placeholder {
   color: var(--muted);
   opacity: 1;
@@ -2517,6 +2544,14 @@ html[lang="ar"] .ui-empty-title {
   .ui-select {
     height: 44px;
     font-size: var(--text-lg);
+  }
+  .ui-control.has-end-button > .ui-input {
+    padding-inline-end: 48px;
+  }
+  .ui-control-button {
+    width: 40px;
+    height: 40px;
+    inset-inline-end: 2px;
   }
   .ui-page-header {
     flex-direction: column;

@@ -495,8 +495,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      time: Templates first, its role templates and policy templates
      merged in #168 on 2026-11-02 (public holidays moved in #146); then
      Access, in two parts: Role changes and Access reviews, whose lists
-     the company's Roles and access page shares, which open for review
-     in #169; then Super Admins and Who can; then Customers (Companies,
+     the company's Roles and access page shares, merged in #169 on
+     2026-11-02; then Super Admins and Who can, which open for review in
+     #170 and finish Access; then Customers (Companies,
      Packages, All users); then Operations (Check-ins, Audit logs,
      System health, System settings);
    - the one Requests page (§2.3), in five parts, the last merged in #139
@@ -2863,3 +2864,51 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the Super Admin's menu on a request was named for its role only, so
     two companies asking for "A new role" had menus of the same name. It's
     named for the role and the company.
+- **2026-11-02:** The Super Admin's pages part 2a was merged in #169. Part
+  2b, in #170, finishes the Access group: the Super Admins page and Who
+  can do this.
+  - both have the page header, where their names were the old top bar's;
+  - the Super Admins are a list, a table on computers and cards on
+    phones: the name, Protected as a badge, and the email. The status
+    column goes: the server sends every Super Admin as active, so its
+    "Online" was never true. The dialog that only repeated a row's name
+    and email goes too;
+  - Edit and Delete are in a menu named for the person, offered as the
+    server allows them: you edit yourself, and a protected Super Admin
+    edits the others and deletes any that isn't protected. Deleting asks
+    first in the building blocks' dialog, which stays open until it's
+    done, where an old confirmation window said "Deleting..." on its
+    button;
+  - Add a Super Admin is the building blocks' dialog: labelled fields,
+    the password with a button that shows it (`DESIGN.md` §5.3), gender
+    as two radio buttons, and Add, where the button said "Sign in".
+    What's wrong is said under its field on Add, an email someone already
+    has among it. The labels are new keys in sentence case, where they
+    were "First Name" and "Add Super Admin", and the delete question was
+    typed in English and Arabic in the page;
+  - editing says where an email changes: yours in Security settings,
+    which it links to, and someone else's only by them. It linked to your
+    own Security settings either way;
+  - a page past the first has the building blocks' pager;
+  - Who can is about the company in view, picked in the top bar as on
+    every other page, as Payroll is (decided on 2026-10-31); it had a
+    company select of its own. Until one is picked it says to pick one;
+  - its two questions, by permission and by person, are tabs, and what's
+    asked is kept in the address (`?permission=salary.view`,
+    `?by=person&person=…`), so a reload or a link opens on it. They were
+    a toggle, and a reload lost the question;
+  - by permission: the permission is a labelled select of its groups;
+    who holds it are rows in a card named for it, each person with their
+    role and scope as facts, where it was a table that scrolled sideways
+    on a phone;
+  - by person: the person is found by a labelled search, which asks the
+    server once the typing stops, and picked from radio buttons in a box
+    that scrolls; what they may do is a card named for them, the role
+    they have it through as its note, the permissions group by group as
+    rows. A person of another company isn't shown when the top bar
+    changes;
+  - each answer says while it loads, and when it didn't with the
+    server's reason and Try again, where it was a spinner and a failed
+    load said nobody held it;
+  - 8 labels only the old pages used, and the --info-bg-indigo-subtle and
+    --accent-deep colours only the Protected badge used, are removed.

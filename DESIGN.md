@@ -378,6 +378,10 @@ These are built once, in the building-blocks PR, and every page uses them
   - when focused, a 2px `--brand-text` ring;
   - when it can't be changed, it's on `--page`, with a `--rule` edge and
     `--ink-2` text, and its hint says why.
+- **A password** is a field with a button at its end that shows what's
+  typed, and hides it again. The button shows only an eye, so it's named
+  for which it will do ("Show password") and says so on hover (§5.2).
+  Creating one, its hint says how long it must be.
 - **A text area** is a field for more than one line, at least 88px tall,
   with how many characters are left as its hint when there's a limit.
 - **A choice between a few options,** such as where a deduction comes
@@ -1016,3 +1020,6 @@ changed:
   card's head (§5.3). Role change requests and access reviews had their
   own pills for status, and an outline or a yellow fill for the one a
   notification opened.
+- **2026-11-02:** A password field (§5.3): a button at its end shows the
+  password and hides it again. The Super Admins page had an eye of its
+  own making, placed by hand on each side for each language.

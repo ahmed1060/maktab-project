@@ -53,8 +53,16 @@ describe("icon-only buttons", () => {
                 return { at: `${f}: ${m[1]}`, named: /aria-label=\{\w+ \? t\('hide_password' as any\) : t\('show_password' as any\)\}/.test(before) }
             })
         })
-        expect(toggles.length).toBeGreaterThanOrEqual(5)
+        // Four left: the Super Admins page's moved onto the building blocks'
+        // password field (part 2b), whose button is named below.
+        expect(toggles.length).toBeGreaterThanOrEqual(4)
         expect(toggles.filter(t => !t.named).map(t => t.at)).toEqual([])
+    })
+
+    it("the building blocks' password field names its button for which it will do", () => {
+        const field = readFileSync("components/ui/Field.tsx", "utf8")
+        expect(field).toContain("const name = t(shown ? 'hide_password' : 'show_password')")
+        expect(field).toContain("aria-label={name} title={name}")
     })
 })
 
