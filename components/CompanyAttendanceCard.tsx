@@ -103,7 +103,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
     const digits = (text: string) => locale === 'ar' ? text.replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[Number(d)]) : text
     const ctx: Ctx = {
         companyId, data, active, editable, busy, locale, t, send, setEditing, setMakingDefault, setMoving, setAddingHoliday,
-        confirm: setConfirming, setYear, weekdayName, dateText, digits,
+        askFirst: setConfirming, setYear, weekdayName, dateText, digits,
         timeRange: (start, end) => t('attendance_time_range').replace('{start}', digits(formatMinutes(start))).replace('{end}', digits(formatMinutes(end))),
         dateRange: (start, end) => t('attendance_date_range').replace('{start}', dateText(start)).replace('{end}', dateText(end)),
     }

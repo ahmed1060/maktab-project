@@ -12,7 +12,7 @@ import type { Ctx, Schedule } from './types'
  * with New schedule and the default changes to come, then a card for each.
  */
 export function SchedulesCard({ ctx }: { ctx: Ctx }) {
-    const { t, active, editable, setEditing, data, dateText, confirm, send } = ctx
+    const { t, active, editable, setEditing, data, dateText, askFirst, send } = ctx
     // Default changes still to come, each withdrawable until payroll locks it.
     const upcomingDefaults = data.defaults.filter(d => d.effectiveFrom > data.today)
     const nameOf = (id: string) => data.schedules.find(s => s.id === id)?.name ?? ''
@@ -33,7 +33,7 @@ export function SchedulesCard({ ctx }: { ctx: Ctx }) {
                                 title={fill(t('attendance_default_from'), { name: <bdi>{nameOf(d.scheduleId)}</bdi>, date: dateText(d.effectiveFrom) })}
                                 end={editable && (
                                     <Button size="sm" variant="quiet" aria-label={t('attendance_withdraw_named').replace('{name}', line)}
-                                        onClick={() => confirm({
+                                        onClick={() => askFirst({
                                             title: t('attendance_withdraw_title'),
                                             body: t('attendance_withdraw_default_body'),
                                             confirm: t('attendance_withdraw'),
@@ -57,7 +57,7 @@ export function SchedulesCard({ ctx }: { ctx: Ctx }) {
  * be done to it in a menu named for it.
  */
 export function ScheduleCard({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
-    const { t, locale, data, editable, send, setEditing, setMakingDefault, confirm, weekdayName, dateText, timeRange, dateRange, digits } = ctx
+    const { t, locale, data, editable, send, setEditing, setMakingDefault, askFirst, weekdayName, dateText, timeRange, dateRange, digits } = ctx
     const isDefault = defaultOn(data.defaults, data.today) === schedule.id
     const willBeDefault = data.defaults.some(d => d.effectiveFrom > data.today && d.scheduleId === schedule.id)
     const current = versionOn(schedule.versions, data.today)
@@ -76,7 +76,7 @@ export function ScheduleCard({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }
         // The default, or one that's about to be, can't go: someone would be left on nothing.
         ...(!isDefault && !willBeDefault ? [{
             key: 'archive', label: t('attendance_archive'), icon: ArchiveIcon, danger: true,
-            onSelect: () => confirm({
+            onSelect: () => askFirst({
                 title: t('attendance_archive_title').replace('{name}', schedule.name),
                 body: t('attendance_archive_body'),
                 confirm: t('attendance_archive'),
@@ -122,7 +122,7 @@ export function ScheduleCard({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }
                                     detail={timeRange(v.startMinutes, v.endMinutes)}
                                     end={editable && (
                                         <Button size="sm" variant="quiet" aria-label={t('attendance_withdraw_named').replace('{name}', from)}
-                                            onClick={() => confirm({
+                                            onClick={() => askFirst({
                                                 title: t('attendance_withdraw_title'),
                                                 body: t('attendance_withdraw_hours_body'),
                                                 confirm: t('attendance_withdraw'),
@@ -154,7 +154,7 @@ export function ScheduleCard({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }
                                         { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing({ kind: 'override', schedule, override: o }) },
                                         {
                                             key: 'remove', label: t('remove'), icon: TrashIcon, danger: true,
-                                            onSelect: () => confirm({
+                                            onSelect: () => askFirst({
                                                 title: t('attendance_remove_title').replace('{name}', o.name),
                                                 body: t('attendance_override_remove_body'),
                                                 confirm: t('remove'),

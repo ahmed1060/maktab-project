@@ -11,7 +11,7 @@ import type { Ctx } from './types'
  * company's own, each removable. Adding one is a dialog of its own.
  */
 export function HolidaysCard({ ctx }: { ctx: Ctx }) {
-    const { t, locale, data, editable, busy, send, confirm, dateText, companyId, setYear, setAddingHoliday } = ctx
+    const { t, locale, data, editable, busy, send, askFirst, dateText, companyId, setYear, setAddingHoliday } = ctx
     const h = data.holidays
     const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const years = yearsAround(Number(data.today.slice(0, 4)), h.year)
@@ -63,7 +63,7 @@ export function HolidaysCard({ ctx }: { ctx: Ctx }) {
                                     {!o.isPaid && <StatusBadge tone="neutral">{t('attendance_unpaid')}</StatusBadge>}
                                     {editable && (
                                         <Button size="sm" variant="quiet" aria-label={t('attendance_remove_named').replace('{name}', o.name)}
-                                            onClick={() => confirm({
+                                            onClick={() => askFirst({
                                                 title: t('attendance_remove_title').replace('{name}', o.name),
                                                 body: t('attendance_holiday_remove_body').replace('{date}', dateText(o.date)),
                                                 confirm: t('remove'),

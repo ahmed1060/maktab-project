@@ -13,7 +13,7 @@ import type { Ctx } from './types'
  * people is a dialog of its own (MoveDialog).
  */
 export function PeopleCard({ ctx }: { ctx: Ctx }) {
-    const { t, data, active, editable, send, confirm, dateText, setMoving } = ctx
+    const { t, data, active, editable, send, askFirst, dateText, setMoving } = ctx
 
     const rows = useMemo(() => data.people.map(p => {
         const mine = data.assignments.filter(a => a.userId === p.id)
@@ -48,7 +48,7 @@ export function PeopleCard({ ctx }: { ctx: Ctx }) {
                                         <span className="ui-hint">{fill(t('attendance_next_move'), { name: <bdi>{nameOf(r.next.scheduleId)}</bdi>, date: dateText(r.next.effectiveFrom) })}</span>
                                         {editable && (
                                             <Button size="sm" variant="quiet" aria-label={t('attendance_withdraw_named').replace('{name}', next)}
-                                                onClick={() => confirm({
+                                                onClick={() => askFirst({
                                                     title: t('attendance_withdraw_title'),
                                                     body: t('attendance_withdraw_move_body').replace('{name}', r.name),
                                                     confirm: t('attendance_withdraw'),

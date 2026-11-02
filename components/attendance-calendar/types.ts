@@ -52,7 +52,8 @@ export type Ctx = {
     setMakingDefault: (s: Schedule) => void
     setMoving: (moving: boolean) => void
     setAddingHoliday: (adding: boolean) => void
-    confirm: (c: Confirming) => void
+    /** Asks before a change that can't be taken back by itself, in a dialog. */
+    askFirst: (c: Confirming) => void
     setYear: (y: number) => void
     weekdayName: (d: number) => string
     dateText: (date: string) => string
