@@ -300,6 +300,16 @@ describe("found in the browser and the audit (company settings part 3c)", () => 
         expect(places).toContain("<bdi>Youssef Ali</bdi>")
     })
 
+    it("runs a row's facts on as one line of text, with no gap before each comma", async () => {
+        // A row's detail lays out its icon and text with a gap between them,
+        // so each fact and each comma took a gap of its own: "150 m , Everyone".
+        const terms = await render("AttendanceTerminalsPanel", terminals())
+        expect(terms).toContain(`<span class="ui-item-detail"><span><bdi>FRONT-DESK</bdi>`)
+        expect(terms).toContain(`<span class="ui-item-detail"><span><bdi>${en.att_term_serial} ZK-001</bdi>`)
+        const places = await render("AttendanceLocationsPanel", { [PLACES]: ok(PLACE_LIST) })
+        expect(places).toMatch(new RegExp(`<span class="ui-item-detail"><span><bdi>150 m</bdi>[^]*?${en.att_loc_map}</a></span></span>`))
+    })
+
     it("says how a terminal reads scans only once there's a terminal", async () => {
         // With none, it ran on from "No terminal yet" as one paragraph.
         const none = await render("AttendanceTerminalsPanel", { [AGENTS]: ok(AGENT_LIST), [DEVICES]: ok({ devices: [] }) })

@@ -77,10 +77,12 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const number = (n: number) => n.toLocaleString(intl)
     // Each fact kept apart from the next, so a host name or a version can't
-    // swap places with the words beside it in Arabic (audit on part 3c).
-    const facts = (items: (string | null | false | undefined)[]): ReactNode => items.filter(Boolean).map((x, i) => (
-        <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>
-    ))
+    // swap places with the words beside it in Arabic (audit on part 3c), and
+    // all of them in one span: the detail line puts a gap between its
+    // children, which put one before each comma.
+    const facts = (items: (string | null | false | undefined)[]): ReactNode => (
+        <span>{items.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
+    )
 
     const ago = (iso: string | null) => {
         if (!iso) return t('att_term_never')

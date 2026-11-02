@@ -2636,3 +2636,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   where the test that each keeps its window open until its work is done
   checked its search by finding more than 30. It checks now that it
   finds every one written, however many are left.
+- **2026-11-02:** Found in the browser on #164: a terminal's or a
+  place's facts read "150 m , Everyone , Map", with a gap before each
+  comma. A row's detail line puts a gap between its children, for its
+  icon, and each fact and comma was a child of its own. They're one
+  line of text in one span now.

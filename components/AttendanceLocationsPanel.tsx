@@ -122,8 +122,9 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
                                 <bdi>{l.name}</bdi>
                                 {l.archivedAt && <>{' '}<StatusBadge tone="neutral">{t('att_loc_archived_badge')}</StatusBadge></>}
                             </>}
-                            // Each fact kept apart from the next, a person's name among them (audit on part 3c).
-                            detail={<>
+                            // Each fact kept apart from the next, a person's name among them (audit on part 3c),
+                            // all in one span: the detail line puts a gap between its children.
+                            detail={<span>
                                 {[
                                     t('att_loc_radius_m').replace('{n}', number(l.radiusMeters)),
                                     ...(l.officeIpRanges.length > 0 ? [t('att_loc_ip_line').replace('{n}', number(l.officeIpRanges.length))] : []),
@@ -131,7 +132,7 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
                                 ].map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}
                                 {t('list_separator')}
                                 <a href={mapLink(l)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a>
-                            </>}
+                            </span>}
                             end={!readOnly && <RowMenu label={t('ui_more_actions_for').replace('{name}', l.name)} tooltip={t('ui_more_actions')} items={menu(l)} />}
                         />
                     ))}
