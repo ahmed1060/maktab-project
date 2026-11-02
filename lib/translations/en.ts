@@ -2941,7 +2941,11 @@ export const en = {
         roles_base_role: "Base role",
         roles_base_role_hint: "Decides team rules and where the person appears. It cannot change once anyone holds the role.",
         roles_template: "Template",
-        roles_affects: "This affects {count} people.",
+        roles_affects: "This affects {count}.",
+        // Company settings part 4c: the role editor on the building blocks.
+        roles_group_held: "{held} of {total}",
+        roles_name_required: "Give the role a name.",
+        sod_acknowledge_required: "Tick this to keep both, or untick one of the pair.",
         roles_apply_now: "Apply now: sign them out so it takes effect at once",
         roles_apply_later_hint: "Otherwise it reaches them within about a minute.",
         roles_save: "Save",

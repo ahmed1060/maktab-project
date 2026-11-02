@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { CaretDownIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { Icon, Select, StatusBadge } from '@/components/ui'
 import { PERMISSIONS, type Permission, type Scope } from '@/lib/permissions/catalogue'
 import type { Grants } from '@/lib/permissions/grants'
 import { hasModule, deserializeAccess, type SerializedAccess } from '@/lib/features/bundles'
@@ -20,6 +22,10 @@ import {
  * company's package are greyed, not hidden: the grant is kept and starts
  * working if the package changes. With `template`, rows that differ from it are
  * marked — a company's role drifting from what it was copied from.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, company settings part 4c):
+ * each group a row that opens, as a person's pay on Payroll does, and what a
+ * row's greying or marking means said under it, where it was only a tooltip.
  */
 type Props = {
     grants: Grants
@@ -32,7 +38,7 @@ type Props = {
 
 export default function PermissionMatrix({ grants, onChange, disabled = false, access, template }: Props) {
     const { t, locale } = useLanguage()
-    const isRtl = locale === 'ar'
+    const id = useId()
     const [open, setOpen] = useState<Record<string, boolean>>({})
     const [compare, setCompare] = useState(false)
 
@@ -40,113 +46,89 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
     const needed = neededBy(grants)
     const drifted = compare && template ? drift(grants, template) : new Set<Permission>()
     const label = (p: Permission) => t(permissionLabelKey(p))
+    const number = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
 
     return (
-        <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                <strong>{t('roles_permissions')}</strong>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>
-                    {t('roles_selected').replace('{count}', String(Object.keys(grants).length))}
-                </span>
-                {template && (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={compare} onChange={e => setCompare(e.target.checked)} />
-                        {t('roles_compare_template')}
-                    </label>
-                )}
+        <section className="ui-perm-matrix" aria-labelledby={`${id}-title`}>
+            <div className="ui-perm-head">
+                <h3 className="ui-subsection-title" id={`${id}-title`}>{t('roles_permissions')}</h3>
+                <span className="ui-hint">{t('roles_selected').replace('{count}', number(Object.keys(grants).length))}</span>
             </div>
+            {template && (
+                <label className="ui-choice">
+                    <input type="checkbox" className="ui-check" name="compare" checked={compare} onChange={e => setCompare(e.target.checked)} />
+                    {t('roles_compare_template')}
+                </label>
+            )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <ul className="ui-rows ui-rows-flush ui-perm-groups">
                 {PERMISSION_GROUPS.map(group => {
                     const held = group.permissions.filter(p => grants[p]).length
                     const isOpen = open[group.key] ?? held > 0
+                    const listId = `${id}-${group.key}`
+                    const name = t(groupLabelKey(group.key))
                     return (
-                        <div key={group.key} style={{ border: '1px solid var(--veil-40)', borderRadius: '0.75rem', overflow: 'hidden' }}>
-                            <button
-                                type="button"
-                                onClick={() => setOpen({ ...open, [group.key]: !isOpen })}
-                                aria-expanded={isOpen}
-                                style={{
-                                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '0.6rem 0.9rem', background: 'var(--panel-70)', border: 'none', cursor: 'pointer',
-                                    color: 'inherit', font: 'inherit', flexDirection: isRtl ? 'row-reverse' : 'row',
-                                }}
-                            >
-                                <span style={{ fontWeight: 600 }}>{t(groupLabelKey(group.key))}</span>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>
-                                    {held}/{group.permissions.length} {isOpen ? '▾' : '▸'}
-                                </span>
-                            </button>
-                            {isOpen && (
-                                <div>
-                                    {group.permissions.map(p => {
-                                        const def = PERMISSIONS[p]
-                                        const scope = grants[p]
-                                        const scopes = def.scopes as readonly Scope[]
-                                        const outside = !!features && def.module !== null && !hasModule(features, def.module)
-                                        const requiredBy = scope ? needed[p] : undefined
-                                        const risk = riskLabelKey(p)
-                                        return (
-                                            <div
-                                                key={p}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.9rem',
-                                                    borderTop: '1px solid var(--veil-40)', flexDirection: isRtl ? 'row-reverse' : 'row',
-                                                    opacity: outside ? 0.5 : 1,
-                                                    background: drifted.has(p) ? 'var(--warn-bg-yellow-subtle)' : undefined,
-                                                }}
-                                                title={outside ? t('roles_not_in_package') : drifted.has(p) ? t('roles_differs') : undefined}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    id={`perm-${p}`}
-                                                    checked={!!scope}
-                                                    // A row another ticked row needs would only come back.
-                                                    disabled={disabled || !!requiredBy?.length}
-                                                    onChange={e => onChange(setGrant(grants, p, e.target.checked ? widestScope(p) : null))}
-                                                    style={{ width: '1rem', height: '1rem', flexShrink: 0 }}
-                                                />
-                                                <label htmlFor={`perm-${p}`} style={{ flex: 1, cursor: disabled ? 'default' : 'pointer' }}>
-                                                    <div>
-                                                        {label(p)}
-                                                        {risk && (
-                                                            <span style={{ marginInlineStart: '0.5rem', fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '999px', background: 'var(--danger-bg-subtle)', color: 'var(--danger-fg)' }}>
-                                                                {t(risk)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {!!requiredBy?.length && (
-                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>
-                                                            {t('roles_needed_by').replace('{name}', requiredBy.map(label).join(', '))}
-                                                        </div>
-                                                    )}
-                                                    {outside && (
-                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-soft)' }}>{t('roles_not_in_package')}</div>
-                                                    )}
+                        <li key={group.key}>
+                            <div className="ui-row">
+                                <button type="button" className="ui-row-main ui-row-toggle" aria-expanded={isOpen} aria-controls={listId}
+                                    onClick={() => setOpen({ ...open, [group.key]: !isOpen })}>
+                                    <span className="ui-item-title">{name}<Icon icon={CaretDownIcon} size={16} className="ui-row-caret" /></span>
+                                    <span className="ui-item-detail">{t('roles_group_held').replace('{held}', number(held)).replace('{total}', number(group.permissions.length))}</span>
+                                </button>
+                            </div>
+                            {/* There while closed, hidden, so the button always names what it opens. */}
+                            <ul id={listId} className="ui-perm-rows" aria-label={name} hidden={!isOpen}>
+                                {group.permissions.map(p => {
+                                    const def = PERMISSIONS[p]
+                                    const scope = grants[p]
+                                    const scopes = def.scopes as readonly Scope[]
+                                    const outside = !!features && def.module !== null && !hasModule(features, def.module)
+                                    const requiredBy = scope ? needed[p] : undefined
+                                    const risk = riskLabelKey(p)
+                                    const differs = drifted.has(p)
+                                    // Why it's greyed or marked, tied to its box so a screen
+                                    // reader says it too (audit on part 4c).
+                                    const notes = [
+                                        ...(requiredBy?.length ? [t('roles_needed_by').replace('{name}', requiredBy.map(label).join(t('list_separator')))] : []),
+                                        ...(outside ? [t('roles_not_in_package')] : []),
+                                        ...(differs ? [t('roles_differs')] : []),
+                                    ]
+                                    const noteId = (i: number) => `${listId}-${p}-${i}`
+                                    return (
+                                        <li key={p} data-outside={outside || undefined} data-drift={differs || undefined}>
+                                            <span className="ui-perm-main">
+                                                <label className="ui-choice">
+                                                    <input type="checkbox" className="ui-check" name={`perm-${p}`}
+                                                        aria-describedby={notes.length ? notes.map((_, i) => noteId(i)).join(' ') : undefined}
+                                                        checked={!!scope}
+                                                        // A row another ticked row needs would only come back.
+                                                        disabled={disabled || !!requiredBy?.length}
+                                                        onChange={e => onChange(setGrant(grants, p, e.target.checked ? widestScope(p) : null))} />
+                                                    {label(p)}
                                                 </label>
-                                                {scopes.length > 1 ? (
-                                                    <select
-                                                        value={scope ?? ''}
-                                                        disabled={disabled || !scope}
-                                                        onChange={e => onChange(setGrant(grants, p, e.target.value as Scope))}
-                                                        aria-label={t('who_can_scope')}
-                                                        style={{ minWidth: '9rem' }}
-                                                    >
-                                                        {!scope && <option value="">—</option>}
-                                                        {scopes.map(s => <option key={s} value={s}>{t(scopeLabelKey(s))}</option>)}
-                                                    </select>
-                                                ) : (
-                                                    <span style={{ minWidth: '9rem', fontSize: '0.8rem', color: 'var(--text-soft)' }}>{t(scopeLabelKey(scopes[0]))}</span>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                                {risk && <StatusBadge tone="problem">{t(risk)}</StatusBadge>}
+                                                {notes.map((note, i) => <span key={i} id={noteId(i)} className="ui-hint ui-choice-hint">{note}</span>)}
+                                            </span>
+                                            {scopes.length > 1 ? (
+                                                <Select
+                                                    name={`scope-${p}`}
+                                                    aria-label={`${t('who_can_scope')}: ${label(p)}`}
+                                                    value={scope ?? ''}
+                                                    disabled={disabled || !scope}
+                                                    onChange={e => onChange(setGrant(grants, p, e.target.value as Scope))}
+                                                    options={[...(scope ? [] : [{ value: '', label: '—' }]), ...scopes.map(s => ({ value: s, label: t(scopeLabelKey(s)) }))]}
+                                                />
+                                            ) : (
+                                                <span className="ui-perm-scope">{t(scopeLabelKey(scopes[0]))}</span>
+                                            )}
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+                        </li>
                     )
                 })}
-            </div>
-        </div>
+            </ul>
+        </section>
     )
 }

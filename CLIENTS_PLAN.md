@@ -2203,3 +2203,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-02:** Company settings part 4a was merged in #165. The Roles
   tab moves onto the building blocks in #166 (`UI_PLAN.md` §5), and its
   role editor after it. It doesn't touch clients or locations.
+- **2026-11-02:** Company settings part 4b was merged in #166. The role
+  editor and its permission matrix move onto the building blocks in
+  #167 (`UI_PLAN.md` §5), which finishes company settings. It doesn't
+  touch clients or locations; the clients and locations permissions are
+  rows in the matrix like the others.

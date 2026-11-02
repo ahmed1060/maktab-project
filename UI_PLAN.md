@@ -488,9 +488,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      and face checks, merged in #164 on 2026-11-02; then the Super
      Admin's own tabs, in three parts: Admin access and Modules, merged
      in #165 on 2026-11-02; then the Roles tab, its copy dialog and its
-     access review, which open for review in #166; then the role
-     editor and its permission matrix, which the role templates page
-     shares. Then the Super Admin's pages;
+     access review, merged in #166 on 2026-11-02; then the role editor
+     and its permission matrix, which the role templates page shares,
+     which open for review in #167 and finish company settings. Then
+     the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2723,3 +2724,36 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the language counts, "1 month", "٣ أشهر";
   - while the companies to copy from load, the copy dialog's list said
     only "Choose a company". It says they're loading under the field.
+- **2026-11-02:** Company settings part 4b was merged in #166. The role
+  editor and its permission matrix, which the Roles tab and the role
+  templates page share, move onto the building blocks in #167, the last
+  of company settings:
+  - the editor is the building blocks' dialog: a template to start from,
+    the name, description and base role as labelled fields, the base
+    role's explanation under it. A built-in role's name shows in the
+    page's language and is kept; a held role's base is kept;
+  - Save says what's wrong under the field: a role with no name, or a
+    new pair of duties auditors look for not kept on purpose. Save was
+    off without a word in both;
+  - the pairs auditors look for, and how many people a change reaches,
+    are notes of their own in the dialog, with their meaning's bar, the
+    count as the language counts it ("This affects 1 employee", where it
+    read "1 people");
+  - the built-in Admin says why it can't be changed and offers only
+    Close, where Save was there and off;
+  - the permission matrix's groups are rows that open, as a person's pay
+    on Payroll does, with how many of each group are held. Each
+    permission is a checkbox named for it, its risk a badge, its scope a
+    select named for the permission ("Scope: See employees"), where every
+    scope select was only "Scope";
+  - what greys or marks a permission is said under it: not in the
+    company's package, needed by another, or different from the template
+    it was copied from, where the last two were only a tooltip.
+- **2026-11-02:** Found in the browser and the interface audit on #167:
+  - in the building blocks' 440px dialog, each permission's scope
+    wrapped under it, doubling the list on a computer. The role editor's
+    dialog is up to 640px wide, so the scope sits beside it (`DESIGN.md`
+    §5.5, Dialog); on a phone it's under it still;
+  - why a permission is greyed or marked (needed by another, not in the
+    package, different from the template) wasn't tied to its checkbox,
+    so a screen reader on a greyed box didn't say why. It is now.
