@@ -285,7 +285,7 @@ describe("the policy", () => {
         const overtime = (await (await (await import("@/app/api/attendance/policy/simulate/route")).POST(withBody("POST", "/api/attendance/policy/simulate", { body: POLICY.body, month: "2026-06" }))).json()).data
         expect(overtime.people[0]).toMatchObject({ overtimeChanged: true, current: { overtimeMinor: null }, draft: { overtimeMinor: null } })
         expect(overtime.totals.overtimeChanged).toBe(true)
-        expect(readFileSync("components/AttendancePolicyPanel.tsx", "utf8")).toContain("|| !!x.overtimeChanged) ?? []")
+        expect(readFileSync("components/attendance-policy/Simulation.tsx", "utf8")).toContain("|| !!x.overtimeChanged) ?? []")
     })
 
     it("has templates only the Super Admin keeps", async () => {

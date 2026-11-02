@@ -2187,3 +2187,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   Attendance tab moves onto the building blocks in three parts, the
   calendar first in #162 (`UI_PLAN.md` §5). It doesn't touch clients or
   locations.
+- **2026-11-02:** Company settings part 3a was merged in #162. The
+  attendance policy moves onto the building blocks in #163
+  (`UI_PLAN.md` §5), with the dialog the policy templates page shares.
+  It doesn't touch clients or locations.

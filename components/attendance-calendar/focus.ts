@@ -6,6 +6,9 @@
 export function focusFirstWrong(form: HTMLFormElement | null) {
     requestAnimationFrame(() => {
         const wrong = [...(form?.querySelectorAll<HTMLElement>('.ui-field') ?? [])].find(f => f.querySelector(':scope > .ui-error'))
-        wrong?.querySelector<HTMLElement>('input, select, textarea, button')?.focus()
+        // The control marked wrong, where the field says which: a policy band's
+        // end, not the band's Remove before it (company settings part 3b).
+        const target = wrong?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? wrong?.querySelector<HTMLElement>('input, select, textarea, button')
+        target?.focus()
     })
 }

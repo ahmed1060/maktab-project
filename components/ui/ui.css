@@ -448,6 +448,13 @@
   justify-content: space-between;
   gap: var(--space-3);
 }
+/* A head with more than one button, such as the attendance policy's Start
+   from a template and Change policy, wraps them under the title when they
+   don't fit beside it: on a phone they ran past the card's edge and widened
+   the page (company settings part 3b). */
+.ui-card-head:has(> .ui-btn + .ui-btn) {
+  flex-wrap: wrap;
+}
 .ui-card-title {
   margin: 0;
   font-size: var(--text-xl);
@@ -509,6 +516,54 @@
 .ui-day-hours > .ui-control {
   flex: 1 1 120px;
   min-width: 0;
+}
+/* A lateness rule's bands (company settings part 3b), one under the other.
+   Each says where it starts, with Remove on the end side; under that, its
+   end (or that it runs on) and its cost side by side, half each, so a cost
+   such as "ثلاثة أرباع يوم" isn't cut short on a phone. */
+.ui-bands {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ui-band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ui-band-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 36px;
+}
+.ui-band-from,
+.ui-band-open {
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+}
+.ui-band-fields {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-band-fields > .ui-control,
+.ui-band-fields > .ui-band-open {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* A choice's name with what it's for under it, such as a policy template's
+   description (company settings part 3b). */
+.ui-choice-text {
+  display: flex;
+  flex-direction: column;
+}
+/* What a policy change makes of one person's month, beside their row. */
+.ui-sim-difference {
+  font-weight: 600;
+  white-space: nowrap;
 }
 /* A checkbox with a line under it saying what it means: the line starts
    where the checkbox's label does. */
@@ -787,6 +842,13 @@
 }
 .ui-detail a {
   color: var(--brand-text);
+}
+/* A detail of several lines, such as a policy rule's grace, bands and cap
+   (company settings part 3b): one under the other, with no marks. */
+.ui-detail-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .ui-detail a:focus-visible {
   outline: 2px solid var(--brand-text);
