@@ -101,8 +101,9 @@ describe("the company settings tabs", () => {
         expect(TABS).toContain("<UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>")
         expect(TABS).toContain("if ('go' in next) return next.go()")
         const roles = readFileSync("components/CompanyRolesCard.tsx", "utf8")
-        expect(roles).toContain("onClick={() => leave(() => preview(role))}")
-        expect(roles).not.toContain("onClick={() => preview(role)}")
+        // Preview is in each role's menu since part 4b.
+        expect(roles).toContain("onSelect: () => leave(() => preview(role))")
+        expect(roles).not.toContain("onSelect: () => preview(role)")
     })
 
     it("keep the edits guarded until Preview has gone, and stay if it fails (review on #49)", () => {

@@ -486,9 +486,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      templates page shares, merged in #163 on 2026-11-02; then the
      panels for attendance in pay, the terminals, the check-in places
      and face checks, merged in #164 on 2026-11-02; then the Super
-     Admin's own tabs, in two parts: Admin access and Modules, which
-     open for review in #165; then Roles, with its role editor, which
-     the role templates page shares. Then the Super Admin's pages;
+     Admin's own tabs, in three parts: Admin access and Modules, merged
+     in #165 on 2026-11-02; then the Roles tab, its copy dialog and its
+     access review, which open for review in #166; then the role
+     editor and its permission matrix, which the role templates page
+     shares. Then the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2690,3 +2692,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the line saying Roles, Modules and Admin access stay the Super
     Admin's wasn't tied to the tabs it's about. The group of tabs is
     described by it now.
+- **2026-11-02:** Company settings part 4a was merged in #165. The
+  Roles tab is split in two: its role editor and permission matrix,
+  which the role templates page shares, go on their own as part 4c.
+  The rest of the tab moves onto the building blocks in #166:
+  - the roles are a card's rows, with Export, Copy roles from and New
+    role in its head. Each says what it is in badges (built in, locked,
+    the default for new accounts) and one line of facts: what a role of
+    the company's own is based on, how many hold it and how many
+    permissions it has, as the language counts them, where it read
+    "1 people";
+  - what can be done to a role is in a menu named for it: Edit,
+    Preview, Make default and Delete, only where they apply. They were
+    four links side by side on every row;
+  - deleting asks first in the building blocks' dialog, in the danger
+    colour, which stays open until it's done; it closed even when the
+    delete failed. The roles say when they're loading, and when they
+    didn't load, with Try again, where the card showed no roles;
+  - copying roles from another company is the building blocks' dialog,
+    the company a labelled field. Copy with none chosen says so under
+    it, where the button was off without a word, and companies that
+    didn't load say so, with Try again;
+  - the periodic access review is a card of its own under the roles: the
+    switch with its explanation under it, how often as a labelled field,
+    greyed while it's off, and the next review's day in the page's
+    language.

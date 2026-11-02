@@ -1,17 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { fetcher } from '@/lib/swr-fetcher'
+import { CopyIcon, DownloadSimpleIcon, EyeIcon, HourglassIcon, PencilSimpleIcon, PlusIcon, StarIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import ConfirmModal from '@/components/ConfirmModal'
+import { Button, Card, Dialog, EmptyState, Icon, Row, RowMenu, StatusBadge, type MenuItem } from '@/components/ui'
 import CopyRolesModal from '@/components/CopyRolesModal'
 import AccessReviewSetting, { type ReviewSetting } from '@/components/AccessReviewSetting'
 import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import type { SerializedAccess } from '@/lib/features/bundles'
+import { countOf } from '@/lib/plural'
 import { BUILT_IN_LABEL, roleLabel } from '@/lib/role-label'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useLeaveGuard } from '@/lib/useUnsavedChanges'
@@ -20,6 +22,10 @@ import { useLeaveGuard } from '@/lib/useUnsavedChanges'
  * A company's roles, in its settings (ROLES_PLAN.md §6.2): how many people hold
  * each, which one new accounts start on, and New role → from a template or
  * from scratch. The Super Admin's; the page already checks.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, company settings part 4b):
+ * a card with the roles as rows, what can be done to each in a menu named
+ * for it, and the periodic access review in a card of its own.
  */
 
 type Role = EditableRole & { id: string; companyId: string; version: number; isDefault: boolean; holders: number; locked: boolean; builtIn: BaseRole | null }
@@ -34,9 +40,8 @@ export async function refusalOf(res: Response, fallback: string): Promise<string
 export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
-    const isRtl = locale === 'ar'
 
-    const { data, mutate } = useSWR(`/api/roles?companyId=${companyId}`, fetcher)
+    const { data, error, isValidating, mutate } = useSWR(`/api/roles?companyId=${companyId}`, fetcher)
     const { data: templatesData } = useSWR('/api/role-templates', fetcher)
     const roles: Role[] = data?.data?.roles ?? []
     const access: SerializedAccess | null = data?.data?.access ?? null
@@ -45,6 +50,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
 
     const [editing, setEditing] = useState<Role | 'new' | null>(null)
     const [deleting, setDeleting] = useState<Role | null>(null)
+    const [removing, setRemoving] = useState(false)
     const [copying, setCopying] = useState(false)
     const action = useBusyAction()
     const { update } = useSession()
@@ -93,13 +99,20 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
         return true
     }
 
+    /** Deletes it; the dialog stays open, its button busy, until it's done. */
     const remove = async (role: Role) => {
+        setRemoving(true)
         try {
             const res = await fetch(`/api/roles?id=${role.id}`, { method: 'DELETE' })
             if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
             showToast(t('roles_deleted'), 'success')
+            setDeleting(null)
             mutate()
-        } finally { setDeleting(null) }
+        } catch {
+            showToast(t('error_generic'), 'error')
+        } finally {
+            setRemoving(false)
+        }
     }
 
     const makeDefault = async (role: Role) => {
@@ -113,60 +126,71 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
         mutate()
     }
 
-    const badge = (text: string) => (
-        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.5rem', borderRadius: '999px', background: 'var(--veil-50)', border: '1px solid var(--veil-40)' }}>{text}</span>
+    if (error && !data) return (
+        <div className="ui-panel">
+            <EmptyState icon={WarningCircleIcon} title={t('roles_load_failed')} detail={(error as SWRError).info?.error}
+                action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+        </div>
     )
-    const linkButton = { background: 'none', border: 'none', color: 'var(--brand-primary-text)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.85rem' }
+    if (!data) return <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+
+    // Each fact kept apart from the next, so a name can't swap places with
+    // the words beside it in Arabic, all in one span (part 3c).
+    const facts = (items: (string | null)[]) => (
+        <span>{items.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
+    )
+
+    // Only what can be done to the role: the built-in Admin is never the
+    // default, and a role that's the default, built in or held isn't deleted.
+    const menu = (role: Role): MenuItem[] => [
+        { key: 'edit', label: t('roles_edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(role) },
+        { key: 'preview', label: t('roles_preview'), icon: EyeIcon, onSelect: () => leave(() => preview(role)) },
+        ...(!role.isDefault && role.baseRole !== 'ADMIN' ? [
+            { key: 'default', label: t('roles_make_default'), icon: StarIcon, disabled: action.running, onSelect: () => { void action.run(`default-${role.id}`, () => makeDefault(role)) } },
+        ] : []),
+        ...(!role.builtIn && !role.isDefault && role.holders === 0 ? [
+            { key: 'delete', label: t('roles_delete'), icon: TrashIcon, danger: true, onSelect: () => setDeleting(role) },
+        ] : []),
+    ]
 
     return (
-        <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: isRtl ? 'right' : 'left' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                <div>
-                    <h3 style={{ margin: 0 }}>{t('roles_title')}</h3>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('roles_hint')}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <a className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)', textDecoration: 'none' }} href={`/api/roles/export?companyId=${companyId}&locale=${locale}`} download>{t('roles_export')}</a>
-                    <button type="button" className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }} onClick={() => setCopying(true)}>{t('roles_copy_from')}</button>
-                    <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>{t('roles_new')}</button>
-                </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-                {roles.map(role => (
-                    <div key={role.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.75rem', border: '1px solid var(--veil-40)', flexWrap: 'wrap', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
-                        <div style={{ flex: 1, minWidth: '12rem' }}>
-                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <strong>{roleLabel(role, t)}</strong>
-                                {role.builtIn && badge(t('roles_built_in'))}
-                                {role.locked && badge(t('roles_locked'))}
-                                {role.isDefault && badge(t('roles_default'))}
-                            </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)' }}>
-                                {t(BUILT_IN_LABEL[role.baseRole])} · {t('roles_holders').replace('{count}', String(role.holders))} · {t('roles_selected').replace('{count}', String(role.grants.length))}
-                            </div>
-                        </div>
-                        <button type="button" style={linkButton} onClick={() => setEditing(role)}>{t('roles_edit')}</button>
-                        <button type="button" style={linkButton} onClick={() => leave(() => preview(role))}>{t('roles_preview')}</button>
-                        {!role.isDefault && role.baseRole !== 'ADMIN' && (
-                            <button type="button" style={linkButton} onClick={() => action.run(`default-${role.id}`, () => makeDefault(role))} disabled={action.running} aria-busy={action.is(`default-${role.id}`)}>{t('roles_make_default')}</button>
-                        )}
-                        {!role.builtIn && !role.isDefault && role.holders === 0 && (
-                            <button type="button" style={{ ...linkButton, color: 'var(--danger-fg-strong)' }} onClick={() => setDeleting(role)}>{t('roles_delete')}</button>
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            <RoleEditorModal
-                isOpen={editing !== null}
-                onClose={() => setEditing(null)}
-                kind="role"
-                role={editing === 'new' ? null : editing}
-                templates={templates}
-                access={access}
-                onSubmit={save}
-            />
+        <>
+            <Card
+                title={t('roles_title')}
+                actions={<>
+                    {/* A file, so a plain link the browser fetches itself. */}
+                    <a className="ui-btn ui-btn-secondary" href={`/api/roles/export?companyId=${companyId}&locale=${locale}`} download>
+                        <Icon icon={DownloadSimpleIcon} size={18} />{t('roles_export')}
+                    </a>
+                    <Button icon={CopyIcon} onClick={() => setCopying(true)}>{t('roles_copy_from')}</Button>
+                    <Button variant="primary" icon={PlusIcon} onClick={() => setEditing('new')}>{t('roles_new')}</Button>
+                </>}
+            >
+                <p className="ui-card-note">{t('roles_hint')}</p>
+                <ul className="ui-rows ui-rows-flush" aria-label={t('roles_title')}>
+                    {roles.map(role => {
+                        const name = roleLabel(role, t)
+                        return (
+                            <Row
+                                key={role.id}
+                                title={<>
+                                    <bdi>{name}</bdi>
+                                    {role.builtIn && <>{' '}<StatusBadge tone="neutral">{t('roles_built_in')}</StatusBadge></>}
+                                    {role.locked && <>{' '}<StatusBadge tone="neutral">{t('roles_locked')}</StatusBadge></>}
+                                    {role.isDefault && <>{' '}<StatusBadge tone="good">{t('roles_default')}</StatusBadge></>}
+                                </>}
+                                // A built-in role is its own base: said only of the others.
+                                detail={facts([
+                                    role.builtIn ? null : t('roles_based_on').replace('{role}', t(BUILT_IN_LABEL[role.baseRole])),
+                                    countOf(t, locale, role.holders, 'employees'),
+                                    countOf(t, locale, role.grants.length, 'permissions'),
+                                ])}
+                                end={<RowMenu label={t('ui_more_actions_for').replace('{name}', name)} tooltip={t('ui_more_actions')} items={menu(role)} />}
+                            />
+                        )
+                    })}
+                </ul>
+            </Card>
 
             {/* Remounted when the saved setting changes, so it starts from it. */}
             {review && (
@@ -178,16 +202,40 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                 />
             )}
 
+            <RoleEditorModal
+                isOpen={editing !== null}
+                onClose={() => setEditing(null)}
+                kind="role"
+                role={editing === 'new' ? null : editing}
+                templates={templates}
+                access={access}
+                onSubmit={save}
+            />
+
             <CopyRolesModal companyId={companyId} isOpen={copying} onClose={() => setCopying(false)} onCopied={() => mutate()} />
 
-            <ConfirmModal
-                isOpen={!!deleting}
-                title={t('roles_delete')}
-                message={t('roles_delete_confirm').replace('{name}', deleting ? roleLabel(deleting, t) : '')}
-                variant="danger"
-                onConfirm={() => deleting && remove(deleting)}
-                onCancel={() => setDeleting(null)}
-            />
-        </div>
+            {deleting && (
+                <DeleteRoleDialog name={roleLabel(deleting, t)} busy={removing}
+                    onCancel={() => setDeleting(null)} onConfirm={() => { void remove(deleting) }} />
+            )}
+        </>
+    )
+}
+
+/** Deleting a role nobody holds: asked first, in the danger colour. */
+export function DeleteRoleDialog({ name, busy, onCancel, onConfirm }: { name: string; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+    const { t } = useLanguage()
+    return (
+        <Dialog
+            open
+            onClose={() => { if (!busy) onCancel() }}
+            title={t('roles_delete_title').replace('{name}', name)}
+            actions={<>
+                <Button onClick={onCancel} disabled={busy}>{t('cancel')}</Button>
+                <Button variant="danger" busy={busy} onClick={onConfirm}>{t('roles_delete')}</Button>
+            </>}
+        >
+            <p>{t('roles_delete_body')}</p>
+        </Dialog>
     )
 }
