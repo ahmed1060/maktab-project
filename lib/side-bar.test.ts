@@ -121,10 +121,13 @@ describe("the side bar", () => {
         const group = nav.slice(nav.indexOf('role="group"'), nav.indexOf("group.items.map("))
         expect(group).not.toMatch(/'\d*\.?\d+rem'/)
         expect(group).toContain("var(--text-sm)")
-        const preview = readFileSync("components/CompanyModulesCard.tsx", "utf8")
-        const heading = preview.slice(preview.indexOf("const previewGroup"), preview.indexOf("{heading}</p>"))
-        expect(heading).not.toMatch(/'\d*\.?\d+rem'/)
-        expect(heading).toContain("var(--text-xs)")
+        // The Modules tab's preview draws its headings as the side bar does,
+        // from the building blocks' CSS (company settings part 4a).
+        expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain('<p className="ui-sidebar-preview-group">{t(group.labelKey)}</p>')
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const heading = css.slice(css.indexOf(".ui-sidebar-preview-group {"), css.indexOf("}", css.indexOf(".ui-sidebar-preview-group {")))
+        expect(heading).not.toMatch(/\d*\.?\d+rem/)
+        expect(heading).toContain("var(--text-sm)")
     })
 
     it("lists each page once, and every module, as the Company Settings preview draws them", () => {

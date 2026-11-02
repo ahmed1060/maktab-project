@@ -58,7 +58,8 @@ describe("decorative emoji", () => {
     it("are hidden where icons passed as data are drawn", () => {
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
         expect(shell.match(/<span (?!aria-hidden)[^>]*>\{link\.icon\}<\/span>/g) ?? []).toEqual([])
-        expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain('<span aria-hidden="true" style={{ fontSize: \'1.2rem\' }}>{entry.icon}</span>')
+        // The Modules tab's side bar preview (company settings part 4a): the name beside it says it.
+        expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain('<span aria-hidden="true">{entry.icon}</span><bdi>{entry.label}</bdi>')
     })
 
     it("that mean something are labelled images: the locked-module padlock", () => {

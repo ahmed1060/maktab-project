@@ -1,10 +1,13 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { Button, Card, Dialog, DialogActions, Field, TextInput } from '@/components/ui'
+import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useReportUnsaved } from '@/lib/useUnsavedChanges'
+import type { TranslationKey } from '@/lib/translations'
 import {
     MAX_MODULE_LABEL_LENGTH,
     MODULES,
@@ -19,6 +22,15 @@ import {
     type ModuleOverrides,
 } from '@/lib/modules'
 import { COMPANY_GROUPS } from '@/lib/side-bar'
+
+/**
+ * What a company calls each module, and its icon, in the Super Admin's
+ * settings for it: renamed everywhere they appear, with the side bar as it
+ * would be, before saving.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, company settings part 4a): a
+ * field per module, named for it, its icon a button that opens a dialog.
+ */
 
 /**
  * A palette, not an emoji keyboard.
@@ -38,6 +50,22 @@ const PALETTE = [
     '🌴', '🏖️', '🛫', '🩺', '🧰', '🔍', '🛡️', '📡', '🧭', '💡',
 ]
 
+/** What's wrong with an icon pasted in, said under its field; null when it will do. */
+export function iconError(text: string): TranslationKey | null {
+    const icon = text.trim()
+    if (!icon) return 'module_icon_required'
+    return isValidModuleIcon(icon) ? null : 'module_icon_invalid'
+}
+
+/**
+ * The icon to store for a module: none when it's the module's own, so
+ * picking that from the palette is the same as Use the default icon
+ * (audit on part 4a), as a blank name is no name.
+ */
+export function overrideFor(key: ModuleKey, icon: string | null): string | null {
+    return icon && icon !== MODULES[key].icon ? icon : null
+}
+
 type Props = {
     companyId: string
     /** As stored on the company row — not on the viewer's session: a Super Admin
@@ -49,9 +77,8 @@ type Props = {
 }
 
 export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcons, onSaved }: Props) {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     const { showToast } = useToast()
-    const isRtl = locale === 'ar'
 
     const savedLabels = useMemo(() => parseModuleOverrides(moduleLabels), [moduleLabels])
     const savedIcons = useMemo(() => parseModuleIcons(moduleIcons), [moduleIcons])
@@ -60,7 +87,6 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
     const [icons, setIcons] = useState<ModuleOverrides>(savedIcons)
     const [saving, setSaving] = useState(false)
     const [pickerFor, setPickerFor] = useState<ModuleKey | null>(null)
-    const [customIcon, setCustomIcon] = useState('')
 
     // Re-seeds the form when the fetch resolves, and only then — keyed on the
     // saved values rather than running every render, so it cannot stomp on what
@@ -70,27 +96,14 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
         setIcons(savedIcons)
     })
 
-    const pickerRef = useRef<HTMLDivElement | null>(null)
-    useEffect(() => {
-        if (!pickerFor) return
-        const onDown = (e: MouseEvent) => {
-            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerFor(null)
-        }
-        const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setPickerFor(null) }
-        document.addEventListener('mousedown', onDown)
-        document.addEventListener('keydown', onEsc)
-        return () => {
-            document.removeEventListener('mousedown', onDown)
-            document.removeEventListener('keydown', onEsc)
-        }
-    }, [pickerFor])
-
     // What the sidebar would say if this were saved. The same resolver the real
     // sidebar uses, so the preview cannot drift from the thing it previews.
     const preview = modulesFrom({ moduleLabels: labels, moduleIcons: icons }, t)
 
     const isDirty = !sameOverrides(savedLabels, labels) || !sameOverrides(savedIcons, icons)
     useReportUnsaved('modules', isDirty)
+
+    const nameOf = (key: ModuleKey) => t(MODULES[key].labelKey)
 
     const setLabel = (key: ModuleKey, value: string) => {
         setLabels(prev => {
@@ -102,7 +115,8 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
         })
     }
 
-    const setIcon = (key: ModuleKey, value: string | null) => {
+    const setIcon = (key: ModuleKey, picked: string | null) => {
+        const value = overrideFor(key, picked)
         setIcons(prev => {
             const next = { ...prev }
             if (value) next[key] = value
@@ -110,20 +124,10 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
             return next
         })
         setPickerFor(null)
-        setCustomIcon('')
     }
 
-    const applyCustomIcon = (key: ModuleKey) => {
-        const candidate = customIcon.trim()
-        if (!candidate) return
-        if (!isValidModuleIcon(candidate)) {
-            showToast(t('module_icon_invalid'), 'error')
-            return
-        }
-        setIcon(key, candidate)
-    }
-
-    const handleSave = async () => {
+    const handleSave = async (e: FormEvent) => {
+        e.preventDefault()
         setSaving(true)
         try {
             const res = await fetch('/api/companies', {
@@ -144,7 +148,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                     Object.keys(nextLabels).length ? nextLabels : null,
                     Object.keys(nextIcons).length ? nextIcons : null
                 )
-                showToast(t('settings_saved_success') || 'Settings saved', 'success')
+                showToast(t('settings_saved_success'), 'success')
             } else {
                 const data = await res.json().catch(() => ({}))
                 showToast(data.error || t('error_generic'), 'error')
@@ -156,176 +160,108 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
         }
     }
 
-    const row = (key: ModuleKey) => {
-        const def = MODULES[key]
-        const open = pickerFor === key
-        return (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }}>
-                <button
-                    type="button"
-                    onClick={() => { setPickerFor(open ? null : key); setCustomIcon('') }}
-                    title={t('module_icon_choose')}
-                    aria-expanded={open}
-                    style={{
-                        width: '2.75rem',
-                        height: '2.75rem',
-                        flexShrink: 0,
-                        fontSize: '1.35rem',
-                        lineHeight: 1,
-                        cursor: 'pointer',
-                        borderRadius: '0.6rem',
-                        border: `1px solid ${open ? 'var(--brand-primary)' : 'var(--border)'}`,
-                        background: 'var(--surface)',
-                        color: 'var(--text-body)',
-                    }}
-                >
-                    {icons[key] || def.icon}
-                </button>
-                <input
-                    type="text"
-                    className="input"
-                    value={labels[key] || ''}
-                    onChange={(e) => setLabel(key, e.target.value)}
-                    placeholder={t(def.labelKey)}
-                    maxLength={MAX_MODULE_LABEL_LENGTH}
-                    disabled={saving}
-                    style={{ flex: 1, minWidth: 0 }}
-                />
-
-                {open && (
-                    <div
-                        ref={pickerRef}
-                        className="glass"
-                        style={{
-                            position: 'absolute',
-                            top: 'calc(100% + 0.4rem)',
-                            [isRtl ? 'right' : 'left']: 0,
-                            zIndex: 30,
-                            width: 'min(21rem, 80vw)',
-                            padding: '0.75rem',
-                            borderRadius: '0.85rem',
-                            border: '1px solid var(--border)',
-                            boxShadow: '0 12px 32px var(--shadow-mid)',
-                            background: 'var(--panel-95)',
-                        }}
-                    >
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: '0.15rem' }}>
-                            {PALETTE.map(emoji => (
-                                <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => setIcon(key, emoji)}
-                                    style={{
-                                        fontSize: '1.15rem',
-                                        lineHeight: 1,
-                                        padding: '0.3rem 0',
-                                        cursor: 'pointer',
-                                        border: 'none',
-                                        borderRadius: '0.4rem',
-                                        background: icons[key] === emoji ? 'var(--highlight-tint)' : 'transparent',
-                                    }}
-                                >
-                                    {emoji}
-                                </button>
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.65rem' }}>
-                            <input
-                                type="text"
-                                className="input"
-                                value={customIcon}
-                                onChange={(e) => setCustomIcon(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyCustomIcon(key) } }}
-                                placeholder={t('module_icon_custom')}
-                                maxLength={16}
-                                style={{ flex: 1, minWidth: 0 }}
-                            />
-                            <button type="button" className="btn btn-primary" onClick={() => applyCustomIcon(key)}>
-                                {t('save')}
-                            </button>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setIcon(key, null)}
-                            style={{
-                                marginTop: '0.5rem',
-                                background: 'none',
-                                border: 'none',
-                                padding: 0,
-                                cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                color: 'var(--text-soft)',
-                                textDecoration: 'underline',
-                            }}
-                        >
-                            {t('module_icon_reset')} ({def.icon})
-                        </button>
-                    </div>
-                )}
-            </div>
-        )
-    }
-
-    // The side bar's groups, with only the modules in them: the names and
-    // icons here are the company's to choose (lib/side-bar.ts).
-    const previewGroup = (heading: string | null, keys: readonly ModuleKey[]) => (
-        <>
-            {heading ? (
-                <p style={{
-                    fontSize: 'var(--text-xs)', fontWeight: 600,
-                    color: 'var(--text-faint)', margin: 'var(--space-3) 0 var(--space-1)',
-                }}>{heading}</p>
-            ) : <div style={{ height: 'var(--space-2)' }} />}
-            {keys.map(key => {
-                const entry = preview.entry(key)
-                return (
-                    <div key={key} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.75rem',
-                        padding: '0.4rem 0.6rem', borderRadius: '0.6rem',
-                        color: 'var(--sidebar-fg)', fontSize: '0.9rem', fontWeight: 500,
-                    }}>
-                        <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>{entry.icon}</span>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.label}</span>
-                    </div>
-                )
-            })}
-        </>
-    )
+    const nothingSet = Object.keys(labels).length === 0 && Object.keys(icons).length === 0
 
     return (
-        <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: isRtl ? 'right' : 'left' }}>
-            <div style={{ fontWeight: 500, marginBottom: '0.15rem' }}>{t('module_names_setting')}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginBottom: '1rem' }}>
-                {t('module_names_setting_hint')}
-            </div>
+        <Card title={t('module_names_setting')}>
+            <p className="ui-card-note">{t('module_names_setting_hint')}</p>
+            <form className="ui-card-form" noValidate onSubmit={handleSave}>
+                {/* Each field is named for the module it renames, and left
+                    blank keeps that name. */}
+                {MODULE_KEYS.map(key => (
+                    <Field key={key} label={nameOf(key)}>{p => (
+                        <span className="ui-module-name">
+                            <Button className="ui-emoji-button" aria-label={t('module_icon_choose_for').replace('{name}', nameOf(key))}
+                                title={t('module_icon_choose')} aria-haspopup="dialog" disabled={saving} onClick={() => setPickerFor(key)}>
+                                {icons[key] || MODULES[key].icon}
+                            </Button>
+                            <TextInput {...p} name={`label-${key}`} autoComplete="off" maxLength={MAX_MODULE_LABEL_LENGTH}
+                                value={labels[key] || ''} onChange={e => setLabel(key, e.target.value)} disabled={saving} />
+                        </span>
+                    )}</Field>
+                ))}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {MODULE_KEYS.map(row)}
-            </div>
+                {/* The side bar's groups, with only the modules in them, on the
+                    side bar's own ground: the names and icons here are the
+                    company's to choose (lib/side-bar.ts). */}
+                <div className="ui-field">
+                    <p className="ui-label">{t('module_names_preview')}</p>
+                    <div className="ui-sidebar-preview">
+                        {COMPANY_GROUPS.map(group => {
+                            const keys = group.items.filter(isModuleKey)
+                            return keys.length > 0 && (
+                                <Fragment key={group.key}>
+                                    {group.labelKey && <p className="ui-sidebar-preview-group">{t(group.labelKey)}</p>}
+                                    {keys.map(key => {
+                                        const entry = preview.entry(key)
+                                        return <span key={key} className="ui-sidebar-preview-item"><span aria-hidden="true">{entry.icon}</span><bdi>{entry.label}</bdi></span>
+                                    })}
+                                </Fragment>
+                            )
+                        })}
+                    </div>
+                </div>
 
-            <div className="glass-dark" style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', borderRadius: '0.85rem', border: '1px solid var(--veil-20)', direction: isRtl ? 'rtl' : 'ltr' }}>
-                <p style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-faint)', letterSpacing: '0.1em', margin: 0 }}>
-                    {t('module_names_preview')}
-                </p>
-                {COMPANY_GROUPS.map(group => {
-                    const keys = group.items.filter(isModuleKey)
-                    return keys.length > 0 && <Fragment key={group.key}>{previewGroup(group.labelKey && t(group.labelKey), keys)}</Fragment>
-                })}
-            </div>
+                <div className="ui-card-actions">
+                    <Button disabled={saving || nothingSet} onClick={() => { setLabels({}); setIcons({}) }}>{t('module_reset_all')}</Button>
+                    <Button type="submit" variant="primary" busy={saving} disabled={!isDirty}>{t('save')}</Button>
+                </div>
+            </form>
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: isRtl ? 'flex-start' : 'flex-end' }}>
-                <button
-                    type="button"
-                    className="btn"
-                    onClick={() => { setLabels({}); setIcons({}) }}
-                    disabled={saving || (Object.keys(labels).length === 0 && Object.keys(icons).length === 0)}
-                >
-                    {t('module_reset_all')}
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving || !isDirty}>
-                    {saving ? t('saving') : t('save')}
-                </button>
+            {pickerFor && (
+                <IconDialog name={nameOf(pickerFor)} current={icons[pickerFor] || MODULES[pickerFor].icon} fallback={MODULES[pickerFor].icon}
+                    onPick={icon => setIcon(pickerFor, icon)} onClose={() => setPickerFor(null)} />
+            )}
+        </Card>
+    )
+}
+
+/**
+ * A module's icon: one from the palette at a press, any emoji pasted in, or
+ * back to the module's own. Picked into the form; saved with it.
+ */
+export function IconDialog({ name, current, fallback, onPick, onClose }: {
+    name: string
+    /** The icon in use: the company's own choice, or the module's. */
+    current: string
+    fallback: string
+    onPick: (icon: string | null) => void
+    onClose: () => void
+}) {
+    const { t } = useLanguage()
+    const formRef = useRef<HTMLFormElement>(null)
+    const [pasted, setPasted] = useState('')
+    const [wrong, setWrong] = useState<TranslationKey | null>(null)
+
+    const submit = (e: FormEvent) => {
+        e.preventDefault()
+        const found = iconError(pasted)
+        setWrong(found)
+        if (found) { focusFirstWrong(formRef.current); return }
+        onPick(pasted.trim())
+    }
+
+    return (
+        <Dialog open onClose={onClose} title={t('module_icon_title').replace('{name}', name)}>
+            <div className="ui-emoji-grid">
+                {PALETTE.map(emoji => (
+                    <button key={emoji} type="button" className="ui-emoji" aria-pressed={current === emoji} onClick={() => onPick(emoji)}>{emoji}</button>
+                ))}
             </div>
-        </div>
+            {/* A choice like the palette's, so beside it: among the dialog's
+                buttons it pushed Use this emoji onto a line of its own (audit
+                on part 4a). */}
+            <p><Button onClick={() => onPick(null)}>{`${t('module_icon_reset')} (${fallback})`}</Button></p>
+            <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
+                <Field label={t('module_icon_custom')} error={wrong ? t(wrong) : undefined}>{p => (
+                    <TextInput {...p} name="icon" autoComplete="off" maxLength={16} value={pasted}
+                        onChange={e => { setPasted(e.target.value); setWrong(null) }} />
+                )}</Field>
+                <DialogActions>
+                    <Button onClick={onClose}>{t('cancel')}</Button>
+                    <Button type="submit" variant="primary">{t('module_icon_use')}</Button>
+                </DialogActions>
+            </form>
+        </Dialog>
     )
 }

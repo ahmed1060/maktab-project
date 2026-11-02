@@ -485,10 +485,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-02; then the attendance policy, whose dialog the policy
      templates page shares, merged in #163 on 2026-11-02; then the
      panels for attendance in pay, the terminals, the check-in places
-     and face checks, which open for review in #164; then the Super
-     Admin's
-     own tabs, Roles, Modules and Admin access. Then the Super Admin's
-     pages;
+     and face checks, merged in #164 on 2026-11-02; then the Super
+     Admin's own tabs, in two parts: Admin access and Modules, which
+     open for review in #165; then Roles, with its role editor, which
+     the role templates page shares. Then the Super Admin's pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2655,3 +2655,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     loaded, a panel keeps what it had, and anything open in it, and
     says it couldn't refresh, with Try again. "Didn't load" is for a
     panel that never loaded.
+- **2026-11-02:** Company settings part 3c was merged in #164, which
+  finishes the Attendance tab. Part 4, the Super Admin's own tabs, is
+  split in two, as part 3 was: Roles carries the role editor, which the
+  role templates page shares, and its copy and access review panels,
+  so it goes on its own. Admin access and Modules move onto the
+  building blocks first, in #165:
+  - Admin access is a card with the switch, its explanation under it
+    and starting where its label does, and the tabs to show as
+    checkboxes in a group of their own, greyed while the switch is off.
+    Save is the building blocks' button, off until something changes;
+  - Modules is a card with a field for each module, labelled with the
+    module's own name, where the boxes had only a placeholder for a
+    name. Each icon is a button named for its module, "Choose an icon
+    for Clients", where all nine said "Choose an icon";
+  - an icon is picked in the building blocks' dialog, where it was a
+    panel floating under the field: the palette, with the one in use
+    marked as chosen, a field for any emoji pasted in, and the module's
+    own icon. A pasted one that isn't an emoji, or nothing, is said
+    under the field, where it was a toast;
+  - the side bar preview is drawn on the side bar's own ground, as the
+    logo's is, its group headings at the side bar's size;
+  - Reset all and Save are the building blocks' buttons.
+- **2026-11-02:** Found in the browser and the interface audit on #165:
+  - the icon dialog marked the icon in use only when the company had
+    chosen one: with the module's own, nothing in the palette was
+    marked. It's marked either way, and picking the module's own icon
+    from the palette stores nothing, the same as Use the default icon;
+  - Use the default icon was among the dialog's buttons, which pushed
+    Use this emoji onto a line of its own. It's a choice like the
+    palette's, so it sits under it;
+  - a pasted icon that isn't an emoji said only "That is not an emoji".
+    It says what to do: paste a single emoji, or pick one above;
+  - the line saying Roles, Modules and Admin access stay the Super
+    Admin's wasn't tied to the tabs it's about. The group of tabs is
+    described by it now.
