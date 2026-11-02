@@ -60,12 +60,16 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
     const [editing, setEditing] = useState<Device | null>(null)
     const [retiring, setRetiring] = useState<Device | null>(null)
     const [busy, setBusy] = useState(false)
+    // One change at a time: each new code replaces the last, so two at once
+    // could leave a code on screen that no longer works (Codex on PR 164).
+    const inFlight = useRef(false)
 
     // Not sold to this company, or not this person's to see: nothing here.
-    // Anything else is a failure to load, and says so rather than vanishing.
+    // Anything else is a failure to load, and says so rather than vanishing;
+    // once loaded, a failed refresh keeps the panel (below).
     const status = (agentsError as SWRError | undefined)?.status
     if (agentsError && (status === 403 || status === 404)) return null
-    if (agentsError) return (
+    if (agentsError && !agentsBody) return (
         <div className="ui-panel">
             <EmptyState icon={WarningCircleIcon} title={t('att_term_load_failed')} detail={(agentsError as SWRError).info?.error}
                 action={<Button busy={isValidating} onClick={() => { void reloadAgents() }}>{t('try_again')}</Button>} />
@@ -95,6 +99,8 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
 
     /** Sends one change, then reloads; the server's refusal is shown as it said it. */
     const send = async (url: string, init: RequestInit, done: TranslationKey, then?: (body: { agent?: Agent & { codeExpiresAt: string | null }; code?: string } | undefined) => void) => {
+        if (inFlight.current) return false
+        inFlight.current = true
         setBusy(true)
         try {
             const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...init })
@@ -112,6 +118,7 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
             showToast(t('error_generic'), 'error')
             return false
         } finally {
+            inFlight.current = false
             setBusy(false)
         }
     }
@@ -122,11 +129,11 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
     const revoked = agents.filter(a => a.status === 'REVOKED')
 
     const agentMenu = (a: Agent): MenuItem[] => [
-        { key: 'code', label: t(a.status === 'PENDING' ? 'att_term_new_code' : 'att_term_move_pc'), icon: ArrowsClockwiseIcon, onSelect: () => { void newCode(a) } },
+        { key: 'code', label: t(a.status === 'PENDING' ? 'att_term_new_code' : 'att_term_move_pc'), icon: ArrowsClockwiseIcon, onSelect: () => { void newCode(a) }, disabled: busy },
         { key: 'revoke', label: t('att_term_revoke'), icon: ProhibitIcon, danger: true, onSelect: () => setRevoking(a) },
     ]
     const deviceMenu = (d: Device): MenuItem[] => d.retiredAt
-        ? [{ key: 'restore', label: t('att_term_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/devices/${d.id}/restore`, { method: 'POST' }, 'att_term_restored') } }]
+        ? [{ key: 'restore', label: t('att_term_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/devices/${d.id}/restore`, { method: 'POST' }, 'att_term_restored') }, disabled: busy }]
         : [
             { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(d) },
             { key: 'retire', label: t('att_term_retire'), icon: ProhibitIcon, danger: true, onSelect: () => setRetiring(d) },
@@ -137,6 +144,8 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
             title={t('att_term_title')}
             actions={!readOnly && <Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setAdding(true)}>{t('att_term_add_agent')}</Button>}
         >
+            {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
+            {agentsError && <p className="ui-card-note" role="status">{t('ui_refresh_failed')} <Button size="sm" busy={isValidating} onClick={() => { void reloadAgents() }}>{t('try_again')}</Button></p>}
             <p className="ui-card-note">{t('att_term_hint')}</p>
 
             <section>

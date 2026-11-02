@@ -30,7 +30,8 @@ export default function FaceLegalPanel({ companyId, readOnly }: { companyId: str
     const [busy, setBusy] = useState(false)
 
     if (error && ((error as SWRError).status === 403 || (error as SWRError).status === 404)) return null
-    if (error) return (
+    // Once loaded, a failed refresh keeps the panel (below).
+    if (error && !data) return (
         <div className="ui-panel">
             <EmptyState icon={WarningCircleIcon} title={t('face_legal_load_failed')} detail={(error as SWRError).info?.error}
                 action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
@@ -71,6 +72,8 @@ export default function FaceLegalPanel({ companyId, readOnly }: { companyId: str
                 </Button>
             )}
         >
+            {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
+            {error && <p className="ui-card-note" role="status">{t('ui_refresh_failed')} <Button size="sm" busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button></p>}
             <p>
                 <StatusBadge tone={confirmedAt ? 'good' : 'neutral'}>
                     {confirmedAt ? t('face_legal_confirmed').replace('{date}', dateText(confirmedAt)) : t('face_legal_not_confirmed')}

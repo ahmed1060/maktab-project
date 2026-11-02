@@ -53,12 +53,15 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
     const [staffing, setStaffing] = useState<Location | null>(null)
     const [archiving, setArchiving] = useState<Location | null>(null)
     const [busy, setBusy] = useState(false)
+    // One change at a time, as a restore chosen twice (Codex on PR 164).
+    const inFlight = useRef(false)
 
     // Not sold to this company, or not this person's to see: nothing here.
-    // Anything else is a failure to load, and says so rather than vanishing.
+    // Anything else is a failure to load, and says so rather than vanishing;
+    // once loaded, a failed refresh keeps the panel (below).
     const status = (error as SWRError | undefined)?.status
     if (error && (status === 403 || status === 404)) return null
-    if (error) return (
+    if (error && !body) return (
         <div className="ui-panel">
             <EmptyState icon={WarningCircleIcon} title={t('att_loc_load_failed')} detail={(error as SWRError).info?.error}
                 action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
@@ -72,6 +75,8 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
 
     /** Sends one change, then reloads; the server's refusal is shown as it said it. */
     const send = async (url: string, init: RequestInit, done: TranslationKey, then?: () => void) => {
+        if (inFlight.current) return
+        inFlight.current = true
         setBusy(true)
         try {
             const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...init })
@@ -87,6 +92,7 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
             // The connection dropped: nothing was confirmed, and the form stays open to try again.
             showToast(t('error_generic'), 'error')
         } finally {
+            inFlight.current = false
             setBusy(false)
         }
     }
@@ -98,7 +104,7 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
                 : [countOf(t, locale, l.userIds.length, 'employees')]
     const edit = (l: Location) => setDraft({ id: l.id, name: l.name, point: `${l.latitude}, ${l.longitude}`, radius: String(l.radiusMeters), ips: l.officeIpRanges.join('\n'), everyone: l.everyone })
     const menu = (l: Location): MenuItem[] => l.archivedAt
-        ? [{ key: 'restore', label: t('att_loc_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/locations/${l.id}/restore`, { method: 'POST' }, 'att_loc_restored') } }]
+        ? [{ key: 'restore', label: t('att_loc_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/locations/${l.id}/restore`, { method: 'POST' }, 'att_loc_restored') }, disabled: busy }]
         : [
             { key: 'edit', label: t('att_loc_edit'), icon: PencilSimpleIcon, onSelect: () => edit(l) },
             ...(!l.everyone ? [{ key: 'people', label: t('att_loc_choose_people'), icon: UsersThreeIcon, onSelect: () => setStaffing(l) }] : []),
@@ -112,6 +118,8 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
                 <Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setDraft({ id: null, name: '', point: '', radius: '150', ips: '', everyone: false })}>{t('att_loc_add')}</Button>
             )}
         >
+            {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
+            {error && <p className="ui-card-note" role="status">{t('ui_refresh_failed')} <Button size="sm" busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button></p>}
             <p className="ui-card-note">{t('att_loc_hint')}</p>
             {locations.length === 0 ? <p className="ui-card-note">{t('att_loc_none')}</p> : (
                 <ul className="ui-rows ui-rows-flush" aria-label={t('att_loc_title')}>

@@ -3716,6 +3716,7 @@ export const ar = {
         count_pts_other: "{n} نقطة",
         ui_completed_share: "{share} مكتملة",
         ui_more_actions: "إجراءات أخرى",
+        ui_refresh_failed: "تعذّر تحديث هذا القسم، ويظهر ما تم تحميله آخر مرة.",
         ui_more_actions_for: "إجراءات أخرى لـ {name}",
         employees_search: "بحث بالاسم أو البريد الإلكتروني…",
         sort_name_asc: "الاسم، من أ إلى ي",

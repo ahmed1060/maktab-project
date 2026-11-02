@@ -2641,3 +2641,17 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   comma. A row's detail line puts a gap between its children, for its
   icon, and each fact and comma was a child of its own. They're one
   line of text in one span now.
+- **2026-11-02:** Found in Codex's review of #164:
+  - New code and Move to another PC, and a terminal's or a place's
+    Restore, act straight from the menu, and could be chosen again
+    before the first one was done. Each new code replaces the last, so
+    the slower answer could leave a code on screen that no longer
+    works. The old buttons were greyed while busy; these menu items
+    are now too, and the panel sends one change at a time;
+  - a refresh that failed after a panel had loaded swapped the whole
+    panel for "didn't load", closing a half-done edit of a terminal or
+    a place and losing it. The terminals refresh every minute, and
+    every panel refreshes when the window comes back into focus. Once
+    loaded, a panel keeps what it had, and anything open in it, and
+    says it couldn't refresh, with Try again. "Didn't load" is for a
+    panel that never loaded.

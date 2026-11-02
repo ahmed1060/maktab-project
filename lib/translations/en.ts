@@ -3725,6 +3725,8 @@ export const en = {
         count_pts_other: "{n} pts",
         ui_completed_share: "{share} completed",
         ui_more_actions: "More actions",
+        // A panel that loaded, then failed to refresh: it keeps what it had (Codex on PR 164).
+        ui_refresh_failed: "Couldn't refresh this. It shows what was last loaded.",
         ui_more_actions_for: "More actions for {name}",
         // Employees (UI_PLAN.md §4.1)
         employees_search: "Search name or email…",

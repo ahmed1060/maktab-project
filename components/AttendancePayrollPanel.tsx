@@ -41,7 +41,8 @@ export default function AttendancePayrollPanel({ companyId, readOnly }: { compan
     const formRef = useRef<HTMLFormElement>(null)
 
     if (error && ((error as SWRError).status === 403 || (error as SWRError).status === 404)) return null
-    if (error) return (
+    // Once loaded, a failed refresh keeps the panel (below).
+    if (error && !data) return (
         <div className="ui-panel">
             <EmptyState icon={WarningCircleIcon} title={t('attpay_load_failed')} detail={(error as SWRError).info?.error}
                 action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
@@ -80,6 +81,8 @@ export default function AttendancePayrollPanel({ companyId, readOnly }: { compan
 
     return (
         <Card title={t('attpay_title')}>
+            {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
+            {error && <p className="ui-card-note" role="status">{t('ui_refresh_failed')} <Button size="sm" busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button></p>}
             <p>{data.from ? t('attpay_on').replace('{month}', monthText(data.from)) : t('attpay_off')}</p>
             <p className="ui-card-note">{t('attpay_hint')}</p>
             {!readOnly && (

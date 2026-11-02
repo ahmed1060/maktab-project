@@ -16,6 +16,8 @@ type Loaded = { data?: unknown; error?: unknown; isLoading?: boolean; isValidati
 const state = {
     locale: "en" as "en" | "ar",
     swr: {} as Record<string, Loaded>,
+    // Each row menu's items as rendered, when a test wants to choose one.
+    menus: null as null | { label: string; items: { key: string; onSelect?: () => void; disabled?: boolean }[] }[],
 }
 
 vi.mock("next/navigation", () => ({
@@ -30,6 +32,14 @@ vi.mock("@/context/LanguageContext", () => ({
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
 vi.mock("@/components/PointPicker", () => ({ default: () => null }))
+vi.mock("@/components/ui", async (importOriginal) => {
+    const ui = await importOriginal<typeof import("@/components/ui")>()
+    const RowMenu = (props: Parameters<typeof ui.RowMenu>[0]) => {
+        state.menus?.push(props)
+        return h(ui.RowMenu, props)
+    }
+    return { ...ui, RowMenu }
+})
 vi.mock("react-dom", async (importOriginal) => ({ ...(await importOriginal<typeof import("react-dom")>()), createPortal: (node: unknown) => node }))
 vi.mock("swr", () => {
     const useSWR = (key: string | null) => {
@@ -336,3 +346,50 @@ describe("found in the browser and the audit (company settings part 3c)", () => 
     })
 })
 
+describe("found in Codex's review (company settings part 3c)", () => {
+    it("asks for one new code at a time, so the code shown is the one that works", async () => {
+        // Each new code replaces the last: two at once could leave the slower
+        // one's answer on screen, a code that no longer works.
+        state.menus = []
+        await render("AttendanceTerminalsPanel", terminals())
+        const menus = state.menus
+        state.menus = null
+        const code = menus.find(m => m.label === en.ui_more_actions_for.replace("{name}", "Warehouse PC"))!.items.find(i => i.key === "code")!
+        const asked = vi.fn(() => new Promise<Response>(() => {}))
+        vi.stubGlobal("fetch", asked)
+        try {
+            code.onSelect!()
+            code.onSelect!()
+            expect(asked).toHaveBeenCalledTimes(1)
+        } finally {
+            vi.unstubAllGlobals()
+        }
+        // And the menu says so: what acts at once is greyed while something is being saved.
+        for (const file of ["AttendanceTerminalsPanel", "AttendanceLocationsPanel"]) {
+            const source = readFileSync(`components/${file}.tsx`, "utf8")
+            expect(source, file).toMatch(/key: 'restore',[^\n]*disabled: busy/)
+            expect(source, file).toMatch(/const inFlight = useRef\(false\)/)
+            expect(source, file).toMatch(/if \(inFlight\.current\) return/)
+            expect(source, file).toMatch(/finally \{\s*inFlight\.current = false/)
+        }
+        expect(readFileSync("components/AttendanceTerminalsPanel.tsx", "utf8")).toMatch(/key: 'code',[^\n]*disabled: busy/)
+    })
+
+    it("keeps a panel, and what's open in it, when a refresh fails after it loaded, and says so with Try again", async () => {
+        // It swapped the whole panel for "didn't load", closing a half-done
+        // edit and losing it, on a failed refresh in the background.
+        const broken = failed(500)
+        const panels: [string, Record<string, Loaded>, string][] = [
+            ["AttendanceTerminalsPanel", terminals({ [AGENTS]: { ...ok(AGENT_LIST), ...broken } }), en.att_term_title],
+            ["AttendanceLocationsPanel", { [PLACES]: { ...ok(PLACE_LIST), ...broken } }, en.att_loc_title],
+            ["AttendancePayrollPanel", { [PAY]: { ...ok({ from: null, earliest: "2026-01" }), ...broken } }, en.attpay_title],
+            ["FaceLegalPanel", { [FACE]: { ...ok({ system: "ON", mobileApp: true, legalConfirmedAt: null }), ...broken } }, en.face_legal_title],
+        ]
+        for (const [file, swr, title] of panels) {
+            const html = await render(file, swr)
+            expect(html, file).toContain(`<h2 class="ui-card-title">${title}</h2>`)
+            expect(html, file).toContain(esc(en.ui_refresh_failed))
+            expect(html, file).toMatch(/>Try again<\/button>/)
+        }
+    })
+})
