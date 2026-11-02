@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import ConfirmModal from '@/components/ConfirmModal'
-import SegmentedToggle from '@/components/SegmentedToggle'
 import CompanyGeneralCard from '@/components/CompanyGeneralCard'
 import CompanyLogoCard from '@/components/CompanyLogoCard'
 import BrandColourCard from '@/components/BrandColourCard'
@@ -13,10 +11,12 @@ import CompanyRolesCard from '@/components/CompanyRolesCard'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
 import CashAdvancesCard from '@/components/cash-advances/CashAdvancesCard'
+import { Button, Dialog, Tabs } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
 import { UnsavedChangesProvider, useGuardLinks, useUnsavedState } from '@/lib/useUnsavedChanges'
 import type { ModuleOverrides } from '@/lib/modules'
+import type { TranslationKey } from '@/lib/translations'
 
 /**
  * A company's settings, one tab per category (ATTENDANCE_PLAN.md §5.1). The
@@ -27,6 +27,10 @@ import type { ModuleOverrides } from '@/lib/modules'
  * One set of tabs, two entry points (§5.2): the Super Admin's, from the
  * company list, with every tab; and a company's own, at /dashboard/settings,
  * with the tabs the Super Admin shows it. The server decides both.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, company settings part 1):
+ * the building blocks' tabs, the cards in one column at a width that reads,
+ * and leaving with unsaved edits asked in a dialog.
  */
 
 export type CompanySettings = {
@@ -73,6 +77,10 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     useGuardLinks(dirty, href => setLeavingFor({ href }))
 
     const tabs = COMPANY_SETTINGS_TABS.filter(x => shown.includes(x.key))
+    // A row of tabs holding one says nothing a heading doesn't: a company
+    // that shows its people General alone just has its cards (company
+    // settings part 1).
+    const tabbed = tabs.length > 1
     const asked = searchParams.get('tab')
     const tab: CompanySettingsTabKey | undefined = tabs.find(x => x.key === asked)?.key ?? tabs[0]?.key
 
@@ -88,15 +96,29 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     }
 
     const companyId = company.id
+    const leave = () => {
+        const next = leavingFor
+        setLeavingFor(null)
+        if (!next) return
+        // A card's own way out keeps the edits guarded until it
+        // has gone: it may wait on the server, or fail and stay,
+        // with the edits still on screen (review on #49).
+        if ('go' in next) return next.go()
+        setDirty(false)
+        if ('tab' in next) open(next.tab)
+        else router.push(next.href)
+    }
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '40rem' }}>
-            {tab && <SegmentedToggle
+        <>
+            {tab && tabbed && <Tabs
+                label={t('company_settings_title')}
+                idPrefix="settings-tab"
                 value={tab}
                 onChange={choose}
-                ariaLabel={t('company_settings_title')}
-                options={tabs.map(x => ({ value: x.key, label: t(x.labelKey as any) }))}
+                items={tabs.map(x => ({ value: x.key, label: t(x.labelKey as TranslationKey), controls: 'settings-panel' }))}
             />}
 
+            <div role={tabbed ? 'tabpanel' : undefined} id="settings-panel" className="ui-tab-panel ui-settings" aria-labelledby={tab && tabbed ? `settings-tab-${tab}` : undefined}>
             <UnsavedChangesProvider onChange={setDirty} onLeave={go => setLeavingFor({ go })}>
                 {tab === 'general' && (
                     <>
@@ -187,27 +209,19 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                     />
                 )}
             </UnsavedChangesProvider>
+            </div>
 
-            <ConfirmModal
-                isOpen={!!leavingFor}
+            <Dialog
+                open={!!leavingFor}
+                onClose={() => setLeavingFor(null)}
                 title={t('settings_unsaved_title')}
-                message={t('settings_unsaved_message')}
-                confirmText={t('settings_unsaved_discard')}
-                variant="warning"
-                onConfirm={() => {
-                    const next = leavingFor
-                    setLeavingFor(null)
-                    if (!next) return
-                    // A card's own way out keeps the edits guarded until it
-                    // has gone: it may wait on the server, or fail and stay,
-                    // with the edits still on screen (review on #49).
-                    if ('go' in next) return next.go()
-                    setDirty(false)
-                    if ('tab' in next) open(next.tab)
-                    else router.push(next.href)
-                }}
-                onCancel={() => setLeavingFor(null)}
-            />
-        </div>
+                actions={<>
+                    <Button onClick={() => setLeavingFor(null)}>{t('cancel')}</Button>
+                    <Button variant="danger" onClick={leave}>{t('settings_unsaved_discard')}</Button>
+                </>}
+            >
+                <p>{t('settings_unsaved_message')}</p>
+            </Dialog>
+        </>
     )
 }

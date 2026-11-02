@@ -47,6 +47,7 @@ describe("the settings page says whose settings these are", () => {
     it("puts the company name in the heading", () => {
         // With the switcher no longer following you in, the page is the only
         // thing that answers this.
-        expect(SETTINGS).toMatch(/<h1[^>]*>\{company\?\.name/)
+        // The page header's title, an h1 (company settings part 1).
+        expect(SETTINGS).toContain("title={company?.name ? <bdi>{company.name}</bdi>")
     })
 })

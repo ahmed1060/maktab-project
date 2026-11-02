@@ -475,8 +475,13 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      history, in three parts: its frame (the page header, the tabs, kept
      in the address) and its Salary tab, merged in #157 on 2026-11-01;
      then its Day off credit and Costs tabs, merged in #158 on
-     2026-11-01; then its bonuses and deductions, which open for review
-     in #159. Then company settings, then the Super Admin's pages;
+     2026-11-01; then its bonuses and deductions, merged in #159 on
+     2026-11-01. The thirteenth is company settings, in four parts: its
+     frame (both ways in, the tabs, and the unsaved-changes question) and
+     its General tab, which open for review in #160; then its Branding
+     and Payroll tabs; then its Attendance tab; then the Super Admin's
+     own tabs, Roles, Modules and Admin access. Then the Super Admin's
+     pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2401,3 +2406,36 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   a list that took longer to load stayed where it was. It's brought into
   view once it's listed, however long that takes, as the Tasks page
   does; the mark still fades after six seconds.
+- **2026-11-01:** An employee's history was merged in #159, its third and
+  last part. Decided the same day: someone who can't see salary still
+  doesn't see their own bonuses and deductions, so a notification about
+  one opens a history that doesn't list it, as it always has.
+- **2026-11-01:** Company settings move onto the building blocks in four
+  parts. The first, in #160, is the frame and the General tab:
+  - both ways in, a company's own settings and the Super Admin's for any
+    company, have the page header. The Super Admin's names the company,
+    under a link back to Companies; it was a hand-drawn arrow, floated
+    and moved on hover in the code. A company's own says what the
+    settings are, where the old top bar said it;
+  - the tabs are the building blocks', kept in the address as before,
+    over one column of cards at a width that reads;
+  - each way in says it's loading, and that it didn't load, with Try
+    again. A company's own said "Access Restricted" for any failure,
+    the server being down included; it says so now only when the
+    answer is a refusal;
+  - leaving a tab or the page with unsaved edits asks in the building
+    blocks' dialog, Discard changes in the danger colour. So does
+    switching cash advances off, which stays open until it's saved;
+  - the General tab's setting, whether a task's submitted location is
+    checked automatically, is a row in a card saying whether it's on,
+    with a button to turn it off or on, as cash advances beside it say
+    theirs. It was a checkbox that saved as it was ticked.
+- **2026-11-01:** Found in the browser and the interface audit on #160:
+  - a card's rows stretched to its edges, as settings' are, lost their
+    own padding to the rule that lines rows up with a card's text, so
+    their text sat against the card's border, cash advances' and a
+    client's record sections' too. They keep their inset now;
+  - a company that shows its people the General tab alone had a row of
+    tabs holding one. It has just the cards now;
+  - the page was "Company Settings", in the side bar too. It's "Company
+    settings" now, in sentence case (`DESIGN.md` §3.4).

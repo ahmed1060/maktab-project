@@ -1,30 +1,33 @@
 'use client'
 
 import useSWR from 'swr'
-import { fetcher } from '@/lib/swr-fetcher'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import { HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
-import { useToast } from '@/context/ToastContext'
+import { Button, EmptyState, Page, PageHeader } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import CompanySettingsTabs, { type CompanySettings } from '@/components/CompanySettingsTabs'
 import { existingSettingsTabs, type SettingsExposure } from '@/lib/company-settings-access'
 
+/**
+ * A company's settings, as the Super Admin opens them from the company list:
+ * every tab that exists for it (ATTENDANCE_PLAN.md §5.2).
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, company settings part 1):
+ * the page header names the company, under a link back to Companies, and
+ * loading and failing each say so.
+ */
 export default function CompanySettingsPage() {
     const params = useParams()
     const { id: companyId } = params as { id: string }
     // Who is looking comes from the layout on the first paint (useViewer), so a
     // Super Admin never sees "Access Restricted" while the session loads.
     const viewer = useViewer()
-    const { showToast } = useToast()
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
 
-    const { data: companyResult, isLoading: loading, mutate } = useSWR(
-        companyId ? `/api/companies?id=${companyId}` : null,
-        fetcher,
-        { onError: () => showToast(t('failed_fetch_data'), 'error') },
-    )
+    const { data: companyResult, error, isLoading, isValidating, mutate } = useSWR(companyId ? `/api/companies?id=${companyId}` : null, fetcher)
     // With its package, which decides which tabs exist for it.
     const company: (CompanySettings & Pick<SettingsExposure, 'package'>) | null = companyResult ? (companyResult.data || companyResult) : null
     // The cards report what they saved; that becomes the cached copy without
@@ -35,58 +38,21 @@ export default function CompanySettingsPage() {
         return <AccessDenied />
     }
 
+    // The company is the heading: this page is the only answer to "whose
+    // settings am I changing", now that opening it no longer moves the global
+    // switcher, so the answer belongs where the eye lands first. The back
+    // link is a link, so leaving with unsaved edits asks first like any other.
+    const header = (
+        <PageHeader
+            back={{ href: '/dashboard/companies', label: t('companies') }}
+            title={company?.name ? <bdi>{company.name}</bdi> : t('company_settings_title')}
+            subtitle={company?.name ? t('company_settings_title') : undefined}
+        />
+    )
     return (
-        <div className="animate-in fade-in duration-500" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ marginBottom: '2rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                {/* A link, so leaving with unsaved edits asks first like any other. */}
-                <Link
-                    href="/dashboard/companies"
-                    className="glass"
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '0.75rem',
-                        color: 'var(--brand-primary-text)',
-                        textDecoration: 'none',
-                        transition: 'all 0.3s ease',
-                        border: '1px solid var(--veil-40)',
-                        transform: `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`,
-                        float: locale === 'ar' ? 'right' : 'left',
-                        cursor: 'pointer',
-                        boxSizing: 'border-box'
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.transform = `translateY(-4px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'var(--panel-90)'
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.transform = `translateY(-2px)${locale === 'ar' ? ' scaleX(-1)' : ''}`
-                        e.currentTarget.style.background = 'var(--panel-70)'
-                    }}
-                    title={t('back_to_companies')}
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                        <polyline points="12 19 5 12 12 5"></polyline>
-                    </svg>
-                </Link>
-                <div style={{ clear: 'both' }}></div>
-                {/* The company is the heading, not a strong tag in the line
-                    under it. This page is the only answer to "whose settings am
-                    I changing" now that opening it no longer moves the global
-                    switcher, so the answer belongs where the eye lands first. */}
-                <h1 style={{ margin: 0 }}>{company?.name || t('company_settings_title') || 'Company Settings'}</h1>
-                <p style={{ color: 'var(--text-soft)', marginTop: '0.25rem' }}>{t('company_settings_title') || 'Company Settings'}</p>
-            </div>
-
-            {loading ? (
-                <div style={{ padding: '4rem', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-soft)' }}>{t('loading_data')}</p>
-                </div>
-            ) : company && (
+        <Page>
+            {header}
+            {company ? (
                 <CompanySettingsTabs
                     company={company}
                     onSaved={next => setCompany({ ...company, ...next })}
@@ -97,7 +63,14 @@ export default function CompanySettingsPage() {
                     tabs={existingSettingsTabs(company)}
                     superAdmin
                 />
-            )}
-        </div>
+            ) : error ? (
+                <div className="ui-panel">
+                    <EmptyState icon={WarningCircleIcon} title={t('settings_load_failed')} detail={(error as SWRError).info?.error}
+                        action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+                </div>
+            ) : isLoading ? (
+                <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+            ) : null}
+        </Page>
     )
 }

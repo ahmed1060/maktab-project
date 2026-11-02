@@ -2175,3 +2175,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-01:** An employee's history part 2 was merged in #158. Its
   bonuses and deductions move onto the building blocks in #159
   (`UI_PLAN.md` §5). It doesn't touch clients or locations.
+- **2026-11-01:** An employee's history was merged in #159. Company
+  settings move onto the building blocks in four parts, the first in
+  #160 (`UI_PLAN.md` §5). Cash advances' switches, on its General tab,
+  ask in the building blocks' dialog now; nothing else touches clients
+  or locations.
