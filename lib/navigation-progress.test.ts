@@ -68,8 +68,12 @@ describe("the bar", () => {
         const list = readFileSync("app/(dashboard)/dashboard/companies/page.tsx", "utf8")
         for (const to of ["settings", "payments"]) expect(list).toContain(`href: \`/dashboard/companies/\${c.id}/${to}\``)
         expect(list).not.toContain("router.push(")
+        // A company's payments go back to Companies by the page header's back
+        // link, as its settings do (the Super Admin's pages part 3b).
+        const payments = readFileSync("app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", "utf8")
+        expect(payments).not.toContain("router.push(")
+        expect(payments).toContain("back={{ href: '/dashboard/companies', label: t('companies') }}")
         const was: [string, string][] = [
-            ["app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", "'/dashboard/companies'"],
             ["app/(dashboard)/dashboard/employees/new/page.tsx", "'/dashboard/employees'"],
         ]
         for (const [file, to] of was) {

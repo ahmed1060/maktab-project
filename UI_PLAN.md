@@ -498,8 +498,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the company's Roles and access page shares, merged in #169 on
      2026-11-02; then Super Admins and Who can, merged in #170 on
      2026-11-02, which finished Access; then Customers, in three parts:
-     the Companies list, which opens for review in #171, then a company's
-     payments with Packages, then All users; then Operations (Check-ins, Audit logs,
+     the Companies list, merged in #171 on 2026-11-02, then a company's
+     payments with Packages, which open for review in #172, then All
+     users; then Operations (Check-ins, Audit logs,
      System health, System settings);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
@@ -2981,3 +2982,46 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - a package refused after the name saved left the old name in the list,
     and trying again from that row renamed the company back. The list
     shows the name that saved, and the dialog stays for another try.
+- **2026-11-02:** The Super Admin's pages part 3a was merged in #171. A
+  company's payments and the Packages page move onto the building blocks
+  in #172:
+  - a company's payments are named for it in the page header, under a
+    link back to Companies, with Add a payment in it. The page had a back
+    arrow drawn of its own, and the company's name in a line under
+    "Payment History";
+  - the payments are a table on computers and cards on phones: what each
+    pays for and when it was added, its amount, the period it covers or
+    that it starts when it's paid, and Paid or Unpaid as a badge in its
+    meaning's colour (`DESIGN.md` §2.3). A lifetime one says it never
+    ends;
+  - amounts are in dollars, written in the page's language and digits,
+    where a dollar sign was put before a number;
+  - an unpaid payment's Mark as paid asks first, saying the period it will
+    pay for, worked out as the server will, and that a paid payment can't
+    be deleted. It was done on one click. Deleting one asks in the
+    building blocks' dialog. A paid one has nothing to do, where its row
+    had a greyed "PAID" button;
+  - adding one is the building blocks' dialog: what it pays for, and the
+    amount, said under its field when it's missing, isn't above zero or
+    has more than two decimal places. The server's reason is said, where
+    it said "Something went wrong";
+  - the Packages page has the page header, Add a package in it, where its
+    name was the old top bar's and it waited on the session to know who
+    was looking;
+  - the packages are a table on computers and cards on phones: the name,
+    Retired and Not listed as badges, and its description; what it
+    grants, or Core only; its three prices; and how many companies are on
+    it. What it grants was badges of their own colours;
+  - each package's Edit and Delete are in its menu. Delete can't be picked
+    while companies are on it, and says why in its label, where the
+    greyed button said so only on hover;
+  - adding and changing one are the building blocks' dialog: how many
+    companies a change reaches, said first; the name, description and
+    prices, what's wrong said under each; what it grants, the attendance
+    add-ons greyed without HR and saying why; whether it can be given to
+    companies and whether it's listed. A name that's taken is said under
+    the name, and anything else the server refuses as it said it;
+  - each list says while it loads, when it didn't with the server's
+    reason and Try again, and when there's nothing yet;
+  - 37 labels, and the --lifetime-fg colour, only the old pages used are
+    removed.

@@ -53,3 +53,27 @@ export function bundleLabelKeys(pkg: {
     if (pkg.hasAttendanceMobile) keys.push('bundle_attendance_mobile')
     return keys
 }
+
+/**
+ * What the platform charges, a package's price or a company's payment, in US
+ * dollars, in the page's language and digits (the Super Admin's pages part
+ * 3b): "$1,200.00". The old pages put a dollar sign before a number.
+ */
+export function platformMoney(n: number, locale: string): string {
+    return n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol' })
+}
+
+/**
+ * What's wrong with an amount typed, as the server would say it: nothing
+ * typed, not a number it takes (below zero, or zero where it must be more, or
+ * more than the 12 digits it stores), or more than two decimal places, which
+ * the database would round without a word. Null when it'll do.
+ */
+export function amountError(text: string, { zero }: { zero: boolean }): 'missing' | 'wrong' | 'places' | null {
+    const typed = text.trim()
+    if (typed === '') return 'missing'
+    if (!/^(\d+(\.\d*)?|\.\d+)$/.test(typed)) return 'wrong'
+    const n = Number(typed)
+    if ((!zero && n === 0) || n > 9_999_999_999) return 'wrong'
+    return Number(n.toFixed(2)) === n ? null : 'places'
+}

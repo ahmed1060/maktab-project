@@ -96,10 +96,6 @@
   --info-solid-hover: #2563eb;
 
 
-  /* Subscription and bundle badges, so lib/subscription-display.ts and
-     lib/recurrence.ts stop carrying literals of their own. */
-  --lifetime-fg: #6d28d9;
-
   /* Second wave: the long tail the first pass left. Same families, more
      weights — the codebase reached for a lighter or darker shade whenever a
      badge sat on an unusual ground, and each of those needs its own dark
@@ -1220,7 +1216,6 @@ input::-webkit-credentials-auto-fill-button {
     --info-fg-deep: #96d4f5;
     --info-fg-indigo: #9db4f0;
 
-    --lifetime-fg: #c4a8f5;
     --accent-solid: #a86ef0;
     /* Text on the dark surfaces (the audit log's action names): #6a5ad0 read
        at 2.85:1 there. */

@@ -66,7 +66,8 @@ describe("data buttons that had no busy state", () => {
         ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", /action\.run\('delete', handleDelete\)/],
         ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", /action\.run\('reassign', handleReassign\)/],
         ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", /action\.run\('complete', handleForceComplete\)/],
-        ["app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", /action\.run\(`paid-\$\{payment\.id\}`/],
+        // Mark as paid asks first now, and its dialog's button is busy until it's done (the Super Admin's pages part 3b).
+        ["app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", /<MarkPaidDialog[^\n]*busy=\{busy\}/],
         ["app/(dashboard)/dashboard/tasks/[id]/client.tsx", /action\.run\('dismiss', handleDismiss\)/],
         ["app/(dashboard)/dashboard/attendance/NumbersTab.tsx", /action\.run\(`map-\$\{u\.code\}`/],
         ["components/AccessReviews.tsx", /action\.run\(`confirm-\$\{line\.id\}`/],

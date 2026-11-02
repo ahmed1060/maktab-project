@@ -78,3 +78,21 @@ export function daysUntil(endDate: Date | null | undefined, now: Date = new Date
     if (!endDate) return null
     return Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 }
+
+/**
+ * The period a payment would pay for if it were marked paid now, said before
+ * it's asked (the Super Admin's pages part 3b): what
+ * CompanyService.updatePaymentStatus will work out, from the company's other
+ * paid payments. It carries on from the furthest end among them. One with no
+ * end, a lifetime, is what the server's query finds first (Postgres sorts
+ * nulls first when descending), so it starts from now, as the server does.
+ */
+export function periodIfPaid(paid: { endDate: string | Date | null }[], type: SubscriptionType, now: Date): { start: Date; end: Date | null } {
+    let furthest: Date | undefined
+    for (const p of paid) {
+        const end = p.endDate === null ? null : new Date(p.endDate)
+        if (end && (!furthest || end.getTime() > furthest.getTime())) furthest = end
+    }
+    const start = computePeriodStart(now, paid.some(p => p.endDate === null) ? null : furthest)
+    return { start, end: computePeriodEnd(start, type) }
+}

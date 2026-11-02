@@ -14,12 +14,12 @@ describe("every label key the UI reaches for exists in both locales", () => {
         ...Object.values(SUBSCRIPTION_TONE).map(s => s.labelKey),
         ...Object.values(TRIAL_PRESET_LABEL_KEY),
         'state_grandfathered', 'bundle_company_management', 'bundle_hr', 'core_only',
-        'no_package', 'package_label', 'packages', 'bundles', 'subscription_state',
+        'no_package', 'package_label', 'packages', 'packages_grants_legend', 'subscription_state',
         'needs_attention_filter', 'companies_show_all', 'nothing_needs_attention',
         'companies_sort_date', 'companies_sort_name', 'companies_ends_in', 'companies_ended_ago', 'unpaid_record',
-        'trial_length', 'companies_trial_ends', 'never_expires', 'not_sold_as_lifetime',
-        'package_edit_warning', 'package_retired', 'companies_on_package',
-        'package_created_success', 'package_updated_success', 'package_deleted_success',
+        'trial_length', 'companies_trial_ends', 'never_expires', 'packages_not_for_life',
+        'packages_reaches', 'package_retired', 'packages_prices',
+        'packages_added', 'packages_saved', 'packages_deleted',
     ]
 
     for (const key of keys) {
@@ -38,8 +38,8 @@ describe("every label key the UI reaches for exists in both locales", () => {
     it("the interpolated strings keep their placeholder in both locales", () => {
         // These are rendered with .replace('{count}', …) — a translation that
         // drops the token silently loses the number.
-        expect(en.package_edit_warning).toContain('{count}')
-        expect(ar.package_edit_warning).toContain('{count}')
+        expect(en.packages_reaches).toContain('{count}')
+        expect(ar.packages_reaches).toContain('{count}')
         for (const dict of [en, ar]) {
             expect(dict.companies_ended_ago).toContain('{days}')
             expect(dict.companies_ends_in).toContain('{days}')
