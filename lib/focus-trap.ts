@@ -56,3 +56,16 @@ export function dialogKeyDown(
     }
     return trapTab(e, panel, active) ? 'trapped' : 'ignored'
 }
+
+/**
+ * Takes focus back into an open dialog when it's been lost to the page, as
+ * happens when the focused button turns itself off while busy (a failed
+ * delete that leaves its dialog open). Not when focus is anywhere else: in
+ * the dialog, or in a pop-up opened from it. Returns whether it moved focus
+ * (Codex review of PR 168).
+ */
+export function regainFocus(panel: { focus: () => void } | null, active: unknown, body: unknown): boolean {
+    if (!panel || (active && active !== body)) return false
+    panel.focus()
+    return true
+}

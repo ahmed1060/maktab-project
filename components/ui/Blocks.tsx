@@ -106,13 +106,15 @@ export function Rows({ label, children }: { label: string; children: ReactNode }
 
 /**
  * One row: the title and an optional detail line on the start side, and its
- * status, date or count on the end side. A row with `href` is a link.
+ * status, date or count on the end side. A row with `href` is a link. A note
+ * goes under the detail line, such as what a template is for.
  */
-export function Row({ href, title, detail, detailIcon, end, tone }: {
+export function Row({ href, title, detail, detailIcon, note, end, tone }: {
     href?: string
     title: ReactNode
     detail?: ReactNode
     detailIcon?: PhosphorIcon
+    note?: ReactNode
     end?: ReactNode
     tone?: 'overdue'
 }) {
@@ -121,6 +123,7 @@ export function Row({ href, title, detail, detailIcon, end, tone }: {
             <span className="ui-row-main">
                 <span className="ui-item-title">{title}</span>
                 {detail && <span className="ui-item-detail">{detailIcon && <Icon icon={detailIcon} size={16} />}{detail}</span>}
+                {note && <span className="ui-item-note">{note}</span>}
             </span>
             {end && <span className="ui-row-end">{end}</span>}
         </>

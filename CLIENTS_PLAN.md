@@ -2208,3 +2208,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   #167 (`UI_PLAN.md` §5), which finishes company settings. It doesn't
   touch clients or locations; the clients and locations permissions are
   rows in the matrix like the others.
+- **2026-11-02:** Company settings part 4c was merged in #167, which
+  finished company settings. The Super Admin's pages follow, their role
+  templates and policy templates first in #168 (`UI_PLAN.md` §5). They
+  don't touch clients or locations.

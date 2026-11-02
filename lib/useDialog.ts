@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { dialogKeyDown, focusables } from '@/lib/focus-trap'
+import { dialogKeyDown, focusables, regainFocus } from '@/lib/focus-trap'
 
 /**
  * What a dialog's panel needs to behave as a dialog (WCAG 2.4.3, 4.1.2;
@@ -12,7 +12,9 @@ import { dialogKeyDown, focusables } from '@/lib/focus-trap'
  *   the first thing that can be focused, else the panel);
  * - Tab stays inside it while it's open;
  * - Escape closes it, when `onClose` is given;
- * - focus goes back to whatever opened it when it closes.
+ * - focus goes back to whatever opened it when it closes;
+ * - focus lost to the page while it's open, as when a busy button turns
+ *   itself off, comes back to the panel (Codex review of PR 168).
  *
  * Before, focus stayed on the page behind, so Tab and screen readers moved
  * through content hidden by the overlay, and closing left focus nowhere.
@@ -47,6 +49,9 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
     // nothing, and closing left focus on the page (Codex review of #36).
     const [focusedAtMount] = useState(() => (typeof document === 'undefined' ? null : document.activeElement as HTMLElement | null))
 
+    // Its first focus placed: from then on, focus lost to the page comes back.
+    const settled = useRef(false)
+
     useEffect(() => {
         if (!isOpen) return
         const opener = lastOutside.current ?? (focusedAtMount === document.body ? null : focusedAtMount)
@@ -54,6 +59,7 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
         // autoFocus field inside it has taken focus.
         let panel: HTMLElement | null = null
         const timer = setTimeout(() => {
+            settled.current = true
             panel = ref.current
             if (!panel || panel.contains(document.activeElement)) return
             const target = (focusables(panel)[0] as unknown as HTMLElement | undefined) ?? panel
@@ -61,11 +67,19 @@ export function useDialog(isOpen: boolean, onClose?: () => void, opts: { label?:
         }, 0)
         return () => {
             clearTimeout(timer)
+            settled.current = false
             // Only if focus is still in the dialog or lost: not if the person has moved on.
             const now = document.activeElement
             if (opener && opener.isConnected && (!now || now === document.body || panel?.contains(now) || !now.isConnected)) opener.focus()
         }
     }, [isOpen, focusedAtMount])
+
+    // After every redraw while open: a busy button that turned itself off
+    // (Delete, Apply) dropped focus to the page, where Escape and Tab no
+    // longer reach the dialog. Redrawn when it's done, focus comes back.
+    useEffect(() => {
+        if (isOpen && settled.current) regainFocus(ref.current, document.activeElement, document.body)
+    })
 
     const onKeyDown = (e: KeyboardEvent) => {
         dialogKeyDown(e, ref.current, document.activeElement, close.current)
