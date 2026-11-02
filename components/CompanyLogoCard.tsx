@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Button, Card } from '@/components/ui'
+import { Button, Card, Dialog } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { MAX_LOGO_BYTES } from '@/lib/company-logo'
@@ -27,6 +27,10 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
     const inputRef = useRef<HTMLInputElement | null>(null)
     // Which button is at work, so only it says so.
     const [busy, setBusy] = useState<'upload' | 'remove' | null>(null)
+    // Removing deletes the stored file, so it's asked first (the audit on
+    // company settings part 2): showing the logo again means uploading it
+    // again.
+    const [removing, setRemoving] = useState(false)
 
     const handleFile = async (file: File) => {
         // A local size check so the obvious rejection does not cost an upload of
@@ -73,6 +77,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
             showToast(t('error_generic'), 'error')
         } finally {
             setBusy(null)
+            setRemoving(false)
         }
     }
 
@@ -90,7 +95,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
                 <div className="ui-logo-preview">
                     {logoUrl
                         // eslint-disable-next-line @next/next/no-img-element -- next/image would need every company's storage host in next.config, for one small image
-                        ? <img src={logoUrl} alt="" className="ui-logo-plate" />
+                        ? <img src={logoUrl} alt="" width={32} height={32} className="ui-logo-plate" />
                         : <span className="ui-logo-mark" aria-hidden="true">🚀</span>}
                     <span className="ui-logo-preview-name"><bdi>{companyName}</bdi></span>
                 </div>
@@ -113,7 +118,7 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
             {!readOnly && (
                 <div className="ui-card-actions">
                     {logoUrl && (
-                        <Button onClick={() => { void handleRemove() }} busy={busy === 'remove'} disabled={!!busy}>
+                        <Button onClick={() => setRemoving(true)} disabled={!!busy}>
                             {t('company_logo_remove')}
                         </Button>
                     )}
@@ -122,6 +127,18 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
                     </Button>
                 </div>
             )}
+
+            <Dialog
+                open={removing}
+                onClose={() => { if (!busy) setRemoving(false) }}
+                title={t('company_logo_remove_title')}
+                actions={<>
+                    <Button onClick={() => setRemoving(false)} disabled={!!busy}>{t('cancel')}</Button>
+                    <Button variant="danger" busy={busy === 'remove'} onClick={() => { void handleRemove() }}>{t('company_logo_remove_confirm')}</Button>
+                </>}
+            >
+                <p>{t('company_logo_remove_question')}</p>
+            </Dialog>
         </Card>
     )
 }

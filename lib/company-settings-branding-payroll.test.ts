@@ -45,7 +45,7 @@ describe("the logo card", () => {
     it("shows the logo as the side bar will, beside the company's name", async () => {
         const html = await logo({ logoUrl: "https://files.test/logo.png" })
         expect(html).toContain(`<p class="ui-label">${en.company_logo_preview}</p>`)
-        expect(html).toMatch(/<div class="ui-logo-preview">[\s\S]*<img src="https:\/\/files.test\/logo.png" alt="" class="ui-logo-plate"\/>[\s\S]*<bdi>Delta Sites<\/bdi>/)
+        expect(html).toMatch(/<div class="ui-logo-preview">[\s\S]*<img src="https:\/\/files.test\/logo.png" alt=""[^>]*class="ui-logo-plate"\/>[\s\S]*<bdi>Delta Sites<\/bdi>/)
         expect(html).toContain(esc(en.company_logo_plate_note))
     })
 
@@ -160,6 +160,46 @@ describe("nothing of the old cards is left", () => {
             for (const old of ["style={", "className=\"glass", "className=\"input\"", "className=\"btn", "isRtl", "|| 'Settings saved'"]) {
                 expect(src, `${file}: ${old}`).not.toContain(old)
             }
+        }
+    })
+})
+
+describe("found in the browser and the audit (company settings part 2)", () => {
+    it("keeps the calendar's zone clear of its arrow in Arabic, and doesn't let a page translator rename it", async () => {
+        // Set left to right, the select started its text under the arrow,
+        // which sits on the end side: the left, in Arabic.
+        const html = await payroll({}, "ar")
+        const select = html.match(/<select[^>]*>/)![0]
+        expect(select).not.toContain('dir="ltr"')
+        expect(select).toContain('translate="no"')
+    })
+
+    it("clears a field's error as soon as the field is changed, as the other forms do", () => {
+        const src = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
+        for (const field of ["payrollDay", "timezone", "debtRecoveryPercent"]) expect(src, field).toContain(`clear('${field}')`)
+    })
+
+    it("asks before removing the logo, which can't be undone", async () => {
+        const src = readFileSync("components/CompanyLogoCard.tsx", "utf8")
+        expect(src).toMatch(/<Dialog[\s\S]*variant="danger"[\s\S]*company_logo_remove_confirm/)
+        // Remove only asks; the dialog's own button removes.
+        expect(src).toMatch(/onClick=\{\(\) => setRemoving\(true\)\}[^>]*>\s*\{t\('company_logo_remove'\)\}/)
+        expect(src.match(/void handleRemove\(\)/g)).toHaveLength(1)
+        expect(src).toMatch(/variant="danger"[^>]*onClick=\{\(\) => \{ void handleRemove\(\) \}\}/)
+        for (const key of ["company_logo_remove_title", "company_logo_remove_question", "company_logo_remove_confirm"] as const) {
+            expect(en[key], key).toBeTruthy()
+            expect(ar[key], key).toBeTruthy()
+        }
+    })
+
+    it("gives the logo's preview its size, so the card doesn't move as it loads", async () => {
+        expect(await logo({ logoUrl: "https://files.test/logo.png" })).toMatch(/<img [^>]*width="32" height="32"/)
+    })
+
+    it("keeps the browser from offering saved entries for the payday and the debt cap", async () => {
+        const html = await payroll()
+        for (const name of ["payrollDay", "debtRecoveryPercent"]) {
+            expect(html, name).toMatch(new RegExp(`<input[^>]*autoComplete="off"[^>]*name="${name}"`, "i"))
         }
     })
 })

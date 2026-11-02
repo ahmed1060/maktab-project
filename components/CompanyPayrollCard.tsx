@@ -102,6 +102,10 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
     const [errors, setErrors] = useState<Partial<Record<PayrollField, string>>>({})
     const [saving, setSaving] = useState(false)
 
+    // A field's error goes once the field is changed, as the other forms'
+    // do (found in the browser on company settings part 2).
+    const clear = (field: PayrollField) => setErrors(x => ({ ...x, [field]: undefined }))
+
     const dirty = dayText !== String(payrollDay) || visible !== payslipsVisible || zone !== timezone || capText !== String(debtRecoveryPercent)
     useReportUnsaved('payroll', dirty)
 
@@ -165,13 +169,17 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
             <form ref={form} className="ui-card-form" noValidate onSubmit={save}>
                 <Field label={t('payroll_day_label')} hint={t('payroll_day_hint').replace('{max}', String(MAX_PAYROLL_DAY))} error={errors.payrollDay}>
                     {p => (
-                        <TextInput {...p} name="payrollDay" type="number" inputMode="numeric" min={1} max={MAX_PAYROLL_DAY}
-                            value={dayText} onChange={e => setDayText(e.target.value)} disabled={readOnly} />
+                        <TextInput {...p} autoComplete="off" name="payrollDay" type="number" inputMode="numeric" min={1} max={MAX_PAYROLL_DAY}
+                            value={dayText} onChange={e => { setDayText(e.target.value); clear('payrollDay') }} disabled={readOnly} />
                     )}
                 </Field>
 
                 <Field label={t('company_timezone_label')} hint={t('company_timezone_hint')} error={errors.timezone}>
-                    {p => <Select {...p} name="timezone" dir="ltr" options={zones} value={zone} onChange={e => setZone(e.target.value)} disabled={readOnly} />}
+                    {/* Zone names are identifiers, not words: a page translator
+                        leaves them as they are. They read the same in either
+                        direction, so the select keeps the page's: set left to
+                        right, it started its text under its arrow in Arabic. */}
+                    {p => <Select {...p} name="timezone" translate="no" options={zones} value={zone} onChange={e => { setZone(e.target.value); clear('timezone') }} disabled={readOnly} />}
                 </Field>
 
                 {/* Only the box and its label are the control: the line under
@@ -192,8 +200,8 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
                     error={errors.debtRecoveryPercent}
                 >
                     {p => (
-                        <TextInput {...p} name="debtRecoveryPercent" type="number" inputMode="numeric" min={0} max={100}
-                            value={capText} onChange={e => setCapText(e.target.value)} disabled={readOnly || !debtRecoveryEditable} />
+                        <TextInput {...p} autoComplete="off" name="debtRecoveryPercent" type="number" inputMode="numeric" min={0} max={100}
+                            value={capText} onChange={e => { setCapText(e.target.value); clear('debtRecoveryPercent') }} disabled={readOnly || !debtRecoveryEditable} />
                     )}
                 </Field>
 

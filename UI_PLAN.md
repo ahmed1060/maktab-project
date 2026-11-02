@@ -2458,3 +2458,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the focus moves to the first field that's wrong;
   - the debt cap's label says it's a percentage, where a "%" used to
     follow the field.
+- **2026-11-02:** Found in the browser and the interface audit on #161:
+  - in Arabic, the calendar's zone started under the select's arrow,
+    because the select was set left to right. It keeps the page's
+    direction now, and a page translator leaves zone names as they are;
+  - a field's error stayed after the field was put right, until Save.
+    It goes as soon as the field is changed, as the other forms' do;
+  - Remove deleted the logo at once. It asks first now, Remove logo in
+    the danger colour, since showing it again means uploading it again;
+  - the logo's preview has its size before it loads, so the card doesn't
+    move, and the payday and the debt cap don't offer saved entries.
