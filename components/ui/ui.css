@@ -1504,6 +1504,10 @@ a.ui-file-open:focus-visible,
   background: var(--overdue-row);
   border-inline-start: 3px solid var(--problem-text);
 }
+/* The row you came to see, such as the one a notification opened. */
+.ui-rows > li[data-tone="selected"] {
+  background: var(--brand-tint);
+}
 .ui-row {
   display: flex;
   align-items: center;
@@ -1701,8 +1705,17 @@ a.ui-row:focus-visible {
 }
 /* Rows a card stretches to its edges, as settings' are, keep their inset:
    without it their text sat against the card's border (company settings
-   part 1). */
-.ui-card > .ui-rows-flush > li > .ui-row {
+   part 1). A titled part's rows stretch the same, so a marked row's tint
+   doesn't touch its words (the Super Admin's pages part 2a). */
+.ui-card > .ui-subsection > .ui-rows-flush {
+  margin-inline: calc(-1 * var(--space-4));
+  border-top: 1px solid var(--rule);
+}
+.ui-card > .ui-subsection:last-child > .ui-rows-flush {
+  margin-block-end: calc(-1 * var(--space-4));
+}
+.ui-card > .ui-rows-flush > li > .ui-row,
+.ui-card > .ui-subsection > .ui-rows-flush > li > .ui-row {
   padding-inline: var(--space-4);
 }
 /* A titled part inside a card, such as a task's costs paid person by person. */

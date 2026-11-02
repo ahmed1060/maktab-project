@@ -452,6 +452,9 @@ These are built once, in the building-blocks PR, and every page uses them
   The search and the selects are the one exception to visible labels: what
   they show already names them ("Search tasks", "All statuses"), so their
   labels are kept for screen readers but not shown.
+- **A list with one filter and no search,** such as role change requests
+  by status, has its select in its card's head, on the end side. Its
+  label is kept for screen readers and not shown, as in the filter bar.
 - **On phones,** the filter bar becomes the search field plus a
   "Filters" button showing how many filters are on. The button shows the
   filters below the search, and hides them again.
@@ -516,7 +519,10 @@ These are built once, in the building-blocks PR, and every page uses them
     optional detail line in `--muted`) on the start side, and its status,
     date or count on the end side.
   - A row may carry a note under its detail line, such as what a template
-    is for, in the detail's size and colour.
+    is for, in the detail's size and colour, or a note a line, such as a
+    request and its response.
+  - The row you came to see, such as the one a notification opened, has
+    `--brand-tint` behind it, as a table's does.
   - An overdue row gets the red start-edge bar and the faint red background,
     as in a table.
   - A full list, with filters and pages, uses the table (§5.4) instead.
@@ -1005,3 +1011,8 @@ changed:
 - **2026-11-02:** A row's note (§5.5, Rows), under its detail line, for
   what an item is for, such as a template's description. The templates
   pages showed it in cards of their own making.
+- **2026-11-02:** A row can be the one you came to see (§5.5, Rows), and
+  carry a note a line; a list with one filter and no search has it in its
+  card's head (§5.3). Role change requests and access reviews had their
+  own pills for status, and an outline or a yellow fill for the one a
+  notification opened.

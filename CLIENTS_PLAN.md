@@ -2212,3 +2212,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   finished company settings. The Super Admin's pages follow, their role
   templates and policy templates first in #168 (`UI_PLAN.md` §5). They
   don't touch clients or locations.
+- **2026-11-02:** The Super Admin's pages part 1 was merged in #168. Role
+  change requests and access reviews move onto the building blocks in
+  #169 (`UI_PLAN.md` §5), on the Super Admin's pages and a company's
+  Roles and access page. They don't touch clients or locations.

@@ -492,11 +492,13 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      and its permission matrix, which the role templates page shares,
      merged in #167 on 2026-11-02, which finished company settings. The
      fourteenth is the Super Admin's pages, a side bar group (§2.2) at a
-     time: Templates first, whose role templates and policy templates
-     open for review in #168 (public holidays moved in #146); then
-     Access (Super Admins, Role changes, Access reviews, Who can); then
-     Customers (Companies, Packages, All users); then Operations
-     (Check-ins, Audit logs, System health, System settings);
+     time: Templates first, its role templates and policy templates
+     merged in #168 on 2026-11-02 (public holidays moved in #146); then
+     Access, in two parts: Role changes and Access reviews, whose lists
+     the company's Roles and access page shares, which open for review
+     in #169; then Super Admins and Who can; then Customers (Companies,
+     Packages, All users); then Operations (Check-ins, Audit logs,
+     System health, System settings);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -2818,3 +2820,46 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   focus back to itself when it's redrawn with focus lost to the page,
   once its first focus is placed. The offer dialog's own fix gave way to
   it.
+- **2026-11-02:** The Super Admin's pages part 1 was merged in #168. The
+  Access group follows in two parts, the first in #169: role change
+  requests and access reviews. Each list serves both sides, the Super
+  Admin's own page and a company's Roles and access page, so both move:
+  - the Super Admin's two pages have the page header, where their names
+    were the old top bar's;
+  - asking for a role change is a card of labelled fields, the role
+    picked from the ones the Admin may give, as before. Send with too
+    little said says so under the field, where Send was off without a
+    word;
+  - each list is one card with the status to show in its head, a select
+    labelled for screen readers ("All statuses"), where the statuses
+    were pills of their own colours. A list with one filter and no search
+    has it there (`DESIGN.md` §5.3);
+  - a request is a row: the role and its status as a badge, the company,
+    who asked and when as facts, then what was asked and the response a
+    line each, a row's notes (`DESIGN.md` §5.5). The facts ran together
+    with " · ";
+  - the Super Admin's Mark done and Decline are in a menu named for the
+    request. Declining asks for the response in the building blocks'
+    dialog, the request in view, the response required and said so
+    under its field; it stays open until it's done;
+  - each access review is a part of the card, headed with its day (and
+    its company, for the Super Admin) and how many lines are left. A line
+    is a row: the person, the permission, its scope and the role as
+    facts, and Confirm and Request change at its end, each named for the
+    line. It was a table that scrolled sideways on a phone;
+  - an answered line says how and by whom, with the reason as its note;
+    a person's own line says someone else answers it;
+  - requesting a change is the building blocks' dialog, the line in
+    view, the reason required and said so under its field;
+  - the request or review a notification opened is marked with the brand
+    tint for a while (`DESIGN.md` §5.5, Rows), where it had a yellow fill
+    or an outline that stayed;
+  - each list says while it loads, and when it didn't with the server's
+    reason and Try again, where a failed load said there was nothing.
+- **2026-11-02:** Found in the browser and the interface audit on #169:
+  - a review's rows sat inside the card's padding, so the brand tint on
+    the review a notification opened touched the names. A titled part's
+    rows stretch to the card's edges, as a card's own rows do;
+  - the Super Admin's menu on a request was named for its role only, so
+    two companies asking for "A new role" had menus of the same name. It's
+    named for the role and the company.

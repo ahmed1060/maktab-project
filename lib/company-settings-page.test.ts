@@ -144,7 +144,8 @@ describe("found in the browser (the audit, company settings part 1)", () => {
         // Stretched to the card's edges and stripped of their padding, the
         // rows' text sat against the card's border (cash advances' too).
         const css = readFileSync("components/ui/ui.css", "utf8")
-        expect(css).toMatch(/\.ui-card > \.ui-rows-flush > li > \.ui-row \{\s*padding-inline: var\(--space-4\);/)
+        // Since the Super Admin's pages part 2a the same rule covers a titled part's rows too.
+        expect(css).toMatch(/\.ui-card > \.ui-rows-flush > li > \.ui-row,(\s*[^{]+)?\{\s*padding-inline: var\(--space-4\);/)
     })
 
     it("has no row of tabs when there's one tab to show", async () => {

@@ -107,23 +107,26 @@ export function Rows({ label, children }: { label: string; children: ReactNode }
 /**
  * One row: the title and an optional detail line on the start side, and its
  * status, date or count on the end side. A row with `href` is a link. A note
- * goes under the detail line, such as what a template is for.
+ * goes under the detail line, such as what a template is for; a list of them,
+ * a line each, such as a request and its response. The row you came to see,
+ * such as the one a notification opened, is `selected`.
  */
 export function Row({ href, title, detail, detailIcon, note, end, tone }: {
     href?: string
     title: ReactNode
     detail?: ReactNode
     detailIcon?: PhosphorIcon
-    note?: ReactNode
+    note?: ReactNode | ReactNode[]
     end?: ReactNode
-    tone?: 'overdue'
+    tone?: 'overdue' | 'selected'
 }) {
+    const notes = (Array.isArray(note) ? note : [note]).filter(n => n !== null && n !== undefined && n !== false && n !== '')
     const inside = (
         <>
             <span className="ui-row-main">
                 <span className="ui-item-title">{title}</span>
                 {detail && <span className="ui-item-detail">{detailIcon && <Icon icon={detailIcon} size={16} />}{detail}</span>}
-                {note && <span className="ui-item-note">{note}</span>}
+                {notes.map((n, i) => <span key={i} className="ui-item-note">{n}</span>)}
             </span>
             {end && <span className="ui-row-end">{end}</span>}
         </>
