@@ -22,7 +22,9 @@ import { useToast } from '@/context/ToastContext'
 import type { SubscriptionState } from '@/lib/billing/state'
 import { countOf } from '@/lib/plural'
 import { bundleLabelKeys } from '@/lib/subscription-display'
-import { fetcher, SWRError } from '@/lib/swr-fetcher'
+import { SWRError } from '@/lib/swr-fetcher'
+import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useViewer } from '@/lib/useCan'
 
 /**
@@ -80,12 +82,19 @@ export default function CompaniesPage() {
     const [removing, setRemoving] = useState<Company | null>(null)
     const [busy, setBusy] = useState(false)
 
-    const { data, error, isValidating, mutate } = useSWR(
-        isSuperAdmin ? `/api/companies?page=${page}&limit=${LIMIT}&filter=${all ? 'all' : 'needs-attention'}&sort=${sort}&search=${encodeURIComponent(search)}` : null,
-        fetcher,
-        { keepPreviousData: true },
-    )
-    const listed: Listed | null = data?.data ?? null
+    // The rows stay up while the next page, tab or search loads, each
+    // answer tagged with what it was asked for: when one fails, the list says
+    // so, rather than leave the last one's rows under the new search (Codex
+    // on PR 171). A failed refresh of the rows on screen leaves them up.
+    const listUrl = isSuperAdmin ? `/api/companies?page=${page}&limit=${LIMIT}&filter=${all ? 'all' : 'needs-attention'}&sort=${sort}&search=${encodeURIComponent(search)}` : null
+    const { data, error, isValidating, mutate } = useSWR(scopedKey(listUrl, ''), scopedFetcher, { keepPreviousData: true })
+    const failed = loadFailed(data, error, listUrl)
+    const listed: Listed | null = failed ? null : forScope(data, '')?.data ?? null
+    // Fewer pages than the one shown, as when a rename takes the last company
+    // on a page out of the search, or the last is deleted: the last page
+    // there is now (Codex on PR 171). An empty page shows no pager to leave it by.
+    const pageCount = listed?.totalPages
+    useAdjustOnChange([pageCount], () => { if (pageCount !== undefined) setPage(p => pageInRange(p, pageCount)) })
 
     if (!isSuperAdmin) return <AccessDenied />
 
@@ -120,8 +129,6 @@ export default function CompaniesPage() {
         () => {
             setRemoving(null)
             triggerRefresh()
-            // The last on its page gone, the page before it is shown.
-            if (listed?.data.length === 1 && page > 1) setPage(pageInRange(page - 1, listed.totalPages))
         },
     )
 
@@ -173,7 +180,7 @@ export default function CompaniesPage() {
 
     let list: ReactNode
     if (!listed) {
-        list = error ? (
+        list = failed ? (
             <div className="ui-panel">
                 <EmptyState icon={WarningCircleIcon} title={t('companies_load_failed')} detail={(error as SWRError).info?.error}
                     action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
@@ -237,6 +244,7 @@ export default function CompaniesPage() {
                 <CompanyDialog
                     company={editing === 'new' ? null : editing}
                     onClose={() => setEditing(null)}
+                    onChanged={() => { triggerRefresh(); void mutate() }}
                     onSaved={(name, added) => {
                         setEditing(null)
                         showToast(said(added ? 'companies_added' : 'companies_saved', name), 'success')

@@ -13,7 +13,7 @@ import { computeTrialEnd, DEFAULT_TRIAL_PRESET } from "./billing/state"
  * deletes them in.
  */
 
-type Loaded = { data?: unknown; error?: unknown; isValidating?: boolean }
+type Loaded = { data?: unknown; error?: unknown; isValidating?: boolean; retained?: { data?: unknown } }
 const state = {
     locale: "en" as "en" | "ar",
     viewer: { id: "sa1", role: "SUPER_ADMIN" } as Record<string, unknown> | null,
@@ -33,10 +33,17 @@ vi.mock("@/context/LanguageContext", () => ({
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
 vi.mock("react-dom", async (importOriginal) => ({ ...(await importOriginal<typeof import("react-dom")>()), createPortal: (node: unknown) => node }))
+// A list's key is [address, scope] (lib/swr-scoped.ts): its data comes back
+// tagged with the address it's for, or another's when `retained` is kept up
+// from the last request.
 vi.mock("swr", () => ({
-    default: (key: string | null) => {
-        state.keys.push(key)
-        return { data: undefined, error: undefined, isValidating: false, mutate: async () => {}, ...(key ? state.swr[key] : {}) }
+    default: (key: string | [string, string] | null) => {
+        const url = Array.isArray(key) ? key[0] : key
+        state.keys.push(url)
+        const loaded: Loaded & { retained?: { data?: unknown } } = url ? state.swr[url] ?? {} : {}
+        const tagged = (body: unknown, from: string) => body === undefined ? undefined : Array.isArray(key) ? { scope: key[1], url: from, body } : body
+        const data = loaded.retained ? tagged(loaded.retained.data, "/api/companies?an-earlier-request") : tagged(loaded.data, url ?? "")
+        return { error: undefined, isValidating: false, mutate: async () => {}, ...loaded, data }
     },
 }))
 vi.mock("@/components/ui", async (importOriginal) => {
@@ -197,6 +204,20 @@ describe("the Companies page", () => {
         expect(none).toContain(`class="ui-empty-title">${esc(en.companies_none)}<`)
     })
 
+    it("says a failed search, tab or page didn't load, not the rows kept from the one before (Codex on PR 171)", async () => {
+        const html = await companies({ [ALL]: { retained: listed([company()]), error: failed.error } }, { search: "show=all" })
+        expect(html).toContain(esc(en.companies_load_failed))
+        expect(html).toContain(`>${en.try_again}</button>`)
+        expect(html).not.toContain("Delta Sites")
+        // A refresh of the rows on screen that failed leaves them up.
+        expect(await companies({ [ALL]: { ...listed([company()]), error: failed.error } }, { search: "show=all" })).toContain("Delta Sites")
+    })
+
+    it("goes back to the last page there is when the pages it's on are gone, as after a rename leaves a search (Codex on PR 171)", () => {
+        const source = readFileSync("app/(dashboard)/dashboard/companies/page.tsx", "utf8")
+        expect(source).toContain("useAdjustOnChange([pageCount], () => { if (pageCount !== undefined) setPage(p => pageInRange(p, pageCount)) })")
+    })
+
     it("says while they load, and when they didn't, with the server's reason and Try again", async () => {
         expect(await companies({})).toContain('<div class="ui-panel" role="status">')
         const html = await companies({ [ATTENTION]: failed })
@@ -211,7 +232,7 @@ describe("the company dialogs", () => {
 
     it("adds a company with its name, its trial and its package, the trial's end said as a date", async () => {
         const { CompanyDialog } = await import("@/components/CompanyDialogs")
-        const html = render(h(CompanyDialog, { company: null, onClose: () => {}, onSaved: () => {} }), packages)
+        const html = render(h(CompanyDialog, { company: null, onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(html).toContain(`class="ui-dialog-title">${en.companies_add}</h2>`)
         for (const name of [en.companies_name_label, en.trial_length, en.package_label]) expect(html, name).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${name}</label>`))
         expect(html).toMatch(/<input[^>]*name="name"[^>]*maxLength="50"|<input[^>]*maxLength="50"[^>]*name="name"/)
@@ -223,7 +244,7 @@ describe("the company dialogs", () => {
 
     it("edits one's name and package, named for it, the trial left alone", async () => {
         const { CompanyDialog } = await import("@/components/CompanyDialogs")
-        const html = render(h(CompanyDialog, { company: company(), onClose: () => {}, onSaved: () => {} }), packages)
+        const html = render(h(CompanyDialog, { company: company(), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(html).toContain(`class="ui-dialog-title">${en.companies_edit_title.replace("{name}", "Delta Sites")}</h2>`)
         expect(html).toContain('value="Delta Sites"')
         expect(html).not.toContain(en.trial_length)
@@ -236,6 +257,25 @@ describe("the company dialogs", () => {
         expect(companyNameError(" ")).toBe("companies_name_short")
         expect(companyNameError("A")).toBe("companies_name_short")
         expect(companyNameError("Delta Sites")).toBeNull()
+    })
+
+    it("says which step failed: a package refused after the name saved is the package's, and the list is told (Codex on PR 171)", async () => {
+        const { saveCompany } = await import("@/components/CompanyDialogs")
+        const sent: string[] = []
+        vi.stubGlobal("fetch", async (url: string, init: { method: string }) => {
+            sent.push(`${init.method} ${url}`)
+            return new Response(JSON.stringify(url.endsWith("/package") ? { error: "Package retired" } : { data: {} }), { status: url.endsWith("/package") ? 400 : 200 })
+        })
+        try {
+            const result = await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p2" })
+            expect(result.step).toBe("package")
+            expect(sent).toEqual(["PUT /api/companies", "PUT /api/companies/c1/package"])
+            expect((await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p1" })).step).toBe("saved")
+        } finally {
+            vi.unstubAllGlobals()
+        }
+        const source = readFileSync("components/CompanyDialogs.tsx", "utf8")
+        expect(source).toMatch(/if \(result\.step === 'package'\) \{\s*onChanged\(\)/)
     })
 
     it("asks before a ban, in the danger colour, and before an unban, saying what each does to its people", async () => {

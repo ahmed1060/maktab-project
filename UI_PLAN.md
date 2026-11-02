@@ -2970,3 +2970,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     date shown;
   - a tab's count was on a pill the colour of the page, so it couldn't be
     seen unless its tab was selected. It's in the neutral badge's colours.
+- **2026-11-02:** From Codex's review of #171:
+  - a search, tab or page that failed to load left the last one's rows up
+    under it, with no word and no Try again. Each answer says what it was
+    asked for, as the other lists' do, and one that failed says so; a
+    failed refresh of the rows on screen leaves them up;
+  - renaming the only company on page 2 out of the search left an empty
+    page saying nothing matched. Fewer pages than the one shown goes back
+    to the last there is, as a deletion already did;
+  - a package refused after the name saved left the old name in the list,
+    and trying again from that row renamed the company back. The list
+    shows the name that saved, and the dialog stays for another try.

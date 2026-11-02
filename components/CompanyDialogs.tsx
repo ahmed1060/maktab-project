@@ -27,14 +27,39 @@ export function companyNameError(name: string): TranslationKey | null {
 }
 
 /**
+ * Saving a company: its name (and, when it's new, its trial and package), then
+ * a package changed on an existing one, which is its own call. Says which
+ * step failed, with the server's answer: a package refused after the name
+ * saved leaves the name saved (Codex on PR 171).
+ */
+export async function saveCompany(company: ListedCompany | null, fields: { name: string; trial: TrialPreset; packageId: string }): Promise<
+    { step: 'saved' } | { step: 'name' | 'package'; res: Response }
+> {
+    const json = { 'Content-Type': 'application/json' }
+    const res = await fetch('/api/companies', {
+        method: company ? 'PUT' : 'POST',
+        headers: json,
+        body: JSON.stringify(company ? { id: company.id, name: fields.name } : { name: fields.name, trialPreset: fields.trial, packageId: fields.packageId || null }),
+    })
+    if (!res.ok) return { step: 'name', res }
+    if (company && fields.packageId !== (company.package?.id ?? '')) {
+        const moved = await fetch(`/api/companies/${company.id}/package`, { method: 'PUT', headers: json, body: JSON.stringify({ packageId: fields.packageId || null }) })
+        if (!moved.ok) return { step: 'package', res: moved }
+    }
+    return { step: 'saved' }
+}
+
+/**
  * A company's name and package, and, when it's new, how long its trial is.
  * The trial is chosen once: changing it later would move an end date
  * somebody has already been told, and extending one is an action of its own.
  */
-export function CompanyDialog({ company, onClose, onSaved }: {
+export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     company: ListedCompany | null
     onClose: () => void
     onSaved: (name: string, added: boolean) => void
+    /** The name saved but the package didn't: the list shows the new name, and the dialog stays for another try. */
+    onChanged: () => void
 }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -61,34 +86,24 @@ export function CompanyDialog({ company, onClose, onSaved }: {
         setBusy(true)
         try {
             const trimmed = name.trim()
-            const res = await fetch('/api/companies', {
-                method: company ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(company ? { id: company.id, name: trimmed } : { name: trimmed, trialPreset: trial, packageId: packageId || null }),
-            })
-            if (!res.ok) {
-                const body = await res.clone().json().catch(() => ({}))
+            const result = await saveCompany(company, { name: trimmed, trial, packageId })
+            // The package's refusal is said, where it was dropped without a
+            // word, and the list shows the name that did save (Codex on PR 171).
+            if (result.step === 'package') {
+                onChanged()
+                showToast(`${t('companies_package_failed')} ${await refusalOf(result.res, t('error_generic'))}`, 'error')
+                return
+            }
+            if (result.step === 'name') {
+                const body = await result.res.clone().json().catch(() => ({}))
                 // Adding says "Company already exists", renaming "Company name already exists".
                 if (typeof body?.error === 'string' && body.error.endsWith('already exists')) {
                     setWrong('companies_name_taken')
                     focusFirstWrong(formRef.current)
                 } else {
-                    showToast(await refusalOf(res, t('error_generic')), 'error')
+                    showToast(await refusalOf(result.res, t('error_generic')), 'error')
                 }
                 return
-            }
-            // A package changed on an existing company is its own call. Its
-            // refusal is said, where it was dropped without a word.
-            if (company && packageId !== (company.package?.id ?? '')) {
-                const moved = await fetch(`/api/companies/${company.id}/package`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ packageId: packageId || null }),
-                })
-                if (!moved.ok) {
-                    showToast(`${t('companies_package_failed')} ${await refusalOf(moved, t('error_generic'))}`, 'error')
-                    return
-                }
             }
             onSaved(trimmed, !company)
         } catch {
