@@ -80,6 +80,16 @@ export function sameWhole(text: string, saved: number): boolean {
 }
 
 /**
+ * What a number field shows once its save is answered: what was saved, as
+ * a number, unless it was typed over while the save was on its way. Then
+ * the newer text stays, and is still a change to save (found by Codex on
+ * PR 161).
+ */
+export function shownAfterSave(current: string, sent: string, saved: number): string {
+    return current === sent ? String(saved) : current
+}
+
+/**
  * The server's refusal, each field's reason under that field. The zone's
  * explains that the scheduled jobs are global and what that costs a company
  * far behind UTC: "Validation Error" alone would throw away the whole point
@@ -130,8 +140,10 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
             return
         }
         setErrors({})
-        const day = Number(dayText)
-        const cap = Number(capText)
+        const sentDay = dayText
+        const sentCap = capText
+        const day = Number(sentDay)
+        const cap = Number(sentCap)
         setSaving(true)
         try {
             const res = await fetch('/api/company-settings', {
@@ -152,8 +164,8 @@ export default function CompanyPayrollCard({ companyId, payrollDay, payslipsVisi
             }
             onSaved({ payrollDay: day, payslipsVisible: visible, timezone: zone, debtRecoveryPercent: debtRecoveryEditable ? cap : debtRecoveryPercent })
             // The fields show what was saved: 5, where "05" was typed.
-            setDayText(String(day))
-            if (debtRecoveryEditable) setCapText(String(cap))
+            setDayText(text => shownAfterSave(text, sentDay, day))
+            if (debtRecoveryEditable) setCapText(text => shownAfterSave(text, sentCap, cap))
             showToast(t('settings_saved_success'), 'success')
         } catch {
             showToast(t('error_generic'), 'error')

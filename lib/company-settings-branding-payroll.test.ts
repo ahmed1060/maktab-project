@@ -220,6 +220,18 @@ describe("found by Codex on #161", () => {
         const src = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
         expect(src).toMatch(/const dirty = !sameWhole\(dayText, payrollDay\)[^\n]*!sameWhole\(capText, debtRecoveryPercent\)/)
         // And the field shows what was saved.
-        expect(src).toMatch(/setDayText\(String\(day\)\)/)
+        expect(src).toContain("setDayText(text => shownAfterSave(text, sentDay, day))")
+    })
+
+    it("keeps what's typed while a save is on its way, rather than putting back what was sent", async () => {
+        // Saving payday 5 and typing 6 before the answer came put 5 back, and
+        // the card then counted itself saved: the 6 was lost without a word.
+        const { shownAfterSave } = await import("@/components/CompanyPayrollCard")
+        expect(shownAfterSave("05", "05", 5)).toBe("5")
+        expect(shownAfterSave("6", "05", 5)).toBe("6")
+        expect(shownAfterSave("", "05", 5)).toBe("")
+        const src = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
+        expect(src).toContain("setDayText(text => shownAfterSave(text, sentDay, day))")
+        expect(src).toContain("setCapText(text => shownAfterSave(text, sentCap, cap))")
     })
 })

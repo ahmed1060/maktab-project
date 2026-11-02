@@ -2474,3 +2474,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   leaving the tab asked about edits already kept. A typed number is
   compared as the number it is now, and after a save the field shows
   what was saved.
+- **2026-11-02:** Found by Codex on #161, after that fix: a payday or debt
+  cap typed over while its save was on its way was put back to what was
+  sent once the answer came, and the card then counted itself saved, so
+  the newer number was lost without a word. The field shows what was
+  saved only if it still holds what was sent; otherwise the newer number
+  stays, still a change to save.
