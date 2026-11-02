@@ -57,6 +57,15 @@ export function iconError(text: string): TranslationKey | null {
     return isValidModuleIcon(icon) ? null : 'module_icon_invalid'
 }
 
+/**
+ * The icon to store for a module: none when it's the module's own, so
+ * picking that from the palette is the same as Use the default icon
+ * (audit on part 4a), as a blank name is no name.
+ */
+export function overrideFor(key: ModuleKey, icon: string | null): string | null {
+    return icon && icon !== MODULES[key].icon ? icon : null
+}
+
 type Props = {
     companyId: string
     /** As stored on the company row — not on the viewer's session: a Super Admin
@@ -106,7 +115,8 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
         })
     }
 
-    const setIcon = (key: ModuleKey, value: string | null) => {
+    const setIcon = (key: ModuleKey, picked: string | null) => {
+        const value = overrideFor(key, picked)
         setIcons(prev => {
             const next = { ...prev }
             if (value) next[key] = value
@@ -199,7 +209,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
             </form>
 
             {pickerFor && (
-                <IconDialog name={nameOf(pickerFor)} current={icons[pickerFor]} fallback={MODULES[pickerFor].icon}
+                <IconDialog name={nameOf(pickerFor)} current={icons[pickerFor] || MODULES[pickerFor].icon} fallback={MODULES[pickerFor].icon}
                     onPick={icon => setIcon(pickerFor, icon)} onClose={() => setPickerFor(null)} />
             )}
         </Card>
@@ -212,7 +222,8 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
  */
 export function IconDialog({ name, current, fallback, onPick, onClose }: {
     name: string
-    current: string | undefined
+    /** The icon in use: the company's own choice, or the module's. */
+    current: string
     fallback: string
     onPick: (icon: string | null) => void
     onClose: () => void
@@ -237,13 +248,16 @@ export function IconDialog({ name, current, fallback, onPick, onClose }: {
                     <button key={emoji} type="button" className="ui-emoji" aria-pressed={current === emoji} onClick={() => onPick(emoji)}>{emoji}</button>
                 ))}
             </div>
+            {/* A choice like the palette's, so beside it: among the dialog's
+                buttons it pushed Use this emoji onto a line of its own (audit
+                on part 4a). */}
+            <p><Button onClick={() => onPick(null)}>{`${t('module_icon_reset')} (${fallback})`}</Button></p>
             <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
                 <Field label={t('module_icon_custom')} error={wrong ? t(wrong) : undefined}>{p => (
                     <TextInput {...p} name="icon" autoComplete="off" maxLength={16} value={pasted}
                         onChange={e => { setPasted(e.target.value); setWrong(null) }} />
                 )}</Field>
                 <DialogActions>
-                    <Button onClick={() => onPick(null)}>{`${t('module_icon_reset')} (${fallback})`}</Button>
                     <Button onClick={onClose}>{t('cancel')}</Button>
                     <Button type="submit" variant="primary">{t('module_icon_use')}</Button>
                 </DialogActions>

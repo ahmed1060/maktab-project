@@ -2624,7 +2624,7 @@ export const ar = {
         module_icon_choose: "اختر أيقونة",
         module_icon_custom: "أو الصق أي إيموجي",
         module_icon_reset: "استخدام الأيقونة الافتراضية",
-        module_icon_invalid: "هذا ليس إيموجي",
+        module_icon_invalid: "هذا ليس إيموجي. الصق إيموجي واحدًا، أو اختر واحدًا من الأعلى.",
         module_icon_choose_for: "اختر أيقونة لقسم {name}",
         module_icon_title: "أيقونة قسم {name}",
         module_icon_use: "استخدام هذا الإيموجي",

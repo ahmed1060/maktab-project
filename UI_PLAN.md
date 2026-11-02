@@ -2677,3 +2677,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the side bar preview is drawn on the side bar's own ground, as the
     logo's is, its group headings at the side bar's size;
   - Reset all and Save are the building blocks' buttons.
+- **2026-11-02:** Found in the browser and the interface audit on #165:
+  - the icon dialog marked the icon in use only when the company had
+    chosen one: with the module's own, nothing in the palette was
+    marked. It's marked either way, and picking the module's own icon
+    from the palette stores nothing, the same as Use the default icon;
+  - Use the default icon was among the dialog's buttons, which pushed
+    Use this emoji onto a line of its own. It's a choice like the
+    palette's, so it sits under it;
+  - a pasted icon that isn't an emoji said only "That is not an emoji".
+    It says what to do: paste a single emoji, or pick one above;
+  - the line saying Roles, Modules and Admin access stay the Super
+    Admin's wasn't tied to the tabs it's about. The group of tabs is
+    described by it now.

@@ -25,6 +25,7 @@ export default function CompanySettingsAccessCard({ companyId, enabled, tabs, on
     const { t } = useLanguage()
     const { showToast } = useToast()
     const hintId = useId()
+    const tabsHintId = useId()
     const eligible = COMPANY_SETTINGS_TABS.filter(x => x.adminEligible)
 
     const [on, setOn] = useState(enabled)
@@ -73,7 +74,7 @@ export default function CompanySettingsAccessCard({ companyId, enabled, tabs, on
 
                 {/* Kept while the switch is off, greyed, so turning it back on
                     brings back the tabs that were ticked. */}
-                <fieldset className="ui-field ui-fieldset" disabled={!on}>
+                <fieldset className="ui-field ui-fieldset" aria-describedby={tabsHintId} disabled={!on}>
                     <legend className="ui-label">{t('admin_settings_tabs_label')}</legend>
                     {eligible.map(x => (
                         <label key={x.key} className="ui-choice">
@@ -81,7 +82,7 @@ export default function CompanySettingsAccessCard({ companyId, enabled, tabs, on
                             {t(x.labelKey as TranslationKey)}
                         </label>
                     ))}
-                    <span className="ui-hint">{t('admin_settings_never_shown')}</span>
+                    <span id={tabsHintId} className="ui-hint">{t('admin_settings_never_shown')}</span>
                 </fieldset>
 
                 <div className="ui-card-actions">

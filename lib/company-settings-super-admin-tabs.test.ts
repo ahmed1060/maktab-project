@@ -67,8 +67,8 @@ describe("the Admin access tab", () => {
 
     it("greys the tabs while the switch is off", async () => {
         const off = await access({ enabled: false })
-        expect(off).toMatch(/<fieldset class="ui-field ui-fieldset" disabled="">/)
-        expect(await access()).toMatch(/<fieldset class="ui-field ui-fieldset">/)
+        expect(off).toMatch(/<fieldset class="ui-field ui-fieldset"[^>]* disabled="">/)
+        expect(await access()).not.toMatch(/<fieldset[^>]* disabled="">/)
     })
 })
 
@@ -148,5 +148,34 @@ describe("nothing of the old cards is left", () => {
     it("keeps asking before edits are left unsaved", () => {
         expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain("useReportUnsaved('modules', isDirty)")
         expect(readFileSync("components/CompanySettingsAccessCard.tsx", "utf8")).toContain("useReportUnsaved('access', dirty)")
+    })
+})
+
+describe("found in the browser and the audit (company settings part 4a)", () => {
+    it("marks the icon in use in the dialog, the module's own among them, and picking that one sets nothing", async () => {
+        // With no icon of its own chosen, nothing in the palette was marked.
+        expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain("current={icons[pickerFor] || MODULES[pickerFor].icon}")
+        const { overrideFor } = await import("@/components/CompanyModulesCard")
+        expect(overrideFor("clients", MODULES.clients.icon)).toBeNull()
+        expect(overrideFor("clients", null)).toBeNull()
+        expect(overrideFor("clients", "🏗️")).toBe("🏗️")
+    })
+
+    it("offers the module's own icon beside the palette, leaving the dialog's buttons to Cancel and Use this emoji", async () => {
+        // In the dialog's buttons it pushed Use this emoji onto a line of its own.
+        const { IconDialog } = await import("@/components/CompanyModulesCard")
+        const html = render(h(IconDialog, { name: "Clients", current: "🚚", fallback: "🤝", onPick: () => {}, onClose: () => {} }))
+        expect(html).toMatch(new RegExp(`<div class="ui-emoji-grid">[^]*?</div><p><button type="button" class="ui-btn ui-btn-secondary"[^>]*>${en.module_icon_reset} \\(🤝\\)</button></p><form`))
+        expect(html).toMatch(new RegExp(`<div class="ui-dialog-actions"><button type="button" class="ui-btn ui-btn-secondary"[^>]*>${en.cancel}</button><button type="submit" class="ui-btn ui-btn-primary"[^>]*>${en.module_icon_use}</button></div>`))
+    })
+
+    it("says what to do when a pasted icon isn't an emoji", () => {
+        expect(en.module_icon_invalid).toMatch(/pick one above/)
+        expect(ar.module_icon_invalid).toMatch(/اختر واحدًا من الأعلى/)
+    })
+
+    it("ties the line saying which tabs stay the Super Admin's to the tabs it's about", async () => {
+        const html = await access()
+        expect(html).toMatch(new RegExp(`<fieldset class="ui-field ui-fieldset" aria-describedby="([^"]+)">[^]*<span id="\\1" class="ui-hint">${esc(en.admin_settings_never_shown)}</span></fieldset>`))
     })
 })

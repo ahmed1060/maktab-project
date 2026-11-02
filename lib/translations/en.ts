@@ -2630,7 +2630,7 @@ export const en = {
         module_icon_choose: "Choose an icon",
         module_icon_custom: "Or paste any emoji",
         module_icon_reset: "Use the default icon",
-        module_icon_invalid: "That is not an emoji",
+        module_icon_invalid: "That isn't an emoji. Paste a single emoji, or pick one above.",
         // Company settings part 4a: the icon's button names its module, and the picker is a dialog.
         module_icon_choose_for: "Choose an icon for {name}",
         module_icon_title: "Icon for {name}",
