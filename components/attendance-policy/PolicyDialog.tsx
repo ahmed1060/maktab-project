@@ -169,12 +169,12 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                             <>
                                 <div className="ui-field-row">
                                     <Field label={t('attendance_overtime_minimum')} error={errorOf('overtime.minimumMinutes')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={240} value={o.minimumMinutes}
+                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={240} name="overtime.minimumMinutes" value={o.minimumMinutes}
                                             onChange={e => edit(f => ({ ...f, overtime: { ...f.overtime, minimumMinutes: e.target.value } }), 'overtime.minimumMinutes')} />
                                     )}</Field>
                                     {(['workday', 'restDay', 'holiday'] as const).map(kind => (
                                         <Field key={kind} label={t(RATES[kind])} error={errorOf(`overtime.multipliers.${kind}`)}>{p => (
-                                            <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={1} max={5} step={0.05} value={o.multipliers[kind]}
+                                            <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={1} max={5} step={0.05} name={`overtime.multipliers.${kind}`} value={o.multipliers[kind]}
                                                 onChange={e => edit(f => ({ ...f, overtime: { ...f.overtime, multipliers: { ...f.overtime.multipliers, [kind]: e.target.value } } }), `overtime.multipliers.${kind}`)} />
                                         )}</Field>
                                     ))}
@@ -207,24 +207,24 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                             <>
                                 <div className="ui-field-row">
                                     <Field label={t('attendance_permission_allowance')} error={errorOf('permissionHours.allowanceHours')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={0} max={60} step={0.5} value={ph.allowanceHours}
+                                        <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={0} max={60} step={0.5} name="permissionHours.allowanceHours" value={ph.allowanceHours}
                                             // The longest permission is checked against the month's hours.
                                             onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, allowanceHours: e.target.value } }), 'permissionHours.allowanceHours', 'permissionHours.maxPerRequestMinutes')} />
                                     )}</Field>
                                     <Field label={t('attendance_permission_min')} error={errorOf('permissionHours.minPerRequestMinutes')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={24 * 60} value={ph.minPerRequestMinutes}
+                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={24 * 60} name="permissionHours.minPerRequestMinutes" value={ph.minPerRequestMinutes}
                                             onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, minPerRequestMinutes: e.target.value } }), 'permissionHours.minPerRequestMinutes', 'permissionHours.maxPerRequestMinutes')} />
                                     )}</Field>
                                     <Field label={t('attendance_permission_max')} error={errorOf('permissionHours.maxPerRequestMinutes')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={24 * 60} value={ph.maxPerRequestMinutes}
+                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={24 * 60} name="permissionHours.maxPerRequestMinutes" value={ph.maxPerRequestMinutes}
                                             onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, maxPerRequestMinutes: e.target.value } }), 'permissionHours.maxPerRequestMinutes')} />
                                     )}</Field>
                                     <Field label={t('attendance_permission_max_requests')} hint={t('attendance_no_cap_hint')} error={errorOf('permissionHours.maxRequestsPerMonth')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={31} value={ph.maxRequestsPerMonth}
+                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={31} name="permissionHours.maxRequestsPerMonth" value={ph.maxRequestsPerMonth}
                                             onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, maxRequestsPerMonth: e.target.value } }), 'permissionHours.maxRequestsPerMonth')} />
                                     )}</Field>
                                     <Field label={t('attendance_permission_after')} hint={t('attendance_permission_after_hint')} error={errorOf('permissionHours.afterTheFactHours')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={24 * 7} value={ph.afterTheFactHours}
+                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={24 * 7} name="permissionHours.afterTheFactHours" value={ph.afterTheFactHours}
                                             onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, afterTheFactHours: e.target.value } }), 'permissionHours.afterTheFactHours')} />
                                     )}</Field>
                                 </div>

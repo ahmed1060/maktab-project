@@ -57,7 +57,7 @@ export default function RuleFields({ name, rule, errorOf, fraction, number, onCh
                     <>
                         <div className="ui-field-row">
                             <Field label={t('attendance_grace_minutes')} error={errorOf(path('graceMinutes'))}>{p => (
-                                <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={240} value={rule.graceMinutes}
+                                <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={240} name={path('graceMinutes')} value={rule.graceMinutes}
                                     // The bands start from the grace, so their errors go with it.
                                     onChange={e => set({ graceMinutes: e.target.value }, 'graceMinutes', 'bands')} />
                             )}</Field>
@@ -81,22 +81,27 @@ export default function RuleFields({ name, rule, errorOf, fraction, number, onCh
                                         const errorId = `${id}-band-${i}`
                                         return (
                                             <div key={i} className="ui-field">
+                                                {/* Where it starts, with Remove; under it, its end and its cost side by side. */}
                                                 <div className="ui-band">
-                                                    <span className="ui-band-from">{t('attendance_from_minute').replace('{n}', from)}</span>
-                                                    {b.toMinutes === null ? <span className="ui-band-from">{t('attendance_and_over')}</span> : (
-                                                        <TextInput type="number" inputMode="numeric" autoComplete="off" min={starts[i] ?? 0} max={24 * 60} value={b.toMinutes}
-                                                            aria-label={t('attendance_band_end_label').replace('{n}', from)}
-                                                            aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined}
-                                                            onChange={e => setBands(rule.bands.map((x, j) => j === i ? { ...x, toMinutes: e.target.value } : x))} />
-                                                    )}
-                                                    <Select aria-label={t('attendance_band_cost_label').replace('{n}', from)} value={String(b.dayFraction)}
-                                                        options={fractions.map(f => ({ value: String(f), label: fraction(f) }))}
-                                                        onChange={e => setBands(rule.bands.map((x, j) => j === i ? { ...x, dayFraction: Number(e.target.value) } : x))} />
-                                                    {rule.bands.length > 1 && (
-                                                        <Button size="sm" variant="quiet" aria-label={t('attendance_band_remove').replace('{n}', from)} onClick={() => removeBand(i)}>
-                                                            {t('remove')}
-                                                        </Button>
-                                                    )}
+                                                    <div className="ui-band-head">
+                                                        <span className="ui-band-from">{t('attendance_from_minute').replace('{n}', from)}</span>
+                                                        {rule.bands.length > 1 && (
+                                                            <Button size="sm" variant="quiet" aria-label={t('attendance_band_remove').replace('{n}', from)} onClick={() => removeBand(i)}>
+                                                                {t('remove')}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="ui-band-fields">
+                                                        {b.toMinutes === null ? <span className="ui-band-open">{t('attendance_and_over')}</span> : (
+                                                            <TextInput type="number" inputMode="numeric" autoComplete="off" min={starts[i] ?? 0} max={24 * 60} name={path(`bands.${i}`)} value={b.toMinutes}
+                                                                aria-label={t('attendance_band_end_label').replace('{n}', from)}
+                                                                aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined}
+                                                                onChange={e => setBands(rule.bands.map((x, j) => j === i ? { ...x, toMinutes: e.target.value } : x))} />
+                                                        )}
+                                                        <Select aria-label={t('attendance_band_cost_label').replace('{n}', from)} value={String(b.dayFraction)}
+                                                            options={fractions.map(f => ({ value: String(f), label: fraction(f) }))}
+                                                            onChange={e => setBands(rule.bands.map((x, j) => j === i ? { ...x, dayFraction: Number(e.target.value) } : x))} />
+                                                    </div>
                                                 </div>
                                                 {error && <span id={errorId} className="ui-error">{error}</span>}
                                             </div>
@@ -111,11 +116,11 @@ export default function RuleFields({ name, rule, errorOf, fraction, number, onCh
 
                         <div className="ui-field-row">
                             <Field label={t('attendance_free_per_month')} error={errorOf(path('freePerMonth'))}>{p => (
-                                <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={31} value={rule.freePerMonth}
+                                <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={31} name={path('freePerMonth')} value={rule.freePerMonth}
                                     onChange={e => set({ freePerMonth: e.target.value }, 'freePerMonth')} />
                             )}</Field>
                             <Field label={t('attendance_cap_days')} hint={t('attendance_no_cap_hint')} error={errorOf(path('monthlyCapDays'))}>{p => (
-                                <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={0} max={31} step={0.25} value={rule.monthlyCapDays}
+                                <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={0} max={31} step={0.25} name={path('monthlyCapDays')} value={rule.monthlyCapDays}
                                     onChange={e => set({ monthlyCapDays: e.target.value }, 'monthlyCapDays')} />
                             )}</Field>
                         </div>
@@ -128,11 +133,11 @@ export default function RuleFields({ name, rule, errorOf, fraction, number, onCh
                         {rule.escalation && (
                             <div className="ui-field-row">
                                 <Field label={t('attendance_escalation_from')} error={errorOf(path('escalation.fromOccurrence'))}>{p => (
-                                    <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={31} value={rule.escalation!.fromOccurrence}
+                                    <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={31} name={path('escalation.fromOccurrence')} value={rule.escalation!.fromOccurrence}
                                         onChange={e => set({ escalation: { ...rule.escalation!, fromOccurrence: e.target.value } }, 'escalation.fromOccurrence')} />
                                 )}</Field>
                                 <Field label={t('attendance_escalation_times')} error={errorOf(path('escalation.multiplier'))}>{p => (
-                                    <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={1} max={5} step={0.5} value={rule.escalation!.multiplier}
+                                    <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={1} max={5} step={0.5} name={path('escalation.multiplier')} value={rule.escalation!.multiplier}
                                         onChange={e => set({ escalation: { ...rule.escalation!, multiplier: e.target.value } }, 'escalation.multiplier')} />
                                 )}</Field>
                             </div>

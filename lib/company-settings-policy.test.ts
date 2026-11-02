@@ -308,3 +308,67 @@ describe("nothing of the old panel is left", () => {
         }
     })
 })
+
+describe("found in the browser and the audit (company settings part 3b)", () => {
+    it("lets a card's head wrap when it has more than one button, so they stay inside the card on a phone", () => {
+        // Start from a template and Change policy, beside the title, ran past the card's edge on a phone and widened the page.
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-card-head:has\(> \.ui-btn \+ \.ui-btn\) \{\s*flex-wrap: wrap;/)
+    })
+
+    it("writes the preview's month as the page's language writes a month", async () => {
+        const { monthText } = await import("@/components/attendance-policy/Simulation")
+        expect(monthText("2026-10", "en-GB")).toBe("October 2026")
+        expect(monthText("2026-10", "ar-EG")).toBe("أكتوبر ٢٠٢٦")
+        // It was "2026-10", in Latin digits in Arabic too.
+        const src = readFileSync("components/attendance-policy/Simulation.tsx", "utf8")
+        expect(src.match(/\.replace\('\{month\}', monthText\(data\.month, intl\)\)/g)).toHaveLength(2)
+    })
+
+    it("names each of the dialog's number fields", async () => {
+        const html = await dialog()
+        const numbers = html.match(/<input[^>]*type="number"[^>]*>/g) ?? []
+        expect(numbers.length).toBeGreaterThan(10)
+        for (const input of numbers) expect(input, input).toMatch(/ name="[a-zA-Z.0-9]+"/)
+        for (const name of ["lateness.graceMinutes", "lateness.bands.0", "overtime.multipliers.workday", "permissionHours.maxPerRequestMinutes"]) {
+            expect(html, name).toContain(`name="${name}"`)
+        }
+    })
+
+    it("doesn't say where a band starts after one whose end comes before its own start", async () => {
+        // "From minute 11" followed "From minute 16" while the first band's end was typed as 10.
+        const { bandStarts, formFromBody } = await import("@/components/attendance-policy/policy-form")
+        const rule = formFromBody(STANDARD_OFFICE).lateness
+        expect(bandStarts({ ...rule, bands: [{ ...rule.bands[0], toMinutes: "10" }, ...rule.bands.slice(1)] })).toEqual([16, null, 61])
+    })
+
+    it("gives each band a line saying where it starts, with Remove, over its end and cost half each", async () => {
+        // All four on one line didn't fit: Remove fell to a line of its own on a computer, and a phone cut a cost short ("نصف يو").
+        const html = await dialog()
+        expect(html).toMatch(new RegExp(`<div class="ui-band-head"><span class="ui-band-from">${en.attendance_from_minute.replace("{n}", "16")}</span><button[^>]*aria-label="${en.attendance_band_remove.replace("{n}", "16")}"`))
+        expect(html).toMatch(/<div class="ui-band-fields"><span class="ui-control"><input[^>]*name="lateness\.bands\.0"[^>]*\/><\/span><span class="ui-control"><select/)
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-band-fields > \.ui-control,\s*\.ui-band-fields > \.ui-band-open \{\s*flex: 1 1 0;\s*min-width: 0;/)
+    })
+})
+
+describe("the focus on the first field that's wrong", () => {
+    it("goes to the control marked wrong, not the first button in its field, such as a band's Remove", async () => {
+        const { focusFirstWrong } = await import("@/components/attendance-calendar/focus")
+        const focused: string[] = []
+        const control = (name: string, invalid = false) => ({ name, invalid, focus: () => focused.push(name) })
+        const field = (controls: ReturnType<typeof control>[], wrong: boolean) => ({
+            querySelector: (sel: string) => sel === ":scope > .ui-error" ? (wrong ? {} : null)
+                : sel === '[aria-invalid="true"]' ? controls.find(c => c.invalid) ?? null
+                    : controls[0] ?? null,
+        })
+        const form = { querySelectorAll: () => [field([control("grace")], false), field([control("remove"), control("end", true)], true)] }
+        vi.stubGlobal("requestAnimationFrame", (run: () => void) => run())
+        try {
+            focusFirstWrong(form as never)
+        } finally {
+            vi.unstubAllGlobals()
+        }
+        expect(focused).toEqual(["end"])
+    })
+})

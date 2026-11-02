@@ -31,7 +31,7 @@ export default function FaceFields({ companyId, available, months, error, onChan
                 </label>
                 {available && (
                     <Field label={t('face_policy_reverify')} hint={t('face_policy_reverify_hint')} error={error}>{p => (
-                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={36} value={months}
+                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={36} name="faceReverifyMonths" value={months}
                             onChange={e => onChange({ faceReverifyMonths: e.target.value })} />
                     )}</Field>
                 )}

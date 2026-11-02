@@ -2561,3 +2561,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     table; and it checks the rules first, as saving does;
   - a template's name is asked for under its field, where Save stayed
     off until one was typed.
+- **2026-11-02:** Found in the browser and the interface audit on #163:
+  - a card's head didn't wrap, so the policy's Start from a template and
+    Change policy ran past the card's edge on a phone and widened the
+    whole page, a dialog opened from it too. A head with more than one
+    button wraps them under its title now;
+  - each band's start, end, cost and Remove were one line, which didn't
+    fit: Remove fell to a line of its own on a computer, and a phone cut
+    a cost short ("نصف يو"). A band says where it starts, with Remove, on
+    one line, and its end and cost share the line under it;
+  - the focus on the first field that's wrong went to the first control
+    in its field, which for a band is now Remove. It goes to the control
+    marked wrong, the band's end;
+  - a band after one whose end came before its start said it started
+    there ("From minute 11" under "From minute 16"). It doesn't say where
+    it starts until the end before it is right;
+  - the preview wrote its month as "2026-10", in Latin digits in Arabic
+    too. It's "October 2026", "أكتوبر ٢٠٢٦";
+  - the dialog's number fields had no names.

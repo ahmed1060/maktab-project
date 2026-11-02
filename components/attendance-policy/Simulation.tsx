@@ -12,6 +12,11 @@ type Sum = { deductionDays: number; deductionMinor: number | null; overtimeMinor
 /** Money is null for whoever may not see salaries: then the preview is in days. */
 type Result = { month: string; moneyHidden?: boolean; people: { userId: string; name: string; current: Sum; draft: Sum; overtimeChanged?: boolean }[]; totals: { current: Sum; draft: Sum; overtimeChanged?: boolean } }
 
+/** A month ("2026-10") as the page's language writes one: "October 2026", "أكتوبر ٢٠٢٦". */
+export function monthText(month: string, intl: string): string {
+    return new Date(`${month}-01T00:00:00Z`).toLocaleDateString(intl, { month: 'long', year: 'numeric', timeZone: 'UTC' })
+}
+
 /**
  * "Under these rules, last month would have been…" (ATTENDANCE_PLAN.md §6.7):
  * the draft replayed over last month's measured days, per person against the
@@ -75,11 +80,11 @@ export default function Simulation({ companyId, formKey, draft }: { companyId: s
                         <p>
                             {hidden
                                 ? t('sim_summary_days')
-                                    .replace('{month}', data.month)
+                                    .replace('{month}', monthText(data.month, intl))
                                     .replace('{now}', days(data.totals.current.deductionDays))
                                     .replace('{then}', days(data.totals.draft.deductionDays))
                                 : t('sim_summary')
-                                    .replace('{month}', data.month)
+                                    .replace('{month}', monthText(data.month, intl))
                                     .replace('{now}', money(data.totals.current.deductionMinor ?? 0))
                                     .replace('{then}', money(data.totals.draft.deductionMinor ?? 0))
                                     .replace('{diff}', signed((data.totals.draft.deductionMinor ?? 0) - (data.totals.current.deductionMinor ?? 0)))}

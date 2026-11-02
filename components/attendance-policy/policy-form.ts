@@ -124,7 +124,8 @@ export function bandStarts(rule: Pick<RuleForm, 'graceMinutes' | 'bands'>): (num
     let from: number | null = grace === null ? null : grace + 1
     return rule.bands.map(b => {
         const start = from
-        const end = b.toMinutes === null ? null : whole(b.toMinutes, 0, 24 * 60)
+        // An end before its own start doesn't say where the next band starts.
+        const end = b.toMinutes === null ? null : whole(b.toMinutes, start ?? 0, 24 * 60)
         from = end === null ? null : end + 1
         return start
     })
