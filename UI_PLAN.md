@@ -2632,3 +2632,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     asked for it the same way. It takes text now;
   - the place dialog's title, editing one, said only "Edit". It names
     the place.
+- **2026-11-02:** With #164, 26 of the old confirm windows are left,
+  where the test that each keeps its window open until its work is done
+  checked its search by finding more than 30. It checks now that it
+  finds every one written, however many are left.
