@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { Button, Card, Row } from '@/components/ui'
 import { scheduleIdOn } from '@/lib/attendance/calendar'
+import { fill } from './fill'
 import type { Ctx } from './types'
 
 /**
@@ -41,10 +42,10 @@ export function PeopleCard({ ctx }: { ctx: Ctx }) {
                                 key={r.id}
                                 title={<bdi>{r.name}</bdi>}
                                 // Someone not moved anywhere is on the default, which says so.
-                                detail={!r.explicit && r.now ? t('attendance_on_default').replace('{name}', nameOf(r.now)) : nameOf(r.now)}
+                                detail={!r.explicit && r.now ? fill(t('attendance_on_default'), { name: <bdi>{nameOf(r.now)}</bdi> }) : <bdi>{nameOf(r.now)}</bdi>}
                                 end={next && r.next && (
                                     <>
-                                        <span className="ui-hint">{next}</span>
+                                        <span className="ui-hint">{fill(t('attendance_next_move'), { name: <bdi>{nameOf(r.next.scheduleId)}</bdi>, date: dateText(r.next.effectiveFrom) })}</span>
                                         {editable && (
                                             <Button size="sm" variant="quiet" aria-label={t('attendance_withdraw_named').replace('{name}', next)}
                                                 onClick={() => confirm({

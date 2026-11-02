@@ -25,7 +25,7 @@ export function HolidaysCard({ ctx }: { ctx: Ctx }) {
             <p className="ui-card-note">{t('attendance_holidays_hint')}</p>
             {/* The year the holidays are about, picked as a page's period is (DESIGN.md §5.3). */}
             <Field label={t('year')}>{p => (
-                <Select {...p} value={String(h.year)} onChange={e => setYear(Number(e.target.value))} options={years} />
+                <Select {...p} name="year" value={String(h.year)} onChange={e => setYear(Number(e.target.value))} options={years} />
             )}</Field>
 
             <section>

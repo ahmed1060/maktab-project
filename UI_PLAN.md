@@ -2514,3 +2514,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - a range of times or dates is written as the page's language writes
     one, "من 09:00 إلى 17:00" in Arabic, where a bare dash let the
     direction swap its ends; and the " · " between facts is gone.
+- **2026-11-02:** Found in the browser and the interface audit on #162:
+  - in Arabic, the calendar's times, its break minutes and a night
+    shift's "(+1)" were in Latin digits, beside dates and counts in
+    Arabic-Indic ones. They're in the page's digits now (`DESIGN.md`
+    §3.3);
+  - a schedule's name inside a sentence, such as "Office, the default"
+    or "Night shift from 1 Dec 2026", wasn't kept apart from the words
+    around it, so a name ending in a number or a mark could swap places
+    with them in Arabic. It's isolated now, as in the card's title;
+  - the holidays' year select had no name.

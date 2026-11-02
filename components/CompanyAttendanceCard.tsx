@@ -98,10 +98,13 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
     )
 
     const active = data.schedules.filter(s => !s.archivedAt)
+    // Times and minutes in the page's digits, as its dates and counts are
+    // (the audit on company settings part 3a): formatMinutes writes Latin ones.
+    const digits = (text: string) => locale === 'ar' ? text.replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[Number(d)]) : text
     const ctx: Ctx = {
         companyId, data, active, editable, busy, locale, t, send, setEditing, setMakingDefault, setMoving, setAddingHoliday,
-        confirm: setConfirming, setYear, weekdayName, dateText,
-        timeRange: (start, end) => t('attendance_time_range').replace('{start}', formatMinutes(start)).replace('{end}', formatMinutes(end)),
+        confirm: setConfirming, setYear, weekdayName, dateText, digits,
+        timeRange: (start, end) => t('attendance_time_range').replace('{start}', digits(formatMinutes(start))).replace('{end}', digits(formatMinutes(end))),
         dateRange: (start, end) => t('attendance_date_range').replace('{start}', dateText(start)).replace('{end}', dateText(end)),
     }
 

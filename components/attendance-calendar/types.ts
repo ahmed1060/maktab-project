@@ -56,6 +56,8 @@ export type Ctx = {
     setYear: (y: number) => void
     weekdayName: (d: number) => string
     dateText: (date: string) => string
+    /** Digits as the page's language writes them: Arabic-Indic in Arabic (DESIGN.md §3.3). */
+    digits: (text: string) => string
     /** "09:00–17:00", as the page's language writes a range. */
     timeRange: (start: number, end: number) => string
     /** "18 Feb 2027 to 19 Mar 2027", as the page's language writes a range. */

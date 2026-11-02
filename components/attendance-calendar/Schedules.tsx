@@ -4,6 +4,7 @@ import { ArchiveIcon, CalendarPlusIcon, ClockIcon, PencilSimpleIcon, PlusIcon, S
 import { Button, Card, Details, Row, RowMenu, StatusBadge, type MenuItem } from '@/components/ui'
 import { countOf } from '@/lib/plural'
 import { companyWeekOn, defaultOn, scheduleIdOn, versionOn, workDaysOf } from '@/lib/attendance/calendar'
+import { fill } from './fill'
 import type { Ctx, Schedule } from './types'
 
 /**
@@ -29,7 +30,7 @@ export function SchedulesCard({ ctx }: { ctx: Ctx }) {
                         return (
                             <Row
                                 key={d.id}
-                                title={line}
+                                title={fill(t('attendance_default_from'), { name: <bdi>{nameOf(d.scheduleId)}</bdi>, date: dateText(d.effectiveFrom) })}
                                 end={editable && (
                                     <Button size="sm" variant="quiet" aria-label={t('attendance_withdraw_named').replace('{name}', line)}
                                         onClick={() => confirm({
@@ -56,7 +57,7 @@ export function SchedulesCard({ ctx }: { ctx: Ctx }) {
  * be done to it in a menu named for it.
  */
 export function ScheduleCard({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }) {
-    const { t, locale, data, editable, send, setEditing, setMakingDefault, confirm, weekdayName, dateText, timeRange, dateRange } = ctx
+    const { t, locale, data, editable, send, setEditing, setMakingDefault, confirm, weekdayName, dateText, timeRange, dateRange, digits } = ctx
     const isDefault = defaultOn(data.defaults, data.today) === schedule.id
     const willBeDefault = data.defaults.some(d => d.effectiveFrom > data.today && d.scheduleId === schedule.id)
     const current = versionOn(schedule.versions, data.today)
@@ -92,7 +93,7 @@ export function ScheduleCard({ ctx, schedule }: { ctx: Ctx; schedule: Schedule }
             {shown ? (
                 <Details items={[
                     { label: t('attendance_hours_label'), value: timeRange(shown.startMinutes, shown.endMinutes) },
-                    { label: t('attendance_break_label'), value: shown.breakMinutes > 0 ? t('attendance_break_n').replace('{n}', String(shown.breakMinutes)) : t('attendance_none') },
+                    { label: t('attendance_break_label'), value: shown.breakMinutes > 0 ? t('attendance_break_n').replace('{n}', digits(String(shown.breakMinutes))) : t('attendance_none') },
                     {
                         label: t('attendance_work_week'),
                         value: `${days.map(weekdayName).join(' ')}${shown.workWeek.length === 0 ? ` (${t('attendance_company_week')})` : ''}`,

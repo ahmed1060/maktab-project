@@ -121,7 +121,7 @@ describe("the schedules", () => {
     it("list the default changes to come, each with Withdraw named for it", async () => {
         const html = await tab()
         const line = en.attendance_default_from.replace("{name}", "Night shift").replace("{date}", "1 Jan 2027")
-        expect(html).toContain(line)
+        expect(html).toContain(en.attendance_default_from.replace("{name}", "<bdi>Night shift</bdi>").replace("{date}", "1 Jan 2027"))
         expect(html).toMatch(new RegExp(`aria-label="${en.attendance_withdraw_named.replace("{name}", line)}"`))
     })
 
@@ -171,7 +171,7 @@ describe("the schedules", () => {
     it("say a time range the way Arabic reads it", async () => {
         const html = await tab({ locale: "ar" })
         expect(ar.attendance_time_range).toContain("{start}")
-        expect(html).toContain(ar.attendance_time_range.replace("{start}", "09:00").replace("{end}", "17:00"))
+        expect(html).toContain(ar.attendance_time_range.replace("{start}", "٠٩:٠٠").replace("{end}", "١٧:٠٠"))
         expect(html).toContain(ar.attendance_schedules)
     })
 })
@@ -181,8 +181,8 @@ describe("who works which schedule", () => {
         const html = await tab()
         expect(html).toContain(`<h2 class="ui-card-title">${en.attendance_who_works_which}</h2>`)
         expect(html).toContain("<bdi>Hana Saad</bdi>")
-        expect(html).toContain(en.attendance_on_default.replace("{name}", "Office"))
-        expect(html).toContain(en.attendance_next_move.replace("{name}", "Night shift").replace("{date}", "1 Dec 2026"))
+        expect(html).toContain(en.attendance_on_default.replace("{name}", "<bdi>Office</bdi>"))
+        expect(html).toContain(en.attendance_next_move.replace("{name}", "<bdi>Night shift</bdi>").replace("{date}", "1 Dec 2026"))
         expect(html).toContain("<bdi>Youssef Ali</bdi>")
         expect(html).toMatch(new RegExp(`aria-label="${en.attendance_withdraw_named.replace("{name}", en.attendance_next_move.replace("{name}", "Night shift").replace("{date}", "1 Dec 2026"))}"`))
         expect(html).toMatch(new RegExp(`>${en.attendance_move_people}</button>`))
@@ -271,5 +271,28 @@ describe("nothing of the old card is left", () => {
                 expect(src, `${file}: ${old}`).not.toContain(old)
             }
         }
+    })
+})
+
+describe("found in the browser and the audit (company settings part 3a)", () => {
+    it("writes times and minutes in Arabic-Indic digits in Arabic, as the dates beside them are (DESIGN.md §3.3)", async () => {
+        const html = await tab({ locale: "ar" })
+        expect(html).toContain(ar.attendance_time_range.replace("{start}", "٠٩:٠٠").replace("{end}", "١٧:٠٠"))
+        expect(html).toContain(ar.attendance_time_range.replace("{start}", "٢٢:٠٠").replace("{end}", "٠٦:٠٠ (+١)"))
+        expect(html).toContain(ar.attendance_break_n.replace("{n}", "٦٠"))
+        expect(html).not.toContain("09:00")
+        // English keeps its own.
+        expect(await tab()).toContain(en.attendance_time_range.replace("{start}", "09:00").replace("{end}", "17:00"))
+    })
+
+    it("keeps a schedule's name apart from the sentence around it, so its direction can't reorder the words", async () => {
+        const html = await tab()
+        expect(html).toContain(en.attendance_on_default.replace("{name}", "<bdi>Office</bdi>"))
+        expect(html).toContain(en.attendance_next_move.replace("{name}", "<bdi>Night shift</bdi>").replace("{date}", "1 Dec 2026"))
+        expect(html).toContain(en.attendance_default_from.replace("{name}", "<bdi>Night shift</bdi>").replace("{date}", "1 Jan 2027"))
+    })
+
+    it("names the year's select", async () => {
+        expect(await tab()).toMatch(/<select id="[^"]+" class="ui-select"[^>]*name="year"/)
     })
 })
