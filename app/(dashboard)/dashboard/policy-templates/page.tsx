@@ -8,7 +8,7 @@ import AccessDenied from '@/components/AccessDenied'
 import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
 import PolicyDialog from '@/components/attendance-policy/PolicyDialog'
 import TemplateFields from '@/components/attendance-policy/TemplateFields'
-import { Button, Card, EmptyState, Page, PageHeader, Row, RowMenu, type MenuItem } from '@/components/ui'
+import { Button, EmptyState, Page, PageHeader, Row, RowMenu, Rows, type MenuItem } from '@/components/ui'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
@@ -50,8 +50,7 @@ export default function PolicyTemplatesPage() {
     if (status === 'loading') return null
     if (!isSuperAdmin) return <AccessDenied />
 
-    // Numbers and days in the page's language (DESIGN.md §3.3).
-    const number = (n: number) => n.toLocaleString(intl, { maximumFractionDigits: 2 })
+    // Days in the page's language (DESIGN.md §3.3); counts go through countOf.
     const weekday = (d: number) => new Date(Date.UTC(2026, 2, 1 + d)).toLocaleDateString(intl, { weekday: 'short', timeZone: 'UTC' })
     const nameOf = (tpl: Template) => (isRtl && tpl.nameAr ? tpl.nameAr : tpl.name)
     /** Its name in the other language, where it has one, marked as that language. */
@@ -65,7 +64,7 @@ export default function PolicyTemplatesPage() {
         const items: ReactNode[] = [
             otherName(tpl),
             <bdi key="week">{b.workWeek.map(weekday).join(' ')}</bdi>,
-            <bdi key="late">{b.lateness.enabled ? t('ptpl_lateness_line').replace('{n}', number(b.lateness.graceMinutes)) : t('ptpl_lateness_off')}</bdi>,
+            <bdi key="late">{b.lateness.enabled ? t('ptpl_lateness_line').replace('{minutes}', countOf(t, locale, b.lateness.graceMinutes, 'minutes')) : t('ptpl_lateness_off')}</bdi>,
             <bdi key="absent">{b.absence.multiplier === 0
                 ? t('attendance_absence_none_line')
                 : t('attendance_absence_line').replace('{days}', countOf(t, locale, b.absence.multiplier, 'days'))}</bdi>,
@@ -151,19 +150,19 @@ export default function PolicyTemplatesPage() {
                 // New template is the header's, right above: offered once.
                 <div className="ui-panel"><EmptyState icon={CalendarCheckIcon} title={t('ptpl_none')} /></div>
             ) : (
-                <Card>
-                    <ul className="ui-rows ui-rows-flush" aria-label={t('ptpl_title')}>
+                // A panel of rows: a card with no title kept its padding above them (audit on part 1).
+                <Rows label={t('ptpl_title')}>
                         {templates.map(tpl => (
                             <Row
                                 key={tpl.id}
                                 title={<bdi>{nameOf(tpl)}</bdi>}
                                 detail={summary(tpl)}
-                                note={tpl.description}
+                                // Written in either language: kept in its own direction (audit on part 1).
+                                note={tpl.description && <bdi>{tpl.description}</bdi>}
                                 end={<RowMenu label={t('ui_more_actions_for').replace('{name}', nameOf(tpl))} tooltip={t('ui_more_actions')} items={menu(tpl)} />}
                             />
                         ))}
-                    </ul>
-                </Card>
+                </Rows>
             )}
 
             {editing && (

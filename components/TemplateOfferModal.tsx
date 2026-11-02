@@ -1,10 +1,10 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { Button, Dialog, DialogActions } from '@/components/ui'
-import { focusFirstWrong } from '@/components/attendance-calendar/focus'
+import { focusFirstWrong, refocusIfLost } from '@/components/attendance-calendar/focus'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -46,6 +46,13 @@ function OfferDialog({ template, onClose }: { template: { id: string; name: stri
     const [applyNow, setApplyNow] = useState(false)
     const [applying, setApplying] = useState(false)
     const { data, error, isValidating, mutate } = useSWR(`/api/role-templates/push?id=${template.id}`, fetcher)
+    // The dialog stays open after Apply, to show what changed: focus goes back
+    // to Apply once it isn't busy, where turning busy had dropped it to the page.
+    const wasApplying = useRef(false)
+    useEffect(() => {
+        if (wasApplying.current && !applying) refocusIfLost(formRef.current, 'button[type="submit"]')
+        wasApplying.current = applying
+    }, [applying])
     const roles: Offer[] | null = data ? data.data?.roles ?? [] : null
 
     const label = (p: string) => isPermission(p) ? t(permissionLabelKey(p)) : p
@@ -105,7 +112,7 @@ function OfferDialog({ template, onClose }: { template: { id: string; name: stri
                             {roles.map(r => {
                                 const same = !differs(r.difference)
                                 return (
-                                    <label key={r.id} className="ui-choice ui-choice-top">
+                                    <label key={r.id} className="ui-choice ui-choice-top" data-disabled={same || undefined}>
                                         {/* One already the same has nothing to apply. */}
                                         <input type="checkbox" className="ui-check" name="role" value={r.id} disabled={same || applying}
                                             aria-invalid={wrong && r.id === firstOpen ? true : undefined}

@@ -108,10 +108,10 @@ describe("Role templates", () => {
 
     it("lists each template as a row: its name, what it's based on and how many permissions, what it's for, and a menu named for it", async () => {
         const html = await roleTemplates({ [ROLE_TEMPLATES]: ok([roleTemplate(), roleTemplate({ id: "t2", name: "Driver", description: null, baseRole: "TEAM_LEADER", grants: grants(1) })]) })
-        expect(html).toMatch(new RegExp(`<ul class="ui-rows ui-rows-flush" aria-label="${en.role_templates_title}">`))
+        expect(html).toContain(`<ul class="ui-panel ui-rows" aria-label="${en.role_templates_title}">`)
         expect(html).toContain('<span class="ui-item-title"><bdi>Accountant</bdi></span>')
         expect(html).toContain(`<span class="ui-item-detail"><span><bdi>${en.roles_based_on.replace("{role}", en.role_employee)}</bdi>, <bdi>3 permissions</bdi></span></span>`)
-        expect(html).toContain('<span class="ui-item-note">Pays costs and runs payroll.</span>')
+        expect(html).toContain('<span class="ui-item-note"><bdi>Pays costs and runs payroll.</bdi></span>')
         // One, as the language counts it; and no note where there's nothing to say.
         expect(html).toContain("<bdi>1 permission</bdi>")
         expect(html.match(/ui-item-note/g)).toHaveLength(1)
@@ -220,16 +220,16 @@ describe("Attendance policy templates", () => {
 
     it("lists each template as a row: its name, its other name, the policy in words, what it's for, and a menu", async () => {
         const html = await policyTemplates({ [POLICY_TEMPLATES]: ok({ templates: [policyTemplate()] }) })
-        expect(html).toMatch(new RegExp(`<ul class="ui-rows ui-rows-flush" aria-label="${en.ptpl_title}">`))
+        expect(html).toContain(`<ul class="ui-panel ui-rows" aria-label="${en.ptpl_title}">`)
         expect(html).toContain('<span class="ui-item-title"><bdi>Standard office</bdi></span>')
         const detail = html.match(/<span class="ui-item-detail">(.*?)<\/span><\/span>/)![1]
         expect(detail).toContain('<bdi lang="ar">مكتب قياسي</bdi>')
         expect(detail).toContain("<bdi>Sun Mon Tue Wed Thu</bdi>")
-        expect(detail).toContain(`<bdi>${en.ptpl_lateness_line.replace("{n}", "15")}</bdi>`)
+        expect(detail).toContain(`<bdi>${en.ptpl_lateness_line.replace("{minutes}", "15 minutes")}</bdi>`)
         expect(detail).toContain(`<bdi>${en.attendance_absence_line.replace("{days}", "1 day")}</bdi>`)
         expect(detail).toContain(`<bdi>${en.ptpl_permission_line.replace("{hours}", "2 hours")}</bdi>`)
         expect(detail).not.toContain(" · ")
-        expect(html).toContain('<span class="ui-item-note">Five days, Friday and Saturday off.</span>')
+        expect(html).toContain('<span class="ui-item-note"><bdi>Five days, Friday and Saturday off.</bdi></span>')
         expect(html).toContain('aria-label="More actions for Standard office"')
     })
 
@@ -242,7 +242,7 @@ describe("Attendance policy templates", () => {
         expect(html).toContain(ar.attendance_absence_none_line)
         expect(html).not.toContain(ar.ptpl_permission_line.split("{hours}")[1])
         const withRules = await policyTemplates({ [POLICY_TEMPLATES]: ok({ templates: [policyTemplate()] }) }, { locale: "ar" })
-        expect(withRules).toContain(ar.ptpl_lateness_line.replace("{n}", "١٥"))
+        expect(withRules).toContain(ar.ptpl_lateness_line.replace("{minutes}", "١٥ دقيقة"))
     })
 
     it("offers Edit, Copy and Delete on each, Delete last in the danger colour", async () => {
@@ -279,5 +279,62 @@ describe("nothing of the old templates pages is left", () => {
             expect(source, file).not.toContain("→")
             expect(source, file).not.toContain(" · ")
         }
+    })
+})
+
+describe("found in the browser and the audit (the Super Admin's pages part 1)", () => {
+    it("keeps focus in the offer dialog after Apply, so Escape and Tab still work in it", async () => {
+        // Apply turns busy, which turns it off, and the browser drops focus to
+        // the page; the dialog stays open to show what changed, so focus came back to nothing.
+        const { refocusIfLost } = await import("@/components/attendance-calendar/focus")
+        const focusApply = vi.fn()
+        const form = { querySelector: (s: string) => (s === 'button[type="submit"]' ? { focus: focusApply } : null) } as unknown as HTMLFormElement
+        const body = {}
+        vi.stubGlobal("document", { body, activeElement: body })
+        try {
+            refocusIfLost(form, 'button[type="submit"]')
+            expect(focusApply).toHaveBeenCalledOnce()
+            // Not when the person has moved focus somewhere themselves.
+            vi.stubGlobal("document", { body, activeElement: { tagName: "INPUT" } })
+            refocusIfLost(form, 'button[type="submit"]')
+            expect(focusApply).toHaveBeenCalledOnce()
+        } finally {
+            vi.unstubAllGlobals()
+        }
+        expect(readFileSync("components/TemplateOfferModal.tsx", "utf8")).toMatch(/refocusIfLost\(formRef\.current, 'button\[type="submit"\]'\)/)
+    })
+
+    it("lists the templates in a panel of rows, with no empty strip above the first", async () => {
+        // A card with no title kept its padding above the rows.
+        const roles = await roleTemplates({ [ROLE_TEMPLATES]: ok([roleTemplate()]) })
+        expect(roles).toContain(`<ul class="ui-panel ui-rows" aria-label="${en.role_templates_title}">`)
+        expect(roles).not.toContain("ui-card")
+        const policies = await policyTemplates({ [POLICY_TEMPLATES]: ok({ templates: [policyTemplate()] }) })
+        expect(policies).toContain(`<ul class="ui-panel ui-rows" aria-label="${en.ptpl_title}">`)
+        expect(policies).not.toContain("ui-card")
+    })
+
+    it("keeps a description in its own direction, so its full stop stays at its end in Arabic", async () => {
+        expect(await roleTemplates({ [ROLE_TEMPLATES]: ok([roleTemplate()]) }, { locale: "ar" })).toContain('<span class="ui-item-note"><bdi>Pays costs and runs payroll.</bdi></span>')
+        expect(await policyTemplates({ [POLICY_TEMPLATES]: ok({ templates: [policyTemplate()] }) }, { locale: "ar" })).toContain('<span class="ui-item-note"><bdi>Five days, Friday and Saturday off.</bdi></span>')
+    })
+
+    it("counts lateness's minutes as each language counts them", async () => {
+        // It read "٥ دقيقة", where Arabic says ٥ دقائق.
+        const { countOf } = await import("@/lib/plural")
+        const t = (key: string) => ar[key as keyof typeof ar] ?? key
+        expect(countOf(t as never, "ar", 5, "minutes" as never)).toBe("٥ دقائق")
+        expect(countOf(t as never, "ar", 15, "minutes" as never)).toBe("١٥ دقيقة")
+        expect(countOf(t as never, "ar", 2, "minutes" as never)).toBe("دقيقتان")
+        const five = policyTemplate({ body: policyBody({ lateness: { ...policyBody().lateness, graceMinutes: 5 } }) })
+        expect(await policyTemplates({ [POLICY_TEMPLATES]: ok({ templates: [five] }) }, { locale: "ar" })).toContain(ar.ptpl_lateness_line.replace("{minutes}", "٥ دقائق"))
+        expect(await policyTemplates({ [POLICY_TEMPLATES]: ok({ templates: [five] }) })).toContain(en.ptpl_lateness_line.replace("{minutes}", "5 minutes"))
+    })
+
+    it("greys a company role already the same as the template, its words too, not only its box", async () => {
+        const { default: TemplateOfferModal } = await import("@/components/TemplateOfferModal")
+        const same = { id: "r2", name: "Finance", companyName: "Nile Works", holders: 1, difference: { added: [], removed: [], rescoped: [] } }
+        const html = render(h(TemplateOfferModal, { template: { id: "t1", name: "Accountant" }, onClose: () => {} }), { "/api/role-templates/push?id=t1": ok({ roles: [same] }) })
+        expect(html).toMatch(/<label class="ui-choice ui-choice-top" data-disabled="true"><input[^>]*value="r2"/)
     })
 })

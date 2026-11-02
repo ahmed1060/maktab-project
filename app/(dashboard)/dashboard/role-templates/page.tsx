@@ -9,7 +9,7 @@ import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
 import TemplateOfferModal from '@/components/TemplateOfferModal'
 import RoleEditorModal, { type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import { refusalOf } from '@/components/CompanyRolesCard'
-import { Button, Card, EmptyState, Page, PageHeader, Row, RowMenu, type MenuItem } from '@/components/ui'
+import { Button, EmptyState, Page, PageHeader, Row, RowMenu, Rows, type MenuItem } from '@/components/ui'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
@@ -114,8 +114,8 @@ export default function RoleTemplatesPage() {
                 // New template is the header's, right above: offered once.
                 <div className="ui-panel"><EmptyState icon={ShieldIcon} title={t('role_templates_empty')} /></div>
             ) : (
-                <Card>
-                    <ul className="ui-rows ui-rows-flush" aria-label={t('role_templates_title')}>
+                // A panel of rows: a card with no title kept its padding above them (audit on part 1).
+                <Rows label={t('role_templates_title')}>
                         {templates.map(template => (
                             <Row
                                 key={template.id}
@@ -124,12 +124,12 @@ export default function RoleTemplatesPage() {
                                     t('roles_based_on').replace('{role}', t(BUILT_IN_LABEL[template.baseRole])),
                                     countOf(t, locale, template.grants.length, 'permissions'),
                                 ])}
-                                note={template.description}
+                                // Written in either language: kept in its own direction (audit on part 1).
+                                note={template.description && <bdi>{template.description}</bdi>}
                                 end={<RowMenu label={t('ui_more_actions_for').replace('{name}', template.name)} tooltip={t('ui_more_actions')} items={menu(template)} />}
                             />
                         ))}
-                    </ul>
-                </Card>
+                </Rows>
             )}
 
             <RoleEditorModal

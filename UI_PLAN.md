@@ -2793,3 +2793,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     nothing picked says so under the list, where the button was off
     without a word, and the dialog says while the roles load and when
     they didn't.
+- **2026-11-02:** Found in the browser and the interface audit on #168:
+  - after Apply in the template offer dialog, which stays open to show
+    what changed, the busy button had turned itself off and the browser
+    dropped focus to the page, so Escape and Tab no longer reached the
+    dialog. Focus goes back to Apply once it's done;
+  - the templates sat in a card with no title, which kept its padding
+    above the first row as an empty strip. They're a panel of rows (the
+    `Rows` block) now;
+  - a description written in English, under an Arabic page, put its full
+    stop at its start. It's kept in its own direction;
+  - lateness's grace read "٥ دقيقة" in Arabic, where Arabic says ٥ دقائق.
+    Minutes are counted as each language counts them ("Lateness grace:
+    5 minutes", "مهلة التأخير: ٥ دقائق");
+  - a company role already the same as the template had its box greyed
+    but its words not. They're greyed too.
