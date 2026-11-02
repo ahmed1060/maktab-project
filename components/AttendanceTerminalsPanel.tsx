@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { ArrowsClockwiseIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
@@ -76,7 +76,11 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
     const devices: Device[] = devicesBody?.data?.devices ?? []
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const number = (n: number) => n.toLocaleString(intl)
-    const facts = (items: (string | null | false | undefined)[]) => items.filter(Boolean).join(t('list_separator'))
+    // Each fact kept apart from the next, so a host name or a version can't
+    // swap places with the words beside it in Arabic (audit on part 3c).
+    const facts = (items: (string | null | false | undefined)[]): ReactNode => items.filter(Boolean).map((x, i) => (
+        <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>
+    ))
 
     const ago = (iso: string | null) => {
         if (!iso) return t('att_term_never')
@@ -186,7 +190,8 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
                         ))}
                     </ul>
                 )}
-                <p className="ui-card-note">{t('att_term_mode_hint')}</p>
+                {/* How a terminal reads scans, once there's one: with none it ran on from "No terminal yet". */}
+                {devices.length > 0 && <p className="ui-card-note">{t('att_term_mode_hint')}</p>}
             </section>
 
             {adding && (

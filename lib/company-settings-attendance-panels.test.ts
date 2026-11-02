@@ -156,7 +156,7 @@ describe("the fingerprint terminals", () => {
         expect(html).toContain(`<span class="ui-badge ui-badge-waiting">${en.att_term_memory_full.replace("{p}", "95")}</span>`)
         expect(html).toContain(`<span class="ui-badge ui-badge-neutral">${en.att_term_device_RETIRED}</span>`)
         // A row's facts are joined as the language joins them, its mode among them.
-        expect(html).toContain(`FRONT-DESK${en.list_separator}v1.4.2`)
+        expect(html).toContain(`<bdi>FRONT-DESK</bdi>${en.list_separator}<bdi>v1.4.2</bdi>`)
         expect(html).toContain(en.att_term_mode_line.replace("{mode}", en.audit_value_ENTRANCE))
         expect(html).toContain(en.att_term_revoked_line.replace("{n}", "1"))
         expect(html).not.toContain(" · ")
@@ -218,8 +218,8 @@ describe("the check-in places", () => {
         const html = await render("AttendanceLocationsPanel", { [PLACES]: ok(PLACE_LIST) })
         expect(html).toContain(`<h2 class="ui-card-title">${en.att_loc_title}</h2>`)
         expect(html).toContain(`<p class="ui-card-note">${esc(en.att_loc_hint)}</p>`)
-        expect(html).toContain(["150 m", en.att_loc_ip_line.replace("{n}", "2"), en.att_loc_everyone_short].join(en.list_separator))
-        expect(html).toContain(["300 m", "Youssef Ali"].join(en.list_separator))
+        expect(html).toContain(["150 m", en.att_loc_ip_line.replace("{n}", "2"), en.att_loc_everyone_short].map(x => `<bdi>${x}</bdi>`).join(en.list_separator))
+        expect(html).toContain(["300 m", "Youssef Ali"].map(x => `<bdi>${x}</bdi>`).join(en.list_separator))
         expect(html).toContain(`<span class="ui-badge ui-badge-neutral">${en.att_loc_archived_badge}</span>`)
         expect(html).toContain('href="https://www.google.com/maps/search/?api=1&amp;query=30.0444,31.2357"')
         expect(html).not.toContain(" · ")
@@ -285,3 +285,44 @@ describe("nothing of the old panels is left", () => {
         }
     })
 })
+
+describe("found in the browser and the audit (company settings part 3c)", () => {
+    it("colours a link in a row's detail as a link, such as a place's map, not the browser's own blue", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-item-detail a \{\s*color: var\(--brand-text\);/)
+    })
+
+    it("keeps each of a row's facts apart from the next, so a host name or a version can't swap places with the words beside it in Arabic", async () => {
+        const terms = await render("AttendanceTerminalsPanel", terminals(), { locale: "ar" })
+        expect(terms).toContain(`<bdi>FRONT-DESK</bdi>${ar.list_separator}<bdi>v1.4.2</bdi>`)
+        expect(terms).toContain(`<bdi>${ar.att_term_serial} ZK-001</bdi>${ar.list_separator}<bdi>K40</bdi>`)
+        const places = await render("AttendanceLocationsPanel", { [PLACES]: ok(PLACE_LIST) }, { locale: "ar" })
+        expect(places).toContain("<bdi>Youssef Ali</bdi>")
+    })
+
+    it("says how a terminal reads scans only once there's a terminal", async () => {
+        // With none, it ran on from "No terminal yet" as one paragraph.
+        const none = await render("AttendanceTerminalsPanel", { [AGENTS]: ok(AGENT_LIST), [DEVICES]: ok({ devices: [] }) })
+        expect(none).toContain(esc(en.att_term_no_devices))
+        expect(none).not.toContain(esc(en.att_term_mode_hint))
+        expect(await render("AttendanceTerminalsPanel", terminals())).toContain(esc(en.att_term_mode_hint))
+    })
+
+    it("lets a point be typed on a phone, comma, minus and all, and names the place it edits", async () => {
+        const { PlaceDialog } = await import("@/components/AttendanceLocationsPanel")
+        Object.assign(state, { locale: "en", swr: {} })
+        vi.stubGlobal("document", { body: {} })
+        try {
+            const html = renderToStaticMarkup(h(PlaceDialog, {
+                draft: { id: "l2", name: "Site B", point: "30.1, 31.3", radius: "300", ips: "", everyone: false }, busy: false, onClose: () => {}, onSubmit: async () => {},
+            }))
+            // A decimal keypad has no comma or minus.
+            expect(html).toMatch(/<input[^>]*name="point"[^>]*>/)
+            expect(html.match(/<input[^>]*name="point"[^>]*>/)![0]).not.toContain('inputMode="decimal"')
+            expect(html).toContain(`class="ui-dialog-title">${en.att_loc_edit_title.replace("{name}", "Site B")}</h2>`)
+        } finally {
+            vi.unstubAllGlobals()
+        }
+    })
+})
+

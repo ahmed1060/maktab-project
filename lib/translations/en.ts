@@ -2078,6 +2078,7 @@ export const en = {
         att_loc_people_title: "Who may check in at {name}",
         att_loc_archive_title: "Archive {name}?",
         att_loc_archive_body: "Nobody will be able to check in there until it's restored.",
+        att_loc_edit_title: "Edit {name}",
         sum_deductions: "Deductions so far",
         sum_lates: "Late arrivals",
         sum_early: "Early leaves",

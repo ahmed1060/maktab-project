@@ -2617,3 +2617,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Try again. Three showed nothing at all, and the places' said
     "Something went wrong" beside their title, without the server's
     reason. One the package doesn't have still isn't there.
+- **2026-11-02:** Found in the browser and the interface audit on #164:
+  - a link in a row's detail, such as a check-in place's map, was the
+    browser's own blue. It's in the link colour, as a detail's is;
+  - a row's facts, a host name, a version, a serial number or a
+    person's name among them, weren't kept apart from each other, so
+    one ending in a number could swap places with the words beside it
+    in Arabic. Each is isolated now;
+  - with no terminal yet, how a terminal reads scans ran on from "No
+    terminal yet" as one paragraph. It's said once there's a terminal,
+    and in its Edit dialog;
+  - a place's point opened a decimal keypad on a phone, which has no
+    comma or minus, so a point couldn't be typed there; the old panel
+    asked for it the same way. It takes text now;
+  - the place dialog's title, editing one, said only "Edit". It names
+    the place.

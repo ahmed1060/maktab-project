@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { Fragment, useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { ArchiveIcon, ArrowCounterClockwiseIcon, PencilSimpleIcon, PlusIcon, UsersThreeIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
@@ -91,10 +91,11 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
         }
     }
 
-    const who = (l: Location) => l.everyone ? t('att_loc_everyone_short')
-        : l.userIds.length === 0 ? t('att_loc_nobody')
-            : l.userIds.length <= 3 ? l.userIds.map(id => nameOf.get(id) ?? '–').join(t('list_separator'))
-                : countOf(t, locale, l.userIds.length, 'employees')
+    /** Who may check in there: everyone, nobody, up to three by name, or how many. */
+    const who = (l: Location): string[] => l.everyone ? [t('att_loc_everyone_short')]
+        : l.userIds.length === 0 ? [t('att_loc_nobody')]
+            : l.userIds.length <= 3 ? l.userIds.map(id => nameOf.get(id) ?? '–')
+                : [countOf(t, locale, l.userIds.length, 'employees')]
     const edit = (l: Location) => setDraft({ id: l.id, name: l.name, point: `${l.latitude}, ${l.longitude}`, radius: String(l.radiusMeters), ips: l.officeIpRanges.join('\n'), everyone: l.everyone })
     const menu = (l: Location): MenuItem[] => l.archivedAt
         ? [{ key: 'restore', label: t('att_loc_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/locations/${l.id}/restore`, { method: 'POST' }, 'att_loc_restored') } }]
@@ -121,12 +122,13 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
                                 <bdi>{l.name}</bdi>
                                 {l.archivedAt && <>{' '}<StatusBadge tone="neutral">{t('att_loc_archived_badge')}</StatusBadge></>}
                             </>}
+                            // Each fact kept apart from the next, a person's name among them (audit on part 3c).
                             detail={<>
                                 {[
                                     t('att_loc_radius_m').replace('{n}', number(l.radiusMeters)),
-                                    l.officeIpRanges.length > 0 && t('att_loc_ip_line').replace('{n}', number(l.officeIpRanges.length)),
-                                    who(l),
-                                ].filter(Boolean).join(t('list_separator'))}
+                                    ...(l.officeIpRanges.length > 0 ? [t('att_loc_ip_line').replace('{n}', number(l.officeIpRanges.length))] : []),
+                                    ...who(l),
+                                ].map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}
                                 {t('list_separator')}
                                 <a href={mapLink(l)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a>
                             </>}
@@ -197,14 +199,15 @@ export function PlaceDialog({ draft: start, busy, onClose, onSubmit }: {
         await onSubmit(draft, point)
     }
     return (
-        <Dialog open onClose={() => { if (!busy) onClose() }} title={draft.id ? t('att_loc_edit') : t('att_loc_add')}>
+        <Dialog open onClose={() => { if (!busy) onClose() }} title={start.id ? t('att_loc_edit_title').replace('{name}', start.name) : t('att_loc_add')}>
             <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
                 <Field label={t('att_loc_name')} hint={t('att_loc_name_hint')} error={errors.name && t(errors.name)}>{p => (
                     <TextInput {...p} name="name" autoComplete="off" maxLength={80} value={draft.name} onChange={e => edit({ name: e.target.value }, 'name')} />
                 )}</Field>
                 <div className="ui-field">
                     <Field label={t('att_loc_point')} hint={t('att_loc_point_hint')} error={errors.point && t(errors.point)}>{p => (
-                        <TextInput {...p} name="point" dir="ltr" inputMode="decimal" autoComplete="off" value={draft.point} onChange={e => edit({ point: e.target.value }, 'point')} />
+                        // Not a decimal keypad: on a phone it has no comma or minus (audit on part 3c).
+                        <TextInput {...p} name="point" dir="ltr" autoComplete="off" value={draft.point} onChange={e => edit({ point: e.target.value }, 'point')} />
                     )}</Field>
                     {point && <a className="ui-field-link" href={mapLink(point)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a>}
                 </div>

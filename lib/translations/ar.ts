@@ -2075,6 +2075,7 @@ export const ar = {
         att_loc_people_title: "من يمكنه تسجيل الحضور في {name}",
         att_loc_archive_title: "أرشفة {name}؟",
         att_loc_archive_body: "لن يتمكن أحد من تسجيل الحضور فيه حتى تتم إعادته.",
+        att_loc_edit_title: "تعديل {name}",
         sum_deductions: "الخصومات حتى الآن",
         sum_lates: "مرات التأخير",
         sum_early: "مرات الانصراف المبكر",

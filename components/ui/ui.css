@@ -554,6 +554,12 @@
   flex: 1 1 0;
   min-width: 0;
 }
+/* A link in a row's detail, such as a check-in place's map, in the link
+   colour, as a detail's is: it was the browser's own blue (company
+   settings part 3c). */
+.ui-item-detail a {
+  color: var(--brand-text);
+}
 /* A one-time code to type somewhere else, such as an attendance agent's
    (company settings part 3c): large, spaced, in equal-width digits, and
    chosen whole with one click to copy. */
