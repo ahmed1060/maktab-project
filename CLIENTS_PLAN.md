@@ -2216,3 +2216,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   change requests and access reviews move onto the building blocks in
   #169 (`UI_PLAN.md` §5), on the Super Admin's pages and a company's
   Roles and access page. They don't touch clients or locations.
+- **2026-11-02:** The Super Admin's pages part 2a was merged in #169. The
+  Super Admins page and Who can do this move onto the building blocks in
+  #170 (`UI_PLAN.md` §5), which finishes the Access group. They don't
+  touch clients or locations; the clients and locations permissions are
+  asked about in Who can like the others.

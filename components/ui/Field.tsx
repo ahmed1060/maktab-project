@@ -1,7 +1,8 @@
 'use client'
 
-import { useId, type ComponentPropsWithoutRef, type ReactNode } from 'react'
-import { CaretDownIcon, MagnifyingGlassIcon } from '@phosphor-icons/react/ssr'
+import { useId, useState, type ComponentPropsWithoutRef, type ReactNode } from 'react'
+import { CaretDownIcon, EyeIcon, EyeSlashIcon, MagnifyingGlassIcon } from '@phosphor-icons/react/ssr'
+import { useLanguage } from '@/context/LanguageContext'
 import { Icon, type PhosphorIcon } from './Icon'
 import { cx } from './cx'
 
@@ -37,6 +38,26 @@ export function TextInput({ icon, className, ...rest }: { icon?: PhosphorIcon } 
         <span className={cx('ui-control', icon && 'has-start-icon')}>
             {icon && <Icon icon={icon} size={16} />}
             <input className={cx('ui-input', className)} {...rest} />
+        </span>
+    )
+}
+
+/**
+ * A password, hidden until asked for (the Super Admin's pages part 2b). The
+ * button at its end shows it and hides it again: it shows only its icon, so
+ * it's named for screen readers and says what it does on hover (DESIGN.md
+ * §5.2), and the name says which it will do next.
+ */
+export function PasswordInput({ className, ...rest }: Omit<ComponentPropsWithoutRef<'input'>, 'type'>) {
+    const { t } = useLanguage()
+    const [shown, setShown] = useState(false)
+    const name = t(shown ? 'hide_password' : 'show_password')
+    return (
+        <span className="ui-control has-end-button">
+            <input className={cx('ui-input', className)} type={shown ? 'text' : 'password'} {...rest} />
+            <button type="button" className="ui-control-button" aria-label={name} title={name} onClick={() => setShown(s => !s)}>
+                <Icon icon={shown ? EyeSlashIcon : EyeIcon} size={18} />
+            </button>
         </span>
     )
 }
