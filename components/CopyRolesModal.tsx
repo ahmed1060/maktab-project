@@ -73,7 +73,9 @@ function CopyRolesDialog({ companyId, onClose, onCopied }: { companyId: string; 
         <Dialog open onClose={() => { if (!copying) onClose() }} title={t('roles_copy_title')}>
             <form ref={formRef} className="ui-form" noValidate onSubmit={copy}>
                 <p>{t('roles_copy_hint')}</p>
-                <Field label={t('roles_copy_source')} error={error ? t('roles_copy_companies_failed') : wrong ? t(wrong) : undefined}>{p => (
+                {/* While the companies load, the list says so (audit on part 4b): it was only "Choose a company". */}
+                <Field label={t('roles_copy_source')} hint={!data && !error ? t('loading') : undefined}
+                    error={error ? t('roles_copy_companies_failed') : wrong ? t(wrong) : undefined}>{p => (
                     <Select {...p} name="source" value={source} onChange={e => { setSource(e.target.value); setWrong(null) }}
                         options={[{ value: '', label: t('roles_copy_choose') }, ...companies.map(c => ({ value: c.id, label: c.name }))]} />
                 )}</Field>

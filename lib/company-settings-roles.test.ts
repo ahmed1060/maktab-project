@@ -179,7 +179,7 @@ describe("the periodic access review", () => {
         expect(html).toContain(`<h2 class="ui-card-title">${en.access_review_setting}</h2>`)
         expect(html).toMatch(new RegExp(`<label class="ui-choice"><input type="checkbox" class="ui-check" aria-describedby="([^"]+)" name="accessReviewEnabled" checked=""/>${en.access_review_on}</label><span id="\\1" class="ui-hint ui-choice-hint">`))
         expect(html).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.access_review_every}</label>`))
-        expect(html).toContain(`<option value="3" selected="">${en.access_review_months.replace("{count}", "3")}</option>`)
+        expect(html).toContain(`<option value="3" selected="">${en.count_months_other.replace("{n}", "3")}</option>`)
         expect(html).toContain(en.access_review_next.replace("{date}", "1 Dec 2026"))
         expect(html).toMatch(new RegExp(`<button type="submit" class="ui-btn ui-btn-primary"[^>]*disabled=""[^>]*>${en.save}</button>`))
     })
@@ -202,5 +202,25 @@ describe("nothing of the old Roles tab is left", () => {
             expect(source, file).not.toContain("@/components/Modal'")
             expect(source, file).not.toContain("ConfirmModal")
         }
+    })
+})
+
+describe("found in the browser and the audit (company settings part 4b)", () => {
+    it("counts the access review's interval as the language does: 1 month, and Arabic digits in Arabic", async () => {
+        const { default: AccessReviewSetting } = await import("@/components/AccessReviewSetting")
+        const setting = ROLE_LIST.review as never
+        const english = render(h(AccessReviewSetting, { companyId: "c1", setting, onSaved: () => {} }))
+        // It said "1 months", and "3 أشهر" with a Western digit beside an Arabic date.
+        expect(english).toContain(`<option value="1">${en.count_months_one}</option>`)
+        expect(english).toContain(`<option value="3" selected="">${en.count_months_other.replace("{n}", "3")}</option>`)
+        const arabic = render(h(AccessReviewSetting, { companyId: "c1", setting, onSaved: () => {} }), {}, "ar")
+        expect(arabic).toContain(`<option value="3" selected="">${ar.count_months_few.replace("{n}", "٣")}</option>`)
+    })
+
+    it("says the companies are loading while the copy dialog waits for them", async () => {
+        // The list was only "Choose a company", without a word.
+        const { default: CopyRolesModal } = await import("@/components/CopyRolesModal")
+        const html = render(h(CopyRolesModal, { companyId: "c1", isOpen: true, onClose: () => {}, onCopied: () => {} }), {})
+        expect(html).toMatch(new RegExp(`<span id="[^"]+" class="ui-hint">${en.loading}</span>`))
     })
 })

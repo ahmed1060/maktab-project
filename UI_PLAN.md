@@ -2717,3 +2717,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     switch with its explanation under it, how often as a labelled field,
     greyed while it's off, and the next review's day in the page's
     language.
+- **2026-11-02:** Found in the browser and the interface audit on #166:
+  - the access review's interval said "1 months", and in Arabic "3 أشهر"
+    with a Western digit beside a date in Arabic digits. It's counted as
+    the language counts, "1 month", "٣ أشهر";
+  - while the companies to copy from load, the copy dialog's list said
+    only "Choose a company". It says they're loading under the field.

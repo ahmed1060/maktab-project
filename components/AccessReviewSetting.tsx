@@ -5,6 +5,7 @@ import { refusalOf } from '@/components/CompanyRolesCard'
 import { Button, Card, Field, Select } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { countOf } from '@/lib/plural'
 import { useReportUnsaved } from '@/lib/useUnsavedChanges'
 
 /**
@@ -70,7 +71,8 @@ export default function AccessReviewSetting({ companyId, setting, onSaved }: { c
                 </div>
                 <Field label={t('access_review_every')}>{p => (
                     <Select {...p} name="months" value={String(months)} disabled={!enabled} onChange={e => setMonths(Number(e.target.value))}
-                        options={INTERVALS.map(m => ({ value: String(m), label: t('access_review_months').replace('{count}', String(m)) }))} />
+                        // Counted as the language counts: "1 months" and a Western digit in Arabic before (audit on part 4b).
+                        options={INTERVALS.map(m => ({ value: String(m), label: countOf(t, locale, m, 'months') }))} />
                 )}</Field>
                 {setting.accessReviewEnabled && setting.accessReviewNextAt && (
                     <p className="ui-card-note">{t('access_review_next').replace('{date}', day(setting.accessReviewNextAt))}</p>
