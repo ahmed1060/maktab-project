@@ -648,6 +648,91 @@
   font-weight: 600;
 }
 
+/* A module's name in the Super Admin's Modules tab (company settings part
+   4a): its icon, a button that opens the icon dialog, before the field. */
+.ui-module-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-module-name > .ui-control {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ui-emoji-button {
+  flex: none;
+  inline-size: 44px;
+  padding-inline: 0;
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+/* The icon dialog's palette: ten to a row, each a button. */
+.ui-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+.ui-emoji {
+  min-block-size: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-menu);
+  background: transparent;
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+.ui-emoji:hover {
+  background: var(--brand-tint);
+}
+.ui-emoji[aria-pressed="true"] {
+  border-color: var(--brand-primary);
+  background: var(--highlight-tint);
+}
+.ui-emoji:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+/* The side bar as a company's names and icons would make it, on the side
+   bar's own ground, as the logo's preview is. */
+.ui-sidebar-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-panel);
+  background: var(--sidebar-bg);
+}
+.ui-sidebar-preview-group {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--sidebar-fg);
+}
+.ui-sidebar-preview-group:first-child {
+  margin-block-start: 0;
+}
+.ui-sidebar-preview-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-1) 0;
+  color: var(--sidebar-fg-strong);
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+.ui-sidebar-preview-item > span {
+  flex: none;
+  font-size: var(--text-xl);
+}
+.ui-sidebar-preview-item > bdi {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Colour choice (§5.3) ── */
 .ui-colour-choice {
   display: flex;

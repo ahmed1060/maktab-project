@@ -2195,3 +2195,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   panels above the Attendance tab's policy move onto the building
   blocks in #164 (`UI_PLAN.md` §5). They don't touch clients or
   locations: the check-in places are attendance's, not the clients'.
+- **2026-11-02:** Company settings part 3c was merged in #164. The
+  Super Admin's Admin access and Modules tabs move onto the building
+  blocks in #165 (`UI_PLAN.md` §5), and Roles after them. The Modules
+  tab is where a company calls Clients something else; what it does is
+  unchanged.

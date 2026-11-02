@@ -2631,6 +2631,11 @@ export const en = {
         module_icon_custom: "Or paste any emoji",
         module_icon_reset: "Use the default icon",
         module_icon_invalid: "That is not an emoji",
+        // Company settings part 4a: the icon's button names its module, and the picker is a dialog.
+        module_icon_choose_for: "Choose an icon for {name}",
+        module_icon_title: "Icon for {name}",
+        module_icon_use: "Use this emoji",
+        module_icon_required: "Paste an emoji to use it.",
         module_reset_all: "Reset all to defaults",
         brand_colour: "Brand colour",
         brand_colour_company_hint: "The colour of your company's pages and its phone app: buttons, links and tabs, and the touches of colour in the side bar.",
