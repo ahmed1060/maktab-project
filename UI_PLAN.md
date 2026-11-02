@@ -478,8 +478,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-01; then its bonuses and deductions, merged in #159 on
      2026-11-01. The thirteenth is company settings, in four parts: its
      frame (both ways in, the tabs, and the unsaved-changes question) and
-     its General tab, which open for review in #160; then its Branding
-     and Payroll tabs; then its Attendance tab; then the Super Admin's
+     its General tab, merged in #160 on 2026-11-02; then its Branding
+     and Payroll tabs, which open for review in #161; then its
+     Attendance tab; then the Super Admin's
      own tabs, Roles, Modules and Admin access. Then the Super Admin's
      pages;
    - the one Requests page (§2.3), in five parts, the last merged in #139
@@ -2439,3 +2440,43 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     tabs holding one. It has just the cards now;
   - the page was "Company Settings", in the side bar too. It's "Company
     settings" now, in sentence case (`DESIGN.md` §3.4).
+- **2026-11-02:** Company settings part 1 was merged in #160. The second
+  part, in #161, moves the Branding and Payroll tabs onto the building
+  blocks. The brand colour was built on them already:
+  - the logo is a card. Its preview shows the logo as the side bar will,
+    on the side bar's dark ground and its light plate, beside the
+    company's name. Upload a logo, or Replace and Remove, sit on the
+    card's end side, and only the one at work says so;
+  - the payroll policy is a card of fields, each with its label above it
+    and its hint or error below it, and Save on the card's end side.
+    Payslips for employees is a checkbox, with its meaning read with it;
+  - a payday or debt cap that isn't a whole number in range is said to
+    be wrong under its field before anything is sent. Before, an emptied
+    payday was sent as 0 and refused in English, and an emptied debt cap
+    was saved as 0, which turns recovery off. The server's own reason
+    for a field, such as the calendar's, goes under that field too, and
+    the focus moves to the first field that's wrong;
+  - the debt cap's label says it's a percentage, where a "%" used to
+    follow the field.
+- **2026-11-02:** Found in the browser and the interface audit on #161:
+  - in Arabic, the calendar's zone started under the select's arrow,
+    because the select was set left to right. It keeps the page's
+    direction now, and a page translator leaves zone names as they are;
+  - a field's error stayed after the field was put right, until Save.
+    It goes as soon as the field is changed, as the other forms' do;
+  - Remove deleted the logo at once. It asks first now, Remove logo in
+    the danger colour, since showing it again means uploading it again;
+  - the logo's preview has its size before it loads, so the card doesn't
+    move, and the payday and the debt cap don't offer saved entries.
+- **2026-11-02:** Found by Codex on #161: a payday or debt cap typed with
+  a leading zero, such as "05", was saved as 5, but the card compared the
+  text it held with the 5 it was given back. So Save stayed on, and
+  leaving the tab asked about edits already kept. A typed number is
+  compared as the number it is now, and after a save the field shows
+  what was saved.
+- **2026-11-02:** Found by Codex on #161, after that fix: a payday or debt
+  cap typed over while its save was on its way was put back to what was
+  sent once the answer came, and the card then counted itself saved, so
+  the newer number was lost without a word. The field shows what was
+  saved only if it still holds what was sent; otherwise the newer number
+  stays, still a change to save.

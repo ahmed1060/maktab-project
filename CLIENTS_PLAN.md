@@ -2180,3 +2180,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   #160 (`UI_PLAN.md` §5). Cash advances' switches, on its General tab,
   ask in the building blocks' dialog now; nothing else touches clients
   or locations.
+- **2026-11-02:** Company settings part 1 was merged in #160. Its
+  Branding and Payroll tabs move onto the building blocks in #161
+  (`UI_PLAN.md` §5). They don't touch clients or locations.

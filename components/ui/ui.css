@@ -482,6 +482,64 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
+/* A settings card's fields, one under the other, then its button
+   (company settings part 2). */
+.ui-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+/* A checkbox with a line under it saying what it means: the line starts
+   where the checkbox's label does. */
+.ui-choice-hint {
+  margin-block-start: calc(-1 * var(--space-1));
+  padding-inline-start: calc(18px + var(--space-2));
+}
+
+/* A company's logo as the side bar shows it (company settings part 2): on
+   the side bar's own ground, which is dark in both themes, drawn on the
+   light plate, beside the company's name. */
+.ui-logo-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-logo-preview-wrap > p {
+  margin: 0;
+}
+.ui-logo-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-panel);
+  background: var(--sidebar-bg);
+}
+.ui-logo-plate {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  box-sizing: border-box;
+  object-fit: contain;
+  border-radius: var(--radius-menu);
+  background: var(--logo-plate);
+}
+.ui-logo-mark {
+  flex: none;
+  font-size: var(--text-xl);
+  line-height: 32px;
+}
+.ui-logo-preview-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sidebar-fg-strong);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
 
 /* ── Colour choice (§5.3) ── */
 .ui-colour-choice {

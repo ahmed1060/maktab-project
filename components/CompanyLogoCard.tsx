@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { Button, Card, Dialog } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { MAX_LOGO_BYTES } from '@/lib/company-logo'
@@ -14,13 +15,22 @@ type Props = {
     readOnly?: boolean
 }
 
+/**
+ * The company's logo (Company Settings → Branding). On the building blocks
+ * (UI_PLAN.md §5 step 5, company settings part 2): a card, the logo as the
+ * side bar will show it, and Upload or Replace and Remove on its end side.
+ */
 export default function CompanyLogoCard({ companyId, companyName, logoUrl, onChanged, readOnly = false }: Props) {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     const { showToast } = useToast()
-    const isRtl = locale === 'ar'
 
     const inputRef = useRef<HTMLInputElement | null>(null)
-    const [busy, setBusy] = useState(false)
+    // Which button is at work, so only it says so.
+    const [busy, setBusy] = useState<'upload' | 'remove' | null>(null)
+    // Removing deletes the stored file, so it's asked first (the audit on
+    // company settings part 2): showing the logo again means uploading it
+    // again.
+    const [removing, setRemoving] = useState(false)
 
     const handleFile = async (file: File) => {
         // A local size check so the obvious rejection does not cost an upload of
@@ -28,9 +38,10 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
         // this is a courtesy, not the rule.
         if (file.size > MAX_LOGO_BYTES) {
             showToast(t('company_logo_setting_hint'), 'error')
+            if (inputRef.current) inputRef.current.value = ''
             return
         }
-        setBusy(true)
+        setBusy('upload')
         try {
             const body = new FormData()
             body.append('companyId', companyId)
@@ -39,20 +50,20 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
             const result = await res.json().catch(() => ({}))
             if (res.ok && result?.data?.logoUrl) {
                 onChanged(result.data.logoUrl)
-                showToast(t('settings_saved_success') || 'Settings saved', 'success')
+                showToast(t('settings_saved_success'), 'success')
             } else {
                 showToast(result?.error || t('error_generic'), 'error')
             }
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
-            setBusy(false)
+            setBusy(null)
             if (inputRef.current) inputRef.current.value = ''
         }
     }
 
     const handleRemove = async () => {
-        setBusy(true)
+        setBusy('remove')
         try {
             const res = await fetch(`/api/companies/logo?companyId=${encodeURIComponent(companyId)}`, { method: 'DELETE' })
             const result = await res.json().catch(() => ({}))
@@ -65,61 +76,32 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
-            setBusy(false)
+            setBusy(null)
+            setRemoving(false)
         }
     }
 
     return (
-        <div className="glass" style={{ padding: '1.5rem', borderRadius: '1rem', textAlign: isRtl ? 'right' : 'left' }}>
-            <div style={{ fontWeight: 500, marginBottom: '0.15rem' }}>{t('company_logo_setting')}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginBottom: '0.35rem' }}>
-                {t('company_logo_setting_hint')}
-            </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-faint)', marginBottom: '1rem' }}>
-                {t('company_logo_plate_note')}
-            </div>
+        <Card title={t('company_logo_setting')}>
+            <p className="ui-card-note">{t('company_logo_setting_hint')}</p>
 
-            {/* The preview is the sidebar's own header, at its own size, on its
-                own ground — because a logo judged against a white settings card
-                tells you nothing about how it will read where it actually
-                appears. This is the entire reason the plate decision is visible
-                rather than a surprise after saving. */}
-            <div className="glass-dark" style={{
-                padding: '0.85rem 1rem',
-                borderRadius: '0.85rem',
-                border: '1px solid var(--veil-20)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                direction: isRtl ? 'rtl' : 'ltr',
-            }}>
-                <span style={{ fontSize: '1.4rem', flexShrink: 0, display: 'flex' }}>
-                    {logoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                            src={logoUrl}
-                            alt=""
-                            style={{
-                                width: '2rem', height: '2rem', objectFit: 'contain',
-                                background: 'var(--logo-plate)', borderRadius: '0.45rem',
-                                padding: '0.15rem', boxSizing: 'border-box',
-                            }}
-                        />
-                    ) : <span aria-hidden="true">🚀</span>}
-                </span>
-                <span style={{
-                    color: 'var(--sidebar-fg)', fontWeight: 600, fontSize: '0.95rem',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
-                }}>
-                    {companyName}
-                </span>
-            </div>
-
-            {!logoUrl && (
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-faint)', marginTop: '0.5rem' }}>
-                    {t('company_logo_none')}
+            {/* The preview is the side bar's own header, on its own dark
+                ground: a logo judged against a white settings card tells you
+                nothing about how it will read where it appears. That is why
+                the light plate it's drawn on is shown here rather than being
+                a surprise after saving. */}
+            <div className="ui-logo-preview-wrap">
+                <p className="ui-label">{t('company_logo_preview')}</p>
+                <div className="ui-logo-preview">
+                    {logoUrl
+                        // eslint-disable-next-line @next/next/no-img-element -- next/image would need every company's storage host in next.config, for one small image
+                        ? <img src={logoUrl} alt="" width={32} height={32} className="ui-logo-plate" />
+                        : <span className="ui-logo-mark" aria-hidden="true">🚀</span>}
+                    <span className="ui-logo-preview-name"><bdi>{companyName}</bdi></span>
                 </div>
-            )}
+                {!logoUrl && <p className="ui-card-note">{t('company_logo_none')}</p>}
+                <p className="ui-card-note">{t('company_logo_plate_note')}</p>
+            </div>
 
             <input
                 ref={inputRef}
@@ -129,20 +111,34 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
                 hidden
                 onChange={(e) => {
                     const file = e.target.files?.[0]
-                    if (file) handleFile(file)
+                    if (file) void handleFile(file)
                 }}
             />
 
-            {!readOnly && <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: isRtl ? 'flex-start' : 'flex-end' }}>
-                {logoUrl && (
-                    <button type="button" className="btn" onClick={handleRemove} disabled={busy}>
-                        {t('company_logo_remove')}
-                    </button>
-                )}
-                <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={busy}>
-                    {busy ? t('saving') : (logoUrl ? t('company_logo_replace') : t('company_logo_upload'))}
-                </button>
-            </div>}
-        </div>
+            {!readOnly && (
+                <div className="ui-card-actions">
+                    {logoUrl && (
+                        <Button onClick={() => setRemoving(true)} disabled={!!busy}>
+                            {t('company_logo_remove')}
+                        </Button>
+                    )}
+                    <Button variant="primary" onClick={() => inputRef.current?.click()} busy={busy === 'upload'} disabled={!!busy}>
+                        {t(logoUrl ? 'company_logo_replace' : 'company_logo_upload')}
+                    </Button>
+                </div>
+            )}
+
+            <Dialog
+                open={removing}
+                onClose={() => { if (!busy) setRemoving(false) }}
+                title={t('company_logo_remove_title')}
+                actions={<>
+                    <Button onClick={() => setRemoving(false)} disabled={!!busy}>{t('cancel')}</Button>
+                    <Button variant="danger" busy={busy === 'remove'} onClick={() => { void handleRemove() }}>{t('company_logo_remove_confirm')}</Button>
+                </>}
+            >
+                <p>{t('company_logo_remove_question')}</p>
+            </Dialog>
+        </Card>
     )
 }
