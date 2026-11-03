@@ -77,6 +77,10 @@ export default function CheckInReviewPage() {
     // Where the phone said it was: how far and how exactly, the network it
     // was on, why the app wasn't verified (as the verifier said it, for
     // testing attestation), and the map.
+    const attestReason = (reason: string) => {
+        const [before, after] = t('chk_attest_reason').split('{reason}')
+        return <>{before}<bdi translate="no">{reason}</bdi>{after}</>
+    }
     const where = (w: Waiting): ReactNode => {
         const c = w.checkIn
         const map = c?.latitude !== undefined && c.longitude !== undefined
@@ -85,8 +89,10 @@ export default function CheckInReviewPage() {
         const parts: ReactNode[] = [
             c?.distanceMeters !== undefined ? t('req_flagged_distance').replace('{n}', num(c.distanceMeters)) : null,
             c?.accuracyMeters !== undefined ? t('req_flagged_accuracy').replace('{n}', num(Math.round(c.accuracyMeters))) : null,
-            c?.ip ? <bdi>{c.ip}</bdi> : null,
-            c?.attestationReason ? t('chk_attest_reason').replace('{reason}', c.attestationReason) : null,
+            // The network address, and the verifier's own words: left to right
+            // and never translated, as a code is (the interface audit).
+            c?.ip ? <bdi dir="ltr" translate="no">{c.ip}</bdi> : null,
+            c?.attestationReason ? attestReason(c.attestationReason) : null,
             map,
         ].filter(Boolean)
         return parts.length ? <span>{parts.map((p, i) => <span key={i}>{i > 0 && t('list_separator')}{p}</span>)}</span> : undefined

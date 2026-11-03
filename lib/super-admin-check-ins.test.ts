@@ -128,8 +128,10 @@ describe("the Check-ins page", () => {
         expect(queue).toContain(`${en.att_flag_ATTESTATION_UNVERIFIED.charAt(0).toUpperCase()}${en.att_flag_ATTESTATION_UNVERIFIED.slice(1)}${en.list_separator}${en.att_flag_OUTSIDE_AREA}`)
         expect(queue).toContain(en.req_flagged_distance.replace("{n}", "420"))
         expect(queue).toContain(esc(en.req_flagged_accuracy.replace("{n}", "18")))
-        expect(queue).toContain("<bdi>41.33.1.2</bdi>")
-        expect(queue).toContain(en.chk_attest_reason.replace("{reason}", "token expired"))
+        // The network address and the verifier's words are its own, left to
+        // right and never translated (the interface audit).
+        expect(queue).toContain('<bdi dir="ltr" translate="no">41.33.1.2</bdi>')
+        expect(queue).toContain(en.chk_attest_reason.replace("{reason}", '<bdi translate="no">token expired</bdi>'))
         expect(queue).toMatch(/<a(?=[^>]*href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&amp;query=30\.0444,31\.2357")(?=[^>]*target="_blank")(?=[^>]*rel="noopener noreferrer")[^>]*>/)
         expect(queue).toContain(`>${en.requests_flagged_map}</a>`)
         // Not " · ", which reads as the digit zero beside an Arabic number.
