@@ -2613,7 +2613,7 @@ export const ar = {
         type_to_confirm_suffix: "للتأكيد",
         backup_picker_loading: "جارٍ تحميل النسخ الاحتياطية من Google Drive…",
         backup_picker_empty: "لا توجد نسخ احتياطية على Google Drive بعد.",
-        backup_picker_error: "تعذّر تحميل النسخ الاحتياطية. ربما لم يُضبط Google Drive على Vercel بعد.",
+        backup_picker_error: "تعذّر تحميل النسخ الاحتياطية من Google Drive",
         backup_picker_select: "استعادة",
         backup_picker_select_named: "استعادة {name}",
         backup_folder_daily: "يومي",

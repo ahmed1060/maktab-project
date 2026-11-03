@@ -137,7 +137,7 @@ describe("the terminals card", () => {
         const bad = rowOf(html, "Delta Sites")
         expect(bad).toContain("<bdi>Delta Sites</bdi>")
         expect(bad).toContain(`<span class="ui-badge ui-badge-problem">${en.att_term_health_bad_pill}</span>`)
-        const facts = [`Head office: ${en.att_term_agent_SILENT}`, en.att_term_health_terminals.replace("{ok}", "2").replace("{total}", "3"), en.att_term_health_unreachable.replace("{n}", "1")]
+        const facts = [`<bdi>Head office</bdi>: ${en.att_term_agent_SILENT}`, en.att_term_health_terminals.replace("{ok}", "2").replace("{total}", "3"), en.att_term_health_unreachable.replace("{n}", "1")]
         expect(bad).toContain(facts.map(f => `<bdi>${f}</bdi>`).join(en.list_separator))
         expect(rowOf(html, "Nile Co")).toContain(`<span class="ui-badge ui-badge-good">${en.att_term_health_ok_pill}</span>`)
     })
@@ -212,5 +212,22 @@ describe("System health's labels", () => {
             expect(en, key).not.toHaveProperty(key)
             expect(ar, key).not.toHaveProperty(key)
         }
+    })
+})
+
+describe("System health's cards, found in the browser", () => {
+    it("keeps an agent's name apart from its state, so they can't swap places in Arabic", async () => {
+        // "Main branch: متصل" came out with the state first, the name and the state one run of text.
+        const html = await render("TerminalsHealthCard", {}, { [TERMINALS]: { data: { success: true, data: { companies: [company()] } } } }, "ar")
+        expect(html).toContain(`<bdi><bdi>Head office</bdi>: ${ar.att_term_agent_SILENT}</bdi>`)
+    })
+
+    it("says what went wrong when Google Drive didn't answer, in the server's words, where it guessed", async () => {
+        // It said Drive "may not be set up" when the server had said it couldn't reach it.
+        const failed = await render("BackupPickerModal", picker({ backups: [], error: en.backup_picker_error, reason: "Couldn't reach Google Drive to list backups" }), {})
+        expect(failed).toContain(`<p class="ui-empty-title">${esc(en.backup_picker_error)}</p>`)
+        expect(failed).toContain(`<p class="ui-empty-detail">${esc("Couldn't reach Google Drive to list backups")}</p>`)
+        expect(en.backup_picker_error).not.toMatch(/may not|set up/)
+        expect(readFileSync("app/(dashboard)/dashboard/health/page.tsx", "utf8")).toContain("reason={picker?.reason ?? null}")
     })
 })

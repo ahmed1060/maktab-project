@@ -3283,3 +3283,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     reason and Try again;
   - their emoji, sizes and colours typed in, and the "h ago" and "d ago"
     labels are gone, and their labels are in sentence case.
+- **2026-11-03:** Found in the browser, on #177:
+  - when Google Drive didn't answer, the picker said it "may not be set up
+    on Vercel yet", where the server had said it couldn't be reached. It
+    says it couldn't load the backups, with the server's own reason under
+    it;
+  - in Arabic, an agent's English name and its state could swap places,
+    the two one run of text. The name is a run of its own.

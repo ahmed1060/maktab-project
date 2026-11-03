@@ -26,11 +26,13 @@ const FOLDER: Record<BackupEntry['folder'], TranslationKey> = { daily: 'backup_f
  * making, with a spinner, sizes and colours typed in and " · " between the
  * facts.
  */
-export default function BackupPickerModal({ isOpen, backups, loading, error, onSelect, onClose, onRetry }: {
+export default function BackupPickerModal({ isOpen, backups, loading, error, reason, onSelect, onClose, onRetry }: {
     isOpen: boolean
     backups: BackupEntry[]
     loading: boolean
     error: string | null
+    /** Why, as the server said it, such as that Google Drive couldn't be reached. */
+    reason?: string | null
     onSelect: (backup: BackupEntry) => void
     onClose: () => void
     /** Asks Google Drive again, after it didn't answer. */
@@ -51,7 +53,7 @@ export default function BackupPickerModal({ isOpen, backups, loading, error, onS
             {loading ? (
                 <p role="status">{t('backup_picker_loading')}</p>
             ) : error ? (
-                <EmptyState icon={WarningCircleIcon} title={error} action={onRetry && <Button onClick={onRetry}>{t('try_again')}</Button>} />
+                <EmptyState icon={WarningCircleIcon} title={error} detail={reason} action={onRetry && <Button onClick={onRetry}>{t('try_again')}</Button>} />
             ) : backups.length === 0 ? (
                 <p>{t('backup_picker_empty')}</p>
             ) : (

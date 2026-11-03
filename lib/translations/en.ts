@@ -2616,7 +2616,7 @@ export const en = {
         type_to_confirm_suffix: "to confirm",
         backup_picker_loading: "Loading the backups from Google Drive…",
         backup_picker_empty: "There are no backups on Google Drive yet.",
-        backup_picker_error: "Couldn't load the backups. Google Drive may not be set up on Vercel yet.",
+        backup_picker_error: "Couldn't load the backups from Google Drive",
         backup_picker_select: "Restore",
         backup_picker_select_named: "Restore {name}",
         backup_folder_daily: "Daily",

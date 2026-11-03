@@ -80,7 +80,7 @@ export default function SystemHealthPage() {
     // What's typed, once something is; until then the message saved.
     const [message, setMessage] = useState<string | null>(null)
     // Which list was asked for last: only its answer lands, and only while its picker is open.
-    const [picker, setPicker] = useState<{ request: number; backups: BackupEntry[]; loading: boolean; error: string | null } | null>(null)
+    const [picker, setPicker] = useState<{ request: number; backups: BackupEntry[]; loading: boolean; error: string | null; reason?: string | null } | null>(null)
     const pickerAsked = useRef(0)
 
     if (!isSuperAdmin) return <AccessDenied />
@@ -157,7 +157,8 @@ export default function SystemHealthPage() {
             const result = await res.json()
             setPicker(p => answerFor(p, result.success
                 ? { request, backups: result.data.backups, loading: false, error: null }
-                : { request, backups: [], loading: false, error: t('backup_picker_error') }))
+                // The server's own words for why, where the picker guessed.
+                : { request, backups: [], loading: false, error: t('backup_picker_error'), reason: result.error ?? null }))
         } catch {
             setPicker(p => answerFor(p, { request, backups: [], loading: false, error: t('backup_picker_error') }))
         }
@@ -320,6 +321,7 @@ export default function SystemHealthPage() {
                 backups={picker?.backups ?? []}
                 loading={picker?.loading ?? false}
                 error={picker?.error ?? null}
+                reason={picker?.reason ?? null}
                 onSelect={backup => {
                     setPicker(null)
                     setPending({ action: 'RESTORE_SPECIFIC', backup })

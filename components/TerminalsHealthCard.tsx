@@ -52,7 +52,7 @@ export default function TerminalsHealthCard() {
     const bad = rows.filter(r => r.tone === 'bad').length
     // Each fact kept apart from the next, so an agent's name can't swap
     // places with the words beside it in Arabic.
-    const facts = (items: (string | false)[]): ReactNode => (
+    const facts = (items: (ReactNode | false)[]): ReactNode => (
         <span>{items.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
     )
 
@@ -69,7 +69,8 @@ export default function TerminalsHealthCard() {
                             tone={r.tone === 'bad' ? 'overdue' : undefined}
                             title={<bdi>{r.name}</bdi>}
                             detail={facts([
-                                ...r.agents.map(a => `${a.name}: ${t(`att_term_agent_${a.health}`)}`),
+                                // The name in a run of its own, so it can't swap places with its state in Arabic.
+                                ...r.agents.map(a => <><bdi>{a.name}</bdi>: {t(`att_term_agent_${a.health}`)}</>),
                                 t('att_term_health_terminals').replace('{ok}', num(r.terminals.ok)).replace('{total}', num(r.terminals.total)),
                                 r.terminals.unreachable > 0 && t('att_term_health_unreachable').replace('{n}', num(r.terminals.unreachable)),
                                 r.terminals.memoryFull > 0 && t('att_term_health_memory').replace('{n}', num(r.terminals.memoryFull)),
