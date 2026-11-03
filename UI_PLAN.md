@@ -510,7 +510,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      on 2026-11-03, then its face checks switch, merged in #179 on
      2026-11-03, which finished Operations. The pages left follow, one
      at a time: Add employee, merged in #180 on 2026-11-03, then Add a
-     bonus and Add a deduction, which open for review in #181;
+     bonus and Add a deduction, merged in #181 on 2026-11-03, then
+     Usernames, which opens for review in #182;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3459,3 +3460,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the focus on arrival, which opened a phone's keyboard and skipped the
   card's note above them, and the reason was offered to autofill. Neither
   is now. Their own pay is said in the active voice.
+- **2026-11-03:** Add a bonus and Add a deduction were merged in #181.
+  Usernames moves onto the building blocks in #182:
+  - it has the page header, the download a labelled button in it, "Download
+    Excel", where it was two emoji in a green of its own (its token,
+    `--ok-fill`, goes with it, as nothing else used it), and its title was
+    set into the top bar;
+  - each person is a row of the building blocks' list, their name, role and
+    username, and a card on a phone, where they were cards of its own making
+    with each side chosen by hand. A username is kept as typed, apart from
+    the text around it and never translated, and somebody without one says
+    so, where it was a dash;
+  - it can be searched by name or username, as finding one person among
+    everybody was by scrolling;
+  - it says it's loading, as a status, and when it couldn't load, with Try
+    again, where both read "No employees found";
+  - somebody who may not see people is told so, and nothing is asked of the
+    server, where it asked and said it had failed;
+  - the Excel file says when it couldn't be made, where it failed without a
+    word; its name has the day where it was downloaded ("Usernames
+    2026-11-04.xlsx"), where it took the day in London; its sheet is
+    "Usernames", where it had the time in it; and no username is an empty
+    cell, where it was a dash.

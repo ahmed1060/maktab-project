@@ -1,209 +1,126 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, type ReactNode } from 'react'
+import useSWR from 'swr'
+import { DownloadSimpleIcon, HourglassIcon, IdentificationCardIcon, MagnifyingGlassIcon, ShieldIcon, UsersIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import AccessDenied from '@/components/AccessDenied'
+import { Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, SearchInput, type Column } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import { useHeader } from '@/context/HeaderContext'
 import { useToast } from '@/context/ToastContext'
-import { fetchRetrying } from '@/lib/swr-fetcher'
-// F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
-// (prototype pollution + ReDoS in the parser) — SheetJS stopped publishing
-// patched releases to npm. exceljs is maintained and gets normal npm
-// updates, but is a noticeably heavier bundle — imported dynamically below
-// so it only loads when the export button is actually clicked, not on
-// every visit to this page.
+import { BUILT_IN_LABEL } from '@/lib/role-label'
+import { fetcher } from '@/lib/swr-fetcher'
+import { useCan } from '@/lib/useCan'
+import { fileName, matches, nameOf, sheetRows, type Person } from '@/lib/usernames-list'
 
-type User = {
-    id: string
-    firstName: string
-    lastName: string
-    role: string
-    username?: string | null
-    email: string
-    company?: {
-        name: string
-    }
-}
-
+/**
+ * Each person's username, as the tasks upload's Excel file names who does
+ * a task; Create task links here (UI_PLAN.md §5 step 5, the pages left).
+ * On the building blocks: the page header with the download as a labelled
+ * button, where it was two emoji; a search by name or username; the list,
+ * and a card for each on a phone, where they were cards of its own making
+ * with each side chosen by hand; and a failure to load said with Try again,
+ * where it read "No employees found".
+ */
 export default function UsernamesPage() {
     const { t, locale } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
     const { showToast } = useToast()
-    const [users, setUsers] = useState<User[]>([])
-    const [loading, setLoading] = useState(true)
+    const { can } = useCan()
+    // People are theirs who may see them (the list asks it); anybody else
+    // is told so, where the page asked and said it had failed.
+    const may = can('employees.view')
+    const { data, error, isValidating, mutate } = useSWR<{ data: { data: Person[] } }>(may ? '/api/users?limit=1000' : null, fetcher)
+    const [query, setQuery] = useState('')
+    const [exporting, setExporting] = useState(false)
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                // Fetch all active users the current user can see
-                const res = await fetchRetrying('/api/users?limit=1000')
-                if (res.ok) {
-                    const result = await res.json()
-                    const data = result.data.data || result.data || []
-                    setUsers(data)
-                } else {
-                    showToast(t('failed_fetch_data'), 'error')
-                }
-            } catch (err) {
-                console.error('Failed to fetch users', err)
-                showToast(t('failed_fetch_data'), 'error')
-            } finally {
-                setLoading(false)
-            }
+    if (!may) return <AccessDenied />
+
+    const people = data?.data?.data
+    const roleWord = (role: string) => {
+        const key = BUILT_IN_LABEL[role as keyof typeof BUILT_IN_LABEL]
+        return key ? t(key) : role
+    }
+    const username = (p: Person): ReactNode => p.username
+        ? <bdi translate="no">{p.username}</bdi>
+        : <span className="ui-hint">{t('usernames_none')}</span>
+
+    // Everyone the page lists, whatever the search shows. exceljs is heavy,
+    // so it's loaded only when the file is asked for (F-20).
+    const download = async () => {
+        if (!people?.length) return
+        setExporting(true)
+        try {
+            const { Workbook } = await import('exceljs')
+            const workbook = new Workbook()
+            const sheet = workbook.addWorksheet(t('usernames'), locale === 'ar' ? { views: [{ rightToLeft: true }] } : undefined)
+            sheet.columns = [
+                { header: t('name_label'), key: 'name', width: 30 },
+                { header: t('role_label'), key: 'role', width: 20 },
+                { header: t('username_label'), key: 'username', width: 25 },
+            ]
+            sheet.addRows(sheetRows(people, roleWord))
+            // exceljs writes files only in Node; in the browser it's built in memory and handed over.
+            const buffer = await workbook.xlsx.writeBuffer()
+            const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+            const link = document.createElement('a')
+            link.href = url
+            link.download = fileName(t('usernames'), new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            URL.revokeObjectURL(url)
+        } catch {
+            showToast(t('usernames_export_failed'), 'error')
+        } finally {
+            setExporting(false)
         }
-        fetchUsers()
-        // Deliberately run once on mount only — t/showToast are recreated
-        // every render, and this is a one-time initial load, not something
-        // that should refetch on every locale toggle or re-render.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }
 
-    useEffect(() => {
-        setTitle(t('usernames'))
-        setSubtitle(t('usernames_subtitle'))
-        return () => {
-            setTitle(null)
-            setSubtitle(null)
-        }
-    }, [setTitle, setSubtitle, t])
+    const columns: Column<Person>[] = [
+        { key: 'name', header: t('name_label'), cell: p => <ItemTitle title={<bdi>{nameOf(p)}</bdi>} /> },
+        { key: 'role', header: t('role_label'), cell: p => roleWord(p.role) },
+        { key: 'username', header: t('username_label'), cell: username },
+    ]
+    const shown = (people ?? []).filter(p => matches(p, query))
 
-    const downloadExcel = async () => {
-        const { Workbook } = await import('exceljs')
-
-        const now = new Date()
-        const timeStr = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`
-        const isAr = locale === 'ar'
-
-        const workbook = new Workbook()
-        const sheetBaseName = isAr ? "المستخدمين" : "Users"
-        const sheetName = `${sheetBaseName}_${timeStr}`
-        // RTL support for Arabic (equivalent of the old worksheet['!views'] / workbook.Workbook.Views RTL flags)
-        const worksheet = workbook.addWorksheet(sheetName, isAr ? { views: [{ rightToLeft: true }] } : undefined)
-
-        worksheet.columns = [
-            { header: isAr ? 'الاسم' : 'Name', key: 'name', width: 30 },
-            { header: isAr ? 'الدور' : 'Role', key: 'role', width: 20 },
-            { header: isAr ? 'اسم المستخدم' : 'Username', key: 'username', width: 25 },
-        ]
-
-        users.forEach(u => {
-            worksheet.addRow({
-                name: `${u.firstName} ${u.lastName}`,
-                role: u.role ? (t(`role_${u.role.toLowerCase()}` as any) || u.role) : '-',
-                username: u.username || '-'
-            })
-        })
-
-        const filename = isAr
-            ? `أسماء المستخدمين_${new Date().toISOString().split('T')[0]}.xlsx`
-            : `Employees Usernames_${new Date().toISOString().split('T')[0]}.xlsx`
-
-        // exceljs has no writeFile helper for the browser (that's Node-only,
-        // via fs) — build the file in memory and trigger the download manually.
-        const buffer = await workbook.xlsx.writeBuffer()
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = filename
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
+    let list: ReactNode
+    if (!people) {
+        list = error ? (
+            <div className="ui-panel">
+                <EmptyState icon={WarningCircleIcon} title={t('usernames_load_failed')}
+                    action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+            </div>
+        ) : (
+            <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+        )
+    } else {
+        list = (
+            <DataList
+                caption={t('usernames')}
+                columns={columns}
+                rows={shown}
+                rowKey={p => p.id}
+                card={p => (
+                    <ListCard title={<bdi>{nameOf(p)}</bdi>}
+                        details={[{ icon: IdentificationCardIcon, text: username(p) }, { icon: ShieldIcon, text: roleWord(p.role) }]} />
+                )}
+                empty={people.length === 0
+                    ? <EmptyState icon={UsersIcon} title={t('usernames_empty')} />
+                    : <EmptyState icon={MagnifyingGlassIcon} title={t('usernames_no_match').replace('{query}', query.trim())}
+                        action={<Button onClick={() => setQuery('')}>{t('clear_search')}</Button>} />}
+            />
+        )
     }
 
     return (
-        <div style={{ padding: '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
-                <button aria-label={t('download_excel')}
-                    onClick={downloadExcel}
-                    className="btn"
-                    title={t('download_excel')}
-                    style={{
-                        background: 'var(--ok-fill)',
-                        color: 'var(--text-on-accent)',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem',
-                        padding: '0.6rem 1rem',
-                        borderRadius: '0.75rem',
-                        border: 'none',
-                        boxShadow: '0 4px 6px -1px var(--shadow-weak)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px -2px var(--shadow-weak)'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px var(--shadow-weak)'; }}
-                >
-                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📊</span>
-                    <span aria-hidden="true" style={{ fontSize: '1.2rem' }}>📥</span>
-                </button>
-            </div>
-
-            {loading ? <LoadingSpinner message={t('loading_users')} /> : (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))',
-                    gap: '1rem'
-                }}>
-                    {users.map(user => (
-                        <div
-                            key={user.id}
-                            style={{
-                                background: 'var(--surface)',
-                                padding: '1rem',
-                                borderRadius: '1rem',
-                                border: '1px solid var(--border)',
-                                boxShadow: '0 1px 3px var(--shadow-faint)',
-                                transition: 'transform 0.2s, box-shadow 0.2s'
-                            }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{
-                                        fontSize: '1.1rem',
-                                        fontWeight: 'bold',
-                                        color: 'var(--text-strong)',
-                                        marginBottom: '0.1rem',
-                                        lineHeight: '1.2'
-                                    }}>
-                                        {user.firstName} {user.lastName}
-                                    </div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', fontWeight: '500', textTransform: 'capitalize' }}>
-                                        {t(`role_${(user as any).role?.toLowerCase()}` as any) || (user as any).role || '-'}
-                                    </div>
-                                </div>
-                                <div style={{
-                                    background: 'var(--info-bg-subtle)',
-                                    padding: '0.25rem 0.5rem',
-                                    borderRadius: '0.5rem',
-                                    border: '1px solid var(--info-bg-indigo)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    flexShrink: 0
-                                }}>
-                                    <code style={{
-                                        fontSize: '0.85rem',
-                                        color: 'var(--info-solid-hover)',
-                                        fontWeight: '800',
-                                        letterSpacing: '0.5px'
-                                    }}>
-                                        {user.username || '-'}
-                                    </code>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    {users.length === 0 && (
-                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: 'var(--text-soft)' }}>
-                            {t('no_employees_found')}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+        <Page>
+            <PageHeader title={t('usernames')} subtitle={t('usernames_subtitle')}
+                action={<Button icon={DownloadSimpleIcon} busy={exporting} disabled={!people?.length} onClick={() => { void download() }}>{t('download_excel')}</Button>} />
+            <FilterBar search={(
+                <Field label={t('usernames_search')} hideLabel>{p => (
+                    <SearchInput {...p} autoComplete="off" spellCheck={false} placeholder={t('usernames_search')} value={query} onChange={e => setQuery(e.target.value)} />
+                )}</Field>
+            )} />
+            {list}
+        </Page>
     )
 }

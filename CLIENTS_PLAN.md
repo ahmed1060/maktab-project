@@ -2263,3 +2263,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-03:** Add employee was merged in #180. Add a bonus and Add a
   deduction move onto the building blocks in #181 (`UI_PLAN.md` §5). They
   don't touch clients or locations.
+- **2026-11-03:** Add a bonus and Add a deduction were merged in #181.
+  Usernames moves onto the building blocks in #182 (`UI_PLAN.md` §5). It
+  doesn't touch clients or locations.

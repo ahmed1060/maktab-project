@@ -132,7 +132,6 @@
      page, so they can't darken without dimming those; white on them was
      2.1 to 3.8:1. Each fill is the same hue darkened until white on it is at
      least 4.5:1 (lib/contrast.test.ts). */
-  --ok-fill: #0b7b56;
   --info-fill: #0b61ef;
   --warn-fill-warm: #ae5104;
   --danger-fill: #d71212;
@@ -1209,7 +1208,6 @@ input::-webkit-credentials-auto-fill-button {
     /* The fills again: white on them at least 4.5:1, and the shape itself
        at least 3:1 against the dark surfaces, so a badge doesn't sink into
        the card it sits on. */
-    --ok-fill: #1f8051;
     --info-fill: #1f76b2;
     --warn-fill-warm: #ae5a1f;
     --danger-fill: #e11117;
