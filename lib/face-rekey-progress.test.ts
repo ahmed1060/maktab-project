@@ -51,7 +51,9 @@ describe("the photos still on the old key, between presses", () => {
         const card = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
         expect(card).toContain("photosLeft(rekeyLeft, rotation.previous)")
         expect(card).toContain("setRekeyLeft(leftAfterPress(shown, run.moved))")
-        expect(card).toContain(".replace('{previous}', String(left))")
+        // In the language's digits since System settings part 4b.
+        expect(card).toContain("leftLines(left, rotation.total, true)")
+        expect(card).toContain(".replace('{previous}', num(n))")
         expect(card).not.toContain("rotation.previous - rekeyMoved")
     })
 })

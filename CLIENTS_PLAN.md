@@ -2252,3 +2252,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   auto-verify distance is how far from a task's location a submitted
   location is approved by itself; it's set as before, a number from 1 to
   10,000 meters.
+- **2026-11-03:** The Super Admin's pages, Operations part 4a, was merged
+  in #178. System settings' face checks switch moves onto the building
+  blocks in #179 (`UI_PLAN.md` §5), which finishes the page. It doesn't
+  touch clients or locations.

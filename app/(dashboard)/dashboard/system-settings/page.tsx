@@ -24,7 +24,7 @@ import { UnsavedChangesProvider, useGuardLinks, useUnsavedState } from '@/lib/us
  *
  * It was one grid of forms of its own making, with its title set in the old
  * top bar, sizes and colours typed in, and, when the settings didn't load,
- * a toast over forms left empty. The face checks switch follows in part 4b.
+ * a toast over forms left empty. Its face checks switch moved in part 4b.
  */
 /** The server's answer: the settings, or why not. */
 type Answer = { success: true; data: StoredSettings } | { success: false; error?: string }

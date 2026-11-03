@@ -513,8 +513,40 @@
 /* A settings card's button, on its end side. */
 .ui-card-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+/* A line said where the buttons would be, such as who can change it, sits
+   on the start side. */
+.ui-card-actions > .ui-card-note {
+  margin-inline-end: auto;
+}
+/* A card's lines one under the other, a button among them at its own width. */
+.ui-card-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+/* Where something stands: its badge, and a line on what that means. */
+.ui-state-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* The room of the largest of what can show in one place (Reserve): each
+   sits in the same cell, and only what shows is seen. */
+.ui-reserve {
+  display: grid;
+}
+.ui-reserve > * {
+  grid-area: 1 / 1;
+  min-inline-size: 0;
+}
+.ui-reserve-room {
+  visibility: hidden;
 }
 /* A settings card's fields, one under the other, then its button
    (company settings part 2). */

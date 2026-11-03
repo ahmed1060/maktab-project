@@ -667,6 +667,11 @@ These are built once, in the building-blocks PR, and every page uses them
     example is the people whose month couldn't be worked out.
   - Its title says what it is, so the colour is never the only signal,
     and its background stays the panel's, so its text keeps its contrast.
+  - A card that loads its own data holds the room of the most it can show
+    while it loads, so nothing below it moves when it comes. Each part,
+    such as its state or its row of buttons, is as tall as the tallest of
+    what it can show there, failing to load included. An example is face
+    verification on System settings.
 - **Document:** a paper the app issues, such as a payslip or a settlement
   statement, read on screen and printed.
   - The page header names it, with Print as its primary button and
@@ -1038,3 +1043,6 @@ changed:
   for what can't be undone, such as restoring a backup on System health.
   The page's word was in the old confirmation window, in a box of its own
   making, with "Type" and "to confirm" on either side of it.
+- **2026-11-03:** A card that loads its own data holds the room of the most
+  it can show (§5.5, Card), with a building block for it. Face
+  verification on System settings held it with copies of its own making.
