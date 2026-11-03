@@ -144,7 +144,7 @@ describe("the colour settings on screen", () => {
 
     it("is in System Settings beside the \"Powered by\" branding, for the default", () => {
         const page = readFileSync("app/(dashboard)/dashboard/system-settings/page.tsx", "utf8")
-        expect(page).toMatch(/handleSaveBranding[\s\S]*<BrandColourCard[\s\S]*body: JSON.stringify\(\{ brandColour \}\)/)
+        expect(page).toMatch(/<SignatureCard[\s\S]*<BrandColourCard[\s\S]*body: JSON.stringify\(\{ brandColour \}\)/)
     })
 
     it("tells the settings page what \"Use the default\" goes back to", () => {

@@ -2876,3 +2876,45 @@ html[lang="ar"] .ui-empty-title {
     min-height: 44px;
   }
 }
+
+/* What the "Powered by" signature will look like, before it's saved
+   (System settings): the small line and the name, as the corner of every
+   dashboard page shows them. */
+.ui-signature-preview {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-field);
+  background: var(--page);
+}
+.ui-signature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ui-signature-by {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.ui-signature-name {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+/* Spaced letters come apart in Arabic, where they join. */
+[dir="rtl"] .ui-signature-by,
+[dir="rtl"] .ui-signature-name {
+  letter-spacing: 0;
+}

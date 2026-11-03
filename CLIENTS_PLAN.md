@@ -2246,3 +2246,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   in #176. System health's scheduled jobs, terminals and backup picker
   move onto the building blocks in #177 (`UI_PLAN.md` §5), which finishes
   the page. They don't touch clients or locations.
+- **2026-11-03:** The Super Admin's pages, Operations part 3b, was merged
+  in #177. System settings' page and its four forms move onto the building
+  blocks in #178 (`UI_PLAN.md` §5), the first of two parts. The
+  auto-verify distance is how far from a task's location a submitted
+  location is approved by itself; it's set as before, a number from 1 to
+  10,000 meters.
