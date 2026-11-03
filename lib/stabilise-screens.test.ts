@@ -119,7 +119,7 @@ describe("in the dark theme", () => {
         // says how many there are (lib/super-admin-audit-logs.test.ts).
         const page = readFileSync("app/(dashboard)/dashboard/audit-logs/page.tsx", "utf8")
         expect(page).toContain("<Pager ")
-        expect(page).toContain("countOf(t, locale, listed.total, 'entries')")
+        expect(page).toContain("countOf(t, locale, listed.total, 'logged')")
         expect(page).not.toContain("var(--text-strong)")
     })
 })

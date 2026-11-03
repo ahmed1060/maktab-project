@@ -3155,3 +3155,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     asked for every user's list for whoever opened it;
   - `AuditLogFilter`, eight labels and the --info-bg-indigo-faint and
     --accent-deepest colours only the old page used are removed.
+- **2026-11-03:** Found in the browser, on #175:
+  - Postgres keeps an entry's details shorter names first, so an error's
+    stack trace came before its message and was one of the three shown,
+    the message behind Show more. The three shown are short, one-line
+    details; a long one, or a field's own fields, waits behind Show more,
+    the shorter first;
+  - "Super Admin" broke onto two lines in the By column; a name stays on
+    one;
+  - in Arabic, the pager counted the entries with the cash advance's word,
+    حركة, a movement of money. They're إدخالات, a word of their own.

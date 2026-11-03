@@ -3980,6 +3980,12 @@ export const ar = {
         count_entries_few: "{n} حركات",
         count_entries_many: "{n} حركةً",
         count_entries_other: "{n} حركة",
+        count_logged_zero: "{n} إدخال",
+        count_logged_one: "إدخال واحد",
+        count_logged_two: "إدخالان",
+        count_logged_few: "{n} إدخالات",
+        count_logged_many: "{n} إدخالًا",
+        count_logged_other: "{n} إدخال",
         // A new check-in phone's check-ins, held until it's decided (UI_PLAN.md §2.3, part 4b).
         count_held_zero: "{n} تسجيل حضور معلّق",
         count_held_one: "تسجيل حضور واحد معلّق",

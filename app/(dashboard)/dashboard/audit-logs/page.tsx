@@ -46,6 +46,8 @@ type Named = { id: string; firstName: string; lastName: string; company?: { name
 const LIMIT = 20
 /** Shown before the rest of an entry's details, which wait behind Show more. */
 const SHOWN = 3
+/** Longer, as a stack trace or a note, waits behind Show more too. */
+const SHORT = 120
 const FILTERS = ['entityType', 'action', 'startDate', 'endDate', 'entityId', 'performedById'] as const
 
 /** What was done, in its meaning's colour: a deletion a problem, a creation good. */
@@ -125,11 +127,19 @@ export default function AuditLogsPage() {
     const details = (log: AuditLog): ReactNode => {
         const all = describeDetails(log.details, { t, locale })
         if (all.length === 0) return null
-        const rest = all.slice(SHOWN)
+        // The first few short ones, in the order they're kept; Postgres keeps
+        // shorter names first, so an error's stack trace came before its
+        // message (found in the browser). A long line or a field's own
+        // fields waits behind Show more with the rest.
+        const short = (line: DetailLine) => !line.lines && (line.value ?? '').length <= SHORT && !(line.value ?? '').includes('\n')
+        const shown = all.filter(short).slice(0, SHOWN)
+        // Behind it, the shorter first: an error's message before its stack trace (found in the browser).
+        const size = (line: DetailLine) => line.value?.length ?? 0
+        const rest = all.filter(line => !shown.includes(line)).sort((a, b) => size(a) - size(b))
         // A block of its own, the card's full width on a phone.
         return (
             <div className="ui-report-block">
-                {lines(all.slice(0, SHOWN))}
+                {shown.length > 0 && lines(shown)}
                 {rest.length > 0 && (
                     <details className="ui-more">
                         <summary>{t('audit_more').replace('{n}', rest.length.toLocaleString(dateLocale))}</summary>
@@ -144,7 +154,8 @@ export default function AuditLogsPage() {
         { key: 'when', header: t('audit_when'), cell: when },
         { key: 'action', header: t('audit_what'), cell: action },
         { key: 'item', header: t('audit_item'), cell: log => <ItemTitle title={label('audit_entity_', log.entityType)} detail={itemId(log)} /> },
-        { key: 'by', header: t('audit_by'), cell: log => <ItemTitle title={by(log).name} detail={by(log).as} /> },
+        // A name on one line, where "Super Admin" broke onto two (found in the browser).
+        { key: 'by', header: t('audit_by'), cell: log => <ItemTitle title={<span className="ui-nowrap">{by(log).name}</span>} detail={by(log).as} /> },
         { key: 'details', header: t('details'), cell: details },
     ]
 
@@ -181,7 +192,7 @@ export default function AuditLogsPage() {
                         foot={details(log)}
                     />
                 )}
-                footer={<Pager page={page} pageCount={listed.totalPages} onPage={p => go({ page: String(p) })} summary={countOf(t, locale, listed.total, 'entries')} />}
+                footer={<Pager page={page} pageCount={listed.totalPages} onPage={p => go({ page: String(p) })} summary={countOf(t, locale, listed.total, 'logged')} />}
             />
         )
     }

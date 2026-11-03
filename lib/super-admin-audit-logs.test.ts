@@ -150,8 +150,9 @@ describe("the Audit logs page", () => {
         // What it was on, and its ID, a code kept as it is.
         expect(html).toContain(en.audit_entity_TASK)
         expect(html).toContain('<bdi dir="ltr" translate="no">task-123</bdi>')
-        // Who: a person and their role, a Super Admin, or the system itself.
-        expect(html).toContain("Youssef Adel")
+        // Who: a person and their role, a Super Admin, or the system itself,
+        // a name on one line, where "Super Admin" broke onto two (found in the browser).
+        expect(html).toContain('<span class="ui-nowrap">Youssef Adel</span>')
         expect(html).toContain(en.audit_value_EMPLOYEE)
         expect(html).toContain(en.role_super_admin)
         expect(html).toContain(en.audit_by_system)
@@ -163,13 +164,26 @@ describe("the Audit logs page", () => {
         expect(html).toContain(`${en.audit_field_route}: </span><span class="ui-report-value">/api/tasks</span>`)
     })
 
-    it("shows an entry's first three details, and the rest, such as a stack trace, behind a Show more", async () => {
-        const html = await render({ ...people, [LIST]: listed([entry({ details: { route: "/api/tasks", method: "POST", message: "boom", stack: "Error: boom\n    at run (task.ts:1)" } })]) })
+    it("shows an entry's first three short details, and the rest, such as a stack trace, behind a Show more", async () => {
+        // In the order Postgres keeps them, shorter names first, so the stack
+        // trace came before the message, and was shown where the message
+        // waited behind Show more (found in the browser).
+        const html = await render({ ...people, [LIST]: listed([entry({ details: { route: "/api/tasks", stack: "Error: boom\n    at run (task.ts:1)", method: "POST", message: "boom" } })]) })
         const table = html.slice(html.indexOf("<table"), html.indexOf("</table>"))
         const cell = table.slice(table.indexOf('<ul class="ui-report">'))
-        expect(cell.indexOf(en.audit_field_message)).toBeLessThan(cell.indexOf('<details class="ui-more">'))
+        for (const field of [en.audit_field_route, en.audit_field_method, en.audit_field_message]) expect(cell.indexOf(field), field).toBeLessThan(cell.indexOf('<details class="ui-more">'))
         expect(cell).toContain(`<details class="ui-more"><summary>${en.audit_more.replace("{n}", "1")}</summary>`)
         expect(cell.indexOf(en.audit_field_stack)).toBeGreaterThan(cell.indexOf('<details class="ui-more">'))
+        // Behind it, the shorter first: an error's message before its stack trace (found in the browser).
+        const error = await render({ ...people, [LIST]: listed([entry({ details: { route: "/api/tasks", stack: "Error: boom\n" + "    at run (task.ts:1)\n".repeat(20), method: "POST", message: "Invalid call:\n\nno record found" } })]) })
+        const hidden = error.slice(error.indexOf('<details class="ui-more">'), error.indexOf("</details>"))
+        expect(hidden.indexOf(en.audit_field_message)).toBeGreaterThan(-1)
+        expect(hidden.indexOf(en.audit_field_message)).toBeLessThan(hidden.indexOf(en.audit_field_stack))
+        // A long line, or a field's own fields, is never one of the three.
+        const long = await render({ ...people, [LIST]: listed([entry({ details: { note: "x".repeat(200), grants: { add: "tasks.view" }, title: "Fix the pump" } })]) })
+        const longCell = long.slice(long.indexOf("<table"), long.indexOf("</table>"))
+        expect(longCell.indexOf(en.audit_field_title)).toBeLessThan(longCell.indexOf('<details class="ui-more">'))
+        expect(longCell).toContain(`<summary>${en.audit_more.replace("{n}", "2")}</summary>`)
         // Three or fewer, all shown.
         const short = await render({ ...people, [LIST]: listed([entry()]) })
         expect(short).not.toContain('<details class="ui-more">')
@@ -207,7 +221,9 @@ describe("the Audit logs page", () => {
         const html = await render({ ...people, [LIST]: listed([entry()], { total: 41, totalPages: 3 }) }, { locale: "ar" })
         expect(html).toContain(`<h1 class="ui-page-title">${ar.audit_logs}</h1>`)
         expect(html).toContain(when("2026-11-02T08:57:00.000Z", "ar"))
-        expect(html).toContain("٤١")
+        // An audit log's entries, where it took the cash advance's word, حركة, a movement of money (found in the browser).
+        expect(html).toContain("٤١ إدخالًا")
+        expect(html).not.toContain("حركة")
     })
 
     it("leaves the old filter, spinner, pager and styles typed in behind", () => {

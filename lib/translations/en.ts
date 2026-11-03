@@ -3995,6 +3995,12 @@ export const en = {
         count_entries_few: "{n} entries",
         count_entries_many: "{n} entries",
         count_entries_other: "{n} entries",
+        count_logged_zero: "{n} entries",
+        count_logged_one: "1 entry",
+        count_logged_two: "2 entries",
+        count_logged_few: "{n} entries",
+        count_logged_many: "{n} entries",
+        count_logged_other: "{n} entries",
         // A new check-in phone's check-ins, held until it's decided (UI_PLAN.md §2.3, part 4b).
         count_held_zero: "{n} check-ins held",
         count_held_one: "1 check-in held",
