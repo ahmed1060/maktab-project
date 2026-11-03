@@ -53,3 +53,51 @@ export function bundleLabelKeys(pkg: {
     if (pkg.hasAttendanceMobile) keys.push('bundle_attendance_mobile')
     return keys
 }
+
+/**
+ * What the platform charges, a package's price or a company's payment, in US
+ * dollars, in the page's language and digits (the Super Admin's pages part
+ * 3b): "$1,200.00", and "١٬٢٠٠٫٠٠ USD" in Arabic, after the number as "ج.م"
+ * is. Arabic's own symbol, "US$", turned round to "$US" in a right-to-left
+ * line (found in the browser). The old pages put a dollar sign before a number.
+ */
+export function platformMoney(n: number, locale: string): string {
+    const ar = locale === 'ar'
+    return n.toLocaleString(ar ? 'ar-EG' : 'en-GB', { style: 'currency', currency: 'USD', currencyDisplay: ar ? 'code' : 'narrowSymbol' })
+}
+
+/**
+ * What's wrong with an amount typed, as the server would say it: nothing
+ * typed, not a number it takes (below zero, or zero where it must be more, or
+ * more than the 12 digits it stores), or more than two decimal places, which
+ * the database would round without a word. Null when it'll do.
+ */
+export function amountError(text: string, { zero }: { zero: boolean }): 'missing' | 'wrong' | 'places' | null {
+    const typed = westernDigits(text)
+    if (typed === '') return 'missing'
+    if (!/^(\d+(\.\d*)?|\.\d+)$/.test(typed)) return 'wrong'
+    const n = Number(typed)
+    if ((!zero && n === 0) || n > 9_999_999_999) return 'wrong'
+    return Number(n.toFixed(2)) === n ? null : 'places'
+}
+
+const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩'
+const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
+
+/**
+ * An amount as typed, in Western digits: an Arabic phone's number pad types
+ * Arabic-Indic digits and the Arabic decimal mark (٫), which were refused as
+ * not a number (the interface audit on part 3b). As the attendance import
+ * reads them (lib/attendance/punch-import.ts).
+ */
+function westernDigits(text: string): string {
+    return text.trim()
+        .replace(/[٠-٩]/g, d => String(ARABIC_DIGITS.indexOf(d)))
+        .replace(/[۰-۹]/g, d => String(PERSIAN_DIGITS.indexOf(d)))
+        .replace(/٫/g, '.')
+}
+
+/** The amount typed, as the number sent: what amountError said will do. */
+export function typedAmount(text: string): number {
+    return Number(westernDigits(text))
+}

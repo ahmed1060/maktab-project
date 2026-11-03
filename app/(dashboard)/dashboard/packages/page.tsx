@@ -1,362 +1,161 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, type ReactNode } from 'react'
 import useSWR from 'swr'
-import { useSession } from 'next-auth/react'
+import { BuildingsIcon, CurrencyDollarIcon, HourglassIcon, NoteIcon, PackageIcon, PencilSimpleIcon, PlusIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import Modal from '@/components/Modal'
-import ConfirmModal from '@/components/ConfirmModal'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import { useToast } from '@/context/ToastContext'
+import { refusalOf } from '@/components/CompanyRolesCard'
+import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
+import { PackageDialog, type ListedPackage } from '@/components/PackageDialog'
+import { Button, DataList, EmptyState, ItemTitle, ListCard, Page, PageHeader, RowMenu, StatusBadge, type Column, type MenuItem } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
-import { useHeader } from '@/context/HeaderContext'
-import { fetcher } from '@/lib/swr-fetcher'
+import { useToast } from '@/context/ToastContext'
+import { countOf } from '@/lib/plural'
+import { bundleLabelKeys, platformMoney } from '@/lib/subscription-display'
+import { fetcher, type SWRError } from '@/lib/swr-fetcher'
+import { useViewer } from '@/lib/useCan'
 
-type Pkg = {
-    id: string
-    name: string
-    description: string | null
-    isActive: boolean
-    isPublic: boolean
-    priceMonthly: number
-    priceAnnual: number
-    priceLifetime: number | null
-    hasCompanyManagement: boolean
-    hasHR: boolean
-    hasAttendanceTerminals: boolean
-    hasAttendanceMobile: boolean
-    _count?: { companies: number }
-}
-
-const EMPTY = {
-    name: '',
-    description: '',
-    isActive: true,
-    isPublic: true,
-    priceMonthly: '',
-    priceAnnual: '',
-    priceLifetime: '',
-    hasCompanyManagement: false,
-    hasHR: false,
-    hasAttendanceTerminals: false,
-    hasAttendanceMobile: false,
-}
-
+/**
+ * The packages companies are sold (the Super Admin's pages part 3b,
+ * UI_PLAN.md §5 step 5): what each grants, its prices and how many
+ * companies are on it, a table on computers and cards on phones. Retired ones
+ * stay listed: retiring one only stops it being given to more companies, and
+ * a package that can't be seen can't be brought back.
+ */
 export default function PackagesPage() {
-    const { t } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
-    const { data: session } = useSession()
+    // Who is looking comes from the layout on the first paint, so a Super
+    // Admin never sees "Access restricted" while the session loads.
+    const viewer = useViewer()
+    const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
 
-    const [showModal, setShowModal] = useState(false)
-    const [editing, setEditing] = useState<Pkg | null>(null)
-    const [form, setForm] = useState<any>(EMPTY)
-    const [saving, setSaving] = useState(false)
-    const [error, setError] = useState('')
-    const [toDelete, setToDelete] = useState<Pkg | null>(null)
+    const { data, error, isValidating, mutate } = useSWR(isSuperAdmin ? '/api/packages?includeInactive=true' : null, fetcher)
+    const packages: ListedPackage[] | null = data?.data ?? null
 
-    // Retired packages must stay visible here — deactivating only removes them
-    // from the assignment dropdown, and a package you cannot see is one you
-    // cannot bring back.
-    const { data: result, isLoading, mutate } = useSWR('/api/packages?includeInactive=true', fetcher)
-    const packages: Pkg[] = result?.data || []
+    const [editing, setEditing] = useState<ListedPackage | 'new' | null>(null)
+    const [removing, setRemoving] = useState<ListedPackage | null>(null)
+    const [busy, setBusy] = useState(false)
 
-    useEffect(() => {
-        setTitle(t('packages' as any))
-        return () => { setTitle(null); setSubtitle(null) }
-    }, [t, setTitle, setSubtitle])
+    if (!isSuperAdmin) return <AccessDenied />
 
-    if (session && session.user?.role !== 'SUPER_ADMIN') return <AccessDenied />
+    const said = (key: Parameters<typeof t>[0], name: string) => t(key).replace('{name}', name)
+    const money = (n: number) => platformMoney(n, locale)
+    const companiesOn = (p: ListedPackage) => p._count?.companies ?? 0
 
-    const openCreate = () => {
-        setEditing(null)
-        setForm(EMPTY)
-        setError('')
-        setShowModal(true)
-    }
-
-    const openEdit = (pkg: Pkg) => {
-        setEditing(pkg)
-        setForm({
-            name: pkg.name,
-            description: pkg.description || '',
-            isActive: pkg.isActive,
-            isPublic: pkg.isPublic,
-            priceMonthly: String(pkg.priceMonthly),
-            priceAnnual: String(pkg.priceAnnual),
-            // Empty is meaningful here: not sold as a lifetime purchase, which
-            // is a different statement from sold for nothing.
-            priceLifetime: pkg.priceLifetime === null ? '' : String(pkg.priceLifetime),
-            hasCompanyManagement: pkg.hasCompanyManagement,
-            hasHR: pkg.hasHR,
-            hasAttendanceTerminals: pkg.hasAttendanceTerminals,
-            hasAttendanceMobile: pkg.hasAttendanceMobile,
-        })
-        setError('')
-        setShowModal(true)
-    }
-
-    const submit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setSaving(true)
-        setError('')
-
-        const payload: any = {
-            name: form.name.trim(),
-            description: form.description.trim(),
-            isActive: form.isActive,
-            isPublic: form.isPublic,
-            priceMonthly: Number(form.priceMonthly || 0),
-            priceAnnual: Number(form.priceAnnual || 0),
-            priceLifetime: form.priceLifetime === '' ? null : Number(form.priceLifetime),
-            hasCompanyManagement: form.hasCompanyManagement,
-            hasHR: form.hasHR,
-            hasAttendanceTerminals: form.hasAttendanceTerminals,
-            hasAttendanceMobile: form.hasAttendanceMobile,
-        }
-        if (editing) payload.id = editing.id
-
+    const remove = async (p: ListedPackage) => {
+        setBusy(true)
         try {
-            const res = await fetch('/api/packages', {
-                method: editing ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            })
-            const body = await res.json()
-            if (!res.ok) {
-                setError(body?.error || 'Failed to save package')
-                return
-            }
-            showToast(editing ? t('package_updated_success' as any) : t('package_created_success' as any), 'success')
-            setShowModal(false)
-            mutate()
+            const res = await fetch(`/api/packages?id=${encodeURIComponent(p.id)}`, { method: 'DELETE' })
+            if (!res.ok) return showToast(await refusalOf(res, t('error_generic')), 'error')
+            showToast(said('packages_deleted', p.name), 'success')
+            setRemoving(null)
+            await mutate()
         } catch {
-            setError('Failed to save package')
+            showToast(t('error_generic'), 'error')
         } finally {
-            setSaving(false)
+            setBusy(false)
         }
     }
 
-    const confirmDelete = async () => {
-        if (!toDelete) return
-        const res = await fetch(`/api/packages?id=${toDelete.id}`, { method: 'DELETE' })
-        const body = await res.json()
-        if (!res.ok) {
-            showToast(body?.error || 'Failed to delete package', 'error')
-        } else {
-            showToast(t('package_deleted_success' as any), 'success')
-            mutate()
-        }
-        setToDelete(null)
+    // A package companies are on can't be deleted, which would give them
+    // every module: its Delete stays in the menu, greyed, saying why.
+    const menu = (p: ListedPackage) => {
+        const inUse = companiesOn(p) > 0
+        const items: MenuItem[] = [
+            { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(p) },
+            { key: 'delete', label: inUse ? t('packages_delete_in_use') : t('delete'), icon: TrashIcon, danger: true, disabled: inUse || undefined, onSelect: () => setRemoving(p) },
+        ]
+        return <RowMenu label={t('ui_more_actions_for').replace('{name}', p.name)} tooltip={t('ui_more_actions')} items={items} />
     }
+    const badges = (p: ListedPackage) => <>
+        {!p.isActive && <>{' '}<StatusBadge tone="neutral">{t('package_retired')}</StatusBadge></>}
+        {!p.isPublic && <>{' '}<StatusBadge tone="neutral">{t('packages_unlisted')}</StatusBadge></>}
+    </>
+    const name = (p: ListedPackage) => <><bdi>{p.name}</bdi>{badges(p)}</>
+    const grants = (p: ListedPackage) => {
+        const keys = bundleLabelKeys(p)
+        return keys.length === 0 ? t('core_only') : keys.map(k => t(k)).join(t('list_separator'))
+    }
+    const prices = (p: ListedPackage) => [
+        t('packages_per_month').replace('{price}', money(p.priceMonthly)),
+        t('packages_per_year').replace('{price}', money(p.priceAnnual)),
+        p.priceLifetime === null ? t('packages_not_for_life') : t('packages_for_life').replace('{price}', money(p.priceLifetime)),
+    ]
 
-    const money = (n: number) => `$${n.toLocaleString()}`
+    const columns: Column<ListedPackage>[] = [
+        { key: 'name', header: t('packages_package'), cell: p => <ItemTitle title={name(p)} detail={p.description} /> },
+        { key: 'grants', header: t('packages_grants'), cell: grants },
+        { key: 'prices', header: t('packages_prices'), cell: p => prices(p).map((line, i) => <div key={i} className="ui-num">{line}</div>) },
+        { key: 'companies', header: t('companies'), align: 'end', cell: p => <span className="ui-num">{companiesOn(p).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')}</span> },
+        { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: menu },
+    ]
+
+    let list: ReactNode
+    if (!packages) {
+        list = error ? (
+            <div className="ui-panel">
+                <EmptyState icon={WarningCircleIcon} title={t('packages_load_failed')} detail={(error as SWRError).info?.error}
+                    action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+            </div>
+        ) : (
+            <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+        )
+    } else {
+        list = (
+            <DataList
+                caption={t('packages')}
+                columns={columns}
+                rows={packages}
+                rowKey={p => p.id}
+                empty={<EmptyState icon={PackageIcon} title={t('packages_none')} detail={t('packages_none_hint')} />}
+                card={p => (
+                    <ListCard
+                        title={name(p)}
+                        // Its description under its name, as the table has it, where
+                        // it was in the foot by the menu (found in the browser).
+                        details={[
+                            ...(p.description ? [{ icon: NoteIcon, text: p.description }] : []),
+                            { icon: PackageIcon, text: grants(p) },
+                            { icon: CurrencyDollarIcon, text: prices(p).join(t('list_separator')) },
+                            { icon: BuildingsIcon, text: countOf(t, locale, companiesOn(p), 'companies') },
+                        ]}
+                        foot={<span className="ui-row-actions">{menu(p)}</span>}
+                    />
+                )}
+            />
+        )
+    }
 
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <div />
-                <button className="btn btn-primary" onClick={openCreate}>+ {t('add_package' as any)}</button>
-            </div>
-
-            {isLoading ? <LoadingSpinner /> : packages.length === 0 ? (
-                <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-soft)' }}>
-                    {t('no_packages_yet' as any)}
-                </div>
-            ) : (
-                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))' }}>
-                    {packages.map(pkg => {
-                        const companies = pkg._count?.companies ?? 0
-                        return (
-                            <div key={pkg.id} className="glass-card" style={{ padding: '1.25rem', opacity: pkg.isActive ? 1 : 0.6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
-                                    <div>
-                                        <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{pkg.name}</div>
-                                        {pkg.description && (
-                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)', marginTop: '0.25rem' }}>{pkg.description}</div>
-                                        )}
-                                    </div>
-                                    {!pkg.isActive && (
-                                        <span style={{ padding: '0.2rem 0.5rem', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 600, background: 'var(--surface-sunk)', color: 'var(--text-soft)', whiteSpace: 'nowrap' }}>
-                                            {t('package_retired' as any)}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0.85rem 0' }}>
-                                    {!pkg.hasCompanyManagement && !pkg.hasHR && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--surface-sunk)', color: 'var(--text-muted)' }}>
-                                            {t('core_only' as any)}
-                                        </span>
-                                    )}
-                                    {pkg.hasCompanyManagement && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--info-bg)', color: 'var(--info-fg)' }}>
-                                            {t('bundle_company_management' as any)}
-                                        </span>
-                                    )}
-                                    {pkg.hasHR && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--ok-bg)', color: 'var(--ok-fg)' }}>
-                                            {t('bundle_hr' as any)}
-                                        </span>
-                                    )}
-                                    {pkg.hasAttendanceTerminals && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--warn-bg)', color: 'var(--warn-fg)' }}>
-                                            {t('bundle_attendance_terminals' as any)}
-                                        </span>
-                                    )}
-                                    {pkg.hasAttendanceMobile && (
-                                        <span style={{ padding: '0.2rem 0.55rem', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 600, background: 'var(--warn-bg)', color: 'var(--warn-fg)' }}>
-                                            {t('bundle_attendance_mobile' as any)}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-body)', display: 'grid', gap: '0.2rem' }}>
-                                    <div>{t('price_monthly' as any)}: <b>{money(pkg.priceMonthly)}</b></div>
-                                    <div>{t('price_annual' as any)}: <b>{money(pkg.priceAnnual)}</b></div>
-                                    <div>
-                                        {t('price_lifetime' as any)}:{' '}
-                                        <b>{pkg.priceLifetime === null ? <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>{t('not_sold_as_lifetime' as any)}</span> : money(pkg.priceLifetime)}</b>
-                                    </div>
-                                </div>
-
-                                <div style={{ marginTop: '0.85rem', fontSize: '0.8rem', color: 'var(--text-soft)' }}>
-                                    {t('companies_on_package' as any)}: <b style={{ color: 'var(--text-body)' }}>{companies}</b>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                                    <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => openEdit(pkg)}>
-                                        {t('edit' as any)}
-                                    </button>
-                                    <button
-                                        className="btn"
-                                        style={{ flex: 1, opacity: companies > 0 ? 0.5 : 1, cursor: companies > 0 ? 'not-allowed' : 'pointer' }}
-                                        disabled={companies > 0}
-                                        title={companies > 0 ? t('package_delete_blocked' as any) : undefined}
-                                        onClick={() => setToDelete(pkg)}
-                                    >
-                                        {t('delete' as any)}
-                                    </button>
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
-
-            <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? t('edit_package' as any) : t('add_package' as any)}>
-                <form onSubmit={submit} style={{ display: 'grid', gap: '0.9rem' }}>
-                    {/* Stated before saving, not after. An edit reaches every
-                        company on this package immediately — that warning is the
-                        difference between deliberate repackaging and removing a
-                        module from live customers mid-day. */}
-                    {editing && (editing._count?.companies ?? 0) > 0 && (
-                        <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'var(--warn-bg)', color: 'var(--warn-fg)', fontSize: '0.85rem', border: '1px solid var(--warn-border)' }}>
-                            {t('package_edit_warning' as any).replace('{count}', String(editing._count?.companies ?? 0))}
-                        </div>
-                    )}
-
-                    <div>
-                        <label className="label">{t('package_name' as any)}</label>
-                        <input aria-label={t('package_name' as any)} className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required maxLength={80} />
-                    </div>
-
-                    <div>
-                        <label className="label">{t('package_description' as any)}</label>
-                        <textarea aria-label={t('package_description' as any)}
-                            className="input"
-                            style={{ height: '70px', resize: 'none', lineHeight: 1.4 }}
-                            value={form.description}
-                            onChange={e => setForm({ ...form, description: e.target.value })}
-                            maxLength={500}
-                        />
-                    </div>
-
-                    <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))' }}>
-                        <div>
-                            <label className="label">{t('price_monthly' as any)}</label>
-                            <input aria-label={t('price_monthly' as any)} className="input" type="number" min="0" step="0.01" value={form.priceMonthly} onChange={e => setForm({ ...form, priceMonthly: e.target.value })} required />
-                        </div>
-                        <div>
-                            <label className="label">{t('price_annual' as any)}</label>
-                            <input aria-label={t('price_annual' as any)} className="input" type="number" min="0" step="0.01" value={form.priceAnnual} onChange={e => setForm({ ...form, priceAnnual: e.target.value })} required />
-                        </div>
-                        <div>
-                            <label className="label">{t('price_lifetime' as any)}</label>
-                            <input aria-label={t('price_lifetime' as any)} className="input" type="number" min="0" step="0.01" placeholder={t('not_sold_as_lifetime' as any)} value={form.priceLifetime} onChange={e => setForm({ ...form, priceLifetime: e.target.value })} />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="label">{t('bundles' as any)}</label>
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
-                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem' }}>
-                                <input type="checkbox" checked={form.hasCompanyManagement} onChange={e => setForm({ ...form, hasCompanyManagement: e.target.checked })} />
-                                {t('bundle_company_management' as any)}
-                            </label>
-                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem' }}>
-                                {/* The add-ons sit on top of HR, so HR going off takes them with it. */}
-                                <input type="checkbox" checked={form.hasHR} onChange={e => setForm({
-                                    ...form,
-                                    hasHR: e.target.checked,
-                                    ...(e.target.checked ? {} : { hasAttendanceTerminals: false, hasAttendanceMobile: false }),
-                                })} />
-                                {t('bundle_hr' as any)}
-                            </label>
-                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem', opacity: form.hasHR ? 1 : 0.6 }}>
-                                <input type="checkbox" disabled={!form.hasHR} aria-describedby="attendance-requires-hr" checked={form.hasAttendanceTerminals} onChange={e => setForm({ ...form, hasAttendanceTerminals: e.target.checked })} />
-                                {t('bundle_attendance_terminals' as any)}
-                            </label>
-                            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem', opacity: form.hasHR ? 1 : 0.6 }}>
-                                <input type="checkbox" disabled={!form.hasHR} aria-describedby="attendance-requires-hr" checked={form.hasAttendanceMobile} onChange={e => setForm({ ...form, hasAttendanceMobile: e.target.checked })} />
-                                {t('bundle_attendance_mobile' as any)}
-                            </label>
-                        </div>
-                        {!form.hasCompanyManagement && !form.hasHR && (
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginTop: '0.4rem' }}>
-                                {t('core_only' as any)}
-                            </div>
-                        )}
-                        <div id="attendance-requires-hr" style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginTop: '0.4rem' }}>
-                            {t('attendance_requires_hr' as any)}
-                        </div>
-                        {/* Said before saving: an edit applies to every company on the package at once. */}
-                        {editing && !form.hasHR && (editing.hasAttendanceTerminals || editing.hasAttendanceMobile) && (
-                            <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--warn-fg)', background: 'var(--warn-bg)', borderRadius: '0.5rem', padding: '0.5rem 0.65rem', marginTop: '0.4rem' }}>
-                                {t('attendance_removed_with_hr' as any)}
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                        <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem' }}>
-                            <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />
-                            {t('package_active' as any)}
-                        </label>
-                        <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem' }}>
-                            <input type="checkbox" checked={form.isPublic} onChange={e => setForm({ ...form, isPublic: e.target.checked })} />
-                            {t('package_public' as any)}
-                        </label>
-                    </div>
-
-                    {error && <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem' }}>{error}</div>}
-
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-                        <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>{t('cancel' as any)}</button>
-                        <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? '…' : t('save' as any)}</button>
-                    </div>
-                </form>
-            </Modal>
-
-            <ConfirmModal
-                isOpen={!!toDelete}
-                onCancel={() => setToDelete(null)}
-                onConfirm={confirmDelete}
-                variant="danger"
-                title={t('delete' as any)}
-                message={toDelete ? toDelete.name : ''}
+        <Page>
+            <PageHeader
+                title={t('packages')}
+                subtitle={t('packages_hint')}
+                action={<Button variant="primary" icon={PlusIcon} onClick={() => setEditing('new')}>{t('packages_add')}</Button>}
             />
-        </div>
+            {list}
+
+            {editing && (
+                <PackageDialog
+                    pkg={editing === 'new' ? null : editing}
+                    onClose={() => setEditing(null)}
+                    onSaved={(saved, added) => {
+                        setEditing(null)
+                        showToast(said(added ? 'packages_added' : 'packages_saved', saved), 'success')
+                        void mutate()
+                    }}
+                />
+            )}
+            {removing && (
+                <DeleteTemplateDialog
+                    name={removing.name}
+                    body={t('packages_delete_body')}
+                    busy={busy}
+                    onCancel={() => setRemoving(null)}
+                    onConfirm={() => { void remove(removing) }}
+                />
+            )}
+        </Page>
     )
 }
