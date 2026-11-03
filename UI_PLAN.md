@@ -3482,3 +3482,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     2026-11-04.xlsx"), where it took the day in London; its sheet is
     "Usernames", where it had the time in it; and no username is an empty
     cell, where it was a dash.
+- **2026-11-03:** Found in the browser, on #182: Clear search went with the
+  search it cleared, and the focus fell to the page. It goes back to the
+  search.

@@ -106,7 +106,8 @@ export default function UsernamesPage() {
                 empty={people.length === 0
                     ? <EmptyState icon={UsersIcon} title={t('usernames_empty')} />
                     : <EmptyState icon={MagnifyingGlassIcon} title={t('usernames_no_match').replace('{query}', query.trim())}
-                        action={<Button onClick={() => setQuery('')}>{t('clear_search')}</Button>} />}
+                        // The button goes with the search, so the focus goes back to the search.
+                        action={<Button onClick={() => { setQuery(''); document.querySelector<HTMLElement>('[name="q"]')?.focus() }}>{t('clear_search')}</Button>} />}
             />
         )
     }
@@ -117,7 +118,7 @@ export default function UsernamesPage() {
                 action={<Button icon={DownloadSimpleIcon} busy={exporting} disabled={!people?.length} onClick={() => { void download() }}>{t('download_excel')}</Button>} />
             <FilterBar search={(
                 <Field label={t('usernames_search')} hideLabel>{p => (
-                    <SearchInput {...p} autoComplete="off" spellCheck={false} placeholder={t('usernames_search')} value={query} onChange={e => setQuery(e.target.value)} />
+                    <SearchInput {...p} name="q" autoComplete="off" spellCheck={false} placeholder={t('usernames_search')} value={query} onChange={e => setQuery(e.target.value)} />
                 )}</Field>
             )} />
             {list}

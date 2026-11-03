@@ -161,3 +161,11 @@ describe("The Excel file", () => {
         }
     })
 })
+
+describe("Usernames, found in the browser", () => {
+    it("puts the focus back in the search when Clear search clears it, where it fell to the page as the button went", () => {
+        expect(render()).toMatch(/<input[^>]*type="search"[^>]*name="q"/)
+        const src = readFileSync(PAGE, "utf8")
+        expect(src).toContain(`onClick={() => { setQuery(''); document.querySelector<HTMLElement>('[name="q"]')?.focus() }}`)
+    })
+})
