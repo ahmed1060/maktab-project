@@ -13,7 +13,7 @@ describe("an audit entry's details, as the reader reads them", () => {
         const details = { oldStatus: "PENDING", newStatus: "IN_PROGRESS" }
         expect(describeDetails(details, EN)).toEqual([
             { label: "Old status", value: "Pending" },
-            { label: "New status", value: "In Progress" },
+            { label: "New status", value: "In progress" },
         ])
         expect(describeDetails(details, AR)).toEqual([
             { label: "الحالة السابقة", value: "معلق" },

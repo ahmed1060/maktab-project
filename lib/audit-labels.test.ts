@@ -146,4 +146,21 @@ describe("the audit log's labels", () => {
     it("labels every coded value in the schema, in both languages", () => {
         expect(missing("audit_value_", enumValues())).toEqual([])
     })
+
+    it("are in sentence case, as every label is (DESIGN.md §3.4)", () => {
+        // "User Logged In" and "All Creations" read as titles where the rest
+        // of the app reads as sentences; Arabic has no capitals, so the two
+        // languages match only this way. The role names and the add-on's name
+        // keep theirs, as they do everywhere, and so do acronyms (ID, HQ, IPs).
+        const KEPT = ["Super Admin", "Team Leader", "Mobile App"]
+        const titled = Object.entries(en)
+            .filter(([key]) => /^audit_(action|entity|field|value)_/.test(key))
+            .filter(([, value]) => {
+                let rest = String(value)
+                for (const name of KEPT) rest = rest.split(name).join("")
+                return /(^|[\s/-])[A-Z][a-z]/.test(rest.replace(/^\S+/, ""))
+            })
+            .map(([key, value]) => `${key}: ${value}`)
+        expect(titled).toEqual([])
+    })
 })

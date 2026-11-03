@@ -3175,3 +3175,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Another company starts from its first page, as another filter does, and
   a page past the last, as an old link could give, goes to the last there
   is; meanwhile the list says it's loading.
+- **2026-11-03:** Also on #175, as asked: the audit log's 208 labels in
+  Title Case ("User Logged In", "All Creations", "Day Off Request") are in
+  sentence case, as every other label is (`DESIGN.md` §3.4): "User logged
+  in", "All creations", "Day off request". The role names (Super Admin,
+  Team Leader), the Mobile App add-on and acronyms (ID, HQ, IPs) keep their
+  capitals, as they do everywhere. They're the action badges, the filters'
+  options and the details on the audit log, and coded values the
+  Attendance, Payroll, Requests and Check-ins pages show too, such as a
+  permission's type. Arabic has no capitals and is unchanged.
+  `lib/audit-labels.test.ts` checks every one.
