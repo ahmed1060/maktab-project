@@ -241,3 +241,47 @@ describe("System settings, found in the web interface audit", () => {
         expect(on).toContain('<span class="ui-signature-name" translate="no">Nizmo</span>')
     })
 })
+
+describe("System settings, found in Codex's review", () => {
+    it("keeps what was typed while a save was on its way", async () => {
+        // 200 saved, 300 typed before the answer came: the answer put back
+        // 200, Save went off and the 300 was lost, the leave guard with it.
+        const { afterSave } = await import("@/components/SystemSettingsCards")
+        expect(afterSave("300", "200", "200")).toBe("300")
+        expect(afterSave("200", "200", "200")).toBe("200")
+        // What was saved, 50 where "050" was typed, when nothing was typed since.
+        expect(afterSave("050", "050", "50")).toBe("50")
+        const cards = readFileSync(CARDS, "utf8")
+        expect(cards).toContain("if (next) setText(current => afterSave(current, sent, String(next[field])))")
+        expect(cards).toContain("if (next) setName(current => afterSave(current, sent, next.poweredByName ?? ''))")
+        expect(cards).not.toContain("setText(String(next[field]))")
+        expect(cards).not.toContain("setName(next.poweredByName ?? '')")
+    })
+
+    it("follows a newer stored value in a field nobody touched, and leaves an edit alone", async () => {
+        // Another Super Admin set the distance to 90 and this one saved the
+        // calendar: the untouched distance still said 70, with Save on, and
+        // saving it would have put 70 back over the 90.
+        const { followStored } = await import("@/components/SystemSettingsCards")
+        const whole = (text: string, n: number) => /^\d+$/.test(text.trim()) && Number(text.trim()) === n
+        expect(followStored("70", 70, 90, whole, String)).toBe("90")
+        expect(followStored("070", 70, 90, whole, String)).toBe("90")
+        expect(followStored("300", 70, 90, whole, String)).toBe("300")
+        // Emptied on the way to another number is an edit too.
+        expect(followStored("", 70, 90, whole, String)).toBe("")
+        const same = (a: string, b: string) => a === b
+        const itself = (s: string) => s
+        expect(followStored("Africa/Cairo", "Africa/Cairo", "Europe/London", same, itself)).toBe("Europe/London")
+        expect(followStored("Asia/Dubai", "Africa/Cairo", "Europe/London", same, itself)).toBe("Asia/Dubai")
+    })
+
+    it("has every field follow its stored value", () => {
+        const cards = readFileSync(CARDS, "utf8")
+        for (const call of [
+            "useFollowStored(saved, text, setText, sameWhole, String)",
+            "useFollowStored(stored.defaultTimezone, zone, setZone, same, itself)",
+            "useFollowStored(stored.showPoweredBy, shown, setShown, same, itself)",
+            "useFollowStored(stored.poweredByName ?? '', name, setName, same, itself)",
+        ]) expect(cards, call).toContain(call)
+    })
+})

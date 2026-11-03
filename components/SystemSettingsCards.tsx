@@ -53,6 +53,44 @@ export function settingsErrors(typed: Partial<Record<NumberField, string>>): Par
     return errors
 }
 
+/** Whether a number as typed is the one saved: "050" is 50. */
+const sameWhole = (text: string, n: number) => WHOLE.test(text.trim()) && Number(text.trim()) === n
+const same = <T,>(a: T, b: T) => a === b
+const itself = <T,>(x: T) => x
+
+/**
+ * What a field shows once its save comes back: what was saved, unless it was
+ * changed again while the save was on its way. Put back regardless, 300
+ * typed while 200 was saving became 200, with Save off, and was lost
+ * (found by Codex on PR 178).
+ */
+export function afterSave<T>(current: T, sent: T, saved: T): T {
+    return current === sent ? saved : current
+}
+
+/**
+ * What a field shows when its stored value changes from `before` to `after`:
+ * the new one if the field was untouched, and the edit if it wasn't.
+ * Another card's save, or a fresher read, can bring a newer value somebody
+ * else saved; left as it was, the untouched field read as a change and
+ * saving it put the old value back (found by Codex on PR 178).
+ */
+export function followStored<S, L>(local: L, before: S, after: S, untouched: (local: L, stored: S) => boolean, shown: (stored: S) => L): L {
+    return untouched(local, before) ? shown(after) : local
+}
+
+/** Keeps a field on its stored value while it's untouched, as that changes (followStored). */
+function useFollowStored<S, L>(stored: S, local: L, setLocal: (next: L) => void, untouched: (local: L, stored: S) => boolean, shown: (stored: S) => L) {
+    // The stored value the field was last on, so a change to it is seen
+    // during the render that brings it, before the field is drawn stale.
+    const [before, setBefore] = useState(stored)
+    if (!Object.is(before, stored)) {
+        setBefore(stored)
+        const next = followStored(local, before, stored, untouched, shown)
+        if (!Object.is(next, local)) setLocal(next)
+    }
+}
+
 type Saved = { ok: true; data: StoredSettings } | { ok: false; field?: string; message?: string }
 
 /** Sends one card's fields; the settings as saved, or the server's refusal, by field where it names one. */
@@ -119,7 +157,8 @@ function NumberCard({ field, title, note, label, stored, onSaved }: {
     const [text, setText] = useState(String(saved))
     const [error, setError] = useState<string>()
     const { saving, form, focusWrong, save } = useCardSave(onSaved)
-    const dirty = !(WHOLE.test(text.trim()) && Number(text.trim()) === saved)
+    useFollowStored(saved, text, setText, sameWhole, String)
+    const dirty = !sameWhole(text, saved)
     useReportUnsaved(field, dirty)
     const { min, max, range } = BOUNDS[field]
 
@@ -132,9 +171,10 @@ function NumberCard({ field, title, note, label, stored, onSaved }: {
             focusWrong()
             return
         }
+        const sent = text
         const next = await save({ [field]: Number(text.trim()) }, (_, message) => setError(message))
-        // What was saved, 50 where "050" was typed.
-        if (next) setText(String(next[field]))
+        // What was saved, 50 where "050" was typed, unless it was changed since.
+        if (next) setText(current => afterSave(current, sent, String(next[field])))
     }
 
     return (
@@ -178,6 +218,7 @@ export function CalendarCard({ stored, onSaved }: { stored: StoredSettings; onSa
     const [zone, setZone] = useState(stored.defaultTimezone)
     const [error, setError] = useState<string>()
     const { saving, form, save } = useCardSave(onSaved)
+    useFollowStored(stored.defaultTimezone, zone, setZone, same, itself)
     const dirty = zone !== stored.defaultTimezone
     useReportUnsaved('defaultTimezone', dirty)
     // A zone already stored but not on the list stays selectable, so opening
@@ -218,6 +259,8 @@ export function SignatureCard({ stored, onSaved }: { stored: StoredSettings; onS
     const [name, setName] = useState(stored.poweredByName ?? '')
     const [error, setError] = useState<string>()
     const { saving, form, save } = useCardSave(onSaved)
+    useFollowStored(stored.showPoweredBy, shown, setShown, same, itself)
+    useFollowStored(stored.poweredByName ?? '', name, setName, same, itself)
     const dirty = shown !== stored.showPoweredBy || name !== (stored.poweredByName ?? '')
     useReportUnsaved('signature', dirty)
     const NAME_MAX = 40
@@ -226,8 +269,9 @@ export function SignatureCard({ stored, onSaved }: { stored: StoredSettings; onS
         e.preventDefault()
         // Trimmed, and the default for a field cleared by accident, rather
         // than "Powered by" followed by nothing.
+        const sent = name
         const next = await save({ showPoweredBy: shown, poweredByName: name.trim() || DEFAULT_POWERED_BY_NAME }, (_, message) => setError(message))
-        if (next) setName(next.poweredByName ?? '')
+        if (next) setName(current => afterSave(current, sent, next.poweredByName ?? ''))
     }
 
     return (

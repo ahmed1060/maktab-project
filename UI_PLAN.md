@@ -3335,3 +3335,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     change the name (DESIGN.md §5.3);
   - the name, a brand's, had spelling marks under it and could be changed
     by a page translator. Its field and its preview leave it as it is.
+- **2026-11-03:** Found by Codex on #178:
+  - a number or name typed while a save was on its way was put back to
+    what was saved when the answer came, with Save off, and was lost. It's
+    kept, and still counts as a change;
+  - a field nobody touched kept the value it opened with when a newer one
+    arrived, from another card's save or a fresher read. It read as a
+    change, and saving it put the old value back over somebody else's.
+    Untouched, a field now follows its stored value, and an edit is left
+    alone.
