@@ -338,7 +338,7 @@ describe("the lock is the account's, not the address's (decided 2026-11-03)", ()
         }
     })
 
-    it("lifts when it's unlocked, and the count of codes for sensitive actions with it", async () => {
+    it("lifts when it's unlocked, and leaves the count of codes for sensitive actions alone (Codex on PR 183)", async () => {
         const { unlockSignIn, lockedUntil } = await import("@/lib/sign-in-lock")
         await wrong(5, { email: colleague.email })
         // The 30 seconds aren't shown in the lists; the fifteen minutes are.
@@ -349,7 +349,9 @@ describe("the lock is the account's, not the address's (decided 2026-11-03)", ()
         db.limits["step-up:colleague"] = { count: 5, resetAt: new Date(Date.now() + 60_000) }
         await unlockSignIn("colleague")
         expect((await lockedUntil(["colleague"])).size).toBe(0)
-        expect(db.limits["step-up:colleague"]).toBeUndefined()
+        // Unlocking gave five more codes for sensitive actions each time,
+        // so somebody holding the session could guess without end.
+        expect(db.limits["step-up:colleague"]).toMatchObject({ count: 5 })
         expect(await authorize(colleague)).toMatchObject({ id: "colleague" })
     })
 

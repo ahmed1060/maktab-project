@@ -3556,3 +3556,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   third found six and took the pause as over. A try is counted in one step,
   only from where the count may go on, so none is counted past the pause or
   the lock.
+- **2026-11-03:** Found by Codex, on #183: unlocking also lifted the count
+  of codes asked to confirm a sensitive action, and an Admin could unlock
+  their own account, so somebody holding an Admin's session could guess
+  codes without end. Unlocking lifts only sign-in's count, and nobody can
+  unlock their own sign-in, as somebody signed in isn't locked out.

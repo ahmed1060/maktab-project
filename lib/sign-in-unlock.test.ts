@@ -35,6 +35,14 @@ describe("unlocking somebody's sign-in", () => {
         expect(ar.audit_action_UNLOCK_SIGN_IN).toBeTruthy()
     })
 
+    it("isn't for somebody's own account (Codex on PR 183)", () => {
+        // Somebody signed in isn't locked out; and holding an Admin's
+        // session, it was a way to start their counts over.
+        const src = read(ROUTE)
+        expect(src).toContain("if (id === session.user.id) return ApiResponse.forbidden(")
+        expect(src.indexOf("if (id === session.user.id)")).toBeLessThan(src.indexOf("await unlockSignIn(id)"))
+    })
+
     it("is shown in the people list to whoever may unlock, with when it lifts on its own", () => {
         const src = read("app/api/users/route.ts")
         expect(src).toContain(`can(session.user, "employees.reset_password") ? await lockedUntil(users.map(u => u.id)) : null`)

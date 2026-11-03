@@ -176,9 +176,14 @@ export async function lockedUntil(accountIds: string[], now: Date = new Date()):
     return new Map(rows.map(row => [row.key.slice(ACCOUNT.length), row.resetAt]))
 }
 
-/** Lifts the lock, and the count of codes asked to confirm a sensitive action (lib/auth.ts, step-up). */
+/**
+ * Lifts the lock. Only sign-in's: the count of codes asked to confirm a
+ * sensitive action (lib/auth.ts, step-up) is left as it is, or unlocking
+ * gave five more codes each time, so somebody holding a session could
+ * guess without end (Codex on PR 183).
+ */
 export async function unlockSignIn(accountId: string): Promise<void> {
-    await Promise.all([RateLimiter.clear(accountLockKey(accountId)), RateLimiter.clear(`step-up:${accountId}`)])
+    await RateLimiter.clear(accountLockKey(accountId))
 }
 
 /**
