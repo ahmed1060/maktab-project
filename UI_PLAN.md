@@ -500,9 +500,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-02, which finished Access; then Customers, in three parts:
      the Companies list, merged in #171 on 2026-11-02, then a company's
      payments with Packages, merged in #172 on 2026-11-03, then All
-     users, which opens for review in #173 and finishes Customers; then
-     Operations (Check-ins, Audit logs,
-     System health, System settings);
+     users, merged in #173 on 2026-11-03, which finished Customers; then
+     Operations, a page at a time: Check-ins, which opens for review in
+     #174, then Audit logs, System health and System settings;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3085,3 +3085,30 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     until the next ones came, so the people at work could be drawn as
     Left rows, each with Delete for good. The rows are kept only within a
     tab and a company; across them the list says it's loading.
+- **2026-11-03:** The Super Admin's pages part 3c was merged in #173,
+  which finished the Customers group. Operations follows a page at a
+  time, Check-ins first, which moves onto the building blocks in #174:
+  - it has the page header. Its title was set in the old top bar;
+  - it knows who is looking from the first paint, where it waited on the
+    session;
+  - what waits for the Super Admin and the last 30 days' counts are
+    sections of their own, each a table on computers and cards on phones,
+    where they were two glass panels with tables of their own;
+  - each check-in waiting shows its company, whose it is and their phone,
+    the day and time as the language writes them, in or out and the place
+    it was checked against, why it waits in a sentence, and how far, how
+    exactly, the network, the app check and the map. The time was the
+    stored text, "2026-11-02 08:57", and the parts were split by " · ",
+    which reads as the digit zero beside an Arabic number;
+  - Accept and Reject name whose check-in they're for. Rejecting asks in
+    the Requests page's dialog, which says whose check-in and when, and
+    takes a reason; the face photos are in the row's menu where the face
+    check failed, as on the Requests page. A refusal says why, as there:
+    a check-in decided already, or a month whose payroll is approved;
+  - each company's counts are numbers in the language's digits, with why
+    each was flagged or refused, the most first, and a company's refusals
+    stand out as a badge in the problem colour;
+  - the page says while it loads, and when it didn't with the server's
+    reason and Try again, where it said "Something went wrong" in place of
+    the page; and when nothing waits, or the app has sent nothing yet;
+  - a label only the old page used is removed.

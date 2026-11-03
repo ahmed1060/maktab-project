@@ -2230,3 +2230,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-03:** The Super Admin's pages part 3b was merged in #172. All
   users moves onto the building blocks in #173 (`UI_PLAN.md` §5), which
   finishes the Customers group. It doesn't touch clients or locations.
+- **2026-11-03:** The Super Admin's pages part 3c was merged in #173,
+  which finished the Customers group. Operations follows, Check-ins first
+  in #174 (`UI_PLAN.md` §5). It doesn't touch clients or locations.
