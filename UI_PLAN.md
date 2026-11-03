@@ -511,7 +511,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-03, which finished Operations. The pages left follow, one
      at a time: Add employee, merged in #180 on 2026-11-03, then Add a
      bonus and Add a deduction, merged in #181 on 2026-11-03, then
-     Usernames, which opens for review in #182;
+     Usernames, merged in #182 on 2026-11-03;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3495,3 +3495,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   here. Somebody who has left (archived) isn't listed or in the Excel file,
   as nothing can be given to them; suspended people stay, as they're still
   on staff.
+- **2026-11-03:** Usernames was merged in #182. Signing in's limit becomes
+  the account's in #183 (decided 2026-11-03):
+  - five wrong passwords or codes in fifteen minutes lock the account,
+    wherever they come from, where they locked the address: one person's
+    mistakes locked everybody behind the same office Wi-Fi, while the
+    person themselves could get in from their phone. There's no limit by
+    address any more;
+  - an email nobody has is counted the same way, so a lock says nothing of
+    which emails exist; it's kept as a hash, not as typed, and the daily
+    clean-up removes counts whose fifteen minutes have passed;
+  - the sign-in page says it's the account that's locked, and that it
+    lifts within 15 minutes or when the company's Admin unlocks it, where
+    it said "Too many attempts";
+  - Employees and All users say who is locked and until when, under their
+    status, with Unlock named for the person. It's for whoever may reset
+    their password: a Super Admin anywhere, a company's Admin for their own
+    people. Unlocking is recorded in the audit log, and it also lifts the
+    count of codes asked to confirm a sensitive action;
+  - resetting the password with Forgot password lifts the lock, as the code
+    proves the email is theirs.

@@ -5,12 +5,13 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
-    BuildingsIcon, EnvelopeSimpleIcon, HourglassIcon, IdentificationBadgeIcon, MagnifyingGlassIcon, ShieldCheckIcon, TrashIcon,
+    BuildingsIcon, EnvelopeSimpleIcon, HourglassIcon, IdentificationBadgeIcon, LockIcon, MagnifyingGlassIcon, ShieldCheckIcon, TrashIcon,
     UserMinusIcon, UsersIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
+import { SignInLock } from '@/components/SignInLock'
 import {
     Avatar, Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, RowMenu,
     SearchInput, Select, StatusBadge, TabLinks, pageInRange, type Column,
@@ -44,6 +45,8 @@ type Person = {
     status: string
     totalDifficultyPoints: number
     company?: { id: string; name: string } | null
+    // When they can sign in again, if they're locked out now (lib/sign-in-lock.ts).
+    signInLockedUntil?: string | null
 }
 type Listed = { data: Person[]; total: number; page: number; totalPages: number }
 const LIMIT = 10
@@ -105,6 +108,8 @@ export default function AllUsersPage() {
     const roleWord = (r: string) => t(`role_${r.toLowerCase()}` as TranslationKey) || r
     const companyOf = (p: Person) => p.company ? <bdi>{p.company.name}</bdi> : t('all_users_no_company')
     const statusBadge = (p: Person) => <StatusBadge tone={STATUS_TONE[p.status] ?? 'neutral'}>{STATUS_WORD[p.status] ? t(STATUS_WORD[p.status]) : p.status}</StatusBadge>
+    // Locked out of signing in, with Unlock, under the status (decided 2026-11-03).
+    const lock = (p: Person) => <SignInLock personId={p.id} name={nameOf(p)} until={p.signInLockedUntil} onUnlocked={() => { void mutate() }} />
     // An Admin isn't scored, as on the Employees list.
     const points = (p: Person) => p.role === 'ADMIN' ? null : <span className="ui-chip">{countOf(t, locale, p.totalDifficultyPoints || 0, 'pts')}</span>
     const profile = (p: Person, label: ReactNode) => <Link href={`/dashboard/employees/${p.id}?mode=view`} prefetch={false} className="ui-item-link">{label}</Link>
@@ -143,7 +148,7 @@ export default function AllUsersPage() {
         { key: 'username', header: t('username_label'), cell: p => p.username && <bdi>{p.username}</bdi> },
         { key: 'role', header: t('role_label'), cell: p => roleWord(p.role) },
         { key: 'points', header: t('points_label'), cell: points },
-        { key: 'status', header: t('status_label'), cell: statusBadge },
+        { key: 'status', header: t('status_label'), cell: p => <>{statusBadge(p)}{lock(p)}</> },
     ]
     // Someone who has left is named "Ghost User" and their username a
     // placeholder, so they're shown by the email they had.
@@ -192,6 +197,7 @@ export default function AllUsersPage() {
                             { icon: EnvelopeSimpleIcon, text: <bdi>{p.email}</bdi> },
                             { icon: BuildingsIcon, text: companyOf(p) },
                             { icon: IdentificationBadgeIcon, text: roleWord(p.role) },
+                            ...(p.signInLockedUntil ? [{ icon: LockIcon, text: lock(p) }] : []),
                         ]}
                         foot={points(p)}
                     />

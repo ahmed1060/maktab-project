@@ -1747,6 +1747,18 @@ a.ui-row:focus-visible {
   justify-content: flex-end;
   gap: var(--space-1);
 }
+/* Somebody locked out of signing in, under their status: until when, and
+   Unlock (components/SignInLock.tsx). On its own line under the badge in a
+   list's row, and in a card's details. */
+.ui-sign-in-lock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.ui-table td > * + .ui-sign-in-lock {
+  margin-top: var(--space-1);
+}
 /* A note under an amount at the end of a row, such as whether a month's
    salary is from its payslip, lines up under it (PR 157). */
 .ui-table td.ui-end .ui-item-detail {
