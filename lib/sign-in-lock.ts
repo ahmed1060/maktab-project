@@ -66,11 +66,14 @@ export function holdOf(run: Run | null, now: Date): Hold | null {
 
 /**
  * Counts a try before its password is checked, or says what holds it back,
- * and then it isn't counted. Tries sent at once can all find the count
- * before any is added, so each also looks at where it fell once counted:
- * past ten, or past five when it didn't find the pause already over, it's
- * given back and turned away. A burst gets no further than the pause or the
- * lock allows. Fails closed, as RateLimiter does (F-10).
+ * and then it isn't counted. Counted in one step, and only from where the
+ * count may go on: under five, five with its 30 seconds over, or six to
+ * nine. Postgres takes the row and checks those conditions again on what it
+ * finds, so of tries sent together only as many get through as one at a
+ * time would, and none is ever counted past the pause or the lock to be
+ * given back. It was counted first and given back after, and a try coming
+ * in between found six and took the 30 seconds as over (Codex on PR 183).
+ * Fails closed, as RateLimiter does (F-10).
  */
 export async function countSignIn(key: string, now: Date = new Date()): Promise<Hold | Counted> {
     try {
@@ -78,32 +81,50 @@ export async function countSignIn(key: string, now: Date = new Date()): Promise<
         const run = found && found.resetAt > now ? found : null
         const held = holdOf(run, now)
         if (held) return held
-        // As found, before this try changes them.
+        // As found, to put back if the try is given back.
         const before = found?.resetAt ?? null
-        const pauseOver = !!run && run.count >= PAUSE_AFTER
-
         const resetAt = new Date(now.getTime() + LOCK_MS)
-        const add = () => prisma.rateLimit.update({ where: { key }, data: { count: { increment: 1 }, resetAt } })
-        let counted: Run
-        if (run) counted = await add()
-        else if (!found) counted = await prisma.rateLimit.upsert({ where: { key }, update: { count: { increment: 1 }, resetAt }, create: { key, count: 1, resetAt } })
-        else {
-            // Forgotten: one try starts the run over, and any sent with it count on from there.
-            const started = await prisma.rateLimit.updateMany({ where: { key, resetAt: { lte: now } }, data: { count: 1, resetAt } })
-            counted = started.count ? { count: 1, resetAt } : await add()
-        }
+        const counted: Counted = { kind: 'counted', key, before, resetAt }
 
-        if (counted.count > LOCK_AFTER || (counted.count > PAUSE_AFTER && !pauseOver)) {
-            await takeOne(key)
-            return counted.count > LOCK_AFTER
-                ? { kind: 'lock', until: counted.resetAt }
-                : { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
-        }
-        return { kind: 'counted', key, before, resetAt }
+        // No run: this try starts one, unless another sent with it already has.
+        if (!run && await startRun(key, found !== null, now, resetAt)) return counted
+
+        const added = await prisma.rateLimit.updateMany({
+            where: {
+                key,
+                resetAt: { gt: now },
+                OR: [
+                    { count: { lt: PAUSE_AFTER } },
+                    { count: PAUSE_AFTER, resetAt: { lte: new Date(now.getTime() + LOCK_MS - PAUSE_MS) } },
+                    { count: { gt: PAUSE_AFTER, lt: LOCK_AFTER } },
+                ],
+            },
+            data: { count: { increment: 1 }, resetAt },
+        })
+        if (added.count) return counted
+
+        // Another try got there first: what holds this one back now.
+        const again = await prisma.rateLimit.findUnique({ where: { key } })
+        return holdOf(again && again.resetAt > now ? again : null, now) ?? { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
     } catch (e) {
         console.error('[sign-in lock] database error, failing closed', e)
         return { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
     }
+}
+
+/** Starts a run at one: a new row, or a forgotten one started over. Only one of the tries sent together does. */
+async function startRun(key: string, exists: boolean, now: Date, resetAt: Date): Promise<boolean> {
+    if (!exists) {
+        try {
+            await prisma.rateLimit.create({ data: { key, count: 1, resetAt } })
+            return true
+        } catch {
+            // Somebody's row was made first: counted on from it.
+            return false
+        }
+    }
+    const started = await prisma.rateLimit.updateMany({ where: { key, resetAt: { lte: now } }, data: { count: 1, resetAt } })
+    return started.count > 0
 }
 
 /**

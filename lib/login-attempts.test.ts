@@ -16,6 +16,7 @@ const db = {
     users: {} as Record<string, any>,
     failLogin: false,
     limits: {} as Record<string, { count: number; resetAt: Date }>,
+    gate: null as Promise<void> | null,
     ip: "203.0.113.7",
 }
 
@@ -41,16 +42,40 @@ vi.mock("@/lib/prisma", () => ({
                 .filter(([key, row]) => where.key.in.includes(key) && row.count >= where.count.gte && row.resetAt > where.resetAt.gt)
                 .map(([key, row]) => ({ key, resetAt: row.resetAt })),
             delete: async ({ where }: any) => { delete db.limits[where.key] },
+            create: async ({ data }: any) => {
+                if (db.limits[data.key]) throw new Error("Unique constraint failed on the fields: (`key`)")
+                return (db.limits[data.key] = { count: data.count, resetAt: data.resetAt })
+            },
+            // One row at a time, as Postgres takes the row and checks the
+            // conditions again on what it finds. A try given back can be held
+            // at the gate, to see what happens meanwhile.
             updateMany: async ({ where, data }: any) => {
+                if (db.gate && data.count?.decrement) await db.gate
                 const row = db.limits[where.key]
-                const sameWindow = !(where.resetAt instanceof Date) || row?.resetAt.getTime() === where.resetAt.getTime()
-                const ranOut = !where.resetAt?.lte || row?.resetAt <= where.resetAt.lte
-                if (row && sameWindow && ranOut && row.count > (where.count?.gt ?? -Infinity)) { change(row, data); return { count: 1 } }
-                return { count: 0 }
+                if (!fits(row, where)) return { count: 0 }
+                change(row!, data)
+                return { count: 1 }
             },
         },
     },
 }))
+function fits(row: { count: number; resetAt: Date } | undefined, where: any): boolean {
+    if (!row) return false
+    const fields = { ...where }
+    const OR = fields.OR
+    delete fields.key
+    delete fields.OR
+    for (const [field, cond] of Object.entries(fields) as [keyof typeof row, any][]) {
+        const value = row[field] as any
+        if (cond instanceof Date) { if (value.getTime() !== cond.getTime()) return false; continue }
+        if (typeof cond === "number") { if (value !== cond) return false; continue }
+        if (cond.gt !== undefined && !(value > cond.gt)) return false
+        if (cond.gte !== undefined && !(value >= cond.gte)) return false
+        if (cond.lt !== undefined && !(value < cond.lt)) return false
+        if (cond.lte !== undefined && !(value <= cond.lte)) return false
+    }
+    return !OR || OR.some((w: any) => fits(row, w))
+}
 function change(row: { count: number; resetAt: Date }, data: any) {
     if (typeof data.count === "number") row.count = data.count
     else if (data.count?.increment) row.count += data.count.increment
@@ -106,6 +131,7 @@ beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-03T12:00:00Z") })
     failures.length = 0
     db.limits = {}
+    db.gate = null
     db.failLogin = false
     db.ip = "203.0.113.7"
     db.superAdmins = {
@@ -192,6 +218,25 @@ describe("signing in, a pause after five wrong tries and a lock after ten", () =
         await wrong(5)
         expect((await emailMeACode({ email, password })).status).toBe(200)
         expect(await authorize({ email, password, mfaRecoveryCode: "654321" })).toMatchObject({ id: "sa" })
+    })
+
+    it("keeps the 30 seconds for a try that comes while another is being turned away (Codex on PR 183)", async () => {
+        // Two tries at four: one is the fifth, the other is turned away. A
+        // third, coming before the second has been given back, found six and
+        // took the 30 seconds as over, and every try after it too.
+        const { countSignIn } = await import("@/lib/sign-in-lock")
+        const key = "login:account:sa"
+        for (let i = 0; i < 4; i++) expect((await countSignIn(key)).kind).toBe("counted")
+        let open = () => {}
+        db.gate = new Promise<void>(resolve => { open = resolve })
+        const both = Promise.all([countSignIn(key), countSignIn(key)])
+        // Both counted, and the one turned away waiting to be given back.
+        await new Promise(resolve => setTimeout(resolve, 0))
+        const third = await countSignIn(key)
+        open()
+        expect(third.kind).toBe("pause")
+        expect((await both).map(t => t.kind).sort()).toEqual(["counted", "pause"])
+        expect(db.limits[key].count).toBe(5)
     })
 
     it("forgets a run fifteen minutes after its last wrong try", async () => {

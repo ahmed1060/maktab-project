@@ -3550,3 +3550,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the run with the right password's time, so the code was turned away. A
   try given back puts the run's time back as it was, and the code goes
   through, as does asking for it by email.
+- **2026-11-03:** Found by Codex, on #183: two tries coming together while
+  one was being turned away let a third through the 30 seconds, as the one
+  turned away was counted for a moment before it was given back, and the
+  third found six and took the pause as over. A try is counted in one step,
+  only from where the count may go on, so none is counted past the pause or
+  the lock.
