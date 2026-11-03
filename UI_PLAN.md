@@ -501,8 +501,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the Companies list, merged in #171 on 2026-11-02, then a company's
      payments with Packages, merged in #172 on 2026-11-03, then All
      users, merged in #173 on 2026-11-03, which finished Customers; then
-     Operations, a page at a time: Check-ins, which opens for review in
-     #174, then Audit logs, System health and System settings;
+     Operations, a page at a time: Check-ins, merged in #174 on
+     2026-11-03, then Audit logs, which opens for review in #175, then
+     System health and System settings;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3122,3 +3123,35 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the network address a check-in came from and the app check's own
     words are kept as they are: left to right, and never translated, as a
     code is.
+- **2026-11-03:** The Super Admin's pages, Operations part 1, was merged
+  in #174. Audit logs moves onto the building blocks in #175:
+  - it has the page header, its name in sentence case, which the side bar
+    shares. Its title was set in the old top bar;
+  - a filter bar finds an entry by its item's ID or an error's code, sent
+    once typing pauses where every letter asked again, and narrows by who
+    did it, what it was on, what was done and when. The Super Admins can
+    be picked too, whom the old list didn't offer. The filters were a
+    pop-up of their own, with Show results;
+  - what's picked is kept in the address, so a link such as the
+    dashboard's System errors lands filtered, as it did, and the filters
+    stay on going back;
+  - a calendar day picked is the whole of that day in Cairo, as every
+    other list's is. It was midnight UTC, so a range "to 3 November" left
+    the 3rd out (`AuditLogService.getMany`, from `lib/day-range.ts`). A
+    moment, as the dashboard's link sends, is still that moment;
+  - the list is a table on computers and cards on phones: when; what was
+    done, as a badge in its meaning's colour, a deletion a problem and a
+    creation good; what it was on and its ID, kept as it is; who did it,
+    a Super Admin, a person and their role, or the system's own jobs, in
+    the reader's language where they were in English or Arabic typed in;
+    and what changed, its first three details and the rest, such as an
+    error's stack trace, behind Show more, where they scrolled in a box;
+  - the pager says how many entries there are, where the old total
+    guessed from the pages, and the list says while it loads, when it
+    didn't with the server's reason and Try again, and when nothing has
+    been logged or nothing matches. Rows stay up only while the next page
+    loads, not under another filter;
+  - it asks the server nothing for anyone but the Super Admin, where it
+    asked for every user's list for whoever opened it;
+  - `AuditLogFilter`, eight labels and the --info-bg-indigo-faint and
+    --accent-deepest colours only the old page used are removed.

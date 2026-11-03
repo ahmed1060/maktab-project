@@ -1492,6 +1492,21 @@ a.ui-file-open:focus-visible,
 .ui-report > li[data-tone="problem"] {
   color: var(--problem-text);
 }
+/* An audit entry's details: each field and its value, a field's own fields
+   indented under it, a value such as a stack trace kept as it was written
+   (the Super Admin's audit log). */
+.ui-report .ui-report {
+  margin-block-start: var(--space-1);
+  padding-inline-start: var(--space-4);
+}
+.ui-report-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ui-report-block {
+  flex: 1 1 100%;
+  min-width: 0;
+}
 /* More, behind a disclosure, such as the rows a file couldn't give. */
 .ui-more > summary {
   cursor: pointer;

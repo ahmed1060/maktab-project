@@ -69,8 +69,8 @@ describe("text contrast, light theme", () => {
         // edge and the word "Overdue" (lib/tasks-list.test.ts).
         expect(ratio(token("text-soft"), token("danger-bg"))).toBeGreaterThanOrEqual(4.5)
 
-        const audit = readFileSync("components/AuditLogFilter.tsx", "utf8")
-        expect(audit).not.toContain("fontWeight: '800', opacity: 0.5")
+        // The audit log's filter faded its labels to half; it's the building
+        // blocks' filter bar now (lib/super-admin-audit-logs.test.ts).
 
         // "Powered by": the fade moved from the whole signature to the large name.
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
