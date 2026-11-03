@@ -21,9 +21,12 @@ const state = {
     swr: {} as Record<string, Loaded>,
     keys: [] as (string | null)[],
     personId: "u2",
+    sessionLoading: false,
 }
 
-vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: state.viewer }, status: "authenticated" }) }))
+vi.mock("next-auth/react", () => ({
+    useSession: () => (state.sessionLoading ? { data: null, status: "loading" } : { data: { user: state.viewer }, status: "authenticated" }),
+}))
 vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (k: string) => state.perms.has(k) }), useViewer: () => state.viewer }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: (k: string) => (k === "employees" ? "Employees" : k) }) }))
 vi.mock("next/navigation", () => ({
@@ -61,6 +64,7 @@ beforeEach(() => {
     state.swr = { "/api/users?id=u2": { data: { data: { id: "u2", firstName: "Mona", lastName: "Adel" } } } }
     state.keys = []
     state.personId = "u2"
+    state.sessionLoading = false
 })
 const render = (page: () => ReactElement) => renderToStaticMarkup(h(page))
 /** As React writes text into the page. */
@@ -188,5 +192,19 @@ describe("The days, checked before anything is sent", () => {
             expect(key in en, key).toBe(false)
             expect(key in ar, key).toBe(false)
         }
+    })
+})
+
+describe("Add a bonus, found in the browser", () => {
+    it("knows their own pay while the session loads, where the form showed until it came", () => {
+        // The viewer is the layout's while the session loads (useViewer), as
+        // the permission check already is: asked of the session alone, their
+        // own pay showed the form, then the note.
+        state.sessionLoading = true
+        state.personId = "a1"
+        const html = render(Bonus)
+        expect(html).toContain(esc(en.adj_new_own_pay))
+        expect(html).not.toContain("<form")
+        expect(readFileSync(FORM, "utf8")).not.toContain("useSession")
     })
 })

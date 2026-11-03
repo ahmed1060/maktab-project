@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import useSWR from 'swr'
 import { MinusCircleIcon, PlusCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
@@ -12,7 +11,7 @@ import { useToast } from '@/context/ToastContext'
 import { COPY, MAX_DAYS, daysError, refusedDays, type AdjustmentKind } from '@/lib/adjustment-form'
 import { apiErrorText } from '@/lib/api-error-text'
 import { fetcher } from '@/lib/swr-fetcher'
-import { useCan } from '@/lib/useCan'
+import { useCan, useViewer } from '@/lib/useCan'
 import { useModules } from '@/lib/useModules'
 
 /**
@@ -31,7 +30,9 @@ export default function AddAdjustment({ kind }: { kind: AdjustmentKind }) {
     const modules = useModules()
     const router = useRouter()
     const { id } = useParams<{ id: string }>()
-    const { data: session } = useSession()
+    // The layout's viewer while the session loads, as can() is: asked of
+    // the session alone, their own pay showed the form until it came.
+    const viewer = useViewer()
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const copy = COPY[kind]
 
@@ -39,7 +40,7 @@ export default function AddAdjustment({ kind }: { kind: AdjustmentKind }) {
     // nobody's own (ROLES_PLAN.md §4.2, rule 5): said here, where the form
     // let them fill it in and the server refused it.
     const mayAdjust = can('salary_adjustments.manage')
-    const own = !!session?.user?.id && session.user.id === id
+    const own = !!viewer?.id && viewer.id === id
     const person = useSWR<{ data: { firstName: string; lastName: string } }>(mayAdjust && id && !own ? `/api/users?id=${id}` : null, fetcher)
     const name = person.data?.data ? `${person.data.data.firstName} ${person.data.data.lastName}`.trim() : ''
 

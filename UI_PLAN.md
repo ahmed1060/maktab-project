@@ -3451,3 +3451,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - leaving with something typed asks first;
   - its title and button are in sentence case, "Add a bonus" and "Add
     bonus", where it was "Add Monthly Bonus (Days)".
+- **2026-11-03:** Found in the browser, on #181: on their own pay, the form
+  showed until the session came, then the note. Whose pay it is is asked
+  of the layout's viewer while the session loads, as the permission check
+  already was.
