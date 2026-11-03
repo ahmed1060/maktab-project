@@ -541,6 +541,8 @@ export const en = {
         emp_new_password_short: "The password needs at least 12 characters.",
         emp_new_password_hint: "12 to 72 characters. They can change it once they've signed in.",
         emp_new_company_required: "Choose the company they work for.",
+        emp_new_salary_invalid: "Enter an amount of 0 or more, or leave it empty.",
+        emp_new_day_off_invalid: "Enter 0 or more days, or leave it empty.",
         emp_new_companies_failed: "Couldn't load the companies.",
         emp_new_leaders_failed: "Couldn't load the team leaders.",
         hello: "Hello",

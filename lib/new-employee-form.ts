@@ -15,7 +15,7 @@ export const PASSWORD_MAX = 72
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** Its fields in the order they're in, for the first one wrong to take the focus. */
-export const FIELDS = ['firstName', 'lastName', 'email', 'password', 'companyId'] as const
+export const FIELDS = ['firstName', 'lastName', 'email', 'password', 'companyId', 'salary', 'dayOffCredit'] as const
 export type NewEmployeeField = (typeof FIELDS)[number]
 
 export function newEmployeeErrors(typed: {
@@ -25,6 +25,13 @@ export function newEmployeeErrors(typed: {
     password: string
     /** The Super Admin says which company; anyone else adds to their own. */
     company: { needed: boolean; id: string }
+    /**
+     * Each checked only where the form asks for it, by the role picked. The
+     * form takes over the browser's own checks (noValidate), so their min={0}
+     * no longer stopped a negative one (Codex review on PR 180).
+     */
+    salary?: { shown: boolean; text: string }
+    dayOffCredit?: { shown: boolean; text: string }
 }): Partial<Record<NewEmployeeField, TranslationKey>> {
     const errors: Partial<Record<NewEmployeeField, TranslationKey>> = {}
     if (!typed.firstName.trim()) errors.firstName = 'emp_new_first_name_required'
@@ -32,7 +39,17 @@ export function newEmployeeErrors(typed: {
     if (!EMAIL.test(typed.email.trim())) errors.email = 'emp_new_email_invalid'
     if (typed.password.length < PASSWORD_MIN) errors.password = 'emp_new_password_short'
     if (typed.company.needed && !typed.company.id) errors.companyId = 'emp_new_company_required'
+    if (typed.salary?.shown && !zeroOrMore(typed.salary.text)) errors.salary = 'emp_new_salary_invalid'
+    if (typed.dayOffCredit?.shown && !zeroOrMore(typed.dayOffCredit.text)) errors.dayOffCredit = 'emp_new_day_off_invalid'
     return errors
+}
+
+/** Left empty is fine (the server counts it as 0); otherwise a number, 0 or more. */
+function zeroOrMore(text: string): boolean {
+    const typed = text.trim()
+    if (!typed) return true
+    const n = Number(typed)
+    return Number.isFinite(n) && n >= 0
 }
 
 /**
@@ -49,5 +66,7 @@ export function refusedField(body: { error?: string; details?: Record<string, un
     if (details.password) return { field: 'password', key: 'emp_new_password_short' }
     if (details.firstName) return { field: 'firstName', key: 'emp_new_first_name_required' }
     if (details.lastName) return { field: 'lastName', key: 'emp_new_last_name_required' }
+    if (details.salary) return { field: 'salary', key: 'emp_new_salary_invalid' }
+    if (details.dayOffCredit) return { field: 'dayOffCredit', key: 'emp_new_day_off_invalid' }
     return null
 }

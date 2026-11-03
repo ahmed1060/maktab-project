@@ -46,6 +46,10 @@ export default function NewEmployeePage() {
     const [salary, setSalary] = useState('')
     const [dayOffCredit, setDayOffCredit] = useState('0')
     const [teamLeaderId, setTeamLeaderId] = useState('')
+    // Which the role picked has: pay for anyone but an Admin, a day off
+    // balance for an employee or a team leader. Checked and sent only then.
+    const salaryShown = !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== ''
+    const dayOffShown = role === 'EMPLOYEE' || role === 'TEAM_LEADER'
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<NewEmployeeField, string>>>({})
     const [loading, setLoading] = useState(false)
@@ -101,7 +105,10 @@ export default function NewEmployeePage() {
         e.preventDefault()
         setError('')
         setFocusOn(null)
-        const wrong = newEmployeeErrors({ firstName, lastName, email, password, company: { needed: isSuperAdmin, id: companyId } })
+        const wrong = newEmployeeErrors({
+            firstName, lastName, email, password, company: { needed: isSuperAdmin, id: companyId },
+            salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit },
+        })
         if (Object.keys(wrong).length > 0) {
             wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))
             return
@@ -114,7 +121,7 @@ export default function NewEmployeePage() {
             if (isSuperAdmin && companyId) {
                 body.companyId = companyId
             }
-            if (salary) {
+            if (salaryShown && salary) {
                 body.salary = parseFloat(salary)
             }
             // Only an employee has one. Sending it for any other role would be
@@ -126,7 +133,7 @@ export default function NewEmployeePage() {
 
             const res = await fetch('/api/users', {
                 method: 'POST',
-                body: JSON.stringify({ ...body, dayOffCredit: parseFloat(dayOffCredit) || 0 }),
+                body: JSON.stringify({ ...body, ...(dayOffShown ? { dayOffCredit: parseFloat(dayOffCredit) || 0 } : {}) }),
                 headers: { 'Content-Type': 'application/json' },
             })
 
@@ -192,17 +199,17 @@ export default function NewEmployeePage() {
                             onChange={(id, chosen) => { setRoleId(id); setRole(chosen?.baseRole ?? 'EMPLOYEE') }} />
                     )}
 
-                    {!['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
-                        <Field label={t('monthly_base_salary_label')}>{p => (
+                    {salaryShown && (
+                        <Field label={t('monthly_base_salary_label')} error={fieldErrors.salary}>{p => (
                             <TextInput {...p} name="salary" type="number" inputMode="decimal" min={0} autoComplete="off" value={salary} disabled={loading}
-                                onChange={e => setSalary(e.target.value)} />
+                                onChange={e => { setSalary(e.target.value); clear('salary') }} />
                         )}</Field>
                     )}
 
-                    {(role === 'EMPLOYEE' || role === 'TEAM_LEADER') && (
-                        <Field label={t('day_off_credit')}>{p => (
+                    {dayOffShown && (
+                        <Field label={t('day_off_credit')} error={fieldErrors.dayOffCredit}>{p => (
                             <TextInput {...p} name="dayOffCredit" type="number" inputMode="decimal" min={0} step={0.5} autoComplete="off" value={dayOffCredit} disabled={loading}
-                                onChange={e => setDayOffCredit(e.target.value)} />
+                                onChange={e => { setDayOffCredit(e.target.value); clear('dayOffCredit') }} />
                         )}</Field>
                     )}
 

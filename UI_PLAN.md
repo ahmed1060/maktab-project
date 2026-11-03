@@ -3418,3 +3418,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-03:** Found in the web interface audit, on #180: a name stopped
   at its 15th character with nothing to say why. Each says how much of it
   is used, as Add obligation's fields do.
+- **2026-11-03:** Found by Codex, on #180: a negative pay or day off credit
+  reached the server, which said only "Validation Error", as the form takes
+  over the browser's own checks and these two had none. Each is checked
+  before sending and said under its field, as is the server's refusal of
+  either, and each is checked and sent only for a role that has it.

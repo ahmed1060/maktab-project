@@ -537,6 +537,8 @@ export const ar = {
         emp_new_password_short: "تحتاج كلمة المرور إلى ١٢ حرفاً على الأقل.",
         emp_new_password_hint: "من ١٢ إلى ٧٢ حرفاً. ويمكن تغييرها بعد تسجيل الدخول.",
         emp_new_company_required: "اختر الشركة.",
+        emp_new_salary_invalid: "أدخل مبلغاً يساوي ٠ أو أكثر، أو اتركه فارغاً.",
+        emp_new_day_off_invalid: "أدخل عدد أيام يساوي ٠ أو أكثر، أو اتركه فارغاً.",
         emp_new_companies_failed: "تعذّر تحميل الشركات.",
         emp_new_leaders_failed: "تعذّر تحميل قادة الفرق.",
         hello: "مرحباً",

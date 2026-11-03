@@ -222,3 +222,33 @@ describe("Add employee, found in the web interface audit", () => {
         expect(html.split(count).length - 1).toBe(2)
     })
 })
+
+describe("Add employee, found by Codex", () => {
+    it("says a negative pay or day off credit is wrong under its field, before anything is sent", async () => {
+        // The form takes over the browser's own checks (noValidate), and these
+        // two weren't checked: -5 reached the server, which said only
+        // "Validation Error".
+        const { newEmployeeErrors, refusedField, FIELDS } = await import("@/lib/new-employee-form")
+        const ok = { firstName: "Mona", lastName: "Adel", email: "mona@example.com", password: "a-long-enough-one", company: { needed: false, id: "" } }
+        expect(newEmployeeErrors({ ...ok, salary: { shown: true, text: "-5" }, dayOffCredit: { shown: true, text: "-1" } }))
+            .toEqual({ salary: "emp_new_salary_invalid", dayOffCredit: "emp_new_day_off_invalid" })
+        expect(newEmployeeErrors({ ...ok, salary: { shown: true, text: "" }, dayOffCredit: { shown: true, text: "2.5" } })).toEqual({})
+        // Not asked for, not checked: an Admin has neither.
+        expect(newEmployeeErrors({ ...ok, salary: { shown: false, text: "-5" }, dayOffCredit: { shown: false, text: "-1" } })).toEqual({})
+        // The server's refusal of either, under it too.
+        expect(refusedField({ error: "Validation Error", details: { salary: { _errors: ["Too small"] } } })).toEqual({ field: "salary", key: "emp_new_salary_invalid" })
+        expect(refusedField({ error: "Validation Error", details: { dayOffCredit: { _errors: ["Too small"] } } })).toEqual({ field: "dayOffCredit", key: "emp_new_day_off_invalid" })
+        expect(FIELDS).toEqual(["firstName", "lastName", "email", "password", "companyId", "salary", "dayOffCredit"])
+        for (const key of ["emp_new_salary_invalid", "emp_new_day_off_invalid"] as const) {
+            expect(en[key], key).toBeTruthy()
+            expect(ar[key], key).toBeTruthy()
+        }
+        const src = readFileSync(PAGE, "utf8")
+        expect(src).toContain("salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit }")
+        expect(src).toContain("<Field label={t('monthly_base_salary_label')} error={fieldErrors.salary}>")
+        expect(src).toContain("<Field label={t('day_off_credit')} error={fieldErrors.dayOffCredit}>")
+        // Sent only where they're asked for.
+        expect(src).toContain("if (salaryShown && salary) {")
+        expect(src).toContain("...(dayOffShown ? { dayOffCredit: parseFloat(dayOffCredit) || 0 } : {})")
+    })
+})
