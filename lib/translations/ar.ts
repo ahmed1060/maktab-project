@@ -379,6 +379,7 @@ export const ar = {
         audit_logs: "سجلات المراجعة",
         audit_logs_subtitle: "كل تغيير حسّاس: ما الذي تم، ومن قام به، ومتى",
         audit_search: "ابحث برقم العنصر أو رمز الخطأ",
+        audit_search_whole: "يُبحث عن رقم العنصر أو رمز الخطأ كاملًا: الصقه كله كما يظهر.",
         audit_when: "الوقت",
         audit_what: "الإجراء",
         audit_item: "العنصر",

@@ -383,6 +383,7 @@ export const en = {
         audit_logs: "Audit logs",
         audit_logs_subtitle: "Every sensitive change: what was done, by whom and when",
         audit_search: "Find by item ID or error code",
+        audit_search_whole: "An item's ID or an error's code is found whole: paste all of it, as it's shown.",
         audit_when: "When",
         audit_what: "Action",
         audit_item: "Item",

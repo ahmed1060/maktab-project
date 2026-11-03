@@ -199,6 +199,11 @@ describe("the Audit logs page", () => {
         expect(await render({ ...people, [LIST]: listed([]) })).toContain(`<p class="ui-empty-title">${en.audit_none}</p>`)
         const filtered = "/api/admin/audit-logs?page=1&limit=20&action=DELETE"
         expect(await render({ ...people, [filtered]: listed([]) }, { search: "action=DELETE" })).toContain(`<p class="ui-empty-title">${en.audit_none_match}</p>`)
+        // An ID or a code is found whole, which the field doesn't say: the next step, where none matches (the interface audit).
+        const byId = "/api/admin/audit-logs?page=1&limit=20&entityId=9F3A"
+        const none = await render({ ...people, [byId]: listed([]) }, { search: "entityId=9F3A" })
+        expect(none).toContain(`<p class="ui-empty-detail">${esc(en.audit_search_whole)}</p>`)
+        expect(en.audit_search_whole).toBeTruthy()
         const loading = await render(people)
         expect(loading).toContain('role="status"')
         expect(loading).toContain(en.loading)

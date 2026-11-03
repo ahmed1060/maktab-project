@@ -3165,3 +3165,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     one;
   - in Arabic, the pager counted the entries with the cash advance's word,
     حركة, a movement of money. They're إدخالات, a word of their own.
+- **2026-11-03:** Found in the interface audit, on #175: an item's ID or an
+  error's code is found whole, which the field didn't say, so a part of
+  one found nothing with no next step. Where none matches, the list says
+  to paste all of it, as it's shown.

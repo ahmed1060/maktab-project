@@ -159,8 +159,9 @@ export default function AuditLogsPage() {
         { key: 'details', header: t('details'), cell: details },
     ]
 
+    // An ID or a code is found whole: said where none matches (the interface audit).
     const empty = filtersOn > 0 || filters.entityId
-        ? <EmptyState icon={MagnifyingGlassIcon} title={t('audit_none_match')} />
+        ? <EmptyState icon={MagnifyingGlassIcon} title={t('audit_none_match')} detail={filters.entityId ? t('audit_search_whole') : undefined} />
         : <EmptyState icon={ScrollIcon} title={t('audit_none')} />
 
     let list: ReactNode
