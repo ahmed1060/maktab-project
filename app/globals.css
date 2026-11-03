@@ -74,7 +74,6 @@
      flipping a light pair produces a colour nobody chose. */
   --ok-bg: #dcfce7;
   --ok-fg: #166534;
-  --ok-solid: #10b981;
 
   --danger-bg: #fee2e2;
   --danger-bg-subtle: #fef2f2;
@@ -101,10 +100,8 @@
      badge sat on an unusual ground, and each of those needs its own dark
      counterpart rather than being collapsed into the nearest neighbour. */
   --ok-bg-strong: #bbf7d0;
-  --ok-fg-strong: #15803d;
   --ok-fg-deep: #065f46;
   --ok-solid-alt: #22c55e;
-  --ok-solid-hover: #16a34a;
   --ok-border: #86efac;
 
   --danger-border-firm: #fca5a5;
@@ -118,7 +115,6 @@
   --warn-solid-warm: #fb923c;
 
   --warn-bg-yellow-subtle: #fffbeb;
-  --warn-border-yellow: #fde68a;
   --warn-fg-mid: #b45309;
   --warn-solid-hover: #d97706;
 
@@ -1165,12 +1161,9 @@ input::-webkit-credentials-auto-fill-button {
 
     --ok-bg: #0b2b1a;
     --ok-fg: #6fdc9b;
-    --ok-solid: #2ebd77;
     --ok-bg-strong: #12402a;
-    --ok-fg-strong: #7ee3a6;
     --ok-fg-deep: #9beec0;
     --ok-solid-alt: #35c97f;
-    --ok-solid-hover: #2aa869;
     --ok-border: #1c5c3a;
 
     --danger-bg: #3a161a;
@@ -1192,7 +1185,6 @@ input::-webkit-credentials-auto-fill-button {
     --warn-fg-warm: #f5b183;
     --warn-solid-warm: #e08a4e;
     --warn-bg-yellow-subtle: #262208;
-    --warn-border-yellow: #63591a;
     --warn-fg-mid: #f0c96b;
     --warn-solid-hover: #c79127;
 

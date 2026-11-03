@@ -3228,7 +3228,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     spinner until the counts came;
   - labels only the old page used are removed, and its others are in
     sentence case: "Back up now", "Restore the latest backup", "Turn on
-    maintenance mode".
+    maintenance mode". So are the --warn-border-yellow colour only it
+    used, and --ok-solid, --ok-solid-hover and --ok-fg-strong, which only
+    `NoticeModal` used.
 - **2026-11-03:** Found in the interface audit, on #176:
   - the list of files nothing refers to scrolls within itself, but
     couldn't take focus, so it couldn't be scrolled from the keyboard. It
