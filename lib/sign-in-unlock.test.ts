@@ -85,6 +85,15 @@ describe("the lock beside somebody's status", () => {
         expect(renderToStaticMarkup(h(SignInLock, { personId: "u1", name: "Mona Adel", until: null, onUnlocked: () => {} }))).toBe("")
     })
 
+    it("keeps the focus in the person's row once Unlock goes (web interface audit, PR 183)", () => {
+        // Unlock is gone once it's done, and the focus with it, to the page;
+        // it goes to the person's name, in the row it was in, first.
+        const src = read("components/SignInLock.tsx")
+        const moved = src.indexOf(`closest('tr, li')?.querySelector<HTMLElement>('a[href]')?.focus()`)
+        expect(moved).toBeGreaterThan(-1)
+        expect(moved).toBeLessThan(src.indexOf("onUnlocked()"))
+    })
+
     it("has its words in both languages", () => {
         for (const key of ["sign_in_locked_until", "sign_in_unlock", "sign_in_unlock_for", "sign_in_unlocked"] as const) {
             expect(en[key], key).toBeTruthy()

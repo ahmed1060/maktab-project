@@ -3519,3 +3519,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   what to do in Arabic, "wait" and "ask". It says the account unlocks on its
   own within 15 minutes, or the company's Admin can unlock it now, in both
   languages.
+- **2026-11-03:** Found in the web interface audit, on #183: Unlock goes once
+  it's done, and the focus went with it, to the page. It goes to the
+  person's name, in the same row. The time a lock lifts is in the viewer's
+  own time, in the language's way of writing it, as everywhere else.

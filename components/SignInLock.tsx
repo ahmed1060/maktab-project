@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { LockOpenIcon } from '@phosphor-icons/react/ssr'
 import { Button, StatusBadge } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
@@ -22,6 +22,7 @@ export function SignInLock({ personId, name, until, onUnlocked }: {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const [busy, setBusy] = useState(false)
+    const here = useRef<HTMLDivElement>(null)
     if (!until) return null
 
     const time = new Date(until).toLocaleTimeString(locale === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
@@ -31,6 +32,9 @@ export function SignInLock({ personId, name, until, onUnlocked }: {
             const res = await fetch(`/api/users/${encodeURIComponent(personId)}/unlock-sign-in`, { method: 'POST' })
             if (!res.ok) return showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
             showToast(t('sign_in_unlocked').replace('{name}', name), 'success')
+            // Unlock goes once it's done, and the focus would go with it to
+            // the page: it goes to the person's name, in the same row.
+            here.current?.closest('tr, li')?.querySelector<HTMLElement>('a[href]')?.focus()
             onUnlocked()
         } catch {
             showToast(t('error_generic'), 'error')
@@ -40,7 +44,7 @@ export function SignInLock({ personId, name, until, onUnlocked }: {
     }
 
     return (
-        <div className="ui-sign-in-lock">
+        <div ref={here} className="ui-sign-in-lock">
             <StatusBadge tone="problem">{t('sign_in_locked_until').replace('{time}', time)}</StatusBadge>
             <Button size="sm" icon={LockOpenIcon} busy={busy} aria-label={t('sign_in_unlock_for').replace('{name}', name)} onClick={() => { void unlock() }}>
                 {t('sign_in_unlock')}
