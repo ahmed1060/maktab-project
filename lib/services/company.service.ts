@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { NotificationService } from "./notification.service"
 import { RoleService } from "./role.service"
-import { computePeriodStart, computePeriodEnd, isSubscriptionType, daysUntil } from "@/lib/billing/period"
+import { isSubscriptionType, daysUntil, periodIfPaid, type SubscriptionType } from "@/lib/billing/period"
 import { decideReminder, REMINDER_RUNGS } from "@/lib/billing/reminders"
 import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleOperatorNotice } from "@/lib/billing/lifecycle"
 import { sendPlainEmail } from "@/lib/email"
@@ -505,15 +505,25 @@ export class CompanyService {
     }
 
     /**
-     * Fetch all payments for a company.
+     * Fetch all payments for a company. Each unpaid one carries the period
+     * marking it paid now would buy (`ifPaid`), so the page can say it before
+     * it's asked, worked out here as updatePaymentStatus works it out: in the
+     * server's timezone, where the browser's calendar arithmetic could land
+     * on another day near a month's end (Codex on PR 172).
      */
-    static async getPayments(companyId: string) {
+    static async getPayments(companyId: string, now: Date = new Date()) {
         const payments = await prisma.companyPayment.findMany({
             where: { companyId },
             orderBy: { createdAt: 'desc' },
             include: { company: { select: { name: true } } }
         })
-        return payments.map(serializeCompanyPayment)
+        return payments.map(payment => {
+            const unpaid = payment.status !== 'PAID' && isSubscriptionType(payment.subscriptionType)
+            const ifPaid = unpaid
+                ? periodIfPaid(payments.filter(p => p.status === 'PAID' && p.id !== payment.id), payment.subscriptionType as SubscriptionType, now)
+                : undefined
+            return { ...serializeCompanyPayment(payment), ifPaid }
+        })
     }
 
     /**
@@ -671,18 +681,15 @@ export class CompanyService {
 
         const now = new Date()
 
-        // The furthest-out period this company already holds. A row with a null
-        // endDate is a lifetime subscription, and `orderBy endDate desc` sorts
-        // nulls first in Postgres — so it is found by this query, and
-        // computePeriodStart reads it as "nothing to extend".
-        const currentPeriod = await prisma.companyPayment.findFirst({
+        // Carried on from the furthest-out period this company already holds,
+        // or from now; a lifetime one held (a null endDate) is nothing to
+        // extend. periodIfPaid is the one rule, so the period getPayments said
+        // before it was asked is the one written here (Codex on PR 172).
+        const paid = await prisma.companyPayment.findMany({
             where: { companyId: payment.companyId, status: 'PAID', id: { not: paymentId } },
-            orderBy: { endDate: 'desc' },
             select: { endDate: true }
         })
-
-        const startDate = computePeriodStart(now, currentPeriod?.endDate)
-        const endDate = computePeriodEnd(startDate, payment.subscriptionType)
+        const { start: startDate, end: endDate } = periodIfPaid(paid, payment.subscriptionType, now)
 
         // Both writes are one event — a new period begins — so they commit
         // together. A confirmed payment whose company kept a stale "locked"

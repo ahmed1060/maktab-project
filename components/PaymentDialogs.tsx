@@ -7,7 +7,7 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import { periodIfPaid, SUBSCRIPTION_TYPES, type SubscriptionType } from '@/lib/billing/period'
+import { SUBSCRIPTION_TYPES, type SubscriptionType } from '@/lib/billing/period'
 import { amountError, platformMoney, typedAmount } from '@/lib/subscription-display'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -27,6 +27,8 @@ export type Payment = {
     startDate: string | null
     endDate: string | null
     createdAt: string
+    /** An unpaid one's: the period marking it paid now would buy, as the server works it out. */
+    ifPaid?: { start: string; end: string | null }
 }
 
 /** What a payment pays for, keyed by the stored value, so a fourth type is a line here. */
@@ -111,24 +113,23 @@ export function AddPaymentDialog({ companyId, onClose, onAdded }: {
 
 /**
  * Marking a payment paid starts the period it pays for, and a paid payment
- * can't be deleted after: it's asked first, saying the period, worked out as
- * the server will (lib/billing/period.ts). The old page did it on one click.
+ * can't be deleted after: it's asked first, saying the period. The server
+ * works the period out, as it will when it's marked: the browser's calendar
+ * arithmetic, in its own timezone, could promise another day near a month's
+ * end (Codex on PR 172). The old page did it on one click.
  */
-export function MarkPaidDialog({ payment, payments, busy, onCancel, onConfirm }: {
+export function MarkPaidDialog({ payment, busy, onCancel, onConfirm }: {
     payment: Payment
-    /** The company's payments, for the period this one would carry on from. */
-    payments: Payment[]
     busy: boolean
     onCancel: () => void
     onConfirm: () => void
 }) {
     const { t, locale } = useLanguage()
-    const paid = payments.filter(p => p.status === 'PAID' && p.id !== payment.id)
-    const { start, end } = periodIfPaid(paid, payment.subscriptionType, new Date())
-    const from = paymentDay(start, locale)
-    const covers = end
-        ? t('payments_mark_period').replace('{from}', from).replace('{to}', paymentDay(end, locale))
-        : t('payments_mark_lifetime').replace('{from}', from)
+    const period = payment.ifPaid
+    const from = period && paymentDay(period.start, locale)
+    const covers = !period ? null
+        : period.end ? t('payments_mark_period').replace('{from}', from!).replace('{to}', paymentDay(period.end, locale))
+        : t('payments_mark_lifetime').replace('{from}', from!)
     return (
         <Dialog
             open
@@ -139,7 +140,7 @@ export function MarkPaidDialog({ payment, payments, busy, onCancel, onConfirm }:
                 <Button variant="primary" busy={busy} onClick={onConfirm}>{t('mark_as_paid')}</Button>
             </>}
         >
-            <p>{covers}</p>
+            {covers && <p>{covers}</p>}
             <p>{t('payments_mark_final')}</p>
         </Dialog>
     )

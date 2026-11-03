@@ -221,18 +221,20 @@ describe("the payment dialogs", () => {
         expect(render(h(AddPaymentDialog, { companyId: "c1", onClose: () => {}, onAdded: () => {} }))).not.toContain("placeholder=")
     })
 
-    it("asks before marking one paid, saying the period it will pay for and that it can't be deleted after", async () => {
+    it("asks before marking one paid, saying the period the server says it will pay for and that it can't be deleted after", async () => {
         const { MarkPaidDialog } = await import("@/components/PaymentDialogs")
-        const now = new Date()
-        const html = render(h(MarkPaidDialog, { payment: unpaid({ subscriptionType: "MONTHLY", cost: 50 }) as never, payments: [], busy: false, onCancel: () => {}, onConfirm: () => {} }))
+        const ifPaid = { start: "2026-11-30T23:00:00.000Z", end: "2026-12-30T23:00:00.000Z" }
+        const html = render(h(MarkPaidDialog, { payment: unpaid({ subscriptionType: "MONTHLY", cost: 50, ifPaid }) as never, busy: false, onCancel: () => {}, onConfirm: () => {} }))
         expect(html).toContain(`class="ui-dialog-title">${esc(en.payments_mark_title.replace("{name}", en.payments_the_payment.replace("{amount}", usd(50))))}</h2>`)
-        const next = new Date(now)
-        next.setMonth(next.getMonth() + 1)
-        expect(html).toContain(esc(en.payments_mark_period.replace("{from}", day(now.toISOString())).replace("{to}", day(next.toISOString()))))
+        expect(html).toContain(esc(en.payments_mark_period.replace("{from}", day(ifPaid.start)).replace("{to}", day(ifPaid.end))))
         expect(html).toContain(esc(en.payments_mark_final))
         expect(html).toContain(`class="ui-btn ui-btn-primary">${en.mark_as_paid}</button>`)
-        const life = render(h(MarkPaidDialog, { payment: unpaid({ subscriptionType: "LIFETIME" }) as never, payments: [], busy: false, onCancel: () => {}, onConfirm: () => {} }))
-        expect(life).toContain(esc(en.payments_mark_lifetime.replace("{from}", day(now.toISOString()))))
+        const life = render(h(MarkPaidDialog, { payment: unpaid({ subscriptionType: "LIFETIME", ifPaid: { start: ifPaid.start, end: null } }) as never, busy: false, onCancel: () => {}, onConfirm: () => {} }))
+        expect(life).toContain(esc(en.payments_mark_lifetime.replace("{from}", day(ifPaid.start))))
+        // Without the server's word on it, it promises no dates.
+        const unsaid = render(h(MarkPaidDialog, { payment: unpaid() as never, busy: false, onCancel: () => {}, onConfirm: () => {} }))
+        expect(unsaid).not.toContain(esc(en.payments_mark_period.split("{from}")[0]))
+        expect(unsaid).toContain(esc(en.payments_mark_final))
     })
 
     it("works out that period as the server will: after the furthest one paid for, or from now", async () => {
@@ -250,8 +252,8 @@ describe("the payment dialogs", () => {
         expect(periodIfPaid([], "LIFETIME", now)).toEqual({ start: now, end: null })
     })
 
-    it("works the period out from the payments that are paid, and not the one being marked", () => {
-        const source = readFileSync("components/PaymentDialogs.tsx", "utf8")
+    it("works the period out from the payments that are paid, and not the one being marked, on the server (Codex on PR 172)", () => {
+        const source = readFileSync("lib/services/company.service.ts", "utf8")
         expect(source).toContain("payments.filter(p => p.status === 'PAID' && p.id !== payment.id)")
     })
 })

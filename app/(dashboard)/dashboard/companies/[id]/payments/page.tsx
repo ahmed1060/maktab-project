@@ -37,13 +37,15 @@ export default function CompanyPaymentsPage() {
     const payments: Payment[] | null = data?.data ?? null
 
     const [adding, setAdding] = useState(false)
-    const [paying, setPaying] = useState<Payment | null>(null)
+    // By its id, so the period the dialog says is the list's latest.
+    const [paying, setPaying] = useState<string | null>(null)
     const [removing, setRemoving] = useState<Payment | null>(null)
     const [busy, setBusy] = useState(false)
 
     if (!isSuperAdmin) return <AccessDenied />
 
     const paymentName = (p: Payment) => namedPayment(t, locale, p)
+    const payingNow = payments?.find(p => p.id === paying && p.status === 'UNPAID')
     const money = (p: Payment) => <span className="ui-num">{platformMoney(p.cost, locale)}</span>
 
     const act = async (run: () => Promise<Response>, done: string, after: () => void) => {
@@ -83,7 +85,9 @@ export default function CompanyPaymentsPage() {
     // Only an unpaid one has anything to do: marking it paid, or deleting it.
     const actions = (p: Payment) => p.status === 'UNPAID' && (
         <span className="ui-row-actions">
-            <Button size="sm" icon={CheckCircleIcon} aria-label={t('payments_mark_paid_for').replace('{name}', paymentName(p))} onClick={() => setPaying(p)}>{t('mark_as_paid')}</Button>
+            {/* The list is asked again as it opens, so a page left open overnight doesn't promise a period from yesterday. */}
+            <Button size="sm" icon={CheckCircleIcon} aria-label={t('payments_mark_paid_for').replace('{name}', paymentName(p))}
+                onClick={() => { setPaying(p.id); void mutate() }}>{t('mark_as_paid')}</Button>
             <RowMenu label={t('ui_more_actions_for').replace('{name}', paymentName(p))} tooltip={t('ui_more_actions')}
                 items={[{ key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setRemoving(p) }]} />
         </span>
@@ -142,7 +146,7 @@ export default function CompanyPaymentsPage() {
             {list}
 
             {adding && <AddPaymentDialog companyId={companyId} onClose={() => setAdding(false)} onAdded={() => { setAdding(false); void mutate() }} />}
-            {paying && <MarkPaidDialog payment={paying} payments={payments ?? []} busy={busy} onCancel={() => setPaying(null)} onConfirm={() => { void markPaid(paying) }} />}
+            {payingNow && <MarkPaidDialog payment={payingNow} busy={busy} onCancel={() => setPaying(null)} onConfirm={() => { void markPaid(payingNow) }} />}
             {removing && (
                 <DeleteTemplateDialog
                     name={paymentName(removing)}

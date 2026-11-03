@@ -3040,3 +3040,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     of choices, spaced as radio buttons are;
   - the amount field's placeholder only said what its label and its
     example already do, and goes.
+- **2026-11-03:** From Codex's review of #172:
+  - the period Mark as paid promised was worked out in the browser, in
+    its timezone, and the one saved on the server, in its own, so near a
+    month's end or midnight they could be days apart. The server says the
+    period with each unpaid payment, from the same rule it saves by, and
+    the list is asked again as the dialog opens.
