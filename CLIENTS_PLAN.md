@@ -2260,3 +2260,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   in #179, which finished Operations. Add employee moves onto the building
   blocks in #180 (`UI_PLAN.md` §5), the first of the pages left. It
   doesn't touch clients or locations.
+- **2026-11-03:** Add employee was merged in #180. Add a bonus and Add a
+  deduction move onto the building blocks in #181 (`UI_PLAN.md` §5). They
+  don't touch clients or locations.
