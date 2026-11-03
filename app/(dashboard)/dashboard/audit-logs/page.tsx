@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, type ReactNode } from 'react'
+import { useCallback, useEffect, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { HourglassIcon, LightningIcon, MagnifyingGlassIcon, ScrollIcon, ShapesIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
@@ -18,6 +18,7 @@ import { countOf } from '@/lib/plural'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import type { TranslationKey } from '@/lib/translations'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useViewer } from '@/lib/useCan'
 
 /**
@@ -86,6 +87,16 @@ export default function AuditLogsPage() {
     const { data, error, isValidating, mutate } = useSWR(scopedKey(listUrl, scope), scopedFetcher, { keepPreviousData: true })
     const failed = loadFailed(data, error, listUrl)
     const listed: Listed | null = failed ? null : forScope(data, scope)?.data ?? null
+    // Past the last page, as on page 8 of a company with 3, or a link to a
+    // page there no longer is: to the last there is, once the answer says
+    // how many. It isn't "nothing has been logged", where the empty list had
+    // no pager to go back by (Codex on PR 175).
+    const pastTheEnd = !!listed && listed.data.length === 0 && listed.totalPages > 0 && page > listed.totalPages
+    useEffect(() => {
+        if (pastTheEnd) go({ page: String(listed.totalPages) })
+    }, [pastTheEnd, listed?.totalPages, go])
+    // Another company, picked in the top bar, starts from its first page, as another filter does.
+    useAdjustOnChange([selectedCompanyId], () => { if (page !== 1) go({ page: '1' }) })
 
     if (!isSuperAdmin) return <AccessDenied />
 
@@ -165,7 +176,7 @@ export default function AuditLogsPage() {
         : <EmptyState icon={ScrollIcon} title={t('audit_none')} />
 
     let list: ReactNode
-    if (!listed) {
+    if (!listed || pastTheEnd) {
         list = failed ? (
             <div className="ui-panel">
                 <EmptyState icon={WarningCircleIcon} title={t('audit_load_failed')} detail={(error as SWRError).info?.error}

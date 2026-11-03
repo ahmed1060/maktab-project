@@ -3169,3 +3169,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   error's code is found whole, which the field didn't say, so a part of
   one found nothing with no next step. Where none matches, the list says
   to paste all of it, as it's shown.
+- **2026-11-03:** From Codex's review of #175: on page 8, picking a
+  company in the top bar with 3 pages kept page 8, and its empty answer
+  read "Nothing has been logged yet", with no pager to go back by.
+  Another company starts from its first page, as another filter does, and
+  a page past the last, as an old link could give, goes to the last there
+  is; meanwhile the list says it's loading.

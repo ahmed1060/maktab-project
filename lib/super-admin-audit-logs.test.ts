@@ -222,6 +222,19 @@ describe("the Audit logs page", () => {
         expect(next).toContain("<table")
     })
 
+    it("goes back to a page there is, where it was past the last, and to the first on another company (Codex on PR 175)", async () => {
+        // Page 8, where the company the top bar picked has 3: it isn't "nothing has been logged", with no pager to go back by.
+        const url = "/api/admin/audit-logs?page=8&limit=20&companyId=c2"
+        const html = await render({ ...people, [url]: listed([], { total: 41, totalPages: 3 }) }, { search: "page=8", company: "c2" })
+        expect(html).not.toContain(en.audit_none)
+        expect(html).toContain('role="status"')
+        const page = readFileSync(PAGE, "utf8")
+        // To the last page there is, once the answer says how many.
+        expect(page).toMatch(/useEffect\(\(\) => \{\s*if \(pastTheEnd\) go\(\{ page: String\(listed\.totalPages\) \}\)/)
+        // Another company starts from its first page, as another filter does.
+        expect(page).toMatch(/useAdjustOnChange\(\[selectedCompanyId\], \(\) => \{ if \(page !== 1\) go\(\{ page: '1' \}\) \}\)/)
+    })
+
     it("writes dates and counts as Arabic does", async () => {
         const html = await render({ ...people, [LIST]: listed([entry()], { total: 41, totalPages: 3 }) }, { locale: "ar" })
         expect(html).toContain(`<h1 class="ui-page-title">${ar.audit_logs}</h1>`)
