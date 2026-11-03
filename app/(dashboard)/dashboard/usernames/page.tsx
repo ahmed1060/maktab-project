@@ -8,6 +8,7 @@ import { Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Pa
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { BUILT_IN_LABEL } from '@/lib/role-label'
+import { countOf } from '@/lib/plural'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { fileName, matches, nameOf, sheetRows, type Person } from '@/lib/usernames-list'
@@ -121,6 +122,8 @@ export default function UsernamesPage() {
                     <SearchInput {...p} name="q" autoComplete="off" spellCheck={false} placeholder={t('usernames_search')} value={query} onChange={e => setQuery(e.target.value)} />
                 )}</Field>
             )} />
+            {/* How many a search finds, said out loud, as the list changes without a word (web interface audit, PR 182). */}
+            <span className="ui-visually-hidden" aria-live="polite">{query.trim() && people ? countOf(t, locale, shown.length, 'employees') : ''}</span>
             {list}
         </Page>
     )

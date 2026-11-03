@@ -2708,7 +2708,7 @@ export const en = {
         usernames: "Usernames",
         usernames_subtitle: "View and export employee usernames for reference",
         usernames_none: "No username",
-        usernames_search: "Search by name or username",
+        usernames_search: "Search by name or username…",
         usernames_load_failed: "Couldn't load the usernames.",
         usernames_empty: "There's nobody to list yet.",
         usernames_no_match: "Nobody matches “{query}”.",

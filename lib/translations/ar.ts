@@ -2702,7 +2702,7 @@ export const ar = {
         usernames: "أسماء المستخدمين",
         usernames_subtitle: "عرض وتصدير أسماء مستخدمي الموظفين للرجوع إليها",
         usernames_none: "بلا اسم مستخدم",
-        usernames_search: "ابحث بالاسم أو اسم المستخدم",
+        usernames_search: "ابحث بالاسم أو اسم المستخدم…",
         usernames_load_failed: "تعذّر تحميل أسماء المستخدمين.",
         usernames_empty: "لا يوجد أحد لعرضه بعد.",
         usernames_no_match: "لا أحد يطابق «{query}».",

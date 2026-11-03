@@ -3485,3 +3485,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-03:** Found in the browser, on #182: Clear search went with the
   search it cleared, and the focus fell to the page. It goes back to the
   search.
+- **2026-11-03:** Found in the web interface audit, on #182: the search's
+  example didn't end with an ellipsis, as the employees list's does, and
+  how many it found wasn't said out loud, as the list changed without a
+  word. Both are now. Drawing up to 1,000 people at once stays as it was,
+  as companies have tens and the search narrows them, and the search stays
+  out of the address, as every list's does.

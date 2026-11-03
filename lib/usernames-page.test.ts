@@ -88,7 +88,7 @@ describe("Usernames on the building blocks", () => {
 
     it("can be searched by name or username", async () => {
         const html = render()
-        expect(html).toMatch(/<input[^>]*type="search"[^>]*placeholder="Search by name or username"/)
+        expect(html).toMatch(new RegExp(`<input[^>]*type="search"[^>]*placeholder="${en.usernames_search}"`))
         const { matches } = await import("@/lib/usernames-list")
         expect(PEOPLE.filter(p => matches(p, "mona")).map(p => p.id)).toEqual(["u1"])
         expect(PEOPLE.filter(p => matches(p, "  KARIM.F ")).map(p => p.id)).toEqual(["u2"])
@@ -167,5 +167,19 @@ describe("Usernames, found in the browser", () => {
         expect(render()).toMatch(/<input[^>]*type="search"[^>]*name="q"/)
         const src = readFileSync(PAGE, "utf8")
         expect(src).toContain(`onClick={() => { setQuery(''); document.querySelector<HTMLElement>('[name="q"]')?.focus() }}`)
+    })
+})
+
+describe("Usernames, found in the web interface audit", () => {
+    it("ends its search's example with an ellipsis, as the employees list's does", () => {
+        expect(en.usernames_search).toBe("Search by name or username…")
+        expect(ar.usernames_search.endsWith("…")).toBe(true)
+    })
+
+    it("says out loud how many a search finds, where the list changed without a word", () => {
+        const src = readFileSync(PAGE, "utf8")
+        expect(src).toContain(`<span className="ui-visually-hidden" aria-live="polite">{query.trim() && people ? countOf(t, locale, shown.length, 'employees') : ''}</span>`)
+        // Nothing said before anything is searched.
+        expect(render()).toContain('<span class="ui-visually-hidden" aria-live="polite"></span>')
     })
 })
