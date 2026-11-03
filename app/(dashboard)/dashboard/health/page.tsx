@@ -24,8 +24,8 @@ import { useViewer } from '@/lib/useCan'
  * mode, each a section on the building blocks. The page was cards of its
  * own making, with emoji for icons, sizes and colours typed in, the old
  * confirmation window, and every result in a window of its own; results
- * are toasts now. The scheduled jobs, the terminals and the backup picker
- * follow in part 3b.
+ * are toasts now. Its scheduled jobs card, terminals card and backup
+ * picker followed in part 3b.
  */
 
 type Counted = { total: number; prunable: number; retentionDays: number }
@@ -80,7 +80,7 @@ export default function SystemHealthPage() {
     // What's typed, once something is; until then the message saved.
     const [message, setMessage] = useState<string | null>(null)
     // Which list was asked for last: only its answer lands, and only while its picker is open.
-    const [picker, setPicker] = useState<{ request: number; backups: BackupEntry[]; loading: boolean; error: string | null } | null>(null)
+    const [picker, setPicker] = useState<{ request: number; backups: BackupEntry[]; loading: boolean; error: string | null; reason?: string | null } | null>(null)
     const pickerAsked = useRef(0)
 
     if (!isSuperAdmin) return <AccessDenied />
@@ -148,7 +148,7 @@ export default function SystemHealthPage() {
         setPending(null)
     })
 
-    // The backups on Google Drive, for the picker (part 3b's).
+    // The backups on Google Drive, for the picker.
     const openPicker = async () => {
         const request = ++pickerAsked.current
         setPicker({ request, backups: [], loading: true, error: null })
@@ -157,7 +157,8 @@ export default function SystemHealthPage() {
             const result = await res.json()
             setPicker(p => answerFor(p, result.success
                 ? { request, backups: result.data.backups, loading: false, error: null }
-                : { request, backups: [], loading: false, error: t('backup_picker_error') }))
+                // The server's own words for why, where the picker guessed.
+                : { request, backups: [], loading: false, error: t('backup_picker_error'), reason: result.error ?? null }))
         } catch {
             setPicker(p => answerFor(p, { request, backups: [], loading: false, error: t('backup_picker_error') }))
         }
@@ -320,11 +321,13 @@ export default function SystemHealthPage() {
                 backups={picker?.backups ?? []}
                 loading={picker?.loading ?? false}
                 error={picker?.error ?? null}
+                reason={picker?.reason ?? null}
                 onSelect={backup => {
                     setPicker(null)
                     setPending({ action: 'RESTORE_SPECIFIC', backup })
                 }}
                 onClose={() => setPicker(null)}
+                onRetry={() => { void openPicker() }}
             />
         </Page>
     )

@@ -2242,3 +2242,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   building blocks in #176 (`UI_PLAN.md` §5), the first of two parts. It
   doesn't touch clients or locations; their records' files are counted
   and looked through for ones nothing refers to, like any other.
+- **2026-11-03:** The Super Admin's pages, Operations part 3a, was merged
+  in #176. System health's scheduled jobs, terminals and backup picker
+  move onto the building blocks in #177 (`UI_PLAN.md` §5), which finishes
+  the page. They don't touch clients or locations.

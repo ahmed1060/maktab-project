@@ -9,7 +9,7 @@ import { en } from "./translations/en"
  * The Super Admin's pages on the building blocks, Operations part 3a
  * (UI_PLAN.md §5 step 5): System health's page, and its housekeeping, backup,
  * recovery and maintenance mode cards. The scheduled jobs, the terminals and
- * the backup picker follow in part 3b.
+ * the backup picker, part 3b, are in lib/super-admin-health-cards.test.ts.
  */
 
 type Loaded = { data?: unknown; error?: unknown; isValidating?: boolean }
@@ -30,7 +30,7 @@ vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {
 vi.mock("@/context/HeaderContext", () => ({ useHeader: () => ({ setTitle: () => {}, setSubtitle: () => {} }) }))
 vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
 vi.mock("react-dom", async (importOriginal) => ({ ...(await importOriginal<typeof import("react-dom")>()), createPortal: (node: unknown) => node }))
-// Part 3b's: their own requests, and their own tests.
+// Their own requests, and their own tests (lib/super-admin-health-cards.test.ts).
 vi.mock("@/components/JobsCard", () => ({ default: () => h("div", { "data-card": "jobs" }) }))
 vi.mock("@/components/TerminalsHealthCard", () => ({ default: () => h("div", { "data-card": "terminals" }) }))
 vi.mock("@/components/BackupPickerModal", () => ({ default: () => null }))
