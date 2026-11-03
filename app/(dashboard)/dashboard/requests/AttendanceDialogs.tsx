@@ -150,13 +150,16 @@ export async function decideRequest(request: Pick<FeedRow, 'id' | 'kind' | 'over
  * phone, a flagged check-in or a name change, with a reason if there is one;
  * a role request, with the reason it must have (part 5b).
  */
-export function RejectRequest({ request, question, placeholder, reasonRequired = false, onClose, onDecided }: {
-    request: FeedRow
+export function RejectRequest({ request, question, placeholder, reasonRequired = false, done, onClose, onDecided }: {
+    /** Which it is: the Super Admin's Check-ins page has no feed row, only the check-in (Operations part 1). */
+    request: Pick<FeedRow, 'id' | 'kind' | 'overtime'>
     /** What's being refused, in a sentence: whose, and which. */
     question: string
     placeholder: string
     /** The server refuses it without one (RoleRequestService.decide). */
     reasonRequired?: boolean
+    /** What to say once it's rejected, where not the Requests page's own words. */
+    done?: string
     onClose: () => void
     onDecided: () => void
 }) {
@@ -183,7 +186,7 @@ export function RejectRequest({ request, question, placeholder, reasonRequired =
             showToast(t(refused), 'error')
             return
         }
-        showToast(t('request_action_success'), 'success')
+        showToast(done ?? t('request_action_success'), 'success')
         onDecided()
     })
 
