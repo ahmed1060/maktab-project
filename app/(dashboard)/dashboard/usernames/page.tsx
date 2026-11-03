@@ -11,7 +11,7 @@ import { BUILT_IN_LABEL } from '@/lib/role-label'
 import { countOf } from '@/lib/plural'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
-import { fileName, matches, nameOf, sheetRows, type Person } from '@/lib/usernames-list'
+import { current, fileName, matches, nameOf, sheetRows, type Person } from '@/lib/usernames-list'
 
 /**
  * Each person's username, as the tasks upload's Excel file names who does
@@ -35,7 +35,8 @@ export default function UsernamesPage() {
 
     if (!may) return <AccessDenied />
 
-    const people = data?.data?.data
+    // Only the people still here, on the page and in the file.
+    const people = data?.data?.data?.filter(current)
     const roleWord = (role: string) => {
         const key = BUILT_IN_LABEL[role as keyof typeof BUILT_IN_LABEL]
         return key ? t(key) : role

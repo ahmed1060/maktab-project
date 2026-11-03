@@ -183,3 +183,18 @@ describe("Usernames, found in the web interface audit", () => {
         expect(render()).toContain('<span class="ui-visually-hidden" aria-live="polite"></span>')
     })
 })
+
+describe("Usernames lists only the people still here", () => {
+    it("leaves out somebody who has left, from the list and the file, where they were listed with everyone (decided 2026-11-03)", async () => {
+        state.swr = { [URL]: { data: { data: { data: [...PEOPLE, { id: "u4", firstName: "Tarek", lastName: "Nabil", role: "EMPLOYEE", username: "ds4", status: "ARCHIVED" }] } } } }
+        const html = render()
+        expect(html).not.toContain("Tarek Nabil")
+        expect(html).toContain("Mona Adel")
+        const { current } = await import("@/lib/usernames-list")
+        expect(current({ ...PEOPLE[0], status: "ARCHIVED" })).toBe(false)
+        // Suspended is still on staff, and back when it's lifted.
+        expect(current({ ...PEOPLE[0], status: "SUSPENDED" })).toBe(true)
+        expect(current({ ...PEOPLE[0], status: "OFFLINE" })).toBe(true)
+        expect(readFileSync(PAGE, "utf8")).toContain("const people = data?.data?.data?.filter(current)")
+    })
+})

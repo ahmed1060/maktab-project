@@ -3491,3 +3491,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   word. Both are now. Drawing up to 1,000 people at once stays as it was,
   as companies have tens and the search narrows them, and the search stays
   out of the address, as every list's does.
+- **2026-11-03:** Decided on #182: Usernames lists only the people still
+  here. Somebody who has left (archived) isn't listed or in the Excel file,
+  as nothing can be given to them; suspended people stay, as they're still
+  on staff.
