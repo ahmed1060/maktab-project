@@ -201,3 +201,17 @@ describe("System settings' checks", () => {
         expect(readFileSync("components/CompanyPayrollCard.tsx", "utf8")).not.toContain("const ZONES = [")
     })
 })
+
+describe("System settings, found in the browser", () => {
+    it("says a number is wrong with its range in the language's digits, as the hint above it does", async () => {
+        // "أدخل مسافة بين 1 و10000 متر": Western digits in Arabic, and 10000 where the hint said 10,000.
+        for (const key of ["invalid_radius_value", "step_up_minutes_invalid"] as const) {
+            for (const dict of [en, ar]) {
+                expect(dict[key], key).toContain("{min}")
+                expect(dict[key], key).toContain("{max}")
+                expect(dict[key], key).not.toMatch(/\d/)
+            }
+        }
+        expect(readFileSync(CARDS, "utf8")).toContain("setError(t(wrong).replace('{min}', num(min)).replace('{max}', num(max)))")
+    })
+})

@@ -127,7 +127,8 @@ function NumberCard({ field, title, note, label, stored, onSaved }: {
         e.preventDefault()
         const wrong = settingsErrors({ [field]: text })[field]
         if (wrong) {
-            setError(t(wrong))
+            // Its range in the language's digits, as the hint it replaces had it.
+            setError(t(wrong).replace('{min}', num(min)).replace('{max}', num(max)))
             focusWrong()
             return
         }

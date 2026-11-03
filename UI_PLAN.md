@@ -3323,3 +3323,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     company settings' are, the brand colour's included;
   - it says while it loads, and when it didn't with the server's reason
     and Try again, where a toast said so over forms left empty.
+- **2026-11-03:** Found in the browser, on #178: a wrong number was said
+  with its range typed in, Western digits in Arabic ("بين 1 و10000") and
+  10000 where the hint above it said 10,000. It says its range as the hint
+  does, in the language's digits.
