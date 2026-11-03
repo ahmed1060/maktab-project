@@ -1,605 +1,331 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
-import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
-import { useLanguage } from '@/context/LanguageContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import ConfirmModal from '@/components/ConfirmModal'
-import BackupPickerModal, { BackupEntry } from '@/components/BackupPickerModal'
-import NoticeModal, { Notice } from '@/components/NoticeModal'
-import { useHeader } from '@/context/HeaderContext'
+import { HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import AccessDenied from '@/components/AccessDenied'
+import BackupPickerModal, { type BackupEntry } from '@/components/BackupPickerModal'
+import { answerFor, ConfirmHealthAction, OrphanReport, type OrphanSweep } from '@/components/HealthDialogs'
 import JobsCard from '@/components/JobsCard'
 import TerminalsHealthCard from '@/components/TerminalsHealthCard'
+import { Button, Card, Columns, Details, EmptyState, Field, Page, PageHeader, Section, StatusBadge, TextArea } from '@/components/ui'
+import { useLanguage } from '@/context/LanguageContext'
+import { useToast } from '@/context/ToastContext'
+import { countOf } from '@/lib/plural'
+import { fileSize } from '@/lib/record-files'
+import { fetcher, fetchRetrying, type SWRError } from '@/lib/swr-fetcher'
+import type { TranslationKey } from '@/lib/translations'
+import { useBusyAction } from '@/lib/useBusyAction'
+import { useViewer } from '@/lib/useCan'
 
+/**
+ * System health (UI_PLAN.md §5 step 5, Operations part 3a): what's running,
+ * the platform's housekeeping, its backups and recovery, and maintenance
+ * mode, each a section on the building blocks. The page was cards of its
+ * own making, with emoji for icons, sizes and colours typed in, the old
+ * confirmation window, and every result in a window of its own; results
+ * are toasts now. The scheduled jobs, the terminals and the backup picker
+ * follow in part 3b.
+ */
+
+type Counted = { total: number; prunable: number; retentionDays: number }
 type HealthMetrics = {
-    auditing: {
-        total: number
-        prunable: number
-        retentionDays: number
-    }
-    notifications: {
-        total: number
-        prunable: number
-        retentionDays: number
-    }
-    storage: {
-        totalFiles: number | null
-        reachable: boolean
-    }
+    auditing: Counted
+    notifications: Counted
+    storage: { totalFiles: number | null; reachable: boolean }
 }
+type Settings = { maintenanceMode: boolean; maintenanceMessage: string | null }
 
-type PendingAction = 'CLEANUP_ASSETS' | 'DELETE_ORPHANS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | 'RESTORE_LATEST' | 'RESTORE_SPECIFIC' | 'MAINTENANCE_ON' | 'MAINTENANCE_OFF' | null
+/** What's waiting to be asked about, and the backup picked, for a restore of one. */
+type Pending =
+    | { action: 'DELETE_ORPHANS' | 'PRUNE_LOGS' | 'PRUNE_NOTIFICATIONS' | 'BACKUP' | 'RESTORE_LATEST' | 'MAINTENANCE_ON' | 'MAINTENANCE_OFF' }
+    | { action: 'RESTORE_SPECIFIC'; backup: BackupEntry }
 
-const RESTORE_CONFIRM_WORD = 'RESTORE'
-const DELETE_CONFIRM_WORD = 'DELETE'
+/** The words typed before what can't be undone, as the code has them in both languages. */
+const RESTORE_WORD = 'RESTORE'
+const DELETE_WORD = 'DELETE'
+/** The server's own limit (lib/validations/system-settings.schema.ts). */
+const MESSAGE_MAX = 500
 
-function formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+/** An action's answer, or the status it was refused with (0: no answer at all). */
+type Sent = { ok: true; data: any } | { ok: false; status: number }
+
+async function send(url: string, method: 'POST' | 'PUT', body?: unknown): Promise<Sent> {
+    try {
+        const res = await fetch(url, body === undefined ? { method } : { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        const result = await res.json().catch(() => null)
+        return res.ok && result?.success ? { ok: true, data: result.data } : { ok: false, status: res.status }
+    } catch {
+        return { ok: false, status: 0 }
+    }
 }
 
 export default function SystemHealthPage() {
     const { t, locale } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
-    // SWR rather than a fetch in an effect; mutate() is the refresh after a
-    // maintenance action.
-    const { data: metricsResult, isLoading: loading, mutate: fetchMetrics } = useSWR('/api/admin/health', fetcher)
-    const metrics: HealthMetrics | null = metricsResult?.success ? metricsResult.data : null
-    const [processing, setProcessing] = useState<string | null>(null)
-    // Replaces alert(): a native dialog cannot be themed, and it blocks the
-    // main thread, so a result could land on top of a button still painting
-    // its pending label.
-    const [notice, setNotice] = useState<Notice | null>(null)
-    const [triggeringBackup, setTriggeringBackup] = useState(false)
-    const [pendingAction, setPendingAction] = useState<PendingAction>(null)
-    // The orphan sweep is two steps: a report, then a confirmed delete. The
-    // reference set behind it is a hand-kept list of queries, so the one thing
-    // that must not happen is a mass delete nobody looked at first.
-    const [orphanReport, setOrphanReport] = useState<
-        { orphaned: number; total: number; bytes: number; orphans: string[] } | null
-    >(null)
-    const [deletingOrphans, setDeletingOrphans] = useState(false)
-    const [restoring, setRestoring] = useState(false)
-    const [pickerOpen, setPickerOpen] = useState(false)
-    const [backups, setBackups] = useState<BackupEntry[]>([])
-    const [backupsLoading, setBackupsLoading] = useState(false)
-    const [backupsError, setBackupsError] = useState<string | null>(null)
-    const [selectedBackup, setSelectedBackup] = useState<BackupEntry | null>(null)
-    const [maintenanceMode, setMaintenanceMode] = useState(false)
-    const [maintenanceMessage, setMaintenanceMessage] = useState('')
-    const [savingMaintenance, setSavingMaintenance] = useState(false)
+    const { showToast } = useToast()
+    // Who is looking comes from the layout on the first paint, so a Super
+    // Admin never sees "Access restricted" while the session loads. It had
+    // no check of its own: anyone opening its address saw its cards, empty.
+    const viewer = useViewer()
+    const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
+    const action = useBusyAction()
 
-    useEffect(() => {
-        setTitle(t('system_health'))
-        setSubtitle(t('system_health_subtitle'))
-        return () => {
-            setTitle(null)
-            setSubtitle(null)
-        }
-    }, [setTitle, setSubtitle, t])
+    const { data: healthResult, error: healthError, isValidating: healthLoading, mutate: reloadHealth } = useSWR(isSuperAdmin ? '/api/admin/health' : null, fetcher)
+    const { data: settingsResult, error: settingsError, isValidating: settingsLoading, mutate: reloadSettings } = useSWR(isSuperAdmin ? '/api/system-settings' : null, fetcher)
+    const metrics: HealthMetrics | null = healthResult?.success ? healthResult.data : null
+    const settings: Settings | null = settingsResult?.success ? settingsResult.data : null
 
-    // Seeds the maintenance form once; ignored if the page has gone by the
-    // time it answers.
-    useEffect(() => {
-        let ignore = false
-        fetchRetrying('/api/system-settings')
-            .then(res => res.json())
-            .then(result => {
-                if (ignore || !result.success) return
-                setMaintenanceMode(!!result.data.maintenanceMode)
-                setMaintenanceMessage(result.data.maintenanceMessage || '')
-            })
-            .catch(error => console.error('Failed to fetch system settings', error))
-        return () => { ignore = true }
-    }, [])
+    const [pending, setPending] = useState<Pending | null>(null)
+    const [report, setReport] = useState<OrphanSweep | null>(null)
+    // What's typed, once something is; until then the message saved.
+    const [message, setMessage] = useState<string | null>(null)
+    // Which list was asked for last: only its answer lands, and only while its picker is open.
+    const [picker, setPicker] = useState<{ request: number; backups: BackupEntry[]; loading: boolean; error: string | null } | null>(null)
+    const pickerAsked = useRef(0)
 
-    const runMaintenance = async (action: string, params?: Record<string, unknown>) => {
-        setProcessing(action)
-        try {
-            const res = await fetch('/api/admin/maintenance', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params ? { action, params } : { action })
-            })
+    if (!isSuperAdmin) return <AccessDenied />
 
-            const result = await res.json()
-            if (result.success) {
-                setNotice({ variant: 'success', title: t('maintenance_success' as any) })
-                fetchMetrics()
-            } else {
-                setNotice({ variant: 'error', title: t('maintenance_failed' as any), detail: result.error })
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const days = (c: Counted) => num(c.retentionDays)
+    const shownMessage = message ?? settings?.maintenanceMessage ?? ''
+    const failed = (key: TranslationKey) => showToast(t(key), 'error')
+
+    /** A look at what a sweep would delete, shown under the count. Deletes nothing. */
+    const findUnused = () => action.run('scan', async () => {
+        const res = await send('/api/admin/maintenance', 'POST', { action: 'CLEANUP_ASSETS', params: { dryRun: true } })
+        if (!res.ok) return failed('maintenance_failed')
+        setReport(res.data.result)
+    })
+
+    const run = (p: Pending) => action.run(p.action, async () => {
+        switch (p.action) {
+            case 'DELETE_ORPHANS': {
+                // confirm lets it past the share of files the server thinks
+                // plausible, which a real backlog will always pass, and which
+                // only somebody who has read the list can judge.
+                const res = await send('/api/admin/maintenance', 'POST', { action: 'CLEANUP_ASSETS', params: { dryRun: false, confirm: true } })
+                if (!res.ok) return failed('maintenance_failed')
+                const done = res.data.result
+                showToast(t('orphans_deleted_msg').replace('{count}', countOf(t, locale, done.deleted ?? 0, 'files')).replace('{size}', fileSize(done.bytes ?? 0, locale)), 'success')
+                setReport(null)
+                void reloadHealth()
+                break
             }
-        } catch (error) {
-            console.error('Maintenance error:', error)
-            setNotice({ variant: 'error', title: t('maintenance_failed' as any) })
-        } finally {
-            setProcessing(null)
-        }
-    }
-
-    /** Step one: ask what a sweep would delete, and show it. Deletes nothing. */
-    const previewOrphans = async () => {
-        setProcessing('CLEANUP_ASSETS')
-        try {
-            const res = await fetch('/api/admin/maintenance', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'CLEANUP_ASSETS', params: { dryRun: true } })
-            })
-            const result = await res.json()
-            if (!result.success) {
-                setNotice({ variant: 'error', title: t('maintenance_failed' as any), detail: result.error })
-                return
+            case 'PRUNE_LOGS':
+            case 'PRUNE_NOTIFICATIONS': {
+                const res = await send('/api/admin/maintenance', 'POST', { action: p.action })
+                if (!res.ok) return failed('maintenance_failed')
+                showToast(t('health_deleted').replace('{count}', countOf(t, locale, Number(res.data.result) || 0, p.action === 'PRUNE_LOGS' ? 'logged' : 'notices')), 'success')
+                void reloadHealth()
+                break
             }
-            setOrphanReport(result.data.result)
-        } catch (error) {
-            console.error('Maintenance error:', error)
-            setNotice({ variant: 'error', title: t('maintenance_failed' as any) })
-        } finally {
-            setProcessing(null)
-        }
-    }
-
-    /** Step two, and only from the report: delete what it listed. */
-    const deleteOrphans = async () => {
-        setDeletingOrphans(true)
-        try {
-            const res = await fetch('/api/admin/maintenance', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // confirm authorises going past the plausibility threshold —
-                // which a real backlog will always exceed, and which only
-                // somebody who has read the list above can judge.
-                body: JSON.stringify({ action: 'CLEANUP_ASSETS', params: { dryRun: false, confirm: true } })
-            })
-            const result = await res.json()
-            if (result.success) {
-                setNotice({
-                    variant: 'success',
-                    title: t('maintenance_success' as any),
-                    message: t('orphans_deleted_msg' as any)
-                        .replace('{count}', String(result.data.result.deleted))
-                        .replace('{size}', formatBytes(result.data.result.bytes ?? 0)),
-                })
-                setOrphanReport(null)
-                fetchMetrics()
-            } else {
-                setNotice({ variant: 'error', title: t('maintenance_failed' as any), detail: result.error })
+            case 'BACKUP': {
+                const res = await send('/api/admin/maintenance/backup', 'POST')
+                if (!res.ok) return failed(res.status === 429 ? 'health_backup_too_many' : 'backup_trigger_failed')
+                showToast(t('backup_triggered_success'), 'success')
+                break
             }
-        } catch (error) {
-            console.error('Maintenance error:', error)
-            setNotice({ variant: 'error', title: t('maintenance_failed' as any) })
-        } finally {
-            setDeletingOrphans(false)
-        }
-    }
-
-    const triggerBackup = async () => {
-        setTriggeringBackup(true)
-        try {
-            const res = await fetch('/api/admin/maintenance/backup', { method: 'POST' })
-            const result = await res.json()
-            if (result.success) {
-                setNotice({ variant: 'success', title: t('backup_triggered_success' as any) })
-            } else {
-                setNotice({ variant: 'error', title: t('backup_trigger_failed' as any), detail: result.error })
+            case 'RESTORE_LATEST':
+            case 'RESTORE_SPECIFIC': {
+                const res = await send('/api/admin/maintenance/restore', 'POST', p.action === 'RESTORE_SPECIFIC'
+                    ? { mode: 'specific', folder: p.backup.folder, baseName: p.backup.baseName }
+                    : { mode: 'latest' })
+                if (!res.ok) return failed('restore_trigger_failed')
+                showToast(t('restore_started_success'), 'success')
+                break
             }
-        } catch (error) {
-            console.error('Backup trigger error:', error)
-            setNotice({ variant: 'error', title: t('backup_trigger_failed' as any) })
-        } finally {
-            setTriggeringBackup(false)
+            case 'MAINTENANCE_ON':
+            case 'MAINTENANCE_OFF': {
+                const on = p.action === 'MAINTENANCE_ON'
+                const res = await send('/api/system-settings', 'PUT', { maintenanceMode: on, maintenanceMessage: shownMessage.trim() || null })
+                if (!res.ok) return failed('maintenance_toggle_failed')
+                await reloadSettings({ success: true, data: res.data }, { revalidate: false })
+                setMessage(null)
+                showToast(t(on ? 'health_maintenance_turned_on' : 'health_maintenance_turned_off'), 'success')
+                break
+            }
         }
-    }
+        setPending(null)
+    })
 
-    const openBackupPicker = async () => {
-        setPickerOpen(true)
-        setBackupsLoading(true)
-        setBackupsError(null)
+    // The backups on Google Drive, for the picker (part 3b's).
+    const openPicker = async () => {
+        const request = ++pickerAsked.current
+        setPicker({ request, backups: [], loading: true, error: null })
         try {
             const res = await fetchRetrying('/api/admin/maintenance/backups')
             const result = await res.json()
-            if (result.success) {
-                setBackups(result.data.backups)
-            } else {
-                setBackupsError(result.error || t('backup_picker_error' as any))
-            }
-        } catch (error) {
-            console.error('Failed to list backups', error)
-            setBackupsError(t('backup_picker_error' as any))
-        } finally {
-            setBackupsLoading(false)
+            setPicker(p => answerFor(p, result.success
+                ? { request, backups: result.data.backups, loading: false, error: null }
+                : { request, backups: [], loading: false, error: t('backup_picker_error') }))
+        } catch {
+            setPicker(p => answerFor(p, { request, backups: [], loading: false, error: t('backup_picker_error') }))
         }
     }
 
-    const handleSelectBackup = (backup: BackupEntry) => {
-        setSelectedBackup(backup)
-        setPickerOpen(false)
-        setPendingAction('RESTORE_SPECIFIC')
-    }
-
-    const runRestore = async (mode: 'latest' | 'specific') => {
-        setRestoring(true)
-        try {
-            const payload = mode === 'specific' && selectedBackup
-                ? { mode, folder: selectedBackup.folder, baseName: selectedBackup.baseName }
-                : { mode: 'latest' }
-            const res = await fetch('/api/admin/maintenance/restore', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-            const result = await res.json()
-            if (result.success) {
-                setNotice({ variant: 'success', title: t('restore_started_success' as any) })
-            } else {
-                setNotice({ variant: 'error', title: t('restore_trigger_failed' as any), detail: result.error })
+    // What each asks, its button, and the word typed first where it can't be undone.
+    const question = (p: Pending): { title: string; body: ReactNode; label: string; word?: string; danger?: boolean } => {
+        const a = metrics?.auditing
+        const n = metrics?.notifications
+        switch (p.action) {
+            case 'DELETE_ORPHANS': return {
+                title: t('confirm_delete_orphans_title'), label: t('orphan_report_delete'), word: DELETE_WORD, danger: true,
+                body: t('confirm_delete_orphans_msg').replace('{count}', countOf(t, locale, report?.orphaned ?? 0, 'files')).replace('{size}', fileSize(report?.bytes ?? 0, locale)),
             }
-        } catch (error) {
-            console.error('Restore trigger error:', error)
-            setNotice({ variant: 'error', title: t('restore_trigger_failed' as any) })
-        } finally {
-            setRestoring(false)
-            setSelectedBackup(null)
+            case 'PRUNE_LOGS': return {
+                title: t('confirm_prune_logs_title'), label: t('health_prune_logs').replace('{days}', a ? days(a) : ''), danger: true,
+                body: t('confirm_prune_logs_msg').replace('{count}', countOf(t, locale, a?.prunable ?? 0, 'logged')).replace('{days}', a ? days(a) : ''),
+            }
+            case 'PRUNE_NOTIFICATIONS': return {
+                title: t('confirm_prune_notifications_title'), label: t('health_prune_notifications').replace('{days}', n ? days(n) : ''), danger: true,
+                body: t('confirm_prune_notifications_msg').replace('{count}', countOf(t, locale, n?.prunable ?? 0, 'notices')).replace('{days}', n ? days(n) : ''),
+            }
+            case 'BACKUP': return { title: t('confirm_trigger_backup_title'), body: t('confirm_trigger_backup_msg'), label: t('trigger_backup_now') }
+            case 'RESTORE_LATEST': return {
+                title: t('confirm_restore_latest_title'), body: t('confirm_restore_latest_msg'), label: t('recover_latest_backup'), word: RESTORE_WORD, danger: true,
+            }
+            case 'RESTORE_SPECIFIC': {
+                // The backup's name, as the file is named: left to right, never translated.
+                const [before, after] = t('confirm_restore_specific_msg').split('{name}')
+                return {
+                    title: t('confirm_restore_specific_title'), label: t('health_restore_this'), word: RESTORE_WORD, danger: true,
+                    body: <>{before}<bdi dir="ltr" translate="no">{p.backup.baseName}</bdi>{after}</>,
+                }
+            }
+            case 'MAINTENANCE_ON': return { title: t('confirm_maintenance_on_title'), body: t('confirm_maintenance_on_msg'), label: t('settings_turn_on') }
+            case 'MAINTENANCE_OFF': return { title: t('confirm_maintenance_off_title'), body: t('confirm_maintenance_off_msg'), label: t('settings_turn_off') }
         }
     }
 
-    const toggleMaintenance = async (next: boolean) => {
-        setSavingMaintenance(true)
-        try {
-            const res = await fetch('/api/system-settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ maintenanceMode: next, maintenanceMessage: maintenanceMessage.trim() || null })
-            })
-            const result = await res.json()
-            if (result.success) {
-                setMaintenanceMode(!!result.data.maintenanceMode)
-                setMaintenanceMessage(result.data.maintenanceMessage || '')
-            } else {
-                setNotice({ variant: 'error', title: t('maintenance_toggle_failed' as any), detail: result.error })
-            }
-        } catch (error) {
-            console.error('Maintenance toggle error:', error)
-            setNotice({ variant: 'error', title: t('maintenance_toggle_failed' as any) })
-        } finally {
-            setSavingMaintenance(false)
-        }
-    }
+    const loading = <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+    const didntLoad = (title: TranslationKey, error: unknown, busy: boolean, retry: () => unknown) => (
+        <div className="ui-panel">
+            <EmptyState icon={WarningCircleIcon} title={t(title)} detail={(error as SWRError).info?.error}
+                action={<Button busy={busy} onClick={() => { void retry() }}>{t('try_again')}</Button>} />
+        </div>
+    )
 
-    // Confirmation for all six actions runs through one styled modal instead
-    // of the browser's native confirm() — the copy per action lives here,
-    // keyed off which button was clicked.
-    const confirmCopy: Record<Exclude<PendingAction, null>, { title: string; message: string }> = {
-        CLEANUP_ASSETS: { title: t('confirm_cleanup_assets_title' as any), message: t('confirm_cleanup_assets_msg' as any) },
-        DELETE_ORPHANS: {
-            title: t('confirm_delete_orphans_title' as any),
-            message: `${t('confirm_delete_orphans_msg' as any)} (${orphanReport?.orphaned ?? 0} · ${formatBytes(orphanReport?.bytes ?? 0)})`
-        },
-        PRUNE_LOGS: { title: t('confirm_prune_logs_title' as any), message: t('confirm_prune_logs_msg' as any) },
-        PRUNE_NOTIFICATIONS: { title: t('confirm_prune_notifications_title' as any), message: t('confirm_prune_notifications_msg' as any) },
-        BACKUP: { title: t('confirm_trigger_backup_title' as any), message: t('confirm_trigger_backup_msg' as any) },
-        RESTORE_LATEST: { title: t('confirm_restore_latest_title' as any), message: t('confirm_restore_latest_msg' as any) },
-        RESTORE_SPECIFIC: {
-            title: t('confirm_restore_specific_title' as any),
-            message: `${t('confirm_restore_specific_msg' as any)} ${selectedBackup?.baseName || ''}`
-        },
-        MAINTENANCE_ON: { title: t('confirm_maintenance_on_title' as any), message: t('confirm_maintenance_on_msg' as any) },
-        MAINTENANCE_OFF: { title: t('confirm_maintenance_off_title' as any), message: t('confirm_maintenance_off_msg' as any) },
-    }
+    // A count, and how many of them are old enough to delete.
+    const counted = (c: Counted, total: TranslationKey, older: TranslationKey) => (
+        <Details items={[
+            { label: t(total), value: <span className="ui-num">{num(c.total)}</span> },
+            { label: t(older).replace('{days}', days(c)), value: <span className="ui-num">{num(c.prunable)}</span> },
+        ]} />
+    )
 
-    // Awaited, and closed after: the dialog shows the work under way.
-    const handleConfirm = async () => {
-        const action = pendingAction
-        if (!action) return
-        try {
-            if (action === 'BACKUP') {
-                await triggerBackup()
-            } else if (action === 'RESTORE_LATEST') {
-                await runRestore('latest')
-            } else if (action === 'RESTORE_SPECIFIC') {
-                await runRestore('specific')
-            } else if (action === 'MAINTENANCE_ON') {
-                await toggleMaintenance(true)
-            } else if (action === 'MAINTENANCE_OFF') {
-                await toggleMaintenance(false)
-            } else if (action === 'CLEANUP_ASSETS') {
-                await previewOrphans()
-            } else if (action === 'DELETE_ORPHANS') {
-                await deleteOrphans()
-            } else {
-                await runMaintenance(action)
-            }
-        } finally { setPendingAction(null) }
-    }
+    const housekeeping = metrics ? (
+        <Columns>
+            <Card title={t('storage_header')}>
+                <p className="ui-card-note">{t('health_storage_note')}</p>
+                {metrics.storage.reachable
+                    ? <Details items={[{ label: t('health_files'), value: <span className="ui-num">{num(metrics.storage.totalFiles ?? 0)}</span> }]} />
+                    : <p className="ui-error" role="status">{t('storage_unreachable')}</p>}
+                {report
+                    ? <OrphanReport report={report} busy={action.is('DELETE_ORPHANS') ?? false} onDelete={() => setPending({ action: 'DELETE_ORPHANS' })} onClose={() => setReport(null)} />
+                    : (
+                        <div className="ui-card-actions">
+                            <Button onClick={() => { void findUnused() }} disabled={action.running || !metrics.storage.reachable} busy={action.is('scan')}>{t('cleanup_orphaned')}</Button>
+                        </div>
+                    )}
+            </Card>
+            <Card title={t('audit_logs')}>
+                <p className="ui-card-note">{t('health_audit_note')}</p>
+                {counted(metrics.auditing, 'health_entries', 'health_older_than')}
+                <div className="ui-card-actions">
+                    <Button variant="danger" onClick={() => setPending({ action: 'PRUNE_LOGS' })} disabled={action.running || metrics.auditing.prunable === 0}>
+                        {t('health_prune_logs').replace('{days}', days(metrics.auditing))}
+                    </Button>
+                </div>
+            </Card>
+            <Card title={t('notifications')}>
+                <p className="ui-card-note">{t('health_notifications_note')}</p>
+                {counted(metrics.notifications, 'health_sent', 'health_read_older_than')}
+                <div className="ui-card-actions">
+                    <Button variant="danger" onClick={() => setPending({ action: 'PRUNE_NOTIFICATIONS' })} disabled={action.running || metrics.notifications.prunable === 0}>
+                        {t('health_prune_notifications').replace('{days}', days(metrics.notifications))}
+                    </Button>
+                </div>
+            </Card>
+        </Columns>
+    ) : healthError ? didntLoad('health_load_failed', healthError, healthLoading, reloadHealth) : loading
 
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-                <LoadingSpinner message={t('loading_data')} />
+    const on = !!settings?.maintenanceMode
+    const maintenance = settings ? (
+        <Card>
+            <p className="ui-card-note">{t('maintenance_mode_description')}</p>
+            <Field label={t('health_maintenance_message')}
+                hint={t('ui_characters_used').replace('{used}', num(shownMessage.length)).replace('{max}', num(MESSAGE_MAX))}>{p => (
+                <TextArea {...p} name="maintenanceMessage" dir="auto" rows={2} maxLength={MESSAGE_MAX} placeholder={t('maintenance_message_placeholder')}
+                    value={shownMessage} onChange={e => setMessage(e.target.value)} />
+            )}</Field>
+            <div className="ui-card-actions">
+                <Button variant={on ? 'secondary' : 'primary'} onClick={() => setPending({ action: on ? 'MAINTENANCE_OFF' : 'MAINTENANCE_ON' })} disabled={action.running}>
+                    {t(on ? 'disable_maintenance_mode' : 'enable_maintenance_mode')}
+                </Button>
             </div>
-        )
-    }
+        </Card>
+    ) : settingsError ? didntLoad('health_settings_failed', settingsError, settingsLoading, reloadSettings) : loading
+
+    const asked = pending && question(pending)
 
     return (
-        <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr', padding: '0.5rem' }}>
+        <Page>
+            <PageHeader title={t('system_health')} subtitle={t('system_health_subtitle')} />
 
-            {maintenanceMode && (
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '0.75rem',
-                    background: 'var(--warn-bg-yellow-subtle)', border: '1px solid var(--warn-border-yellow)', color: 'var(--warn-fg)',
-                    borderRadius: '0.75rem', padding: '0.85rem 1.25rem', marginBottom: '1.5rem',
-                    fontWeight: 700, fontSize: '0.9rem'
-                }}>
-                    <span aria-hidden="true" style={{ fontSize: '1.3rem' }}>🔧</span>
-                    {t('maintenance_active_banner' as any)}
-                </div>
+            {/* Said above everything else while it's on: everyone else is held. */}
+            {on && <Card tone="waiting" role="status"><p>{t('maintenance_active_banner')}</p></Card>}
+
+            {/* First, because it says whether the machinery that keeps the rest is alive. */}
+            <Section title={t('health_running')}>
+                <Columns>
+                    <JobsCard />
+                    {/* Every company's attendance agents and terminals (ATTENDANCE_PLAN.md §13.2). */}
+                    <TerminalsHealthCard />
+                </Columns>
+            </Section>
+
+            <Section title={t('health_housekeeping')}>{housekeeping}</Section>
+
+            <Section title={t('health_backups')}>
+                <Columns>
+                    <Card title={t('backups_header')}>
+                        <p className="ui-card-note">{t('backups_description')}</p>
+                        <div className="ui-card-actions">
+                            <Button onClick={() => setPending({ action: 'BACKUP' })} disabled={action.running}>{t('trigger_backup_now')}</Button>
+                        </div>
+                    </Card>
+                    <Card title={t('disaster_recovery_header')}>
+                        <p className="ui-card-note">{t('disaster_recovery_description')}</p>
+                        <div className="ui-card-actions">
+                            <Button onClick={() => { void openPicker() }} disabled={action.running}>{t('choose_backup_to_restore')}</Button>
+                            <Button variant="danger" onClick={() => setPending({ action: 'RESTORE_LATEST' })} disabled={action.running}>{t('recover_latest_backup')}</Button>
+                        </div>
+                    </Card>
+                </Columns>
+            </Section>
+
+            {/* Named once, its state beside the name: the section's one card was titled the same. */}
+            <Section title={t('maintenance_mode_header')}
+                action={settings && <StatusBadge tone={on ? 'waiting' : 'neutral'}>{t(on ? 'health_maintenance_on' : 'health_maintenance_off')}</StatusBadge>}>
+                {maintenance}
+            </Section>
+
+            {pending && asked && (
+                <ConfirmHealthAction title={asked.title} body={asked.body} word={asked.word} danger={asked.danger} confirmLabel={asked.label}
+                    busy={action.is(pending.action) ?? false} onConfirm={() => { void run(pending) }} onCancel={() => setPending(null)} />
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-
-                {/* Jobs Card — first, because it is the one card here that
-                    reports something nobody would otherwise find out. The rest
-                    describe state you could go and look at; this one says
-                    whether the machinery that maintains that state is alive. */}
-                <JobsCard />
-
-                {/* Every company's attendance agents and terminals (ATTENDANCE_PLAN.md §13.2). */}
-                <TerminalsHealthCard />
-
-                {/* Storage Card */}
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>📁</span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('storage_header' as any)}</h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('total_assets' as any)}</p>
-                        </div>
-                    </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--brand-primary-text)', textAlign: 'center', margin: '1rem 0' }}>
-                        {metrics?.storage.reachable === false ? '—' : metrics?.storage.totalFiles}
-                    </div>
-                    {metrics?.storage.reachable === false && (
-                        <p role="status" style={{ margin: 0, textAlign: 'center', fontSize: '0.85rem', color: 'var(--danger-fg)' }}>
-                            {t('storage_unreachable' as any)}
-                        </p>
-                    )}
-                    <button
-                        onClick={() => setPendingAction('CLEANUP_ASSETS')}
-                        disabled={!!processing}
-                        className="btn"
-                        style={{ width: '100%', marginTop: 'auto' }}
-                    >
-                        {processing === 'CLEANUP_ASSETS' ? (locale === 'ar' ? 'جاري الفحص...' : 'Scanning...') : t('cleanup_orphaned' as any)}
-                    </button>
-
-                    {/* The report. Shown in place rather than in the confirm
-                        dialog because the point is that somebody reads the
-                        paths before agreeing to delete them, and a dialog is
-                        the wrong shape for a scrollable list. */}
-                    {orphanReport && (
-                        <div style={{
-                            border: '1px solid var(--border)', borderRadius: '0.75rem',
-                            padding: '0.85rem', background: 'var(--surface-sunk, var(--surface))',
-                            textAlign: locale === 'ar' ? 'right' : 'left'
-                        }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.2rem' }}>
-                                {t('orphan_report_title' as any)}
-                            </div>
-                            <div style={{ fontSize: '0.82rem', color: 'var(--text-soft)', marginBottom: '0.6rem' }}>
-                                {orphanReport.orphaned} / {orphanReport.total} · {formatBytes(orphanReport.bytes)}
-                            </div>
-
-                            {orphanReport.orphaned === 0 ? (
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-soft)' }}>
-                                    {t('orphan_report_none' as any)}
-                                </div>
-                            ) : (
-                                <>
-                                    <div style={{
-                                        maxHeight: '9rem', overflowY: 'auto', fontFamily: 'monospace',
-                                        fontSize: '0.72rem', lineHeight: 1.6, color: 'var(--text-soft)',
-                                        direction: 'ltr', textAlign: 'left', wordBreak: 'break-all'
-                                    }}>
-                                        {orphanReport.orphans.map(path => <div key={path}>{path}</div>)}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                                        <button className="btn" style={{ flex: 1 }}
-                                            onClick={() => setOrphanReport(null)} disabled={deletingOrphans}>
-                                            {t('cancel')}
-                                        </button>
-                                        <button className="btn" style={{ flex: 1, background: 'var(--danger-fill)', color: 'var(--text-on-accent)' }}
-                                            onClick={() => setPendingAction('DELETE_ORPHANS')} disabled={deletingOrphans}>
-                                            {deletingOrphans ? t('saving') : t('orphan_report_delete' as any)}
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Auditing Card */}
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>📜</span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('auditing_header' as any)}</h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('audit_logs')}</p>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-around', margin: '1rem 0' }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>{metrics?.auditing.total}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--danger-fg-strong)' }}>{metrics?.auditing.prunable}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_logs' as any)}</div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => setPendingAction('PRUNE_LOGS')}
-                        disabled={!!processing || metrics?.auditing.prunable === 0}
-                        className="btn"
-                        style={{ width: '100%', marginTop: 'auto', background: metrics?.auditing.prunable === 0 ? 'var(--surface-sunk)' : undefined, color: metrics?.auditing.prunable === 0 ? 'var(--text-faint)' : undefined }}
-                    >
-                        {processing === 'PRUNE_LOGS' ? (locale === 'ar' ? 'جاري الحذف...' : 'Pruning...') : t('prune_logs_btn' as any)}
-                    </button>
-                </div>
-
-                {/* Notifications Card */}
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🔔</span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('notifications')}</h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('system_activity' as any)}</p>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-around', margin: '1rem 0' }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>{metrics?.notifications.total}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('total_label' as any)}</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warn-fg-mid)' }}>{metrics?.notifications.prunable}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('prunable_notifications' as any)}</div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => setPendingAction('PRUNE_NOTIFICATIONS')}
-                        disabled={!!processing || metrics?.notifications.prunable === 0}
-                        className="btn"
-                        style={{ width: '100%', marginTop: 'auto', background: metrics?.notifications.prunable === 0 ? 'var(--surface-sunk)' : undefined, color: metrics?.notifications.prunable === 0 ? 'var(--text-faint)' : undefined }}
-                    >
-                        {processing === 'PRUNE_NOTIFICATIONS' ? (locale === 'ar' ? 'جاري الحذف...' : 'Pruning...') : t('prune_notifications_btn' as any)}
-                    </button>
-                </div>
-
-                {/* Backups Card */}
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>💾</span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('backups_header' as any)}</h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('backups_subtitle' as any)}</p>
-                        </div>
-                    </div>
-                    <p style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)', flexGrow: 1 }}>
-                        {t('backups_description' as any)}
-                    </p>
-                    <button
-                        onClick={() => setPendingAction('BACKUP')}
-                        disabled={triggeringBackup}
-                        className="btn"
-                        style={{ width: '100%', marginTop: 'auto' }}
-                    >
-                        {triggeringBackup ? t('triggering_backup' as any) : t('trigger_backup_now' as any)}
-                    </button>
-                </div>
-
-                {/* Disaster Recovery Card */}
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🧯</span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('disaster_recovery_header' as any)}</h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('disaster_recovery_subtitle' as any)}</p>
-                        </div>
-                    </div>
-                    <p style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)', flexGrow: 1 }}>
-                        {t('disaster_recovery_description' as any)}
-                    </p>
-                    <button
-                        onClick={() => setPendingAction('RESTORE_LATEST')}
-                        disabled={restoring}
-                        className="btn"
-                        style={{ width: '100%', background: 'var(--danger-bg)', color: 'var(--danger-fg)', border: '1px solid var(--danger-border)' }}
-                    >
-                        {restoring ? t('restoring' as any) : t('recover_latest_backup' as any)}
-                    </button>
-                    <button
-                        onClick={openBackupPicker}
-                        disabled={restoring}
-                        className="btn"
-                        style={{ width: '100%' }}
-                    >
-                        {t('choose_backup_to_restore' as any)}
-                    </button>
-                </div>
-
-                {/* Maintenance Mode Card */}
-                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <span aria-hidden="true" style={{ fontSize: '2rem' }}>🔧</span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('maintenance_mode_header' as any)}</h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                {maintenanceMode ? t('maintenance_status_on' as any) : t('maintenance_status_off' as any)}
-                            </p>
-                        </div>
-                    </div>
-                    <p style={{ margin: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        {t('maintenance_mode_description' as any)}
-                    </p>
-                    <textarea
-                        value={maintenanceMessage}
-                        onChange={(e) => setMaintenanceMessage(e.target.value)}
-                        placeholder={t('maintenance_message_placeholder' as any)}
-                        maxLength={500}
-                        rows={2}
-                        style={{
-                            width: '100%', resize: 'vertical', padding: '0.6rem 0.75rem',
-                            border: '1px solid var(--border)', borderRadius: '0.5rem', fontSize: '0.85rem',
-                            fontFamily: 'inherit'
-                        }}
-                    />
-                    <button
-                        onClick={() => setPendingAction(maintenanceMode ? 'MAINTENANCE_OFF' : 'MAINTENANCE_ON')}
-                        disabled={savingMaintenance}
-                        className="btn"
-                        style={{
-                            width: '100%', marginTop: 'auto',
-                            background: maintenanceMode ? 'var(--ok-bg)' : 'var(--danger-bg)',
-                            color: maintenanceMode ? 'var(--ok-fg)' : 'var(--danger-fg)',
-                            border: `1px solid ${maintenanceMode ? 'var(--ok-bg-strong)' : 'var(--danger-border)'}`
-                        }}
-                    >
-                        {savingMaintenance
-                            ? t('maintenance_saving' as any)
-                            : maintenanceMode ? t('disable_maintenance_mode' as any) : t('enable_maintenance_mode' as any)}
-                    </button>
-                </div>
-
-            </div>
-
-            <ConfirmModal
-                isOpen={!!pendingAction}
-                title={pendingAction ? confirmCopy[pendingAction].title : ''}
-                message={pendingAction ? confirmCopy[pendingAction].message : ''}
-                variant={pendingAction === 'BACKUP' ? 'info' : (pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC' || pendingAction === 'DELETE_ORPHANS') ? 'danger' : 'warning'}
-                requireTypedText={
-                    (pendingAction === 'RESTORE_LATEST' || pendingAction === 'RESTORE_SPECIFIC')
-                        ? RESTORE_CONFIRM_WORD
-                        : pendingAction === 'DELETE_ORPHANS' ? DELETE_CONFIRM_WORD : undefined
-                }
-                onConfirm={handleConfirm}
-                onCancel={() => { setPendingAction(null); setSelectedBackup(null) }}
-            />
-
-            <NoticeModal notice={notice} onClose={() => setNotice(null)} />
-
             <BackupPickerModal
-                isOpen={pickerOpen}
-                backups={backups}
-                loading={backupsLoading}
-                error={backupsError}
-                onSelect={handleSelectBackup}
-                onClose={() => setPickerOpen(false)}
+                isOpen={!!picker}
+                backups={picker?.backups ?? []}
+                loading={picker?.loading ?? false}
+                error={picker?.error ?? null}
+                onSelect={backup => {
+                    setPicker(null)
+                    setPending({ action: 'RESTORE_SPECIFIC', backup })
+                }}
+                onClose={() => setPicker(null)}
             />
-        </div>
+        </Page>
     )
 }

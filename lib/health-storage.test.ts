@@ -29,10 +29,6 @@ describe("the health check", () => {
         expect((await MaintenanceService.getStats()).storage).toEqual({ totalFiles: 1, reachable: true })
     })
 
-    it("and the page says so rather than showing an empty figure", async () => {
-        const { readFileSync } = await import("node:fs")
-        const page = readFileSync("app/(dashboard)/dashboard/health/page.tsx", "utf8")
-        expect(page).toContain("metrics?.storage.reachable === false ? '—' : metrics?.storage.totalFiles")
-        expect(page).toContain("t('storage_unreachable' as any)")
-    })
+    // The page saying so, rather than an empty figure, is in
+    // lib/super-admin-health.test.ts.
 })

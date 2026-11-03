@@ -558,6 +558,11 @@ These are built once, in the building-blocks PR, and every page uses them
   - The code a high-risk action asks for (two-factor sign-in) sits above
     every other dialog: the confirmation that sent the action, such as
     "Pay 7 costs, 3,450 EGP", stays open until the code is answered.
+  - One that can't be undone, such as restoring a backup, asks for a word
+    typed first, such as RESTORE: the word is shown as the code has it,
+    left to right and never translated, in both languages, and the main
+    button stays off until it's typed as shown. Enter is the main button
+    once it is.
 - **Selection bar:** when items in a list are picked with their
   checkboxes, a panel above the list says how many are picked and holds
   what can be done to all of them, with a quiet "Clear selection" on the
@@ -1029,3 +1034,7 @@ changed:
 - **2026-11-02:** A tab can say how many it holds (§5.5, Tabs), as the
   Companies list's two do. The list's subscription states take the status
   badges' meaning colours (§2.3), where they had colours of their own.
+- **2026-11-03:** A dialog can ask for a word typed first (§5.5, Dialog),
+  for what can't be undone, such as restoring a backup on System health.
+  The page's word was in the old confirmation window, in a box of its own
+  making, with "Type" and "to confirm" on either side of it.

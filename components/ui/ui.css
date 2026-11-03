@@ -1507,6 +1507,30 @@ a.ui-file-open:focus-visible,
   flex: 1 1 100%;
   min-width: 0;
 }
+/* What a look found, in its card: its title, what was found, the list and
+   its buttons, spaced from each other (System health). */
+.ui-card-report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+.ui-card-report > .ui-subsection-title {
+  margin: 0;
+}
+/* A list that can run long, such as the stored files nothing refers to,
+   scrolls within itself, each line broken anywhere it must (System health). */
+.ui-report-scroll {
+  max-block-size: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+/* A backlog can be thousands of files: only the lines in view are drawn. */
+.ui-report-scroll > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--leading-sm);
+}
 /* More, behind a disclosure, such as the rows a file couldn't give. */
 .ui-more > summary {
   cursor: pointer;

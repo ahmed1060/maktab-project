@@ -52,7 +52,7 @@ function ratio(a: string, b: string): number {
 const TEXT_PAIRS: [string, string][] = [
     ["--ok-fg", "--ok-bg"],
     // The real pairing: --ok-bg-strong is the far stop of the login success
-    // gradient and a ring colour, never a ground under --ok-fg-strong.
+    // gradient and a ring colour, and the green text on it is --ok-fg.
     ["--ok-fg", "--ok-bg-strong"],
     ["--danger-fg", "--danger-bg"],
     ["--danger-fg-strong", "--danger-bg"],
