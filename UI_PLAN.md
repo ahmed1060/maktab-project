@@ -3561,3 +3561,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   their own account, so somebody holding an Admin's session could guess
   codes without end. Unlocking lifts only sign-in's count, and nobody can
   unlock their own sign-in, as somebody signed in isn't locked out.
+- **2026-11-03:** Found by Codex, on #183: two right passwords overlapping
+  after the 30 seconds, given back in the wrong order, put back the time
+  the second had found, and the 30 seconds started again and turned the
+  code away. Counting a try no longer moves the run's time, past the fifth
+  and the tenth, which the 30 seconds and the fifteen minutes run from; a
+  wrong guess moves it, once it's known to be wrong. So giving a try back
+  takes back only the count, in whatever order tries come back.

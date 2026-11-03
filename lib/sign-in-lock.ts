@@ -46,8 +46,8 @@ export type Hold = { kind: 'pause' | 'lock'; until: Date }
 
 type Run = { count: number; resetAt: Date }
 
-/** A try counted: whose, and the times the run had before it and has since, to put back if it's given back. */
-export type Counted = { kind: 'counted'; key: string; before: Date | null; resetAt: Date }
+/** A try counted, to give back or mark wrong once its password has been checked. */
+export type Counted = { kind: 'counted'; key: string }
 
 /**
  * What a run of wrong tries holds back now. Its resetAt is when it's
@@ -70,45 +70,56 @@ export function holdOf(run: Run | null, now: Date): Hold | null {
  * count may go on: under five, five with its 30 seconds over, or six to
  * nine. Postgres takes the row and checks those conditions again on what it
  * finds, so of tries sent together only as many get through as one at a
- * time would, and none is ever counted past the pause or the lock to be
- * given back. It was counted first and given back after, and a try coming
- * in between found six and took the 30 seconds as over (Codex on PR 183).
- * Fails closed, as RateLimiter does (F-10).
+ * time would, and none is ever counted past the pause or the lock (Codex on
+ * PR 183).
+ *
+ * Counting moves the run's time only at the fifth and the tenth, which the
+ * 30 seconds and the fifteen minutes run from; a wrong guess moves it after
+ * (markWrongSignIn). So a try given back takes back only the count, in
+ * whatever order tries come back, where putting back the time it found let
+ * two overlapping right passwords start the 30 seconds again (Codex on
+ * PR 183). Fails closed, as RateLimiter does (F-10).
  */
 export async function countSignIn(key: string, now: Date = new Date()): Promise<Hold | Counted> {
+    const pause: Hold = { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
     try {
         const found = await prisma.rateLimit.findUnique({ where: { key } })
         const run = found && found.resetAt > now ? found : null
         const held = holdOf(run, now)
         if (held) return held
-        // As found, to put back if the try is given back.
-        const before = found?.resetAt ?? null
+        const counted: Counted = { kind: 'counted', key }
         const resetAt = new Date(now.getTime() + LOCK_MS)
-        const counted: Counted = { kind: 'counted', key, before, resetAt }
 
         // No run: this try starts one, unless another sent with it already has.
         if (!run && await startRun(key, found !== null, now, resetAt)) return counted
 
+        const live = { key, resetAt: { gt: now } }
         const added = await prisma.rateLimit.updateMany({
             where: {
-                key,
-                resetAt: { gt: now },
+                ...live,
                 OR: [
-                    { count: { lt: PAUSE_AFTER } },
+                    { count: { lt: PAUSE_AFTER - 1 } },
                     { count: PAUSE_AFTER, resetAt: { lte: new Date(now.getTime() + LOCK_MS - PAUSE_MS) } },
-                    { count: { gt: PAUSE_AFTER, lt: LOCK_AFTER } },
+                    { count: { gt: PAUSE_AFTER, lt: LOCK_AFTER - 1 } },
                 ],
             },
-            data: { count: { increment: 1 }, resetAt },
+            data: { count: { increment: 1 } },
         })
         if (added.count) return counted
+        // The fifth and the tenth: the 30 seconds and the fifteen minutes run from them.
+        const marked = await prisma.rateLimit.updateMany({
+            where: { ...live, count: { in: [PAUSE_AFTER - 1, LOCK_AFTER - 1] } },
+            data: { count: { increment: 1 }, resetAt },
+        })
+        if (marked.count) return counted
 
         // Another try got there first: what holds this one back now.
         const again = await prisma.rateLimit.findUnique({ where: { key } })
-        return holdOf(again && again.resetAt > now ? again : null, now) ?? { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
+        if (!again || again.resetAt <= now) return (await startRun(key, again !== null, now, resetAt)) ? counted : pause
+        return holdOf(again, now) ?? pause
     } catch (e) {
         console.error('[sign-in lock] database error, failing closed', e)
-        return { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
+        return pause
     }
 }
 
@@ -139,26 +150,23 @@ export function holdMessage(hold: Hold, now: Date = new Date()): string {
     return `Too many login attempts for this account. Please try again at ${timeStr}. ${wait}`
 }
 
-const takeOne = (key: string) =>
-    prisma.rateLimit.updateMany({ where: { key, count: { gt: 0 } }, data: { count: { decrement: 1 } } })
-
 /**
  * Gives back a try that wasn't a wrong guess: the step that asks for the
- * code, or an account turned away after its password was right. With the
- * run's time as it was before, or the 30 seconds after the fifth wrong try
- * started again from the right password, and turned the code away (Codex on
- * PR 183). Only if nothing has been counted since; otherwise just the try.
+ * code, or an account turned away after its password was right. Only the
+ * count: counting it didn't move the run's time, past the fifth or the
+ * tenth, and the 30 seconds run from the fifth wrong try.
  */
 export async function giveBackSignIn(counted: Counted): Promise<void> {
     try {
-        if (counted.before) {
-            const put = await prisma.rateLimit.updateMany({
-                where: { key: counted.key, count: { gt: 0 }, resetAt: counted.resetAt },
-                data: { count: { decrement: 1 }, resetAt: counted.before },
-            })
-            if (put.count) return
-        }
-        await takeOne(counted.key)
+        await prisma.rateLimit.updateMany({ where: { key: counted.key, count: { gt: 0 } }, data: { count: { decrement: 1 } } })
+    } catch { }
+}
+
+/** A try that was a wrong guess: the run is remembered fifteen minutes from it. */
+export async function markWrongSignIn(counted: Counted, now: Date = new Date()): Promise<void> {
+    const resetAt = new Date(now.getTime() + LOCK_MS)
+    try {
+        await prisma.rateLimit.updateMany({ where: { key: counted.key, count: { gt: 0 }, resetAt: { lt: resetAt } }, data: { resetAt } })
     } catch { }
 }
 

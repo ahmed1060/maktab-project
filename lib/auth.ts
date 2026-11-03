@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
-import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor, type Counted } from "./sign-in-lock"
+import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor, markWrongSignIn, type Counted } from "./sign-in-lock"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -96,6 +96,12 @@ export const authOptions: NextAuthOptions = {
                     if (!counted || givenBack) return
                     givenBack = true
                     await giveBackSignIn(counted)
+                }
+                // A wrong password or code: the run is remembered from it.
+                const markWrong = async () => {
+                    if (!counted || givenBack) return
+                    givenBack = true
+                    await markWrongSignIn(counted)
                 }
                 // A sign-in that succeeds ends the run: the tries are counted in a row.
                 const forget = async () => {
@@ -198,6 +204,7 @@ export const authOptions: NextAuthOptions = {
                         // write. The count above (lib/sign-in-lock.ts) already holds it; a
                         // failed guess against a real account is still logged, since
                         // that volume is bounded by how many accounts actually exist.
+                        await markWrong()
                         return null
                     }
 
@@ -365,6 +372,7 @@ export const authOptions: NextAuthOptions = {
                     // stayed locked out behind the rate limit (review on #29).
                     const message = (error as Error)?.message
                     if (message === 'MFA_REQUIRED' || (passwordOk && message !== 'INVALID_MFA_CODE')) await giveBack()
+                    else if (message === 'INVALID_MFA_CODE') await markWrong()
                     console.error('Auth error:', error)
                     throw error
                 }

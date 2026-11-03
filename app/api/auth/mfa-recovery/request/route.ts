@@ -3,7 +3,7 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
-import { countSignIn, giveBackSignIn, holdMessage, lockKeyFor } from "@/lib/sign-in-lock"
+import { countSignIn, giveBackSignIn, holdMessage, lockKeyFor, markWrongSignIn } from "@/lib/sign-in-lock"
 import { DUMMY_PASSWORD_HASH } from "@/lib/auth"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
         const isValid = await bcrypt.compare(password, passwordHash)
 
         if (!isValid || !account) {
+            await markWrongSignIn(tried)
             return ApiResponse.forbidden("Invalid credentials")
         }
         // The password was right: asking for a code is not a guess, so the

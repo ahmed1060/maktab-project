@@ -69,6 +69,7 @@ function fits(row: { count: number; resetAt: Date } | undefined, where: any): bo
         const value = row[field] as any
         if (cond instanceof Date) { if (value.getTime() !== cond.getTime()) return false; continue }
         if (typeof cond === "number") { if (value !== cond) return false; continue }
+        if (cond.in !== undefined && !cond.in.includes(value)) return false
         if (cond.gt !== undefined && !(value > cond.gt)) return false
         if (cond.gte !== undefined && !(value >= cond.gte)) return false
         if (cond.lt !== undefined && !(value < cond.lt)) return false
@@ -237,6 +238,33 @@ describe("signing in, a pause after five wrong tries and a lock after ten", () =
         expect(third.kind).toBe("pause")
         expect((await both).map(t => t.kind).sort()).toEqual(["counted", "pause"])
         expect(db.limits[key].count).toBe(5)
+    })
+
+    it("keeps the 30 seconds over when two right passwords overlap and are given back in either order (Codex on PR 183)", async () => {
+        // A counted, then B, a second later; A given back, then B. Giving a
+        // try back put back the time it found, so B put back A's, and the
+        // 30 seconds started again from it and turned the code away.
+        const { countSignIn, giveBackSignIn } = await import("@/lib/sign-in-lock")
+        await wrong(5)
+        const a = await countSignIn("login:account:sa")
+        later(1000)
+        const b = await countSignIn("login:account:sa")
+        if (a.kind !== "counted" || b.kind !== "counted") throw new Error("both should be counted")
+        await giveBackSignIn(a)
+        await giveBackSignIn(b)
+        expect(db.limits["login:account:sa"].count).toBe(5)
+        expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+    })
+
+    it("remembers a run fifteen minutes from its last wrong try, not its first", async () => {
+        db.superAdmins.sa.mfaEnabled = false
+        await wrong(3)
+        later(10 * 60_000)
+        await wrong(1)
+        later(10 * 60_000)
+        // The fifth in a row: twenty minutes after the first, ten after the last.
+        expect(await authorize({ email, password: "wrong" })).toBeNull()
+        await expect(authorize({ email, password })).rejects.toThrow("Sign-in paused")
     })
 
     it("forgets a run fifteen minutes after its last wrong try", async () => {
