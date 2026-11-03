@@ -61,7 +61,7 @@ describe("cards that load their own data", () => {
         expect(face).toContain("const ready = !!data && (purgeBody !== undefined || !!purgeError)")
         // The state line is as tall as its longest, whichever shows, the failure among them.
         expect(face).toContain(`<Reserve className="ui-state-line" room={[...STATES.map(stateLine), failedLine]}>`)
-        expect(face).toContain(`{state ? stateLine(state) : error ? failedLine : <span className="ui-card-note" role="status">{t('loading')}</span>}`)
+        expect(face).toContain(`{state ? stateLine(state) : error ? <span role="status">{failedLine}</span> : <span className="ui-card-note" role="status">{t('loading')}</span>}`)
     })
 
     it("the face card doesn't wait for the rotation's status, and keeps its place instead (Codex review on #49)", () => {

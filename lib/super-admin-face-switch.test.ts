@@ -95,7 +95,7 @@ describe("the face verification switch", () => {
 
     it("says when it couldn't load, with Try again, in the same room", async () => {
         const html = await render({ [FACE]: { error: new Error("down") } })
-        expect(shown(html)).toContain(`<div class="ui-state-line"><span class="ui-badge ui-badge-problem">${esc(en.face_sys_load_failed)}</span></div>`)
+        expect(shown(html)).toContain(`<div class="ui-state-line"><span role="status"><span class="ui-badge ui-badge-problem">${esc(en.face_sys_load_failed)}</span></span></div>`)
         expect(shown(html)).toContain(`<div class="ui-card-actions"><button type="button" class="ui-btn ui-btn-secondary">${en.try_again}</button></div>`)
         expect(html).toContain(`<div class="ui-reserve-room ui-state-line" aria-hidden="true" inert=""><span class="ui-badge ui-badge-problem">`)
     })
@@ -136,7 +136,7 @@ describe("changing the face photo key", () => {
         const reading = shown(await render({ [FACE]: status({ rotating: true }), [PURGE]: noPurge }))
         expect(reading).toContain(`<div class="ui-card-lines"><p class="ui-card-note" role="status">${en.loading}</p></div>`)
         const failed = shown(await render({ [FACE]: status({ rotating: true }), [PURGE]: noPurge, [REKEY]: { error: new Error("slow") } }))
-        expect(failed).toContain(`<div class="ui-card-lines"><p class="ui-error">${esc(en.face_rekey_load_failed)}</p><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">${en.try_again}</button></div>`)
+        expect(failed).toContain(`<div class="ui-card-lines"><p class="ui-error" role="status">${esc(en.face_rekey_load_failed)}</p><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">${en.try_again}</button></div>`)
     })
 })
 
@@ -186,5 +186,16 @@ describe("the face verification switch, found in the browser", () => {
         // heading: a paragraph's own margin, on top of the lines' gap.
         const css = readFileSync("components/ui/ui.css", "utf8")
         expect(css).toMatch(/\.ui-card-lines > \* \{\s*margin: 0;\s*\}/)
+    })
+})
+
+describe("the face verification switch, found in the web interface audit", () => {
+    it("says out loud when it couldn't load, as it said it was loading", async () => {
+        // The loading line was a status, and the failure that replaced it
+        // was nothing a screen reader would hear.
+        const html = shown(await render({ [FACE]: { error: new Error("down") } }))
+        expect(html).toContain(`<div class="ui-state-line"><span role="status"><span class="ui-badge ui-badge-problem">${esc(en.face_sys_load_failed)}</span></span></div>`)
+        const rekey = shown(await render({ [FACE]: status({ rotating: true }), [PURGE]: noPurge, [REKEY]: { error: new Error("slow") } }))
+        expect(rekey).toContain(`<p class="ui-error" role="status">${esc(en.face_rekey_load_failed)}</p>`)
     })
 })

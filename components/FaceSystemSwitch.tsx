@@ -160,7 +160,8 @@ export default function FaceSystemSwitch() {
         <Card title={t('face_sys_title')}>
             <p className="ui-card-note">{t('face_sys_hint')}</p>
             <Reserve className="ui-state-line" room={[...STATES.map(stateLine), failedLine]}>
-                {state ? stateLine(state) : error ? failedLine : <span className="ui-card-note" role="status">{t('loading')}</span>}
+                {/* Said out loud, the failure as the loading before it (web interface audit, PR 179). */}
+                {state ? stateLine(state) : error ? <span role="status">{failedLine}</span> : <span className="ui-card-note" role="status">{t('loading')}</span>}
             </Reserve>
             <Reserve className="ui-card-actions" room={[...STATES.map(s => buttons(s, false)), protectedOnly, tryAgain(false, () => {})]}>
                 {state ? (canChange ? buttons(state, true) : protectedOnly) : error && tryAgain(isValidating, () => { void mutate() })}
@@ -179,7 +180,7 @@ export default function FaceSystemSwitch() {
                     <Reserve className="ui-card-lines" room={[<>{leftLines(0, 0, false)}{unreadable(0)}</>, <>{doneLine}{unreadable(0)}</>, sameKeyLine]}>
                         {!rotation ? (
                             rekeyError
-                                ? <><p className="ui-error">{t('face_rekey_load_failed')}</p>{tryAgain(rekeyValidating, () => { void reloadRekey() }, true)}</>
+                                ? <><p className="ui-error" role="status">{t('face_rekey_load_failed')}</p>{tryAgain(rekeyValidating, () => { void reloadRekey() }, true)}</>
                                 : <p className="ui-card-note" role="status">{t('loading')}</p>
                         ) : rotation.sameKey ? sameKeyLine : <>
                             {rotation.previous > 0 ? leftLines(left, rotation.total, true) : doneLine}

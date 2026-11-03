@@ -3385,3 +3385,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   photos left sat a line's height under its heading, a paragraph's own
   margin on top of the lines' gap. A card's lines are set by their gap
   alone.
+- **2026-11-03:** Found in the web interface audit, on #179: the face card's
+  loading line was a status, and the failure that replaced it, the card's
+  or the photo key's, was nothing a screen reader would hear. Each is said
+  out loud, as the loading was.
