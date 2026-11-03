@@ -51,7 +51,8 @@ export default function NewEmployeePage() {
     const [loading, setLoading] = useState(false)
     // The field to focus, once the form can be used again: its fields are off
     // while it's sent, and a refused email focused then took the focus nowhere.
-    const [focusOn, setFocusOn] = useState<NewEmployeeField | null>(null)
+    // Numbered, so the same field asked for again is focused again.
+    const [focusOn, setFocusOn] = useState<{ field: NewEmployeeField; n: number } | null>(null)
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
@@ -84,8 +85,7 @@ export default function NewEmployeePage() {
     useEffect(() => {
         if (!focusOn || loading) return
         // The first field that's wrong takes the focus, which brings it into view.
-        document.querySelector<HTMLElement>(`[name="${focusOn}"]`)?.focus()
-        setFocusOn(null)
+        document.querySelector<HTMLElement>(`[name="${focusOn.field}"]`)?.focus()
     }, [focusOn, loading])
 
     if (!mayCreate) return <AccessDenied />
@@ -93,12 +93,14 @@ export default function NewEmployeePage() {
     const clear = (field: NewEmployeeField) => { if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: undefined }) }
     const wrongAt = (errors: Partial<Record<NewEmployeeField, string>>) => {
         setFieldErrors(errors)
-        setFocusOn(firstError(errors as Record<string, string>, FIELDS) as NewEmployeeField | null)
+        const first = firstError(errors as Record<string, string>, FIELDS) as NewEmployeeField | null
+        if (first) setFocusOn(f => ({ field: first, n: (f?.n ?? 0) + 1 }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
+        setFocusOn(null)
         const wrong = newEmployeeErrors({ firstName, lastName, email, password, company: { needed: isSuperAdmin, id: companyId } })
         if (Object.keys(wrong).length > 0) {
             wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))

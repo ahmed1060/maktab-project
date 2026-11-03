@@ -156,7 +156,7 @@ describe("its checks", () => {
         })
         expect(newEmployeeErrors({ firstName: "Mona", lastName: "Adel", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({})
         const src = readFileSync(PAGE, "utf8")
-        expect(src).toContain("setFocusOn(firstError(errors as Record<string, string>, FIELDS) as NewEmployeeField | null)")
+        expect(src).toContain("if (first) setFocusOn(f => ({ field: first, n: (f?.n ?? 0) + 1 }))")
         for (const english of ["Email must be in format", "First Name max", "Password must be 12-72", "Company is required", "An error occurred", "Failed to create user", "Username already in use"]) {
             expect(src, english).not.toContain(english)
         }
@@ -210,7 +210,7 @@ describe("Add employee, found in the browser", () => {
         // focused while it still was: the focus went nowhere.
         const src = readFileSync(PAGE, "utf8")
         expect(src).toContain("if (!focusOn || loading) return")
-        expect(src).toContain("document.querySelector<HTMLElement>(`[name=\"${focusOn}\"]`)?.focus()")
+        expect(src).toContain("document.querySelector<HTMLElement>(`[name=\"${focusOn.field}\"]`)?.focus()")
     })
 })
 
