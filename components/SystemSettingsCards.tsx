@@ -125,7 +125,13 @@ async function send(patch: Partial<StoredSettings>): Promise<Saved> {
     }
 }
 
-/** What each card shares: saving its fields, and saying how it went. */
+/**
+ * What each card shares: saving its fields, and saying how it went. While
+ * a save is on its way the card's fields are held still, read-only where
+ * they're typed in so the cursor stays put: an edit made then could only be
+ * told apart from the stored value by what it says, and one back to that
+ * value was taken for no edit and lost (found by Codex on PR 178).
+ */
 function useCardSave(onSaved: OnSaved) {
     const { t } = useLanguage()
     const { showToast } = useToast()
@@ -196,7 +202,7 @@ function NumberCard({ field, title, note, label, stored, onSaved }: {
             <p className="ui-card-note">{note}</p>
             <form ref={form} className="ui-card-form" noValidate onSubmit={submit}>
                 <Field label={label} hint={t(range).replace('{min}', num(min)).replace('{max}', num(max))} error={error}>{p => (
-                    <TextInput {...p} name={field} type="number" inputMode="numeric" min={min} max={max} autoComplete="off"
+                    <TextInput {...p} name={field} type="number" inputMode="numeric" min={min} max={max} autoComplete="off" readOnly={saving}
                         value={text} onChange={e => { setText(e.target.value); setError(undefined) }} />
                 )}</Field>
                 <div className="ui-card-actions">
@@ -250,7 +256,7 @@ export function CalendarCard({ stored, onSaved }: { stored: StoredSettings; onSa
             <form ref={form} className="ui-card-form" noValidate onSubmit={submit}>
                 <Field label={t('sys_timezone')} error={error}>
                     {/* Zone names are identifiers, not words: a page translator leaves them as they are. */}
-                    {p => <Select {...p} name="defaultTimezone" translate="no" options={zones} value={zone} onChange={e => { setZone(e.target.value); setError(undefined) }} />}
+                    {p => <Select {...p} name="defaultTimezone" translate="no" disabled={saving} options={zones} value={zone} onChange={e => { setZone(e.target.value); setError(undefined) }} />}
                 </Field>
                 <div className="ui-card-actions">
                     <Button type="submit" variant="primary" busy={saving} disabled={!dirty}>{t('save')}</Button>
@@ -294,7 +300,7 @@ export function SignatureCard({ stored, onSaved }: { stored: StoredSettings; onS
             <form ref={form} className="ui-card-form" noValidate onSubmit={submit}>
                 <div className="ui-field">
                     <label className="ui-choice">
-                        <input type="checkbox" className="ui-check" name="showPoweredBy" checked={shown} onChange={e => setShown(e.target.checked)} />
+                        <input type="checkbox" className="ui-check" name="showPoweredBy" checked={shown} disabled={saving} onChange={e => setShown(e.target.checked)} />
                         {t('show_powered_by_label')}
                     </label>
                 </div>
@@ -302,7 +308,7 @@ export function SignatureCard({ stored, onSaved }: { stored: StoredSettings; onS
                     brand name: no spelling marks, and no page translator. */}
                 <Field label={t('powered_by_name_label')} error={error}
                     hint={shown ? t('ui_characters_used').replace('{used}', num(name.length)).replace('{max}', num(NAME_MAX)) : t('sys_signature_name_off')}>{p => (
-                    <TextInput {...p} name="poweredByName" dir="auto" maxLength={NAME_MAX} autoComplete="off" spellCheck={false} translate="no"
+                    <TextInput {...p} name="poweredByName" dir="auto" maxLength={NAME_MAX} autoComplete="off" spellCheck={false} translate="no" readOnly={saving}
                         placeholder={DEFAULT_POWERED_BY_NAME} value={name} disabled={!shown} onChange={e => { setName(e.target.value); setError(undefined) }} />
                 )}</Field>
                 {/* What it will look like, so it can be checked before it's saved. */}

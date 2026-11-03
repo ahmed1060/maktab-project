@@ -3351,3 +3351,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   read Cairo, with Save off, while London was saved. A save's answer now
   changes only what that save sent, and the rest is read again from the
   server, which still brings what somebody else saved.
+- **2026-11-03:** Found by Codex's third review of #178: typed back to what
+  was stored while a save was on its way, an edit looked like no edit, and
+  the answer replaced it, with Save off; the signature's switch, turned off,
+  saved and turned on again while waiting, the same. Told apart by value,
+  an edit back to the stored value can't be seen, so each card's fields are
+  now held still until its save comes back: read-only where they're typed
+  in, so the cursor stays put, and the switch and the calendar off.

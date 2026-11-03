@@ -306,3 +306,18 @@ describe("System settings, found in Codex's second review", () => {
         expect(readFileSync(CARDS, "utf8")).toContain("onSaved(result.data, patch)")
     })
 })
+
+describe("System settings, found in Codex's third review", () => {
+    it("holds each card's fields still while its save is on its way", () => {
+        // 70 stored, 200 sent, 70 typed again before the answer: 70 looked
+        // untouched, the answer's 200 replaced it, and Save went off. Told
+        // apart by value, an edit back to what was stored can't be seen.
+        const cards = readFileSync(CARDS, "utf8")
+        for (const control of [
+            'name={field} type="number" inputMode="numeric" min={min} max={max} autoComplete="off" readOnly={saving}',
+            'name="defaultTimezone" translate="no" disabled={saving}',
+            'name="showPoweredBy" checked={shown} disabled={saving}',
+            'name="poweredByName" dir="auto" maxLength={NAME_MAX} autoComplete="off" spellCheck={false} translate="no" readOnly={saving}',
+        ]) expect(cards, control).toContain(control)
+    })
+})
