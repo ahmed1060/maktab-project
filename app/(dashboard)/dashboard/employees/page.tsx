@@ -17,12 +17,13 @@ import ConfirmModal from '@/components/ConfirmModal'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import {
     Avatar, Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
-    RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem, type StatusTone,
+    RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
+import { STATUS_TONE, STATUS_WORD } from '@/lib/person-status'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
 import { employeesListUrl, type EmployeesQuery } from './list-query'
@@ -56,9 +57,6 @@ const SORTS = {
 } as const
 type SortKey = keyof typeof SORTS
 
-/** What a person's status means, for its colour (DESIGN.md §2.3). */
-const STATUS_TONE: Record<string, StatusTone> = { ACTIVE: 'good', OFFLINE: 'neutral', SUSPENDED: 'problem', ARCHIVED: 'neutral' }
-const STATUS_WORD: Record<string, TranslationKey> = { ACTIVE: 'status_online', OFFLINE: 'status_offline', SUSPENDED: 'status_suspended', ARCHIVED: 'status_archived' }
 
 export default function EmployeesPage() {
     const { t, locale } = useLanguage()

@@ -117,10 +117,8 @@
   --warn-fg-warm: #9a3412;
   --warn-solid-warm: #fb923c;
 
-  --warn-bg-yellow: #fef9c3;
   --warn-bg-yellow-subtle: #fffbeb;
   --warn-border-yellow: #fde68a;
-  --warn-fg-yellow: #854d0e;
   --warn-fg-mid: #b45309;
   --warn-solid-hover: #d97706;
 
@@ -142,7 +140,6 @@
      least 4.5:1 (lib/contrast.test.ts). */
   --ok-fill: #0b7b56;
   --info-fill: #0b61ef;
-  --warn-fill: #966006;
   --warn-fill-warm: #ae5104;
   --danger-fill: #d71212;
   --accent-fill: #942ff5;
@@ -1196,10 +1193,8 @@ input::-webkit-credentials-auto-fill-button {
     --warn-border-warm: #6b3d1c;
     --warn-fg-warm: #f5b183;
     --warn-solid-warm: #e08a4e;
-    --warn-bg-yellow: #35300d;
     --warn-bg-yellow-subtle: #262208;
     --warn-border-yellow: #63591a;
-    --warn-fg-yellow: #e8d47a;
     --warn-fg-mid: #f0c96b;
     --warn-solid-hover: #c79127;
 
@@ -1230,7 +1225,6 @@ input::-webkit-credentials-auto-fill-button {
        the card it sits on. */
     --ok-fill: #1f8051;
     --info-fill: #1f76b2;
-    --warn-fill: #936916;
     --warn-fill-warm: #ae5a1f;
     --danger-fill: #e11117;
     --accent-fill: #9047ec;
