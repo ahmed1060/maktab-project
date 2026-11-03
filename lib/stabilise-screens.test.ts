@@ -113,13 +113,14 @@ describe("at phone width", () => {
  * measuring the contrast of every piece of text against what is behind it.
  */
 describe("in the dark theme", () => {
-    it("the audit log's total uses the chip every other list's total does", () => {
-        // It was white on --text-strong: near-white in the dark theme, 1.04:1.
-        const filter = readFileSync("components/AuditLogFilter.tsx", "utf8")
-        const chip = filter.slice(filter.indexOf("{/* Total Count */}"))
-        expect(chip).toContain("background: 'var(--chip-solid-bg)'")
-        expect(chip).toContain("color: 'var(--chip-solid-fg)'")
-        expect(chip).not.toContain("var(--text-strong)")
+    it("the audit log's total is the pager's, as every other list's is", () => {
+        // It was white on --text-strong: near-white in the dark theme, 1.04:1,
+        // then a chip of its own. It's the building blocks' pager now, which
+        // says how many there are (lib/super-admin-audit-logs.test.ts).
+        const page = readFileSync("app/(dashboard)/dashboard/audit-logs/page.tsx", "utf8")
+        expect(page).toContain("<Pager ")
+        expect(page).toContain("countOf(t, locale, listed.total, 'logged')")
+        expect(page).not.toContain("var(--text-strong)")
     })
 })
 

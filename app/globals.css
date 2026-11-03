@@ -125,13 +125,11 @@
   --info-bg-sky: #f0f9ff;
   --info-bg-sky-firm: #bae6fd;
   --info-bg-indigo: #dbeafe;
-  --info-bg-indigo-faint: #e0e7ff;
   --info-border-indigo: #a5b4fc;
   --info-fg-deep: #075985;
   --info-fg-indigo: #1e40af;
 
   --accent-solid: #a855f7;
-  --accent-deepest: #3730a3;
 
   /* Fills: a status colour as the ground under white text (a badge, a filled
      button). The -solid colours are also used as text and strokes on the
@@ -1206,15 +1204,11 @@ input::-webkit-credentials-auto-fill-button {
     --info-bg-sky: #0a2130;
     --info-bg-sky-firm: #16455e;
     --info-bg-indigo: #16243f;
-    --info-bg-indigo-faint: #1a2547;
     --info-border-indigo: #3d4b7a;
     --info-fg-deep: #96d4f5;
     --info-fg-indigo: #9db4f0;
 
     --accent-solid: #a86ef0;
-    /* Text on the dark surfaces (the audit log's action names): #6a5ad0 read
-       at 2.85:1 there. */
-    --accent-deepest: #b3a6f2;
     --brand-primary-text: #a5b4fc;
     --focus-ring: #a5b4fc;
     --link: #a5b4fc;

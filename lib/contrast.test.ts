@@ -268,10 +268,11 @@ describe("the two themes are actually different", () => {
 describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
     // Found by measuring every page's text in the dark theme. The brand indigo
     // (--primary, #6366f1) was used as text there unchanged, 2.8:1 on the dark
-    // surfaces, and the audit log's action names (--accent-deepest) 2.85:1.
-    // --primary itself can't lighten in the dark theme, because white text sits
-    // on it in buttons, so text uses --brand-primary-text.
-    for (const fg of ["--brand-primary-text", "--accent-deepest"]) {
+    // surfaces, and the audit log's action names (--accent-deepest, gone with
+    // the old page in PR 175) 2.85:1. --primary itself can't lighten in the
+    // dark theme, because white text sits on it in buttons, so text uses
+    // --brand-primary-text.
+    for (const fg of ["--brand-primary-text"]) {
         for (const bg of ["--surface", "--surface-sunk"]) {
             it(`${fg} on ${bg}`, () => {
                 const r = ratio(DARK[fg], DARK[bg])

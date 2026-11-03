@@ -1,5 +1,7 @@
 import { randomBytes } from "crypto"
 import { prisma } from "@/lib/prisma"
+import { dayRange } from "@/lib/day-range"
+import { DEFAULT_TIME_ZONE } from "@/lib/time"
 
 export interface AuditLogOptions {
     tx?: any
@@ -108,9 +110,15 @@ export class AuditLogService {
         }
 
         if (filters.startDate || filters.endDate) {
+            // A calendar day, as the date range picker sends, is the whole of
+            // that day where the platform is, as every other list's is; it was
+            // midnight UTC, so a range "to 3 November" left the 3rd out. A
+            // moment, as the dashboard's System errors link sends, is that
+            // moment (UI_PLAN.md §5 step 5, Operations part 2).
+            const days = dayRange(filters.startDate, filters.endDate, DEFAULT_TIME_ZONE)
             where.createdAt = {}
-            if (filters.startDate) where.createdAt.gte = new Date(filters.startDate)
-            if (filters.endDate) where.createdAt.lte = new Date(filters.endDate)
+            if (filters.startDate) where.createdAt.gte = days?.gte ?? new Date(filters.startDate)
+            if (filters.endDate) where.createdAt.lte = days?.lte ?? new Date(filters.endDate)
         }
 
         if (filters.companyId) {

@@ -1,19 +1,34 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { useViewer } from '@/lib/useCan'
+import { useCallback, useEffect, type ReactNode } from 'react'
 import useSWR from 'swr'
-import Pagination from '@/components/Pagination'
-import { useLanguage } from '@/context/LanguageContext'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import { useHeader } from '@/context/HeaderContext'
-import { useCompany } from '@/context/CompanyContext'
-import AuditLogFilter from '@/components/AuditLogFilter'
+import { HourglassIcon, LightningIcon, MagnifyingGlassIcon, ScrollIcon, ShapesIcon, UserIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import { fetcher } from '@/lib/swr-fetcher'
+import DateRangePicker from '@/components/DateRangePicker'
+import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
+import {
+    Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, SearchInput, Select, StatusBadge,
+    type Column, type StatusTone,
+} from '@/components/ui'
+import { useCompany } from '@/context/CompanyContext'
+import { useLanguage } from '@/context/LanguageContext'
+import { AUDIT_ACTIONS, AUDIT_ACTION_GROUPS, AUDIT_ENTITY_TYPES } from '@/lib/audit-codes'
 import { describeDetails, type DetailLine } from '@/lib/audit-details'
+import { countOf } from '@/lib/plural'
+import { fetcher, SWRError } from '@/lib/swr-fetcher'
+import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
+import type { TranslationKey } from '@/lib/translations'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useViewer } from '@/lib/useCan'
 
+/**
+ * The audit log (the Super Admin's pages, Operations part 2, UI_PLAN.md §5
+ * step 5): every sensitive change, who made it and when, a table on
+ * computers and cards on phones. Found by the item's ID or an error's code,
+ * who did it, what it was on, what was done and when, each kept in the
+ * address, so a link such as the dashboard's System errors lands filtered,
+ * and narrowed to the company the top bar picked.
+ */
 type AuditLog = {
     id: string
     action: string
@@ -21,215 +36,213 @@ type AuditLog = {
     entityId: string
     userId: string | null
     superAdminId: string | null
-    details: any // F-12: Json on the backend, not a JSON-in-string column
+    // Json on the backend (F-12), read by lib/audit-details.ts.
+    details: unknown
     createdAt: string
-    user?: {
-        firstName: string
-        lastName: string
-        email: string
-        role: string
-    }
-    superAdmin?: {
-        firstName: string
-        lastName: string
-        email: string
-    }
+    user?: { firstName: string; lastName: string; email: string; role: string } | null
+    superAdmin?: { firstName: string; lastName: string; email: string } | null
 }
+type Listed = { data: AuditLog[]; total: number; page: number; totalPages: number }
+type Named = { id: string; firstName: string; lastName: string; company?: { name: string } | null }
+const LIMIT = 20
+/** Shown before the rest of an entry's details, which wait behind Show more. */
+const SHOWN = 3
+/** Longer, as a stack trace or a note, waits behind Show more too. */
+const SHORT = 120
+const FILTERS = ['entityType', 'action', 'startDate', 'endDate', 'entityId', 'performedById'] as const
+
+/** What was done, in its meaning's colour: a deletion a problem, a creation good. */
+const toneOf = (action: string): StatusTone => action.includes('DELETE') ? 'problem' : action.includes('CREATE') ? 'good' : 'neutral'
 
 export default function AuditLogsPage() {
-    // Who is looking comes from the layout on the first paint (useViewer), so a
-    // Super Admin never sees "Access Restricted" while the session loads.
-    const viewer = useViewer()
     const { t, locale } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
+    // Who is looking comes from the layout on the first paint, so a Super
+    // Admin never sees "Access restricted" while the session loads.
+    const viewer = useViewer()
+    const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
     const { selectedCompanyId } = useCompany()
-    // Seeds from the URL so a deep link (e.g. the dashboard's "System
-    // Errors" card) lands here pre-filtered, not just on the unfiltered list.
-    const searchParams = useSearchParams()
-    const [page, setPage] = useState(1)
-    const [filters, setFilters] = useState({
-        entityType: searchParams.get('entityType') || '',
-        action: searchParams.get('action') || '',
-        startDate: searchParams.get('startDate') || '',
-        endDate: searchParams.get('endDate') || '',
-        entityId: searchParams.get('entityId') || '',
-        performedById: ''
-    })
-    const limit = 20
 
-    // "Performed By" filter options — fetched once, doesn't depend on
-    // anything that changes on this page. Was calling a route that never
-    // existed (/api/all-users, always 404) — every other page in the app
-    // gets the user list from /api/users, whose list shape is
-    // { data: { data: User[], total, page, totalPages } }.
-    const { data: usersResult } = useSWR('/api/users?limit=1000', fetcher)
-    const users: { id: string, firstName: string, lastName: string, role: string }[] = usersResult?.data?.data || []
+    const { picked, go } = useListAddress('/dashboard/audit-logs')
+    const filters = Object.fromEntries(FILTERS.map(k => [k, picked.get(k) || ''])) as Record<typeof FILTERS[number], string>
+    const page = Math.max(1, Number(picked.get('page')) || 1)
+    // The ID or code, sent once typing pauses, where every letter asked again.
+    const goSearch = useCallback((changes: Record<string, string>) => go({ entityId: changes.search }), [go])
+    const { query, setQuery, clear } = useSearchField(filters.entityId, goSearch)
 
+    // Whose entries: the Super Admins, whom the old list didn't offer, and
+    // the people in every company.
+    const { data: usersResult } = useSWR(isSuperAdmin ? '/api/users?limit=1000' : null, fetcher)
+    const { data: adminsResult } = useSWR(isSuperAdmin ? '/api/super-admins?page=1&limit=100' : null, fetcher)
+    const users: Named[] = usersResult?.data?.data ?? []
+    const admins: Named[] = adminsResult?.data?.data ?? []
+
+    const asked = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
+    for (const k of FILTERS) if (filters[k]) asked.set(k, filters[k])
+    if (selectedCompanyId) asked.set('companyId', selectedCompanyId)
+    const listUrl = isSuperAdmin ? `/api/admin/audit-logs?${asked.toString()}` : null
+    // The rows stay up while the next page loads, each answer tagged with
+    // what it was asked for; not across filters or companies, where they'd
+    // be drawn under a choice they aren't for.
+    const scope = [...FILTERS.map(k => filters[k]), selectedCompanyId ?? ''].join('/')
+    const { data, error, isValidating, mutate } = useSWR(scopedKey(listUrl, scope), scopedFetcher, { keepPreviousData: true })
+    const failed = loadFailed(data, error, listUrl)
+    const listed: Listed | null = failed ? null : forScope(data, scope)?.data ?? null
+    // Past the last page, as on page 8 of a company with 3, or a link to a
+    // page there no longer is: to the last there is, once the answer says
+    // how many. It isn't "nothing has been logged", where the empty list had
+    // no pager to go back by (Codex on PR 175).
+    const pastTheEnd = !!listed && listed.data.length === 0 && listed.totalPages > 0 && page > listed.totalPages
     useEffect(() => {
-        setTitle(t('audit_logs'))
-        setSubtitle(t('audit_logs_subtitle'))
-        return () => {
-            setTitle(null)
-            setSubtitle(null)
-        }
-    }, [setTitle, setSubtitle, t])
+        if (pastTheEnd) go({ page: String(listed.totalPages) })
+    }, [pastTheEnd, listed?.totalPages, go])
+    // Another company, picked in the top bar, starts from its first page, as another filter does.
+    useAdjustOnChange([selectedCompanyId], () => { if (page !== 1) go({ page: '1' }) })
 
-    const logsQuery = (() => {
-        const queryParams = new URLSearchParams()
-        queryParams.set('page', page.toString())
-        queryParams.set('limit', limit.toString())
-        if (filters.entityType) queryParams.set('entityType', filters.entityType)
-        if (filters.action) queryParams.set('action', filters.action)
-        if (filters.startDate) queryParams.set('startDate', filters.startDate)
-        if (filters.endDate) queryParams.set('endDate', filters.endDate)
-        if (filters.entityId) queryParams.set('entityId', filters.entityId)
-        if (filters.performedById) queryParams.set('performedById', filters.performedById)
-        if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
-        return `/api/admin/audit-logs?${queryParams.toString()}`
-    })()
-    const { data: logsResult, isLoading: loading } = useSWR(logsQuery, fetcher)
-    const logs: AuditLog[] = logsResult?.data?.data || []
-    const totalPages: number = logsResult?.data?.totalPages || 0
+    if (!isSuperAdmin) return <AccessDenied />
 
-    const handleFilterChange = (newFilters: typeof filters) => {
-        setFilters(newFilters)
-        setPage(1)
+    const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const label = (prefix: 'audit_action_' | 'audit_entity_', code: string) => t(`${prefix}${code}` as TranslationKey) || code
+    // Every labelled action and item (lib/audit-codes.ts), alphabetical in the reader's language.
+    const sorted = (prefix: 'audit_action_' | 'audit_entity_', codes: readonly string[]) =>
+        codes.map(code => ({ value: code, label: label(prefix, code) })).sort((a, b) => a.label.localeCompare(b.label, locale))
+    const nameOf = (p: { firstName: string; lastName: string }) => `${p.firstName} ${p.lastName}`.trim()
+    const byName = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label, locale)
+
+    const filtersOn = (filters.performedById ? 1 : 0) + (filters.entityType ? 1 : 0) + (filters.action ? 1 : 0) + (filters.startDate || filters.endDate ? 1 : 0)
+    const resetFilters = () => {
+        clear()
+        go(Object.fromEntries(FILTERS.map(k => [k, ''])))
     }
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString)
-        return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-US', {
-            dateStyle: 'medium',
-            timeStyle: 'short'
-        }).format(date)
+    const when = (log: AuditLog) => <span className="ui-nowrap">{new Intl.DateTimeFormat(dateLocale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(log.createdAt))}</span>
+    const action = (log: AuditLog) => <StatusBadge tone={toneOf(log.action)}>{label('audit_action_', log.action)}</StatusBadge>
+    // Its ID, as the code wrote it: left to right, never translated.
+    const itemId = (log: AuditLog) => <bdi dir="ltr" translate="no">{log.entityId}</bdi>
+    // A Super Admin, a person in a company and their role, or the system's own jobs.
+    const by = (log: AuditLog) => log.superAdmin ? { name: nameOf(log.superAdmin), as: t('role_super_admin') }
+        : log.user ? { name: nameOf(log.user), as: t(`audit_value_${log.user.role}` as TranslationKey) || log.user.role }
+            : { name: t('audit_by_system'), as: t('audit_by_automated') }
+    // What changed, in the reader's words (lib/audit-details.ts); the stored details aren't changed.
+    const lines = (items: DetailLine[]): ReactNode => (
+        <ul className="ui-report">
+            {items.map((line, i) => (
+                <li key={i}>
+                    {line.label && <span className="ui-hint">{line.label}{line.lines ? '' : ': '}</span>}
+                    {line.value !== undefined && <span className="ui-report-value">{line.value}</span>}
+                    {line.lines && lines(line.lines)}
+                </li>
+            ))}
+        </ul>
+    )
+    // The first few, and the rest, such as an error's stack trace, behind Show more.
+    const details = (log: AuditLog): ReactNode => {
+        const all = describeDetails(log.details, { t, locale })
+        if (all.length === 0) return null
+        // The first few short ones, in the order they're kept; Postgres keeps
+        // shorter names first, so an error's stack trace came before its
+        // message (found in the browser). A long line or a field's own
+        // fields waits behind Show more with the rest.
+        const short = (line: DetailLine) => !line.lines && (line.value ?? '').length <= SHORT && !(line.value ?? '').includes('\n')
+        const shown = all.filter(short).slice(0, SHOWN)
+        // Behind it, the shorter first: an error's message before its stack trace (found in the browser).
+        const size = (line: DetailLine) => line.value?.length ?? 0
+        const rest = all.filter(line => !shown.includes(line)).sort((a, b) => size(a) - size(b))
+        // A block of its own, the card's full width on a phone.
+        return (
+            <div className="ui-report-block">
+                {shown.length > 0 && lines(shown)}
+                {rest.length > 0 && (
+                    <details className="ui-more">
+                        <summary>{t('audit_more').replace('{n}', rest.length.toLocaleString(dateLocale))}</summary>
+                        {lines(rest)}
+                    </details>
+                )}
+            </div>
+        )
     }
 
-    // In the reader's language (lib/audit-details.ts). The stored details are
-    // not changed, only how they read.
-    const box = {
-        background: 'var(--surface-subtle)',
-        padding: '0.5rem',
-        borderRadius: '0.5rem',
-        border: '1px solid var(--border)',
-        fontSize: '0.75rem',
-        maxHeight: '160px',
-        overflowY: 'auto' as const,
-    }
-    const renderLines = (lines: DetailLine[], depth = 0): React.ReactNode => lines.map((line, i) => (
-        <div key={i} style={{ paddingInlineStart: depth ? '0.75rem' : 0, marginBottom: '2px' }}>
-            {line.label && <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{line.label}{line.lines ? '' : ': '}</span>}
-            {line.value !== undefined && <span style={{ color: 'var(--text-main)', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{line.value}</span>}
-            {line.lines && renderLines(line.lines, depth + 1)}
-        </div>
-    ))
-    const renderDetails = (details: unknown) => {
-        const lines = describeDetails(details, { t, locale })
-        if (lines.length === 0) return '-'
-        return <div style={box}>{renderLines(lines)}</div>
-    }
+    const columns: Column<AuditLog>[] = [
+        { key: 'when', header: t('audit_when'), cell: when },
+        { key: 'action', header: t('audit_what'), cell: action },
+        { key: 'item', header: t('audit_item'), cell: log => <ItemTitle title={label('audit_entity_', log.entityType)} detail={itemId(log)} /> },
+        // A name on one line, where "Super Admin" broke onto two (found in the browser).
+        { key: 'by', header: t('audit_by'), cell: log => <ItemTitle title={<span className="ui-nowrap">{by(log).name}</span>} detail={by(log).as} /> },
+        { key: 'details', header: t('details'), cell: details },
+    ]
 
-    // UI-layer guard matching system-settings — the API route already
-    // enforces SUPER_ADMIN-only server-side, this just stops the page's own
-    // content/network calls from rendering for anyone else.
-    if (viewer?.role !== 'SUPER_ADMIN') {
-        return <AccessDenied />
+    // An ID or a code is found whole: said where none matches (the interface audit).
+    const empty = filtersOn > 0 || filters.entityId
+        ? <EmptyState icon={MagnifyingGlassIcon} title={t('audit_none_match')} detail={filters.entityId ? t('audit_search_whole') : undefined} />
+        : <EmptyState icon={ScrollIcon} title={t('audit_none')} />
+
+    let list: ReactNode
+    if (!listed || pastTheEnd) {
+        list = failed ? (
+            <div className="ui-panel">
+                <EmptyState icon={WarningCircleIcon} title={t('audit_load_failed')} detail={(error as SWRError).info?.error}
+                    action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+            </div>
+        ) : (
+            <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+        )
+    } else {
+        list = (
+            <DataList
+                caption={t('audit_logs')}
+                columns={columns}
+                rows={listed.data}
+                rowKey={log => log.id}
+                empty={empty}
+                card={log => (
+                    <ListCard
+                        title={label('audit_action_', log.action)}
+                        details={[
+                            { icon: ShapesIcon, text: <>{label('audit_entity_', log.entityType)}{t('list_separator')}{itemId(log)}</> },
+                            { icon: UserIcon, text: `${by(log).name}${t('list_separator')}${by(log).as}` },
+                            { icon: LightningIcon, text: when(log) },
+                        ]}
+                        foot={details(log)}
+                    />
+                )}
+                footer={<Pager page={page} pageCount={listed.totalPages} onPage={p => go({ page: String(p) })} summary={countOf(t, locale, listed.total, 'logged')} />}
+            />
+        )
     }
 
     return (
-        <div className="animate-fade-in" style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            <AuditLogFilter
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                totalCount={logs.length > 0 ? (totalPages * limit) : 0} // Approximate total for UI badge
-                users={users}
-            />
-
-            {loading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-                    <LoadingSpinner message={t('loading_data')} />
-                </div>
-            ) : (
-                <>
-                    <div style={{ background: 'var(--surface)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px var(--shadow-weak)', border: '1px solid var(--border)' }}>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ background: 'var(--surface-subtle)', borderBottom: '1px solid var(--border)' }}>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '160px' }}>{t('timestamp')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '120px' }}>{t('action')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '130px' }}>{t('entity')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '180px' }}>{t('performed_by')}</th>
-                                        <th style={{ textAlign: locale === 'ar' ? 'right' : 'left', padding: '1rem', color: 'var(--text-soft)', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', minWidth: '300px' }}>{t('details')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {logs.map((log) => (
-                                        <tr key={log.id} style={{ borderBottom: '1px solid var(--surface-sunk)' }}>
-                                            <td style={{ padding: '1rem', fontSize: '0.8rem', color: 'var(--text-soft)' }}>
-                                                {formatDate(log.createdAt)}
-                                            </td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <span style={{
-                                                    fontSize: '0.65rem',
-                                                    fontWeight: '700',
-                                                    background: log.action.includes('DELETE') ? 'var(--danger-bg)' : log.action.includes('CREATE') ? 'var(--ok-bg)' : 'var(--info-bg-indigo-faint)',
-                                                    color: log.action.includes('DELETE') ? 'var(--danger-fg)' : log.action.includes('CREATE') ? 'var(--ok-fg)' : 'var(--accent-deepest)',
-                                                    padding: '0.2rem 0.4rem',
-                                                    borderRadius: '4px',
-                                                    display: 'inline-block',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {(t as any)(`audit_action_${log.action}`) || log.action}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>
-                                                    {(t as any)(`audit_entity_${log.entityType}`) || log.entityType}
-                                                </div>
-                                                <div style={{
-                                                    color: 'var(--text-faint)',
-                                                    fontSize: '0.7rem',
-                                                    fontFamily: 'monospace',
-                                                    overflowWrap: 'anywhere',
-                                                    maxWidth: '120px'
-                                                }}>
-                                                    {log.entityId}
-                                                </div>
-                                            </td>
-                                            <td style={{ padding: '1rem', fontSize: '0.8rem' }}>
-                                                <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>
-                                                    {log.superAdmin ? `${log.superAdmin.firstName} ${log.superAdmin.lastName}` : log.user ? `${log.user.firstName} ${log.user.lastName}` : (locale === 'ar' ? 'النظام' : 'System')}
-                                                </div>
-                                                <div style={{ color: 'var(--text-soft)', fontSize: '0.7rem' }}>
-                                                    {log.superAdmin ? (locale === 'ar' ? 'مسؤول عام' : 'Super Admin') : log.user ? ((t as any)(`audit_value_${log.user.role}`) || log.user.role) : (locale === 'ar' ? 'مهمة تلقائية' : 'Automated Task')}
-                                                </div>
-                                            </td>
-                                            <td style={{ padding: '1rem', verticalAlign: 'top' }}>
-                                                {renderDetails(log.details)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {logs.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-faint)' }}>
-                                                {t('no_audit_logs_found')}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop: '1.5rem' }}>
-                        <Pagination
-                            currentPage={page}
-                            totalPages={totalPages}
-                            onPageChange={setPage}
-                        />
-                    </div>
-                </>
-            )}
-        </div>
+        <Page>
+            <PageHeader title={t('audit_logs')} subtitle={t('audit_logs_subtitle')} />
+            <FilterBar
+                search={<Field label={t('audit_search')} hideLabel>{p => (
+                    <SearchInput {...p} name="entityId" autoComplete="off" spellCheck={false} placeholder={t('audit_search')} value={query} onChange={e => setQuery(e.target.value)} />
+                )}</Field>}
+                activeCount={filtersOn}
+                onReset={filtersOn > 0 || query ? resetFilters : undefined}
+            >
+                <Field label={t('audit_by')} hideLabel>{p => (
+                    <Select {...p} icon={UserIcon} name="performedById" value={filters.performedById} onChange={e => go({ performedById: e.target.value })}
+                        options={[{ value: '', label: t('audit_by_anyone') }]}
+                        groups={[
+                            { label: t('super_admins'), options: admins.map(a => ({ value: a.id, label: nameOf(a) })).sort(byName) },
+                            { label: t('audit_by_people'), options: users.map(u => ({ value: u.id, label: u.company ? `${nameOf(u)} (${u.company.name})` : nameOf(u) })).sort(byName) },
+                        ]} />
+                )}</Field>
+                <Field label={t('audit_item')} hideLabel>{p => (
+                    <Select {...p} icon={ShapesIcon} name="entityType" value={filters.entityType} onChange={e => go({ entityType: e.target.value })}
+                        options={[{ value: '', label: t('audit_any_item') }, ...sorted('audit_entity_', AUDIT_ENTITY_TYPES)]} />
+                )}</Field>
+                <Field label={t('audit_what')} hideLabel>{p => (
+                    <Select {...p} icon={LightningIcon} name="action" value={filters.action} onChange={e => go({ action: e.target.value })}
+                        options={[{ value: '', label: t('audit_any_action') }]}
+                        groups={[
+                            // Every action of a kind, whose code starts with it (AuditLogService.getMany).
+                            { label: t('audit_kinds'), options: AUDIT_ACTION_GROUPS.map(g => ({ value: g, label: label('audit_action_', g) })) },
+                            { label: t('audit_actions'), options: sorted('audit_action_', AUDIT_ACTIONS) },
+                        ]} />
+                )}</Field>
+                <DateRangePicker asField hideLabel dateFrom={filters.startDate} dateTo={filters.endDate} onChange={(startDate, endDate) => go({ startDate, endDate })} />
+            </FilterBar>
+            {list}
+        </Page>
     )
 }
