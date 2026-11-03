@@ -56,7 +56,9 @@ export default function JobsCard() {
     // So "3 hours ago" becomes "4 hours ago" while the card is open,
     // rather than only when something else redraws it.
     const now = useNow()
-    const { data, error, isValidating, mutate } = useSWR('/api/admin/maintenance/jobs', fetcher)
+    // Asked again while it's open, so a job that ran since doesn't still read
+    // late; every five minutes, as each ask lists the backups on Google Drive.
+    const { data, error, isValidating, mutate } = useSWR('/api/admin/maintenance/jobs', fetcher, { refreshInterval: 5 * 60_000 })
     const health: Health | undefined = data?.data
 
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'

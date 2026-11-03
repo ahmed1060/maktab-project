@@ -2090,6 +2090,7 @@ export const en = {
         att_term_restored: "Terminal restored",
         att_term_health_title: "Attendance terminals",
         att_term_health_none: "No company has a connected agent yet.",
+        att_term_health_failed: "Couldn't check the terminals",
         att_term_health_ok: "Every agent and terminal is working.",
         att_term_health_bad: "{count} with something to look at.",
         att_term_health_ok_pill: "Working",

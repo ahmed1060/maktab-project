@@ -3290,3 +3290,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     it;
   - in Arabic, an agent's English name and its state could swap places,
     the two one run of text. The name is a run of its own.
+- **2026-11-03:** Found in the interface audit, on #177:
+  - the jobs card asked once, while its times ticked on, so a job that ran
+    since still read late until the page was opened again. It asks again
+    every five minutes, as each ask lists the backups on Google Drive;
+  - the terminals card said "Something went wrong" when it didn't load. It
+    says it couldn't check the terminals.

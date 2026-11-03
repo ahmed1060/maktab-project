@@ -231,3 +231,16 @@ describe("System health's cards, found in the browser", () => {
         expect(readFileSync("app/(dashboard)/dashboard/health/page.tsx", "utf8")).toContain("reason={picker?.reason ?? null}")
     })
 })
+
+describe("System health's cards, found in the interface audit", () => {
+    it("asks for the jobs again while it's open, so a job that ran since doesn't still read late", () => {
+        // Its times ticked on while what they were about stayed as the page found them.
+        expect(readFileSync("components/JobsCard.tsx", "utf8")).toMatch(/useSWR\('\/api\/admin\/maintenance\/jobs', fetcher, \{ refreshInterval: 5 \* 60_000 \}\)/)
+    })
+
+    it("says which card didn't load, where it said only that something went wrong", async () => {
+        const html = await render("TerminalsHealthCard", {}, { [TERMINALS]: { error: Object.assign(new Error("x"), { status: 500, info: {} }) } })
+        expect(html).toContain(`<p class="ui-empty-title">${esc(en.att_term_health_failed)}</p>`)
+        expect(ar).toHaveProperty("att_term_health_failed")
+    })
+})

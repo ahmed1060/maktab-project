@@ -41,7 +41,7 @@ export default function TerminalsHealthCard() {
         return (
             <Card title={t('att_term_health_title')}>
                 {error
-                    ? <EmptyState icon={WarningCircleIcon} title={t('error_generic')} detail={(error as SWRError).info?.error}
+                    ? <EmptyState icon={WarningCircleIcon} title={t('att_term_health_failed')} detail={(error as SWRError).info?.error}
                         action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
                     : <p className="ui-card-note" role="status">{t('loading')}</p>}
             </Card>

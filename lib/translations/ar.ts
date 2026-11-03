@@ -2087,6 +2087,7 @@ export const ar = {
         att_term_restored: "تمت إعادة الجهاز",
         att_term_health_title: "أجهزة الحضور",
         att_term_health_none: "لا توجد شركة لديها برنامج مزامنة متصل بعد.",
+        att_term_health_failed: "تعذّر التحقق من أجهزة الحضور",
         att_term_health_ok: "كل البرامج والأجهزة تعمل.",
         att_term_health_bad: "{count} فيها ما يحتاج إلى متابعة.",
         att_term_health_ok_pill: "يعمل",
