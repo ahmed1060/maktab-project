@@ -3541,3 +3541,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   press, as an Admin may unlock the account before the time is up. The
   same goes for the step that asks for the code and for "email me a code
   instead".
+- **2026-11-03:** Found by Codex, on #183: an email nobody has was counted
+  with its capitals set aside, while finding the account matches it as
+  typed, so five wrong tries as NOBODY@ paused nobody@ only when nobody had
+  it, which said who's registered. It's counted as typed.

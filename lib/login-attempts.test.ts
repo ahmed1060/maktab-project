@@ -264,6 +264,18 @@ describe("the lock is the account's, not the address's (decided 2026-11-03)", ()
         expect(Object.keys(db.limits).some(key => key.includes("nobody"))).toBe(false)
     })
 
+    it("counts an email in other capitals on its own, as finding the account does, so a pause says nothing of who's registered (Codex on PR 183)", async () => {
+        // Finding the account matches the email as typed. Counted with its
+        // capitals set aside, five wrong tries as NOBODY@ paused nobody@ when
+        // nobody had it, and not when somebody did, as theirs is the account's.
+        for (const who of ["nobody@example.test", colleague.email]) {
+            // Five wrong, and asked again within the 30 seconds.
+            for (let i = 0; i < 5; i++) expect(await authorize({ email: who.toUpperCase(), password: "wrong" })).toBeNull()
+            await expect(authorize({ email: who.toUpperCase(), password: "wrong" })).rejects.toThrow("Sign-in paused")
+            expect(await authorize({ email: who, password: "wrong" }), who).toBeNull()
+        }
+    })
+
     it("lifts when it's unlocked, and the count of codes for sensitive actions with it", async () => {
         const { unlockSignIn, lockedUntil } = await import("@/lib/sign-in-lock")
         await wrong(5, { email: colleague.email })

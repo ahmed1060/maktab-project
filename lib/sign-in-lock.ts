@@ -28,9 +28,14 @@ const ACCOUNT = 'login:account:'
 /** The count for an account, wherever its sign-ins come from. */
 export const accountLockKey = (accountId: string) => `${ACCOUNT}${accountId}`
 
-/** The count for an email nobody has, kept as a hash. */
+/**
+ * The count for an email nobody has, kept as a hash. Of the email exactly as
+ * typed, as finding the account matches it: with its capitals set aside,
+ * five wrong tries as NOBODY@ paused nobody@ only when nobody had it, as
+ * somebody's is counted on their account (Codex on PR 183).
+ */
 export const unknownLockKey = (email: string) =>
-    `login:unknown:${createHash('sha256').update(email.trim().toLowerCase()).digest('hex')}`
+    `login:unknown:${createHash('sha256').update(email).digest('hex')}`
 
 /** Whose count a sign-in uses: the account's when there is one. */
 export const lockKeyFor = (account: { id: string } | null, email: string) =>
