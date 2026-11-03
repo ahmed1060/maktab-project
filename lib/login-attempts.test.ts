@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import bcrypt from "bcryptjs"
 
 /**
- * Sign-in's limit of five tries in fifteen minutes, run through authorize()
- * against a mocked database. Found on production: a Super Admin with
+ * Sign-in's limit, run through authorize() against a mocked database: five
+ * wrong tries in a row pause the account for 30 seconds, ten lock it for
+ * fifteen minutes (decided 2026-11-03), where five locked it. Found on production: a Super Admin with
  * two-factor signed in twice in a row, and the third sign-in was refused for
  * fifteen minutes, because every round trip counted — the password step that
  * only asks for the code, and every sign-in that succeeded. Behind one office
@@ -28,21 +29,34 @@ vi.mock("@/lib/prisma", () => ({
         systemSettings: { findUnique: async () => null },
         rateLimit: {
             findUnique: async ({ where }: any) => db.limits[where.key] ?? null,
-            upsert: async ({ where, create }: any) => (db.limits[where.key] = { count: create.count, resetAt: create.resetAt }),
-            update: async ({ where }: any) => { db.limits[where.key].count++; return db.limits[where.key] },
+            upsert: async ({ where, create, update }: any) => {
+                const row = db.limits[where.key]
+                if (!row) return (db.limits[where.key] = { count: create.count, resetAt: create.resetAt })
+                change(row, update)
+                return row
+            },
+            update: async ({ where, data }: any) => { change(db.limits[where.key], data); return db.limits[where.key] },
             findMany: async ({ where }: any) => Object.entries(db.limits)
                 .filter(([key, row]) => where.key.in.includes(key) && row.count >= where.count.gte && row.resetAt > where.resetAt.gt)
                 .map(([key, row]) => ({ key, resetAt: row.resetAt })),
             delete: async ({ where }: any) => { delete db.limits[where.key] },
             updateMany: async ({ where, data }: any) => {
                 const row = db.limits[where.key]
-                const sameWindow = !where.resetAt || row?.resetAt.getTime() === where.resetAt.getTime()
-                if (row && sameWindow && row.count > (where.count?.gt ?? -Infinity)) { row.count -= data.count.decrement; return { count: 1 } }
+                const sameWindow = !(where.resetAt instanceof Date) || row?.resetAt.getTime() === where.resetAt.getTime()
+                const ranOut = !where.resetAt?.lte || row?.resetAt <= where.resetAt.lte
+                if (row && sameWindow && ranOut && row.count > (where.count?.gt ?? -Infinity)) { change(row, data); return { count: 1 } }
                 return { count: 0 }
             },
         },
     },
 }))
+function change(row: { count: number; resetAt: Date }, data: any) {
+    if (typeof data.count === "number") row.count = data.count
+    else if (data.count?.increment) row.count += data.count.increment
+    else if (data.count?.decrement) row.count -= data.count.decrement
+    if (data.resetAt) row.resetAt = data.resetAt
+}
+const failures: string[] = []
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": db.ip }) }))
 // The authenticator itself: "123456" is right, anything else is not.
 vi.mock("@/lib/services/mfa.service", () => ({
@@ -51,7 +65,10 @@ vi.mock("@/lib/services/mfa.service", () => ({
 vi.mock("@/lib/services/trusted-device.service", () => ({ TrustedDeviceService: { isTrusted: async () => false } }))
 vi.mock("@/lib/services/audit-log.service", () => ({
     AuditLogService: {
-        log: async (action: string) => { if (action === "LOGIN" && db.failLogin) throw new Error("audit down") },
+        log: async (action: string) => {
+            if (action === "LOGIN_FAILURE") failures.push(action)
+            if (action === "LOGIN" && db.failLogin) throw new Error("audit down")
+        },
         logSystemError: async () => "ref", friendlyErrorMessage: () => "error",
     },
 }))
@@ -72,7 +89,21 @@ const authorize = (credentials: Record<string, string>) =>
 const email = "sa@example.test"
 const password = "the-right-password"
 
+// The clock, moved on by hand: only Date, as bcrypt runs on the real timers.
+const later = (ms: number) => vi.setSystemTime(Date.now() + ms)
+afterEach(() => { vi.useRealTimers() })
+
+/** n wrong passwords in a row, waiting out the 30 seconds after the fifth. */
+async function wrong(n: number, who: Record<string, string> = { email }) {
+    for (let i = 1; i <= n; i++) {
+        expect(await authorize({ ...who, password: "wrong" }), `wrong try ${i}`).toBeNull()
+        if (i === 5) later(31_000)
+    }
+}
+
 beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-03T12:00:00Z") })
+    failures.length = 0
     db.limits = {}
     db.failLogin = false
     db.ip = "203.0.113.7"
@@ -89,7 +120,7 @@ beforeEach(() => {
     }
 })
 
-describe("signing in, five tries in fifteen minutes", () => {
+describe("signing in, a pause after five wrong tries and a lock after ten", () => {
     it("counts neither the step that asks for the code nor a sign-in that succeeds", async () => {
         for (let i = 0; i < 4; i++) {
             await expect(authorize({ email, password })).rejects.toThrow("MFA_REQUIRED")
@@ -97,14 +128,60 @@ describe("signing in, five tries in fifteen minutes", () => {
         }
     })
 
-    it("still stops a sixth try after five wrong passwords", async () => {
-        for (let i = 0; i < 5; i++) expect(await authorize({ email, password: "wrong" })).toBeNull()
-        await expect(authorize({ email, password })).rejects.toThrow("Too many login attempts")
+    it("pauses the account for 30 seconds after five wrong passwords in a row, and checks nothing meanwhile", async () => {
+        await wrong(4)
+        expect(await authorize({ email, password: "wrong" })).toBeNull()
+        await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Sign-in paused")
+        later(20_000)
+        await expect(authorize({ email, password: "wrong" })).rejects.toThrow("Sign-in paused")
+        // Turned away during the pause, so not counted.
+        expect(db.limits["login:account:sa"].count).toBe(5)
+        expect(failures).toHaveLength(5)
     })
 
-    it("still stops a sixth try after five wrong codes", async () => {
+    it("lets them try again once the 30 seconds are up", async () => {
+        await wrong(5)
+        expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+    })
+
+    it("locks the account for fifteen minutes after ten wrong passwords in a row", async () => {
+        await wrong(10)
+        await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Too many login attempts")
+        later(14 * 60_000)
+        await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Too many login attempts")
+        later(61_000)
+        expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+    })
+
+    it("counts wrong codes as it counts wrong passwords", async () => {
+        for (let i = 0; i < 5; i++) await expect(authorize({ email, password, mfaCode: "000000" })).rejects.toThrow("INVALID_MFA_CODE")
+        await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Sign-in paused")
+        later(31_000)
         for (let i = 0; i < 5; i++) await expect(authorize({ email, password, mfaCode: "000000" })).rejects.toThrow("INVALID_MFA_CODE")
         await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Too many login attempts")
+    })
+
+    it("starts over after a sign-in that succeeds, as the tries are counted in a row", async () => {
+        await wrong(4)
+        expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+        await wrong(4)
+        expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+    })
+
+    it("lets no more through than the pause allows when they're all sent at once", async () => {
+        // Each try is counted before the password is checked, so tries sent
+        // together can't all find the count where it was.
+        const tries = await Promise.all(Array.from({ length: 20 }, () => authorize({ email, password: "wrong" }).catch((e: Error) => e.message)))
+        expect(failures).toHaveLength(5)
+        expect(tries.filter(t => typeof t === "string" && t.includes("Sign-in paused"))).toHaveLength(15)
+        expect(db.limits["login:account:sa"].count).toBe(5)
+    })
+
+    it("forgets a run fifteen minutes after its last wrong try", async () => {
+        await wrong(9)
+        later(15 * 60_000 + 1000)
+        await wrong(4)
+        expect(db.limits["login:account:sa"].count).toBe(4)
     })
 })
 
@@ -143,14 +220,19 @@ describe("what gives an attempt back (review on #29)", () => {
     })
 
     it("once, even if something fails after a sign-in has given it back", async () => {
-        // Guards the refund above: the success gives it back, then the audit
-        // write fails, and the catch must not give back a second, which would
-        // forget the wrong guess before it. (The old code refunded neither.)
+        // The step that asks for the code gives its try back; then the code
+        // is wrong. That one stays counted, and nothing is given back twice.
+        await expect(authorize({ email, password })).rejects.toThrow("MFA_REQUIRED")
+        await expect(authorize({ email, password, mfaCode: "000000" })).rejects.toThrow("INVALID_MFA_CODE")
+        expect(db.limits["login:account:sa"].count).toBe(1)
+        // A sign-in that succeeds forgets the run, even if writing it down
+        // fails after; the next wrong try starts a new one.
         db.superAdmins.sa.mfaEnabled = false
-        expect(await authorize({ email, password: "wrong" })).toBeNull()
         db.failLogin = true
         await expect(authorize({ email, password })).rejects.toThrow("audit down")
-        // Counted on the account (lib/sign-in-lock.ts).
+        expect(db.limits["login:account:sa"]).toBeUndefined()
+        db.failLogin = false
+        expect(await authorize({ email, password: "wrong" })).toBeNull()
         expect(db.limits["login:account:sa"].count).toBe(1)
     })
 })
@@ -159,20 +241,24 @@ describe("the lock is the account's, not the address's (decided 2026-11-03)", ()
     const colleague = { email: "colleague@example.test", password }
 
     it("leaves somebody else at the same address alone, where one person's five wrong passwords locked the whole office", async () => {
-        for (let i = 0; i < 5; i++) expect(await authorize({ email, password: "wrong" })).toBeNull()
+        await wrong(10)
         await expect(authorize({ email, password })).rejects.toThrow("Too many login attempts")
         expect(await authorize(colleague)).toMatchObject({ id: "colleague" })
     })
 
     it("keeps the account locked from another address", async () => {
-        for (let i = 0; i < 5; i++) expect(await authorize({ email, password: "wrong" })).toBeNull()
+        await wrong(10)
         db.ip = "198.51.100.9"
         await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Too many login attempts")
     })
 
     it("locks an email nobody has the same way, so a lock doesn't say which emails exist", async () => {
         const nobody = { email: "nobody@example.test", password: "wrong" }
-        for (let i = 0; i < 5; i++) expect(await authorize(nobody)).toBeNull()
+        await wrong(4, nobody)
+        expect(await authorize(nobody)).toBeNull()
+        await expect(authorize(nobody)).rejects.toThrow("Sign-in paused")
+        later(31_000)
+        await wrong(5, nobody)
         await expect(authorize(nobody)).rejects.toThrow("Too many login attempts")
         // Kept as a hash, not as it was typed.
         expect(Object.keys(db.limits).some(key => key.includes("nobody"))).toBe(false)
@@ -180,7 +266,10 @@ describe("the lock is the account's, not the address's (decided 2026-11-03)", ()
 
     it("lifts when it's unlocked, and the count of codes for sensitive actions with it", async () => {
         const { unlockSignIn, lockedUntil } = await import("@/lib/sign-in-lock")
-        for (let i = 0; i < 5; i++) expect(await authorize({ email: colleague.email, password: "wrong" })).toBeNull()
+        await wrong(5, { email: colleague.email })
+        // The 30 seconds aren't shown in the lists; the fifteen minutes are.
+        expect((await lockedUntil(["colleague"])).size).toBe(0)
+        await wrong(5, { email: colleague.email })
         expect((await lockedUntil(["colleague", "sa"])).has("colleague")).toBe(true)
         expect((await lockedUntil(["colleague", "sa"])).has("sa")).toBe(false)
         db.limits["step-up:colleague"] = { count: 5, resetAt: new Date(Date.now() + 60_000) }
@@ -193,6 +282,7 @@ describe("the lock is the account's, not the address's (decided 2026-11-03)", ()
     it("counts \"email me a code instead\" against the account too", async () => {
         for (let i = 0; i < 5; i++) expect((await emailMeACode({ email, password: "wrong" })).status).toBe(403)
         expect((await emailMeACode({ email, password })).status).toBe(429)
+        expect(db.limits["login:account:sa"].count).toBe(5)
         // Somebody else at the same address isn't held up by it.
         expect(await authorize(colleague)).toMatchObject({ id: "colleague" })
     })

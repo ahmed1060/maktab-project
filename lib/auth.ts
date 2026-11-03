@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
-import { countSignIn, lockKeyFor } from "./sign-in-lock"
+import { countSignIn, forgetSignIn, giveBackSignIn, lockKeyFor } from "./sign-in-lock"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -88,15 +88,20 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 let loginKey: string | null = null
-                // The window the attempt was counted in, whether the password
-                // was right, and whether the attempt has been given back.
-                let loginWindow = 0
+                // Whether the password was right, and whether the attempt has
+                // been given back or the run forgotten, once at most.
                 let passwordOk = false
                 let givenBack = false
                 const giveBack = async () => {
                     if (!loginKey || givenBack) return
                     givenBack = true
-                    await RateLimiter.refund(loginKey, loginWindow)
+                    await giveBackSignIn(loginKey)
+                }
+                // A sign-in that succeeds ends the run: the tries are counted in a row.
+                const forget = async () => {
+                    if (!loginKey || givenBack) return
+                    givenBack = true
+                    await forgetSignIn(loginKey)
                 }
                 try {
                     // headers() is async since Next 15.
@@ -161,21 +166,24 @@ export const authOptions: NextAuthOptions = {
                         }
                     })
 
-                    // Five wrong passwords or codes in fifteen minutes lock the
-                    // account, wherever they come from (lib/sign-in-lock.ts):
-                    // the address's limit locked a whole office for one person's
-                    // mistakes (decided 2026-11-03). Counted first and handed
-                    // back below when the attempt turns out not to be a failure:
-                    // the step that only asks for the two-factor code, and a
-                    // sign-in that succeeds. An email nobody has is counted
-                    // alike, so a lock says nothing of who's registered (F-17).
-                    loginKey = lockKeyFor(superAdmin || user, credentials.email)
-                    const { limited, resetAt } = await countSignIn(loginKey)
-                    loginWindow = resetAt
-                    if (limited) {
-                        const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    // Five wrong passwords or codes in a row pause the account for
+                    // 30 seconds and ten lock it for fifteen minutes, wherever
+                    // they come from (lib/sign-in-lock.ts, decided 2026-11-03).
+                    // Counted first and handed back below when the attempt
+                    // turns out not to be a failure: the step that only asks for
+                    // the two-factor code, and an account turned away after its
+                    // password was right; a sign-in that succeeds ends the run.
+                    // An email nobody has is counted alike, so a lock says
+                    // nothing of who's registered (F-17).
+                    const key = lockKeyFor(superAdmin || user, credentials.email)
+                    const held = await countSignIn(key)
+                    if (held?.kind === 'pause') throw new Error('Sign-in paused for 30 seconds after five wrong tries for this account.')
+                    if (held) {
+                        const timeStr = held.until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         throw new Error(`Too many login attempts for this account. Please try again at ${timeStr}.`)
                     }
+                    // Counted: only now is there anything to give back.
+                    loginKey = key
 
                     const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
                     const isValid = await bcrypt.compare(credentials.password, passwordHash)
@@ -191,7 +199,7 @@ export const authOptions: NextAuthOptions = {
                         }
                         // F-18: no audit row for an unknown email — that was one
                         // AuditLog insert per guess, an unbounded, attacker-controlled
-                        // write. The rate limiter above already tracks this IP; a
+                        // write. The count above (lib/sign-in-lock.ts) already holds it; a
                         // failed guess against a real account is still logged, since
                         // that volume is bounded by how many accounts actually exist.
                         return null
@@ -215,7 +223,7 @@ export const authOptions: NextAuthOptions = {
                             cookieHeader,
                         })
 
-                        await giveBack()
+                        await forget()
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -311,7 +319,7 @@ export const authOptions: NextAuthOptions = {
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
-                    await giveBack()
+                    await forget()
 
                     // Audit Log (Success - Centralized)
                     const { AuditLogService } = await import("./services/audit-log.service")

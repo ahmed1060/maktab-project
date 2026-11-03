@@ -3497,8 +3497,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   on staff.
 - **2026-11-03:** Usernames was merged in #182. Signing in's limit becomes
   the account's in #183 (decided 2026-11-03):
-  - five wrong passwords or codes in fifteen minutes lock the account,
-    wherever they come from, where they locked the address: one person's
+  - wrong passwords or codes lock the account, wherever they come from,
+    where they locked the address: one person's
     mistakes locked everybody behind the same office Wi-Fi, while the
     person themselves could get in from their phone. There's no limit by
     address any more;
@@ -3523,3 +3523,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   it's done, and the focus went with it, to the page. It goes to the
   person's name, in the same row. The time a lock lifts is in the viewer's
   own time, in the language's way of writing it, as everywhere else.
+- **2026-11-03:** Decided on #183: signing in's limit is more generous,
+  ten wrong tries in a row where it was five in fifteen minutes. Five in a
+  row pause the account for 30 seconds, and the sign-in page says to try
+  again in 30 seconds; ten lock it for fifteen minutes, which is what
+  Employees and All users show, with Unlock. A sign-in that succeeds starts
+  the count over, and a run is forgotten fifteen minutes after its last
+  wrong try. Tries turned away during the pause or the lock aren't counted,
+  and tries sent all at once get no further than one at a time would.

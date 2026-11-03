@@ -3,8 +3,7 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
-import { RateLimiter } from "@/lib/api-utils"
-import { countSignIn, lockKeyFor } from "@/lib/sign-in-lock"
+import { countSignIn, giveBackSignIn, lockKeyFor } from "@/lib/sign-in-lock"
 import { DUMMY_PASSWORD_HASH } from "@/lib/auth"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
@@ -43,9 +42,9 @@ export async function POST(req: NextRequest) {
         // email nobody has is counted alike, so a lock says nothing of who's
         // registered.
         const key = lockKeyFor(account, email)
-        const { limited, resetAt } = await countSignIn(key)
-        if (limited) {
-            const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const held = await countSignIn(key)
+        if (held) {
+            const timeStr = held.until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             return ApiResponse.error(`Too many attempts. Please try again at ${timeStr}.`, 429)
         }
 
@@ -59,7 +58,7 @@ export async function POST(req: NextRequest) {
         // attempt is given back, as authorize() gives back the step that asks
         // for one. Otherwise each sign-in by emailed code used one of the
         // account's five (review on #29).
-        await RateLimiter.refund(key, resetAt)
+        await giveBackSignIn(key)
 
         if (!(account as any).mfaEnabled || !(account as any).emailVerifiedAt) {
             // Reachable in practice only if MFA got enabled before email
