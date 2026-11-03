@@ -179,3 +179,12 @@ describe("on the building blocks", () => {
         }
     })
 })
+
+describe("the face verification switch, found in the browser", () => {
+    it("sets the photo key's lines by their gap alone, without a paragraph's own margins", () => {
+        // "300 of 1,200 stored face photos…" sat a line's height under its
+        // heading: a paragraph's own margin, on top of the lines' gap.
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-card-lines > \* \{\s*margin: 0;\s*\}/)
+    })
+})

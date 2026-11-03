@@ -3381,3 +3381,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     server keeps it;
   - the purge's text no longer says to type PURGE, as the field's label
     says it.
+- **2026-11-03:** Found in the browser, on #179: the photo key's count of
+  photos left sat a line's height under its heading, a paragraph's own
+  margin on top of the lines' gap. A card's lines are set by their gap
+  alone.
