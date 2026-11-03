@@ -143,7 +143,7 @@ describe("the System settings page", () => {
         expect(on).toContain(esc(en.show_powered_by_label))
         expect(on).toMatch(/<input(?=[^>]*name="poweredByName")(?=[^>]*maxLength="40")(?=[^>]*value="Nizmo")(?![^>]*disabled)[^>]*>/)
         expect(on).toContain(`<figcaption class="ui-hint">${en.sys_signature_preview}</figcaption>`)
-        expect(on).toContain(`<span class="ui-signature-by">${en.powered_by}</span><span class="ui-signature-name">Nizmo</span>`)
+        expect(on).toContain(`<span class="ui-signature-by">${en.powered_by}</span><span class="ui-signature-name" translate="no">Nizmo</span>`)
         const off = card(await render({ [SETTINGS]: stored({ showPoweredBy: false }) }), en.sys_signature_title)
         // Off, the name is kept and shown, only not to be changed: it isn't lost.
         expect(off).toMatch(/<input(?=[^>]*name="poweredByName")(?=[^>]*disabled="")[^>]*>/)
@@ -213,5 +213,31 @@ describe("System settings, found in the browser", () => {
             }
         }
         expect(readFileSync(CARDS, "utf8")).toContain("setError(t(wrong).replace('{min}', num(min)).replace('{max}', num(max)))")
+    })
+})
+
+describe("System settings, found in the web interface audit", () => {
+    it("quotes “Powered by” with the language's own marks, as the card's title does", () => {
+        // Straight quotes, "Powered by", where the title beside it has “Powered by”.
+        expect(en.show_powered_by_label).toBe("Show the “Powered by” signature")
+        expect(ar.show_powered_by_label).toBe("إظهار توقيع «بدعم من»")
+        for (const dict of [en, ar]) expect(dict.show_powered_by_label).not.toContain('"')
+    })
+
+    it("says why the name can't be changed while the signature is off (DESIGN.md §5.3)", async () => {
+        // It said how many characters were used, of a field nobody could type in.
+        const off = card(await render({ [SETTINGS]: stored({ showPoweredBy: false }) }), en.sys_signature_title)
+        expect(off).toMatch(new RegExp(`<span id="[^"]+" class="ui-hint">${lit(en.sys_signature_name_off)}</span>`))
+        expect(off).not.toContain(esc(en.ui_characters_used.replace("{used}", "4").replace("{max}", "40")))
+        const on = card(await render({ [SETTINGS]: stored({ poweredByName: "Nizmo" }) }), en.sys_signature_title)
+        expect(on).toContain(esc(en.ui_characters_used.replace("{used}", "5").replace("{max}", "40")))
+        expect(on).not.toContain(esc(en.sys_signature_name_off))
+        expect(ar.sys_signature_name_off).toBeTruthy()
+    })
+
+    it("leaves the brand name to itself: no spelling marks, and no page translator", async () => {
+        const on = card(await render({ [SETTINGS]: stored({ poweredByName: "Nizmo" }) }), en.sys_signature_title)
+        expect(on).toMatch(/<input(?=[^>]*name="poweredByName")(?=[^>]*spellCheck="false")(?=[^>]*translate="no")[^>]*>/)
+        expect(on).toContain('<span class="ui-signature-name" translate="no">Nizmo</span>')
     })
 })

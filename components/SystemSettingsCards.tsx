@@ -240,15 +240,18 @@ export function SignatureCard({ stored, onSaved }: { stored: StoredSettings; onS
                         {t('show_powered_by_label')}
                     </label>
                 </div>
-                <Field label={t('powered_by_name_label')} hint={t('ui_characters_used').replace('{used}', num(name.length)).replace('{max}', num(NAME_MAX))} error={error}>{p => (
-                    <TextInput {...p} name="poweredByName" dir="auto" maxLength={NAME_MAX} autoComplete="off" placeholder={DEFAULT_POWERED_BY_NAME}
-                        value={name} disabled={!shown} onChange={e => { setName(e.target.value); setError(undefined) }} />
+                {/* Off, its hint says why it can't be changed (DESIGN.md §5.3). A
+                    brand name: no spelling marks, and no page translator. */}
+                <Field label={t('powered_by_name_label')} error={error}
+                    hint={shown ? t('ui_characters_used').replace('{used}', num(name.length)).replace('{max}', num(NAME_MAX)) : t('sys_signature_name_off')}>{p => (
+                    <TextInput {...p} name="poweredByName" dir="auto" maxLength={NAME_MAX} autoComplete="off" spellCheck={false} translate="no"
+                        placeholder={DEFAULT_POWERED_BY_NAME} value={name} disabled={!shown} onChange={e => { setName(e.target.value); setError(undefined) }} />
                 )}</Field>
                 {/* What it will look like, so it can be checked before it's saved. */}
                 <figure className="ui-signature-preview" data-hidden={!shown || undefined}>
                     <figcaption className="ui-hint">{t('sys_signature_preview')}</figcaption>
                     {shown
-                        ? <span className="ui-signature"><span className="ui-signature-by">{t('powered_by')}</span><span className="ui-signature-name">{name.trim() || DEFAULT_POWERED_BY_NAME}</span></span>
+                        ? <span className="ui-signature"><span className="ui-signature-by">{t('powered_by')}</span><span className="ui-signature-name" translate="no">{name.trim() || DEFAULT_POWERED_BY_NAME}</span></span>
                         : <span className="ui-hint">{t('powered_by_hidden')}</span>}
                 </figure>
                 <div className="ui-card-actions">

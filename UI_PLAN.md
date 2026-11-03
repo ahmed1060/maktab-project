@@ -3327,3 +3327,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   with its range typed in, Western digits in Arabic ("بين 1 و10000") and
   10000 where the hint above it said 10,000. It says its range as the hint
   does, in the language's digits.
+- **2026-11-03:** Found in the web interface audit, on #178:
+  - "Show the "Powered by" signature" had straight quotes, beside a title
+    with curly ones. It has “Powered by” in English and «بدعم من» in Arabic;
+  - with the signature off, the name's hint still counted its characters,
+    of a field nobody could type in. It says to turn the signature on to
+    change the name (DESIGN.md §5.3);
+  - the name, a brand's, had spelling marks under it and could be changed
+    by a page translator. Its field and its preview leave it as it is.
