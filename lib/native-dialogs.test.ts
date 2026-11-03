@@ -42,7 +42,7 @@ describe("the app draws its own dialogs", () => {
 
     /**
      * Comments describing the old behaviour are not the old behaviour, and this
-     * repository's own files are full of them — NoticeModal's header explains
+     * repository's own files are full of them — the old NoticeModal's header explained
      * at length what alert() used to do. Block comments are blanked rather than
      * deleted so line numbers survive to the failure message.
      */

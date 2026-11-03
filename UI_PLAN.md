@@ -502,8 +502,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      payments with Packages, merged in #172 on 2026-11-03, then All
      users, merged in #173 on 2026-11-03, which finished Customers; then
      Operations, a page at a time: Check-ins, merged in #174 on
-     2026-11-03, then Audit logs, which opens for review in #175, then
-     System health and System settings;
+     2026-11-03, then Audit logs, merged in #175 on 2026-11-03, then
+     System health in two parts, the page and its maintenance cards,
+     which opens for review in #176, then its scheduled jobs, terminals
+     and backup picker; then System settings;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3185,3 +3187,45 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Attendance, Payroll, Requests and Check-ins pages show too, such as a
   permission's type. Arabic has no capitals and is unchanged.
   `lib/audit-labels.test.ts` checks every one.
+- **2026-11-03:** The Super Admin's pages, Operations part 2, was merged
+  in #175. System health moves onto the building blocks in two parts, the
+  page and its maintenance cards first, in #176:
+  - it has the page header, its name in sentence case, which the side bar
+    shares. Its title was set in the old top bar;
+  - it's the Super Admin's only, and asks the server nothing for anyone
+    else. It had no check of its own: anyone who opened its address saw
+    its cards, empty;
+  - its parts are sections: what's running, the scheduled jobs and the
+    terminals, first; then housekeeping, with the stored files, the audit
+    log and the notifications; then backups and recovery; then
+    maintenance mode. They were nine cards in one grid, each with an
+    emoji for an icon and sizes and colours typed in;
+  - each count is a number in the language's digits, with what it counts:
+    the files stored, or that storage can't be reached, where it showed
+    "—"; and the audit log's entries and the notifications sent, with how
+    many are old enough to delete and how old that is. A delete is in the
+    danger colour, says how old, and is offered only where there are some;
+  - finding the files nothing refers to is a look, and deletes nothing, so
+    it no longer asks first, as if it would. What it finds is listed in
+    the card, how many of how many and how much, each path as it's
+    stored, where they ran in a box of their own making;
+  - what can't be undone asks for a word typed first, as it did:
+    restoring a backup, the latest or one picked, asks for RESTORE, and
+    deleting the files found, for DELETE. The word is shown as the code
+    has it, and the button stays off until it's typed (`DESIGN.md` §5.5,
+    Dialog). Deleting old entries or notifications says how many, and
+    backing up and maintenance mode ask without a word, as before. They
+    were the old confirmation window;
+  - maintenance mode says whether it's on as a badge, and while it's on a
+    card above the sections says so, where it was a yellow strip of its
+    own. Its message is a field with its label, and says how much of it
+    is used;
+  - results are toasts, each saying what was done, such as "Deleted 340
+    entries", or why it wasn't, such as up to 3 backups an hour. They
+    opened a window each (`NoticeModal`, which is removed);
+  - the counts and maintenance mode say while they load, and when they
+    didn't with the server's reason and Try again. The whole page was a
+    spinner until the counts came;
+  - labels only the old page used are removed, and its others are in
+    sentence case: "Back up now", "Restore the latest backup", "Turn on
+    maintenance mode".

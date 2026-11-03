@@ -2237,3 +2237,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   in #174. Audit logs moves onto the building blocks in #175
   (`UI_PLAN.md` §5). It doesn't touch clients or locations; their entries
   are found in it like any other.
+- **2026-11-03:** The Super Admin's pages, Operations part 2, was merged
+  in #175. System health's page and its maintenance cards move onto the
+  building blocks in #176 (`UI_PLAN.md` §5), the first of two parts. It
+  doesn't touch clients or locations; their records' files are counted
+  and looked through for ones nothing refers to, like any other.

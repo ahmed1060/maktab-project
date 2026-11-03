@@ -1507,6 +1507,14 @@ a.ui-file-open:focus-visible,
   flex: 1 1 100%;
   min-width: 0;
 }
+/* A list that can run long, such as the stored files nothing refers to,
+   scrolls within itself, each line broken anywhere it must (System health). */
+.ui-report-scroll {
+  max-block-size: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
 /* More, behind a disclosure, such as the rows a file couldn't give. */
 .ui-more > summary {
   cursor: pointer;
