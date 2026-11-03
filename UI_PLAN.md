@@ -3080,3 +3080,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - 13 labels, and the --warn-bg-yellow, --warn-fg-yellow and --warn-fill
     colours, only the old page used are removed, and the page's name is in
     sentence case.
+- **2026-11-03:** From Codex's review of #173:
+  - picking another company, or the other tab, left the last one's rows up
+    until the next ones came, so the people at work could be drawn as
+    Left rows, each with Delete for good. The rows are kept only within a
+    tab and a company; across them the list says it's loading.

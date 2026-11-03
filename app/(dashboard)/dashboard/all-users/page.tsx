@@ -82,15 +82,18 @@ export default function AllUsersPage() {
     const { data: companiesResult } = useSWR(isSuperAdmin ? '/api/companies?limit=1000&filter=all&sort=name' : null, fetcher)
     const companies: { id: string; name: string }[] = companiesResult?.data?.data ?? []
 
-    // The rows stay up while the next page, tab or search loads, each answer
+    // The rows stay up while the next page or search loads, each answer
     // tagged with what it was asked for: one that failed says so, rather than
-    // leave the last one's rows under the new search.
+    // leave the last one's rows under the new search. Not across tabs or
+    // companies: the people at work drawn as Left rows, or another company's,
+    // would carry a Delete for good for someone it isn't for (Codex on PR 173).
+    const scope = `${left ? 'left' : 'at-work'}/${companyId}`
     const listUrl = isSuperAdmin
         ? `/api/users?page=${page}&limit=${LIMIT}${left ? '&status=DELETED' : ''}&companyId=${encodeURIComponent(companyId)}&search=${encodeURIComponent(search)}`
         : null
-    const { data, error, isValidating, mutate } = useSWR(scopedKey(listUrl, ''), scopedFetcher, { keepPreviousData: true })
+    const { data, error, isValidating, mutate } = useSWR(scopedKey(listUrl, scope), scopedFetcher, { keepPreviousData: true })
     const failed = loadFailed(data, error, listUrl)
-    const listed: Listed | null = failed ? null : forScope(data, '')?.data ?? null
+    const listed: Listed | null = failed ? null : forScope(data, scope)?.data ?? null
     // Fewer pages than the one shown, as when the last person on it is
     // deleted for good: the last page there is now.
     const pageCount = listed?.totalPages

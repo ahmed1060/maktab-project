@@ -11,7 +11,7 @@ import { en } from "./translations/en"
  * and those who have left, whom only a Super Admin deletes for good.
  */
 
-type Loaded = { data?: unknown; error?: unknown; isValidating?: boolean; retained?: { data?: unknown } }
+type Loaded = { data?: unknown; error?: unknown; isValidating?: boolean; retained?: { data?: unknown; scope?: string } }
 const state = {
     locale: "en" as "en" | "ar",
     viewer: { id: "sa1", role: "SUPER_ADMIN" } as Record<string, unknown> | null,
@@ -39,8 +39,8 @@ vi.mock("swr", () => ({
         const url = Array.isArray(key) ? key[0] : key
         state.keys.push(url)
         const loaded: Loaded = url ? state.swr[url] ?? {} : {}
-        const tagged = (body: unknown, from: string) => body === undefined ? undefined : Array.isArray(key) ? { scope: key[1], url: from, body } : body
-        const data = loaded.retained ? tagged(loaded.retained.data, "/api/users?an-earlier-request") : tagged(loaded.data, url ?? "")
+        const tagged = (body: unknown, from: string, scope?: string) => body === undefined ? undefined : Array.isArray(key) ? { scope: scope ?? key[1], url: from, body } : body
+        const data = loaded.retained ? tagged(loaded.retained.data, "/api/users?an-earlier-request", loaded.retained.scope) : tagged(loaded.data, url ?? "")
         return { error: undefined, isValidating: false, mutate: async () => {}, ...loaded, data }
     },
 }))
@@ -185,6 +185,18 @@ describe("the All users page", () => {
         const html = await render({ ...companies, [LEFT]: { retained: listed([person()]), error: failed.error } }, { search: "show=left" })
         expect(html).toContain(esc(en.all_users_load_failed))
         expect(html).not.toContain("Youssef Adel")
+    })
+
+    it("keeps no rows from the other tab or another company up while the next ones load, so Delete for good is never on someone it isn't for (Codex on PR 173)", async () => {
+        // The people at work, kept from the tab before: the Left tab says it's loading, not them.
+        const html = await render({ ...companies, [LEFT]: { retained: { ...listed([person()]), scope: "at-work/" } } }, { search: "show=left" })
+        expect(html).toContain('<div class="ui-panel" role="status">')
+        expect(html).not.toContain("Youssef Adel")
+        expect(state.menus).toEqual([])
+        const source = readFileSync("app/(dashboard)/dashboard/all-users/page.tsx", "utf8")
+        expect(source).toContain("const scope = `${left ? 'left' : 'at-work'}/${companyId}`")
+        expect(source).toContain("useSWR(scopedKey(listUrl, scope), scopedFetcher, { keepPreviousData: true })")
+        expect(source).toContain("forScope(data, scope)?.data")
     })
 
     it("goes back to page 1 when what's asked changes, and to the last page there is when the pages it's on are gone", () => {
