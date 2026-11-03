@@ -47,6 +47,9 @@ export default function NewEmployeePage() {
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<NewEmployeeField, string>>>({})
     const [loading, setLoading] = useState(false)
+    // The field to focus, once the form can be used again: its fields are off
+    // while it's sent, and a refused email focused then took the focus nowhere.
+    const [focusOn, setFocusOn] = useState<NewEmployeeField | null>(null)
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
@@ -76,14 +79,19 @@ export default function NewEmployeePage() {
         return () => window.removeEventListener('beforeunload', warn)
     }, [started, loading])
 
+    useEffect(() => {
+        if (!focusOn || loading) return
+        // The first field that's wrong takes the focus, which brings it into view.
+        document.querySelector<HTMLElement>(`[name="${focusOn}"]`)?.focus()
+        setFocusOn(null)
+    }, [focusOn, loading])
+
     if (!mayCreate) return <AccessDenied />
 
     const clear = (field: NewEmployeeField) => { if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: undefined }) }
     const wrongAt = (errors: Partial<Record<NewEmployeeField, string>>) => {
         setFieldErrors(errors)
-        const first = firstError(errors as Record<string, string>, FIELDS)
-        // The first field that's wrong takes the focus, which brings it into view.
-        if (first) document.querySelector<HTMLElement>(`[name="${first}"]`)?.focus()
+        setFocusOn(firstError(errors as Record<string, string>, FIELDS) as NewEmployeeField | null)
     }
 
     const handleSubmit = async (e: React.FormEvent) => {

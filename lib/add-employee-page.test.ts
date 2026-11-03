@@ -156,7 +156,7 @@ describe("its checks", () => {
         })
         expect(newEmployeeErrors({ firstName: "Mona", lastName: "Adel", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({})
         const src = readFileSync(PAGE, "utf8")
-        expect(src).toContain("document.querySelector<HTMLElement>(`[name=\"${first}\"]`)?.focus()")
+        expect(src).toContain("setFocusOn(firstError(errors as Record<string, string>, FIELDS) as NewEmployeeField | null)")
         for (const english of ["Email must be in format", "First Name max", "Password must be 12-72", "Company is required", "An error occurred", "Failed to create user", "Username already in use"]) {
             expect(src, english).not.toContain(english)
         }
@@ -203,3 +203,14 @@ describe("on the building blocks", () => {
         expect(en.select_company_placeholder).toBe("Select a company…")
     })
 })
+
+describe("Add employee, found in the browser", () => {
+    it("puts the focus on the field a refusal is about once the form can be used again", () => {
+        // The fields are off while it's sent, and the refused email was
+        // focused while it still was: the focus went nowhere.
+        const src = readFileSync(PAGE, "utf8")
+        expect(src).toContain("if (!focusOn || loading) return")
+        expect(src).toContain("document.querySelector<HTMLElement>(`[name=\"${focusOn}\"]`)?.focus()")
+    })
+})
+

@@ -3411,3 +3411,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - leaving with something typed asks first;
   - its labels are in sentence case, "First name" and "Day off credit",
     in English as elsewhere, and on the employee's page that shares them.
+- **2026-11-03:** Found in the browser, on #180: an email somebody already
+  has was said under the email, and the focus went nowhere, as the fields
+  were still off from sending. The field it's about takes the focus once
+  the form can be used again.
