@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
-import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor } from "./sign-in-lock"
+import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor, type Counted } from "./sign-in-lock"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -87,21 +87,21 @@ export const authOptions: NextAuthOptions = {
                 mfaRecoveryCode: { label: "MFA Recovery Code", type: "text" }
             },
             async authorize(credentials) {
-                let loginKey: string | null = null
+                let counted: Counted | null = null
                 // Whether the password was right, and whether the attempt has
                 // been given back or the run forgotten, once at most.
                 let passwordOk = false
                 let givenBack = false
                 const giveBack = async () => {
-                    if (!loginKey || givenBack) return
+                    if (!counted || givenBack) return
                     givenBack = true
-                    await giveBackSignIn(loginKey)
+                    await giveBackSignIn(counted)
                 }
                 // A sign-in that succeeds ends the run: the tries are counted in a row.
                 const forget = async () => {
-                    if (!loginKey || givenBack) return
+                    if (!counted || givenBack) return
                     givenBack = true
-                    await forgetSignIn(loginKey)
+                    await forgetSignIn(counted)
                 }
                 try {
                     // headers() is async since Next 15.
@@ -176,10 +176,10 @@ export const authOptions: NextAuthOptions = {
                     // An email nobody has is counted alike, so a lock says
                     // nothing of who's registered (F-17).
                     const key = lockKeyFor(superAdmin || user, credentials.email)
-                    const held = await countSignIn(key)
-                    if (held) throw new Error(holdMessage(held))
+                    const tried = await countSignIn(key)
+                    if (tried.kind !== 'counted') throw new Error(holdMessage(tried))
                     // Counted: only now is there anything to give back.
-                    loginKey = key
+                    counted = tried
 
                     const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
                     const isValid = await bcrypt.compare(credentials.password, passwordHash)

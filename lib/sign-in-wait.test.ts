@@ -33,8 +33,8 @@ describe("how long is left, from the server", () => {
     })
 
     it("is said the same way by sign-in and by \"email me a code instead\"", () => {
-        expect(read("lib/auth.ts")).toContain("throw new Error(holdMessage(held))")
-        expect(read("app/api/auth/mfa-recovery/request/route.ts")).toContain("ApiResponse.error(holdMessage(held), 429)")
+        expect(read("lib/auth.ts")).toContain("throw new Error(holdMessage(tried))")
+        expect(read("app/api/auth/mfa-recovery/request/route.ts")).toContain("ApiResponse.error(holdMessage(tried), 429)")
     })
 
     it("is nothing for any other error", () => {

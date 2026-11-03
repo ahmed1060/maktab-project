@@ -46,6 +46,9 @@ export type Hold = { kind: 'pause' | 'lock'; until: Date }
 
 type Run = { count: number; resetAt: Date }
 
+/** A try counted: whose, and the times the run had before it and has since, to put back if it's given back. */
+export type Counted = { kind: 'counted'; key: string; before: Date | null; resetAt: Date }
+
 /**
  * What a run of wrong tries holds back now. Its resetAt is when it's
  * forgotten, fifteen minutes after its last try, which after ten is when
@@ -69,12 +72,15 @@ export function holdOf(run: Run | null, now: Date): Hold | null {
  * given back and turned away. A burst gets no further than the pause or the
  * lock allows. Fails closed, as RateLimiter does (F-10).
  */
-export async function countSignIn(key: string, now: Date = new Date()): Promise<Hold | null> {
+export async function countSignIn(key: string, now: Date = new Date()): Promise<Hold | Counted> {
     try {
         const found = await prisma.rateLimit.findUnique({ where: { key } })
         const run = found && found.resetAt > now ? found : null
         const held = holdOf(run, now)
         if (held) return held
+        // As found, before this try changes them.
+        const before = found?.resetAt ?? null
+        const pauseOver = !!run && run.count >= PAUSE_AFTER
 
         const resetAt = new Date(now.getTime() + LOCK_MS)
         const add = () => prisma.rateLimit.update({ where: { key }, data: { count: { increment: 1 }, resetAt } })
@@ -87,14 +93,13 @@ export async function countSignIn(key: string, now: Date = new Date()): Promise<
             counted = started.count ? { count: 1, resetAt } : await add()
         }
 
-        const pauseOver = !!run && run.count >= PAUSE_AFTER
         if (counted.count > LOCK_AFTER || (counted.count > PAUSE_AFTER && !pauseOver)) {
-            await giveBackSignIn(key)
+            await takeOne(key)
             return counted.count > LOCK_AFTER
                 ? { kind: 'lock', until: counted.resetAt }
                 : { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
         }
-        return null
+        return { kind: 'counted', key, before, resetAt }
     } catch (e) {
         console.error('[sign-in lock] database error, failing closed', e)
         return { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
@@ -113,15 +118,31 @@ export function holdMessage(hold: Hold, now: Date = new Date()): string {
     return `Too many login attempts for this account. Please try again at ${timeStr}. ${wait}`
 }
 
-/** Gives back a try that wasn't a wrong guess: the step that asks for the code, or an account turned away after its password was right. */
-export async function giveBackSignIn(key: string): Promise<void> {
+const takeOne = (key: string) =>
+    prisma.rateLimit.updateMany({ where: { key, count: { gt: 0 } }, data: { count: { decrement: 1 } } })
+
+/**
+ * Gives back a try that wasn't a wrong guess: the step that asks for the
+ * code, or an account turned away after its password was right. With the
+ * run's time as it was before, or the 30 seconds after the fifth wrong try
+ * started again from the right password, and turned the code away (Codex on
+ * PR 183). Only if nothing has been counted since; otherwise just the try.
+ */
+export async function giveBackSignIn(counted: Counted): Promise<void> {
     try {
-        await prisma.rateLimit.updateMany({ where: { key, count: { gt: 0 } }, data: { count: { decrement: 1 } } })
+        if (counted.before) {
+            const put = await prisma.rateLimit.updateMany({
+                where: { key: counted.key, count: { gt: 0 }, resetAt: counted.resetAt },
+                data: { count: { decrement: 1 }, resetAt: counted.before },
+            })
+            if (put.count) return
+        }
+        await takeOne(counted.key)
     } catch { }
 }
 
 /** A sign-in that succeeded: the run is over, as the tries are counted in a row. */
-export const forgetSignIn = (key: string) => RateLimiter.clear(key)
+export const forgetSignIn = (counted: Counted) => RateLimiter.clear(counted.key)
 
 /** When each of these accounts can sign in again, for the ones locked for fifteen minutes now. */
 export async function lockedUntil(accountIds: string[], now: Date = new Date()): Promise<Map<string, Date>> {

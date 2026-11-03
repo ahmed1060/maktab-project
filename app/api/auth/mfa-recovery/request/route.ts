@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
         // email nobody has is counted alike, so a lock says nothing of who's
         // registered.
         const key = lockKeyFor(account, email)
-        const held = await countSignIn(key)
+        const tried = await countSignIn(key)
         // Said as sign-in says it, so the page counts it down the same way.
-        if (held) return ApiResponse.error(holdMessage(held), 429)
+        if (tried.kind !== 'counted') return ApiResponse.error(holdMessage(tried), 429)
 
         const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
         const isValid = await bcrypt.compare(password, passwordHash)
@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
         // The password was right: asking for a code is not a guess, so the
         // attempt is given back, as authorize() gives back the step that asks
         // for one. Otherwise each sign-in by emailed code used one of the
-        // account's five (review on #29).
-        await giveBackSignIn(key)
+        // account's tries (review on #29).
+        await giveBackSignIn(tried)
 
         if (!(account as any).mfaEnabled || !(account as any).emailVerifiedAt) {
             // Reachable in practice only if MFA got enabled before email

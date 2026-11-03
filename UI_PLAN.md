@@ -3545,3 +3545,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   with its capitals set aside, while finding the account matches it as
   typed, so five wrong tries as NOBODY@ paused nobody@ only when nobody had
   it, which said who's registered. It's counted as typed.
+- **2026-11-03:** Found by Codex, on #183: after the 30 seconds, the right
+  password with two-factor started them again, as giving its try back left
+  the run with the right password's time, so the code was turned away. A
+  try given back puts the run's time back as it was, and the code goes
+  through, as does asking for it by email.

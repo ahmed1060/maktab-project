@@ -28,7 +28,8 @@ vi.mock("@/lib/prisma", () => ({
         },
         systemSettings: { findUnique: async () => null },
         rateLimit: {
-            findUnique: async ({ where }: any) => db.limits[where.key] ?? null,
+            // A copy, as Prisma gives one.
+            findUnique: async ({ where }: any) => (db.limits[where.key] ? { ...db.limits[where.key] } : null),
             upsert: async ({ where, create, update }: any) => {
                 const row = db.limits[where.key]
                 if (!row) return (db.limits[where.key] = { count: create.count, resetAt: create.resetAt })
@@ -175,6 +176,22 @@ describe("signing in, a pause after five wrong tries and a lock after ten", () =
         expect(failures).toHaveLength(5)
         expect(tries.filter(t => typeof t === "string" && t.includes("Sign-in paused"))).toHaveLength(15)
         expect(db.limits["login:account:sa"].count).toBe(5)
+    })
+
+    it("gives the right password's try back without starting the 30 seconds again (Codex on PR 183)", async () => {
+        // Five wrong, the 30 seconds waited out, then the right password: the
+        // step that asks for the code gives its try back, and the code goes
+        // through, where giving it back left the count at five with a new
+        // time, so the code was turned away for another 30 seconds.
+        await wrong(5)
+        await expect(authorize({ email, password })).rejects.toThrow("MFA_REQUIRED")
+        expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+    })
+
+    it("does the same when the code is asked for by email (Codex on PR 183)", async () => {
+        await wrong(5)
+        expect((await emailMeACode({ email, password })).status).toBe(200)
+        expect(await authorize({ email, password, mfaRecoveryCode: "654321" })).toMatchObject({ id: "sa" })
     })
 
     it("forgets a run fifteen minutes after its last wrong try", async () => {
