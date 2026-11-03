@@ -214,3 +214,11 @@ describe("Add employee, found in the browser", () => {
     })
 })
 
+describe("Add employee, found in the web interface audit", () => {
+    it("says how much of a name it takes, as it stops at 15 characters", async () => {
+        // Typing stopped at the 15th character with nothing to say why.
+        const html = await render()
+        const count = esc(en.ui_characters_used.replace("{used}", "0").replace("{max}", "15"))
+        expect(html.split(count).length - 1).toBe(2)
+    })
+})

@@ -30,8 +30,10 @@ export const dynamic = 'force-dynamic'
  * password eye drawn by hand.
  */
 export default function NewEmployeePage() {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const modules = useModules()
+    // How much of a name it takes, as it stops at the server's limit (web interface audit, PR 180).
+    const used = (n: number) => t('ui_characters_used').replace('{used}', n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')).replace('{max}', NAME_MAX.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB'))
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
     const [email, setEmail] = useState('')
@@ -155,11 +157,11 @@ export default function NewEmployeePage() {
 
             <Card>
                 <form onSubmit={handleSubmit} noValidate className="ui-form">
-                    <Field label={t('first_name_label')} error={fieldErrors.firstName}>{p => (
+                    <Field label={t('first_name_label')} hint={used(firstName.length)} error={fieldErrors.firstName}>{p => (
                         <TextInput {...p} name="firstName" autoComplete="off" dir="auto" maxLength={NAME_MAX} value={firstName} disabled={loading}
                             onChange={e => { setFirstName(e.target.value); clear('firstName') }} />
                     )}</Field>
-                    <Field label={t('last_name_label')} error={fieldErrors.lastName}>{p => (
+                    <Field label={t('last_name_label')} hint={used(lastName.length)} error={fieldErrors.lastName}>{p => (
                         <TextInput {...p} name="lastName" autoComplete="off" dir="auto" maxLength={NAME_MAX} value={lastName} disabled={loading}
                             onChange={e => { setLastName(e.target.value); clear('lastName') }} />
                     )}</Field>

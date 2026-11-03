@@ -3415,3 +3415,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   has was said under the email, and the focus went nowhere, as the fields
   were still off from sending. The field it's about takes the focus once
   the form can be used again.
+- **2026-11-03:** Found in the web interface audit, on #180: a name stopped
+  at its 15th character with nothing to say why. Each says how much of it
+  is used, as Add obligation's fields do.
