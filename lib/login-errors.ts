@@ -28,3 +28,23 @@ export function codeErrorKey(error: string | undefined | null): MessageKey {
     if (error?.includes("Too many login attempts")) return "error_too_many_attempts"
     return "error_generic"
 }
+
+/** Held back after wrong tries, and for how many seconds more, as the server counted them (lib/sign-in-lock.ts, holdMessage). */
+export type Wait = { kind: "pause" | "lock"; seconds: number }
+
+export function waitOf(error: string | undefined | null): Wait | null {
+    const found = /\[wait (\d+)\]/.exec(error ?? "")
+    if (!found || !error) return null
+    if (error.includes("Sign-in paused")) return { kind: "pause", seconds: Number(found[1]) }
+    if (error.includes("Too many login attempts")) return { kind: "lock", seconds: Number(found[1]) }
+    return null
+}
+
+/** The time left as minutes and seconds, "0:27" or "14:32", in the language's digits; part of a second is a second. */
+export function waitText(ms: number, locale: string): string {
+    const total = Math.max(0, Math.ceil(ms / 1000))
+    const tag = locale === "ar" ? "ar-EG" : "en-GB"
+    const minutes = Math.floor(total / 60).toLocaleString(tag)
+    const seconds = (total % 60).toLocaleString(tag, { minimumIntegerDigits: 2 })
+    return `${minutes}:${seconds}`
+}

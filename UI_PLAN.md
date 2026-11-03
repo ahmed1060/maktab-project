@@ -3531,3 +3531,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the count over, and a run is forgotten fifteen minutes after its last
   wrong try. Tries turned away during the pause or the lock aren't counted,
   and tries sent all at once get no further than one at a time would.
+- **2026-11-03:** Decided on #183: the sign-in page counts down the 30
+  seconds and the fifteen minutes as they pass, "You can try again in
+  0:27", in the language's digits, and says "You can try signing in again"
+  once it's over, where it said "30 seconds" or "within 15 minutes" and
+  left it to them to count. The server says how many seconds are left, so
+  a phone's clock being off doesn't matter. The time is a timer, which a
+  screen reader doesn't read out every second, and Sign in stays there to
+  press, as an Admin may unlock the account before the time is up. The
+  same goes for the step that asks for the code and for "email me a code
+  instead".

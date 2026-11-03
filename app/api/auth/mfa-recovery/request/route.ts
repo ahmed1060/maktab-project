@@ -3,7 +3,7 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
-import { countSignIn, giveBackSignIn, lockKeyFor } from "@/lib/sign-in-lock"
+import { countSignIn, giveBackSignIn, holdMessage, lockKeyFor } from "@/lib/sign-in-lock"
 import { DUMMY_PASSWORD_HASH } from "@/lib/auth"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
@@ -43,10 +43,8 @@ export async function POST(req: NextRequest) {
         // registered.
         const key = lockKeyFor(account, email)
         const held = await countSignIn(key)
-        if (held) {
-            const timeStr = held.until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            return ApiResponse.error(`Too many attempts. Please try again at ${timeStr}.`, 429)
-        }
+        // Said as sign-in says it, so the page counts it down the same way.
+        if (held) return ApiResponse.error(holdMessage(held), 429)
 
         const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
         const isValid = await bcrypt.compare(password, passwordHash)

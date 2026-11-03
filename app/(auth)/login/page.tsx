@@ -5,13 +5,26 @@ import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import PreferenceBar from '@/components/PreferenceBar'
 import { reportClientError, friendlyErrorMessage } from '@/lib/client-error-report'
-import { signInErrorKey, codeErrorKey } from '@/lib/login-errors'
+import { signInErrorKey, codeErrorKey, waitOf } from '@/lib/login-errors'
+import { SignInWait } from '@/components/SignInWait'
 
 export default function LoginPage() {
     const { t, locale } = useLanguage()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
+    // Held back after wrong tries, counted down until it's over, and then
+    // said that it's over (lib/sign-in-lock.ts, decided 2026-11-03).
+    const [hold, setHold] = useState<{ kind: 'pause' | 'lock'; until: number } | null>(null)
+    const [notice, setNotice] = useState('')
+    /** Whether the server held sign-in back; if so, the count down is shown in place of an error. */
+    const held = (serverError: string | undefined | null) => {
+        const wait = waitOf(serverError)
+        if (!wait) return false
+        setError('')
+        setHold({ kind: wait.kind, until: Date.now() + wait.seconds * 1000 })
+        return true
+    }
     const [showPassword, setShowPassword] = useState(false)
     const router = useRouter()
 
@@ -118,6 +131,8 @@ export default function LoginPage() {
         e.preventDefault()
         setLoading(true)
         setError('')
+        setHold(null)
+        setNotice('')
 
         try {
             const res = await signIn('credentials', {
@@ -134,7 +149,7 @@ export default function LoginPage() {
             }
 
             if (res?.error) {
-                setError(t(signInErrorKey(res.error)))
+                if (!held(res.error)) setError(t(signInErrorKey(res.error)))
                 setLoading(false)
             } else if (res?.ok) {
                 await finishLogin()
@@ -154,6 +169,8 @@ export default function LoginPage() {
         e.preventDefault()
         setLoading(true)
         setError('')
+        setHold(null)
+        setNotice('')
 
         try {
             const res = await signIn('credentials', {
@@ -169,7 +186,7 @@ export default function LoginPage() {
                 return
             }
 
-            setError(t(codeErrorKey(res?.error)))
+            if (!held(res?.error)) setError(t(codeErrorKey(res?.error)))
             setLoading(false)
         } catch (err: any) {
             const ref = await reportClientError(err, '/login')
@@ -180,6 +197,8 @@ export default function LoginPage() {
 
     const requestRecoveryCode = async () => {
         setError('')
+        setHold(null)
+        setNotice('')
         setRecoverySending(true)
         try {
             const res = await fetch('/api/auth/mfa-recovery/request', {
@@ -189,6 +208,7 @@ export default function LoginPage() {
             })
             const data = await res.json()
             if (!res.ok || !data.success) {
+                if (held(data.error)) return
                 throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
             }
             setStage('recovery')
@@ -291,6 +311,34 @@ export default function LoginPage() {
                             border: '1px solid var(--danger-border-firm)',
                             fontWeight: '500'
                         }}>{error}</div>
+                    )}
+                    {hold && (
+                        <div role="alert" style={{
+                            padding: '1rem',
+                            marginBottom: '1.5rem',
+                            background: 'linear-gradient(135deg, var(--danger-bg) 0%, var(--danger-border) 100%)',
+                            color: 'var(--danger-fg)',
+                            borderRadius: '12px',
+                            fontSize: '0.875rem',
+                            textAlign: 'center',
+                            border: '1px solid var(--danger-border-firm)',
+                            fontWeight: '500',
+                            fontVariantNumeric: 'tabular-nums',
+                        }}>
+                            <SignInWait kind={hold.kind} until={hold.until} onOver={() => { setHold(null); setNotice(t('sign_in_wait_over')) }} />
+                        </div>
+                    )}
+                    {notice && !error && !hold && (
+                        <div role="status" style={{
+                            padding: '0.85rem 1rem',
+                            marginBottom: '1.5rem',
+                            background: 'linear-gradient(135deg, var(--ok-bg) 0%, var(--ok-bg-strong) 100%)',
+                            color: 'var(--ok-fg)',
+                            borderRadius: '12px',
+                            fontSize: '0.85rem',
+                            textAlign: 'center',
+                            border: '1px solid var(--ok-border)',
+                        }}>{notice}</div>
                     )}
 
                     {mode === 'forgot' ? (

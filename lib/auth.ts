@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
-import { countSignIn, forgetSignIn, giveBackSignIn, lockKeyFor } from "./sign-in-lock"
+import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor } from "./sign-in-lock"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -177,11 +177,7 @@ export const authOptions: NextAuthOptions = {
                     // nothing of who's registered (F-17).
                     const key = lockKeyFor(superAdmin || user, credentials.email)
                     const held = await countSignIn(key)
-                    if (held?.kind === 'pause') throw new Error('Sign-in paused for 30 seconds after five wrong tries for this account.')
-                    if (held) {
-                        const timeStr = held.until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        throw new Error(`Too many login attempts for this account. Please try again at ${timeStr}.`)
-                    }
+                    if (held) throw new Error(holdMessage(held))
                     // Counted: only now is there anything to give back.
                     loginKey = key
 

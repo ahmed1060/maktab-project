@@ -96,6 +96,18 @@ export async function countSignIn(key: string, now: Date = new Date()): Promise<
     }
 }
 
+/**
+ * What sign-in says when it's held back, with how long is left in seconds,
+ * counted here, so the sign-in page counts it down without trusting the
+ * phone's clock (lib/login-errors.ts, waitOf).
+ */
+export function holdMessage(hold: Hold, now: Date = new Date()): string {
+    const wait = `[wait ${Math.max(1, Math.ceil((hold.until.getTime() - now.getTime()) / 1000))}]`
+    if (hold.kind === 'pause') return `Sign-in paused for 30 seconds after five wrong tries for this account. ${wait}`
+    const timeStr = hold.until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return `Too many login attempts for this account. Please try again at ${timeStr}. ${wait}`
+}
+
 /** Gives back a try that wasn't a wrong guess: the step that asks for the code, or an account turned away after its password was right. */
 export async function giveBackSignIn(key: string): Promise<void> {
     try {
