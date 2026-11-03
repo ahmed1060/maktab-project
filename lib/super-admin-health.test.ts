@@ -223,3 +223,26 @@ describe("System health's dialogs", () => {
         expect(readFileSync(DIALOGS, "utf8")).not.toMatch(/style=\{|\bas any\b/)
     })
 })
+
+describe("System health, found in the interface audit", () => {
+    it("lets the list of unused files be scrolled from the keyboard, named for what it lists", async () => {
+        // It scrolls within itself, and a list that can't take focus can't be scrolled without a mouse.
+        const { OrphanReport } = await import("@/components/HealthDialogs")
+        const report = { orphaned: 1, total: 10, bytes: 2048, orphans: ["c1/a.pdf"] }
+        const html = await renderIn(async () => h(OrphanReport, { report, busy: false, onDelete: () => {}, onClose: () => {} }))
+        expect(html).toMatch(new RegExp(`<ul(?=[^>]*class="ui-report ui-report-scroll")(?=[^>]*tabindex="0")(?=[^>]*aria-label="${esc(en.orphan_report_title)}")[^>]*>`))
+    })
+
+    it("draws only the lines in view, for a backlog of thousands", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rule = css.slice(css.indexOf(".ui-report-scroll > li {"))
+        expect(rule.slice(0, rule.indexOf("}"))).toContain("content-visibility: auto")
+    })
+
+    it("says what to do next when a backup, a restore or maintenance mode didn't start", () => {
+        for (const key of ["backup_trigger_failed", "restore_trigger_failed", "maintenance_toggle_failed"] as const) {
+            expect(en[key], key).toMatch(/Try again/)
+            expect(ar[key], key).toMatch(/حاول مرة أخرى/)
+        }
+    })
+})

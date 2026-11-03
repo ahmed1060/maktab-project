@@ -84,7 +84,8 @@ export function OrphanReport({ report, busy, onDelete, onClose }: {
                     <p className="ui-hint" role="status">
                         {t('health_orphans_found').replace('{count}', num(report.orphaned)).replace('{total}', num(report.total)).replace('{size}', fileSize(report.bytes, locale))}
                     </p>
-                    <ul className="ui-report ui-report-scroll">
+                    {/* It scrolls within itself, so it takes focus to be scrolled from the keyboard. */}
+                    <ul className="ui-report ui-report-scroll" tabIndex={0} aria-label={t('orphan_report_title')}>
                         {report.orphans.map(path => <li key={path}><bdi dir="ltr" translate="no">{path}</bdi></li>)}
                     </ul>
                 </>

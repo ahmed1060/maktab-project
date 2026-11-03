@@ -3229,3 +3229,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - labels only the old page used are removed, and its others are in
     sentence case: "Back up now", "Restore the latest backup", "Turn on
     maintenance mode".
+- **2026-11-03:** Found in the interface audit, on #176:
+  - the list of files nothing refers to scrolls within itself, but
+    couldn't take focus, so it couldn't be scrolled from the keyboard. It
+    takes focus now, named for what it lists;
+  - a backlog can be thousands of files, every line drawn at once; only
+    the lines in view are drawn;
+  - a backup, a restore or maintenance mode that didn't start said only
+    that. Each says what to do next: try again, and for a backup or a
+    restore, start it from the GitHub Actions tab.

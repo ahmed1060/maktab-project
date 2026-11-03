@@ -1515,6 +1515,11 @@ a.ui-file-open:focus-visible,
   overscroll-behavior: contain;
   overflow-wrap: anywhere;
 }
+/* A backlog can be thousands of files: only the lines in view are drawn. */
+.ui-report-scroll > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--leading-sm);
+}
 /* More, behind a disclosure, such as the rows a file couldn't give. */
 .ui-more > summary {
   cursor: pointer;
