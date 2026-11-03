@@ -2256,3 +2256,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   in #178. System settings' face checks switch moves onto the building
   blocks in #179 (`UI_PLAN.md` §5), which finishes the page. It doesn't
   touch clients or locations.
+- **2026-11-03:** The Super Admin's pages, Operations part 4b, was merged
+  in #179, which finished Operations. Add employee moves onto the building
+  blocks in #180 (`UI_PLAN.md` §5), the first of the pages left. It
+  doesn't touch clients or locations.

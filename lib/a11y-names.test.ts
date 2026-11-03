@@ -53,9 +53,10 @@ describe("icon-only buttons", () => {
                 return { at: `${f}: ${m[1]}`, named: /aria-label=\{\w+ \? t\('hide_password' as any\) : t\('show_password' as any\)\}/.test(before) }
             })
         })
-        // Four left: the Super Admins page's moved onto the building blocks'
-        // password field (part 2b), whose button is named below.
-        expect(toggles.length).toBeGreaterThanOrEqual(4)
+        // Three left: the Super Admins page's moved onto the building blocks'
+        // password field (part 2b), and Add employee's (PR 180), whose button
+        // is named below.
+        expect(toggles.length).toBeGreaterThanOrEqual(3)
         expect(toggles.filter(t => !t.named).map(t => t.at)).toEqual([])
     })
 
