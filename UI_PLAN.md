@@ -3112,3 +3112,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     reason and Try again, where it said "Something went wrong" in place of
     the page; and when nothing waits, or the app has sent nothing yet;
   - a label only the old page used is removed.
+- **2026-11-03:** Found in the browser, on #174:
+  - on a computer, the reasons' long lines squeezed the company and the
+    person onto two lines each, and why each company's check-ins were
+    flagged or refused sat end-aligned under each count. Names stay on
+    one line, the counts are numbers alone, the accepted ones among them,
+    and why follows them in a column of its own, a line for flagged and a
+    line for refused.

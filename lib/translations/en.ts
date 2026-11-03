@@ -2370,6 +2370,7 @@ export const en = {
         chk_integrity_none: "No check-ins from the app yet",
         chk_load_failed: "The check-ins didn't load",
         chk_checkins: "Check-ins",
+        chk_accepted: "Accepted",
         chk_flagged: "Flagged",
         chk_refused: "Refused",
         chk_accepted_n: "{n} accepted",

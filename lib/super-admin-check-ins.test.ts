@@ -111,8 +111,9 @@ describe("the Check-ins page", () => {
         expect(queue).toContain(`<p class="ui-hint">${esc(en.chk_queue_hint)}</p>`)
         expect(queue).toContain(`<caption class="ui-visually-hidden">${en.chk_queue}</caption>`)
         for (const column of [en.chk_company, en.punch_person, en.punch_time, en.req_flagged_why]) expect(queue, column).toContain(`<th scope="col">${column}</th>`)
-        expect(queue).toContain("<bdi>Delta Sites</bdi>")
-        expect(queue).toContain("Youssef Adel")
+        // A name on one line, where the reasons' long lines squeezed it onto two (found in the browser).
+        expect(queue).toContain('<span class="ui-nowrap"><bdi>Delta Sites</bdi></span>')
+        expect(queue).toContain('<span class="ui-nowrap">Youssef Adel</span>')
         expect(queue).toContain("<bdi>Pixel 8</bdi>")
         // The day and time as the language writes them, where it was "2026-11-02 08:57".
         // As the Requests page writes a flagged check-in's: en-GB's clock is 24-hour.
@@ -161,12 +162,18 @@ describe("the Check-ins page", () => {
         expect(counts).toContain(`<p class="ui-hint">${esc(en.chk_integrity_hint.replace("{n}", "30"))}</p>`)
         expect(counts).toContain(`<caption class="ui-visually-hidden">${en.chk_integrity}</caption>`)
         expect(counts).toContain(`<th scope="col">${en.chk_company}</th>`)
-        for (const column of [en.chk_checkins, en.chk_flagged, en.chk_refused]) expect(counts, column).toMatch(new RegExp(`<th(?=[^>]*scope="col")(?=[^>]*class="[^"]*ui-end)[^>]*>${column}</th>`))
-        expect(counts).toContain("<bdi>Delta Sites</bdi>")
+        // The counts are numbers alone, and why after them, where why sat
+        // under each count, end-aligned, and squeezed the names onto two
+        // lines (found in the browser).
+        for (const column of [en.chk_checkins, en.chk_accepted, en.chk_flagged, en.chk_refused]) expect(counts, column).toMatch(new RegExp(`<th(?=[^>]*scope="col")(?=[^>]*class="[^"]*ui-end)[^>]*>${column}</th>`))
+        expect(counts).toContain(`<th scope="col">${en.req_flagged_why}</th>`)
+        expect(counts).toContain('<span class="ui-nowrap"><bdi>Delta Sites</bdi></span>')
         expect(counts).toContain('<span class="ui-num">1,240</span>')
-        expect(counts).toContain(en.chk_accepted_n.replace("{n}", "1,190"))
-        expect(counts).toContain(`30 ${en.att_flag_OUTSIDE_AREA}${en.list_separator}8 ${en.att_flag_IMPRECISE_LOCATION}`)
-        expect(counts).toContain(`9 ${en.att_refusal_MOCK_LOCATION}${en.list_separator}3 ${en.att_refusal_BAD_SIGNATURE}`)
+        expect(counts).toContain('<span class="ui-num">1,190</span>')
+        expect(counts).toContain(`${en.chk_flagged}: 30 ${en.att_flag_OUTSIDE_AREA}${en.list_separator}8 ${en.att_flag_IMPRECISE_LOCATION}`)
+        expect(counts).toContain(`${en.chk_refused}: 9 ${en.att_refusal_MOCK_LOCATION}${en.list_separator}3 ${en.att_refusal_BAD_SIGNATURE}`)
+        // A company with none to say why has no lines for it.
+        expect(counts).not.toContain(`${en.chk_flagged}: </div>`)
         // Refusals stand out, where a company has any.
         expect(counts).toContain('<span class="ui-badge ui-badge-problem">12</span>')
         expect(counts.match(/ui-badge-problem/g)).toHaveLength(2)

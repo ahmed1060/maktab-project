@@ -2367,6 +2367,7 @@ export const ar = {
         chk_integrity_none: "لا توجد تسجيلات حضور من التطبيق بعد",
         chk_load_failed: "لم يتم تحميل تسجيلات الحضور",
         chk_checkins: "التسجيلات",
+        chk_accepted: "المقبولة",
         chk_flagged: "بحاجة إلى مراجعة",
         chk_refused: "مرفوضة",
         chk_accepted_n: "{n} مقبولة",

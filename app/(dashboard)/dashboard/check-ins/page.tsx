@@ -100,6 +100,8 @@ export default function CheckInReviewPage() {
     }
     const phone = (w: Waiting): ReactNode => w.phone ? (w.phone.model ? <bdi>{w.phone.model}</bdi> : platform(w)) : undefined
     const company = (name: string) => <bdi>{name}</bdi>
+    // On one line in a table, where the reasons' long lines squeezed a name onto two (found in the browser).
+    const oneLine = (name: ReactNode) => <span className="ui-nowrap">{name}</span>
 
     const decisions = (w: Waiting) => (
         <span className="ui-row-actions">
@@ -113,8 +115,8 @@ export default function CheckInReviewPage() {
         </span>
     )
     const waitingColumns: Column<Waiting>[] = [
-        { key: 'company', header: t('chk_company'), cell: w => company(w.companyName) },
-        { key: 'person', header: t('punch_person'), cell: w => <ItemTitle title={w.name} detail={phone(w)} /> },
+        { key: 'company', header: t('chk_company'), cell: w => oneLine(company(w.companyName)) },
+        { key: 'person', header: t('punch_person'), cell: w => <ItemTitle title={oneLine(w.name)} detail={phone(w)} /> },
         { key: 'when', header: t('punch_time'), cell: w => <ItemTitle title={when(w)} detail={place(w)} /> },
         { key: 'why', header: t('req_flagged_why'), cell: w => <ItemTitle title={why(w)} detail={where(w)} /> },
         { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: decisions },
@@ -126,11 +128,21 @@ export default function CheckInReviewPage() {
     // Refusals stand out where a company has any: an attack, or a broken app release.
     const refused = (r: Integrity) => r.refused > 0 ? <StatusBadge tone="problem">{num(r.refused)}</StatusBadge> : <span className="ui-num">{num(r.refused)}</span>
     const accepted = (r: Integrity) => t('chk_accepted_n').replace('{n}', num(r.accepted))
+    const count = (n: number) => <span className="ui-num">{num(n)}</span>
+    // Why, after the counts: each said under its own count, end-aligned, read as a column of ragged lines (found in the browser).
+    const flaggedWhy = (r: Integrity) => reasons(r.flaggedBy, 'att_flag_')
+    const refusedWhy = (r: Integrity) => reasons(r.refusedBy, 'att_refusal_')
+    const countsWhy = (r: Integrity) => <>
+        {flaggedWhy(r) && <div>{t('chk_flagged')}: {flaggedWhy(r)}</div>}
+        {refusedWhy(r) && <div>{t('chk_refused')}: {refusedWhy(r)}</div>}
+    </>
     const countColumns: Column<Integrity>[] = [
-        { key: 'company', header: t('chk_company'), cell: r => company(r.name) },
-        { key: 'checkIns', header: t('chk_checkins'), align: 'end', cell: r => <ItemTitle title={<span className="ui-num">{num(r.checkIns)}</span>} detail={accepted(r)} /> },
-        { key: 'flagged', header: t('chk_flagged'), align: 'end', cell: r => <ItemTitle title={<span className="ui-num">{num(r.flagged)}</span>} detail={reasons(r.flaggedBy, 'att_flag_')} /> },
-        { key: 'refused', header: t('chk_refused'), align: 'end', cell: r => <ItemTitle title={refused(r)} detail={reasons(r.refusedBy, 'att_refusal_')} /> },
+        { key: 'company', header: t('chk_company'), cell: r => oneLine(company(r.name)) },
+        { key: 'checkIns', header: t('chk_checkins'), align: 'end', cell: r => count(r.checkIns) },
+        { key: 'accepted', header: t('chk_accepted'), align: 'end', cell: r => count(r.accepted) },
+        { key: 'flagged', header: t('chk_flagged'), align: 'end', cell: r => count(r.flagged) },
+        { key: 'refused', header: t('chk_refused'), align: 'end', cell: refused },
+        { key: 'why', header: t('req_flagged_why'), cell: countsWhy },
     ]
 
     let body: ReactNode
@@ -183,8 +195,9 @@ export default function CheckInReviewPage() {
                             status={r.refused > 0 ? <StatusBadge tone="problem">{`${t('chk_refused')} ${num(r.refused)}`}</StatusBadge> : undefined}
                             details={[
                                 { icon: DeviceMobileIcon, text: `${t('chk_checkins')} ${num(r.checkIns)}${t('list_separator')}${accepted(r)}` },
-                                { icon: WarningIcon, text: list([`${t('chk_flagged')} ${num(r.flagged)}`, reasons(r.flaggedBy, 'att_flag_')]) },
-                                { icon: ProhibitIcon, text: list([`${t('chk_refused')} ${num(r.refused)}`, reasons(r.refusedBy, 'att_refusal_')]) },
+                                // The count, then why: "Flagged 9: 4 app not verified (testing), 3 outside the place".
+                                { icon: WarningIcon, text: [`${t('chk_flagged')} ${num(r.flagged)}`, flaggedWhy(r)].filter(Boolean).join(': ') },
+                                { icon: ProhibitIcon, text: [`${t('chk_refused')} ${num(r.refused)}`, refusedWhy(r)].filter(Boolean).join(': ') },
                             ]}
                         />
                     )}
