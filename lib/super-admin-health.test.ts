@@ -274,3 +274,27 @@ describe("System health, found in the browser", () => {
         expect(rule.slice(0, rule.indexOf("}"))).toMatch(/gap: var\(--space-\d\)/)
     })
 })
+
+describe("System health, from Codex's review of PR 176", () => {
+    it("can't be cancelled once the action is under way, by its button or by Escape", async () => {
+        // Cancel closed the question while a restore or a delete went on: it looked called off and wasn't.
+        const { ConfirmHealthAction } = await import("@/components/HealthDialogs")
+        const html = await renderIn(async () => h(ConfirmHealthAction, {
+            title: "t", body: "b", word: "RESTORE", danger: true, confirmLabel: "Restore", busy: true, onConfirm: () => {}, onCancel: () => {},
+        }))
+        expect(html).toMatch(new RegExp(`<button(?=[^>]*disabled="")[^>]*>${en.cancel}</button>`))
+        const code = readFileSync(DIALOGS, "utf8")
+        expect(code).toMatch(/<Dialog open onClose=\{\(\) => \{ if \(!busy\) onCancel\(\) \}\}/)
+    })
+
+    it("keeps a backup picker closed once it's closed, and takes only the latest list asked for", async () => {
+        // Closed while it loaded, the list's answer opened it again, over whatever came next.
+        const { answerFor } = await import("@/components/HealthDialogs")
+        const asked = { request: 2, backups: [], loading: true, error: null }
+        const answer = { request: 2, backups: [], loading: false, error: null }
+        expect(answerFor(null, answer)).toBe(null)
+        expect(answerFor({ ...asked, request: 3 }, answer)).toEqual({ ...asked, request: 3 })
+        expect(answerFor(asked, answer)).toBe(answer)
+        expect(readFileSync(PAGE, "utf8")).toContain("setPicker(p => answerFor(p, ")
+    })
+})

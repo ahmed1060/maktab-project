@@ -35,7 +35,8 @@ export function ConfirmHealthAction({ title, body, word, danger = false, confirm
     const ready = !word || typed === word
     const [before, after] = t('health_type_word').split('{word}')
     return (
-        <Dialog open onClose={onCancel} title={title}>
+        // Once it's under way it can't be called off, so it can't look as if it was (Codex on PR 176).
+        <Dialog open onClose={() => { if (!busy) onCancel() }} title={title}>
             <form className="ui-form" onSubmit={e => {
                 e.preventDefault()
                 if (ready && !busy) onConfirm()
@@ -48,12 +49,22 @@ export function ConfirmHealthAction({ title, body, word, danger = false, confirm
                     )}</Field>
                 )}
                 <DialogActions>
-                    <Button onClick={onCancel}>{t('cancel')}</Button>
+                    <Button onClick={onCancel} disabled={busy}>{t('cancel')}</Button>
                     <Button type="submit" variant={danger ? 'danger' : 'primary'} disabled={!ready} busy={busy}>{confirmLabel}</Button>
                 </DialogActions>
             </form>
         </Dialog>
     )
+}
+
+/**
+ * A list's answer, for the picker that asked for it: one closed since stays
+ * closed, and an older answer doesn't replace a newer one asked for. The
+ * answer opened a picker closed while it loaded, over whatever came next
+ * (Codex on PR 176).
+ */
+export function answerFor<T extends { request: number }>(current: T | null, answer: T): T | null {
+    return current?.request === answer.request ? answer : current
 }
 
 export type OrphanSweep = { orphaned: number; total: number; bytes: number; orphans: string[] }

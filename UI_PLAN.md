@@ -3248,3 +3248,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the sentence and each other. They're spaced as every dialog's form is;
   - what a look for unused files found ran into its buttons. Its title,
     what was found, the list and the buttons are spaced apart.
+- **2026-11-03:** From Codex's review of #176:
+  - once a restore or a delete was confirmed, Cancel and Escape still
+    closed the question while the work went on, so it looked called off
+    and wasn't. Neither closes it until the work is done, as the old
+    confirmation window kept it;
+  - the backup picker, closed while its list loaded, opened again when
+    the list came, over whatever had opened since. A closed picker stays
+    closed, and only the list asked for last is shown.

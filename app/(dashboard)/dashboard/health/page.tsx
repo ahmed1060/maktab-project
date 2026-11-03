@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import BackupPickerModal, { type BackupEntry } from '@/components/BackupPickerModal'
-import { ConfirmHealthAction, OrphanReport, type OrphanSweep } from '@/components/HealthDialogs'
+import { answerFor, ConfirmHealthAction, OrphanReport, type OrphanSweep } from '@/components/HealthDialogs'
 import JobsCard from '@/components/JobsCard'
 import TerminalsHealthCard from '@/components/TerminalsHealthCard'
 import { Button, Card, Columns, Details, EmptyState, Field, Page, PageHeader, Section, StatusBadge, TextArea } from '@/components/ui'
@@ -79,7 +79,9 @@ export default function SystemHealthPage() {
     const [report, setReport] = useState<OrphanSweep | null>(null)
     // What's typed, once something is; until then the message saved.
     const [message, setMessage] = useState<string | null>(null)
-    const [picker, setPicker] = useState<{ backups: BackupEntry[]; loading: boolean; error: string | null } | null>(null)
+    // Which list was asked for last: only its answer lands, and only while its picker is open.
+    const [picker, setPicker] = useState<{ request: number; backups: BackupEntry[]; loading: boolean; error: string | null } | null>(null)
+    const pickerAsked = useRef(0)
 
     if (!isSuperAdmin) return <AccessDenied />
 
@@ -148,15 +150,16 @@ export default function SystemHealthPage() {
 
     // The backups on Google Drive, for the picker (part 3b's).
     const openPicker = async () => {
-        setPicker({ backups: [], loading: true, error: null })
+        const request = ++pickerAsked.current
+        setPicker({ request, backups: [], loading: true, error: null })
         try {
             const res = await fetchRetrying('/api/admin/maintenance/backups')
             const result = await res.json()
-            setPicker(result.success
-                ? { backups: result.data.backups, loading: false, error: null }
-                : { backups: [], loading: false, error: t('backup_picker_error') })
+            setPicker(p => answerFor(p, result.success
+                ? { request, backups: result.data.backups, loading: false, error: null }
+                : { request, backups: [], loading: false, error: t('backup_picker_error') }))
         } catch {
-            setPicker({ backups: [], loading: false, error: t('backup_picker_error') })
+            setPicker(p => answerFor(p, { request, backups: [], loading: false, error: t('backup_picker_error') }))
         }
     }
 
