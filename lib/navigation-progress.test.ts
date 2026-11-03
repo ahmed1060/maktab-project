@@ -73,16 +73,8 @@ describe("the bar", () => {
         const payments = readFileSync("app/(dashboard)/dashboard/companies/[id]/payments/page.tsx", "utf8")
         expect(payments).not.toContain("router.push(")
         expect(payments).toContain("back={{ href: '/dashboard/companies', label: t('companies') }}")
-        const was: [string, string][] = [
-            ["app/(dashboard)/dashboard/employees/new/page.tsx", "'/dashboard/employees'"],
-        ]
-        for (const [file, to] of was) {
-            const src = readFileSync(file, "utf8")
-            expect(src, file).not.toContain(`onClick={() => router.push(${to.startsWith("/") ? "`/dashboard/companies/${company.id}" + to : to})}`)
-            expect(src, file).toContain(`<Link href={${to.startsWith("/") ? "`/dashboard/companies/${company.id}" + to : to}}`)
-        }
-        // Create task's and Add obligation's Cancel are the building blocks' link that looks like a button.
-        for (const [file, to] of [["app/(dashboard)/dashboard/tasks/new/page.tsx", "'/dashboard/tasks'"], ["app/(dashboard)/dashboard/obligations/new/page.tsx", "'/dashboard/obligations'"]]) {
+        // Create task's, Add obligation's and Add employee's Cancel are the building blocks' link that looks like a button.
+        for (const [file, to] of [["app/(dashboard)/dashboard/tasks/new/page.tsx", "'/dashboard/tasks'"], ["app/(dashboard)/dashboard/obligations/new/page.tsx", "'/dashboard/obligations'"], ["app/(dashboard)/dashboard/employees/new/page.tsx", "'/dashboard/employees'"]]) {
             const src = readFileSync(file, "utf8")
             expect(src, file).not.toContain(`onClick={() => router.push(${to})}`)
             expect(src, file).toContain(`<ButtonLink href={${to}}>`)

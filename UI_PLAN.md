@@ -507,8 +507,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #176 on 2026-11-03, then its scheduled jobs, terminals
      and backup picker, merged in #177 on 2026-11-03; then System
      settings in two parts, the page and its four forms, merged in #178
-     on 2026-11-03, then its face checks switch, which opens for review
-     in #179;
+     on 2026-11-03, then its face checks switch, merged in #179 on
+     2026-11-03, which finished Operations. The pages left follow, one
+     at a time: Add employee first, which opens for review in #180;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3389,3 +3390,24 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   loading line was a status, and the failure that replaced it, the card's
   or the photo key's, was nothing a screen reader would hear. Each is said
   out loud, as the loading was.
+- **2026-11-03:** The Super Admin's pages, Operations part 4b, was merged
+  in #179, which finished Operations. The pages left move onto the
+  building blocks one at a time, Add employee first, in #180:
+  - it has the page header, with a way back to the list, where its title
+    was a heading of its own making;
+  - its fields are the building blocks', each label above its field, and
+    the password field the building blocks' own, its eye named for what it
+    does, where it was drawn by hand and placed by hand on each side;
+  - each mistake is said under its field, in the reader's language, the
+    first one focused. They were in English whatever the language, and the
+    email's described a rule it had dropped. An email somebody already has
+    is said under the email, where "Username already in use" was looked
+    for and never came;
+  - the role is picked from the building blocks' select, the company's
+    default first; the companies and the team leaders say when they didn't
+    load, with Try again, where the list was left empty;
+  - somebody who may not add people is told so, and nothing is asked of
+    the server, where the form showed and the server refused it;
+  - leaving with something typed asks first;
+  - its labels are in sentence case, "First name" and "Day off credit",
+    in English as elsewhere, and on the employee's page that shares them.

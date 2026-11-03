@@ -1,23 +1,37 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import useSWR from 'swr'
+import { UserPlusIcon } from '@phosphor-icons/react/ssr'
+import AccessDenied from '@/components/AccessDenied'
+import { useAssignableRoles, type AssignableRole } from '@/components/RoleSelect'
+import { Button, ButtonLink, Card, Field, Page, PageHeader, PasswordInput, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { apiErrorText } from '@/lib/api-error-text'
+import { firstError } from '@/lib/form-errors'
+import { FIELDS, NAME_MAX, PASSWORD_MAX, newEmployeeErrors, refusedField, type NewEmployeeField } from '@/lib/new-employee-form'
+import { roleLabel } from '@/lib/role-label'
+import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
-import RoleSelect from '@/components/RoleSelect'
-import { apiErrorText } from "@/lib/api-error-text"
-import Link from 'next/link'
-import { fetchRetrying } from '@/lib/swr-fetcher'
+import { useModules } from '@/lib/useModules'
 
-type Company = {
-    id: string
-    name: string
-}
+type Company = { id: string; name: string }
+type Leader = { id: string; firstName: string; lastName: string }
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Add employee (UI_PLAN.md §5 step 5, the pages left), on the building
+ * blocks: the page header with a way back to the list, and one card with
+ * each field's label above it and what's wrong below it, the first one
+ * wrong focused. It was a card of its own making, its sides chosen by hand
+ * for each language, its mistakes in English whatever the language, and its
+ * password eye drawn by hand.
+ */
 export default function NewEmployeePage() {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
+    const modules = useModules()
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
     const [email, setEmail] = useState('')
@@ -29,77 +43,63 @@ export default function NewEmployeePage() {
     const [companyId, setCompanyId] = useState('')
     const [salary, setSalary] = useState('')
     const [dayOffCredit, setDayOffCredit] = useState('0')
-    const [companies, setCompanies] = useState<Company[]>([])
     const [teamLeaderId, setTeamLeaderId] = useState('')
-    const [leaders, setLeaders] = useState<{ id: string; firstName: string; lastName: string }[]>([])
     const [error, setError] = useState('')
-    const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
+    const [fieldErrors, setFieldErrors] = useState<Partial<Record<NewEmployeeField, string>>>({})
     const [loading, setLoading] = useState(false)
-    const [showPassword, setShowPassword] = useState(false)
     const router = useRouter()
     const { data: session } = useSession()
     const userRole = session?.user?.role || ''
+    const isSuperAdmin = userRole === 'SUPER_ADMIN'
     const { can } = useCan()
+    // Adding people is theirs who may (the list offers the button only to
+    // them); anyone reaching this address by hand is told so, and nothing is asked.
+    const mayCreate = can('employees.create')
     const canAssignTeam = can('employees.assign_team')
     const canAssignRole = can('employees.assign_role')
     // Somebody who may only ask for a role — HR — picks one too; the account
     // starts on the default and the pick goes to an Admin (ROLES_PLAN.md §6.12).
     const canRequestRole = !canAssignRole && can('employees.request_role')
 
+    // Asked for by role rather than fetched wholesale and filtered here, and
+    // said when they didn't come, where a failure left the list empty.
+    const companies = useSWR<{ data: { data: Company[] } }>(mayCreate && isSuperAdmin ? '/api/companies?limit=1000' : null, fetcher)
+    const leaders = useSWR<{ data: { data: Leader[] } }>(mayCreate && canAssignTeam ? '/api/users?role=TEAM_LEADER&limit=1000' : null, fetcher)
+
+    // Reloading or closing the tab with something typed asks first, as it
+    // would lose it; not once it's being sent.
+    const started = !!(firstName || lastName || email || password || salary || dayOffCredit !== '0' || roleId || companyId || teamLeaderId)
     useEffect(() => {
-        if (userRole === 'SUPER_ADMIN') {
-            fetchRetrying('/api/companies?limit=1000')
-                .then(res => res.json())
-                .then(result => {
-                    const companiesData = result.data?.data || []
-                    setCompanies(Array.isArray(companiesData) ? companiesData : [])
-                })
-                .catch(err => console.error('Failed to fetch companies', err))
-        }
-        // Asked for by role rather than fetched wholesale and filtered here.
-        if (canAssignTeam) {
-            fetchRetrying('/api/users?role=TEAM_LEADER&limit=1000')
-                .then(res => res.json())
-                .then(result => setLeaders(result.data?.data || []))
-                .catch(err => console.error('Failed to fetch team leaders', err))
-        }
-    }, [userRole, canAssignTeam])
+        if (!started || loading) return
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [started, loading])
+
+    if (!mayCreate) return <AccessDenied />
+
+    const clear = (field: NewEmployeeField) => { if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: undefined }) }
+    const wrongAt = (errors: Partial<Record<NewEmployeeField, string>>) => {
+        setFieldErrors(errors)
+        const first = firstError(errors as Record<string, string>, FIELDS)
+        // The first field that's wrong takes the focus, which brings it into view.
+        if (first) document.querySelector<HTMLElement>(`[name="${first}"]`)?.focus()
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
+        const wrong = newEmployeeErrors({ firstName, lastName, email, password, company: { needed: isSuperAdmin, id: companyId } })
+        if (Object.keys(wrong).length > 0) {
+            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))
+            return
+        }
         setFieldErrors({})
         setLoading(true)
 
-        // Was /^[^@]{1,20}@[^@]{1,10}\.com$/, which rejected most real
-        // addresses (subdomains, non-.com TLDs, longer local parts). The
-        // backend already validates properly (user.schema.ts), this is just
-        // a quick client-side check before that round trip.
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-        const errors: { [key: string]: string } = {}
-        if (!emailRegex.test(email)) {
-            errors.email = "Email must be in format: user(max 20)@domain(max 10).com"
-        }
-        if (!firstName || firstName.length > 15) errors.firstName = "First Name max 15 chars"
-        if (!lastName || lastName.length > 15) errors.lastName = "Last Name max 15 chars"
-        if (!password || password.length < 12 || password.length > 72) errors.password = "Password must be 12-72 chars"
-
-        if (Object.keys(errors).length > 0) {
-            setFieldErrors(errors)
-            setLoading(false)
-            return
-        }
-
-        if (userRole === 'SUPER_ADMIN' && !companyId) {
-            setError('Company is required for Super Admin')
-            setLoading(false)
-            return
-        }
-
         try {
-            const body: any = { firstName, lastName, email, password, role: roleId ? role : 'EMPLOYEE', ...(roleId ? { roleId } : {}) }
-            if (userRole === 'SUPER_ADMIN' && companyId) {
+            const body: Record<string, unknown> = { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password, role: roleId ? role : 'EMPLOYEE', ...(roleId ? { roleId } : {}) }
+            if (isSuperAdmin && companyId) {
                 body.companyId = companyId
             }
             if (salary) {
@@ -114,20 +114,18 @@ export default function NewEmployeePage() {
 
             const res = await fetch('/api/users', {
                 method: 'POST',
-                body: JSON.stringify({
-                    ...body,
-                    dayOffCredit: parseFloat(dayOffCredit) || 0
-                }),
-                headers: { 'Content-Type': 'application/json' }
+                body: JSON.stringify({ ...body, dayOffCredit: parseFloat(dayOffCredit) || 0 }),
+                headers: { 'Content-Type': 'application/json' },
             })
 
             if (!res.ok) {
                 const text = await res.text()
-                if (text.includes("Username already in use")) {
-                    setError(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
-                } else {
-                    setError(apiErrorText(text, 'Failed to create user'))
-                }
+                let answer: { error?: string; details?: Record<string, unknown> } | null = null
+                try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
+                // Under the field it's about, where it can be; above the buttons otherwise.
+                const refused = refusedField(answer)
+                if (refused) wrongAt({ [refused.field]: t(refused.key) })
+                else setError(apiErrorText(text, t('error_generic')))
                 setLoading(false)
                 return
             }
@@ -135,251 +133,115 @@ export default function NewEmployeePage() {
             router.push('/dashboard/employees')
             router.refresh()
         } catch {
-            setError('An error occurred')
+            setError(t('error_generic'))
             setLoading(false)
         }
     }
 
+    const companyList = companies.data?.data?.data ?? []
+    const leaderList = leaders.data?.data?.data ?? []
+
     return (
-        <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h1 style={{ marginBottom: '1.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                {userRole === 'SUPER_ADMIN' ? t('add_new_user_title') : t('add_employee')}
-            </h1>
-            {error && (
-                <div style={{
-                    padding: '0.75rem',
-                    marginBottom: '1rem',
-                    background: 'var(--danger-bg)',
-                    color: 'var(--danger-fg)',
-                    borderRadius: '0.5rem'
-                }}>
-                    {error}
-                </div>
-            )}
-            <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                        <input aria-label={t('first_name_label')}
-                            className="input"
-                            value={firstName}
-                            onChange={e => {
-                                setFirstName(e.target.value)
-                                if (fieldErrors.firstName) setFieldErrors({ ...fieldErrors, firstName: '' })
-                            }}
-                            style={{
-                                ...(fieldErrors.firstName ? { borderColor: 'var(--danger-solid)' } : {}),
-                                textAlign: locale === 'ar' ? 'right' : 'left'
-                            }}
-                            required
-                            maxLength={15}
-                            placeholder={locale === 'ar' ? 'جون' : "John"}
-                        />
-                        {fieldErrors.firstName && (
-                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                {fieldErrors.firstName}
-                            </div>
-                        )}
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                        <input aria-label={t('last_name_label')}
-                            className="input"
-                            value={lastName}
-                            onChange={e => {
-                                setLastName(e.target.value)
-                                if (fieldErrors.lastName) setFieldErrors({ ...fieldErrors, lastName: '' })
-                            }}
-                            style={{
-                                ...(fieldErrors.lastName ? { borderColor: 'var(--danger-solid)' } : {}),
-                                textAlign: locale === 'ar' ? 'right' : 'left'
-                            }}
-                            required
-                            maxLength={15}
-                            placeholder={locale === 'ar' ? 'دو' : "Doe"}
-                        />
-                        {fieldErrors.lastName && (
-                            <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                {fieldErrors.lastName}
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                    <input aria-label={t('email')}
-                        type="email"
-                        className="input"
-                        value={email}
-                        onChange={e => {
-                            setEmail(e.target.value)
-                            if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' })
-                        }}
-                        style={{
-                            ...(fieldErrors.email ? { borderColor: 'var(--danger-solid)' } : {}),
-                            textAlign: locale === 'ar' ? 'right' : 'left'
-                        }}
-                        required
-                        placeholder="john@example.com"
-                    />
-                    {fieldErrors.email && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            {fieldErrors.email}
+        <Page>
+            <PageHeader title={isSuperAdmin ? t('add_new_user_title') : t('add_employee')} back={{ href: '/dashboard/employees', label: modules.label('employees') }} />
+
+            <Card>
+                <form onSubmit={handleSubmit} noValidate className="ui-form">
+                    <Field label={t('first_name_label')} error={fieldErrors.firstName}>{p => (
+                        <TextInput {...p} name="firstName" autoComplete="off" dir="auto" maxLength={NAME_MAX} value={firstName} disabled={loading}
+                            onChange={e => { setFirstName(e.target.value); clear('firstName') }} />
+                    )}</Field>
+                    <Field label={t('last_name_label')} error={fieldErrors.lastName}>{p => (
+                        <TextInput {...p} name="lastName" autoComplete="off" dir="auto" maxLength={NAME_MAX} value={lastName} disabled={loading}
+                            onChange={e => { setLastName(e.target.value); clear('lastName') }} />
+                    )}</Field>
+                    <Field label={t('email')} error={fieldErrors.email}>{p => (
+                        <TextInput {...p} name="email" type="email" autoComplete="off" spellCheck={false} dir="ltr" value={email} disabled={loading}
+                            onChange={e => { setEmail(e.target.value); clear('email') }} />
+                    )}</Field>
+                    <Field label={t('password')} hint={t('emp_new_password_hint')} error={fieldErrors.password}>{p => (
+                        <PasswordInput {...p} name="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={password} disabled={loading}
+                            onChange={e => { setPassword(e.target.value); clear('password') }} />
+                    )}</Field>
+
+                    {isSuperAdmin && (
+                        <div>
+                            <Field label={t('company_label')} error={fieldErrors.companyId ?? (companies.error ? t('emp_new_companies_failed') : undefined)}>{p => (
+                                <Select {...p} name="companyId" value={companyId} disabled={loading}
+                                    options={[{ value: '', label: t('select_company_placeholder') }, ...companyList.map(c => ({ value: c.id, label: c.name }))]}
+                                    onChange={e => { setCompanyId(e.target.value); setRoleId(''); setRole('EMPLOYEE'); clear('companyId') }} />
+                            )}</Field>
+                            {companies.error && <Button size="sm" busy={companies.isValidating} onClick={() => { void companies.mutate() }}>{t('try_again')}</Button>}
                         </div>
                     )}
-                </div>
 
-                <div style={{ position: 'relative' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                    <input aria-label={t('password')}
-                        type={showPassword ? "text" : "password"}
-                        className="input"
-                        value={password}
-                        onChange={e => {
-                            setPassword(e.target.value)
-                            if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' })
-                        }}
-                        style={{
-                            ...(fieldErrors.password ? { borderColor: 'var(--danger-solid)' } : {}),
-                            paddingRight: locale === 'ar' ? '1rem' : '2.5rem',
-                            paddingLeft: locale === 'ar' ? '2.5rem' : '1rem',
-                            textAlign: locale === 'ar' ? 'right' : 'left'
-                        }}
-                        required
-                        minLength={12}
-                        maxLength={72}
-                        placeholder={locale === 'ar' ? '١٢ حرفًا على الأقل' : "Minimum 12 characters"}
-                    />
-                    <button
-                        type="button"
-                        aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
-                        aria-pressed={showPassword}
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{
-                            position: 'absolute',
-                            [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                            top: '2.25rem',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '0.25rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            color: 'var(--text-soft)'
-                        }}
-                    >
-                        {showPassword ? (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                <line x1="1" y1="1" x2="23" y2="23"></line>
-                            </svg>
-                        ) : (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        )}
-                    </button>
-                    {fieldErrors.password && (
-                        <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.85rem', marginTop: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                            {fieldErrors.password}
+                    {(canAssignRole || canRequestRole) && (
+                        <RoleField companyId={companyId} value={roleId} disabled={loading} requestOnly={canRequestRole}
+                            onChange={(id, chosen) => { setRoleId(id); setRole(chosen?.baseRole ?? 'EMPLOYEE') }} />
+                    )}
+
+                    {!['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                        <Field label={t('monthly_base_salary_label')}>{p => (
+                            <TextInput {...p} name="salary" type="number" inputMode="decimal" min={0} autoComplete="off" value={salary} disabled={loading}
+                                onChange={e => setSalary(e.target.value)} />
+                        )}</Field>
+                    )}
+
+                    {(role === 'EMPLOYEE' || role === 'TEAM_LEADER') && (
+                        <Field label={t('day_off_credit')}>{p => (
+                            <TextInput {...p} name="dayOffCredit" type="number" inputMode="decimal" min={0} step={0.5} autoComplete="off" value={dayOffCredit} disabled={loading}
+                                onChange={e => setDayOffCredit(e.target.value)} />
+                        )}</Field>
+                    )}
+
+                    {role === 'EMPLOYEE' && canAssignTeam && (
+                        <div>
+                            <Field label={t('team_leader_label')} hint={t('team_leader_hint')} error={leaders.error ? t('emp_new_leaders_failed') : undefined}>{p => (
+                                <Select {...p} name="teamLeaderId" value={teamLeaderId} disabled={loading}
+                                    options={[{ value: '', label: t('team_leader_none') }, ...leaderList.map(l => ({ value: l.id, label: `${l.firstName} ${l.lastName}`.trim() }))]}
+                                    onChange={e => setTeamLeaderId(e.target.value)} />
+                            )}</Field>
+                            {leaders.error && <Button size="sm" busy={leaders.isValidating} onClick={() => { void leaders.mutate() }}>{t('try_again')}</Button>}
                         </div>
                     )}
-                </div>
 
-                {!['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                        <input aria-label={t('monthly_base_salary_label')}
-                            type="number"
-                            className="input"
-                            value={salary}
-                            onChange={e => setSalary(e.target.value)}
-                            min="0"
-                            placeholder="0.00"
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        />
+                    {error && <p className="ui-error" role="alert">{error}</p>}
+                    <div className="ui-form-actions">
+                        <Button type="submit" variant="primary" icon={UserPlusIcon} busy={loading}>
+                            {loading ? t('creating') : isSuperAdmin ? t('create_user_button') : t('create_employee_button')}
+                        </Button>
+                        <ButtonLink href={'/dashboard/employees'}>{t('cancel')}</ButtonLink>
                     </div>
-                )}
+                </form>
+            </Card>
+        </Page>
+    )
+}
 
-                {(role === 'EMPLOYEE' || role === 'TEAM_LEADER') && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit')}</label>
-                        <input aria-label={t('day_off_credit')}
-                            type="number"
-                            className="input"
-                            value={dayOffCredit}
-                            onChange={e => setDayOffCredit(e.target.value)}
-                            min="0"
-                            step="0.5"
-                            placeholder="0"
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        />
-                    </div>
-                )}
-
-                {userRole === 'SUPER_ADMIN' && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
-                        <select aria-label={t('company_label')}
-                            className="input"
-                            value={companyId}
-                            onChange={e => { setCompanyId(e.target.value); setRoleId(''); setRole('EMPLOYEE') }}
-                            required
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        >
-                            <option value="">{t('select_company_placeholder')}</option>
-                            {companies.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-
-                {(canAssignRole || canRequestRole) && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                        <RoleSelect
-                            companyId={companyId}
-                            value={roleId}
-                            allowDefault
-                            onChange={(id, chosen) => { setRoleId(id); setRole(chosen?.baseRole ?? 'EMPLOYEE') }}
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        />
-                        {canRequestRole && roleId && (
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '0.35rem' }}>{t('role_requests_will_ask')}</p>
-                        )}
-                    </div>
-                )}
-                {role === 'EMPLOYEE' && canAssignTeam && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
-                        <select aria-label={t('team_leader_label')}
-                            className="input"
-                            value={teamLeaderId}
-                            onChange={e => setTeamLeaderId(e.target.value)}
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        >
-                            <option value="">{t('team_leader_none')}</option>
-                            {leaders.map(l => (
-                                <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
-                            ))}
-                        </select>
-                        <p style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_hint')}</p>
-                    </div>
-                )}
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
-                        {loading ? t('creating') : userRole === 'SUPER_ADMIN' ? t('create_user_button') : t('create_employee_button')}
-                    </button>
-                    <Link href={'/dashboard/employees'}
-                        className="btn"
-                        style={{ textDecoration: 'none', background: 'var(--border)', color: 'var(--text-strong)' }}
-                    >
-                        {t('cancel')}
-                    </Link>
-                </div>
-            </form>
-        </div>
+/**
+ * The role, from those the viewer may hand out (ROLES_PLAN.md §6.4), the
+ * company's default first. Its own part, so the roles are asked for only
+ * where there's a role to pick.
+ */
+function RoleField({ companyId, value, disabled, requestOnly, onChange }: {
+    companyId: string
+    value: string
+    disabled: boolean
+    /** Somebody who may only ask: the pick goes to an Admin for approval. */
+    requestOnly: boolean
+    onChange: (roleId: string, role: AssignableRole | null) => void
+}) {
+    const { t } = useLanguage()
+    const roles = useAssignableRoles(companyId)
+    const fallback = roles.find(r => r.isDefault)
+    const options = [
+        { value: '', label: `${t('roles_select_default')}${fallback ? ` (${roleLabel(fallback, t)})` : ''}` },
+        ...roles.map(r => ({ value: r.id, label: roleLabel(r, t) })),
+    ]
+    return (
+        <Field label={t('role_label')} hint={requestOnly && value ? t('role_requests_will_ask') : undefined}>{p => (
+            <Select {...p} name="roleId" value={value} disabled={disabled} options={options}
+                onChange={e => onChange(e.target.value, roles.find(r => r.id === e.target.value) ?? null)} />
+        )}</Field>
     )
 }
