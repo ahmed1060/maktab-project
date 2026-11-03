@@ -414,6 +414,17 @@ describe("page layout, sections, rows and tiles", () => {
     })
 })
 
+describe("holding the room of what can show (Reserve)", () => {
+    it("draws each alternative hidden in the same place as what shows, laid out alike, out of reach and unheard", () => {
+        const html = render(h(ui.Reserve, { className: "ui-card-actions", room: ["Pause", "Turn on"], children: "Loading" }))
+        expect(html).toBe(
+            '<div class="ui-reserve">' +
+            '<div class="ui-reserve-room ui-card-actions" aria-hidden="true" inert="">Pause</div>' +
+            '<div class="ui-reserve-room ui-card-actions" aria-hidden="true" inert="">Turn on</div>' +
+            '<div class="ui-card-actions">Loading</div></div>')
+    })
+})
+
 describe("the donut chart", () => {
     const parts = [
         { key: "done", label: "Completed", value: 3, tone: "good" as const, share: "75%", href: "/t?status=COMPLETED" },

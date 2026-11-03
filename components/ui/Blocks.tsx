@@ -341,6 +341,22 @@ export function TotalTiles({ items }: { items: Tile[] }) {
     )
 }
 
+/**
+ * Holds the room of the largest of what can show in one place, so whichever
+ * does, nothing below it moves: a card that loads its own data, such as face
+ * verification's on System settings, is as tall loading as loaded. Each of
+ * `room` sits hidden in the same place as what shows, out of reach of the
+ * keyboard and unheard by screen readers; `className` lays out each alike.
+ */
+export function Reserve({ room, className, children }: { room: ReactNode[]; className?: string; children?: ReactNode }) {
+    return (
+        <div className="ui-reserve">
+            {room.map((r, i) => <div key={i} className={cx('ui-reserve-room', className)} aria-hidden="true" inert>{r}</div>)}
+            <div className={className}>{children}</div>
+        </div>
+    )
+}
+
 /** What's missing, and the button to add one: an empty list is a place to start. */
 export function EmptyState({ icon, title, detail, action }: { icon: PhosphorIcon; title: ReactNode; detail?: ReactNode; action?: ReactNode }) {
     return (

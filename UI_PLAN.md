@@ -506,8 +506,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      System health in two parts, the page and its maintenance cards,
      merged in #176 on 2026-11-03, then its scheduled jobs, terminals
      and backup picker, merged in #177 on 2026-11-03; then System
-     settings in two parts, the page and its four forms, which opens for
-     review in #178, then its face checks switch;
+     settings in two parts, the page and its four forms, merged in #178
+     on 2026-11-03, then its face checks switch, which opens for review
+     in #179;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3358,3 +3359,33 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   an edit back to the stored value can't be seen, so each card's fields are
   now held still until its save comes back: read-only where they're typed
   in, so the cursor stays put, and the switch and the calendar off.
+- **2026-11-03:** The Super Admin's pages, Operations part 4a, was merged
+  in #178. System settings' face checks switch moves onto the building
+  blocks in #179, which finishes the page:
+  - it's a card, its state a badge in its meaning's colour (on, paused or
+    off) with a line on what that means, where it was a sentence in a
+    colour of its own;
+  - its buttons are the building blocks', and its questions their
+    dialogs: Pause and purge asks for PURGE typed, its button in the
+    danger colour. A question stays open, its button busy, until the
+    server answers, and closes once it's done, where it closed whatever
+    the answer;
+  - it holds the room of the most it can show while it loads, as it did
+    by hand, now with a building block (`Reserve`, DESIGN.md §5.5), so the
+    Branding card below it still doesn't move;
+  - when it can't load, it says so with Try again in the same room, where
+    it said "Something went wrong"; the photo key's section says so too,
+    with Try again of its own;
+  - the last purge's date and counts, and the photos left to move, are in
+    the language's own date and digits, where the date was typed as the
+    server keeps it;
+  - the purge's text no longer says to type PURGE, as the field's label
+    says it.
+- **2026-11-03:** Found in the browser, on #179: the photo key's count of
+  photos left sat a line's height under its heading, a paragraph's own
+  margin on top of the lines' gap. A card's lines are set by their gap
+  alone.
+- **2026-11-03:** Found in the web interface audit, on #179: the face card's
+  loading line was a status, and the failure that replaced it, the card's
+  or the photo key's, was nothing a screen reader would hear. Each is said
+  out loud, as the loading was.

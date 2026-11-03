@@ -31,7 +31,6 @@ describe("the dashboard's layout on a phone", () => {
 describe("cards that load their own data", () => {
     it.each([
         ["components/TerminalsHealthCard.tsx", "att_term_health_title"],
-        ["components/FaceSystemSwitch.tsx", "face_sys_title"],
     ])("%s holds its place while it loads", (f, title) => {
         const src = readFileSync(f, "utf8")
         expect(src).not.toMatch(/if \(!(rows|data)\) return null/)
@@ -42,69 +41,61 @@ describe("cards that load their own data", () => {
         expect(loading).toContain("t('loading')")
     })
 
-    it("the face card holds the loaded card's footprint, and stays on an error (Codex review on #43)", () => {
+    // The face card on System settings, on the building blocks since its part 4b: one card, loading or
+    // loaded, each part holding the room of the most it can show (Reserve) where it held it by hand.
+    const face = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
+    const css = readFileSync("components/ui/ui.css", "utf8")
+
+    it("Reserve keeps every alternative in one cell, hidden but for what shows", () => {
+        expect(css).toMatch(/\.ui-reserve \{\s*display: grid;\s*\}/)
+        expect(css).toMatch(/\.ui-reserve > \* \{\s*grid-area: 1 \/ 1;/)
+        expect(css).toMatch(/\.ui-reserve-room \{\s*visibility: hidden;\s*\}/)
+    })
+
+    it("the face card is the same card loading, failed or loaded, and stays on an error (Codex review on #43)", () => {
         // A heading and one line grew to the whole card when the status came (Branding moved 158px on a
         // phone), and an error took the card away (124px the other way). Measured in Chromium after: 0px.
-        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
-        expect(src).not.toContain("if (error) return null")
-        const start = src.indexOf("if (!data ||")
-        const shell = src.slice(start, src.indexOf("const { state, canChange } = data.data"))
+        expect(face).not.toContain("if (error) return null")
+        expect(face).not.toMatch(/if \(!data[^\n]*\) \{?\s*return/)
         // It waits for the purge record too, as it would push the card when it came.
-        expect(shell).toContain("if (!data || !settled(purgeBody, purgeError)) {")
-        expect(shell).toContain("<p style={HINT}>{t('face_sys_hint')}</p>")
-        expect(shell).toContain("<StateLine text={error ? t('error_generic') : t('loading')}")
-        expect(shell).toContain("<Controls />")
-        // The loaded card has the same rows, the controls in the same box.
-        const card = src.slice(src.indexOf("const tone ="))
-        expect(card).toContain("<p style={HINT}>{t('face_sys_hint')}</p>")
-        expect(card).toContain("<StateLine text={t(`face_sys_state_${state}`)} color={tone} />")
-        expect(card).toContain("<Controls>")
-        // The state line is as tall as its longest text, whichever shows.
-        expect(src).toMatch(/STATES\.map\(s => <span key=\{s\} aria-hidden="true" style=\{\{ gridArea: '1 \/ 1', visibility: 'hidden' \}\}>/)
+        expect(face).toContain("const ready = !!data && (purgeBody !== undefined || !!purgeError)")
+        // The state line is as tall as its longest, whichever shows, the failure among them.
+        expect(face).toContain(`<Reserve className="ui-state-line" room={[...STATES.map(stateLine), failedLine]}>`)
+        expect(face).toContain(`{state ? stateLine(state) : error ? <span role="status">{failedLine}</span> : <span className="ui-card-note" role="status">{t('loading')}</span>}`)
     })
 
     it("the face card doesn't wait for the rotation's status, and keeps its place instead (Codex review on #49)", () => {
         // The status reads every stored photo. Waited for, it held Pause and purge back: usable after 9.2 s with the
         // status taking 8 s, measured in Chromium; now after 2.5 s on a phone, Branding still moving 0px.
-        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
-        expect(src).not.toContain("!settled(rekeyBody, rekeyError)")
+        expect(face).not.toContain("settled(rekeyBody, rekeyError)")
+        expect(face).not.toMatch(/const ready = [^\n]*rekey/)
         // The card's own status says whether a rotation is on, at once.
         const route = readFileSync("app/api/system-settings/face/route.ts", "utf8")
         expect(route).toContain("rotating: FacePhotoKeyService.rotating()")
         // Whatever the rotation's own answer says meanwhile: one kept from before it began says there is none.
-        expect(src).toContain("const rotationWaiting = !!data.data.rotating && !rotation\n")
-        expect(src).not.toContain("(rekeyBody === undefined || !!rekeyError)")
-        const section = src.slice(src.indexOf("{(rotation || rotationWaiting) && ("))
-        expect(section).toContain("{rekeyError ? t('error_generic') : t('loading')}")
-        expect(section).toContain("<RotationBody>")
+        expect(face).toContain("const rotationWaiting = !!data?.data.rotating && !rotation\n")
+        const section = face.slice(face.indexOf("{(rotation || rotationWaiting) && ("))
+        expect(section).toContain("t('face_rekey_load_failed')")
+        expect(section).toContain(`<Reserve className="ui-card-lines"`)
     })
 
     it("the rotation's section is as tall as the most it can show, done included (Codex review on #49)", () => {
         // Kept to the button's layout, the done line every load shows once all are moved still moved Branding
-        // (16px at 412px, 32px at 1350px), and the other layouts up to 56px. Measured in Chromium after: 0px for
-        // each layout at 320, 412 and 1350px.
-        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
-        const body = src.slice(src.indexOf("function RotationBody("), src.indexOf("type Rekey ="))
-        for (const key of ["face_rekey_status", "face_rekey_run", "face_rekey_done", "face_rekey_same_key", "face_rekey_unreadable"]) expect(body, key).toContain(`t('${key}')`)
-        expect(body).toContain(`{layouts.map(layout => <div key={layout.key} aria-hidden="true" style={{ ...COLUMN, gridArea: '1 / 1', visibility: 'hidden' }}>{layout}</div>)}`)
-        expect(body).toContain("<div style={{ ...COLUMN, gridArea: '1 / 1' }}>{children}</div>")
-        expect(src).not.toContain("<div style={{ minHeight: '2.5rem' }} />")
+        // (16px at 412px, 32px at 1350px), and the other layouts up to 56px.
+        expect(face).toContain(`<Reserve className="ui-card-lines" room={[<>{leftLines(0, 0, false)}{unreadable(0)}</>, <>{doneLine}{unreadable(0)}</>, sameKeyLine]}>`)
+        // What shows is drawn by the same lines, so a copy can't drift from them.
+        expect(face).toContain("{rotation.previous > 0 ? leftLines(left, rotation.total, true) : doneLine}")
+        expect(face).toContain("{rotation.unreadable > 0 && unreadable(rotation.unreadable)}")
     })
 
     it("the face card's controls are as tall as the most any state shows, wrapped too (Codex review on #49)", () => {
         // One button high, the placeholder still let "Pause" and "Pause and purge", two rows on a 320px phone,
         // push Branding 48px down when they came. Measured in Chromium after: 0px at 320, 412 and 1350px.
-        const src = readFileSync("components/FaceSystemSwitch.tsx", "utf8")
-        const controls = src.slice(src.indexOf("function Controls("), src.indexOf("type Rekey ="))
-        // A hidden copy of every state's buttons, in the same cell as what shows.
-        expect(controls).toContain("{STATES.map(s => (")
-        expect(controls).toContain(`<div key={s} aria-hidden="true" style={{ ...CONTROLS, gridArea: '1 / 1', visibility: 'hidden' }}>`)
-        expect(controls).toContain("{BUTTONS[s].map(b => <span key={b.action} className={b.cls}>{t(b.label)}</span>)}")
-        expect(controls).toContain("<div style={{ ...CONTROLS, gridArea: '1 / 1' }}>{children}</div>")
-        // The protected-only line too, which can wrap further than the buttons (Codex review on #49).
-        expect(controls).toContain(`<div aria-hidden="true" style={{ ...CONTROLS, gridArea: '1 / 1', visibility: 'hidden' }}>\n                <p style={HINT}>{t('face_sys_protected_only')}</p>`)
+        expect(face).toContain(`<Reserve className="ui-card-actions" room={[...STATES.map(s => buttons(s, false)), protectedOnly, tryAgain(false, () => {})]}>`)
         // The buttons shown are the same list, so a copy can't drift from them.
-        expect(src).toContain("{canChange ? BUTTONS[state].map(b => (")
-        expect(src).toContain("ON: [{ cls: 'btn btn-secondary', label: 'face_sys_pause', action: 'PAUSED' }, { cls: 'btn btn-danger', label: 'face_purge', action: 'PURGE' }],")
+        expect(face).toContain("{state ? (canChange ? buttons(state, true) : protectedOnly) : error && tryAgain(isValidating, () => { void mutate() })}")
+        expect(face).toContain("ON: [{ variant: 'secondary', label: 'face_sys_pause', action: 'PAUSED' }, { variant: 'danger', label: 'face_purge', action: 'PURGE' }],")
+        // Wrapped, a row of buttons stays inside the card.
+        expect(css).toMatch(/\.ui-card-actions \{\s*display: flex;\s*flex-wrap: wrap;/)
     })
 })
