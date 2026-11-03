@@ -3,7 +3,8 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
-import { RateLimiter, getClientIp } from "@/lib/api-utils"
+import { RateLimiter } from "@/lib/api-utils"
+import { countSignIn, lockKeyFor } from "@/lib/sign-in-lock"
 import { DUMMY_PASSWORD_HASH } from "@/lib/auth"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
@@ -32,19 +33,21 @@ export async function POST(req: NextRequest) {
 
         const { email, password } = validation.data
 
-        // Shares the same login:${ip} bucket as authorize() itself — this is
-        // a second password-checking surface, and without this it would be an
-        // unthrottled one alongside the real login rate limit.
-        const ip = getClientIp(req.headers)
-        const { limited, resetAt } = await RateLimiter.getLimitData(`login:${ip}`, 5, 15 * 60 * 1000)
+        const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
+        const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })
+        const account = superAdmin || user
+
+        // Shares the account's count with authorize() itself
+        // (lib/sign-in-lock.ts) — this is a second password-checking surface,
+        // and without this it would be an unthrottled one beside sign-in. An
+        // email nobody has is counted alike, so a lock says nothing of who's
+        // registered.
+        const key = lockKeyFor(account, email)
+        const { limited, resetAt } = await countSignIn(key)
         if (limited) {
             const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             return ApiResponse.error(`Too many attempts. Please try again at ${timeStr}.`, 429)
         }
-
-        const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
-        const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })
-        const account = superAdmin || user
 
         const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
         const isValid = await bcrypt.compare(password, passwordHash)
@@ -55,8 +58,8 @@ export async function POST(req: NextRequest) {
         // The password was right: asking for a code is not a guess, so the
         // attempt is given back, as authorize() gives back the step that asks
         // for one. Otherwise each sign-in by emailed code used one of the
-        // address's five (review on #29).
-        await RateLimiter.refund(`login:${ip}`, resetAt)
+        // account's five (review on #29).
+        await RateLimiter.refund(key, resetAt)
 
         if (!(account as any).mfaEnabled || !(account as any).emailVerifiedAt) {
             // Reachable in practice only if MFA got enabled before email

@@ -15,6 +15,7 @@ const db = {
     users: {} as Record<string, any>,
     failLogin: false,
     limits: {} as Record<string, { count: number; resetAt: Date }>,
+    ip: "203.0.113.7",
 }
 
 vi.mock("@/lib/prisma", () => ({
@@ -29,6 +30,10 @@ vi.mock("@/lib/prisma", () => ({
             findUnique: async ({ where }: any) => db.limits[where.key] ?? null,
             upsert: async ({ where, create }: any) => (db.limits[where.key] = { count: create.count, resetAt: create.resetAt }),
             update: async ({ where }: any) => { db.limits[where.key].count++; return db.limits[where.key] },
+            findMany: async ({ where }: any) => Object.entries(db.limits)
+                .filter(([key, row]) => where.key.in.includes(key) && row.count >= where.count.gte && row.resetAt > where.resetAt.gt)
+                .map(([key, row]) => ({ key, resetAt: row.resetAt })),
+            delete: async ({ where }: any) => { delete db.limits[where.key] },
             updateMany: async ({ where, data }: any) => {
                 const row = db.limits[where.key]
                 const sameWindow = !where.resetAt || row?.resetAt.getTime() === where.resetAt.getTime()
@@ -38,7 +43,7 @@ vi.mock("@/lib/prisma", () => ({
         },
     },
 }))
-vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "203.0.113.7" }) }))
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": db.ip }) }))
 // The authenticator itself: "123456" is right, anything else is not.
 vi.mock("@/lib/services/mfa.service", () => ({
     MfaService: { verifyStoredCode: async (_secret: string, code: string) => code === "123456" },
@@ -70,8 +75,11 @@ const password = "the-right-password"
 beforeEach(() => {
     db.limits = {}
     db.failLogin = false
+    db.ip = "203.0.113.7"
     db.superAdmins = {
         sa: { id: "sa", email, password: bcrypt.hashSync(password, 4), firstName: "S", lastName: "A", mfaEnabled: true, mfaSecret: "stored", emailVerifiedAt: new Date() },
+        // Somebody else at the same office, without an authenticator.
+        colleague: { id: "colleague", email: "colleague@example.test", password: bcrypt.hashSync(password, 4), firstName: "C", lastName: "O", mfaEnabled: false, emailVerifiedAt: new Date() },
     }
     db.users = {
         held: {
@@ -142,6 +150,63 @@ describe("what gives an attempt back (review on #29)", () => {
         expect(await authorize({ email, password: "wrong" })).toBeNull()
         db.failLogin = true
         await expect(authorize({ email, password })).rejects.toThrow("audit down")
-        expect(db.limits["login:203.0.113.7"].count).toBe(1)
+        // Counted on the account (lib/sign-in-lock.ts).
+        expect(db.limits["login:account:sa"].count).toBe(1)
+    })
+})
+
+describe("the lock is the account's, not the address's (decided 2026-11-03)", () => {
+    const colleague = { email: "colleague@example.test", password }
+
+    it("leaves somebody else at the same address alone, where one person's five wrong passwords locked the whole office", async () => {
+        for (let i = 0; i < 5; i++) expect(await authorize({ email, password: "wrong" })).toBeNull()
+        await expect(authorize({ email, password })).rejects.toThrow("Too many login attempts")
+        expect(await authorize(colleague)).toMatchObject({ id: "colleague" })
+    })
+
+    it("keeps the account locked from another address", async () => {
+        for (let i = 0; i < 5; i++) expect(await authorize({ email, password: "wrong" })).toBeNull()
+        db.ip = "198.51.100.9"
+        await expect(authorize({ email, password, mfaCode: "123456" })).rejects.toThrow("Too many login attempts")
+    })
+
+    it("locks an email nobody has the same way, so a lock doesn't say which emails exist", async () => {
+        const nobody = { email: "nobody@example.test", password: "wrong" }
+        for (let i = 0; i < 5; i++) expect(await authorize(nobody)).toBeNull()
+        await expect(authorize(nobody)).rejects.toThrow("Too many login attempts")
+        // Kept as a hash, not as it was typed.
+        expect(Object.keys(db.limits).some(key => key.includes("nobody"))).toBe(false)
+    })
+
+    it("lifts when it's unlocked, and the count of codes for sensitive actions with it", async () => {
+        const { unlockSignIn, lockedUntil } = await import("@/lib/sign-in-lock")
+        for (let i = 0; i < 5; i++) expect(await authorize({ email: colleague.email, password: "wrong" })).toBeNull()
+        expect((await lockedUntil(["colleague", "sa"])).has("colleague")).toBe(true)
+        expect((await lockedUntil(["colleague", "sa"])).has("sa")).toBe(false)
+        db.limits["step-up:colleague"] = { count: 5, resetAt: new Date(Date.now() + 60_000) }
+        await unlockSignIn("colleague")
+        expect((await lockedUntil(["colleague"])).size).toBe(0)
+        expect(db.limits["step-up:colleague"]).toBeUndefined()
+        expect(await authorize(colleague)).toMatchObject({ id: "colleague" })
+    })
+
+    it("counts \"email me a code instead\" against the account too", async () => {
+        for (let i = 0; i < 5; i++) expect((await emailMeACode({ email, password: "wrong" })).status).toBe(403)
+        expect((await emailMeACode({ email, password })).status).toBe(429)
+        // Somebody else at the same address isn't held up by it.
+        expect(await authorize(colleague)).toMatchObject({ id: "colleague" })
+    })
+
+    it("is lifted by resetting the password with Forgot password, which proves the email is theirs", async () => {
+        const { readFileSync } = await import("node:fs")
+        const src = readFileSync("app/api/auth/forgot-password/confirm/route.ts", "utf8")
+        expect(src).toContain("await unlockSignIn(")
+    })
+
+    it("has no per-address count left in sign-in", async () => {
+        const { readFileSync } = await import("node:fs")
+        for (const path of ["lib/auth.ts", "app/api/auth/mfa-recovery/request/route.ts"]) {
+            expect(readFileSync(path, "utf8"), path).not.toContain("login:${ip}")
+        }
     })
 })

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
 import { RateLimiter, getClientIp } from "@/lib/api-utils"
+import { unlockSignIn } from "@/lib/sign-in-lock"
 import { forgotPasswordConfirmSchema } from "@/lib/validations/forgot-password.schema"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
@@ -62,6 +63,10 @@ export async function POST(req: NextRequest) {
                 data: { password: hashed, mustChangePassword: false, emailVerifiedAt },
             })
         }
+
+        // Receiving the code proved the email is theirs, so a sign-in lock on
+        // the account is lifted with it (lib/sign-in-lock.ts).
+        await unlockSignIn(account.id)
 
         await AuditLogService.log('PASSWORD_RESET', superAdmin ? 'SUPER_ADMIN' : 'USER', account.id, {
             userId: user ? account.id : null,

@@ -10,10 +10,10 @@ import { isNextInternalError } from "@/lib/next-internal-error"
 // F-27, Phase 3.5: unauthenticated by necessity — this is how someone
 // gets back in when they don't have a password to prove. Unlike
 // mfa-recovery/request, no credential is required at all here, so this
-// gets its own rate-limit bucket rather than sharing login:${ip} — an
-// anonymous caller spamming this against arbitrary emails from a shared
-// IP (an office NAT, say) would otherwise exhaust real users' login
-// budget on that IP for free.
+// gets its own rate-limit bucket rather than sharing sign-in's count
+// (lib/sign-in-lock.ts) — an anonymous caller spamming this against
+// arbitrary emails would otherwise use up real people's sign-in tries
+// for free.
 export async function POST(req: NextRequest) {
     try {
         const json = await req.json().catch(() => null)

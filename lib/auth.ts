@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
+import { countSignIn, lockKeyFor } from "./sign-in-lock"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -98,12 +99,11 @@ export const authOptions: NextAuthOptions = {
                     await RateLimiter.refund(loginKey, loginWindow)
                 }
                 try {
-                    // Rate Limiting (5 attempts per 15 minutes per IP)
                     // headers() is async since Next 15.
                     const headerList = await headers()
                     // F-10: was reading the raw x-forwarded-for header, which is a
-                    // client-controllable list an attacker can rotate to reset which
-                    // rate-limit bucket they land in.
+                    // client-controllable list. Kept for the audit trail of a
+                    // failed sign-in; the limit is the account's (below).
                     const ip = getClientIp(headerList)
                     // F-27: read here once, from the same next/headers() call this
                     // route handler already makes for the IP above, rather than
@@ -112,19 +112,6 @@ export const authOptions: NextAuthOptions = {
                     // through there (checked its actual call site, not just the
                     // .d.ts, which under-declares what's available either way).
                     const cookieHeader = headerList.get('cookie')
-                    // Counted first and handed back below when the attempt turns
-                    // out not to be a failure: the step that only asks for the
-                    // two-factor code, and a sign-in that succeeds. Only wrong
-                    // passwords and wrong codes use up the five — otherwise two
-                    // two-factor sign-ins in a row locked the account out, and a
-                    // whole office behind one address shared five sign-ins.
-                    loginKey = `login:${ip}`
-                    const { limited, resetAt } = await RateLimiter.getLimitData(loginKey, 5, 15 * 60 * 1000)
-                    loginWindow = resetAt
-                    if (limited) {
-                        const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        throw new Error(`Too many login attempts. Please try again at ${timeStr}.`)
-                    }
 
                     const remember = credentials?.remember === 'true'
 
@@ -173,6 +160,22 @@ export const authOptions: NextAuthOptions = {
                             },
                         }
                     })
+
+                    // Five wrong passwords or codes in fifteen minutes lock the
+                    // account, wherever they come from (lib/sign-in-lock.ts):
+                    // the address's limit locked a whole office for one person's
+                    // mistakes (decided 2026-11-03). Counted first and handed
+                    // back below when the attempt turns out not to be a failure:
+                    // the step that only asks for the two-factor code, and a
+                    // sign-in that succeeds. An email nobody has is counted
+                    // alike, so a lock says nothing of who's registered (F-17).
+                    loginKey = lockKeyFor(superAdmin || user, credentials.email)
+                    const { limited, resetAt } = await countSignIn(loginKey)
+                    loginWindow = resetAt
+                    if (limited) {
+                        const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        throw new Error(`Too many login attempts for this account. Please try again at ${timeStr}.`)
+                    }
 
                     const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
                     const isValid = await bcrypt.compare(credentials.password, passwordHash)
