@@ -36,6 +36,20 @@ export type StoredSettings = {
 
 type NumberField = 'locationVerifyRadiusMeters' | 'stepUpMinutes'
 
+/** A card's save, as the server answered it, and the fields that save sent. */
+export type OnSaved = (next: StoredSettings, sent: Partial<StoredSettings>) => void
+
+/**
+ * The settings once a save's answer is in: the fields it sent as the server
+ * saved them, and everything else as it was. The answer is the whole row as
+ * that save left it, and two cards' answers can come back in another order
+ * than they were saved; taken whole, the older one put back the other's
+ * field (found by Codex on PR 178). The rest is read again instead.
+ */
+export function withSaved(current: StoredSettings, sent: Partial<StoredSettings>, next: StoredSettings): StoredSettings {
+    return { ...current, ...Object.fromEntries(Object.keys(sent).map(k => [k, next[k as keyof StoredSettings]])) }
+}
+
 /** The server's own bounds (lib/validations/system-settings.schema.ts). */
 const BOUNDS: Record<NumberField, { min: number; max: number; wrong: TranslationKey; range: TranslationKey }> = {
     locationVerifyRadiusMeters: { min: 1, max: 10000, wrong: 'invalid_radius_value', range: 'sys_range_meters' },
@@ -112,7 +126,7 @@ async function send(patch: Partial<StoredSettings>): Promise<Saved> {
 }
 
 /** What each card shares: saving its fields, and saying how it went. */
-function useCardSave(onSaved: (next: StoredSettings) => void) {
+function useCardSave(onSaved: OnSaved) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const [saving, setSaving] = useState(false)
@@ -130,7 +144,7 @@ function useCardSave(onSaved: (next: StoredSettings) => void) {
                 } else showToast(result.message || t('error_generic'), 'error')
                 return null
             }
-            onSaved(result.data)
+            onSaved(result.data, patch)
             showToast(t('settings_saved_success'), 'success')
             return result.data
         } finally {
@@ -147,7 +161,7 @@ function NumberCard({ field, title, note, label, stored, onSaved }: {
     note: ReactNode
     label: string
     stored: StoredSettings
-    onSaved: (next: StoredSettings) => void
+    onSaved: OnSaved
 }) {
     const { t, locale } = useLanguage()
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
@@ -194,14 +208,14 @@ function NumberCard({ field, title, note, label, stored, onSaved }: {
 }
 
 /** How far from the task's place a submitted location is approved by itself, for companies that turn it on. */
-export function LocationCard({ stored, onSaved }: { stored: StoredSettings; onSaved: (next: StoredSettings) => void }) {
+export function LocationCard({ stored, onSaved }: { stored: StoredSettings; onSaved: OnSaved }) {
     const { t } = useLanguage()
     return <NumberCard field="locationVerifyRadiusMeters" title={t('location_verification_settings')} note={t('location_verify_radius_hint')}
         label={t('location_verify_radius_label')} stored={stored} onSaved={onSaved} />
 }
 
 /** How long a high-risk action's authenticator code lasts (ROLES_PLAN.md §6.15). */
-export function StepUpCard({ stored, onSaved }: { stored: StoredSettings; onSaved: (next: StoredSettings) => void }) {
+export function StepUpCard({ stored, onSaved }: { stored: StoredSettings; onSaved: OnSaved }) {
     const { t } = useLanguage()
     return <NumberCard field="stepUpMinutes" title={t('step_up_minutes_label')} note={t('step_up_minutes_hint')}
         label={t('sys_step_up_minutes')} stored={stored} onSaved={onSaved} />
@@ -213,7 +227,7 @@ export function StepUpCard({ stored, onSaved }: { stored: StoredSettings; onSave
  * record belongs to, which has nothing to do with how far from a place
  * somebody stood. Picked from the zones a company's calendar is.
  */
-export function CalendarCard({ stored, onSaved }: { stored: StoredSettings; onSaved: (next: StoredSettings) => void }) {
+export function CalendarCard({ stored, onSaved }: { stored: StoredSettings; onSaved: OnSaved }) {
     const { t } = useLanguage()
     const [zone, setZone] = useState(stored.defaultTimezone)
     const [error, setError] = useState<string>()
@@ -252,7 +266,7 @@ export function CalendarCard({ stored, onSaved }: { stored: StoredSettings; onSa
  * saved. Off, the name is kept and still shown, only not to be changed: the
  * field vanishing would suggest the name was lost.
  */
-export function SignatureCard({ stored, onSaved }: { stored: StoredSettings; onSaved: (next: StoredSettings) => void }) {
+export function SignatureCard({ stored, onSaved }: { stored: StoredSettings; onSaved: OnSaved }) {
     const { t, locale } = useLanguage()
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const [shown, setShown] = useState(stored.showPoweredBy)

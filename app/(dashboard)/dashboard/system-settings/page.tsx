@@ -7,7 +7,7 @@ import { HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import BrandColourCard from '@/components/BrandColourCard'
 import FaceSystemSwitch from '@/components/FaceSystemSwitch'
-import { CalendarCard, LocationCard, SignatureCard, StepUpCard, type StoredSettings } from '@/components/SystemSettingsCards'
+import { CalendarCard, LocationCard, SignatureCard, StepUpCard, withSaved, type StoredSettings } from '@/components/SystemSettingsCards'
 import { Button, Columns, Dialog, EmptyState, Page, PageHeader, Section } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { DEFAULT_BRAND } from '@/lib/brand-colour'
@@ -26,6 +26,9 @@ import { UnsavedChangesProvider, useGuardLinks, useUnsavedState } from '@/lib/us
  * top bar, sizes and colours typed in, and, when the settings didn't load,
  * a toast over forms left empty. The face checks switch follows in part 4b.
  */
+/** The server's answer: the settings, or why not. */
+type Answer = { success: true; data: StoredSettings } | { success: false; error?: string }
+
 export default function SystemSettingsPage() {
     const { t } = useLanguage()
     const router = useRouter()
@@ -34,8 +37,8 @@ export default function SystemSettingsPage() {
     // for the settings for whoever opened its address.
     const viewer = useViewer()
     const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
-    const { data, error, isValidating, mutate } = useSWR(isSuperAdmin ? '/api/system-settings' : null, fetcher)
-    const stored: StoredSettings | null = data?.success ? data.data : null
+    const { data, error, isValidating, mutate } = useSWR<Answer>(isSuperAdmin ? '/api/system-settings' : null, fetcher)
+    const stored = data?.success ? data.data : null
 
     // Edits not yet saved in any card are asked about before leaving the
     // page, as company settings' are.
@@ -45,8 +48,12 @@ export default function SystemSettingsPage() {
 
     if (!isSuperAdmin) return <AccessDenied />
 
-    // The server's copy, as each card saves: every card's saved value is it.
-    const saved = (next: StoredSettings) => { void mutate({ success: true, data: next }, { revalidate: false }) }
+    // The server's copy, as each card saves: what that save sent, as the
+    // server saved it, then the rest read again. Answers can come back in
+    // another order than the saves were made (withSaved).
+    const saved = (next: StoredSettings, sent: Partial<StoredSettings>) => {
+        void mutate(current => current?.success ? { ...current, data: withSaved(current.data, sent, next) } : current, { revalidate: true })
+    }
     const leave = () => {
         const next = leaving
         setLeaving(null)
@@ -101,7 +108,7 @@ export default function SystemSettingsPage() {
                                     }).catch(() => null)
                                     if (!res?.ok) return false
                                     const result = await res.json().catch(() => null)
-                                    if (result?.data) saved(result.data)
+                                    if (result?.data) saved(result.data, { brandColour })
                                     return true
                                 }}
                             />

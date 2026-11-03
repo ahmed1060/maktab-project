@@ -285,3 +285,24 @@ describe("System settings, found in Codex's review", () => {
         ]) expect(cards, call).toContain(call)
     })
 })
+
+describe("System settings, found in Codex's second review", () => {
+    it("lets a save's answer change only the fields it sent, then reads the row again", async () => {
+        // The distance saved, then the calendar: the calendar's answer came
+        // first and the distance's, older, last, and put the calendar back
+        // to Cairo with Save off while London was saved.
+        const { withSaved } = await import("@/components/SystemSettingsCards")
+        const base = { locationVerifyRadiusMeters: 70, defaultTimezone: "Africa/Cairo", stepUpMinutes: 60, showPoweredBy: true, poweredByName: "SHSD", brandColour: "#123456" }
+        const afterCalendar = { ...base, locationVerifyRadiusMeters: 200, defaultTimezone: "Europe/London" }
+        const olderAnswer = { ...base, locationVerifyRadiusMeters: 200 }
+        expect(withSaved(afterCalendar, { locationVerifyRadiusMeters: 200 }, olderAnswer)).toEqual(afterCalendar)
+        // Its own fields as the server saved them; nobody else's.
+        const answer = { ...base, stepUpMinutes: 45, defaultTimezone: "Asia/Dubai" }
+        expect(withSaved(base, { stepUpMinutes: 45 }, answer)).toEqual({ ...base, stepUpMinutes: 45 })
+        const page = readFileSync(PAGE, "utf8")
+        expect(page).toContain("mutate(current => current?.success ? { ...current, data: withSaved(current.data, sent, next) } : current, { revalidate: true })")
+        expect(page).not.toContain("mutate({ success: true, data: next }, { revalidate: false })")
+        expect(page).toContain("saved(result.data, { brandColour })")
+        expect(readFileSync(CARDS, "utf8")).toContain("onSaved(result.data, patch)")
+    })
+})

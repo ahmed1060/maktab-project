@@ -3344,3 +3344,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     change, and saving it put the old value back over somebody else's.
     Untouched, a field now follows its stored value, and an edit is left
     alone.
+- **2026-11-03:** Found by Codex's second review of #178: two cards saved
+  at once could have their answers come back in another order than they
+  were saved. Each answer is the whole row as its save left it, so the
+  older one, taken last, put the other card's field back: the calendar
+  read Cairo, with Save off, while London was saved. A save's answer now
+  changes only what that save sent, and the rest is read again from the
+  server, which still brings what somebody else saved.
