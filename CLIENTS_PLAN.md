@@ -2227,3 +2227,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-02:** The Super Admin's pages part 3a was merged in #171. A
   company's payments and the Packages page move onto the building blocks
   in #172 (`UI_PLAN.md` §5). They don't touch clients or locations.
+- **2026-11-03:** The Super Admin's pages part 3b was merged in #172. All
+  users moves onto the building blocks in #173 (`UI_PLAN.md` §5), which
+  finishes the Customers group. It doesn't touch clients or locations.

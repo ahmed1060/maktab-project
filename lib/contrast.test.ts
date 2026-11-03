@@ -58,7 +58,6 @@ const TEXT_PAIRS: [string, string][] = [
     ["--danger-fg-strong", "--danger-bg"],
     ["--warn-fg", "--warn-bg"],
     ["--warn-fg-warm", "--warn-bg-warm"],
-    ["--warn-fg-yellow", "--warn-bg-yellow"],
     ["--info-fg", "--info-bg"],
     ["--info-fg-deep", "--info-bg-sky"],
     ["--info-fg-indigo", "--info-bg-indigo"],
@@ -297,7 +296,7 @@ describe("fills: white text on a status colour meets AA 4.5:1", () => {
     // are also text and strokes on the page, so the grounds under white text
     // are their own tokens, the same hues darkened.
     const FILLS = ["--ok-fill", "--info-fill",
-        "--warn-fill", "--warn-fill-warm", "--danger-fill", "--accent-fill"]
+        "--warn-fill-warm", "--danger-fill", "--accent-fill"]
 
     for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
         for (const fill of FILLS) {

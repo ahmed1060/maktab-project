@@ -499,8 +499,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-02; then Super Admins and Who can, merged in #170 on
      2026-11-02, which finished Access; then Customers, in three parts:
      the Companies list, merged in #171 on 2026-11-02, then a company's
-     payments with Packages, which open for review in #172, then All
-     users; then Operations (Check-ins, Audit logs,
+     payments with Packages, merged in #172 on 2026-11-03, then All
+     users, which opens for review in #173 and finishes Customers; then
+     Operations (Check-ins, Audit logs,
      System health, System settings);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
@@ -3046,3 +3047,36 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     month's end or midnight they could be days apart. The server says the
     period with each unpaid payment, from the same rule it saves by, and
     the list is asked again as the dialog opens.
+- **2026-11-03:** The Super Admin's pages part 3b was merged in #172. All
+  users moves onto the building blocks in #173, which finishes the
+  Customers group:
+  - it has the page header, with a way to the Super Admins, who have their
+    own page (§2.2). They were a table of their own on this page's first
+    page, and only there;
+  - it's the Super Admin's only, as the side bar has it. Anyone else who
+    opened its address was shown their own company's people;
+  - the people at work and those who have left are tabs, the one shown
+    kept in the address (`?show=left`). Those who had left were a window
+    of their own, reached only from the last page;
+  - a filter bar finds someone by name, email or company, and narrows the
+    list to one company;
+  - the list is a table on computers and cards on phones: the person and
+    their email, their name opening their profile; their company, or No
+    company; their username; their role; their points, an Admin's none, as
+    on the Employees list; and whether they're online, as a badge in its
+    meaning's colour, in the words and colours the Employees list uses,
+    now from one place (`lib/person-status.ts`). It was a table a company,
+    in colours of its own;
+  - someone who has left is shown by the email they had: deleting someone
+    renames them "Ghost User", and their username is a placeholder. Their
+    profile opens from their email, and Delete for good is in their menu.
+    It asks first in the building blocks' dialog, then for the
+    authenticator code as before, and says the server's reason when it
+    won't, such as cash advance money they still hold. A success said so
+    in a window of its own, and a refusal in words made in the browser;
+  - the pager says how many, and the list says while it loads, when it
+    didn't with the server's reason and Try again, and when there's no
+    one;
+  - 13 labels, and the --warn-bg-yellow, --warn-fg-yellow and --warn-fill
+    colours, only the old page used are removed, and the page's name is in
+    sentence case.

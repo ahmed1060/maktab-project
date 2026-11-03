@@ -61,10 +61,8 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["app/(dashboard)/dashboard/employees/page.tsx", "const points = (e: Employee) => e.role === 'ADMIN' ? null : <span className=\"ui-chip\">{countOf(t, locale, e.totalDifficultyPoints || 0, 'pts')}</span>", THE_PERSON],
     ["app/(dashboard)/dashboard/employees/page.tsx", "...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),", THE_PERSON],
 
-    // app/(dashboard)/dashboard/all-users/page.tsx
-    ["app/(dashboard)/dashboard/all-users/page.tsx", "case 'EMPLOYEE': return 'role_employee'", LABEL],
-    ["app/(dashboard)/dashboard/all-users/page.tsx", "case 'TEAM_LEADER': return 'role_team_leader'", LABEL],
-    ["app/(dashboard)/dashboard/all-users/page.tsx", "case 'ADMIN': return 'role_admin'", LABEL],
+    // app/(dashboard)/dashboard/all-users/page.tsx — an Admin isn't scored, as on the Employees list
+    ["app/(dashboard)/dashboard/all-users/page.tsx", "const points = (p: Person) => p.role === 'ADMIN' ? null : <span className=\"ui-chip\">{countOf(t, locale, p.totalDifficultyPoints || 0, 'pts')}</span>", THE_PERSON],
 
     // app/(dashboard)/dashboard/obligations/new/page.tsx
     ["app/(dashboard)/dashboard/obligations/new/page.tsx", "? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))", THE_PERSON],
