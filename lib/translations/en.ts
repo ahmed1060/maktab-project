@@ -16,7 +16,7 @@ export const en = {
         error_suspended: "Your account has been suspended. Please contact an administrator.",
         error_banned: "The company has been banned. Access denied.",
         error_generic: "Something went wrong",
-        error_too_many_attempts: "Too many wrong tries for this account. Wait up to 15 minutes, or ask your company's Admin to unlock it.",
+        error_too_many_attempts: "Too many wrong tries for this account. It unlocks on its own within 15 minutes, or your company's Admin can unlock it now.",
         error_subscription_expired: "This company's subscription has expired. Please contact your administrator.",
         error_account_closed: "This account is closed. Please contact your administrator.",
         error_access_denied: "Access denied.",

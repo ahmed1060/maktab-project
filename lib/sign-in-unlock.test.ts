@@ -56,6 +56,14 @@ describe("unlocking somebody's sign-in", () => {
         expect(en.error_too_many_attempts).toContain("account")
         expect(ar.error_too_many_attempts).not.toContain("الشبكة")
     })
+
+    it("says so in Arabic without telling a man or a woman what to do (found in the browser, PR 183)", () => {
+        // انتظر and اطلب are said to a man; the lock lifting on its own, or
+        // being lifted by the company's Admin, is said to anybody.
+        for (const word of ["انتظر", "اطلب"]) expect(ar.error_too_many_attempts).not.toContain(word)
+        expect(en.error_too_many_attempts).toContain("15 minutes")
+        expect(ar.error_too_many_attempts).toContain("١٥ دقيقة")
+    })
 })
 
 describe("the lock beside somebody's status", () => {

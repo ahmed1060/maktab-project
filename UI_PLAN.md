@@ -3515,3 +3515,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     count of codes asked to confirm a sensitive action;
   - resetting the password with Forgot password lifts the lock, as the code
     proves the email is theirs.
+- **2026-11-03:** Found in the browser, on #183: the sign-in page told a man
+  what to do in Arabic, "wait" and "ask". It says the account unlocks on its
+  own within 15 minutes, or the company's Admin can unlock it now, in both
+  languages.
