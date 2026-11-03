@@ -509,7 +509,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      settings in two parts, the page and its four forms, merged in #178
      on 2026-11-03, then its face checks switch, merged in #179 on
      2026-11-03, which finished Operations. The pages left follow, one
-     at a time: Add employee first, which opens for review in #180;
+     at a time: Add employee, merged in #180 on 2026-11-03, then Add a
+     bonus and Add a deduction, which open for review in #181;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3423,3 +3424,30 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   over the browser's own checks and these two had none. Each is checked
   before sending and said under its field, as is the server's refusal of
   either, and each is checked and sent only for a role that has it.
+- **2026-11-03:** Add employee was merged in #180. Add a bonus and Add a
+  deduction move onto the building blocks together in #181, as they were
+  two copies of one form, and are one now (`AddAdjustment`):
+  - each has the page header, saying whose pay it is ("For Mona Adel"),
+    with a way back to the list, where its title was a heading of its own
+    making with each side chosen by hand for each language. The name's
+    line is kept while it loads, so the form doesn't move when it comes;
+  - its fields are the building blocks', the days with a hint of how many
+    it takes (more than 0, up to 1,000, in the language's digits) and the
+    reason marked optional, where its example was a family wedding;
+  - the days are checked before sending and said under the field, which
+    takes the focus: more than 0, up to 1,000, and to 2 decimal places, as
+    they're kept, which the browser's own step said until the form took
+    over its checks. The server's refusal of them is said there too, and
+    anything else as the server said it, where every refusal was "Failed
+    to add bonus";
+  - the deduction's button is the primary one, as a deduction can be
+    undone (DESIGN.md: the danger colour is for destroying);
+  - somebody who may not adjust pay is told so, and nothing is asked of
+    the server, where the form showed to anybody who reached its address.
+    Their own pay is said to be somebody else's to adjust, where the form
+    let them fill it in and the server refused it;
+  - adding it says so as a toast and goes back to the list at once, where
+    it waited 1.5 seconds on "Redirecting...";
+  - leaving with something typed asks first;
+  - its title and button are in sentence case, "Add a bonus" and "Add
+    bonus", where it was "Add Monthly Bonus (Days)".
