@@ -505,8 +505,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-03, then Audit logs, merged in #175 on 2026-11-03, then
      System health in two parts, the page and its maintenance cards,
      merged in #176 on 2026-11-03, then its scheduled jobs, terminals
-     and backup picker, which opens for review in #177; then System
-     settings;
+     and backup picker, merged in #177 on 2026-11-03; then System
+     settings in two parts, the page and its four forms, which opens for
+     review in #178, then its face checks switch;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3296,3 +3297,64 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     every five minutes, as each ask lists the backups on Google Drive;
   - the terminals card said "Something went wrong" when it didn't load. It
     says it couldn't check the terminals.
+- **2026-11-03:** The Super Admin's pages, Operations part 3b, was merged
+  in #177, which finished System health. System settings moves onto the
+  building blocks in two parts, the page and its four forms first, in
+  #178:
+  - it has the page header, its name in sentence case, which the side bar
+    shares. Its title was set in the old top bar;
+  - it asks the server nothing for anyone but the Super Admin, where it
+    asked for the settings for whoever opened its address;
+  - its cards are in three sections: defaults (the auto-verify distance
+    and the default calendar), security (the high-risk confirmation's
+    minutes and face checks), and branding (the "Powered by" signature and
+    the default brand colour). They were one grid of forms of their own
+    making, with sizes and colours typed in;
+  - each form has its fields with their labels above them and their range
+    below, in the language's digits, a wrong number said under its field
+    and focused where it was a toast, and Save on the card's end side,
+    off until something changes. Each still sends only its own fields;
+  - the default calendar is picked from the zones a company's calendar
+    is, a stored zone that isn't among them kept, where it was typed into
+    a box. The shortlist is one, in `lib/timezone.ts`;
+  - the signature's preview is a figure named as one, and the signature's
+    letters aren't spaced apart in Arabic, where they join;
+  - edits not yet saved are asked about before leaving the page, as
+    company settings' are, the brand colour's included;
+  - it says while it loads, and when it didn't with the server's reason
+    and Try again, where a toast said so over forms left empty.
+- **2026-11-03:** Found in the browser, on #178: a wrong number was said
+  with its range typed in, Western digits in Arabic ("بين 1 و10000") and
+  10000 where the hint above it said 10,000. It says its range as the hint
+  does, in the language's digits.
+- **2026-11-03:** Found in the web interface audit, on #178:
+  - "Show the "Powered by" signature" had straight quotes, beside a title
+    with curly ones. It has “Powered by” in English and «بدعم من» in Arabic;
+  - with the signature off, the name's hint still counted its characters,
+    of a field nobody could type in. It says to turn the signature on to
+    change the name (DESIGN.md §5.3);
+  - the name, a brand's, had spelling marks under it and could be changed
+    by a page translator. Its field and its preview leave it as it is.
+- **2026-11-03:** Found by Codex on #178:
+  - a number or name typed while a save was on its way was put back to
+    what was saved when the answer came, with Save off, and was lost. It's
+    kept, and still counts as a change;
+  - a field nobody touched kept the value it opened with when a newer one
+    arrived, from another card's save or a fresher read. It read as a
+    change, and saving it put the old value back over somebody else's.
+    Untouched, a field now follows its stored value, and an edit is left
+    alone.
+- **2026-11-03:** Found by Codex's second review of #178: two cards saved
+  at once could have their answers come back in another order than they
+  were saved. Each answer is the whole row as its save left it, so the
+  older one, taken last, put the other card's field back: the calendar
+  read Cairo, with Save off, while London was saved. A save's answer now
+  changes only what that save sent, and the rest is read again from the
+  server, which still brings what somebody else saved.
+- **2026-11-03:** Found by Codex's third review of #178: typed back to what
+  was stored while a save was on its way, an edit looked like no edit, and
+  the answer replaced it, with Save off; the signature's switch, turned off,
+  saved and turned on again while waiting, the same. Told apart by value,
+  an edit back to the stored value can't be seen, so each card's fields are
+  now held still until its save comes back: read-only where they're typed
+  in, so the cursor stays put, and the switch and the calendar off.

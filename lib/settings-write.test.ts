@@ -123,7 +123,7 @@ describe("G2: the payroll settings can actually be set", () => {
     it("keeps a stored zone selectable even when it is not on the list", () => {
         // Otherwise opening the page silently reassigns a company set through
         // the API to whatever the first option happens to be.
-        expect(CARD).toContain("...(ZONES.includes(zone) ? [] : [zone]),")
+        expect(CARD).toContain("...(ZONE_SHORTLIST.includes(zone) ? [] : [zone]),")
     })
 })
 

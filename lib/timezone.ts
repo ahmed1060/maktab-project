@@ -98,3 +98,17 @@ export function resolveTimeZone(
     }
     return DEFAULT_TIME_ZONE
 }
+
+// The zones offered for a company's calendar and for the system's default
+// (System settings): a shortlist, not a limit. Any zone the runtime
+// recognises is accepted — the offset bound that used to narrow this went
+// with G7, when salary initialisation started asking each company what month
+// it is in that company's own calendar. Somebody whose zone is not here can
+// still be set through the API.
+export const ZONE_SHORTLIST: readonly string[] = [
+    'Africa/Cairo', 'Africa/Casablanca', 'Africa/Lagos', 'Africa/Nairobi',
+    'Asia/Dubai', 'Asia/Riyadh', 'Asia/Amman', 'Asia/Baghdad', 'Asia/Karachi',
+    'Asia/Kolkata', 'Asia/Jakarta', 'Asia/Singapore', 'Asia/Tokyo',
+    'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul', 'UTC',
+    'America/Sao_Paulo', 'America/New_York', 'America/Chicago', 'America/Los_Angeles',
+]
