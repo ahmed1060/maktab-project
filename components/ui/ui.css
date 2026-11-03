@@ -1507,6 +1507,17 @@ a.ui-file-open:focus-visible,
   flex: 1 1 100%;
   min-width: 0;
 }
+/* What a look found, in its card: its title, what was found, the list and
+   its buttons, spaced from each other (System health). */
+.ui-card-report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+.ui-card-report > .ui-subsection-title {
+  margin: 0;
+}
 /* A list that can run long, such as the stored files nothing refers to,
    scrolls within itself, each line broken anywhere it must (System health). */
 .ui-report-scroll {

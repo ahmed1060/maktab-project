@@ -248,7 +248,7 @@ export default function SystemHealthPage() {
 
     const on = !!settings?.maintenanceMode
     const maintenance = settings ? (
-        <Card title={t('maintenance_mode_header')} actions={<StatusBadge tone={on ? 'waiting' : 'neutral'}>{t(on ? 'health_maintenance_on' : 'health_maintenance_off')}</StatusBadge>}>
+        <Card>
             <p className="ui-card-note">{t('maintenance_mode_description')}</p>
             <Field label={t('health_maintenance_message')}
                 hint={t('ui_characters_used').replace('{used}', num(shownMessage.length)).replace('{max}', num(MESSAGE_MAX))}>{p => (
@@ -301,7 +301,11 @@ export default function SystemHealthPage() {
                 </Columns>
             </Section>
 
-            <Section title={t('maintenance_mode_header')}>{maintenance}</Section>
+            {/* Named once, its state beside the name: the section's one card was titled the same. */}
+            <Section title={t('maintenance_mode_header')}
+                action={settings && <StatusBadge tone={on ? 'waiting' : 'neutral'}>{t(on ? 'health_maintenance_on' : 'health_maintenance_off')}</StatusBadge>}>
+                {maintenance}
+            </Section>
 
             {pending && asked && (
                 <ConfirmHealthAction title={asked.title} body={asked.body} word={asked.word} danger={asked.danger} confirmLabel={asked.label}

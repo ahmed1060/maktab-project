@@ -3238,3 +3238,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - a backup, a restore or maintenance mode that didn't start said only
     that. Each says what to do next: try again, and for a backup or a
     restore, start it from the GitHub Actions tab.
+- **2026-11-03:** Found in the browser, on #176:
+  - maintenance mode was named twice, the section and its one card titled
+    the same one under the other. The card has no title now, and whether
+    it's on is beside the section's;
+  - in the questions, the field for the word and the buttons sat against
+    the sentence and each other. They're spaced as every dialog's form is;
+  - what a look for unused files found ran into its buttons. Its title,
+    what was found, the list and the buttons are spaced apart.

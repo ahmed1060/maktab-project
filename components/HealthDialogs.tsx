@@ -36,7 +36,7 @@ export function ConfirmHealthAction({ title, body, word, danger = false, confirm
     const [before, after] = t('health_type_word').split('{word}')
     return (
         <Dialog open onClose={onCancel} title={title}>
-            <form onSubmit={e => {
+            <form className="ui-form" onSubmit={e => {
                 e.preventDefault()
                 if (ready && !busy) onConfirm()
             }}>
@@ -74,7 +74,7 @@ export function OrphanReport({ report, busy, onDelete, onClose }: {
     const { t, locale } = useLanguage()
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     return (
-        <div className="ui-subsection">
+        <div className="ui-card-report">
             <h3 className="ui-subsection-title">{t('orphan_report_title')}</h3>
             {report.orphaned === 0 ? (
                 <p className="ui-hint" role="status">{t('orphan_report_none')}</p>

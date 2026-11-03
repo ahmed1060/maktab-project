@@ -246,3 +246,31 @@ describe("System health, found in the interface audit", () => {
         }
     })
 })
+
+describe("System health, found in the browser", () => {
+    it("names maintenance mode once, its state beside the section's title", async () => {
+        // The section and its one card were both titled "Maintenance mode", one under the other.
+        const html = await render({ [HEALTH]: metrics(), [SETTINGS]: settings(true) })
+        const part = section(html, en.maintenance_mode_header)
+        expect(part).not.toContain(`<h2 class="ui-card-title">${esc(en.maintenance_mode_header)}</h2>`)
+        expect(part.slice(0, part.indexOf("</div>"))).toContain(`<span class="ui-badge ui-badge-waiting">${en.health_maintenance_on}</span>`)
+    })
+
+    it("spaces a question's sentence, the word's field and the buttons, as every dialog's form is", async () => {
+        // The field and the buttons sat against the sentence and each other.
+        const { ConfirmHealthAction } = await import("@/components/HealthDialogs")
+        const html = await renderIn(async () => h(ConfirmHealthAction, {
+            title: "t", body: "b", word: "RESTORE", confirmLabel: "go", busy: false, onConfirm: () => {}, onCancel: () => {},
+        }))
+        expect(html).toMatch(/<form class="ui-form"/)
+    })
+
+    it("spaces what a look for unused files found, and its buttons, from each other", async () => {
+        const { OrphanReport } = await import("@/components/HealthDialogs")
+        const html = await renderIn(async () => h(OrphanReport, { report: { orphaned: 1, total: 2, bytes: 1, orphans: ["a"] }, busy: false, onDelete: () => {}, onClose: () => {} }))
+        expect(html.startsWith('<div class="ui-card-report">')).toBe(true)
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rule = css.slice(css.indexOf(".ui-card-report {"))
+        expect(rule.slice(0, rule.indexOf("}"))).toMatch(/gap: var\(--space-\d\)/)
+    })
+})
