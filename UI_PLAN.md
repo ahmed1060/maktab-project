@@ -504,8 +504,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Operations, a page at a time: Check-ins, merged in #174 on
      2026-11-03, then Audit logs, merged in #175 on 2026-11-03, then
      System health in two parts, the page and its maintenance cards,
-     which opens for review in #176, then its scheduled jobs, terminals
-     and backup picker; then System settings;
+     merged in #176 on 2026-11-03, then its scheduled jobs, terminals
+     and backup picker, which opens for review in #177; then System
+     settings;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3256,3 +3257,29 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the backup picker, closed while its list loaded, opened again when
     the list came, over whatever had opened since. A closed picker stays
     closed, and only the list asked for last is shown.
+- **2026-11-03:** The Super Admin's pages, Operations part 3a, was merged
+  in #176. System health's scheduled jobs card, terminals card and backup
+  picker move onto the building blocks in #177, which finishes the page:
+  - the scheduled jobs card lists the backup and then each job as a row,
+    its state as a badge in its meaning's colour: working, failing, or in
+    the problem colour when it has never run, is overdue or has failed
+    three times running, the row marked too. Each job is named in the
+    reader's language, where its name came from the server in English,
+    with how often it runs and when it last worked, in the language's own
+    words ("2 hours ago", قبل ساعتين) where it was "2h ago". A job's last
+    error is written under it, where it was a tooltip only a mouse could
+    reach. The backup's two reds, Drive unreachable and no recent
+    backup, keep their own words;
+  - the terminals card lists each company as a row, its state as a badge
+    and what's wrong fact by fact, in the language's digits, where the
+    facts were joined by " · ". When it didn't load it says so with Try
+    again, where it disappeared;
+  - the backup picker is a dialog listing each backup by its name as
+    it's stored, which kind, when (in Cairo, as every other time) and how
+    big, with Restore on its end side, named for which backup to someone
+    hearing the list. It says while it loads, when there are none, and
+    when Google Drive didn't answer, with Try again;
+  - each card says while it loads, and when it didn't with the server's
+    reason and Try again;
+  - their emoji, sizes and colours typed in, and the "h ago" and "d ago"
+    labels are gone, and their labels are in sentence case.

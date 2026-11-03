@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, type ReactNode } from 'react'
+import useSWR from 'swr'
+import { WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, Card, EmptyState, Row, StatusBadge, type StatusTone } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { fetcher, type SWRError } from '@/lib/swr-fetcher'
+import type { TranslationKey } from '@/lib/translations'
 import { useNow } from '@/lib/useNow'
-import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type Job = {
     job: string
@@ -28,30 +32,6 @@ type Backup = {
 
 type Health = { jobs: Job[]; backup: Backup; staleAfterHours: number }
 
-type Tone = 'ok' | 'warn' | 'bad'
-
-const TONE: Record<Tone, { fg: string; bg: string }> = {
-    ok: { fg: 'var(--ok-fg)', bg: 'var(--ok-bg)' },
-    warn: { fg: 'var(--warn-fg)', bg: 'var(--warn-bg)' },
-    bad: { fg: 'var(--danger-fg)', bg: 'var(--danger-bg)' },
-}
-
-function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-    return (
-        <span style={{
-            background: TONE[tone].bg,
-            color: TONE[tone].fg,
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            padding: '0.15rem 0.5rem',
-            borderRadius: '999px',
-            whiteSpace: 'nowrap',
-        }}>
-            {children}
-        </span>
-    )
-}
-
 /**
  * "When did this last work?" for every scheduled job, and for the backup.
  *
@@ -65,137 +45,95 @@ function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
  * error and leaves no trace, which is why the register lives in code rather
  * than being derived from rows — a job with no row at all is the loudest thing
  * this can report, and a query over past runs could never have said it.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, Operations part 3b): a card
+ * with the backup and then each job as a row, its state as a badge in its
+ * meaning's colour, a row that isn't fine marked, and a job's last error in
+ * words, where it was a tooltip.
  */
 export default function JobsCard() {
     const { t, locale } = useLanguage()
     // So "3 hours ago" becomes "4 hours ago" while the card is open,
     // rather than only when something else redraws it.
     const now = useNow()
-    const [health, setHealth] = useState<Health | null>(null)
-    const [failed, setFailed] = useState(false)
+    const { data, error, isValidating, mutate } = useSWR('/api/admin/maintenance/jobs', fetcher)
+    const health: Health | undefined = data?.data
 
-    useEffect(() => {
-        let cancelled = false
-        fetchRetrying('/api/admin/maintenance/jobs')
-            .then(r => r.json())
-            .then(body => {
-                if (cancelled) return
-                if (body?.data) setHealth(body.data)
-                else setFailed(true)
-            })
-            .catch(() => { if (!cancelled) setFailed(true) })
-        return () => { cancelled = true }
-    }, [])
+    const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    // "2 hours ago", قبل ساعتين: the language's own words for it, where a
+    // count and "ago" put together read wrongly in Arabic.
+    const ago = (iso: string): string => {
+        const hours = (now - Date.parse(iso)) / 36e5
+        if (hours < 1) return t('jobs_just_now')
+        const relative = new Intl.RelativeTimeFormat(intl, { numeric: 'auto' })
+        return hours < 48 ? relative.format(-Math.round(hours), 'hour') : relative.format(-Math.round(hours / 24), 'day')
+    }
+    // Each fact kept apart from the next, so a name can't swap places with
+    // the words beside it in Arabic.
+    const facts = (items: (ReactNode | null | false)[]): ReactNode => (
+        <span>{items.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
+    )
 
-    const ago = (iso: string | null): string => {
-        if (!iso) return '—'
-        const hours = (now - new Date(iso).getTime()) / 36e5
-        if (hours < 1) return t('jobs_just_now' as any)
-        if (hours < 48) return `${Math.round(hours)}${t('jobs_hours_short' as any)}`
-        return `${Math.round(hours / 24)}${t('jobs_days_short' as any)}`
+    const backupBad = (b: Backup) => !b.reachable || b.stale || !!b.error
+    // Two reds with different words: for a week the true one was the second,
+    // and "stale" alone would have understated it.
+    const backupState = (b: Backup): TranslationKey =>
+        !b.reachable ? 'jobs_backup_unreachable' : b.error === 'NO_BACKUPS' ? 'jobs_no_backups' : b.stale ? 'jobs_backup_stale' : 'jobs_backup_ok'
+
+    const jobTone = (j: Job): StatusTone => j.neverRun || j.overdue || j.failureStreak >= 3 ? 'problem' : j.failureStreak > 0 ? 'waiting' : 'good'
+    const jobState = (j: Job): TranslationKey => j.neverRun ? 'jobs_never_run' : j.overdue ? 'jobs_overdue' : j.failureStreak > 0 ? 'jobs_failing' : 'jobs_working'
+    const every = (hours: number): TranslationKey => hours <= 1 ? 'jobs_every_hour' : hours <= 24 ? 'jobs_every_day' : hours <= 24 * 31 ? 'jobs_every_month' : 'jobs_every_year'
+    // Its name in the reader's language; the server's own name if it's one this doesn't know yet.
+    const name = (j: Job) => {
+        const key = `jobs_name_${j.job.replace(/-/g, '_')}` as TranslationKey
+        const named = t(key)
+        return named && named !== key ? named : j.label
     }
 
-    const backupTone = (b: Backup): Tone => (!b.reachable || b.stale || b.error) ? 'bad' : 'ok'
-    const backupLine = (b: Backup): string => {
-        // Two reds with different sentences: for a week the true one was the
-        // second, and "stale" alone would have understated it.
-        if (!b.reachable) return t('jobs_backup_unreachable' as any)
-        if (b.error === 'NO_BACKUPS') return t('jobs_no_backups' as any)
-        if (b.stale) return t('jobs_backup_stale' as any)
-        return t('jobs_backup_ok' as any)
+    if (!health) {
+        return (
+            <Card title={t('jobs_header')}>
+                <p className="ui-card-note">{t('jobs_subtitle')}</p>
+                {error
+                    ? <EmptyState icon={WarningCircleIcon} title={t('jobs_check_failed')} detail={(error as SWRError).info?.error}
+                        action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+                    : <p className="ui-card-note" role="status">{t('jobs_loading')}</p>}
+            </Card>
+        )
     }
 
-    const jobTone = (j: Job): Tone => {
-        if (j.neverRun || j.overdue || j.failureStreak >= 3) return 'bad'
-        if (j.failureStreak > 0) return 'warn'
-        return 'ok'
-    }
-    const jobStatus = (j: Job): string => {
-        if (j.neverRun) return t('jobs_never_run' as any)
-        if (j.overdue) return t('jobs_overdue' as any)
-        if (j.failureStreak > 0) return t('jobs_failing' as any)
-        return ago(j.lastSuccessAt)
-    }
-
-    const row = {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.75rem',
-        padding: '0.45rem 0',
-        borderTop: '1px solid var(--border)',
-        fontSize: '0.85rem',
-    } as const
-
+    const { backup } = health
     return (
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span aria-hidden="true" style={{ fontSize: '2rem' }}>🩺</span>
-                <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('jobs_header' as any)}</h3>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('jobs_subtitle' as any)}</p>
-                </div>
-            </div>
-
-            {failed && (
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--danger-fg)' }}>
-                    {t('jobs_check_failed' as any)}
-                </p>
-            )}
-
-            {!health && !failed && (
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    {t('jobs_loading' as any)}
-                </p>
-            )}
-
-            {health && (
-                <>
-                    {/* The backup first and on its own: it is the reason this
-                        card exists, and it is the only row whose failure means
-                        the data is not safe rather than a feature being late. */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '0.75rem',
-                        background: TONE[backupTone(health.backup)].bg,
-                        color: TONE[backupTone(health.backup)].fg,
-                        borderRadius: '0.65rem',
-                        padding: '0.6rem 0.8rem',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                    }}>
-                        <span><span aria-hidden="true">💾</span> {backupLine(health.backup)}</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                            {health.backup.newestAt ? ago(health.backup.newestAt) : '—'}
-                        </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {health.jobs.map(j => (
-                            <div key={j.job} style={row} title={j.lastError ?? undefined}>
-                                <span style={{ color: 'var(--text-main)' }}>{j.label}</span>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    {j.lastError && (
-                                        <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }} aria-hidden>⚠</span>
-                                    )}
-                                    <Pill tone={jobTone(j)}>{jobStatus(j)}</Pill>
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <p style={{
-                        margin: 0,
-                        fontSize: '0.75rem',
-                        color: 'var(--text-faint)',
-                        textAlign: locale === 'ar' ? 'right' : 'left',
-                    }}>
-                        {t('jobs_footnote' as any)}
-                    </p>
-                </>
-            )}
-        </div>
+        <Card title={t('jobs_header')}>
+            <p className="ui-card-note">{t('jobs_subtitle')}</p>
+            <p className="ui-card-note">{t('jobs_footnote')}</p>
+            <ul className="ui-rows ui-rows-flush" aria-label={t('jobs_header')}>
+                {/* The backup first: it's the reason this card exists, and the
+                    one row whose failure means the data isn't safe rather than
+                    a feature being late. */}
+                <Row
+                    tone={backupBad(backup) ? 'overdue' : undefined}
+                    title={t('jobs_backup')}
+                    detail={backup.newestAt && facts([
+                        t('jobs_backup_newest').replace('{when}', ago(backup.newestAt)),
+                        backup.newestName && <bdi dir="ltr" translate="no">{backup.newestName}</bdi>,
+                    ])}
+                    end={<StatusBadge tone={backupBad(backup) ? 'problem' : 'good'}>{t(backupState(backup))}</StatusBadge>}
+                />
+                {health.jobs.map(j => (
+                    <Row
+                        key={j.job}
+                        tone={jobTone(j) === 'problem' ? 'overdue' : undefined}
+                        title={name(j)}
+                        detail={facts([
+                            t(every(j.everyHours)),
+                            j.neverRun ? t('jobs_no_run') : j.lastSuccessAt ? t('jobs_last_worked').replace('{when}', ago(j.lastSuccessAt)) : t('jobs_never_worked'),
+                        ])}
+                        note={j.lastError && <bdi>{j.lastError}</bdi>}
+                        end={<StatusBadge tone={jobTone(j)}>{t(jobState(j))}</StatusBadge>}
+                    />
+                ))}
+            </ul>
+        </Card>
     )
 }

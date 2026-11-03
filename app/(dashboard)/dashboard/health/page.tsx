@@ -24,8 +24,8 @@ import { useViewer } from '@/lib/useCan'
  * mode, each a section on the building blocks. The page was cards of its
  * own making, with emoji for icons, sizes and colours typed in, the old
  * confirmation window, and every result in a window of its own; results
- * are toasts now. The scheduled jobs, the terminals and the backup picker
- * follow in part 3b.
+ * are toasts now. Its scheduled jobs card, terminals card and backup
+ * picker followed in part 3b.
  */
 
 type Counted = { total: number; prunable: number; retentionDays: number }
@@ -148,7 +148,7 @@ export default function SystemHealthPage() {
         setPending(null)
     })
 
-    // The backups on Google Drive, for the picker (part 3b's).
+    // The backups on Google Drive, for the picker.
     const openPicker = async () => {
         const request = ++pickerAsked.current
         setPicker({ request, backups: [], loading: true, error: null })
@@ -325,6 +325,7 @@ export default function SystemHealthPage() {
                     setPending({ action: 'RESTORE_SPECIFIC', backup })
                 }}
                 onClose={() => setPicker(null)}
+                onRetry={() => { void openPicker() }}
             />
         </Page>
     )
