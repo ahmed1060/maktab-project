@@ -738,7 +738,7 @@ export const en = {
         adj_new_reason_label: "Reason (optional)",
         adj_new_bonus_added: "Bonus added.",
         adj_new_deduction_added: "Deduction added.",
-        adj_new_own_pay: "Your own pay can't be changed by you. Somebody else who may adjust pay can add it.",
+        adj_new_own_pay: "You can't add a bonus or a deduction to your own pay. Somebody else who may adjust pay can.",
         reset_points: "Reset points",
         resetting: "Resetting…",
         deleting: "Deleting...",

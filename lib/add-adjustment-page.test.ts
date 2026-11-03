@@ -208,3 +208,16 @@ describe("Add a bonus, found in the browser", () => {
         expect(readFileSync(FORM, "utf8")).not.toContain("useSession")
     })
 })
+
+describe("Add a bonus, found in the web interface audit", () => {
+    it("doesn't take the focus on arrival, which opened a phone's keyboard and skipped the card's note, and the reason isn't offered to autofill", () => {
+        const html = render(Bonus)
+        expect(html).not.toContain("autofocus")
+        expect(html).toMatch(/<textarea(?=[^>]*name="reason")(?=[^>]*autoComplete="off")[^>]*>/)
+    })
+
+    it("says their own pay in the active voice", () => {
+        expect(en.adj_new_own_pay).toBe("You can't add a bonus or a deduction to your own pay. Somebody else who may adjust pay can.")
+        expect(ar.adj_new_own_pay).not.toContain("بنفسك")
+    })
+})

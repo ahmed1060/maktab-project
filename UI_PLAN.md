@@ -3455,3 +3455,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   showed until the session came, then the note. Whose pay it is is asked
   of the layout's viewer while the session loads, as the permission check
   already was.
+- **2026-11-03:** Found in the web interface audit, on #181: the days took
+  the focus on arrival, which opened a phone's keyboard and skipped the
+  card's note above them, and the reason was offered to autofill. Neither
+  is now. Their own pay is said in the active voice.

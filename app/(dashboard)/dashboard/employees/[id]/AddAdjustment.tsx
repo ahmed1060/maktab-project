@@ -121,12 +121,12 @@ export default function AddAdjustment({ kind }: { kind: AdjustmentKind }) {
                     <form onSubmit={handleSubmit} noValidate className="ui-form">
                         <p className="ui-card-note">{t(copy.hint)}</p>
                         <Field label={t('adj_new_days_label')} hint={t('adj_new_days_hint').replace('{max}', max)} error={daysWrong || undefined}>{p => (
-                            <TextInput {...p} name="amount" type="number" inputMode="decimal" min={0} max={MAX_DAYS} step="any" autoComplete="off" autoFocus
+                            <TextInput {...p} name="amount" type="number" inputMode="decimal" min={0} max={MAX_DAYS} step="any" autoComplete="off"
                                 value={amount} disabled={loading}
                                 onChange={e => { setAmount(e.target.value); setDaysWrong('') }} />
                         )}</Field>
                         <Field label={t('adj_new_reason_label')}>{p => (
-                            <TextArea {...p} name="reason" dir="auto" value={reason} disabled={loading} onChange={e => setReason(e.target.value)} />
+                            <TextArea {...p} name="reason" dir="auto" autoComplete="off" value={reason} disabled={loading} onChange={e => setReason(e.target.value)} />
                         )}</Field>
                         {error && <p className="ui-error" role="alert">{error}</p>}
                         <div className="ui-form-actions">
