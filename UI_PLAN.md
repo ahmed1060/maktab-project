@@ -511,7 +511,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-03, which finished Operations. The pages left follow, one
      at a time: Add employee, merged in #180 on 2026-11-03, then Add a
      bonus and Add a deduction, merged in #181 on 2026-11-03, then
-     Usernames, merged in #182 on 2026-11-03;
+     Usernames, merged in #182 on 2026-11-03, then Change password and
+     the maintenance screen, in #187;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3676,3 +3677,20 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   somebody had it, which said who's registered without a password. A
   username nobody has is counted capitals aside, as it's looked up; an
   email nobody has is still counted exactly as typed, as it's looked up.
+- **2026-11-04:** Signing in takes the email or the username was merged in
+  #186. Change password and the maintenance screen move onto the building
+  blocks in #187 (§5 step 5, the pages left), the two screens that hold
+  somebody before the dashboard. Security settings follows on its own:
+  - Change password is a page header and one card, as Add employee is.
+    Each mistake is said under its field, in the reader's language, and the
+    first one wrong takes the focus, where both were toasts. Each field can
+    show what's typed, and the new one's hint says how long it must be. It
+    changes the password of the account the layout names on the first
+    paint: the session's own copy could still be loading when Save was
+    pressed, and then it named no account;
+  - the maintenance screen's page header says what's happening and that
+    they'll be taken back by themselves. The Super Admins' message, when
+    there is one, is a card under it, as they typed it, where it took that
+    line's place. The wrench emoji is gone, and so is the ring that turned
+    by itself beside "Checking...": nothing moves unless somebody acts
+    (DESIGN.md §8).

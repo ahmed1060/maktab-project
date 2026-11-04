@@ -2688,9 +2688,9 @@ export const en = {
         maintenance_detected_title: "System Under Maintenance",
         maintenance_detected_msg: "The system is temporarily under maintenance.",
         maintenance_saving_msg: "Saving your work before you're moved to a waiting page...",
-        maintenance_page_title: "System Under Maintenance",
-        maintenance_page_subtitle: "The system is temporarily under maintenance. You'll be taken back to the dashboard automatically the moment it's done — no need to keep refreshing.",
-        maintenance_page_checking: "Checking...",
+        maintenance_page_title: "The system is under maintenance",
+        maintenance_page_subtitle: "You'll be taken back to the dashboard as soon as it's over, so there's no need to refresh.",
+        maintenance_page_note: "About this maintenance",
 
         // F-27: email verification / change (merged flow — see the
         // remediation log for why a forced first-time verify and a later
@@ -2712,6 +2712,18 @@ export const en = {
         code_sent_message: "Code sent — check your inbox.",
         email_verified_success: "Email verified.",
         email_changed_success: "Email updated and verified.",
+
+        // Change password, when an admin set a temporary one (F-02).
+        change_password_title: "Change your password",
+        change_password_subtitle: "A temporary password was set on your account. Choose a new one to continue.",
+        change_password_new: "New password",
+        change_password_new_hint: "12 to 72 characters.",
+        change_password_confirm: "Confirm new password",
+        change_password_short: "The password needs at least 12 characters.",
+        change_password_mismatch: "The two passwords aren't the same.",
+        change_password_save: "Save new password",
+        change_password_failed: "Couldn't save the new password. Try again.",
+        change_password_done: "Password changed.",
 
         // F3 fix — 16 real keys backfilled, closing the class of "raw key
         // leaked to the UI" bugs a broken t() fallback let through. See the

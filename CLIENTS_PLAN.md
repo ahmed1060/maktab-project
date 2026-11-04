@@ -2278,3 +2278,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-04:** One username, one account was merged in #185. Signing in
   takes the email or the username in #186 (`UI_PLAN.md`). It doesn't touch
   clients or locations.
+- **2026-11-04:** Signing in takes the email or the username was merged in
+  #186. Change password and the maintenance screen move onto the building
+  blocks in #187 (`UI_PLAN.md`). They don't touch clients or locations.

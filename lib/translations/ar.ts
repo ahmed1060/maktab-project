@@ -2686,8 +2686,8 @@ export const ar = {
         maintenance_detected_msg: "النظام تحت صيانة مؤقتة.",
         maintenance_saving_msg: "جاري حفظ عملك قبل نقلك إلى صفحة الانتظار...",
         maintenance_page_title: "النظام تحت الصيانة",
-        maintenance_page_subtitle: "النظام تحت صيانة مؤقتة. سيتم نقلك تلقائيًا إلى لوحة التحكم بمجرد الانتهاء — لا داعي لإعادة التحميل باستمرار.",
-        maintenance_page_checking: "جاري التحقق...",
+        maintenance_page_subtitle: "سيتم نقلك تلقائياً إلى لوحة التحكم فور انتهاء الصيانة، فلا داعي لإعادة تحميل الصفحة.",
+        maintenance_page_note: "عن هذه الصيانة",
 
         email_settings_nav: "إعدادات البريد الإلكتروني",
         mfa_settings_nav: "المصادقة الثنائية",
@@ -2706,6 +2706,17 @@ export const ar = {
         code_sent_message: "تم إرسال الرمز — تحقق من بريدك الوارد.",
         email_verified_success: "تم تأكيد البريد الإلكتروني.",
         email_changed_success: "تم تحديث البريد الإلكتروني وتأكيده.",
+
+        change_password_title: "تغيير كلمة المرور",
+        change_password_subtitle: "عُيّنت لحسابك كلمة مرور مؤقتة، ويلزم اختيار كلمة مرور جديدة للمتابعة.",
+        change_password_new: "كلمة المرور الجديدة",
+        change_password_new_hint: "من ١٢ إلى ٧٢ حرفاً.",
+        change_password_confirm: "تأكيد كلمة المرور الجديدة",
+        change_password_short: "تحتاج كلمة المرور إلى ١٢ حرفاً على الأقل.",
+        change_password_mismatch: "كلمتا المرور غير متطابقتين.",
+        change_password_save: "حفظ كلمة المرور الجديدة",
+        change_password_failed: "تعذّر حفظ كلمة المرور الجديدة. يُرجى المحاولة مرة أخرى.",
+        change_password_done: "تم تغيير كلمة المرور.",
 
         // F3 fix — 16 real keys backfilled, closing the class of "raw key
         // leaked to the UI" bugs a broken t() fallback let through. See the
