@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Card, Page, PageHeader } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 
 /**
@@ -11,9 +12,16 @@ import { useLanguage } from '@/context/LanguageContext'
  * only job from there is to keep checking and bring them back on its own
  * the moment maintenance ends, so nobody has to remember to come back and
  * manually refresh.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, the pages left): the page
+ * header says what's happening and that they'll be taken back, and the Super
+ * Admins' message, when they wrote one, is a card under it, as they typed
+ * it. The message took the place of the line saying they'd be taken back, a
+ * wrench emoji stood above the title, and a ring turned by itself while it
+ * said "Checking...": nothing moves unless somebody acts (DESIGN.md §8).
  */
 export default function MaintenancePage() {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     const router = useRouter()
     const [message, setMessage] = useState<string | null>(null)
 
@@ -51,34 +59,17 @@ export default function MaintenancePage() {
     }, [router])
 
     return (
-        <div style={{
-            minHeight: '70vh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
-            padding: '2rem',
-            direction: locale === 'ar' ? 'rtl' : 'ltr'
-        }}>
-            <span aria-hidden="true" style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔧</span>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.75rem' }}>
-                {t('maintenance_page_title')}
-            </h1>
-            <p style={{ fontSize: '1rem', color: 'var(--text-muted)', maxWidth: '480px', margin: '0 0 1.5rem' }}>
-                {message || t('maintenance_page_subtitle')}
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                <div style={{
-                    width: '18px',
-                    height: '18px',
-                    border: '2px solid var(--border)',
-                    borderTopColor: 'var(--warn-solid)',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                }} />
-                {t('maintenance_page_checking')}
-            </div>
-        </div>
+        <Page>
+            <PageHeader title={t('maintenance_page_title')} subtitle={t('maintenance_page_subtitle')} />
+            {message && (
+                <Card title={t('maintenance_page_note')} role="status">
+                    {/* As they typed it: left to right or right to left (DESIGN.md
+                        §7), each line kept and a long link broken to fit, as a
+                        task's description is. Plain, its lines ran together and
+                        a link pushed a phone sideways (web interface audit, PR 187). */}
+                    <p className="ui-prose" dir="auto">{message}</p>
+                </Card>
+            )}
+        </Page>
     )
 }
