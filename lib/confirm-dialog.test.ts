@@ -28,7 +28,8 @@ const ASKED: { file: string; count: number; danger: number }[] = [
     // Saying a cash advance arrived: it was red, the old window's default.
     { file: "components/cash-advances/CashAdvanceHistory.tsx", count: 1, danger: 0 },
     { file: "components/lists/SavedLists.tsx", count: 1, danger: 0 },
-    { file: "components/EmployeeProfileForm.tsx", count: 1, danger: 1 },
+    // A person's photo, on their profile (PR 191).
+    { file: "components/profile/ProfilePhoto.tsx", count: 1, danger: 1 },
 ]
 
 /** Each <ConfirmDialog> in a file, with its attributes' text by name. */
@@ -126,9 +127,11 @@ describe("each confirmation", () => {
         expect(asked.get("danger")).toBe("{!toDelete?.inUse}")
     })
 
-    it("over the photo window, the reset is asked above it, where the old window sat", () => {
-        const [asked] = confirmations("components/EmployeeProfileForm.tsx")
-        expect(asked.has("overModal")).toBe(true)
+    // The photo's window of its own making is gone (PR 191): removing it is
+    // asked over the page, where it was asked above that window.
+    it("asks before a photo is removed over the page, now the photo's window is gone", () => {
+        const [asked] = confirmations("components/profile/ProfilePhoto.tsx")
+        expect(asked.has("overModal")).toBe(false)
     })
 })
 
@@ -136,7 +139,7 @@ describe("what they say", () => {
     it("asks for nothing in the masculine in Arabic", () => {
         const keys = ["reset_points_question", "delete_employee_question", "clients_delete_question", "clients_archive_question", "records_delete_section_question",
             "records_delete_empty_section_question", "records_delete_question", "locations_archive_question", "charges_uncollect_title", "charges_uncollect_question",
-            "advances_confirm_question", "lists_archive_question", "reset_photo_warning", "costs_pay_question", "costs_pay_question_one", "charges_collect_question"] as const
+            "advances_confirm_question", "lists_archive_question", "profile_photo_remove_question", "costs_pay_question", "costs_pay_question_one", "charges_collect_question"] as const
         for (const key of keys) {
             expect(ar[key], key).toBeTruthy()
             expect(ar[key], key).not.toMatch(/هل أنت متأكد|أنك تريد|هل تريد|لا تؤكّد|لا تؤكد/)
@@ -159,13 +162,14 @@ describe("what they say", () => {
         expect(ar).not.toHaveProperty("delete_client_warning")
     })
 
-    it("resets a photo with a button that says so, in sentence case", () => {
-        expect(en.reset_photo_title).toBe("Reset photo")
+    // "Reset photo" until PR 191, which says what it does.
+    it("removes a photo with a button that says so, in sentence case", () => {
+        expect(en.profile_photo_remove).toBe("Remove photo")
         // A profile an admin opens is somebody else's, so it's "this" photo, not "your".
-        expect(en.reset_photo_warning).not.toMatch(/\byour\b/i)
+        expect(en.profile_photo_remove_question).not.toMatch(/\byour\b/i)
         expect(en).not.toHaveProperty("yes_reset")
         expect(ar).not.toHaveProperty("yes_reset")
-        const [asked] = confirmations("components/EmployeeProfileForm.tsx")
-        expect(asked.get("confirmLabel")).toBe("{t('reset_photo_title')}")
+        const [asked] = confirmations("components/profile/ProfilePhoto.tsx")
+        expect(asked.get("confirmLabel")).toBe("{t('profile_photo_remove')}")
     })
 })

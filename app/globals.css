@@ -113,7 +113,6 @@
   --warn-fg-warm: #9a3412;
   --warn-solid-warm: #fb923c;
 
-  --warn-bg-yellow-subtle: #fffbeb;
   --warn-fg-mid: #b45309;
 
   --info-bg-sky: #f0f9ff;
@@ -258,7 +257,6 @@
   --veil-50: rgba(255, 255, 255, 0.5);
   --veil-60: rgba(255, 255, 255, 0.6);
 
-  --panel-70: rgba(255, 255, 255, 0.7);
   --panel-80: rgba(255, 255, 255, 0.8);
   --panel-85: rgba(255, 255, 255, 0.85);
   --panel-90: rgba(255, 255, 255, 0.9);
@@ -1180,7 +1178,6 @@ input::-webkit-credentials-auto-fill-button {
     --warn-border-warm: #6b3d1c;
     --warn-fg-warm: #f5b183;
     --warn-solid-warm: #e08a4e;
-    --warn-bg-yellow-subtle: #262208;
     --warn-fg-mid: #f0c96b;
 
     --info-bg: #0d2b3d;
@@ -1240,7 +1237,6 @@ input::-webkit-credentials-auto-fill-button {
     --veil-50: rgba(255, 255, 255, 0.11);
     --veil-60: rgba(255, 255, 255, 0.14);
 
-    --panel-70: rgba(22, 27, 34, 0.8);
     --panel-80: rgba(22, 27, 34, 0.88);
     --panel-85: rgba(22, 27, 34, 0.91);
     --panel-90: rgba(22, 27, 34, 0.94);

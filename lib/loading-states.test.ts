@@ -191,8 +191,9 @@ describe("My cash advance, before it knows whose", () => {
 })
 
 describe("a person's profile, while it loads", () => {
-    it("says so in the building blocks' panel", () => {
+    // Under its page header, since the profile has one (PR 191, part 1).
+    it("says so in the building blocks' panel, under its header", () => {
         const src = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
-        expect(src).toMatch(/if \(loading\) \{?\s*return <div className="ui-panel" role="status"><EmptyState icon=\{HourglassIcon\} title=\{t\('loading'\)\} \/><\/div>/)
+        expect(src).toMatch(/if \(loading\) \{\s*return \(\s*<Page>\s*<ProfileHeader[^>]*\/>\s*<div className="ui-panel" role="status"><EmptyState icon=\{HourglassIcon\} title=\{t\('loading'\)\} \/><\/div>/)
     })
 })

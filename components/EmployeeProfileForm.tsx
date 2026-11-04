@@ -1,32 +1,39 @@
 'use client'
 import { useState, useEffect, useEffectEvent } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
-import Image from 'next/image'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
 import { HourglassIcon } from '@phosphor-icons/react/ssr'
 import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
-import { useCan } from '@/lib/useCan'
+import { useCan, useViewer } from '@/lib/useCan'
 import RoleSelect from '@/components/RoleSelect'
 import RoleRequestControl from '@/components/RoleRequestControl'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
 import { changedUsername, usernameError } from "@/lib/username-rules"
 import { useDialog } from '@/lib/useDialog'
-import { ConfirmDialog, EmptyState } from '@/components/ui'
+import { Card, EmptyState, Page } from '@/components/ui'
+import { NameChangeWaiting, ProfileHeader } from '@/components/profile/ProfileFrame'
+import { ProfilePhoto } from '@/components/profile/ProfilePhoto'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type EmployeeProfileFormProps = {
     userId: string
     isViewMode?: boolean
-    onClose?: () => void
 }
 
-export default function EmployeeProfileForm({ userId, isViewMode = false, onClose }: EmployeeProfileFormProps) {
+/**
+ * A person's profile: someone else's, to see (?mode=view) or edit, or one's
+ * own, from the account menu. On the building blocks in parts (UI_PLAN.md
+ * §5 step 5, the pages left). Part 1, PR 191: its page header, its photo,
+ * and a name change waiting (components/profile). Its fields and dialogs
+ * follow in the parts after.
+ */
+export default function EmployeeProfileForm({ userId, isViewMode = false }: EmployeeProfileFormProps) {
     const { t, locale } = useLanguage()
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
@@ -67,29 +74,25 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     // case rather than loading anything.
     const [loading, setLoading] = useState(Boolean(userId))
     const [saving, setSaving] = useState(false)
-    const [uploadingAvatar, setUploadingAvatar] = useState(false)
-    const [isResetting, setIsResetting] = useState(false)
+    // Their photo, as saved: changed and removed at once (components/profile/ProfilePhoto.tsx).
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-    const [pendingRequest, setPendingRequest] = useState<{ newFirstName: string, newLastName: string } | null>(null)
+    // The id is the request's on the Requests page; one just asked for has none yet.
+    const [pendingRequest, setPendingRequest] = useState<{ id?: string, newFirstName: string, newLastName: string } | null>(null)
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
-    const [showAvatarModal, setShowAvatarModal] = useState(false)
-    const avatarDialog = useDialog(showAvatarModal, () => setShowAvatarModal(false))
     const [showEndContract, setShowEndContract] = useState(false)
     // Bumped after ending or reinstating a contract, so the profile reloads and
     // shows the new status (and the button its opposite action). The view has
     // no save that would otherwise bring it up to date.
     const [reloadKey, setReloadKey] = useState(0)
-    const [showResetConfirm, setShowResetConfirm] = useState(false)
     const router = useRouter()
     const { data: session, update } = useSession()
     const { showToast } = useToast()
-    const searchParams = useSearchParams()
-    const highlightId = searchParams.get('highlight')
     const userRole = session?.user?.role || ''
     // Each field is offered, and sent, with the permission PUT /api/users
     // checks for it.
     const { can } = useCan()
+    const viewer = useViewer()
     const canAssignTeam = can('employees.assign_team')
 
     // Password & Verification States
@@ -414,17 +417,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             } else {
                 showToast(t('employee_updated_success'), 'success')
                 setSaving(false)
-                if (onClose) {
-                    setTimeout(() => {
-                        onClose()
-                        router.refresh()
-                    }, 1500)
-                } else {
-                    setTimeout(() => {
-                        router.back()
-                        router.refresh()
-                    }, 1500)
-                }
+                setTimeout(() => {
+                    router.back()
+                    router.refresh()
+                }, 1500)
             }
         } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
             showToast(err.message || t('error_generic'), 'error')
@@ -432,723 +428,427 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }
 
-    const handleResetPhoto = async () => {
-        try {
-            setIsResetting(true)
-            const res = await fetch('/api/users', {
-                method: 'PUT',
-                body: JSON.stringify({ id: userId, avatar: null }),
-                headers: { 'Content-Type': 'application/json' }
-            })
-            if (!res.ok) throw new Error(t('photo_reset_failed'))
+    // Someone else's profile is under their name as it was loaded, not as it's
+    // being typed. Whose it is is known from the first paint, from the layout,
+    // before the session hook has loaded.
+    const own = userId === viewer?.id
+    const name = `${originalFirstName} ${originalLastName}`.trim() || email
 
-            setAvatarUrl(null)
-            if (userId === session?.user?.id) {
-                await update({ avatar: null, image: null, picture: null })
-            }
-            showToast(t('photo_reset_success'), 'success')
-            setShowAvatarModal(false)
-            setShowResetConfirm(false)
-        } catch (err: any) {
-            showToast(err.message || t('photo_reset_failed'), 'error')
-        } finally {
-            setIsResetting(false)
-        }
-    }
-
-    const handleAvatarUpload = async (file: File) => {
-        setUploadingAvatar(true)
-        try {
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('folder', 'avatars')
-
-            const res = await fetch('/api/upload', { method: 'POST', body: formData })
-            const result = await res.json()
-            if (result.success) {
-                const uploadData = result.data
-                // 1. Update DB immediately
-                await fetch('/api/users', {
-                    method: 'PUT',
-                    body: JSON.stringify({ id: userId, avatar: uploadData.url }),
-                    headers: { 'Content-Type': 'application/json' }
-                })
-
-                // 2. Update UI and Session
-                setAvatarUrl(uploadData.url)
-                if (userId === session?.user?.id) {
-                    await update({
-                        avatar: uploadData.url,
-                        image: uploadData.url,
-                        picture: uploadData.url
-                    })
-                }
-                showToast(t('photo_updated_success'), 'success')
-                setShowAvatarModal(false)
-            } else {
-                throw new Error(result.error || t('photo_upload_failed'))
-            }
-        } catch (err: any) {
-            showToast(err.message || t('photo_upload_failed'), 'error')
-        } finally {
-            setUploadingAvatar(false)
-        }
-    }
-
-    // The building blocks' panel while it loads; it was the old spinner (PR 190).
+    // The page's header from the start, and the building blocks' panel where
+    // the profile will be (DESIGN.md §5.5, Loading). It was the old spinner,
+    // then the panel alone (PR 190).
     if (loading) {
-        return <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+        return (
+            <Page>
+                <ProfileHeader own={own} editing={!isViewMode} name={null} />
+                <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+            </Page>
+        )
     }
-
 
     return (
-        <div className={`glass-card ${highlightId === userId ? 'highlight-shading' : ''}`} style={{ maxWidth: '600px', margin: '0 auto', padding: onClose ? '0' : '2rem', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            {!onClose && (
-                <h1 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                    {isViewMode ? t('employee_profile') : (userId === session?.user?.id ? t('profile_title') : t('edit_employee_title'))}
-                </h1>
-            )}
+        <Page>
+            <ProfileHeader own={own} editing={!isViewMode} name={name} />
+            {pendingRequest && <NameChangeWaiting name={`${pendingRequest.newFirstName} ${pendingRequest.newLastName}`.trim()} requestId={pendingRequest.id} />}
+            <Card>
+                <ProfilePhoto userId={userId} name={name} photo={avatarUrl} canChange={!isViewMode} own={own} onChange={setAvatarUrl} />
+                <form onSubmit={handleSubmit} className="ui-form">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
+                            <input aria-label={t('first_name_label')}
+                                className="input"
+                                value={firstName}
+                                onChange={e => setFirstName(e.target.value)}
+                                required
+                                disabled={isViewMode}
+                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
+                            <input aria-label={t('last_name_label')}
+                                className="input"
+                                value={lastName}
+                                onChange={e => setLastName(e.target.value)}
+                                required
+                                disabled={isViewMode}
+                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            />
+                        </div>
+                    </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
-                <div style={{
-                    position: 'relative',
-                    width: '100px',
-                    height: '100px',
-                    borderRadius: '50%',
-                    background: 'var(--border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '4px solid white',
-                    boxShadow: '0 4px 6px -1px var(--shadow-weak)',
-                    overflow: 'hidden'
-                }}>
-                    {avatarUrl ? (
-                        <Image
-                            src={avatarUrl}
-                            alt="Avatar"
-                            width={100}
-                            height={100}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                    ) : (
-                        <span aria-hidden="true" style={{ fontSize: '2.5rem' }}>
-                            {gender === 'MALE' ? '👨🏻' : '👩🏻'}
-                        </span>
-                    )}
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
+                        <select aria-label={t('gender_label')}
+                            className="input"
+                            value={gender}
+                            onChange={e => setGender(e.target.value)}
+                            required
+                            disabled={isViewMode}
+                            style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        >
+                            <option value="MALE">{t('male')}</option>
+                            <option value="FEMALE">{t('female')}</option>
+                        </select>
+                    </div>
 
-                    {uploadingAvatar && (
-                        <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: 'var(--panel-70)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}>
-                            <div className="loader" style={{ width: '20px', height: '20px' }} />
+                    {(userRole === 'SUPER_ADMIN' || role === 'SUPER_ADMIN') && (
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
+                            {role === 'SUPER_ADMIN' ? (
+                                <input aria-label={t('company_label')}
+                                    className="input"
+                                    value="SHSD"
+                                    disabled
+                                    readOnly
+                                    style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                />
+                            ) : (
+                                // Shown, never changed: a person stays in the
+                                // company they were added to, and the server
+                                // refuses any other (COMPANY_CHANGE_FORBIDDEN).
+                                <select
+                                    aria-label={t('company_label')}
+                                    className="input"
+                                    value={companyId}
+                                    disabled
+                                    style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                >
+                                    <option value="">{t('select_company')}</option>
+                                    {companies.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
                     )}
-                </div>
 
-                {!isViewMode && (
-                    <div style={{ textAlign: 'center' }}>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
+                        <input aria-label={t('email')}
+                            type="email"
+                            className="input"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            required
+                            disabled={isViewMode || userId === session?.user?.id}
+                            style={(isViewMode || userId === session?.user?.id) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
+                        <input aria-label={t('username_label' as any) || 'Username'}
+                            className="input"
+                            spellCheck={false} autoCapitalize="none" autoComplete="off" translate="no"
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
+                            disabled={isViewMode || userRole !== 'SUPER_ADMIN'}
+                            style={(isViewMode || userRole !== 'SUPER_ADMIN') ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            placeholder={t('username_placeholder' as any) || 'Username'}
+                        />
+                    </div>
+
+                    {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
+                    {
+                        (can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
+                                <input aria-label={t('monthly_base_salary_label')}
+                                    type="number"
+                                    className="input"
+                                    value={salary}
+                                    onChange={e => setSalary(e.target.value)}
+                                    disabled={isViewMode || userId === session?.user?.id || !can('salary.edit')}
+                                    max={1000000000}
+                                    style={(isViewMode || userId === session?.user?.id || !can('salary.edit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
+                                />
+                            </div>
+                        )
+                    }
+
+                    {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
+                    {
+                        (can('dayoff.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                            <>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
+                                    <input aria-label={t('day_off_credit_assigned')}
+                                        type="number"
+                                        className="input"
+                                        value={baseDayOffCredit}
+                                        onChange={e => setBaseDayOffCredit(e.target.value)}
+                                        disabled={isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')}
+                                        step="0.5"
+                                        style={(isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    />
+                                </div>
+                            </>
+                        )
+                    }
+
+                    {
+                        !isViewMode && (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input aria-label={t('new_password_optional_label')}
+                                        type={showNewPassword ? "text" : "password"}
+                                        className="input"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        minLength={12}
+                                        maxLength={72}
+                                        placeholder={t('keep_current_password_placeholder')}
+                                        style={{
+                                            textAlign: locale === 'ar' ? 'right' : 'left',
+                                            [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label={showNewPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                        aria-pressed={showNewPassword}
+                                        onClick={() => setShowNewPassword(!showNewPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            padding: '0.25rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            color: 'var(--text-soft)'
+                                        }}
+                                    >
+                                        {showNewPassword ? (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                            </svg>
+                                        ) : (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* Password reset for Admin/Super Admin viewing another user (F-02:
+                        replaces the old password-reveal feature — admins can no longer
+                        see a user's actual password, only issue a new temporary one) */}
+                    {
+                        can('employees.reset_password') && isViewMode && userId !== session?.user?.id && (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
+                                {issuedTempPassword ? (
+                                    <div>
+                                        <input aria-label={t('password')}
+                                            type="text"
+                                            className="input"
+                                            value={issuedTempPassword}
+                                            readOnly
+                                            style={{ background: 'var(--surface-sunk)', cursor: 'default', textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        />
+                                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--warn-fg-mid)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
+                                            {t('temp_password_warning' as any)}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn"
+                                        onClick={() => {
+                                            setVerificationCallback({ type: 'RESET_PASSWORD' })
+                                            setVerificationModalOpen(true)
+                                        }}
+                                    >
+                                        {t('reset_password_button' as any)}
+                                    </button>
+                                )}
+                            </div>
+                        )
+                    }
+                    {
+                        (can('employees.assign_role') || can('employees.request_role')) && userId !== session?.user?.id && (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
+                                {role === 'SUPER_ADMIN' ? (
+                                    <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                ) : !can('employees.assign_role') ? (
+                                    // May only ask (§6.12): a request, not a change.
+                                    userId && !isViewMode ? (
+                                        <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    ) : (
+                                        <input className="input" value={currentRole ? roleLabel(currentRole, t) : ''} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+                                    )
+                                ) : (
+                                    <RoleSelect
+                                        companyId={companyId}
+                                        value={roleId}
+                                        // Moved to another company, their role there is chosen afresh.
+                                        current={currentRole && currentRole.companyId === companyId ? currentRole : null}
+                                        onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
+                                        // Only the Super Admin acts on an Admin (§4.2, rule 7).
+                                        locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
+                                        disabled={isViewMode}
+                                        style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    />
+                                )}
+                                {acting && (
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0' }}>
+                                        {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
+                                    </p>
+                                )}
+                                {can('employees.assign_role') && !isViewMode && roleId && roleId !== currentRole?.id && (
+                                    <div style={{ marginTop: '0.75rem' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
+                                        <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    }
+
+                    {
+                        /* Read-only, and only on your own profile. Everywhere else
+                           the field above is an Admin's control; here it is simply
+                           information, because knowing who manages you is not
+                           something you should have to ask a colleague for. */
+                        userId === session?.user?.id && role === 'EMPLOYEE' && (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_yours')}</label>
+                                <p style={{
+                                    margin: 0,
+                                    padding: '0.6rem 0.75rem',
+                                    borderRadius: '0.5rem',
+                                    background: 'var(--surface-sunk)',
+                                    color: myLeader ? 'var(--text-body)' : 'var(--text-faint)',
+                                    textAlign: locale === 'ar' ? 'right' : 'left',
+                                }}>
+                                    {myLeader ? `${myLeader.firstName} ${myLeader.lastName}` : t('team_leader_yours_none')}
+                                </p>
+                            </div>
+                        )
+                    }
+
+                    {
+                        /* Only an employee has a team leader — leaders are not led,
+                           and an Admin is not managed through this screen. The field
+                           disappears rather than greying out when the role above is
+                           changed, because an empty disabled control invites the
+                           question of what it would mean. */
+                        canAssignTeam
+                            && userId !== session?.user?.id
+                            && role === 'EMPLOYEE' && (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
+                                <select aria-label={t('team_leader_label')}
+                                    className="input"
+                                    value={teamLeaderId}
+                                    onChange={e => setTeamLeaderId(e.target.value)}
+                                    disabled={isViewMode}
+                                    style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                >
+                                    <option value="">{t('team_leader_none')}</option>
+                                    {leaders.filter(l => l.id !== userId).map(l => (
+                                        <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
+                                    ))}
+                                </select>
+                                <p style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_hint')}</p>
+                            </div>
+                        )
+                    }
+
+                    {
+                        can('employees.change_status') && userId !== session?.user?.id && (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
+                                <select aria-label={t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}
+                                    className="input"
+                                    value={status}
+                                    onChange={e => setStatus(e.target.value)}
+                                    required
+                                    disabled={isViewMode || status === 'ARCHIVED'}
+                                    style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                >
+                                    <option value="ACTIVE">{t('status_active' as any) || (locale === 'ar' ? 'نشط' : 'Active')}</option>
+                                    <option value="SUSPENDED">{t('status_suspended' as any) || (locale === 'ar' ? 'موقوف' : 'Suspended')}</option>
+                                    <option value="OFFLINE">{t('status_offline' as any) || (locale === 'ar' ? 'غير متصل' : 'Offline')}</option>
+                                    {/*
+                                      Rendered only when it is already the value,
+                                      and the select is disabled with it. Without
+                                      the option the select would show ACTIVE for
+                                      an archived person — the browser picks the
+                                      first entry when the value matches none — and
+                                      saving the form would quietly reinstate them.
+                                    */}
+                                    {status === 'ARCHIVED' && (
+                                        <option value="ARCHIVED">{t('status_archived')}</option>
+                                    )}
+                                </select>
+
+                                {/*
+                                  Deliberately not a fourth option in the dropdown.
+                                  Ending a contract is not the same kind of act as
+                                  marking somebody offline: it has a date, it has a
+                                  settlement that falls one way or the other, and it
+                                  is the one status change that cannot be undone by
+                                  picking the previous value again. A separate
+                                  action, with the settlement shown first.
+
+                                  On the profile view, not the edit form: it saves
+                                  on its own through its own confirmation, so it
+                                  never needed the form, and next to Update it read
+                                  as though Update would apply it.
+                                */}
+                                {isViewMode && (
+                                    <button
+                                        type="button"
+                                        className="btn"
+                                        onClick={() => setShowEndContract(true)}
+                                        style={{
+                                            marginTop: '0.75rem',
+                                            background: 'transparent',
+                                            color: status === 'ARCHIVED' ? 'var(--brand-primary-text)' : 'var(--danger-fg-strong)',
+                                            border: `1px solid ${status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-border)'}`,
+                                            fontSize: '0.85rem',
+                                        }}
+                                    >
+                                        {status === 'ARCHIVED' ? t('reinstate') : t('end_contract')}
+                                    </button>
+                                )}
+                            </div>
+                        )
+                    }
+
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start', flexDirection: 'row' }}>
+                        {!isViewMode && (
+                            <button type="submit" className="btn btn-primary" disabled={saving}>
+                                {saving ? t('updating_button') : t('update_button')}
+                            </button>
+                        )}
                         <button
                             type="button"
                             className="btn"
-                            style={{
-                                background: 'var(--surface-sunk)',
-                                color: 'var(--text-strong)',
-                                fontSize: '0.8rem',
-                                padding: '0.4rem 0.8rem',
-                                cursor: 'pointer',
-                                display: 'inline-block',
-                                border: 'none',
-                                fontWeight: '600'
-                            }}
-                            onClick={() => setShowAvatarModal(true)}
+                            style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
+                            onClick={() => { startNavigationProgress(); router.back() }}
                         >
-                            {uploadingAvatar ? t('uploading_photo') : (avatarUrl ? t('view_photo') : t('add_photo'))}
+                            {t('close_button')}
                         </button>
                     </div>
-                )}
-            </div>
-
-            {/* Avatar Management Modal */}
-            {showAvatarModal && createPortal(
-                <div style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'var(--scrim)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                    animation: 'fadeIn 0.2s ease-out'
-                }}>
-                    <div
-                        style={{ position: 'absolute', inset: 0 }}
-                        onClick={() => setShowAvatarModal(false)}
-                    />
-                    <div {...avatarDialog.panelProps} style={{
-                        background: 'var(--surface)',
-                        padding: '2rem',
-                        borderRadius: '12px',
-                        width: 'min(calc(100vw - 3rem), 450px)',
-                        textAlign: 'center',
-                        position: 'relative',
-                        zIndex: 10,
-                        boxShadow: '0 20px 25px -5px var(--shadow-weak), 0 10px 10px -5px var(--shadow-faint)',
-                        animation: 'slideUp 0.3s ease-out',
-                        direction: locale === 'ar' ? 'rtl' : 'ltr'
-                    }}>
-                        <h2 id={avatarDialog.titleId} style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '1.5rem', textAlign: 'center' }}>
-                            {avatarUrl ? t('manage_photo_title') : t('add_photo')}
-                        </h2>
-
-                        <div style={{
-                            width: '160px',
-                            height: '160px',
-                            borderRadius: '50%',
-                            margin: '0 auto 2rem',
-                            overflow: 'hidden',
-                            border: '4px solid var(--surface-subtle)',
-                            background: 'var(--surface-sunk)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 4px 6px -1px var(--shadow-weak)'
-                        }}>
-                            {avatarUrl ? (
-                                <Image
-                                    src={avatarUrl}
-                                    alt="Avatar Large"
-                                    width={160}
-                                    height={160}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                            ) : (
-                                <span aria-hidden="true" style={{ fontSize: '4.5rem' }}>
-                                    {gender === 'MALE' ? '👨🏻' : '👩🏻'}
-                                </span>
-                            )}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexDirection: 'row' }}>
-                            <label
-                                className="btn btn-primary"
-                                style={{
-                                    cursor: 'pointer',
-                                    padding: '0.625rem 1.25rem',
-                                    fontSize: '0.875rem',
-                                    flex: 1
-                                }}
-                            >
-                                {avatarUrl ? t('change_button') : t('upload_button')}
-                                <input
-                                    aria-label={t('profile_picture_label' as any)}
-                                    type="file"
-                                    hidden
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0]
-                                        if (file) handleAvatarUpload(file)
-                                    }}
-                                />
-                            </label>
-
-                            {avatarUrl && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowResetConfirm(true)}
-                                    disabled={uploadingAvatar}
-                                    style={{
-                                        padding: '0.625rem 1.25rem',
-                                        border: 'none',
-                                        borderRadius: '0.5rem',
-                                        background: 'var(--danger-bg)',
-                                        cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
-                                        fontSize: '0.875rem',
-                                        fontWeight: '500',
-                                        color: 'var(--danger-fg-strong)',
-                                        transition: 'all 0.2s',
-                                        flex: 1,
-                                        opacity: uploadingAvatar ? 0.5 : 1
-                                    }}
-                                    onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--danger-border)')}
-                                    onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--danger-bg)')}
-                                >
-                                    {t('reset_button')}
-                                </button>
-                            )}
-
-                            <button
-                                type="button"
-                                onClick={() => setShowAvatarModal(false)}
-                                disabled={uploadingAvatar}
-                                style={{
-                                    padding: '0.625rem 1.25rem',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '0.5rem',
-                                    background: 'var(--surface)',
-                                    cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '500',
-                                    color: 'var(--text-muted)',
-                                    transition: 'all 0.2s',
-                                    flex: 1,
-                                    opacity: uploadingAvatar ? 0.5 : 1
-                                }}
-                                onMouseEnter={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--surface-subtle)')}
-                                onMouseLeave={(e) => !uploadingAvatar && (e.currentTarget.style.background = 'var(--surface)')}
-                            >
-                                {t('close_button')}
-                            </button>
-                        </div>
-                        {uploadingAvatar && (
-                            <div style={{ marginTop: '1rem', color: 'var(--brand-primary-text)', fontSize: '0.875rem', fontWeight: 'bold' }}>
-                                {t('uploading_in_progress')}
-                            </div>
-                        )}
-                        {isResetting && (
-                            <div style={{ marginTop: '1rem', color: 'var(--danger-fg-strong)', fontSize: '0.875rem', fontWeight: 'bold' }}>
-                                {t('resetting_in_progress')}
-                            </div>
-                        )}
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {/* Asked over the photo window, so it sits above it. */}
-            <ConfirmDialog
-                open={showResetConfirm}
-                title={t('reset_photo_title')}
-                body={t('reset_photo_warning')}
-                confirmLabel={t('reset_photo_title')}
-                danger
-                overModal
-                onConfirm={handleResetPhoto}
-                onCancel={() => setShowResetConfirm(false)}
-            />
-
-            {pendingRequest && (
-                <div style={{
-                    background: 'var(--warn-bg-yellow-subtle)',
-                    border: '1px solid var(--warn-bg)',
-                    padding: '1rem',
-                    borderRadius: '0.75rem',
-                    marginBottom: '1.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    color: 'var(--warn-fg)',
-                    textAlign: locale === 'ar' ? 'right' : 'left'
-                }}>
-                    <span aria-hidden="true" style={{ fontSize: '1.25rem' }}>⏳</span>
-                    <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{t('name_change_request_pending')}</div>
-                        <div style={{ fontSize: '0.8rem' }}>{t('requested_label')}: {pendingRequest.newFirstName} {pendingRequest.newLastName}</div>
-                    </div>
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: locale === 'ar' ? '1fr 1fr' : '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                        <input aria-label={t('first_name_label')}
-                            className="input"
-                            value={firstName}
-                            onChange={e => setFirstName(e.target.value)}
-                            required
-                            disabled={isViewMode}
-                            style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        />
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                        <input aria-label={t('last_name_label')}
-                            className="input"
-                            value={lastName}
-                            onChange={e => setLastName(e.target.value)}
-                            required
-                            disabled={isViewMode}
-                            style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        />
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                    <select aria-label={t('gender_label')}
-                        className="input"
-                        value={gender}
-                        onChange={e => setGender(e.target.value)}
-                        required
-                        disabled={isViewMode}
-                        style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                    >
-                        <option value="MALE">{t('male')}</option>
-                        <option value="FEMALE">{t('female')}</option>
-                    </select>
-                </div>
-
-                {(userRole === 'SUPER_ADMIN' || role === 'SUPER_ADMIN') && (
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
-                        {role === 'SUPER_ADMIN' ? (
-                            <input aria-label={t('company_label')}
-                                className="input"
-                                value="SHSD"
-                                disabled
-                                readOnly
-                                style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            />
-                        ) : (
-                            // Shown, never changed: a person stays in the
-                            // company they were added to, and the server
-                            // refuses any other (COMPANY_CHANGE_FORBIDDEN).
-                            <select
-                                aria-label={t('company_label')}
-                                className="input"
-                                value={companyId}
-                                disabled
-                                style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            >
-                                <option value="">{t('select_company')}</option>
-                                {companies.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        )}
-                    </div>
-                )}
-
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                    <input aria-label={t('email')}
-                        type="email"
-                        className="input"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                        disabled={isViewMode || userId === session?.user?.id}
-                        style={(isViewMode || userId === session?.user?.id) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                    />
-                </div>
-
-                <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
-                    <input aria-label={t('username_label' as any) || 'Username'}
-                        className="input"
-                        spellCheck={false} autoCapitalize="none" autoComplete="off" translate="no"
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
-                        disabled={isViewMode || userRole !== 'SUPER_ADMIN'}
-                        style={(isViewMode || userRole !== 'SUPER_ADMIN') ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        placeholder={t('username_placeholder' as any) || 'Username'}
-                    />
-                </div>
-
-                {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
-                {
-                    (can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                            <input aria-label={t('monthly_base_salary_label')}
-                                type="number"
-                                className="input"
-                                value={salary}
-                                onChange={e => setSalary(e.target.value)}
-                                disabled={isViewMode || userId === session?.user?.id || !can('salary.edit')}
-                                max={1000000000}
-                                style={(isViewMode || userId === session?.user?.id || !can('salary.edit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
-                            />
-                        </div>
-                    )
-                }
-
-                {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
-                {
-                    (can('dayoff.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
-                        <>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
-                                <input aria-label={t('day_off_credit_assigned')}
-                                    type="number"
-                                    className="input"
-                                    value={baseDayOffCredit}
-                                    onChange={e => setBaseDayOffCredit(e.target.value)}
-                                    disabled={isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')}
-                                    step="0.5"
-                                    style={(isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                />
-                            </div>
-                        </>
-                    )
-                }
-
-                {
-                    !isViewMode && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
-                            <div style={{ position: 'relative' }}>
-                                <input aria-label={t('new_password_optional_label')}
-                                    type={showNewPassword ? "text" : "password"}
-                                    className="input"
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    minLength={12}
-                                    maxLength={72}
-                                    placeholder={t('keep_current_password_placeholder')}
-                                    style={{
-                                        textAlign: locale === 'ar' ? 'right' : 'left',
-                                        [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    aria-label={showNewPassword ? t('hide_password' as any) : t('show_password' as any)}
-                                    aria-pressed={showNewPassword}
-                                    onClick={() => setShowNewPassword(!showNewPassword)}
-                                    style={{
-                                        position: 'absolute',
-                                        [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        padding: '0.25rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        color: 'var(--text-soft)'
-                                    }}
-                                >
-                                    {showNewPassword ? (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                            <line x1="1" y1="1" x2="23" y2="23"></line>
-                                        </svg>
-                                    ) : (
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    )
-                }
-
-                {/* Password reset for Admin/Super Admin viewing another user (F-02:
-                    replaces the old password-reveal feature — admins can no longer
-                    see a user's actual password, only issue a new temporary one) */}
-                {
-                    can('employees.reset_password') && isViewMode && userId !== session?.user?.id && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                            {issuedTempPassword ? (
-                                <div>
-                                    <input aria-label={t('password')}
-                                        type="text"
-                                        className="input"
-                                        value={issuedTempPassword}
-                                        readOnly
-                                        style={{ background: 'var(--surface-sunk)', cursor: 'default', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    />
-                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--warn-fg-mid)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                        {t('temp_password_warning' as any)}
-                                    </p>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    className="btn"
-                                    onClick={() => {
-                                        setVerificationCallback({ type: 'RESET_PASSWORD' })
-                                        setVerificationModalOpen(true)
-                                    }}
-                                >
-                                    {t('reset_password_button' as any)}
-                                </button>
-                            )}
-                        </div>
-                    )
-                }
-                {
-                    (can('employees.assign_role') || can('employees.request_role')) && userId !== session?.user?.id && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                            {role === 'SUPER_ADMIN' ? (
-                                <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
-                            ) : !can('employees.assign_role') ? (
-                                // May only ask (§6.12): a request, not a change.
-                                userId && !isViewMode ? (
-                                    <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
-                                ) : (
-                                    <input className="input" value={currentRole ? roleLabel(currentRole, t) : ''} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
-                                )
-                            ) : (
-                                <RoleSelect
-                                    companyId={companyId}
-                                    value={roleId}
-                                    // Moved to another company, their role there is chosen afresh.
-                                    current={currentRole && currentRole.companyId === companyId ? currentRole : null}
-                                    onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
-                                    // Only the Super Admin acts on an Admin (§4.2, rule 7).
-                                    locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
-                                    disabled={isViewMode}
-                                    style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                />
-                            )}
-                            {acting && (
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0' }}>
-                                    {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
-                                </p>
-                            )}
-                            {can('employees.assign_role') && !isViewMode && roleId && roleId !== currentRole?.id && (
-                                <div style={{ marginTop: '0.75rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
-                                </div>
-                            )}
-                        </div>
-                    )
-                }
-
-                {
-                    /* Read-only, and only on your own profile. Everywhere else
-                       the field above is an Admin's control; here it is simply
-                       information, because knowing who manages you is not
-                       something you should have to ask a colleague for. */
-                    userId === session?.user?.id && role === 'EMPLOYEE' && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_yours')}</label>
-                            <p style={{
-                                margin: 0,
-                                padding: '0.6rem 0.75rem',
-                                borderRadius: '0.5rem',
-                                background: 'var(--surface-sunk)',
-                                color: myLeader ? 'var(--text-body)' : 'var(--text-faint)',
-                                textAlign: locale === 'ar' ? 'right' : 'left',
-                            }}>
-                                {myLeader ? `${myLeader.firstName} ${myLeader.lastName}` : t('team_leader_yours_none')}
-                            </p>
-                        </div>
-                    )
-                }
-
-                {
-                    /* Only an employee has a team leader — leaders are not led,
-                       and an Admin is not managed through this screen. The field
-                       disappears rather than greying out when the role above is
-                       changed, because an empty disabled control invites the
-                       question of what it would mean. */
-                    canAssignTeam
-                        && userId !== session?.user?.id
-                        && role === 'EMPLOYEE' && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
-                            <select aria-label={t('team_leader_label')}
-                                className="input"
-                                value={teamLeaderId}
-                                onChange={e => setTeamLeaderId(e.target.value)}
-                                disabled={isViewMode}
-                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            >
-                                <option value="">{t('team_leader_none')}</option>
-                                {leaders.filter(l => l.id !== userId).map(l => (
-                                    <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
-                                ))}
-                            </select>
-                            <p style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_hint')}</p>
-                        </div>
-                    )
-                }
-
-                {
-                    can('employees.change_status') && userId !== session?.user?.id && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
-                            <select aria-label={t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}
-                                className="input"
-                                value={status}
-                                onChange={e => setStatus(e.target.value)}
-                                required
-                                disabled={isViewMode || status === 'ARCHIVED'}
-                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            >
-                                <option value="ACTIVE">{t('status_active' as any) || (locale === 'ar' ? 'نشط' : 'Active')}</option>
-                                <option value="SUSPENDED">{t('status_suspended' as any) || (locale === 'ar' ? 'موقوف' : 'Suspended')}</option>
-                                <option value="OFFLINE">{t('status_offline' as any) || (locale === 'ar' ? 'غير متصل' : 'Offline')}</option>
-                                {/*
-                                  Rendered only when it is already the value,
-                                  and the select is disabled with it. Without
-                                  the option the select would show ACTIVE for
-                                  an archived person — the browser picks the
-                                  first entry when the value matches none — and
-                                  saving the form would quietly reinstate them.
-                                */}
-                                {status === 'ARCHIVED' && (
-                                    <option value="ARCHIVED">{t('status_archived')}</option>
-                                )}
-                            </select>
-
-                            {/*
-                              Deliberately not a fourth option in the dropdown.
-                              Ending a contract is not the same kind of act as
-                              marking somebody offline: it has a date, it has a
-                              settlement that falls one way or the other, and it
-                              is the one status change that cannot be undone by
-                              picking the previous value again. A separate
-                              action, with the settlement shown first.
-
-                              On the profile view, not the edit form: it saves
-                              on its own through its own confirmation, so it
-                              never needed the form, and next to Update it read
-                              as though Update would apply it.
-                            */}
-                            {isViewMode && (
-                                <button
-                                    type="button"
-                                    className="btn"
-                                    onClick={() => setShowEndContract(true)}
-                                    style={{
-                                        marginTop: '0.75rem',
-                                        background: 'transparent',
-                                        color: status === 'ARCHIVED' ? 'var(--brand-primary-text)' : 'var(--danger-fg-strong)',
-                                        border: `1px solid ${status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-border)'}`,
-                                        fontSize: '0.85rem',
-                                    }}
-                                >
-                                    {status === 'ARCHIVED' ? t('reinstate') : t('end_contract')}
-                                </button>
-                            )}
-                        </div>
-                    )
-                }
-
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start', flexDirection: 'row' }}>
-                    {!isViewMode && (
-                        <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? t('updating_button') : t('update_button')}
-                        </button>
-                    )}
-                    <button
-                        type="button"
-                        className="btn"
-                        style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
-                        onClick={onClose || (() => { startNavigationProgress(); router.back() })}
-                    >
-                        {t('close_button')}
-                    </button>
-                </div>
-            </form >
+                </form>
+            </Card>
 
             {
                 showEndContract && (
@@ -1308,6 +1008,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     document.body
                 )
             }
-        </div >
+        </Page>
     )
 }

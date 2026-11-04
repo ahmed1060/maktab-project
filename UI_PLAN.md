@@ -515,7 +515,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the maintenance screen, merged in #187 on 2026-11-04, then Security
      settings, merged in #188 on 2026-11-04, then the last confirmations
      in the old window, merged in #189 on 2026-11-04, then the last
-     loading spinners, in #190;
+     loading spinners, merged in #190 on 2026-11-04, then a person's
+     profile, in four parts: its page, its photo and a name change
+     waiting, in #191; then what it shows of someone else's, as their
+     details; then its form; then ending a contract and handing over a
+     team;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3803,3 +3807,37 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     had loaded, a moment later, and until then said there was nobody, with
     Add employee; another company's list said so too, until it came. It
     says it's loading instead (browser flows).
+- **2026-11-04:** The last loading spinners were merged in #190. A
+  person's profile moves onto the building blocks in four parts (§5 step
+  5, the pages left), each a small PR: its page, its photo and a name
+  change waiting; then what it shows of someone else's, as their details
+  (DESIGN.md §5.5, Details), where it showed a form whose every field was
+  off; then its form, each field's mistake under it; then ending a
+  contract and handing over a team. Part 1, in #191:
+  - the profile is a page with the building blocks' header. Someone
+    else's is under their name, saying whether it's their profile or
+    being edited, with a way back to Employees, as their history has; one's
+    own, from the account menu, is My profile. It was a glass card with a
+    title of its own. Whose profile it is comes from the layout, so the
+    header is right on the first paint, and it's there while the profile
+    loads, with the panel where the profile will be;
+  - their photo is a building block of its own (DESIGN.md §5.5, A person's
+    photo): their photo, or their initials in an avatar's colours, where
+    someone with no photo had a drawn man or woman chosen by their gender.
+    Beside it, where it can be changed, are the file picker for one image
+    and Remove photo, which asks first: the window of its own that showed
+    the photo larger before it could be changed is gone. "Reset photo"
+    says "Remove photo", what it does;
+  - a file that's too large, or isn't a JPG, PNG, GIF or WebP, is said
+    under the picker before anything is sent. It took any image, and the
+    server's refusal of one, such as a HEIC, came back in English;
+  - a photo is theirs only once it's saved. The old window never looked at
+    the save's answer: a refused one said "Photo updated successfully!"
+    and showed the photo, which then went again with the form's Update.
+    A refusal is said under the picker now, and the photo they had stays
+    (found reading the code);
+  - a name change waiting is a card waiting on someone, with the name
+    asked for and the request on the Requests page, where it was a yellow
+    box of its own making;
+  - its words are in sentence case: Employee profile, Edit employee, and My
+    profile, which the account menu says too.
