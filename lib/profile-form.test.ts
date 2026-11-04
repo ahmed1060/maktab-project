@@ -329,6 +329,8 @@ describe("the profile, wired to its form", () => {
         for (const sent of [
             "firstName: access.nameByRequest ? undefined : firstName,",
             "lastName: access.nameByRequest ? undefined : lastName,",
+            // One's own is changed in Security settings: it's not sent.
+            "email: access.changeEmail ? email : undefined,",
             "salary: access.changeSalary ? parseFloat(salary) || 0 : undefined,",
             "baseDayOffCredit: access.changeDayOffCredit ? parseFloat(baseDayOffCredit) || 0 : undefined,",
             "username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,",

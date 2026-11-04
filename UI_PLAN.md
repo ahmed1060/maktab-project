@@ -3956,3 +3956,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     field that's wrong, stops below the sticky header: told what's wrong,
     a field at the window's top edge took the focus where it was, under
     the header (browser flows).
+  - One's own email isn't sent with the save, as the field is off: the
+    server let an unchanged one through, but the save sent it all the same
+    (browser flows).

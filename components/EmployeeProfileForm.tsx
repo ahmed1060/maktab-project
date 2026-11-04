@@ -384,7 +384,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // Each as the form may change it (lib/profile-access.ts).
                     firstName: access.nameByRequest ? undefined : firstName,
                     lastName: access.nameByRequest ? undefined : lastName,
-                    email,
+                    email: access.changeEmail ? email : undefined,
                     password: access.changePassword && password ? password : undefined,
                     role,
                     // Only a different role is a change; the server refuses
