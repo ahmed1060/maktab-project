@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { useSession } from 'next-auth/react'
 import {
     ArrowCounterClockwiseIcon, ClockCounterClockwiseIcon, EnvelopeSimpleIcon, IdentificationBadgeIcon, MinusCircleIcon,
     LockIcon, PauseCircleIcon, PencilSimpleIcon, PlayCircleIcon, PlusCircleIcon, ShieldIcon, SortAscendingIcon, TrashIcon,
@@ -20,7 +19,7 @@ import {
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
-import { useCan } from '@/lib/useCan'
+import { useCan, useViewer } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { STATUS_TONE, STATUS_WORD } from '@/lib/person-status'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -63,8 +62,11 @@ export default function EmployeesPage() {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const modules = useModules()
-    const { data: session } = useSession()
-    const userRole = session?.user?.role || ''
+    // Who's looking, from the layout on the first paint, so the list is
+    // asked for at once. The session hook has nothing until a moment later,
+    // and the list said there was nobody until then (PR 190).
+    const viewer = useViewer()
+    const userRole = viewer?.role || ''
     const isSuperAdmin = userRole === 'SUPER_ADMIN'
     const { can, companyWide } = useCan()
     const { selectedCompanyId } = useCompany()
@@ -104,11 +106,11 @@ export default function EmployeesPage() {
     }, [query, search])
 
     const sort = SORTS[sortKey]
-    const listQuery: EmployeesQuery | null = session?.user ? {
+    const listQuery: EmployeesQuery | null = viewer ? {
         page, limit,
         companyId: selectedCompanyId,
         teamOnly,
-        viewerId: (session.user as any).id,
+        viewerId: viewer.id,
         search, status, role,
         teamLeaderId: team,
         sort: sort.sort, order: sort.order,
@@ -116,7 +118,7 @@ export default function EmployeesPage() {
     // Only this company's rows, while the next page or filter loads. If they
     // didn't load, the list says so rather than that there's nobody.
     const listUrl = listQuery ? employeesListUrl(listQuery) : null
-    const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(scopedKey(listUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
+    const { data: scoped, error, isValidating, mutate } = useSWR(scopedKey(listUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
     const result = forScope(scoped, selectedCompanyId)
     const failed = loadFailed(scoped, error, listUrl)
     const employees: Employee[] = failed ? [] : result?.data?.data || []
@@ -236,9 +238,9 @@ export default function EmployeesPage() {
         }
     }
 
-    // Once the session is known: before it loads nobody holds anything, and
+    // Once it's known who's looking: before that nobody holds anything, and
     // this would flash "access denied" at everyone on the way in.
-    if (session?.user && !can('employees.view')) return <AccessDenied />
+    if (viewer && !can('employees.view')) return <AccessDenied />
 
     const canEdit = (e: Employee) => can('employees.edit') && (e.role !== 'ADMIN' || isSuperAdmin)
     const menuItems = (e: Employee): MenuItem[] => {
@@ -368,7 +370,8 @@ export default function EmployeesPage() {
             )}
 
             {/* Under its header and filters, where the list goes; it was the old spinner instead of the whole page (PR 190). */}
-            {isLoading && !result && !failed
+            {/* Nothing yet for this company, and nothing failed: on the first paint too, and on another company. */}
+            {!result && !failed
                 ? <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
                 : (
                     <DataList

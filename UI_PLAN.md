@@ -3798,3 +3798,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the layout, where it waited for the session hook behind the spinner;
   - My cash advance waits in the frame its history shows while it loads,
     so nothing moves when it comes.
+  - the Employees list asks for its people on the first paint, who's
+    looking coming from the layout. It asked only once the session hook
+    had loaded, a moment later, and until then said there was nobody, with
+    Add employee; another company's list said so too, until it came. It
+    says it's loading instead (browser flows).

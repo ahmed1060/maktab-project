@@ -145,6 +145,18 @@ describe("the Employees list, while its people load", () => {
         expect(html.indexOf(title(en.employees))).toBeLessThan(html.search(loadingPanel(en.loading)))
         expect(html).not.toContain(esc(en.no_employees_found))
     })
+
+    // Found in PR 190's flows: the list was asked for only once the session
+    // hook had loaded, a moment after the first paint. Until then it said
+    // there was nobody, with Add employee, and then gave the whole page to
+    // the spinner.
+    it("asks for them at once, who's looking coming from the layout, and says it's loading, never that there's nobody", () => {
+        state.sessionLoading = true
+        const html = render(Employees)
+        expect(state.keys.some(k => Array.isArray(k) && String(k[0]).startsWith("/api/users?"))).toBe(true)
+        expect(html).toMatch(loadingPanel(en.loading))
+        expect(html).not.toContain(esc(en.no_employees_found))
+    })
 })
 
 describe("a client's page, while it loads", () => {
