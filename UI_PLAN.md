@@ -3776,3 +3776,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     §5.5, Dialog). Mark collected's "Collect 10 charges, 4,525.50 EGP" ran
     past its own edges on a phone in Arabic, as a button keeps to one line;
     the old window's buttons had wrapped. One line is as tall as ever.
+  - beside Confirm receipt, a person's own cash advance asks for each one
+    to be confirmed with "يُرجى تأكيد", where it said "أكّد" in the
+    masculine (web interface audit).

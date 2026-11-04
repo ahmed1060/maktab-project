@@ -2953,7 +2953,7 @@ export const ar = {
         advances_held_note: "مع الموظفين {amount} في المجموع، فتبقى العُهد مشغّلة حتى يُصرف أو يُردّ.",
         advances_held_refusal: "لا يمكن إيقاف العُهد ما دام مع أحد مال من عهدته. يجب صرفه أو ردّه أولًا.",
         advances_your_balance: "رصيدك",
-        advances_awaiting_note: "أكّد كل عهدة أدناه حين تصل إلى يدك.",
+        advances_awaiting_note: "يُرجى تأكيد كل عهدة أدناه حين تصل إلى اليد.",
         advances_col_person: "الشخص",
         advances_col_balance: "الرصيد",
         advances_col_awaiting: "بانتظار التأكيد",

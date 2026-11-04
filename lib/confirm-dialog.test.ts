@@ -143,6 +143,13 @@ describe("what they say", () => {
         }
     })
 
+    // Beside Confirm receipt, on a person's own cash advance (found in PR
+    // 189's audit).
+    it("asks for each cash advance to be confirmed with a verbal noun, where it said it in the masculine", () => {
+        expect(ar.advances_awaiting_note).not.toMatch(/^أكّد|^أكد/)
+        expect(ar.advances_awaiting_note).toContain("يُرجى تأكيد")
+    })
+
     it("deletes a client by name in one sentence in each language, where the name was stuck on the end with a Latin question mark", () => {
         expect(en.clients_delete_question).toBe("Delete {name}? This can't be undone.")
         expect(ar.clients_delete_question).toContain("{name}؟")
