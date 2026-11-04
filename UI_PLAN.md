@@ -3568,3 +3568,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and the tenth, which the 30 seconds and the fifteen minutes run from; a
   wrong guess moves it, once it's known to be wrong. So giving a try back
   takes back only the count, in whatever order tries come back.
+- **2026-11-03:** Found by Codex, on #183: five right passwords overlapping
+  after the 30 seconds reached ten, and the tenth moved the run's time, so
+  given back to five, the 30 seconds started again. Only the fifth moves
+  it when counted; the fifteen minutes run from the tenth wrong try once
+  it's known to be wrong.

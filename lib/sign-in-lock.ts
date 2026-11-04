@@ -73,12 +73,14 @@ export function holdOf(run: Run | null, now: Date): Hold | null {
  * time would, and none is ever counted past the pause or the lock (Codex on
  * PR 183).
  *
- * Counting moves the run's time only at the fifth and the tenth, which the
- * 30 seconds and the fifteen minutes run from; a wrong guess moves it after
- * (markWrongSignIn). So a try given back takes back only the count, in
- * whatever order tries come back, where putting back the time it found let
- * two overlapping right passwords start the 30 seconds again (Codex on
- * PR 183). Fails closed, as RateLimiter does (F-10).
+ * Counting moves the run's time only at the fifth, which the 30 seconds run
+ * from, so tries sent together can't pass them; a wrong guess moves it once
+ * it's known to be wrong (markWrongSignIn), which the fifteen minutes run
+ * from at the tenth. So a try given back takes back only the count, in
+ * whatever order tries come back: putting back the time it found let two
+ * overlapping right passwords start the 30 seconds again, and the tenth
+ * moving it let five do the same (Codex on PR 183). Fails closed, as
+ * RateLimiter does (F-10).
  */
 export async function countSignIn(key: string, now: Date = new Date()): Promise<Hold | Counted> {
     const pause: Hold = { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
@@ -100,15 +102,15 @@ export async function countSignIn(key: string, now: Date = new Date()): Promise<
                 OR: [
                     { count: { lt: PAUSE_AFTER - 1 } },
                     { count: PAUSE_AFTER, resetAt: { lte: new Date(now.getTime() + LOCK_MS - PAUSE_MS) } },
-                    { count: { gt: PAUSE_AFTER, lt: LOCK_AFTER - 1 } },
+                    { count: { gt: PAUSE_AFTER, lt: LOCK_AFTER } },
                 ],
             },
             data: { count: { increment: 1 } },
         })
         if (added.count) return counted
-        // The fifth and the tenth: the 30 seconds and the fifteen minutes run from them.
+        // The fifth: the 30 seconds run from it.
         const marked = await prisma.rateLimit.updateMany({
-            where: { ...live, count: { in: [PAUSE_AFTER - 1, LOCK_AFTER - 1] } },
+            where: { ...live, count: PAUSE_AFTER - 1 },
             data: { count: { increment: 1 }, resetAt },
         })
         if (marked.count) return counted
@@ -153,8 +155,8 @@ export function holdMessage(hold: Hold, now: Date = new Date()): string {
 /**
  * Gives back a try that wasn't a wrong guess: the step that asks for the
  * code, or an account turned away after its password was right. Only the
- * count: counting it didn't move the run's time, past the fifth or the
- * tenth, and the 30 seconds run from the fifth wrong try.
+ * count: counting it didn't move the run's time, past the fifth, and the
+ * 30 seconds run from the fifth wrong try.
  */
 export async function giveBackSignIn(counted: Counted): Promise<void> {
     try {
@@ -162,7 +164,7 @@ export async function giveBackSignIn(counted: Counted): Promise<void> {
     } catch { }
 }
 
-/** A try that was a wrong guess: the run is remembered fifteen minutes from it. */
+/** A try that was a wrong guess: the run is remembered fifteen minutes from it, and at the tenth, locked for them. */
 export async function markWrongSignIn(counted: Counted, now: Date = new Date()): Promise<void> {
     const resetAt = new Date(now.getTime() + LOCK_MS)
     try {

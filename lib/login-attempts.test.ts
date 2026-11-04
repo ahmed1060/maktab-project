@@ -256,6 +256,19 @@ describe("signing in, a pause after five wrong tries and a lock after ten", () =
         expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
     })
 
+    it("keeps the 30 seconds over when five right passwords overlap and reach ten (Codex on PR 183)", async () => {
+        // Five tries counted at once from five, the fifth reaching ten: the
+        // fifteen minutes started from it, so given back to five, the 30
+        // seconds started again and turned the code away.
+        const { countSignIn, giveBackSignIn } = await import("@/lib/sign-in-lock")
+        await wrong(5)
+        const tries = await Promise.all(Array.from({ length: 5 }, () => countSignIn("login:account:sa")))
+        expect(tries.map(t => t.kind)).toEqual(["counted", "counted", "counted", "counted", "counted"])
+        for (const t of tries) if (t.kind === "counted") await giveBackSignIn(t)
+        expect(db.limits["login:account:sa"].count).toBe(5)
+        expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+    })
+
     it("remembers a run fifteen minutes from its last wrong try, not its first", async () => {
         db.superAdmins.sa.mfaEnabled = false
         await wrong(3)
