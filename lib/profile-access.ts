@@ -24,6 +24,7 @@ export type ProfileAccess = {
     /** An employee's team leader, to whoever assigns teams. */
     teamLeader: boolean
     status: boolean
+    /** Beside their status: ending their contract, or reinstating them. */
     endContract: boolean
 }
 
@@ -37,7 +38,6 @@ export function profileAccess({ can, viewer, person }: {
     const superAdmin = viewer?.role === 'SUPER_ADMIN'
     const actsOnThem = person.role !== 'ADMIN' || superAdmin
     const paid = !['ADMIN', 'SUPER_ADMIN'].includes(person.role) && person.role !== ''
-    const status = can('employees.change_status') && !own
     return {
         own,
         edit: own || (can('employees.edit') && actsOnThem),
@@ -48,8 +48,8 @@ export function profileAccess({ can, viewer, person }: {
         role: (can('employees.assign_role') || can('employees.request_role')) && !own,
         ownTeamLeader: own && person.role === 'EMPLOYEE',
         teamLeader: can('employees.assign_team') && !own && person.role === 'EMPLOYEE',
-        status,
-        // Beside the status, as it was.
-        endContract: status,
+        status: can('employees.change_status') && !own,
+        // As its route asks: changing a status doesn't end a contract.
+        endContract: can('employees.end_contract') && !own && actsOnThem,
     }
 }

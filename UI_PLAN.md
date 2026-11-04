@@ -3877,3 +3877,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Super Admin resets. Its English came as it was;
   - its words are in sentence case: End contract, and Assigned day off
     credit.
+  - End contract, and Reinstate, are offered to whoever may end a
+    contract, as their route asks, where they followed changing a status:
+    a role of the company's that may change a status but not end a
+    contract was offered them, and refused. An Admin's are offered only to
+    the Super Admin, who alone ends one (found reading the code).

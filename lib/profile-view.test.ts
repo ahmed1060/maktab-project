@@ -117,6 +117,12 @@ describe("what can be done to a detail, beside it", () => {
         expect(ended).toContain(`>${en.reinstate}</button>`)
     })
 
+    it("shows the status beside End contract to whoever may only end contracts", async () => {
+        const status = Object.fromEntries(details(await view({ access: { ...NONE, endContract: true } })))[en.status_label]
+        expect(status).toContain(`<span class="ui-badge ui-badge-good">${en.status_online}</span>`)
+        expect(status).toContain(`>${en.end_contract}</button>`)
+    })
+
     it("offers nothing to whoever may do nothing", async () => {
         expect(await view({ access: { ...ALL, resetPassword: false, endContract: false } })).not.toContain("<button")
     })

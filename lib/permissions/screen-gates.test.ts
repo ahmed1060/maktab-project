@@ -136,7 +136,9 @@ const GATES: Gate[] = [
     // B4: shown to whoever may ask for a role too (ROLES_PLAN.md §6.12). No
     // built-in role may only ask, so who sees it is unchanged for them.
     { what: "profile: role", file: ACCESS, uses: "role: (can('employees.assign_role') || can('employees.request_role')) && !own,", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_role") || p.can("employees.request_role") },
-    { what: "profile: status", file: ACCESS, uses: "const status = can('employees.change_status') && !own", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.change_status") },
+    // It followed the status, for whoever could change one (PR 192).
+    { what: "profile: end contract", file: ACCESS, uses: "endContract: can('employees.end_contract') && !own", before: admins, now: p => p.can("employees.end_contract") },
+    { what: "profile: status", file: ACCESS, uses: "status: can('employees.change_status') && !own,", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.change_status") },
 
     // --- Tasks ------------------------------------------------------------------
     { what: "task list: own only", file: D + "tasks/page.tsx", uses: "if (scope === null)", before: r => r === "EMPLOYEE", now: p => p.scope("tasks.view") === null },

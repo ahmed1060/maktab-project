@@ -65,6 +65,19 @@ describe("a person's company, status and password", () => {
         expect(access(ADMIN, { id: "admin", role: "ADMIN" }).status).toBe(false)
     })
 
+    // Its route ends a contract, and reinstates one, for whoever holds
+    // employees.end_contract, which changing a status doesn't give; and only
+    // the Super Admin ends an Admin's (ROLES_PLAN.md §4.2, rule 7).
+    it("offers End contract to whoever may end one, never on one's own, and an Admin's only to the Super Admin", () => {
+        expect(access(ADMIN, someone("EMPLOYEE")).endContract).toBe(true)
+        expect(access(custom({ "employees.end_contract": "COMPANY" }), someone("EMPLOYEE")).endContract).toBe(true)
+        expect(access(custom({ "employees.change_status": "COMPANY" }), someone("EMPLOYEE")).endContract).toBe(false)
+        expect(access(LEADER, someone("EMPLOYEE")).endContract).toBe(false)
+        expect(access(ADMIN, { id: "admin", role: "ADMIN" }).endContract).toBe(false)
+        expect(access(ADMIN, someone("ADMIN")).endContract).toBe(false)
+        expect(access(SUPER, someone("ADMIN")).endContract).toBe(true)
+    })
+
     it("offers Reset password to whoever may reset one, never on one's own", () => {
         expect(access(ADMIN, someone("EMPLOYEE")).resetPassword).toBe(true)
         expect(access(custom({ "employees.reset_password": "COMPANY" }), someone("EMPLOYEE")).resetPassword).toBe(true)
