@@ -3715,7 +3715,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     email and two-factor authentication are settings cards side by side
     under the page header, where its title was set into the old top bar;
   - each mistake is said under its field in the reader's language, where
-    the server answered a malformed address or code with "Validation
+    the browser's own bubbles said most of them, in the browser's language,
+    and an address they let through, such as a@b, came back "Validation
     Error". Where a code went is said beside its field, the address left to
     right in either language, where a toast said to check the inbox;
   - Send code is on only once the address is changed: it sent the address
@@ -3725,8 +3726,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     this page;
   - turning two-factor authentication off asks for the password in a
     dialog, with the danger button, where a form opened in the card. The QR
-    code has its size and a name, and the key to type is left to right and
-    never translated;
+    code is named in the reader's language, where it was "QR code" in
+    either, and the key to type is left to right and never translated;
   - the trusted devices are a list under their own heading. One, or all of
     them, is removed only once it's asked, where a click removed them at
     once; and a list that didn't load says so, with Try again, where it said
@@ -3738,4 +3739,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     and the rest is said with "يُرجى" and verbal nouns;
   - a card's note breaks a word too long for it. The address a code went
     to, with no hyphen to break at, ran past the card and pushed a phone's
-    screen sideways (web interface audit).
+    screen sideways (web interface audit);
+  - the server's refusals a person meets are said under their fields in the
+    reader's language too, with what to do next: a taken address, too many
+    codes, a wrong code and a wrong password. They came in the server's
+    English as they were, "Invalid or expired code" in Arabic too (web
+    interface audit).

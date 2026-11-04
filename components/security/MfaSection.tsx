@@ -8,7 +8,7 @@ import { Button, Card, Dialog, DialogActions, EmptyState, Field, PasswordInput, 
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { apiErrorText } from '@/lib/api-error-text'
-import { CODE_LENGTH, isCode } from '@/lib/security-forms'
+import { CODE_LENGTH, isCode, refusalText } from '@/lib/security-forms'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useViewer } from '@/lib/useCan'
 
@@ -29,7 +29,8 @@ type TrustedDevice = {
 // On the building blocks (UI_PLAN.md §5 step 5, the pages left): a settings
 // card with where it stands as a badge, setting it up in the card, and
 // turning it off asked in a dialog, with the password and the danger
-// button. Each mistake is said under its field in the reader's language. The
+// button. Each mistake is said under its field in the reader's language, the
+// server's refusals too (lib/security-forms.ts). The
 // trusted devices are a list under their own heading, each removed only once
 // it's asked, where a click removed them at once; and a list that didn't load
 // says so, where it said there were none. It was cards of their own making,
@@ -94,7 +95,7 @@ export function TwoFactorCard() {
                 body: JSON.stringify({ secret: enrolment.secret, code: code.trim() }),
             })
             if (!res.ok) {
-                setCodeErr(apiErrorText(await res.text(), t('error_generic')))
+                setCodeErr(refusalText('mfaCode', res.status, await res.text(), t))
                 focusWrong()
                 return
             }
@@ -191,7 +192,7 @@ function TurnOffDialog({ onClose }: { onClose: () => void }) {
                 body: JSON.stringify({ password }),
             })
             if (!res.ok) {
-                setError(apiErrorText(await res.text(), t('error_generic')))
+                setError(refusalText('password', res.status, await res.text(), t))
                 setBusy(false)
                 focusWrong()
                 return

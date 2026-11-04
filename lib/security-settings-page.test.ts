@@ -249,3 +249,57 @@ describe("what's typed", () => {
         for (const [key, text] of used) expect(text, key).not.toMatch(/(^|[\s،.؟])(تحقق|امسح|أدخل|اختر|حاول|انتظر|اطلب|اكتب)(?=[\s،.؟]|$)/)
     })
 })
+
+describe("what the server refuses", () => {
+    const body = (error: string, details?: unknown) => JSON.stringify({ success: false, error, ...(details ? { details } : {}) })
+    // A stand-in for the page's t(): the key, to see which one was asked for.
+    const t = (key: string) => `[${key}]`
+
+    it("is said under its field in the reader's language, with what to do next, where the server's English came as it was (web interface audit, PR 188)", async () => {
+        const { refusalText } = await import("@/lib/security-forms")
+        // Sending a code.
+        expect(refusalText("send", 400, body("Validation Error", { email: { _errors: ["Invalid email address"] } }), t)).toBe("[security_email_invalid]")
+        expect(refusalText("send", 400, body("Email already in use"), t)).toBe("[security_email_taken]")
+        expect(refusalText("send", 429, body("Too many code requests — try again later"), t)).toBe("[security_code_too_many]")
+        // Verifying it.
+        expect(refusalText("verify", 400, body("Invalid or expired code"), t)).toBe("[security_email_code_wrong]")
+        expect(refusalText("verify", 400, body("Email already in use"), t)).toBe("[security_email_taken]")
+        expect(refusalText("verify", 400, body("Validation Error", { code: { _errors: ["Invalid code"] } }), t)).toBe("[security_email_code_invalid]")
+        // Turning two-factor authentication on, and off.
+        expect(refusalText("mfaCode", 400, body("Invalid code — check the time on your device and try again"), t)).toBe("[security_mfa_code_wrong]")
+        expect(refusalText("password", 403, body("Incorrect password"), t)).toBe("[security_mfa_password_wrong]")
+        expect(refusalText("password", 400, body("Validation Error", { password: { _errors: ["Required"] } }), t)).toBe("[security_mfa_password_missing]")
+        for (const key of ["security_email_taken", "security_code_too_many", "security_email_code_wrong", "security_mfa_code_wrong", "security_mfa_password_wrong"] as const) {
+            expect(en[key], key).toBeTruthy()
+            expect(ar[key], key).toBeTruthy()
+        }
+    })
+
+    it("says anything else as the server put it, or the screen's fallback", async () => {
+        const { refusalText } = await import("@/lib/security-forms")
+        expect(refusalText("send", 500, body("Email sending is not configured"), t)).toBe("Email sending is not configured")
+        expect(refusalText("password", 403, body("MFA cannot be disabled on this account"), t)).toBe("MFA cannot be disabled on this account")
+        expect(refusalText("verify", 502, "<html>Bad gateway</html>", t)).toBe("[error_generic]")
+        expect(refusalText("mfaCode", 500, "", t)).toBe("[error_generic]")
+    })
+
+    it("matches the words the routes really answer with", () => {
+        const route = (path: string) => readFileSync(`app/api/account/${path}/route.ts`, "utf8")
+        expect(route("email/request-code")).toContain('ApiResponse.badRequest("Email already in use")')
+        expect(route("email/request-code")).toContain('"Too many code requests — try again later", 429')
+        expect(route("email/confirm")).toContain('ApiResponse.badRequest("Invalid or expired code")')
+        expect(route("email/confirm")).toContain('ApiResponse.badRequest("Email already in use")')
+        expect(route("mfa/confirm")).toContain('ApiResponse.badRequest("Invalid code')
+        expect(route("mfa/disable")).toContain('ApiResponse.forbidden("Incorrect password")')
+        for (const path of ["email/request-code", "email/confirm", "mfa/confirm", "mfa/disable"]) expect(route(path)).toContain('ApiResponse.badRequest("Validation Error"')
+    })
+
+    it("is what each form says when it's refused", () => {
+        const email = readFileSync(EMAIL, "utf8")
+        expect(email).toContain("refusalText('send', res.status, await res.text(), t)")
+        expect(email).toContain("refusalText('verify', res.status, text, t)")
+        const mfa = readFileSync(MFA, "utf8")
+        expect(mfa).toContain("refusalText('mfaCode', res.status, await res.text(), t)")
+        expect(mfa).toContain("refusalText('password', res.status, await res.text(), t)")
+    })
+})

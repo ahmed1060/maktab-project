@@ -5,8 +5,7 @@ import { useSession } from 'next-auth/react'
 import { Button, Card, Field, StatusBadge, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import { apiErrorText } from '@/lib/api-error-text'
-import { CODE_LENGTH, EMAIL_MAX, emailError, isCode } from '@/lib/security-forms'
+import { CODE_LENGTH, EMAIL_MAX, emailError, isCode, refusalText } from '@/lib/security-forms'
 import { useViewer } from '@/lib/useCan'
 
 // F-27: one component, two doors in. Reached two ways —
@@ -23,10 +22,10 @@ import { useViewer } from '@/lib/useCan'
 // On the building blocks (UI_PLAN.md §5 step 5, the pages left): in the gate,
 // a card holding a form on a page of its own, as Change password is; after
 // it, a settings card saying the address is verified. Each mistake is said
-// under its field in the reader's language, where the server's refusals of
-// a malformed address or code read "Validation Error"; where the code went is
-// said beside it, rather than in a toast that left. It was a card of its own
-// making, its words typed into the page in both languages.
+// under its field in the reader's language, the server's refusals too, which
+// came in its English as they were (lib/security-forms.ts); where the code
+// went is said beside it, rather than in a toast that left. It was a card of
+// its own making, its words typed into the page in both languages.
 export default function EmailSection({ gate }: { gate: boolean }) {
     const { t } = useLanguage()
     // Whose address, from the layout on the first paint: the session hook's
@@ -76,7 +75,7 @@ export default function EmailSection({ gate }: { gate: boolean }) {
                 body: JSON.stringify({ email: email.trim() }),
             })
             if (!res.ok) {
-                setEmailErr(apiErrorText(await res.text(), t('error_generic')))
+                setEmailErr(refusalText('send', res.status, await res.text(), t))
                 focusWrong()
                 return
             }
@@ -108,7 +107,7 @@ export default function EmailSection({ gate }: { gate: boolean }) {
             })
             const text = await res.text()
             if (!res.ok) {
-                setCodeErr(apiErrorText(text, t('error_generic')))
+                setCodeErr(refusalText('verify', res.status, text, t))
                 setVerifying(false)
                 focusWrong()
                 return
