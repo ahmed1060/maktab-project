@@ -107,3 +107,39 @@ describe("Edit, from the view of someone's profile", () => {
         expect(access(SUPER, someone("ADMIN")).edit).toBe(true)
     })
 })
+
+// What the form may change, and so what its save sends (a person's profile,
+// part 3, PR 193): each as its route takes it, the field shown but off,
+// with why under it, where it may not.
+describe("what the form may change", () => {
+    it("changes pay and day off credit with their permissions, never one's own, and only someone's on payroll", () => {
+        expect(access(ADMIN, someone("EMPLOYEE"))).toMatchObject({ changeSalary: true, changeDayOffCredit: true })
+        expect(access(custom({ "salary.view": "COMPANY" }), someone("EMPLOYEE"))).toMatchObject({ salary: true, changeSalary: false })
+        expect(access(custom({ "salary.view": "COMPANY", "salary.edit": "COMPANY" }), someone("EMPLOYEE")).changeSalary).toBe(true)
+        expect(access(custom({ "dayoff.view": "COMPANY", "dayoff.adjust_credit": "COMPANY" }), someone("EMPLOYEE")).changeDayOffCredit).toBe(true)
+        expect(access(EMPLOYEE, { id: "emp", role: "EMPLOYEE" })).toMatchObject({ salary: true, changeSalary: false, changeDayOffCredit: false })
+        expect(access(SUPER, someone("ADMIN"))).toMatchObject({ changeSalary: false, changeDayOffCredit: false })
+    })
+
+    it("changes someone's email, never one's own, which is changed in Security settings", () => {
+        expect(access(ADMIN, someone("EMPLOYEE")).changeEmail).toBe(true)
+        expect(access(EMPLOYEE, { id: "emp", role: "EMPLOYEE" }).changeEmail).toBe(false)
+        expect(access(SUPER, { id: "sa", role: "SUPER_ADMIN" }).changeEmail).toBe(false)
+    })
+
+    it("changes a username for the Super Admin alone, whose username the route takes", () => {
+        expect(access(SUPER, someone("EMPLOYEE")).changeUsername).toBe(true)
+        expect(access(ADMIN, someone("EMPLOYEE")).changeUsername).toBe(false)
+        expect(access(custom({ "employees.edit": "COMPANY" }), someone("EMPLOYEE")).changeUsername).toBe(false)
+    })
+
+    // As the route does (NAME_CHANGE_REQUIRES_ADMIN): the form sends it as a
+    // name change to be decided.
+    it("asks for one's own name on an employee's or a team leader's footing", () => {
+        expect(access(EMPLOYEE, { id: "emp", role: "EMPLOYEE" }).nameByRequest).toBe(true)
+        expect(access(LEADER, { id: "tl", role: "TEAM_LEADER" }).nameByRequest).toBe(true)
+        expect(access(custom({}), { id: "hr", role: "EMPLOYEE" }).nameByRequest).toBe(true)
+        expect(access(ADMIN, { id: "admin", role: "ADMIN" }).nameByRequest).toBe(false)
+        expect(access(ADMIN, someone("EMPLOYEE")).nameByRequest).toBe(false)
+    })
+})

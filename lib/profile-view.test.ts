@@ -159,13 +159,17 @@ describe("the profile, as the form draws it", () => {
 
     it("offers Edit in the page header, to whoever may edit them, where it had only Close", () => {
         expect(FORM).toContain("action={access.edit ? <ButtonLink variant=\"primary\" icon={PencilSimpleIcon} href={`/dashboard/employees/${userId}`} prefetch={false}>{t('edit')}</ButtonLink> : undefined}")
-        // Close stays the form's, until part 3; the view goes back by its back link.
-        expect(FORM.match(/t\('close_button'\)/g)).toHaveLength(1)
+        // The view goes back by its back link; the form's Close is its Cancel now (PR 193).
+        expect(FORM).not.toContain("t('close_button')")
     })
 
     it("asks what may be seen and done in one place", () => {
         expect(FORM).toContain("const access = profileAccess({ can, viewer, person: { id: userId, role } })")
-        for (const gate of ["access.salary && (", "access.dayOffCredit && (", "access.role && (", "access.ownTeamLeader && (", "access.teamLeader && (", "access.status && ("]) expect(FORM, gate).toContain(gate)
+        // The form's fields are its own since PR 193, each behind the same question.
+        const fields = readFileSync("components/profile/ProfileForm.tsx", "utf8")
+        for (const gate of ["access.salary && (", "access.dayOffCredit && (", "access.ownTeamLeader && (", "access.teamLeader && (", "access.status && ("]) expect(fields, gate).toContain(gate)
+        expect(FORM).toContain("const roleField = access.role && (")
+        expect(FORM).toContain("access={access}")
     })
 })
 

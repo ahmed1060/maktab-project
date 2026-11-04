@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs"
  * A person stays in the company they were added to (CLIENTS_PLAN.md change
  * log, 2026-10-23). A Super Admin's edit form offered every company, and the
  * save moved the person to the one picked. The form now shows their company
- * greyed out and sends none; the server refuses any other
+ * off, saying why, and sends none (components/profile/ProfileForm.tsx, PR
+ * 193); the server refuses any other
  * (COMPANY_CHANGE_FORBIDDEN, checked in lib/permissions/employee-access and
  * the attendance tests).
  */
@@ -13,6 +14,7 @@ import { readFileSync } from "node:fs"
 // Read as written: lib/strip-comments.ts takes the form's `accept="image/*"`
 // for the start of a comment, and the company field with it.
 const FORM = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
+const FIELDS = readFileSync("components/profile/ProfileForm.tsx", "utf8")
 
 /** The first element matching `marker`, up to the end of its opening tag. */
 function openingTag(source: string, marker: RegExp): string {
@@ -28,11 +30,11 @@ function openingTag(source: string, marker: RegExp): string {
 }
 
 describe("editing a person, their company", () => {
-    it("is shown greyed out, and can't be picked", () => {
-        const select = openingTag(FORM, /<select\s+aria-label=\{t\('company_label'\)\}/)
-        expect(select).toMatch(/\bdisabled\b(?!=)/)
-        expect(select).not.toContain("onChange")
-        expect(select).toContain("cursor: 'not-allowed'")
+    it("is shown off, and can't be picked", () => {
+        const field = openingTag(FIELDS, /<TextInput \{\.\.\.p\} name="company"/)
+        expect(field).toMatch(/\bdisabled\b(?!=)/)
+        expect(field).not.toContain("onChange")
+        expect(FIELDS).toContain("<Field label={t('company_label')} hint={t('profile_company_stays')}>")
     })
 
     it("isn't sent with the save", () => {

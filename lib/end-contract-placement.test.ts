@@ -20,7 +20,7 @@ describe("End contract is on the profile view", () => {
         const view = FORM.indexOf("if (isViewMode) {")
         expect(view).toBeGreaterThan(-1)
         expect(opener).toBeGreaterThan(view)
-        expect(opener).toBeLessThan(FORM.indexOf("<form", view))
+        expect(opener).toBeLessThan(FORM.indexOf("<ProfileForm", view))
     })
 
     it("reloads the profile once it is done, so the new status shows", () => {

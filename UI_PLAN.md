@@ -518,8 +518,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      loading spinners, merged in #190 on 2026-11-04, then a person's
      profile, in four parts: its page, its photo and a name change
      waiting, merged in #191 on 2026-11-04, then what it shows of someone
-     else's, as their details, in #192; then its form; then ending a
-     contract and handing over a team;
+     else's, as their details, merged in #192 on 2026-11-04, then its form,
+     each field's mistake under it, in #193; then its role field; then
+     ending a contract and handing over a team;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3897,3 +3898,35 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the note under a fact is spaced with a logical property, as DESIGN.md
     §7 asks, and the password field says why it's focused as the dialog
     opens: it's the one thing the dialog asks for (web interface audit).
+- **2026-11-04:** A person's profile, part 2, was merged in #192. Part 3,
+  in #193 (§5 step 5, the pages left), is its form, on the building blocks
+  (`components/profile/ProfileForm.tsx`). The role keeps its own controls
+  for now: they're the next part, so a person's profile comes in five
+  parts, not four.
+  - Each field's label is above it and what's wrong under it, the first
+    one wrong focused, before one's own password is asked for. Its
+    mistakes were said in a toast, one at a time, and the email's still
+    described the rule the server had dropped,
+    "user(max 20)@domain(max 10).com" (`lib/profile-form.ts`).
+  - What the server refuses is said under the field it's about, where it
+    can be: a username somebody has, or one that's another company's code,
+    or a name, an email, a password or an amount the route found wrong.
+    Anything else is said above the buttons, where it stays to be read.
+  - A field that can't be changed is off, and says why: one's own email,
+    changed in Security settings; a username, which only the Super Admin
+    changes; one's own pay and day off credit, which the company sets, and
+    someone else's to a role that may only see them; their company; and
+    one's own team leader.
+  - A gender and a status are radio buttons, a status said as the badge
+    says it: Online, where the form said ACTIVE. An ended contract's
+    status stays as it is, and says where they're reinstated.
+  - A name takes up to 15 characters, as the server does, and says how
+    many it has. One's own, on an employee's or a team leader's footing,
+    says it's sent for approval first.
+  - The new password is the building blocks' password field, which says
+    how long it must be and that left empty the password stays as it is.
+    Its eye was drawn by hand.
+  - What the form may change is asked in one place, with what it shows
+    (`lib/profile-access.ts`), so its save sends what its fields offer.
+  - Update and Close are Save and Cancel, Save first; New password is in
+    sentence case. The old fields' four words are gone.

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useEffectEvent } from 'react'
+import { useState, useEffect, useEffectEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
@@ -12,13 +12,16 @@ import RoleSelect from '@/components/RoleSelect'
 import RoleRequestControl from '@/components/RoleRequestControl'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
-import { changedUsername, usernameError } from "@/lib/username-rules"
+import { changedUsername } from "@/lib/username-rules"
 import { ButtonLink, Card, EmptyState, Page } from '@/components/ui'
+import { firstError } from '@/lib/form-errors'
 import { NameChangeWaiting, ProfileHeader } from '@/components/profile/ProfileFrame'
 import { ProfilePhoto } from '@/components/profile/ProfilePhoto'
 import { ProfileView } from '@/components/profile/ProfileView'
 import { ConfirmPasswordDialog, TemporaryPasswordDialog } from '@/components/profile/PasswordDialogs'
+import { ProfileForm, type ProfileValues } from '@/components/profile/ProfileForm'
 import { profileAccess } from '@/lib/profile-access'
+import { PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
 import { resetRefusal } from '@/lib/profile-password'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
@@ -35,8 +38,10 @@ type EmployeeProfileFormProps = {
  * and a name change waiting (components/profile). Part 2, PR 192: someone
  * else's, seen, as their details (components/profile/ProfileView.tsx), what
  * may be seen and done asked in one place (lib/profile-access.ts), and
- * confirming with one's own password in the building blocks' dialog. Its
- * form and its contract's dialogs follow in the parts after.
+ * confirming with one's own password in the building blocks' dialog. Part
+ * 3, PR 193: its form (components/profile/ProfileForm.tsx), each field's
+ * mistake under it (lib/profile-form.ts). Its role field and its contract's
+ * dialogs follow in the parts after.
  */
 export default function EmployeeProfileForm({ userId, isViewMode = false }: EmployeeProfileFormProps) {
     const { t, locale } = useLanguage()
@@ -100,8 +105,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const viewer = useViewer()
     const canAssignTeam = can('employees.assign_team')
 
-    // Password & Verification States
-    const [showNewPassword, setShowNewPassword] = useState(false)
+    // What's wrong, under each field, and what isn't a field's, above the buttons.
+    const [fieldErrors, setFieldErrors] = useState<Partial<Record<ProfileField, string>>>({})
+    const [formError, setFormError] = useState<string | null>(null)
+    // The field to focus, once the form can be used again: its fields are off
+    // while it's sent. Numbered, so the same field asked for again is focused
+    // again (as Add employee's).
+    const [focusOn, setFocusOn] = useState<{ field: ProfileField; n: number } | null>(null)
     // Set once a temporary password has been issued via the reset flow (F-02)
     // — shown to the acting admin exactly once, never persisted or re-fetchable.
     const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null)
@@ -275,9 +285,46 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         return null
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    // Someone else's profile is under their name as it was loaded, not as it's
+    // being typed. Whose it is is known from the first paint, from the layout,
+    // before the session hook has loaded.
+    const own = userId === viewer?.id
+    const name = `${originalFirstName} ${originalLastName}`.trim() || email
+    // What they may see here and do, for the view and the form alike (PR 192).
+    const access = profileAccess({ can, viewer, person: { id: userId, role } })
+
+    // The form's fields are its own (components/profile/ProfileForm.tsx);
+    // what's typed is kept here, and sent from here.
+    const wrongAt = (errors: Partial<Record<ProfileField, string>>) => {
+        setFieldErrors(errors)
+        const first = firstError(errors as Record<string, string>, PROFILE_FIELDS) as ProfileField | null
+        if (first) setFocusOn(f => ({ field: first, n: (f?.n ?? 0) + 1 }))
+    }
+
+    useEffect(() => {
+        if (!focusOn || saving) return
+        // The first field that's wrong takes the focus, which brings it into view.
+        document.querySelector<HTMLElement>(`[name="${focusOn.field}"]`)?.focus()
+    }, [focusOn, saving])
+
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
-        // One's own password first (ConfirmPasswordDialog), then the save.
+        setFormError(null)
+        setFocusOn(null)
+        // What's wrong is said under its field before anything is asked or
+        // sent; then one's own password (ConfirmPasswordDialog), then the save.
+        const wrong = profileErrors({
+            firstName, lastName, password,
+            email: access.changeEmail ? email : undefined,
+            username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
+            salary: access.changeSalary ? salary : undefined,
+            dayOffCredit: access.changeDayOffCredit ? baseDayOffCredit : undefined,
+        })
+        if (Object.keys(wrong).length > 0) {
+            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))
+            return
+        }
+        setFieldErrors({})
         setConfirming('UPDATE')
     }
 
@@ -289,39 +336,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
      */
     const executeSubmit = async (reassignTo?: string | null) => {
         setSaving(true)
-
-        // Validation — was /^[^@]{1,20}@[^@]{1,10}\.com$/, which rejected most
-        // real addresses (subdomains, non-.com TLDs, longer local parts). The
-        // backend already validates properly (user.schema.ts), this is just a
-        // quick client-side check before that round trip.
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(email)) {
-            showToast(t('email_format_error'), 'error')
-            setSaving(false)
-            return
-        }
-
-        // The same rule as the server's (lib/username-rules.ts), said before the round trip.
-        const sentUsername = userRole === 'SUPER_ADMIN' ? changedUsername(username, savedUsername) : undefined
-        if (sentUsername !== undefined && usernameError(sentUsername)) {
-            showToast(t('username_invalid'), 'error')
-            setSaving(false)
-            return
-        }
-
-        if (salary && parseFloat(salary) > 1000000000) {
-            showToast(t('salary_limit_error'), 'error')
-            setSaving(false)
-            return
-        }
+        setFormError(null)
 
         try {
-            const isSelf = userId === session?.user?.id
             const isNameChanged = firstName !== originalFirstName || lastName !== originalLastName
-            const isRestrictedRole = role === 'EMPLOYEE' || role === 'TEAM_LEADER'
 
-            // If name changed and user is restricted role editing self, use request system
-            if (isSelf && isRestrictedRole && isNameChanged) {
+            // One's own name, on an employee's or a team leader's footing, is
+            // asked for (access.nameByRequest), and the rest saved as usual.
+            if (access.nameByRequest && isNameChanged) {
                 const reqRes = await fetch('/api/profile-requests', {
                     method: 'POST',
                     body: JSON.stringify({ newFirstName: firstName, newLastName: lastName }),
@@ -343,9 +365,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 method: 'PUT',
                 body: JSON.stringify({
                     id: userId,
-                    // Only send name if not restricted or not changed
-                    firstName: (isSelf && isRestrictedRole) ? undefined : firstName,
-                    lastName: (isSelf && isRestrictedRole) ? undefined : lastName,
+                    // Each as the form may change it (lib/profile-access.ts).
+                    firstName: access.nameByRequest ? undefined : firstName,
+                    lastName: access.nameByRequest ? undefined : lastName,
                     email,
                     password: password || undefined,
                     role,
@@ -355,15 +377,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     actingUntil: roleId && roleId !== currentRole?.id && actingDate ? actingDate : undefined,
                     gender,
                     avatar: avatarUrl,
-                    salary: can('salary.edit') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
-                    baseDayOffCredit: can('dayoff.adjust_credit') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
-                    username: userRole === 'SUPER_ADMIN' ? changedUsername(username, savedUsername) : undefined,
-                    status: can('employees.change_status') && userId !== session?.user?.id ? status : undefined,
+                    salary: access.changeSalary ? parseFloat(salary) || 0 : undefined,
+                    baseDayOffCredit: access.changeDayOffCredit ? parseFloat(baseDayOffCredit) || 0 : undefined,
+                    username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
+                    status: access.status ? status : undefined,
                     // undefined leaves it alone; null unassigns. The empty
                     // option means the second, so it cannot be sent as "".
-                    teamLeaderId: canAssignTeam && userId !== session?.user?.id && role === 'EMPLOYEE'
-                        ? (teamLeaderId || null)
-                        : undefined,
+                    teamLeaderId: access.teamLeader ? (teamLeaderId || null) : undefined,
                     reassignReportsTo: reassignTo
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -371,20 +391,22 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
 
             if (!res.ok) {
                 const text = await res.text()
-                // Read before the generic handling below, because this one is
-                // not an error to report — it is a question to ask.
-                try {
-                    const body = JSON.parse(text)
-                    const reports = body?.details?.reports
-                    if (Array.isArray(reports) && reports.length > 0) {
-                        setHandoff(reports)
-                        setSaving(false)
-                        return
-                    }
-                } catch { /* not JSON, fall through to the message below */ }
-                if (text.includes('"Username in use"')) throw new Error(t('username_in_use'))
-                if (text.includes("Username follows another company's username code")) throw new Error(t('username_reserved'))
-                throw new Error(apiErrorText(text, t('error_generic')))
+                let answer: { error?: string; details?: Record<string, unknown> } | null = null
+                try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
+                // Read before the rest, because this one is not an error to
+                // report — it is a question to ask.
+                const reports = answer?.details?.reports
+                if (Array.isArray(reports) && reports.length > 0) {
+                    setHandoff(reports)
+                    setSaving(false)
+                    return
+                }
+                // Under the field it's about, where it can be; above the buttons otherwise.
+                const refused = refusedField(answer)
+                if (refused) wrongAt({ [refused.field]: t(refused.key) })
+                else setFormError(apiErrorText(text, t('error_generic')))
+                setSaving(false)
+                return
             }
 
             setHandoff(null)
@@ -410,19 +432,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     router.refresh()
                 }, 1500)
             }
-        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            showToast(err.message || t('error_generic'), 'error')
+        } catch (err) {
+            // Above the buttons, where it stays to be read, not in a toast that left.
+            setFormError(err instanceof Error && err.message ? err.message : t('error_generic'))
             setSaving(false)
         }
     }
-
-    // Someone else's profile is under their name as it was loaded, not as it's
-    // being typed. Whose it is is known from the first paint, from the layout,
-    // before the session hook has loaded.
-    const own = userId === viewer?.id
-    const name = `${originalFirstName} ${originalLastName}`.trim() || email
-    // What they may see here and do, for the view and the form alike (PR 192).
-    const access = profileAccess({ can, viewer, person: { id: userId, role } })
 
     // The page's header from the start, and the building blocks' panel where
     // the profile will be (DESIGN.md §5.5, Loading). It was the old spinner,
@@ -481,325 +496,73 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         )
     }
 
+    // The role keeps its own controls until its part (UI_PLAN.md §5 step 5).
+    const roleField = access.role && (
+        <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
+            {role === 'SUPER_ADMIN' ? (
+                <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
+            ) : !can('employees.assign_role') ? (
+                // May only ask (§6.12): a request, not a change.
+                <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
+            ) : (
+                <RoleSelect
+                    companyId={companyId}
+                    value={roleId}
+                    // Moved to another company, their role there is chosen afresh.
+                    current={currentRole && currentRole.companyId === companyId ? currentRole : null}
+                    onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
+                    // Only the Super Admin acts on an Admin (§4.2, rule 7).
+                    locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                />
+            )}
+            {acting && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0' }}>
+                    {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
+                </p>
+            )}
+            {can('employees.assign_role') && roleId && roleId !== currentRole?.id && (
+                <div style={{ marginTop: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
+                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
+                </div>
+            )}
+        </div>
+    )
+
+    const values: ProfileValues = { firstName, lastName, gender, email, username, salary, dayOffCredit: baseDayOffCredit, password, status, teamLeaderId }
+    const setters: Record<keyof ProfileValues, (value: string) => void> = {
+        firstName: setFirstName, lastName: setLastName, gender: setGender, email: setEmail, username: setUsername,
+        salary: setSalary, dayOffCredit: setBaseDayOffCredit, password: setPassword, status: setStatus, teamLeaderId: setTeamLeaderId,
+    }
+    // Typed again, a field's mistake is gone.
+    const set = (field: keyof ProfileValues, value: string) => {
+        setters[field](value)
+        if (field in fieldErrors && fieldErrors[field as ProfileField]) setFieldErrors(errors => ({ ...errors, [field]: undefined }))
+    }
+
     return (
         <Page>
             <ProfileHeader own={own} editing name={name} />
             {pendingRequest && <NameChangeWaiting name={`${pendingRequest.newFirstName} ${pendingRequest.newLastName}`.trim()} requestId={pendingRequest.id} />}
             <Card>
                 <ProfilePhoto userId={userId} name={name} photo={avatarUrl} canChange own={own} onChange={setAvatarUrl} />
-                <form onSubmit={handleSubmit} className="ui-form">
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('first_name_label')}</label>
-                            <input aria-label={t('first_name_label')}
-                                className="input"
-                                value={firstName}
-                                onChange={e => setFirstName(e.target.value)}
-                                required
-                                style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('last_name_label')}</label>
-                            <input aria-label={t('last_name_label')}
-                                className="input"
-                                value={lastName}
-                                onChange={e => setLastName(e.target.value)}
-                                required
-                                style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('gender_label')}</label>
-                        <select aria-label={t('gender_label')}
-                            className="input"
-                            value={gender}
-                            onChange={e => setGender(e.target.value)}
-                            required
-                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        >
-                            <option value="MALE">{t('male')}</option>
-                            <option value="FEMALE">{t('female')}</option>
-                        </select>
-                    </div>
-
-                    {access.company && (
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
-                            {role === 'SUPER_ADMIN' ? (
-                                <input aria-label={t('company_label')}
-                                    className="input"
-                                    value="SHSD"
-                                    disabled
-                                    readOnly
-                                    style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                />
-                            ) : (
-                                // Shown, never changed: a person stays in the
-                                // company they were added to, and the server
-                                // refuses any other (COMPANY_CHANGE_FORBIDDEN).
-                                <select
-                                    aria-label={t('company_label')}
-                                    className="input"
-                                    value={companyId}
-                                    disabled
-                                    style={{ background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                >
-                                    <option value="">{t('select_company')}</option>
-                                    {companies.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
-                            )}
-                        </div>
-                    )}
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                        <input aria-label={t('email')}
-                            type="email"
-                            className="input"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            required
-                            disabled={userId === session?.user?.id}
-                            style={userId === session?.user?.id ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                        />
-                    </div>
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
-                        <input aria-label={t('username_label' as any) || 'Username'}
-                            className="input"
-                            spellCheck={false} autoCapitalize="none" autoComplete="off" translate="no"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            disabled={userRole !== 'SUPER_ADMIN'}
-                            style={userRole !== 'SUPER_ADMIN' ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                            placeholder={t('username_placeholder' as any) || 'Username'}
-                        />
-                    </div>
-
-                    {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
-                    {
-                        access.salary && (
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
-                                <input aria-label={t('monthly_base_salary_label')}
-                                    type="number"
-                                    className="input"
-                                    value={salary}
-                                    onChange={e => setSalary(e.target.value)}
-                                    disabled={userId === session?.user?.id || !can('salary.edit')}
-                                    max={1000000000}
-                                    style={(userId === session?.user?.id || !can('salary.edit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
-                                />
-                            </div>
-                        )
-                    }
-
-                    {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
-                    {
-                        access.dayOffCredit && (
-                            <>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
-                                    <input aria-label={t('day_off_credit_assigned')}
-                                        type="number"
-                                        className="input"
-                                        value={baseDayOffCredit}
-                                        onChange={e => setBaseDayOffCredit(e.target.value)}
-                                        disabled={userId === session?.user?.id || !can('dayoff.adjust_credit')}
-                                        step="0.5"
-                                        style={(userId === session?.user?.id || !can('dayoff.adjust_credit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    />
-                                </div>
-                            </>
-                        )
-                    }
-
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
-                        <div style={{ position: 'relative' }}>
-                            <input aria-label={t('new_password_optional_label')}
-                                type={showNewPassword ? "text" : "password"}
-                                className="input"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                minLength={12}
-                                maxLength={72}
-                                placeholder={t('keep_current_password_placeholder')}
-                                style={{
-                                    textAlign: locale === 'ar' ? 'right' : 'left',
-                                    [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
-                                }}
-                            />
-                            <button
-                                type="button"
-                                aria-label={showNewPassword ? t('hide_password' as any) : t('show_password' as any)}
-                                aria-pressed={showNewPassword}
-                                onClick={() => setShowNewPassword(!showNewPassword)}
-                                style={{
-                                    position: 'absolute',
-                                    [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: '0.25rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    color: 'var(--text-soft)'
-                                }}
-                            >
-                                {showNewPassword ? (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                                    </svg>
-                                ) : (
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-
-                    {
-                        access.role && (
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-                                {role === 'SUPER_ADMIN' ? (
-                                    <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
-                                ) : !can('employees.assign_role') ? (
-                                    // May only ask (§6.12): a request, not a change.
-                                    <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
-                                ) : (
-                                    <RoleSelect
-                                        companyId={companyId}
-                                        value={roleId}
-                                        // Moved to another company, their role there is chosen afresh.
-                                        current={currentRole && currentRole.companyId === companyId ? currentRole : null}
-                                        onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
-                                        // Only the Super Admin acts on an Admin (§4.2, rule 7).
-                                        locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
-                                        style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                    />
-                                )}
-                                {acting && (
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0' }}>
-                                        {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
-                                    </p>
-                                )}
-                                {can('employees.assign_role') && roleId && roleId !== currentRole?.id && (
-                                    <div style={{ marginTop: '0.75rem' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                                        <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
-                                    </div>
-                                )}
-                            </div>
-                        )
-                    }
-
-                    {
-                        /* Read-only, and only on your own profile. Everywhere else
-                           the field above is an Admin's control; here it is simply
-                           information, because knowing who manages you is not
-                           something you should have to ask a colleague for. */
-                        access.ownTeamLeader && (
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_yours')}</label>
-                                <p style={{
-                                    margin: 0,
-                                    padding: '0.6rem 0.75rem',
-                                    borderRadius: '0.5rem',
-                                    background: 'var(--surface-sunk)',
-                                    color: myLeader ? 'var(--text-body)' : 'var(--text-faint)',
-                                    textAlign: locale === 'ar' ? 'right' : 'left',
-                                }}>
-                                    {myLeader ? `${myLeader.firstName} ${myLeader.lastName}` : t('team_leader_yours_none')}
-                                </p>
-                            </div>
-                        )
-                    }
-
-                    {
-                        /* Only an employee has a team leader — leaders are not led,
-                           and an Admin is not managed through this screen. The field
-                           disappears rather than greying out when the role above is
-                           changed, because an empty disabled control invites the
-                           question of what it would mean. */
-                        access.teamLeader && (
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
-                                <select aria-label={t('team_leader_label')}
-                                    className="input"
-                                    value={teamLeaderId}
-                                    onChange={e => setTeamLeaderId(e.target.value)}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                >
-                                    <option value="">{t('team_leader_none')}</option>
-                                    {leaders.filter(l => l.id !== userId).map(l => (
-                                        <option key={l.id} value={l.id}>{l.firstName} {l.lastName}</option>
-                                    ))}
-                                </select>
-                                <p style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_hint')}</p>
-                            </div>
-                        )
-                    }
-
-                    {
-                        access.status && (
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
-                                <select aria-label={t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}
-                                    className="input"
-                                    value={status}
-                                    onChange={e => setStatus(e.target.value)}
-                                    required
-                                    disabled={status === 'ARCHIVED'}
-                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                >
-                                    <option value="ACTIVE">{t('status_active' as any) || (locale === 'ar' ? 'نشط' : 'Active')}</option>
-                                    <option value="SUSPENDED">{t('status_suspended' as any) || (locale === 'ar' ? 'موقوف' : 'Suspended')}</option>
-                                    <option value="OFFLINE">{t('status_offline' as any) || (locale === 'ar' ? 'غير متصل' : 'Offline')}</option>
-                                    {/*
-                                      Rendered only when it is already the value,
-                                      and the select is disabled with it. Without
-                                      the option the select would show ACTIVE for
-                                      an archived person — the browser picks the
-                                      first entry when the value matches none — and
-                                      saving the form would quietly reinstate them.
-                                    */}
-                                    {status === 'ARCHIVED' && (
-                                        <option value="ARCHIVED">{t('status_archived')}</option>
-                                    )}
-                                </select>
-                            </div>
-                        )
-                    }
-
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-start', flexDirection: 'row' }}>
-                        <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? t('updating_button') : t('update_button')}
-                        </button>
-                        <button
-                            type="button"
-                            className="btn"
-                            style={{ background: 'var(--border)', color: 'var(--text-strong)' }}
-                            onClick={() => { startNavigationProgress(); router.back() }}
-                        >
-                            {t('close_button')}
-                        </button>
-                    </div>
-                </form>
+                <ProfileForm
+                    values={values}
+                    set={set}
+                    errors={fieldErrors}
+                    error={formError}
+                    access={access}
+                    company={role === 'SUPER_ADMIN' ? 'SHSD' : companies.find(c => c.id === companyId)?.name ?? null}
+                    ownTeamLeader={myLeader ? `${myLeader.firstName} ${myLeader.lastName}`.trim() : null}
+                    leaders={leaders.filter(l => l.id !== userId).map(l => ({ id: l.id, name: `${l.firstName} ${l.lastName}`.trim() }))}
+                    busy={saving}
+                    role={roleField}
+                    onSubmit={handleSubmit}
+                    onCancel={() => { startNavigationProgress(); router.back() }}
+                />
             </Card>
 
             {

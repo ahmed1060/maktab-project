@@ -134,8 +134,6 @@ const ALLOWED: [file: string, line: string, why: string][] = [
 
     // components/EmployeeProfileForm.tsx
     ["components/EmployeeProfileForm.tsx", "if (userId === sessionUserId && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {", THE_PERSON],
-    ["components/EmployeeProfileForm.tsx", "const isRestrictedRole = role === 'EMPLOYEE' || role === 'TEAM_LEADER'", THE_PERSON],
-    ["components/EmployeeProfileForm.tsx", "teamLeaderId: canAssignTeam && userId !== session?.user?.id && role === 'EMPLOYEE'", THE_PERSON],
     // The Super Admin's roles card: the built-in Employee is the default when none is set, and an Admin-based role is never one
     ["components/CompanyRolesCard.tsx", "body: JSON.stringify({ companyId, roleId: role.builtIn === 'EMPLOYEE' ? null : role.id }),", THE_ROLE],
     ["components/CompanyRolesCard.tsx", "...(!role.isDefault && role.baseRole !== 'ADMIN' ? [", THE_ROLE],
@@ -151,6 +149,8 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     // Only an employee has a team leader
     ["lib/profile-access.ts", "ownTeamLeader: own && person.role === 'EMPLOYEE',", THE_PERSON],
     ["lib/profile-access.ts", "teamLeader: can('employees.assign_team') && !own && person.role === 'EMPLOYEE',", THE_PERSON],
+    // One's own name is asked for, not changed, on an employee's or a team leader's footing (PR 193)
+    ["lib/profile-access.ts", "nameByRequest: own && (person.role === 'EMPLOYEE' || person.role === 'TEAM_LEADER'),", THE_PERSON],
 ]
 
 const ROLE_CHECK = /(===?|!==?)\s*['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]|['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]\s*(===?|!==?)|\[[^\]]*['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"][^\]]*\]\s*\.includes|case\s+['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]/

@@ -46,12 +46,13 @@ describe("a username", () => {
         expect(changedUsername("K0", "k0")).toBe("K0")
         expect(changedUsername("mona", "k0")).toBe("mona")
         const form = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
-        expect(form).toMatch(/username: userRole === 'SUPER_ADMIN' \? changedUsername\(username, savedUsername\) : undefined/)
+        // The Super Admin's alone, as the route takes it (lib/profile-access.ts, PR 193).
+        expect(form).toContain("username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,")
     })
 
     it("is typed as it is: not spell-checked, capitalised, filled in or translated by the browser", () => {
-        const form = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
-        const input = form.slice(form.indexOf("<input aria-label={t('username_label' as any) || 'Username'}"))
+        const form = readFileSync("components/profile/ProfileForm.tsx", "utf8")
+        const input = form.slice(form.indexOf('<TextInput {...p} name="username"'))
         const tag = input.slice(0, input.indexOf("/>"))
         for (const attribute of ['spellCheck={false}', 'autoCapitalize="none"', 'autoComplete="off"', 'translate="no"']) expect(tag, attribute).toContain(attribute)
     })
