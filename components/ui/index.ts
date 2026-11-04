@@ -12,7 +12,7 @@ export { DataList, ItemTitle, DueDate, ListCard, visibleRow, type Column, type R
 export { Pager, pageInRange, pageWindow } from './Pager'
 export { Tabs, TabLinks, type TabItem } from './Tabs'
 export { StatusBadge, taskStatusTone, TASK_STATUS_TONE, type StatusTone } from './StatusBadge'
-export { Avatar, Person, initials } from './Avatar'
+export { Avatar, Person, Photo, initials } from './Avatar'
 export { PageHeader, Page, Columns, Section, SectionLink, PeriodBar, Rows, Row, Panel, Card, Details, SelectionBar, TotalTiles, DonutChart, donutArcs, EmptyState, Reserve, type Tile, type DonutPart } from './Blocks'
 export { DisclosureRow } from './DisclosureRow'
 export { FileChip, FileChips, FilePicker } from './Files'

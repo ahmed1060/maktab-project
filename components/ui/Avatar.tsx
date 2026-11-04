@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/
 
 /**
@@ -13,6 +15,17 @@ export function initials(name: string): string {
 /** A person's initials in a circle. Always beside their name, so it's hidden from screen readers. */
 export function Avatar({ name }: { name: string }) {
     return <span className="ui-avatar" aria-hidden="true">{initials(name)}</span>
+}
+
+/**
+ * A person's photo, at the top of their profile (DESIGN.md §5.5, A person's
+ * photo): their photo filling a circle 96px across, named for screen
+ * readers by `alt`, or their initials in an avatar's colours when they have
+ * none, which are hidden from them, as the page names them.
+ */
+export function Photo({ name, src, alt }: { name: string; src: string | null; alt: string }) {
+    if (!src) return <span className="ui-photo" aria-hidden="true">{initials(name)}</span>
+    return <span className="ui-photo"><Image src={src} alt={alt} width={96} height={96} /></span>
 }
 
 /** A person, or the first of several with how many more. */

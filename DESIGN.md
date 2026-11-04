@@ -635,6 +635,18 @@ These are built once, in the building-blocks PR, and every page uses them
   - each file, picked or saved, is a chip with a file icon, its name and
     its size. A saved file's chip opens it in a new tab, and says so to
     screen readers. A chip's remove button is named for its file.
+- **A person's photo,** at the top of their profile's card: a circle 96px
+  across, their photo filling it, or their initials in an avatar's colours
+  when they have none, never a drawing that stands in for them.
+  - Where it can be changed, beside it are "Upload a photo" ("Change
+    photo" once there's one), the file picker (above) for one image, its
+    hint saying which kinds, how large, and that it's saved as soon as
+    it's uploaded, and "Remove photo", a quiet button that asks first.
+  - A file that's too large, or isn't a photo, is said under the picker
+    before anything is sent, as is a photo that couldn't be saved.
+  - The photo is saved without the form's own button. While it's sent,
+    the picker is off, and a line under it says so, which a screen reader
+    hears.
 - **Expiry:** an item with an expiry date, such as a record, shows the date
   with a badge beside it:
   - "Expired" (Problem, with the warning icon) once the day has passed;
@@ -1072,3 +1084,9 @@ changed:
   Loading), as most pages already did. The last five places waited behind
   a spinner of their own making, which took the whole page, and the
   language's switch showed it over the whole screen.
+- **2026-11-04:** A person's photo (§5.5), at the top of their profile.
+  It was a circle of its own making with a drawn man or woman for someone
+  with no photo, chosen by their gender, and a window of its own to see
+  the photo larger before it could be changed. Its picker took any image,
+  so one the server doesn't take, such as a HEIC or an AVIF, was sent
+  before it was refused, in English.
