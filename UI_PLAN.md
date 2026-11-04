@@ -3573,3 +3573,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   given back to five, the 30 seconds started again. Only the fifth moves
   it when counted; the fifteen minutes run from the tenth wrong try once
   it's known to be wrong.
+- **2026-11-04:** Found by Codex, on #183: a try waiting on the step that
+  asks for the code, given back after the account was unlocked or signed in
+  and a new run paused, took one off the new run, and let a guess through
+  the 30 seconds. Each run has an id of its own (a new column, added only),
+  and a try is given back, or marked wrong, only in the run it was counted
+  in.

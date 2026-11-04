@@ -15,7 +15,7 @@ const db = {
     superAdmins: {} as Record<string, any>,
     users: {} as Record<string, any>,
     failLogin: false,
-    limits: {} as Record<string, { count: number; resetAt: Date }>,
+    limits: {} as Record<string, { count: number; resetAt: Date; run?: string | null }>,
     gate: null as Promise<void> | null,
     ip: "203.0.113.7",
 }
@@ -44,7 +44,7 @@ vi.mock("@/lib/prisma", () => ({
             delete: async ({ where }: any) => { delete db.limits[where.key] },
             create: async ({ data }: any) => {
                 if (db.limits[data.key]) throw new Error("Unique constraint failed on the fields: (`key`)")
-                return (db.limits[data.key] = { count: data.count, resetAt: data.resetAt })
+                return (db.limits[data.key] = { count: data.count, resetAt: data.resetAt, run: data.run ?? null })
             },
             // One row at a time, as Postgres takes the row and checks the
             // conditions again on what it finds. A try given back can be held
@@ -68,7 +68,7 @@ function fits(row: { count: number; resetAt: Date } | undefined, where: any): bo
     for (const [field, cond] of Object.entries(fields) as [keyof typeof row, any][]) {
         const value = row[field] as any
         if (cond instanceof Date) { if (value.getTime() !== cond.getTime()) return false; continue }
-        if (typeof cond === "number") { if (value !== cond) return false; continue }
+        if (typeof cond === "number" || typeof cond === "string" || cond === null) { if ((value ?? null) !== cond) return false; continue }
         if (cond.in !== undefined && !cond.in.includes(value)) return false
         if (cond.gt !== undefined && !(value > cond.gt)) return false
         if (cond.gte !== undefined && !(value >= cond.gte)) return false
@@ -82,6 +82,7 @@ function change(row: { count: number; resetAt: Date }, data: any) {
     else if (data.count?.increment) row.count += data.count.increment
     else if (data.count?.decrement) row.count -= data.count.decrement
     if (data.resetAt) row.resetAt = data.resetAt
+    if (data.run !== undefined) (row as any).run = data.run
 }
 const failures: string[] = []
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": db.ip }) }))
@@ -267,6 +268,23 @@ describe("signing in, a pause after five wrong tries and a lock after ten", () =
         for (const t of tries) if (t.kind === "counted") await giveBackSignIn(t)
         expect(db.limits["login:account:sa"].count).toBe(5)
         expect(await authorize({ email, password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+    })
+
+    it("gives a try back only to the run it was counted in (Codex on PR 183)", async () => {
+        // A try waits on the step that asks for the code; meanwhile the
+        // account is unlocked and five wrong tries start a new run, paused.
+        // Given back, it took one off the new run, and let a guess through
+        // the 30 seconds.
+        const { countSignIn, giveBackSignIn, markWrongSignIn, unlockSignIn } = await import("@/lib/sign-in-lock")
+        const waiting = await countSignIn("login:account:sa")
+        if (waiting.kind !== "counted") throw new Error("should be counted")
+        await unlockSignIn("sa")
+        for (let i = 0; i < 5; i++) expect(await authorize({ email, password: "wrong" })).toBeNull()
+        const paused = { ...db.limits["login:account:sa"] }
+        await giveBackSignIn(waiting)
+        await markWrongSignIn(waiting, new Date(Date.now() + 60_000))
+        expect(db.limits["login:account:sa"]).toMatchObject({ count: 5, resetAt: paused.resetAt })
+        await expect(authorize({ email, password: "wrong" })).rejects.toThrow("Sign-in paused")
     })
 
     it("remembers a run fifteen minutes from its last wrong try, not its first", async () => {

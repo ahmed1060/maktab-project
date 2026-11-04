@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { RateLimiter } from '@/lib/api-utils'
 import { prisma } from '@/lib/prisma'
 
@@ -46,8 +46,12 @@ export type Hold = { kind: 'pause' | 'lock'; until: Date }
 
 type Run = { count: number; resetAt: Date }
 
-/** A try counted, to give back or mark wrong once its password has been checked. */
-export type Counted = { kind: 'counted'; key: string }
+/**
+ * A try counted, to give back or mark wrong once its password has been
+ * checked: in the run it was counted in, and no other, as the account may be
+ * unlocked or signed in meanwhile and a new run started (Codex on PR 183).
+ */
+export type Counted = { kind: 'counted'; key: string; run: string | null }
 
 /**
  * What a run of wrong tries holds back now. Its resetAt is when it's
@@ -84,60 +88,70 @@ export function holdOf(run: Run | null, now: Date): Hold | null {
  */
 export async function countSignIn(key: string, now: Date = new Date()): Promise<Hold | Counted> {
     const pause: Hold = { kind: 'pause', until: new Date(now.getTime() + PAUSE_MS) }
+    const resetAt = new Date(now.getTime() + LOCK_MS)
     try {
-        const found = await prisma.rateLimit.findUnique({ where: { key } })
-        const run = found && found.resetAt > now ? found : null
-        const held = holdOf(run, now)
-        if (held) return held
-        const counted: Counted = { kind: 'counted', key }
-        const resetAt = new Date(now.getTime() + LOCK_MS)
+        // Looked at again when another try changes the run first.
+        for (let look = 0; look < 3; look++) {
+            const found = await prisma.rateLimit.findUnique({ where: { key } })
+            const run = found && found.resetAt > now ? found : null
+            const held = holdOf(run, now)
+            if (held) return held
 
-        // No run: this try starts one, unless another sent with it already has.
-        if (!run && await startRun(key, found !== null, now, resetAt)) return counted
+            // No run: this try starts one, unless another sent with it already has.
+            if (!run) {
+                const started = await startRun(key, found !== null, now, resetAt)
+                if (started) return { kind: 'counted', key, run: started }
+                continue
+            }
 
-        const live = { key, resetAt: { gt: now } }
-        const added = await prisma.rateLimit.updateMany({
-            where: {
-                ...live,
-                OR: [
-                    { count: { lt: PAUSE_AFTER - 1 } },
-                    { count: PAUSE_AFTER, resetAt: { lte: new Date(now.getTime() + LOCK_MS - PAUSE_MS) } },
-                    { count: { gt: PAUSE_AFTER, lt: LOCK_AFTER } },
-                ],
-            },
-            data: { count: { increment: 1 } },
-        })
-        if (added.count) return counted
-        // The fifth: the 30 seconds run from it.
-        const marked = await prisma.rateLimit.updateMany({
-            where: { ...live, count: PAUSE_AFTER - 1 },
-            data: { count: { increment: 1 }, resetAt },
-        })
-        if (marked.count) return counted
-
-        // Another try got there first: what holds this one back now.
+            // Counted in this run only: one started meanwhile is looked at again.
+            const live = { key, run: run.run, resetAt: { gt: now } }
+            const added = await prisma.rateLimit.updateMany({
+                where: {
+                    ...live,
+                    OR: [
+                        { count: { lt: PAUSE_AFTER - 1 } },
+                        { count: PAUSE_AFTER, resetAt: { lte: new Date(now.getTime() + LOCK_MS - PAUSE_MS) } },
+                        { count: { gt: PAUSE_AFTER, lt: LOCK_AFTER } },
+                    ],
+                },
+                data: { count: { increment: 1 } },
+            })
+            if (added.count) return { kind: 'counted', key, run: run.run }
+            // The fifth: the 30 seconds run from it.
+            const marked = await prisma.rateLimit.updateMany({
+                where: { ...live, count: PAUSE_AFTER - 1 },
+                data: { count: { increment: 1 }, resetAt },
+            })
+            if (marked.count) return { kind: 'counted', key, run: run.run }
+        }
+        // Still changing under it: what holds it back now, or the 30 seconds.
         const again = await prisma.rateLimit.findUnique({ where: { key } })
-        if (!again || again.resetAt <= now) return (await startRun(key, again !== null, now, resetAt)) ? counted : pause
-        return holdOf(again, now) ?? pause
+        return holdOf(again && again.resetAt > now ? again : null, now) ?? pause
     } catch (e) {
         console.error('[sign-in lock] database error, failing closed', e)
         return pause
     }
 }
 
-/** Starts a run at one: a new row, or a forgotten one started over. Only one of the tries sent together does. */
-async function startRun(key: string, exists: boolean, now: Date, resetAt: Date): Promise<boolean> {
+/**
+ * Starts a run at one, with an id of its own: a new row, or a forgotten one
+ * started over. Only one of the tries sent together does; it says the run's
+ * id, or null when another got there first.
+ */
+async function startRun(key: string, exists: boolean, now: Date, resetAt: Date): Promise<string | null> {
+    const run = randomUUID()
     if (!exists) {
         try {
-            await prisma.rateLimit.create({ data: { key, count: 1, resetAt } })
-            return true
+            await prisma.rateLimit.create({ data: { key, count: 1, resetAt, run } })
+            return run
         } catch {
             // Somebody's row was made first: counted on from it.
-            return false
+            return null
         }
     }
-    const started = await prisma.rateLimit.updateMany({ where: { key, resetAt: { lte: now } }, data: { count: 1, resetAt } })
-    return started.count > 0
+    const started = await prisma.rateLimit.updateMany({ where: { key, resetAt: { lte: now } }, data: { count: 1, resetAt, run } })
+    return started.count > 0 ? run : null
 }
 
 /**
@@ -160,7 +174,7 @@ export function holdMessage(hold: Hold, now: Date = new Date()): string {
  */
 export async function giveBackSignIn(counted: Counted): Promise<void> {
     try {
-        await prisma.rateLimit.updateMany({ where: { key: counted.key, count: { gt: 0 } }, data: { count: { decrement: 1 } } })
+        await prisma.rateLimit.updateMany({ where: { key: counted.key, run: counted.run, count: { gt: 0 } }, data: { count: { decrement: 1 } } })
     } catch { }
 }
 
@@ -168,7 +182,7 @@ export async function giveBackSignIn(counted: Counted): Promise<void> {
 export async function markWrongSignIn(counted: Counted, now: Date = new Date()): Promise<void> {
     const resetAt = new Date(now.getTime() + LOCK_MS)
     try {
-        await prisma.rateLimit.updateMany({ where: { key: counted.key, count: { gt: 0 }, resetAt: { lt: resetAt } }, data: { resetAt } })
+        await prisma.rateLimit.updateMany({ where: { key: counted.key, run: counted.run, count: { gt: 0 }, resetAt: { lt: resetAt } }, data: { resetAt } })
     } catch { }
 }
 
