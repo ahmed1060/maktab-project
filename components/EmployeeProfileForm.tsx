@@ -23,7 +23,6 @@ import { ProfileForm, type ProfileValues } from '@/components/profile/ProfileFor
 import { profileAccess } from '@/lib/profile-access'
 import { PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
 import { resetRefusal } from '@/lib/profile-password'
-import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 
 type EmployeeProfileFormProps = {
@@ -581,7 +580,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     busy={saving}
                     role={roleField}
                     onSubmit={handleSubmit}
-                    onCancel={() => { startNavigationProgress(); router.back() }}
+                    cancelHref={`/dashboard/employees/${userId}?mode=view`}
                 />
             </Card>
 

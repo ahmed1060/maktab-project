@@ -3949,3 +3949,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Reloading or closing the tab with something typed asks first, as Add
     employee does; not while it's being sent, nor once it's saved (web
     interface audit).
+  - Cancel is a link to their details, as every page form's Cancel is a
+    link: it went back, so in a tab opened onto the form it did nothing
+    (web interface audit).

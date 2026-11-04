@@ -1,7 +1,7 @@
 'use client'
 import type { FormEvent, ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
-import { Button, Choice, Field, PasswordInput, Select, TextInput } from '@/components/ui'
+import { Button, ButtonLink, Choice, Field, PasswordInput, Select, TextInput } from '@/components/ui'
 import { NAME_MAX, PASSWORD_MAX } from '@/lib/new-employee-form'
 import { STATUS_WORD } from '@/lib/person-status'
 import type { ProfileAccess } from '@/lib/profile-access'
@@ -34,7 +34,7 @@ export type ProfileValues = {
 /** The statuses an edit may set; ending a contract is its own (the view's End contract). */
 const SETTABLE = ['ACTIVE', 'SUSPENDED', 'OFFLINE'] as const
 
-export function ProfileForm({ values, set, errors, error, access, company, ownTeamLeader, leaders, busy, role, onSubmit, onCancel }: {
+export function ProfileForm({ values, set, errors, error, access, company, ownTeamLeader, leaders, busy, role, onSubmit, cancelHref }: {
     values: ProfileValues
     set: (field: keyof ProfileValues, value: string) => void
     errors: Partial<Record<ProfileField, string>>
@@ -50,7 +50,8 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
     /** The role, where it's chosen: its own part, until it's on the building blocks too. */
     role?: ReactNode
     onSubmit: (e: FormEvent) => void
-    onCancel: () => void
+    /** Where Cancel goes, a link, as every page form's is: their details. */
+    cancelHref: string
 }) {
     const { t, locale } = useLanguage()
     const digits = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
@@ -141,7 +142,7 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
             {error && <p className="ui-error" role="alert">{error}</p>}
             <div className="ui-form-actions">
                 <Button type="submit" variant="primary" busy={busy}>{busy ? t('saving') : t('save')}</Button>
-                <Button onClick={onCancel} disabled={busy}>{t('cancel')}</Button>
+                <ButtonLink href={cancelHref} prefetch={false}>{t('cancel')}</ButtonLink>
             </div>
         </form>
     )

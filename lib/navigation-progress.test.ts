@@ -53,12 +53,14 @@ describe("the bar", () => {
         expect(css).toMatch(/\[dir="rtl"\] \.nav-progress/)
     })
 
-    it("starts for the buttons that go back, which can't be links", () => {
+    it("has no button left that goes back: the last, a profile's Cancel, is a link to their details", () => {
         // The Profile requests page sends people to the Requests page now, with no back button of its own (UI_PLAN.md §2.3, part 5a),
-        // and an employee's history has a back link in its page header, a link (PR 157).
-        for (const f of ["components/EmployeeProfileForm.tsx"]) {
-            expect(readFileSync(f, "utf8"), f).toMatch(/startNavigationProgress\(\); router\.back\(\)/)
-        }
+        // an employee's history has a back link in its page header, a link (PR 157), and a profile's Cancel
+        // is a link, as every page form's is: going back, it did nothing in a tab opened onto the form (PR 193).
+        const profile = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
+        expect(profile).not.toMatch(/startNavigationProgress\(\); router\.back\(\)/)
+        expect(profile).toContain("cancelHref={`/dashboard/employees/${userId}?mode=view`}")
+        expect(readFileSync("components/profile/ProfileForm.tsx", "utf8")).toContain("<ButtonLink href={cancelHref} prefetch={false}>{t('cancel')}</ButtonLink>")
     })
 
     it("buttons that only went to another page are links now", () => {

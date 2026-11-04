@@ -34,7 +34,7 @@ const VALUES = {
 }
 const props = (over: Record<string, unknown> = {}) => ({
     values: VALUES, set: () => {}, errors: {}, error: null, access: ACCESS, company: null, ownTeamLeader: null,
-    leaders: [{ id: "tl1", name: "Rania Fahmy" }, { id: "tl2", name: "Omar Said" }], busy: false, onSubmit: () => {}, onCancel: () => {}, ...over,
+    leaders: [{ id: "tl1", name: "Rania Fahmy" }, { id: "tl2", name: "Omar Said" }], busy: false, onSubmit: () => {}, cancelHref: "/dashboard/employees/u1?mode=view", ...over,
 })
 async function form(over: Record<string, unknown> = {}) {
     const { ProfileForm } = await import("@/components/profile/ProfileForm")
@@ -132,9 +132,9 @@ describe("the form, on the building blocks", () => {
     it("is a form the browser doesn't check, its fields one under the other, Save first", async () => {
         const html = await form()
         expect(html).toMatch(/^<form class="ui-form" novalidate="">/i)
-        expect(html).toMatch(/<div class="ui-form-actions"><button type="submit" class="ui-btn ui-btn-primary">[^<]*<\/button><button type="button" class="ui-btn ui-btn-secondary">[^<]*<\/button><\/div><\/form>$/)
+        expect(html).toMatch(/<div class="ui-form-actions"><button type="submit" class="ui-btn ui-btn-primary">[^<]*<\/button><a [^>]*>[^<]*<\/a><\/div><\/form>$/)
         expect(html).toContain(`>${en.save}</button>`)
-        expect(html).toContain(`>${en.cancel}</button>`)
+        expect(html).toContain(`>${en.cancel}</a>`)
         // Their order, as the profile reads.
         const order = [en.first_name_label, en.last_name_label, en.gender_label, en.email, en.username_label, en.monthly_base_salary_label, en.day_off_credit_assigned, en.new_password_optional_label, en.team_leader_label, en.status_label]
         const at = order.map(label => html.indexOf(`>${esc(label)}</`))
@@ -366,9 +366,14 @@ describe("the profile, wired to its form", () => {
         expect(FORM.match(/setChanged\(false\)/g) ?? []).toHaveLength(1)
     })
 
-    it("is the building blocks' form, and Cancel goes back", () => {
+    // Every other page form's Cancel is a link; this one went back, so in a
+    // tab opened onto the form it did nothing (web interface audit).
+    it("is the building blocks' form, and Cancel is a link to their details, as Add employee's is to Employees", async () => {
         expect(FORM).toContain("<ProfileForm")
-        expect(FORM).toContain("onCancel={() => { startNavigationProgress(); router.back() }}")
+        expect(FORM).toContain("cancelHref={`/dashboard/employees/${userId}?mode=view`}")
+        expect(FORM).not.toContain("onCancel={() => { startNavigationProgress(); router.back() }}")
+        const html = await form()
+        expect(html).toMatch(new RegExp(`<a (?=[^>]*class="ui-btn ui-btn-secondary")(?=[^>]*href="/dashboard/employees/u1\\?mode=view")[^>]*>${en.cancel}</a>`))
         // Its eye was drawn by hand, and its fields chose their sides.
         expect(FORM).not.toContain("setShowNewPassword")
         expect(FORM).not.toContain("<svg")
