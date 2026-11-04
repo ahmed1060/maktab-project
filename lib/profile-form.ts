@@ -68,6 +68,7 @@ export function refusedField(body: { error?: string; details?: Record<string, un
     if (!body) return null
     if (body.error === 'Username in use') return { field: 'username', key: 'username_in_use' }
     if (body.error === USERNAME_RESERVED) return { field: 'username', key: 'username_reserved' }
+    if (body.error === 'Email in use') return { field: 'email', key: 'emp_new_email_taken' }
     const details = body.details ?? {}
     if (details.firstName) return { field: 'firstName', key: 'profile_first_name_invalid' }
     if (details.lastName) return { field: 'lastName', key: 'profile_last_name_invalid' }

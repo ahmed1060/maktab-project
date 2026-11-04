@@ -3935,3 +3935,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     only by the Super Admin. A role that may edit a profile but not reset
     a password was offered it, and its save was refused (found reading the
     code).
+  - An email somebody else has is said under the email when someone's is
+    changed: the save failed as the app failing, a 500, since only a
+    username's clash was caught (found reading the code).

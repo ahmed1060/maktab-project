@@ -104,6 +104,11 @@ describe("what the server refuses, under the field it's about", () => {
         expect(refusedField({ error: "Username follows another company's username code" })).toEqual({ field: "username", key: "username_reserved" })
     })
 
+    it("says an email somebody else has under the email", async () => {
+        const { refusedField } = await import("@/lib/profile-form")
+        expect(refusedField({ error: "Email in use" })).toEqual({ field: "email", key: "emp_new_email_taken" })
+    })
+
     it("says a field the route found wrong under it", async () => {
         const { refusedField } = await import("@/lib/profile-form")
         const details = (field: string) => ({ error: "Validation Error", details: { [field]: { _errors: ["Too long"] } } })

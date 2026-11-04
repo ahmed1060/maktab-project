@@ -6,6 +6,13 @@ import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
 import { freeUsername, generateUsername, usernameReserved, usernameTaken } from "@/lib/username"
 import { isUsernameClash, usernameFromEmail } from "@/lib/username-rules"
+
+/**
+ * Whether a save was refused for an email somebody else has: the unique index
+ * caught it, and Prisma names the column, or the index, in the error's meta.
+ * It escaped as a 500 (a person's profile, part 3, PR 193).
+ */
+const isEmailClash = (error: unknown) => (error as { code?: string })?.code === "P2002" && /email/i.test(JSON.stringify((error as { meta?: unknown }).meta ?? {}))
 import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
@@ -507,6 +514,7 @@ export class UserService {
             ).catch(error => {
                 // Given to somebody else a moment ago, after the check above.
                 if (updateData.username !== undefined && isUsernameClash(error)) throw new Error("USERNAME_IN_USE")
+                if (updateData.email !== undefined && isEmailClash(error)) throw new Error("EMAIL_IN_USE")
                 throw error
             })
             // A role given directly settles any request still waiting for this

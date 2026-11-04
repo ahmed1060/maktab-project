@@ -87,4 +87,11 @@ describe.skipIf(!ADMIN_URL)("a username chosen for someone new, in Postgres", ()
         await expect(hire("A_B")).rejects.toThrow("USERNAME_IN_USE")
         await expect(hire("%")).rejects.toThrow("USERNAME_IN_USE")
     })
+
+    // A person's email changed to one somebody else has: Prisma's unique
+    // index caught it, and it escaped as a 500 (a person's profile, part 3, PR 193).
+    it("refuses an email somebody else has, when a person's is changed, as that", async () => {
+        await expect(Users.update({ id: "e1", email: "e2@x" } as any, admin)).rejects.toThrow("EMAIL_IN_USE")
+        expect((await db.query(`SELECT email FROM "User" WHERE id = 'e1'`)).rows[0].email).toBe("e1@x")
+    })
 })
