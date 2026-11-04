@@ -277,6 +277,15 @@ describe("a photo picked", () => {
         expect(en.profile_photo_remove_question).not.toMatch(/\byour\b/i)
     })
 
+    // Web interface audit (PR 191): each said what was wrong, and left what
+    // to do about it to be worked out.
+    it("says what to do about a file that can't be used", () => {
+        expect(en.profile_photo_too_large).toBe("The photo is larger than 4\u00A0MB. Choose a smaller one.")
+        expect(en.profile_photo_wrong_type).toBe("That file can't be used. Choose a JPG, PNG, GIF or WebP photo.")
+        expect(ar.profile_photo_too_large).toContain("يُرجى اختيار صورة أصغر")
+        expect(ar.profile_photo_wrong_type).toContain("يُرجى اختيار صورة JPG أو PNG أو GIF أو WebP")
+    })
+
     it("takes the old window's words with it", () => {
         for (const key of ["manage_photo_title", "view_photo", "add_photo", "change_button", "upload_button", "reset_button", "uploading_photo", "uploading_in_progress", "resetting_in_progress",
             "profile_picture_label", "photo_updated_success", "photo_upload_failed", "photo_reset_success", "photo_reset_failed", "reset_photo_title", "reset_photo_warning"]) {
