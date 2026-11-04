@@ -3969,3 +3969,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     wrong under its field: it read as empty, as though left empty, and was
     saved as 0 over their pay, where the old form's own check had stopped
     it (Codex review).
+  - Whoever may ask for a role but may neither edit a person nor give a
+    role, as HR may (ROLES_PLAN.md §6.12), asks from their details, beside
+    the role: the form was the only place, which the change above made the
+    details for them (Codex review). Its control is as it was until the
+    role's part.

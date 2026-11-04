@@ -78,6 +78,19 @@ describe("someone else's profile, seen", () => {
         expect(got[en.role_label]).toBe('Employee<span class="ui-detail-note">Acting until 5 December 2026, then back to Team leader</span>')
     })
 
+    // Whoever may ask for a role but may neither edit them nor give one, as
+    // HR may (ROLES_PLAN.md §6.12), asks from their details: the form was
+    // the only place, and its save isn't theirs (Codex review, PR 193).
+    it("offers asking for another role beside the role, to whoever may only ask", async () => {
+        const got = Object.fromEntries(details(await view({ roleRequest: h("span", { id: "ask" }, "ask") })))
+        expect(got[en.role_label]).toBe('<div class="ui-detail-act">Employee<span id="ask">ask</span></div>')
+        // Its note stays under it.
+        const acting = Object.fromEntries(details(await view({ roleRequest: h("span", { id: "ask" }, "ask"), facts: { ...FACTS, acting: "Acting until 5 December 2026" } })))
+        expect(acting[en.role_label]).toBe('<div class="ui-detail-act">Employee<span id="ask">ask</span></div><span class="ui-detail-note">Acting until 5 December 2026</span>')
+        expect(FORM).toContain("roleRequest={access.role && !access.edit && !can('employees.assign_role')")
+        expect(FORM).toMatch(/\? <RoleRequestControl userId=\{userId\} companyId=\{companyId\} current=\{currentRole\} locked=\{role === 'ADMIN'\} \/>/)
+    })
+
     it("says only what the person looking may see", async () => {
         expect(details(await view({ access: NONE })).map(([label]) => label)).toEqual([en.email, en.username_label, en.gender_label])
     })

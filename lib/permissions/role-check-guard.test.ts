@@ -139,6 +139,8 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["components/CompanyRolesCard.tsx", "...(!role.isDefault && role.baseRole !== 'ADMIN' ? [", THE_ROLE],
     // Only the Super Admin changes an Admin's role (§4.2, rule 7): the field shows it, locked
     ["components/EmployeeProfileForm.tsx", "<RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />", ADMIN_ROLE],
+    // The same, asked for from their details (PR 193).
+    ["components/EmployeeProfileForm.tsx", "? <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} />", ADMIN_ROLE],
     ["components/EmployeeProfileForm.tsx", "locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}", ADMIN_ROLE],
 
     // lib/profile-access.ts: what a person's profile shows, for the view and the form (PR 192)

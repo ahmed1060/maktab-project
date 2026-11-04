@@ -507,6 +507,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // never the form's, beside whose Update it read as though
                     // Update would apply it.
                     onEndContract={() => setShowEndContract(true)}
+                    // Whoever may ask for a role but may neither edit them nor
+                    // give one asks from here: the form, where they asked
+                    // before, isn't theirs (ROLES_PLAN.md §6.12).
+                    roleRequest={access.role && !access.edit && !can('employees.assign_role')
+                        ? <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} />
+                        : undefined}
                 />
                 {showEndContract && (
                     <EndContractModal
