@@ -3946,3 +3946,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     held back sends whoever decides roles, or a role without the edit
     permission. It was the form to fill in, and its save was refused
     (found reading the code).
+  - Reloading or closing the tab with something typed asks first, as Add
+    employee does; not while it's being sent, nor once it's saved (web
+    interface audit).

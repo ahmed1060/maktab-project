@@ -112,6 +112,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // while it's sent. Numbered, so the same field asked for again is focused
     // again (as Add employee's).
     const [focusOn, setFocusOn] = useState<{ field: ProfileField; n: number } | null>(null)
+    // Something typed since it was loaded or saved, which a reload or a
+    // closed tab would lose.
+    const [changed, setChanged] = useState(false)
     // Set once a temporary password has been issued via the reset flow (F-02)
     // — shown to the acting admin exactly once, never persisted or re-fetchable.
     const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null)
@@ -311,6 +314,15 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         document.querySelector<HTMLElement>(`[name="${focusOn.field}"]`)?.focus()
     }, [focusOn, saving])
 
+    // Reloading or closing the tab with something typed asks first, as Add
+    // employee does; not while it's being sent.
+    useEffect(() => {
+        if (!changed || saving || seeing) return
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [changed, saving, seeing])
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
         setFormError(null)
@@ -415,6 +427,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             }
 
             setHandoff(null)
+            // Saved, it's nothing to lose.
+            setChanged(false)
 
             // Sync Logic
             if (userId === session?.user?.id) {
@@ -516,7 +530,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     value={roleId}
                     // Moved to another company, their role there is chosen afresh.
                     current={currentRole && currentRole.companyId === companyId ? currentRole : null}
-                    onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
+                    onChange={(id, chosen) => { setRoleId(id); setChanged(true); if (chosen) setRole(chosen.baseRole) }}
                     // Only the Super Admin acts on an Admin (§4.2, rule 7).
                     locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
                     style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
@@ -530,7 +544,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             {can('employees.assign_role') && roleId && roleId !== currentRole?.id && (
                 <div style={{ marginTop: '0.75rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
+                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => { setActingDate(e.target.value); setChanged(true) }} />
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
                 </div>
             )}
@@ -545,6 +559,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // Typed again, a field's mistake is gone.
     const set = (field: keyof ProfileValues, value: string) => {
         setters[field](value)
+        setChanged(true)
         if (field in fieldErrors && fieldErrors[field as ProfileField]) setFieldErrors(errors => ({ ...errors, [field]: undefined }))
     }
 

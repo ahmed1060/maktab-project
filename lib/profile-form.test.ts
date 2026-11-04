@@ -350,6 +350,22 @@ describe("the profile, wired to its form", () => {
         expect(FORM).toContain("<ProfileHeader own={own} editing={!seeing} name={null} />")
     })
 
+    // As Add employee does; the profile didn't (web interface audit).
+    it("asks before a reload or a closed tab loses what's typed, but not while it's sent, or once it's saved", () => {
+        expect(FORM).toContain("if (!changed || saving || seeing) return")
+        expect(FORM).toContain("window.addEventListener('beforeunload', warn)")
+        expect(FORM).toContain("return () => window.removeEventListener('beforeunload', warn)")
+        // Whatever's typed, the role and its return date too.
+        const set = FORM.slice(FORM.indexOf("const set = (field: keyof ProfileValues"), FORM.indexOf("\n    }\n", FORM.indexOf("const set = (field: keyof ProfileValues")))
+        expect(set).toContain("setChanged(true)")
+        expect(FORM).toContain("onChange={(id, chosen) => { setRoleId(id); setChanged(true); if (chosen) setRole(chosen.baseRole) }}")
+        expect(FORM).toContain("onChange={e => { setActingDate(e.target.value); setChanged(true) }}")
+        // Saved, it's nothing to lose; refused, it's still there to lose.
+        const saved = FORM.slice(FORM.indexOf("setHandoff(null)"), FORM.indexOf("} catch (err) {", FORM.indexOf("setHandoff(null)")))
+        expect(saved.match(/setChanged\(false\)/g) ?? []).toHaveLength(1)
+        expect(FORM.match(/setChanged\(false\)/g) ?? []).toHaveLength(1)
+    })
+
     it("is the building blocks' form, and Cancel goes back", () => {
         expect(FORM).toContain("<ProfileForm")
         expect(FORM).toContain("onCancel={() => { startNavigationProgress(); router.back() }}")
