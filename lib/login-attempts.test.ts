@@ -22,12 +22,20 @@ const db = {
 
 vi.mock("@/lib/prisma", () => ({
     prisma: {
-        superAdmin: { findUnique: async ({ where }: any) => Object.values(db.superAdmins).find((a: any) => a.email === where.email) ?? null },
+        superAdmin: { findUnique: async ({ where }: any) => Object.values(db.superAdmins).find((a: any) => where.id ? a.id === where.id : a.email === where.email) ?? null },
         user: {
-            findUnique: async ({ where }: any) => Object.values(db.users).find((u: any) => u.email === where.email) ?? null,
+            findUnique: async ({ where }: any) => Object.values(db.users).find((u: any) => where.id ? u.id === where.id : u.email === where.email) ?? null,
             update: async () => ({}),
         },
         systemSettings: { findUnique: async () => null },
+        // The account a username names, capitals aside (lib/sign-in-account.ts).
+        $queryRaw: async (_sql: TemplateStringsArray, typed: string) => {
+            const named = (a: any) => a.username?.toLowerCase() === String(typed).toLowerCase()
+            const superAdmin = Object.values(db.superAdmins).find(named)
+            if (superAdmin) return [{ kind: "SuperAdmin", id: superAdmin.id }]
+            const user = Object.values(db.users).find(named)
+            return user ? [{ kind: "User", id: user.id }] : []
+        },
         rateLimit: {
             // A copy, as Prisma gives one.
             findUnique: async ({ where }: any) => (db.limits[where.key] ? { ...db.limits[where.key] } : null),
@@ -137,13 +145,13 @@ beforeEach(() => {
     db.failLogin = false
     db.ip = "203.0.113.7"
     db.superAdmins = {
-        sa: { id: "sa", email, password: bcrypt.hashSync(password, 4), firstName: "S", lastName: "A", mfaEnabled: true, mfaSecret: "stored", emailVerifiedAt: new Date() },
+        sa: { id: "sa", email, username: "sa.one", password: bcrypt.hashSync(password, 4), firstName: "S", lastName: "A", mfaEnabled: true, mfaSecret: "stored", emailVerifiedAt: new Date() },
         // Somebody else at the same office, without an authenticator.
-        colleague: { id: "colleague", email: "colleague@example.test", password: bcrypt.hashSync(password, 4), firstName: "C", lastName: "O", mfaEnabled: false, emailVerifiedAt: new Date() },
+        colleague: { id: "colleague", email: "colleague@example.test", username: "colleague", password: bcrypt.hashSync(password, 4), firstName: "C", lastName: "O", mfaEnabled: false, emailVerifiedAt: new Date() },
     }
     db.users = {
         held: {
-            id: "held", email: "held@example.test", password: bcrypt.hashSync(password, 4), firstName: "H", lastName: "D",
+            id: "held", email: "held@example.test", username: "k0", password: bcrypt.hashSync(password, 4), firstName: "H", lastName: "D",
             role: "EMPLOYEE", status: "SUSPENDED", companyId: "c1", company: { id: "c1", name: "One", isBanned: false, package: null, payments: [] },
         },
     }
@@ -433,5 +441,35 @@ describe("the lock is the account's, not the address's (decided 2026-11-03)", ()
         for (const path of ["lib/auth.ts", "app/api/auth/mfa-recovery/request/route.ts"]) {
             expect(readFileSync(path, "utf8"), path).not.toContain("login:${ip}")
         }
+    })
+})
+
+describe("signing in with a username, or the email", () => {
+    it("signs in with the username, whatever its capitals, as with the email", async () => {
+        expect(await authorize({ email: "Colleague", password })).toMatchObject({ id: "colleague" })
+        await expect(authorize({ email: "SA.ONE", password })).rejects.toThrow("MFA_REQUIRED")
+        expect(await authorize({ email: "sa.one", password, mfaCode: "123456" })).toMatchObject({ id: "sa" })
+        // A person's account answers as it does to its email: here, suspended.
+        await expect(authorize({ email: "K0", password })).rejects.toThrow(/suspended/i)
+    })
+
+    it("counts wrong tries by username and by email against the one account", async () => {
+        for (let i = 0; i < 3; i++) expect(await authorize({ email: "colleague", password: "wrong" })).toBeNull()
+        for (let i = 0; i < 2; i++) expect(await authorize({ email: "colleague@example.test", password: "wrong" })).toBeNull()
+        await expect(authorize({ email: "COLLEAGUE", password })).rejects.toThrow("Sign-in paused")
+        await expect(authorize({ email: "colleague@example.test", password })).rejects.toThrow("Sign-in paused")
+    })
+
+    it("takes a username nobody has, or one that couldn't be a username, as a wrong try, as an unknown email is", async () => {
+        expect(await authorize({ email: "nobody", password })).toBeNull()
+        expect(await authorize({ email: "a b", password })).toBeNull()
+        expect(Object.keys(db.limits)).toHaveLength(2)
+        expect(Object.keys(db.limits).every(key => key.startsWith("login:unknown:"))).toBe(true)
+    })
+
+    it("emails a code instead to the account the username names", async () => {
+        const res = await emailMeACode({ email: "SA.One", password })
+        expect(res.status).toBe(200)
+        expect((await emailMeACode({ email: "sa.one", password: "wrong" })).status).toBe(403)
     })
 })

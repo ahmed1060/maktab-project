@@ -2275,3 +2275,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-04:** Each company's username code was merged in #184. One
   username is one account, capitals aside, in #185 (`UI_PLAN.md`). It
   doesn't touch clients or locations.
+- **2026-11-04:** One username, one account was merged in #185. Signing in
+  takes the email or the username in #186 (`UI_PLAN.md`). It doesn't touch
+  clients or locations.

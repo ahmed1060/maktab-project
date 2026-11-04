@@ -3652,3 +3652,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   be saved, as each table's own index sees only its own. The database holds
   a username while it's saved and looks in the other table too: the second
   is told the username is in use.
+- **2026-11-04:** One username, one account was merged in #185. Signing in
+  takes the email or the username in #186 (decided 2026-11-03):
+  - the sign-in page asks for "Email or username". What has an @ is an
+    email, matched as before; anything else is a username, matched whatever
+    its capitals, as each is one account's at most (#185);
+  - the limit is the account's, whichever was typed: wrong tries with the
+    username and with the email count together. A username nobody has is
+    counted as an email nobody has is, so neither says who's registered;
+  - "Email me a code instead" takes the username too;
+  - a wrong try says "The email, username or password isn't right", where
+    it named only the email;
+  - Forgot your password still asks for the email, as the code goes there:
+    it's filled in from the sign-in page only when an email was typed.

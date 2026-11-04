@@ -438,15 +438,18 @@ export default function LoginPage() {
                     ) : stage === 'credentials' ? (
                         <form onSubmit={handleCredentialsSubmit}>
                             <div style={{ marginBottom: '1.25rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                <input aria-label={t('email')}
-                                    type="email"
+                                {/* An email or a username (lib/sign-in-account.ts). */}
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('sign_in_identifier')}</label>
+                                <input aria-label={t('sign_in_identifier')}
+                                    type="text"
                                     autoComplete="username"
+                                    spellCheck={false}
+                                    autoCapitalize="none"
                                     className="input"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value.slice(0, 254))}
                                     required
-                                    placeholder={locale === 'ar' ? 'أدخل البريد الإلكتروني' : 'Enter Email'}
+                                    placeholder={t('sign_in_identifier_placeholder')}
                                     maxLength={254}
                                     style={{
                                         padding: '0.625rem 1rem',
@@ -508,7 +511,7 @@ export default function LoginPage() {
                                 <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.5rem' }}>
                                     <button
                                         type="button"
-                                        onClick={() => { setMode('forgot'); setForgotEmail(email); setError('') }}
+                                        onClick={() => { setMode('forgot'); setForgotEmail(email.includes('@') ? email : ''); setError('') }}
                                         style={{ background: 'none', border: 'none', color: 'var(--link)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
                                     >
                                         {isAr ? 'هل نسيت كلمة المرور؟' : 'Forgot your password?'}
