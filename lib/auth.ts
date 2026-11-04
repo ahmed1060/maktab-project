@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
 import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor, markWrongSignIn, type Counted } from "./sign-in-lock"
+import { signInWhere } from "./sign-in-account"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -77,7 +78,8 @@ export const authOptions: NextAuthOptions = {
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                email: { label: "Email", type: "email" },
+                // An email or a username (lib/sign-in-account.ts).
+                email: { label: "Email or username", type: "text" },
                 password: { label: "Password", type: "password" },
                 companyId: { label: "Company", type: "text" },
                 remember: { label: "Remember", type: "text" },
@@ -144,11 +146,14 @@ export const authOptions: NextAuthOptions = {
                     // an early-thrown error can reveal whether the email is registered
                     // or what state that account is in to someone who doesn't already
                     // have the correct password.
-                    const superAdmin = await prisma.superAdmin.findUnique({
-                        where: { email: credentials.email }
-                    })
-                    const user = superAdmin ? null : await prisma.user.findUnique({
-                        where: { email: credentials.email },
+                    // `email` is what was typed: an email or a username
+                    // (lib/sign-in-account.ts).
+                    const where = await signInWhere(credentials.email)
+                    const superAdmin = where.superAdmin ? await prisma.superAdmin.findUnique({
+                        where: where.superAdmin
+                    }) : null
+                    const user = superAdmin || !where.user ? null : await prisma.user.findUnique({
+                        where: where.user,
                         // The package rides along so feature access can be resolved
                         // at sign-in rather than only at the first throttled
                         // re-check — otherwise a fresh login would see every gated
@@ -196,7 +201,8 @@ export const authOptions: NextAuthOptions = {
                             await AuditLogService.log('LOGIN_FAILURE', 'USER', (superAdmin || user)!.id, {
                                 userId: user ? user.id : null,
                                 superAdminId: superAdmin ? superAdmin.id : null,
-                                details: { email: credentials.email, reason: 'INVALID_PASSWORD', ip }
+                                // The account's email, whichever was typed.
+                                details: { email: (superAdmin || user)!.email, reason: 'INVALID_PASSWORD', ip }
                             })
                         }
                         // F-18: no audit row for an unknown email — that was one

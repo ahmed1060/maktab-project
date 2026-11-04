@@ -3652,3 +3652,27 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   be saved, as each table's own index sees only its own. The database holds
   a username while it's saved and looks in the other table too: the second
   is told the username is in use.
+- **2026-11-04:** One username, one account was merged in #185. Signing in
+  takes the email or the username in #186 (decided 2026-11-03):
+  - the sign-in page asks for "Email or username". What has an @ is an
+    email, matched as before; anything else is a username, matched whatever
+    its capitals, as each is one account's at most (#185);
+  - the limit is the account's, whichever was typed: wrong tries with the
+    username and with the email count together. A username nobody has is
+    counted as an email nobody has is, so neither says who's registered;
+  - "Email me a code instead" takes the username too;
+  - a wrong try says "The email, username or password isn't right", where
+    it named only the email;
+  - Forgot your password still asks for the email, as the code goes there:
+    it's filled in from the sign-in page only when an email was typed.
+- **2026-11-04:** Found in the web interface audit, on #186: the sign-in
+  page's email or username was written right to left in Arabic, where an
+  email's @ and dots jump about as it's typed. It's left to right in both
+  languages (DESIGN.md §3.3), as Add employee's email is, aligned with its
+  label; the Arabic placeholder has no "…", which would land at its start.
+- **2026-11-04:** Found by Codex, on #186: a username nobody has was counted
+  as it was typed, while finding the account sets its capitals aside. So
+  five wrong tries as NOBODY, then one as nobody, paused it only when
+  somebody had it, which said who's registered without a password. A
+  username nobody has is counted capitals aside, as it's looked up; an
+  email nobody has is still counted exactly as typed, as it's looked up.

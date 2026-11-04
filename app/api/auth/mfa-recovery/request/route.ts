@@ -8,6 +8,7 @@ import { DUMMY_PASSWORD_HASH } from "@/lib/auth"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { signInWhere } from "@/lib/sign-in-account"
 
 // F-27, Phase 5: "email me a code instead", the MFA fallback for someone
 // who can't reach their authenticator app. Unauthenticated by necessity —
@@ -17,8 +18,10 @@ import { isNextInternalError } from "@/lib/next-internal-error"
 // of the password is what makes this safe to expose without a session,
 // same constant-time-ish comparison against DUMMY_PASSWORD_HASH for an
 // unknown email.
+// `email` is what was typed to sign in: an email or a username
+// (lib/sign-in-account.ts), as authorize() takes it.
 const schema = z.object({
-    email: z.string().email().max(254),
+    email: z.string().min(1).max(254),
     password: z.string().min(1),
 })
 
@@ -32,8 +35,9 @@ export async function POST(req: NextRequest) {
 
         const { email, password } = validation.data
 
-        const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
-        const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })
+        const where = await signInWhere(email)
+        const superAdmin = where.superAdmin ? await prisma.superAdmin.findUnique({ where: where.superAdmin }) : null
+        const user = superAdmin || !where.user ? null : await prisma.user.findUnique({ where: where.user })
         const account = superAdmin || user
 
         // Shares the account's count with authorize() itself
