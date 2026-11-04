@@ -302,6 +302,20 @@ describe("a name change waiting", () => {
         }
     })
 
+    // Found reading the code (PR 191): the list gives whoever may decide name
+    // changes the company's waiting ones, unless it's asked whose. Someone
+    // who may, on an employee's or a team leader's footing in a role of the
+    // company's, saw the first of them on their own profile, whoever's it
+    // was, as their own name change waiting.
+    it("is their own, asked for by whose it is, never the first of the company's", () => {
+        expect(FORM).toContain("fetchRetrying(`/api/profile-requests?status=PENDING&userId=${encodeURIComponent(userId)}`)")
+        expect(FORM).not.toContain("fetchRetrying(`/api/profile-requests?status=PENDING`)")
+        // Whose, for one who may decide them; anyone else is given only their own.
+        const route = readFileSync("app/api/profile-requests/route.ts", "utf8")
+        expect(route).toContain("if (!isAdmin) {\n        where.userId = session.user.id")
+        expect(route).toContain("if (targetUserId) where.userId = targetUserId")
+    })
+
     it("says so in Arabic in words for anyone", () => {
         for (const key of ["name_change_waiting_title", "name_change_waiting_body", "name_change_waiting_open"] as const) {
             expect(ar[key], key).toBeTruthy()

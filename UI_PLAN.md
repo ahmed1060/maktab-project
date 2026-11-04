@@ -3839,5 +3839,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - a name change waiting is a card waiting on someone, with the name
     asked for and the request on the Requests page, where it was a yellow
     box of its own making;
+  - it's one's own, asked for by whose it is. The list gives whoever may
+    decide name changes the company's waiting ones, unless it's asked
+    whose: someone who may, in a role of the company's on an employee's
+    footing, saw the first of them on their own profile, whoever's it was,
+    as their own (found reading the code);
   - its words are in sentence case: Employee profile, Edit employee, and My
     profile, which the account menu says too.

@@ -177,9 +177,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setMyLeader(employee.teamLeader || null)
                 setAvatarUrl(employee.avatar || null)
 
-                // Check for pending name change requests
+                // Their own name change waiting, asked for by whose it is: the
+                // list gives whoever may decide name changes the company's
+                // waiting ones otherwise, and the first, whoever's, showed
+                // here as theirs (PR 191).
                 if (userId === sessionUserId && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {
-                    const reqRes = await fetchRetrying(`/api/profile-requests?status=PENDING`)
+                    const reqRes = await fetchRetrying(`/api/profile-requests?status=PENDING&userId=${encodeURIComponent(userId)}`)
                     if (reqRes.ok) {
                         const result = await reqRes.json()
                         const requestsData = result.data?.data || []
