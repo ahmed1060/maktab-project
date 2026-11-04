@@ -5,7 +5,7 @@ export const ar = {
         sign_in_subtitle: "قم بتسجيل الدخول للمتابعة إلى لوحة التحكم الخاصة بك",
         email: "البريد الإلكتروني",
         sign_in_identifier: "البريد الإلكتروني أو اسم المستخدم",
-        sign_in_identifier_placeholder: "بريدك الإلكتروني أو اسم المستخدم…",
+        sign_in_identifier_placeholder: "بريدك الإلكتروني أو اسم المستخدم",
         password: "كلمة المرور",
         sign_in: "تسجيل الدخول",
         signing_in: "جاري تسجيل الدخول...",

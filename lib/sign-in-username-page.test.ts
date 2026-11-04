@@ -33,6 +33,13 @@ describe("the sign-in page's first field", () => {
         expect(field).toContain('autoCapitalize="none"')
     })
 
+    it("is written left to right in Arabic too, as emails and usernames are (DESIGN.md §3.3)", () => {
+        expect(field).toContain('dir="ltr"')
+        expect(field).not.toMatch(/direction: locale === 'ar' \? 'rtl'/)
+        // An ellipsis after Arabic in a left-to-right field lands at its start.
+        expect(ar.sign_in_identifier_placeholder).not.toMatch(/…$/)
+    })
+
     it("says a wrong try is the email, username or password, not only the email", () => {
         expect(en.error_invalid_credentials).toBe("The email, username or password isn't right.")
         expect(ar.error_invalid_credentials).toBe("البريد الإلكتروني أو اسم المستخدم أو كلمة المرور غير صحيحة.")

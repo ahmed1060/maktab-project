@@ -440,8 +440,10 @@ export default function LoginPage() {
                             <div style={{ marginBottom: '1.25rem' }}>
                                 {/* An email or a username (lib/sign-in-account.ts). */}
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('sign_in_identifier')}</label>
+                                {/* Left to right in Arabic too, as emails and usernames are (DESIGN.md §3.3). */}
                                 <input aria-label={t('sign_in_identifier')}
                                     type="text"
+                                    dir="ltr"
                                     autoComplete="username"
                                     spellCheck={false}
                                     autoCapitalize="none"
@@ -454,8 +456,7 @@ export default function LoginPage() {
                                     style={{
                                         padding: '0.625rem 1rem',
                                         height: '42px',
-                                        textAlign: locale === 'ar' ? 'right' : 'left',
-                                        direction: locale === 'ar' ? 'rtl' : 'ltr'
+                                        textAlign: locale === 'ar' ? 'right' : 'left'
                                     }}
                                 />
                             </div>

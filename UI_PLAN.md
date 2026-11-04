@@ -3665,3 +3665,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     it named only the email;
   - Forgot your password still asks for the email, as the code goes there:
     it's filled in from the sign-in page only when an email was typed.
+- **2026-11-04:** Found in the web interface audit, on #186: the sign-in
+  page's email or username was written right to left in Arabic, where an
+  email's @ and dots jump about as it's typed. It's left to right in both
+  languages (DESIGN.md §3.3), as Add employee's email is, aligned with its
+  label; the Arabic placeholder has no "…", which would land at its start.
