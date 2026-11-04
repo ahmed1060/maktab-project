@@ -511,7 +511,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-03, which finished Operations. The pages left follow, one
      at a time: Add employee, merged in #180 on 2026-11-03, then Add a
      bonus and Add a deduction, merged in #181 on 2026-11-03, then
-     Usernames, which opens for review in #182;
+     Usernames, merged in #182 on 2026-11-03;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3495,3 +3495,87 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   here. Somebody who has left (archived) isn't listed or in the Excel file,
   as nothing can be given to them; suspended people stay, as they're still
   on staff.
+- **2026-11-03:** Usernames was merged in #182. Signing in's limit becomes
+  the account's in #183 (decided 2026-11-03):
+  - wrong passwords or codes lock the account, wherever they come from,
+    where they locked the address: one person's
+    mistakes locked everybody behind the same office Wi-Fi, while the
+    person themselves could get in from their phone. There's no limit by
+    address any more;
+  - an email nobody has is counted the same way, so a lock says nothing of
+    which emails exist; it's kept as a hash, not as typed, and the daily
+    clean-up removes counts whose fifteen minutes have passed;
+  - the sign-in page says it's the account that's locked, and that it
+    lifts within 15 minutes or when the company's Admin unlocks it, where
+    it said "Too many attempts";
+  - Employees and All users say who is locked and until when, under their
+    status, with Unlock named for the person. It's for whoever may reset
+    their password: a Super Admin anywhere, a company's Admin for their own
+    people. Unlocking is recorded in the audit log, and it also lifts the
+    count of codes asked to confirm a sensitive action;
+  - resetting the password with Forgot password lifts the lock, as the code
+    proves the email is theirs.
+- **2026-11-03:** Found in the browser, on #183: the sign-in page told a man
+  what to do in Arabic, "wait" and "ask". It says the account unlocks on its
+  own within 15 minutes, or the company's Admin can unlock it now, in both
+  languages.
+- **2026-11-03:** Found in the web interface audit, on #183: Unlock goes once
+  it's done, and the focus went with it, to the page. It goes to the
+  person's name, in the same row. The time a lock lifts is in the viewer's
+  own time, in the language's way of writing it, as everywhere else.
+- **2026-11-03:** Decided on #183: signing in's limit is more generous,
+  ten wrong tries in a row where it was five in fifteen minutes. Five in a
+  row pause the account for 30 seconds, and the sign-in page says to try
+  again in 30 seconds; ten lock it for fifteen minutes, which is what
+  Employees and All users show, with Unlock. A sign-in that succeeds starts
+  the count over, and a run is forgotten fifteen minutes after its last
+  wrong try. Tries turned away during the pause or the lock aren't counted,
+  and tries sent all at once get no further than one at a time would.
+- **2026-11-03:** Decided on #183: the sign-in page counts down the 30
+  seconds and the fifteen minutes as they pass, "You can try again in
+  0:27", in the language's digits, and says "You can try signing in again"
+  once it's over, where it said "30 seconds" or "within 15 minutes" and
+  left it to them to count. The server says how many seconds are left, so
+  a phone's clock being off doesn't matter. The time is a timer, which a
+  screen reader doesn't read out every second, and Sign in stays there to
+  press, as an Admin may unlock the account before the time is up. The
+  same goes for the step that asks for the code and for "email me a code
+  instead".
+- **2026-11-03:** Found by Codex, on #183: an email nobody has was counted
+  with its capitals set aside, while finding the account matches it as
+  typed, so five wrong tries as NOBODY@ paused nobody@ only when nobody had
+  it, which said who's registered. It's counted as typed.
+- **2026-11-03:** Found by Codex, on #183: after the 30 seconds, the right
+  password with two-factor started them again, as giving its try back left
+  the run with the right password's time, so the code was turned away. A
+  try given back puts the run's time back as it was, and the code goes
+  through, as does asking for it by email.
+- **2026-11-03:** Found by Codex, on #183: two tries coming together while
+  one was being turned away let a third through the 30 seconds, as the one
+  turned away was counted for a moment before it was given back, and the
+  third found six and took the pause as over. A try is counted in one step,
+  only from where the count may go on, so none is counted past the pause or
+  the lock.
+- **2026-11-03:** Found by Codex, on #183: unlocking also lifted the count
+  of codes asked to confirm a sensitive action, and an Admin could unlock
+  their own account, so somebody holding an Admin's session could guess
+  codes without end. Unlocking lifts only sign-in's count, and nobody can
+  unlock their own sign-in, as somebody signed in isn't locked out.
+- **2026-11-03:** Found by Codex, on #183: two right passwords overlapping
+  after the 30 seconds, given back in the wrong order, put back the time
+  the second had found, and the 30 seconds started again and turned the
+  code away. Counting a try no longer moves the run's time, past the fifth
+  and the tenth, which the 30 seconds and the fifteen minutes run from; a
+  wrong guess moves it, once it's known to be wrong. So giving a try back
+  takes back only the count, in whatever order tries come back.
+- **2026-11-03:** Found by Codex, on #183: five right passwords overlapping
+  after the 30 seconds reached ten, and the tenth moved the run's time, so
+  given back to five, the 30 seconds started again. Only the fifth moves
+  it when counted; the fifteen minutes run from the tenth wrong try once
+  it's known to be wrong.
+- **2026-11-04:** Found by Codex, on #183: a try waiting on the step that
+  asks for the code, given back after the account was unlocked or signed in
+  and a new run paused, took one off the new run, and let a guess through
+  the 30 seconds. Each run has an id of its own (a new column, added only),
+  and a try is given back, or marked wrong, only in the run it was counted
+  in.

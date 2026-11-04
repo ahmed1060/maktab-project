@@ -16,6 +16,16 @@ describe("the sign-in page's message", () => {
         expect(codeErrorKey(tooMany)).toBe("error_too_many_attempts")
     })
 
+    it("says to wait 30 seconds after five wrong tries, at either step (decided 2026-11-03)", () => {
+        const paused = "Sign-in paused for 30 seconds after five wrong tries for this account."
+        expect(signInErrorKey(paused)).toBe("error_sign_in_paused")
+        expect(codeErrorKey(paused)).toBe("error_sign_in_paused")
+        expect(en.error_sign_in_paused).toContain("30 seconds")
+        expect(ar.error_sign_in_paused).toContain("٣٠ ثانية")
+        // Said to anybody, not told to a man to wait (PR 183).
+        expect(ar.error_sign_in_paused).not.toContain("انتظر")
+    })
+
     it("says why an account with the right password can't sign in", () => {
         expect(signInErrorKey("Your account has been suspended or deleted.")).toBe("error_suspended")
         expect(signInErrorKey("Company access restricted. Please contact support.")).toBe("error_banned")

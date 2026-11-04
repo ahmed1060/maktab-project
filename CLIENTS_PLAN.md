@@ -2266,3 +2266,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-03:** Add a bonus and Add a deduction were merged in #181.
   Usernames moves onto the building blocks in #182 (`UI_PLAN.md` §5). It
   doesn't touch clients or locations.
+- **2026-11-03:** Usernames was merged in #182. Signing in's limit becomes
+  the account's, with Unlock on Employees and All users, in #183
+  (`UI_PLAN.md`). It doesn't touch clients or locations.

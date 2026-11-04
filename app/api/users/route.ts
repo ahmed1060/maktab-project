@@ -4,6 +4,7 @@ import { UserRole, UserStatus } from "@prisma/client"
 import { ApiResponse } from "@/lib/api-response"
 import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
+import { lockedUntil } from "@/lib/sign-in-lock"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildUserWhereClause, buildUserOrderBy } from "@/lib/services/user-query"
@@ -148,13 +149,17 @@ export const GET = withStandardHandler(async (req, session) => {
         prisma.user.count({ where: whereClause })
     ])
 
+    // Who's locked out of signing in, and until when, for whoever may unlock
+    // them (app/api/users/[id]/unlock-sign-in).
+    const locks = can(session.user, "employees.reset_password") ? await lockedUntil(users.map(u => u.id)) : null
+
     const usersWithStatus = users.map(user => {
         let effectiveStatus = user.status
         if (effectiveStatus === 'ACTIVE' && user.lastActivity) {
             const diffMs = new Date().getTime() - new Date(user.lastActivity).getTime()
             if (diffMs > 60000) effectiveStatus = 'OFFLINE'
         }
-        return { ...user, status: effectiveStatus }
+        return { ...user, status: effectiveStatus, ...(locks ? { signInLockedUntil: locks?.get(user.id)?.toISOString() ?? null } : {}) }
     })
 
     return ApiResponse.success({

@@ -1136,6 +1136,10 @@ model RateLimit {
   key     String   @id
   count   Int
   resetAt DateTime
+  // Sign-in's runs of wrong tries (lib/sign-in-lock.ts): a new one for each
+  // run, so a try is given back only to the run it was counted in. Null for
+  // every other count.
+  run     String?
 
   @@index([resetAt])
 }

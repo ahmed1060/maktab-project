@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import {
     ArrowCounterClockwiseIcon, ClockCounterClockwiseIcon, EnvelopeSimpleIcon, IdentificationBadgeIcon, MinusCircleIcon,
-    PauseCircleIcon, PencilSimpleIcon, PlayCircleIcon, PlusCircleIcon, ShieldIcon, SortAscendingIcon, TrashIcon,
+    LockIcon, PauseCircleIcon, PencilSimpleIcon, PlayCircleIcon, PlusCircleIcon, ShieldIcon, SortAscendingIcon, TrashIcon,
     UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useCompany } from '@/context/CompanyContext'
@@ -14,6 +14,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import AccessDenied from '@/components/AccessDenied'
 import ConfirmModal from '@/components/ConfirmModal'
+import { SignInLock } from '@/components/SignInLock'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import {
     Avatar, Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
@@ -43,6 +44,8 @@ interface Employee {
     // relation, so a colleague's whole row does not ride along in a list that
     // only prints a name.
     teamLeader?: { id: string; firstName: string; lastName: string } | null
+    // When they can sign in again, if they're locked out now; only for whoever may unlock (lib/sign-in-lock.ts).
+    signInLockedUntil?: string | null
 }
 
 type Leader = { id: string; firstName: string; lastName: string }
@@ -292,6 +295,8 @@ export default function EmployeesPage() {
         : e.teamLeader ? nameOf(e.teamLeader) : <StatusBadge tone="waiting">{t('team_unassigned')}</StatusBadge>
     const points = (e: Employee) => e.role === 'ADMIN' ? null : <span className="ui-chip">{countOf(t, locale, e.totalDifficultyPoints || 0, 'pts')}</span>
     const statusBadge = (e: Employee) => <StatusBadge tone={STATUS_TONE[e.status] ?? 'neutral'}>{STATUS_WORD[e.status] ? t(STATUS_WORD[e.status]) : e.status}</StatusBadge>
+    // Locked out of signing in, with Unlock, under the status (decided 2026-11-03).
+    const lock = (e: Employee) => <SignInLock personId={e.id} name={nameOf(e)} until={e.signInLockedUntil} onUnlocked={() => { void mutate() }} />
 
     const columns: Column<Employee>[] = [
         ...(canAssignTeams ? [{ key: 'pick', header: t('ui_select_column'), hideHeader: true, cell: checkbox }] : []),
@@ -306,7 +311,7 @@ export default function EmployeesPage() {
         { key: 'role', header: t('role_label'), cell: e => roleWord(e.role) },
         { key: 'team', header: t('team_column'), cell: teamOf },
         { key: 'points', header: t('points_label'), cell: points },
-        { key: 'status', header: t('status_label'), cell: statusBadge },
+        { key: 'status', header: t('status_label'), cell: e => <>{statusBadge(e)}{lock(e)}</> },
         ...(canActOnPeople ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions }] : []),
     ]
 
@@ -379,6 +384,7 @@ export default function EmployeesPage() {
                             { icon: EnvelopeSimpleIcon, text: <bdi>{e.email}</bdi> },
                             { icon: IdentificationBadgeIcon, text: roleWord(e.role) },
                             ...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),
+                            ...(e.signInLockedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
                         ]}
                         foot={<>{points(e) ?? <span />}{canActOnPeople && actions(e)}</>}
                     />

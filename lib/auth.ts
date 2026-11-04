@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
+import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor, markWrongSignIn, type Counted } from "./sign-in-lock"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -86,24 +87,34 @@ export const authOptions: NextAuthOptions = {
                 mfaRecoveryCode: { label: "MFA Recovery Code", type: "text" }
             },
             async authorize(credentials) {
-                let loginKey: string | null = null
-                // The window the attempt was counted in, whether the password
-                // was right, and whether the attempt has been given back.
-                let loginWindow = 0
+                let counted: Counted | null = null
+                // Whether the password was right, and whether the attempt has
+                // been given back or the run forgotten, once at most.
                 let passwordOk = false
                 let givenBack = false
                 const giveBack = async () => {
-                    if (!loginKey || givenBack) return
+                    if (!counted || givenBack) return
                     givenBack = true
-                    await RateLimiter.refund(loginKey, loginWindow)
+                    await giveBackSignIn(counted)
+                }
+                // A wrong password or code: the run is remembered from it.
+                const markWrong = async () => {
+                    if (!counted || givenBack) return
+                    givenBack = true
+                    await markWrongSignIn(counted)
+                }
+                // A sign-in that succeeds ends the run: the tries are counted in a row.
+                const forget = async () => {
+                    if (!counted || givenBack) return
+                    givenBack = true
+                    await forgetSignIn(counted)
                 }
                 try {
-                    // Rate Limiting (5 attempts per 15 minutes per IP)
                     // headers() is async since Next 15.
                     const headerList = await headers()
                     // F-10: was reading the raw x-forwarded-for header, which is a
-                    // client-controllable list an attacker can rotate to reset which
-                    // rate-limit bucket they land in.
+                    // client-controllable list. Kept for the audit trail of a
+                    // failed sign-in; the limit is the account's (below).
                     const ip = getClientIp(headerList)
                     // F-27: read here once, from the same next/headers() call this
                     // route handler already makes for the IP above, rather than
@@ -112,19 +123,6 @@ export const authOptions: NextAuthOptions = {
                     // through there (checked its actual call site, not just the
                     // .d.ts, which under-declares what's available either way).
                     const cookieHeader = headerList.get('cookie')
-                    // Counted first and handed back below when the attempt turns
-                    // out not to be a failure: the step that only asks for the
-                    // two-factor code, and a sign-in that succeeds. Only wrong
-                    // passwords and wrong codes use up the five — otherwise two
-                    // two-factor sign-ins in a row locked the account out, and a
-                    // whole office behind one address shared five sign-ins.
-                    loginKey = `login:${ip}`
-                    const { limited, resetAt } = await RateLimiter.getLimitData(loginKey, 5, 15 * 60 * 1000)
-                    loginWindow = resetAt
-                    if (limited) {
-                        const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        throw new Error(`Too many login attempts. Please try again at ${timeStr}.`)
-                    }
 
                     const remember = credentials?.remember === 'true'
 
@@ -174,6 +172,21 @@ export const authOptions: NextAuthOptions = {
                         }
                     })
 
+                    // Five wrong passwords or codes in a row pause the account for
+                    // 30 seconds and ten lock it for fifteen minutes, wherever
+                    // they come from (lib/sign-in-lock.ts, decided 2026-11-03).
+                    // Counted first and handed back below when the attempt
+                    // turns out not to be a failure: the step that only asks for
+                    // the two-factor code, and an account turned away after its
+                    // password was right; a sign-in that succeeds ends the run.
+                    // An email nobody has is counted alike, so a lock says
+                    // nothing of who's registered (F-17).
+                    const key = lockKeyFor(superAdmin || user, credentials.email)
+                    const tried = await countSignIn(key)
+                    if (tried.kind !== 'counted') throw new Error(holdMessage(tried))
+                    // Counted: only now is there anything to give back.
+                    counted = tried
+
                     const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
                     const isValid = await bcrypt.compare(credentials.password, passwordHash)
 
@@ -188,9 +201,10 @@ export const authOptions: NextAuthOptions = {
                         }
                         // F-18: no audit row for an unknown email — that was one
                         // AuditLog insert per guess, an unbounded, attacker-controlled
-                        // write. The rate limiter above already tracks this IP; a
+                        // write. The count above (lib/sign-in-lock.ts) already holds it; a
                         // failed guess against a real account is still logged, since
                         // that volume is bounded by how many accounts actually exist.
+                        await markWrong()
                         return null
                     }
 
@@ -212,7 +226,7 @@ export const authOptions: NextAuthOptions = {
                             cookieHeader,
                         })
 
-                        await giveBack()
+                        await forget()
                         const { AuditLogService } = await import("./services/audit-log.service")
                         await AuditLogService.log('LOGIN', 'USER', superAdmin.id, {
                             superAdminId: superAdmin.id,
@@ -308,7 +322,7 @@ export const authOptions: NextAuthOptions = {
                         })
                     } catch (e) { console.error('[AUTH_STATUS_UPDATE_FAIL]', e) }
 
-                    await giveBack()
+                    await forget()
 
                     // Audit Log (Success - Centralized)
                     const { AuditLogService } = await import("./services/audit-log.service")
@@ -358,6 +372,7 @@ export const authOptions: NextAuthOptions = {
                     // stayed locked out behind the rate limit (review on #29).
                     const message = (error as Error)?.message
                     if (message === 'MFA_REQUIRED' || (passwordOk && message !== 'INVALID_MFA_CODE')) await giveBack()
+                    else if (message === 'INVALID_MFA_CODE') await markWrong()
                     console.error('Auth error:', error)
                     throw error
                 }

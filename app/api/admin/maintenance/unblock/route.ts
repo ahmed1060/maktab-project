@@ -12,7 +12,9 @@ export const POST = withStandardHandler(
         }
 
         // type can be 'IP' or 'USER' or 'PREFIX'
-        // For login, the key is `login:${ip}`
+        // Sign-in no longer counts by address but by account
+        // (lib/sign-in-lock.ts, unlocked from the people lists), so
+        // LOGIN_IP clears a count nothing writes any more.
         // For API routes, the key is `${userId || ip}:${action}`
 
         if (type === 'LOGIN_IP') {
