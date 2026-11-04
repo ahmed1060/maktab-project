@@ -63,8 +63,11 @@ export default function MaintenancePage() {
             <PageHeader title={t('maintenance_page_title')} subtitle={t('maintenance_page_subtitle')} />
             {message && (
                 <Card title={t('maintenance_page_note')} role="status">
-                    {/* As they typed it, left to right or right to left (DESIGN.md §7). */}
-                    <p dir="auto">{message}</p>
+                    {/* As they typed it: left to right or right to left (DESIGN.md
+                        §7), each line kept and a long link broken to fit, as a
+                        task's description is. Plain, its lines ran together and
+                        a link pushed a phone sideways (web interface audit, PR 187). */}
+                    <p className="ui-prose" dir="auto">{message}</p>
                 </Card>
             )}
         </Page>

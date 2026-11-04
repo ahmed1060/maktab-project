@@ -145,8 +145,20 @@ describe("The maintenance screen on the building blocks", () => {
         expect(src).toContain("subtitle={t('maintenance_page_subtitle')}")
         expect(src).toContain("<Card title={t('maintenance_page_note')}")
         // Text somebody typed keeps its own direction (DESIGN.md §7).
-        expect(src).toContain('<p dir="auto">{message}</p>')
+        expect(src).toMatch(/<p[^>]* dir="auto">\{message\}<\/p>/)
         // With none, there's no card.
         expect(render(Maintenance)).not.toContain(esc(en.maintenance_page_note))
+    })
+
+    it("keeps the message's lines and wraps a long link, where it ran its lines together and pushed a phone sideways (web interface audit, PR 187)", () => {
+        // Up to 500 characters from a text area: shown as a task's description
+        // is, each line as typed and a long word broken to fit.
+        const src = readFileSync(WAIT, "utf8")
+        expect(src).toContain('<p className="ui-prose" dir="auto">{message}</p>')
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const start = css.indexOf(".ui-prose {")
+        const prose = css.slice(start, css.indexOf("}", start))
+        expect(prose).toContain("white-space: pre-wrap")
+        expect(prose).toContain("overflow-wrap: anywhere")
     })
 })

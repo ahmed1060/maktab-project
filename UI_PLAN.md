@@ -3701,3 +3701,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   turned to Change password, and the app kept that answer: going to the
   dashboard again within the app came straight back, asking the server
   nothing. The dashboard is loaded afresh once the password is saved.
+- **2026-11-04:** Found in the web interface audit, on #187: the Super
+  Admins' message on the waiting page, up to 500 characters from a text
+  area, ran its lines together, and a long link in it pushed a phone's
+  screen sideways. It's shown as a task's description is: each line as
+  typed, and a long word broken to fit.
