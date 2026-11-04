@@ -15,8 +15,13 @@ export default function EditEmployeePage(props: {
     const searchParams = use(props.searchParams)
     const isViewMode = searchParams.mode === 'view'
 
+    // Mounted afresh for each, so their details are as saved and the form
+    // starts from them: from the form to ?mode=view (its Cancel, or back
+    // after saving) is the same page to the router, which kept what had
+    // been typed, and the details showed it as theirs (PR 193).
     return (
         <EmployeeProfileForm
+            key={isViewMode ? 'view' : 'edit'}
             userId={params.id}
             isViewMode={isViewMode}
         />

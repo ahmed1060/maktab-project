@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { Button, Card, Details, StatusBadge } from '@/components/ui'
 import { countOf } from '@/lib/plural'
@@ -34,13 +35,18 @@ export type ProfileFacts = {
 
 const noop = () => {}
 
-export function ProfileView({ name, photo, access, facts, onResetPassword, onEndContract }: {
+export function ProfileView({ name, photo, access, facts, onResetPassword, onEndContract, roleRequest }: {
     name: string
     photo: string | null
     access: ProfileAccess
     facts: ProfileFacts
     onResetPassword: () => void
     onEndContract: () => void
+    /**
+     * Asking for another role, beside the role, for whoever may only ask
+     * (ROLES_PLAN.md §6.12): its own control until the role's part.
+     */
+    roleRequest?: ReactNode
 }) {
     const { t, locale } = useLanguage()
     const money = (n: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
@@ -50,7 +56,7 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
     const items = [
         { label: t('email'), value: typed(facts.email) },
         { label: t('username_label'), value: typed(facts.username) },
-        ...(access.role ? [{ label: t('role_label'), value: <>{facts.role}{facts.acting && <span className="ui-detail-note">{facts.acting}</span>}</> }] : []),
+        ...(access.role ? [{ label: t('role_label'), value: <>{roleRequest ? <div className="ui-detail-act">{facts.role}{roleRequest}</div> : facts.role}{facts.acting && <span className="ui-detail-note">{facts.acting}</span>}</> }] : []),
         ...(access.teamLeader ? [{ label: t('team_leader_label'), value: facts.teamLeader ?? t('team_leader_none') }] : []),
         ...(access.ownTeamLeader ? [{ label: t('team_leader_yours'), value: facts.teamLeader ?? t('team_leader_yours_none') }] : []),
         ...(access.status || access.endContract ? [{

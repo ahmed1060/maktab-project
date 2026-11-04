@@ -78,6 +78,19 @@ describe("someone else's profile, seen", () => {
         expect(got[en.role_label]).toBe('Employee<span class="ui-detail-note">Acting until 5 December 2026, then back to Team leader</span>')
     })
 
+    // Whoever may ask for a role but may neither edit them nor give one, as
+    // HR may (ROLES_PLAN.md §6.12), asks from their details: the form was
+    // the only place, and its save isn't theirs (Codex review, PR 193).
+    it("offers asking for another role beside the role, to whoever may only ask", async () => {
+        const got = Object.fromEntries(details(await view({ roleRequest: h("span", { id: "ask" }, "ask") })))
+        expect(got[en.role_label]).toBe('<div class="ui-detail-act">Employee<span id="ask">ask</span></div>')
+        // Its note stays under it.
+        const acting = Object.fromEntries(details(await view({ roleRequest: h("span", { id: "ask" }, "ask"), facts: { ...FACTS, acting: "Acting until 5 December 2026" } })))
+        expect(acting[en.role_label]).toBe('<div class="ui-detail-act">Employee<span id="ask">ask</span></div><span class="ui-detail-note">Acting until 5 December 2026</span>')
+        expect(FORM).toContain("roleRequest={access.role && !access.edit && !can('employees.assign_role')")
+        expect(FORM).toMatch(/\? <RoleRequestControl userId=\{userId\} companyId=\{companyId\} current=\{currentRole\} locked=\{role === 'ADMIN'\} \/>/)
+    })
+
     it("says only what the person looking may see", async () => {
         expect(details(await view({ access: NONE })).map(([label]) => label)).toEqual([en.email, en.username_label, en.gender_label])
     })
@@ -152,20 +165,24 @@ describe("what can be done to a detail, beside it", () => {
 
 describe("the profile, as the form draws it", () => {
     it("is the details when it's seen, where it was the form with every field off", () => {
-        expect(FORM).toMatch(/if \(isViewMode\) \{[^}]*?return \(\s*<Page>[\s\S]*?<ProfileView/)
+        expect(FORM).toMatch(/if \(seeing\) \{[^}]*?return \(\s*<Page>[\s\S]*?<ProfileView/)
         expect(FORM).not.toMatch(/disabled=\{isViewMode/)
         expect(FORM).not.toMatch(/isViewMode \? \{ background: 'var\(--surface-sunk\)'/)
     })
 
     it("offers Edit in the page header, to whoever may edit them, where it had only Close", () => {
         expect(FORM).toContain("action={access.edit ? <ButtonLink variant=\"primary\" icon={PencilSimpleIcon} href={`/dashboard/employees/${userId}`} prefetch={false}>{t('edit')}</ButtonLink> : undefined}")
-        // Close stays the form's, until part 3; the view goes back by its back link.
-        expect(FORM.match(/t\('close_button'\)/g)).toHaveLength(1)
+        // The view goes back by its back link; the form's Close is its Cancel now (PR 193).
+        expect(FORM).not.toContain("t('close_button')")
     })
 
     it("asks what may be seen and done in one place", () => {
         expect(FORM).toContain("const access = profileAccess({ can, viewer, person: { id: userId, role } })")
-        for (const gate of ["access.salary && (", "access.dayOffCredit && (", "access.role && (", "access.ownTeamLeader && (", "access.teamLeader && (", "access.status && ("]) expect(FORM, gate).toContain(gate)
+        // The form's fields are its own since PR 193, each behind the same question.
+        const fields = readFileSync("components/profile/ProfileForm.tsx", "utf8")
+        for (const gate of ["access.salary && (", "access.dayOffCredit && (", "access.ownTeamLeader && (", "access.teamLeader && (", "access.status && ("]) expect(fields, gate).toContain(gate)
+        expect(FORM).toContain("const roleField = access.role && (")
+        expect(FORM).toContain("access={access}")
     })
 })
 

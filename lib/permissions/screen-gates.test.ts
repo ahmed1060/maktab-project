@@ -48,8 +48,7 @@ const admins = (r: Role) => ["ADMIN", "SUPER_ADMIN"].includes(r)
 const D = "app/(dashboard)/dashboard/"
 const TASK = D + "tasks/[id]/client.tsx"
 const OBL = D + "obligations/[id]/client.tsx"
-const FORM = "components/EmployeeProfileForm.tsx"
-// What the profile shows, for its view and its form (PR 192).
+// What a person's profile shows and changes, for its view and its form (PRs 192 and 193).
 const ACCESS = "lib/profile-access.ts"
 const PEOPLE = D + "employees/page.tsx"
 
@@ -124,14 +123,14 @@ const GATES: Gate[] = [
     { what: "employees: bonus and deduction", file: PEOPLE, uses: "if (can('salary_adjustments.manage') && notAdmin)", before: admins, now: p => p.can("salary_adjustments.manage") },
     { what: "employees: reset points", file: PEOPLE, uses: "if (can('requests.reset_points') && notAdmin)", before: admins, now: p => p.can("requests.reset_points") },
     { what: "employees: delete", file: PEOPLE, uses: "if (can('employees.delete') && e.role", before: admins, now: p => p.can("employees.delete") },
-    { what: "profile: sends salary", file: FORM, uses: "salary: can('salary.edit') &&", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("salary.edit") },
-    { what: "profile: sends day-off credit", file: FORM, uses: "baseDayOffCredit: can('dayoff.adjust_credit') &&", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("dayoff.adjust_credit") },
-    { what: "profile: sends status", file: FORM, uses: "status: can('employees.change_status') &&", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("employees.change_status") },
-    { what: "profile: sends team leader", file: FORM, uses: "teamLeaderId: canAssignTeam &&", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("employees.assign_team") },
+    { what: "profile: sends salary", file: ACCESS, uses: "changeSalary: can('salary.edit') && !own", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("salary.edit") },
+    { what: "profile: sends day-off credit", file: ACCESS, uses: "changeDayOffCredit: can('dayoff.adjust_credit') && !own", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("dayoff.adjust_credit") },
+    { what: "profile: sends status", file: ACCESS, uses: "status: can('employees.change_status') && !own,", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("employees.change_status") },
+    { what: "profile: sends team leader", file: ACCESS, uses: "teamLeader: can('employees.assign_team') && !own", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("employees.assign_team") },
     { what: "profile: salary shown (flag: own profile)", file: ACCESS, uses: "salary: (can('salary.view') || own) && paid,", before: (r, self) => admins(r) || self, now: (p, self) => p.can("salary.view") || self },
-    { what: "profile: salary editable", file: FORM, uses: "!can('salary.edit')", before: admins, now: p => p.can("salary.edit") },
+    { what: "profile: salary editable", file: ACCESS, uses: "changeSalary: can('salary.edit') && !own", before: admins, now: p => p.can("salary.edit") },
     { what: "profile: day-off credit shown (flag: own profile)", file: ACCESS, uses: "dayOffCredit: (can('dayoff.view') || own) && paid,", before: (r, self) => admins(r) || self, now: (p, self) => p.can("dayoff.view") || self },
-    { what: "profile: day-off credit editable", file: FORM, uses: "!can('dayoff.adjust_credit')", before: admins, now: p => p.can("dayoff.adjust_credit") },
+    { what: "profile: day-off credit editable", file: ACCESS, uses: "changeDayOffCredit: can('dayoff.adjust_credit') && !own", before: admins, now: p => p.can("dayoff.adjust_credit") },
     { what: "profile: reset password", file: ACCESS, uses: "resetPassword: can('employees.reset_password') && !own", before: admins, now: p => p.can("employees.reset_password") },
     // B4: shown to whoever may ask for a role too (ROLES_PLAN.md §6.12). No
     // built-in role may only ask, so who sees it is unchanged for them.

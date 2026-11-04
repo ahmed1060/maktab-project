@@ -17,10 +17,10 @@ describe("End contract is on the profile view", () => {
         expect(opener).toBeGreaterThan(-1)
         expect(FORM.match(/setShowEndContract\(true\)/g) ?? []).toHaveLength(1)
         // The view returns before the edit form does, so the form never offers it.
-        const view = FORM.indexOf("if (isViewMode) {")
+        const view = FORM.indexOf("if (seeing) {")
         expect(view).toBeGreaterThan(-1)
         expect(opener).toBeGreaterThan(view)
-        expect(opener).toBeLessThan(FORM.indexOf("<form", view))
+        expect(opener).toBeLessThan(FORM.indexOf("<ProfileForm", view))
     })
 
     it("reloads the profile once it is done, so the new status shows", () => {

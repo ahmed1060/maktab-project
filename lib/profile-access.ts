@@ -8,6 +8,9 @@ import type { Can } from '@/lib/useCan'
  * Some ask what the person is, not what the viewer may do: only an employee
  * has a team leader, an Admin is paid outside payroll, and only the Super
  * Admin acts on an Admin (ROLES_PLAN.md §4.2, rule 7).
+ *
+ * What the form may change, and so what its save sends, is here too (part
+ * 3, PR 193): a field it may not change is shown off, with why under it.
  */
 export type ProfileAccess = {
     /** Their own profile. */
@@ -26,6 +29,16 @@ export type ProfileAccess = {
     status: boolean
     /** Beside their status: ending their contract, or reinstating them. */
     endContract: boolean
+    /** Someone else's: one's own is changed in Security settings, with a code. */
+    changeEmail: boolean
+    /** The Super Admin's alone, as the route takes it. */
+    changeUsername: boolean
+    changeSalary: boolean
+    changeDayOffCredit: boolean
+    /** One's own name, on an employee's or a team leader's footing, is asked for, not changed. */
+    nameByRequest: boolean
+    /** A new password: one's own, or someone else's with the reset permission, as the route sets it. */
+    changePassword: boolean
 }
 
 export function profileAccess({ can, viewer, person }: {
@@ -51,5 +64,13 @@ export function profileAccess({ can, viewer, person }: {
         status: can('employees.change_status') && !own,
         // As its route asks: changing a status doesn't end a contract.
         endContract: can('employees.end_contract') && !own && actsOnThem,
+        changeEmail: !own,
+        changeUsername: superAdmin,
+        changeSalary: can('salary.edit') && !own && paid,
+        changeDayOffCredit: can('dayoff.adjust_credit') && !own && paid,
+        // As the route refuses it otherwise (NAME_CHANGE_REQUIRES_ADMIN).
+        nameByRequest: own && (person.role === 'EMPLOYEE' || person.role === 'TEAM_LEADER'),
+        // The route refuses anyone else (FORBIDDEN_PASSWORD_RESET), and an Admin's but the Super Admin's.
+        changePassword: own || (can('employees.reset_password') && actsOnThem),
     }
 }

@@ -40,4 +40,11 @@ describe("a username somebody else has", () => {
         thrown.value = new Error("USERNAME_IN_USE")
         expect(await answer(await PUT(send("PUT", "/api/users", { id: "e1", username: "ops" })))).toEqual([400, "Username in use"])
     })
+
+    // It escaped as a 500, shown as the app failing (a person's profile, part 3, PR 193).
+    it("and an email somebody else has, when a person's is changed, as that", async () => {
+        const { PUT } = await import("@/app/api/users/route")
+        thrown.value = new Error("EMAIL_IN_USE")
+        expect(await answer(await PUT(send("PUT", "/api/users", { id: "e1", email: "e2@x.co" })))).toEqual([400, "Email in use"])
+    })
 })

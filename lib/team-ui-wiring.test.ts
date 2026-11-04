@@ -77,11 +77,11 @@ describe("only the people allowed to assign can", () => {
     it("the form offers the field only with employees.assign_team, and never for self", () => {
         const payload = FORM.slice(FORM.indexOf("method: 'PUT'"))
         const line = payload.slice(payload.indexOf("teamLeaderId:"), payload.indexOf("teamLeaderId:") + 260)
-        expect(line).toContain("canAssignTeam")
+        // Asked in one place, for the form's field and its save alike (PR 193).
+        expect(line).toContain("access.teamLeader ?")
         expect(FORM).toContain("const canAssignTeam = can('employees.assign_team')")
-        expect(line).toMatch(/userId\s*!==\s*session\?\.user\?\.id/)
-        // Leaders are not led, so the field is not sent for any other role.
-        expect(line).toMatch(/role\s*===\s*'EMPLOYEE'/)
+        // Never one's own, and leaders are not led, so it's not sent for any other role.
+        expect(readFileSync("lib/profile-access.ts", "utf8")).toContain("teamLeader: can('employees.assign_team') && !own && person.role === 'EMPLOYEE',")
     })
 })
 
