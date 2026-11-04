@@ -3,25 +3,23 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { useSession } from 'next-auth/react'
 import {
     ArrowCounterClockwiseIcon, ClockCounterClockwiseIcon, EnvelopeSimpleIcon, IdentificationBadgeIcon, MinusCircleIcon,
     LockIcon, PauseCircleIcon, PencilSimpleIcon, PlayCircleIcon, PlusCircleIcon, ShieldIcon, SortAscendingIcon, TrashIcon,
-    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, WarningCircleIcon,
+    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, HourglassIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import AccessDenied from '@/components/AccessDenied'
 import { SignInLock } from '@/components/SignInLock'
-import LoadingSpinner from '@/components/LoadingSpinner'
 import {
     Avatar, Button, ButtonLink, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
     RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
-import { useCan } from '@/lib/useCan'
+import { useCan, useViewer } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { STATUS_TONE, STATUS_WORD } from '@/lib/person-status'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -64,8 +62,11 @@ export default function EmployeesPage() {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const modules = useModules()
-    const { data: session } = useSession()
-    const userRole = session?.user?.role || ''
+    // Who's looking, from the layout on the first paint, so the list is
+    // asked for at once. The session hook has nothing until a moment later,
+    // and the list said there was nobody until then (PR 190).
+    const viewer = useViewer()
+    const userRole = viewer?.role || ''
     const isSuperAdmin = userRole === 'SUPER_ADMIN'
     const { can, companyWide } = useCan()
     const { selectedCompanyId } = useCompany()
@@ -105,11 +106,11 @@ export default function EmployeesPage() {
     }, [query, search])
 
     const sort = SORTS[sortKey]
-    const listQuery: EmployeesQuery | null = session?.user ? {
+    const listQuery: EmployeesQuery | null = viewer ? {
         page, limit,
         companyId: selectedCompanyId,
         teamOnly,
-        viewerId: (session.user as any).id,
+        viewerId: viewer.id,
         search, status, role,
         teamLeaderId: team,
         sort: sort.sort, order: sort.order,
@@ -117,7 +118,7 @@ export default function EmployeesPage() {
     // Only this company's rows, while the next page or filter loads. If they
     // didn't load, the list says so rather than that there's nobody.
     const listUrl = listQuery ? employeesListUrl(listQuery) : null
-    const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(scopedKey(listUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
+    const { data: scoped, error, isValidating, mutate } = useSWR(scopedKey(listUrl, selectedCompanyId), scopedFetcher, { keepPreviousData: true })
     const result = forScope(scoped, selectedCompanyId)
     const failed = loadFailed(scoped, error, listUrl)
     const employees: Employee[] = failed ? [] : result?.data?.data || []
@@ -237,11 +238,9 @@ export default function EmployeesPage() {
         }
     }
 
-    if (isLoading && !result && !failed) return <LoadingSpinner message={t('loading_users')} />
-
-    // Once the session is known: before it loads nobody holds anything, and
+    // Once it's known who's looking: before that nobody holds anything, and
     // this would flash "access denied" at everyone on the way in.
-    if (session?.user && !can('employees.view')) return <AccessDenied />
+    if (viewer && !can('employees.view')) return <AccessDenied />
 
     const canEdit = (e: Employee) => can('employees.edit') && (e.role !== 'ADMIN' || isSuperAdmin)
     const menuItems = (e: Employee): MenuItem[] => {
@@ -370,31 +369,37 @@ export default function EmployeesPage() {
                 </SelectionBar>
             )}
 
-            <DataList
-                caption={modules.label('employees')}
-                columns={columns}
-                rows={employees}
-                rowKey={e => e.id}
-                card={e => (
-                    <ListCard
-                        title={<span className="ui-person">{checkbox(e)}{name(e)}</span>}
-                        status={statusBadge(e)}
-                        details={[
-                            { icon: EnvelopeSimpleIcon, text: <bdi>{e.email}</bdi> },
-                            { icon: IdentificationBadgeIcon, text: roleWord(e.role) },
-                            ...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),
-                            ...(e.signInLockedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
-                        ]}
-                        foot={<>{points(e) ?? <span />}{canActOnPeople && actions(e)}</>}
+            {/* Under its header and filters, where the list goes; it was the old spinner instead of the whole page (PR 190). */}
+            {/* Nothing yet for this company, and nothing failed: on the first paint too, and on another company. */}
+            {!result && !failed
+                ? <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+                : (
+                    <DataList
+                        caption={modules.label('employees')}
+                        columns={columns}
+                        rows={employees}
+                        rowKey={e => e.id}
+                        card={e => (
+                            <ListCard
+                                title={<span className="ui-person">{checkbox(e)}{name(e)}</span>}
+                                status={statusBadge(e)}
+                                details={[
+                                    { icon: EnvelopeSimpleIcon, text: <bdi>{e.email}</bdi> },
+                                    { icon: IdentificationBadgeIcon, text: roleWord(e.role) },
+                                    ...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),
+                                    ...(e.signInLockedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
+                                ]}
+                                foot={<>{points(e) ?? <span />}{canActOnPeople && actions(e)}</>}
+                            />
+                        )}
+                        footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'employees')} />}
+                        empty={failed
+                            ? <EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+                            : <EmptyState icon={UsersIcon} title={t('no_employees_found')} action={filtersOn > 0 || search
+                                ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
+                                : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
                     />
                 )}
-                footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'employees')} />}
-                empty={failed
-                    ? <EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
-                    : <EmptyState icon={UsersIcon} title={t('no_employees_found')} action={filtersOn > 0 || search
-                        ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
-                        : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
-            />
 
             {/* Neither can be undone, so both are in the danger colour; resetting points was amber. */}
             <ConfirmDialog

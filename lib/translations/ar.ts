@@ -611,8 +611,6 @@ export const ar = {
         recurrence_monthly: "شهرياً",
         recurrence_yearly: "سنوياً",
         loading_filters: "جاري تحميل الفلاتر...",
-        loading_data: "جاري تحميل البيانات...",
-        loading_users: "جاري تحميل المستخدمين…",
         loading_requests: "جاري تحميل الطلبات…",
         loading_clients: "جاري تحميل العملاء...",
         loading_projects: "جاري تحميل المشاريع...",

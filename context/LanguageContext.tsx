@@ -5,7 +5,9 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import type { Locale, TranslationKey, TranslationDict } from '@/lib/translations';
 import { loadTranslations } from '@/lib/translations';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { HourglassIcon } from '@phosphor-icons/react/ssr';
+// The block itself, not the blocks' index: its dialog asks this provider for its words.
+import { EmptyState } from '@/components/ui/Blocks';
 
 interface LanguageContextType {
     locale: Locale;
@@ -14,7 +16,8 @@ interface LanguageContextType {
     toggleLanguage: () => void;
     /** True while a switch is in flight — the dictionary for the target locale
      *  may still be loading, and the provider is holding a full-page overlay
-     *  over everything including whatever control started it. */
+     *  over everything including whatever control started it, which says
+     *  it's loading (PR 190). */
     isChangingLocale: boolean;
     t: (key: TranslationKey) => string;
 }
@@ -140,7 +143,7 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
 
     return (
         <LanguageContext.Provider value={{ locale, setLanguage, toggleLanguage, isChangingLocale, t }}>
-            {isChangingLocale && <LoadingSpinner fullPage />}
+            {isChangingLocale && <div className="ui-switching" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>}
             {children}
         </LanguageContext.Provider>
     );

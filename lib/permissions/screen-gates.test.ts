@@ -113,7 +113,7 @@ const GATES: Gate[] = [
     { what: "new employee: team leader", file: D + "employees/new/page.tsx", uses: "const canAssignTeam = can('employees.assign_team')", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_team") },
     { what: "new employee: role", file: D + "employees/new/page.tsx", uses: "const canAssignRole = can('employees.assign_role')", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_role") },
     { what: "employees: team-only list", file: PEOPLE, uses: "can('employees.view') && !companyWide('employees.view')", before: r => r === "TEAM_LEADER", now: p => p.can("employees.view") && !p.companyWide("employees.view") },
-    { what: "employees: page", file: PEOPLE, uses: "if (session?.user && !can('employees.view'))", before: r => r !== "EMPLOYEE", now: p => p.can("employees.view") },
+    { what: "employees: page", file: PEOPLE, uses: "if (viewer && !can('employees.view'))", before: r => r !== "EMPLOYEE", now: p => p.can("employees.view") },
     { what: "employees: assign teams", file: PEOPLE, uses: "const canAssignTeams = can('employees.assign_team')", before: admins, now: p => p.can("employees.assign_team") },
     { what: "employees: add", file: PEOPLE, uses: "can('employees.create') && <ButtonLink href=\"/dashboard/employees/new\"", before: admins, now: p => p.can("employees.create") },
     { what: "employees: actions row", file: PEOPLE, uses: "...(canActOnPeople ? [{ key: 'actions'", before: admins, now: p => ["employees.edit", "salary.view", "salary_adjustments.manage", "requests.reset_points", "employees.delete"].some(x => p.can(x as any)) },

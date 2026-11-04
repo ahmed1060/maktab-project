@@ -651,6 +651,12 @@ These are built once, in the building-blocks PR, and every page uses them
   missing, and the button to add one. When why it's empty isn't plain, a
   second line says why, and who can change it: a Team Leader with no one
   on their team yet sees an empty list that's right, and looks broken.
+- **Loading:** while a page, or a part of one, loads, it says so in the
+  same block: the hourglass and one line saying what's loading, such as
+  "Loading…", where it will be, which a screen reader hears. The page's
+  header and filters are there from the start: a page is never given over
+  to it whole. While the language changes, the whole screen says so, in
+  the page's colour, for the moment it takes.
 - **A list that didn't load** says so in the same block: a warning icon,
   one line saying what didn't load, and Try again, which shows it's busy
   while it tries. It never says there's nothing, or offers to add one, when
@@ -1062,3 +1068,7 @@ changed:
   deleted, as on confirming a cash advance's receipt. A dialog's button that
   doesn't fit on one line takes two: "Collect 10 charges, 4,525.50 EGP"
   ran past its own edges on a phone in Arabic.
+- **2026-11-04:** Loading is said in the empty state's block (§5.5,
+  Loading), as most pages already did. The last five places waited behind
+  a spinner of their own making, which took the whole page, and the
+  language's switch showed it over the whole screen.

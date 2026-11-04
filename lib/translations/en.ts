@@ -615,8 +615,6 @@ export const en = {
         recurrence_monthly: "Monthly",
         recurrence_yearly: "Yearly",
         loading_filters: "Loading filters...",
-        loading_data: "Loading data...",
-        loading_users: "Loading users…",
         loading_requests: "Loading requests…",
         loading_clients: "Loading clients...",
         loading_projects: "Loading projects...",
