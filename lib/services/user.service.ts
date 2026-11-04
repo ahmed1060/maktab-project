@@ -4,8 +4,8 @@ import { UserStatus } from "@prisma/client"
 import { supabase } from "@/lib/storage"
 import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
-import { generateUsername, usernameReserved } from "@/lib/username"
-import { likeText } from "@/lib/saved-lists"
+import { freeUsername, generateUsername, usernameReserved, usernameTaken } from "@/lib/username"
+import { isUsernameClash, usernameFromEmail } from "@/lib/username-rules"
 import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
@@ -109,18 +109,18 @@ export class UserService {
         const hashedPassword = await bcrypt.hash(password, 10)
 
         // 4. Username Logic
-        let finalUsername = username
-        if (finalUsername) {
-            // Prisma matches an insensitive equals with ILIKE: its %, _ and \
-            // are taken as typed, or "a_b" is taken whenever "axb" is.
-            const conflict = await prisma.user.findFirst({ where: { username: { equals: likeText(finalUsername as string), mode: 'insensitive' } } })
-            if (conflict) throw new Error("USERNAME_IN_USE")
+        //
+        // One username, one account, capitals aside: nobody else, a company's
+        // person or a Super Admin, has the one typed.
+        const typedUsername = username
+        if (typedUsername) {
+            if (await usernameTaken(typedUsername)) throw new Error("USERNAME_IN_USE")
             // ds7 when ds is another company's code: that company would one
             // day make it up for somebody of its own.
-            if (await usernameReserved(finalUsername as string, targetCompanyId ?? null)) throw new Error("USERNAME_RESERVED")
-        } else if (targetCompanyId) {
-            finalUsername = await generateUsername(targetCompanyId)
+            if (await usernameReserved(typedUsername, targetCompanyId ?? null)) throw new Error("USERNAME_RESERVED")
         }
+        const madeUp = () => targetCompanyId ? generateUsername(targetCompanyId) : freeUsername(usernameFromEmail(email))
+        let finalUsername = typedUsername || await madeUp()
 
         // 5. Database Transaction
         //
@@ -153,11 +153,11 @@ export class UserService {
         // module is about a company's own people.
         const isCompanyEmployee = Boolean(targetCompanyId) && assignment.role !== 'SUPER_ADMIN'
 
-        const user = await prisma.$transaction(async (tx) => {
+        const write = (name: string) => prisma.$transaction(async (tx) => {
             // role and roleId together, from the one place that writes them.
             const created = await tx.user.create({
                 data: {
-                    firstName, lastName, email, username: finalUsername!, password: hashedPassword,
+                    firstName, lastName, email, username: name, password: hashedPassword,
                     ...assignment, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
                     teamLeaderId: teamLeaderId || null,
                     salary: salary || 0,
@@ -192,6 +192,21 @@ export class UserService {
 
             return created
         })
+
+        // Somebody given the same username a moment ago, between the check
+        // and this save: a typed one is said to be in use, a made-up one is
+        // made up again.
+        let user: Awaited<ReturnType<typeof write>>
+        for (let attempt = 0; ; attempt++) {
+            try {
+                user = await write(finalUsername)
+                break
+            } catch (error) {
+                if (!isUsernameClash(error)) throw error
+                if (typedUsername || attempt >= 2) throw new Error("USERNAME_IN_USE")
+                finalUsername = await madeUp()
+            }
+        }
 
         // Audit Log (Centralized)
         const { AuditLogService } = await import("./audit-log.service")
@@ -339,11 +354,12 @@ export class UserService {
             }
 
             if (username !== undefined && userRole === 'SUPER_ADMIN') {
-                // Only a new one: the form sends the username with every save,
-                // and one from before codes may follow another company's.
-                const changed = !!username && username.toLowerCase() !== regularUser.username.toLowerCase()
+                // Only a new one is checked: one from before codes may follow
+                // another company's, and new capitals on their own are theirs.
+                const changed = username.toLowerCase() !== regularUser.username.toLowerCase()
+                if (changed && await usernameTaken(username, id)) throw new Error("USERNAME_IN_USE")
                 if (changed && await usernameReserved(username, regularUser.companyId)) throw new Error("USERNAME_RESERVED")
-                updateData.username = username || null
+                updateData.username = username
             }
 
             // Each field is its own permission: changing a salary and changing a
@@ -482,12 +498,17 @@ export class UserService {
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
             const handOff = rehome
-            const updated = handOff
-                ? await prisma.$transaction(async (tx) => {
+            const updated = await (handOff
+                ? prisma.$transaction(async (tx) => {
                     await TeamHandOff.apply(tx, id, handOff, { id: session.user.id, role: userRole })
                     return tx.user.update({ where: { id }, data: updateData, select: writeSelect })
                 })
-                : await prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
+                : prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
+            ).catch(error => {
+                // Given to somebody else a moment ago, after the check above.
+                if (updateData.username !== undefined && isUsernameClash(error)) throw new Error("USERNAME_IN_USE")
+                throw error
+            })
             // A role given directly settles any request still waiting for this
             // person (ROLES_PLAN.md §6.12): approving it later would undo the
             // newer decision. Approving a request claims it first, so this

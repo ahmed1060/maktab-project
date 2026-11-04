@@ -3624,3 +3624,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   code and its name together, to a name another company has, refused the
   save but kept the new code, with nothing in the audit log. The code is
   saved with the rest, so a refused save leaves both as they were.
+- **2026-11-04:** Each company's username code was merged in #184. One
+  username is one account, capitals aside, in #185:
+  - a username is 2 to 30 letters, digits, dots, hyphens or underscores,
+    starting with a letter or digit, wherever it's typed or made up: never
+    an @ or a space, so signing in can tell it from an email (next). The
+    usernames already given all are;
+  - nobody else has it, a company's person or a Super Admin, capitals
+    aside: "Ops" and "ops" are one username. That was checked only among
+    company people, and not at all when a Super Admin changed somebody's,
+    which then failed with an error reference. The database now refuses
+    two that differ only in capitals;
+  - a Super Admin added on the Super Admins page, where no username is
+    typed, gets one from their email's part before the @ (-2 after it if
+    somebody has it), where they got none, so a second one couldn't be
+    added at all ("Email already exists", said of an email nobody had). The
+    one already added that way gets theirs the same way;
+  - two people given the same username at the same moment: the second is
+    told it's in use, or, made up, gets the next one;
+  - a person's profile sends their username only when it's been changed,
+    checked first against the same rule.

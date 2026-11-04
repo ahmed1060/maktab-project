@@ -1,10 +1,12 @@
 import { z } from "zod"
+import { usernameSchema } from "./username.schema"
 
 export const superAdminSchema = z.object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
-    username: z.string().min(3, "Username must be at least 3 characters").optional(),
+    // Optional: without one, they get one from their email (lib/username-rules.ts).
+    username: usernameSchema.optional(),
     // F-16: floor raised from 8 to 12 for consistency with the regular
     // user schema; capped at 72 since bcrypt truncates beyond that.
     password: z.string().min(12, "Password must be at least 12 characters").max(72, "Password must be at most 72 characters"),

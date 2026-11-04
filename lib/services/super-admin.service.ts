@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { SuperAdminInput } from "../validations/super-admin.schema"
 import bcrypt from "bcryptjs"
+import { freeUsername, usernameReserved, usernameTaken } from "@/lib/username"
+import { isUsernameClash, usernameFromEmail } from "@/lib/username-rules"
 
 export class SuperAdminService {
     static async getMany(skip: number, take: number, search?: string) {
@@ -48,16 +50,35 @@ export class SuperAdminService {
     static async create(input: SuperAdminInput, session?: any) {
         const hashedPassword = await bcrypt.hash(input.password, 12)
 
-        const newAdmin = await prisma.superAdmin.create({
+        // A username nobody else has, capitals aside, and no company's code
+        // and a number. One isn't typed on the Super Admins page: they get one
+        // from their email, where they got "", which the next one couldn't.
+        const typed = input.username
+        if (typed) {
+            if (await usernameTaken(typed)) throw new Error("USERNAME_IN_USE")
+            if (await usernameReserved(typed, null)) throw new Error("USERNAME_RESERVED")
+        }
+        const add = (username: string) => prisma.superAdmin.create({
             data: {
                 firstName: input.firstName,
                 lastName: input.lastName,
                 email: input.email,
-                username: input.username || "",
+                username,
                 password: hashedPassword,
                 gender: input.gender || 'MALE'
             }
         })
+        let newAdmin: Awaited<ReturnType<typeof add>>
+        for (let attempt = 0; ; attempt++) {
+            try {
+                newAdmin = await add(typed ?? await freeUsername(usernameFromEmail(input.email)))
+                break
+            } catch (error) {
+                // Given to somebody else a moment ago, after the check.
+                if (!isUsernameClash(error)) throw error
+                if (typed || attempt >= 2) throw new Error("USERNAME_IN_USE")
+            }
+        }
 
         const { password: _password, ...adminWithoutPassword } = newAdmin as any
         /* eslint-disable @typescript-eslint/no-unused-vars */

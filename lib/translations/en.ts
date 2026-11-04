@@ -1748,6 +1748,8 @@ export const en = {
         hist_adj_named: "{what}, {month}",
         username_label: "Username",
         username_placeholder: "Enter username...",
+        username_invalid: "A username is 2 to 30 letters, digits, dots, hyphens or underscores, and starts with a letter or digit.",
+        username_in_use: "Another username is needed: somebody already has this one.",
         username_reserved: "Another username is needed: this one is another company's username code and a number.",
         choose_file: "Choose File",
         overdue_task_alert_msg: "The deadline for this task has passed. Please contact the person who assigned it to discuss next steps or to request an extension.",
