@@ -352,6 +352,15 @@ describe("the profile, wired to its form", () => {
         expect(FORM).toContain("<ProfileHeader own={own} editing={!seeing} name={null} />")
     })
 
+    // Cancel goes to their details at the same address with ?mode=view, and
+    // the router kept the profile mounted across it: the details were what
+    // had been typed, and Edit again brought it back to be saved (Codex
+    // review, PR 193).
+    it("shows their details as saved after Cancel, not as typed: the view and the form are each mounted afresh", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/employees/[id]/page.tsx", "utf8")
+        expect(page).toMatch(/<EmployeeProfileForm\s+key=\{isViewMode \? 'view' : 'edit'\}/)
+    })
+
     // As Add employee does; the profile didn't (web interface audit).
     it("asks before a reload or a closed tab loses what's typed, but not while it's sent, or once it's saved", () => {
         expect(FORM).toContain("if (!changed || saving || seeing) return")

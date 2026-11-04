@@ -3961,3 +3961,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     (browser flows).
   - In Arabic, the photo's size limit is in Arabic digits, as the page's
     other numbers are, where it was a 4 among them (browser flows).
+  - Cancel shows their details as saved, not as typed: going to their
+    details at the same address kept the form's state, so the details
+    showed what had been typed, and Edit again brought it back to be saved.
+    The view and the form are each mounted afresh now (Codex review).
