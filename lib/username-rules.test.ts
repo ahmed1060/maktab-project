@@ -48,4 +48,11 @@ describe("a username", () => {
         const form = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
         expect(form).toMatch(/username: userRole === 'SUPER_ADMIN' \? changedUsername\(username, savedUsername\) : undefined/)
     })
+
+    it("is typed as it is: not spell-checked, capitalised, filled in or translated by the browser", () => {
+        const form = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
+        const input = form.slice(form.indexOf("<input aria-label={t('username_label' as any) || 'Username'}"))
+        const tag = input.slice(0, input.indexOf("/>"))
+        for (const attribute of ['spellCheck={false}', 'autoCapitalize="none"', 'autoComplete="off"', 'translate="no"']) expect(tag, attribute).toContain(attribute)
+    })
 })

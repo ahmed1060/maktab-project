@@ -839,6 +839,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
                     <input aria-label={t('username_label' as any) || 'Username'}
                         className="input"
+                        spellCheck={false} autoCapitalize="none" autoComplete="off" translate="no"
                         value={username}
                         onChange={e => setUsername(e.target.value)}
                         disabled={isViewMode || userRole !== 'SUPER_ADMIN'}

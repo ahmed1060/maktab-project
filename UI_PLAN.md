@@ -3644,3 +3644,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     told it's in use, or, made up, gets the next one;
   - a person's profile sends their username only when it's been changed,
     checked first against the same rule.
+- **2026-11-04:** Found in the web interface audit, on #185: a person's
+  profile spell-checked, capitalised and could translate the username typed
+  in it. It's typed as it is.
