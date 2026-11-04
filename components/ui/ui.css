@@ -662,8 +662,9 @@
   color: var(--brand-text);
 }
 /* A one-time code to type somewhere else, such as an attendance agent's
-   (company settings part 3c): large, spaced, in equal-width digits, and
-   chosen whole with one click to copy. */
+   (company settings part 3c) or a temporary password (a person's profile,
+   part 2, PR 192): large, spaced, in equal-width digits, and chosen whole
+   with one click to copy. */
 .ui-code {
   margin: 0;
   padding: var(--space-3);
@@ -678,6 +679,14 @@
   text-align: center;
   user-select: all;
   overflow-wrap: anywhere;
+}
+/* A longer one, such as a temporary password's 16 characters: a size
+   smaller and spaced less, so it stays on one line on a phone, where a
+   break read as two words (a person's profile, part 2, PR 192). */
+.ui-code-long {
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  letter-spacing: 0.05em;
 }
 /* A link that goes with a field, such as a typed point's map, under it. */
 .ui-field-link {
@@ -1172,6 +1181,23 @@
 }
 .ui-detail a {
   color: var(--brand-text);
+}
+/* A detail's second line, such as until when someone is acting in a role
+   (a person's profile, part 2). */
+.ui-detail-note {
+  display: block;
+  margin-block-start: var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+/* A detail with what can be done to it beside it, such as a person's status
+   and End contract: under it, where they don't fit beside it. */
+.ui-detail-act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 /* A detail of several lines, such as a policy rule's grace, bands and cap
    (company settings part 3b): one under the other, with no marks. */

@@ -136,16 +136,21 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["components/EmployeeProfileForm.tsx", "if (userId === sessionUserId && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {", THE_PERSON],
     ["components/EmployeeProfileForm.tsx", "const isRestrictedRole = role === 'EMPLOYEE' || role === 'TEAM_LEADER'", THE_PERSON],
     ["components/EmployeeProfileForm.tsx", "teamLeaderId: canAssignTeam && userId !== session?.user?.id && role === 'EMPLOYEE'", THE_PERSON],
-    ["components/EmployeeProfileForm.tsx", "(can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (", THE_PERSON],
-    ["components/EmployeeProfileForm.tsx", "(can('dayoff.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (", THE_PERSON],
     // The Super Admin's roles card: the built-in Employee is the default when none is set, and an Admin-based role is never one
     ["components/CompanyRolesCard.tsx", "body: JSON.stringify({ companyId, roleId: role.builtIn === 'EMPLOYEE' ? null : role.id }),", THE_ROLE],
     ["components/CompanyRolesCard.tsx", "...(!role.isDefault && role.baseRole !== 'ADMIN' ? [", THE_ROLE],
-    ["components/EmployeeProfileForm.tsx", "userId === session?.user?.id && role === 'EMPLOYEE' && (", THE_PERSON],
     // Only the Super Admin changes an Admin's role (§4.2, rule 7): the field shows it, locked
     ["components/EmployeeProfileForm.tsx", "<RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />", ADMIN_ROLE],
     ["components/EmployeeProfileForm.tsx", "locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}", ADMIN_ROLE],
-    ["components/EmployeeProfileForm.tsx", "&& role === 'EMPLOYEE' && (", THE_PERSON],
+
+    // lib/profile-access.ts: what a person's profile shows, for the view and the form (PR 192)
+    // Only the Super Admin acts on an Admin (§4.2, rule 7)
+    ["lib/profile-access.ts", "const actsOnThem = person.role !== 'ADMIN' || superAdmin", ADMIN_ROLE],
+    // An Admin is paid outside payroll, and a role not loaded yet shows nothing
+    ["lib/profile-access.ts", "const paid = !['ADMIN', 'SUPER_ADMIN'].includes(person.role) && person.role !== ''", THE_PERSON],
+    // Only an employee has a team leader
+    ["lib/profile-access.ts", "ownTeamLeader: own && person.role === 'EMPLOYEE',", THE_PERSON],
+    ["lib/profile-access.ts", "teamLeader: can('employees.assign_team') && !own && person.role === 'EMPLOYEE',", THE_PERSON],
 ]
 
 const ROLE_CHECK = /(===?|!==?)\s*['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]|['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]\s*(===?|!==?)|\[[^\]]*['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"][^\]]*\]\s*\.includes|case\s+['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]/

@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
 import { Card, PageHeader, SectionLink } from '@/components/ui'
@@ -14,18 +15,20 @@ import { Card, PageHeader, SectionLink } from '@/components/ui'
  * Someone else's profile is under their name, saying what the page is, and
  * goes back to Employees, as their history does; until the name has come,
  * what the page is is its title. One's own, opened from the account menu,
- * is My profile, with nowhere to go back to.
+ * is My profile, with nowhere to go back to. Seen, its action is Edit (part
+ * 2, PR 192).
  */
-export function ProfileHeader({ own, editing, name }: { own: boolean; editing: boolean; name: string | null }) {
+export function ProfileHeader({ own, editing, name, action }: { own: boolean; editing: boolean; name: string | null; action?: ReactNode }) {
     const { t } = useLanguage()
     const modules = useModules()
-    if (own) return <PageHeader title={t('my_profile')} />
+    if (own) return <PageHeader title={t('my_profile')} action={action} />
     const what = t(editing ? 'edit_employee_title' : 'employee_profile')
     return (
         <PageHeader
             back={{ href: '/dashboard/employees', label: modules.label('employees') }}
             title={name ? <bdi>{name}</bdi> : what}
             subtitle={name ? what : undefined}
+            action={action}
         />
     )
 }

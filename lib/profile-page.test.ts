@@ -88,7 +88,9 @@ describe("a person's profile, as a page", () => {
 
     it("is the form's frame, where it was a glass card with a title of its own", () => {
         expect(FORM).toContain("<Page>")
-        expect(FORM).toMatch(/<ProfileHeader own=\{own\} editing=\{!isViewMode\} name=\{name\} \/>/)
+        // The form's, and the view's (part 2, PR 192), each its own.
+        expect(FORM).toContain("<ProfileHeader own={own} editing name={name} />")
+        expect(FORM).toMatch(/<ProfileHeader own=\{own\} editing=\{false\} name=\{name\}/)
         expect(FORM).not.toContain("glass-card")
         expect(FORM).not.toMatch(/<h1\b/)
         // Its card holds the photo and the form.
@@ -167,7 +169,9 @@ describe("their photo", () => {
         const html = render(h(PhotoRow, { name: MONA, src: "https://x.supabase.co/a.png", canChange: false, uploading: false, error: null, onFiles: () => {}, onRemove: () => {} }))
         expect(html).not.toContain("<button")
         expect(html).not.toContain("ui-file-drop")
-        expect(FORM).toMatch(/<ProfilePhoto[^>]*canChange=\{!isViewMode\}/)
+        // The form's can change; the view's, its details' (part 2, PR 192), can't.
+        expect(FORM).toMatch(/<ProfilePhoto[^>]* canChange own=/)
+        expect(readFileSync("components/profile/ProfileView.tsx", "utf8")).toContain("<PhotoRow name={name} src={photo} canChange={false}")
     })
 
     it("says while it's sent, which a screen reader hears, with the picker and Remove photo off", async () => {

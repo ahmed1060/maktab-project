@@ -3,9 +3,8 @@ import { useState, useEffect, useEffectEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
-import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
-import { HourglassIcon } from '@phosphor-icons/react/ssr'
+import { HourglassIcon, PencilSimpleIcon } from '@phosphor-icons/react/ssr'
 import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
 import { useCan, useViewer } from '@/lib/useCan'
@@ -14,10 +13,13 @@ import RoleRequestControl from '@/components/RoleRequestControl'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
 import { changedUsername, usernameError } from "@/lib/username-rules"
-import { useDialog } from '@/lib/useDialog'
-import { Card, EmptyState, Page } from '@/components/ui'
+import { ButtonLink, Card, EmptyState, Page } from '@/components/ui'
 import { NameChangeWaiting, ProfileHeader } from '@/components/profile/ProfileFrame'
 import { ProfilePhoto } from '@/components/profile/ProfilePhoto'
+import { ProfileView } from '@/components/profile/ProfileView'
+import { ConfirmPasswordDialog, TemporaryPasswordDialog } from '@/components/profile/PasswordDialogs'
+import { profileAccess } from '@/lib/profile-access'
+import { resetRefusal } from '@/lib/profile-password'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 
@@ -30,8 +32,11 @@ type EmployeeProfileFormProps = {
  * A person's profile: someone else's, to see (?mode=view) or edit, or one's
  * own, from the account menu. On the building blocks in parts (UI_PLAN.md
  * §5 step 5, the pages left). Part 1, PR 191: its page header, its photo,
- * and a name change waiting (components/profile). Its fields and dialogs
- * follow in the parts after.
+ * and a name change waiting (components/profile). Part 2, PR 192: someone
+ * else's, seen, as their details (components/profile/ProfileView.tsx), what
+ * may be seen and done asked in one place (lib/profile-access.ts), and
+ * confirming with one's own password in the building blocks' dialog. Its
+ * form and its contract's dialogs follow in the parts after.
  */
 export default function EmployeeProfileForm({ userId, isViewMode = false }: EmployeeProfileFormProps) {
     const { t, locale } = useLanguage()
@@ -100,18 +105,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // Set once a temporary password has been issued via the reset flow (F-02)
     // — shown to the acting admin exactly once, never persisted or re-fetchable.
     const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null)
-    const [verificationModalOpen, setVerificationModalOpen] = useState(false)
-    const [verificationPassword, setVerificationPassword] = useState('')
-    const [isVerifying, setIsVerifying] = useState(false)
-    const [showVerificationPassword, setShowVerificationPassword] = useState(false)
-    const [verificationCallback, setVerificationCallback] = useState<{ type: 'UPDATE' | 'RESET_PASSWORD', data?: any } | null>(null)
-    const closeVerification = () => {
-        setVerificationModalOpen(false)
-        setVerificationPassword('')
-        setVerificationCallback(null)
-    }
-    // A dialog like the others: focus in, Tab kept inside, Escape closes, focus back (Codex review of #36).
-    const verifyDialog = useDialog(verificationModalOpen, closeVerification)
+    // What one's own password is asked for, before it's done: saving the
+    // form, or resetting their password (components/profile/PasswordDialogs.tsx).
+    const [confirming, setConfirming] = useState<'UPDATE' | 'RESET_PASSWORD' | null>(null)
 
     useEffect(() => {
         // Prevent default drag and drop behavior globally for this page
@@ -239,61 +235,50 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         }
     }, [userId, userRole, sessionUserId, reloadKey, canAssignTeam])
 
-    const handleResetPassword = async (adminPasswordInput: string) => {
-        setIsVerifying(true)
+    // Each hands back what's wrong, to say under the password, or null once
+    // it's done. The route's refusals are in English, and are said in the
+    // page's language (lib/profile-password.ts).
+    const resetPassword = async (confirmPassword: string): Promise<string | null> => {
         try {
             const res = await fetch(`/api/users/${userId}/reset-password`, {
                 method: 'POST',
-                body: JSON.stringify({ confirmPassword: adminPasswordInput }),
+                body: JSON.stringify({ confirmPassword }),
                 headers: { 'Content-Type': 'application/json' }
             })
-
-            const result = await res.json()
-            if (!res.ok || !result.success) {
-                throw new Error(result.error || t('incorrect_password'))
-            }
-
+            const result = await res.json().catch(() => null)
+            if (!res.ok || !result?.success) return t(resetRefusal(result?.error))
+            setConfirming(null)
+            // Shown this once, in its own dialog.
             setIssuedTempPassword(result.data.password)
-            showToast(t('password_reset_issued' as any), 'success')
-            setVerificationModalOpen(false)
-            setVerificationPassword('')
-        } catch (err: any) {
-            showToast(err.message || t('error_generic'), 'error')
-        } finally {
-            setIsVerifying(false)
+            return null
+        } catch {
+            return t('profile_reset_failed')
         }
     }
 
-    const handleVerifyAndUpdate = async (userPasswordInput: string) => {
-        setIsVerifying(true)
+    const confirmAndSave = async (password: string): Promise<string | null> => {
         try {
             const res = await fetch('/api/auth/verify', {
                 method: 'POST',
-                body: JSON.stringify({ password: userPasswordInput }),
+                body: JSON.stringify({ password }),
                 headers: { 'Content-Type': 'application/json' }
             })
-
-            const result = await res.json()
-            if (!result.data || !result.data.valid) {
-                throw new Error(t('incorrect_password'))
-            }
-
-            // If valid, proceed with the actual update
-            setVerificationModalOpen(false)
-            setVerificationPassword('')
-            await executeSubmit()
-        } catch (err: any) {
-            showToast(err.message || t('error_generic'), 'error')
-        } finally {
-            setIsVerifying(false)
+            const result = await res.json().catch(() => null)
+            // A check that failed, as when the server does, isn't a wrong password.
+            if (!res.ok || !result?.success) return t('profile_verify_failed')
+            if (!result.data?.valid) return t('incorrect_password')
+        } catch {
+            return t('profile_verify_failed')
         }
+        setConfirming(null)
+        await executeSubmit()
+        return null
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // Trigger verification modal before actual submit
-        setVerificationCallback({ type: 'UPDATE' })
-        setVerificationModalOpen(true)
+        // One's own password first (ConfirmPasswordDialog), then the save.
+        setConfirming('UPDATE')
     }
 
     /**
@@ -436,6 +421,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // before the session hook has loaded.
     const own = userId === viewer?.id
     const name = `${originalFirstName} ${originalLastName}`.trim() || email
+    // What they may see here and do, for the view and the form alike (PR 192).
+    const access = profileAccess({ can, viewer, person: { id: userId, role } })
 
     // The page's header from the start, and the building blocks' panel where
     // the profile will be (DESIGN.md §5.5, Loading). It was the old spinner,
@@ -449,12 +436,57 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         )
     }
 
+    if (isViewMode) {
+        const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
+        return (
+            <Page>
+                <ProfileHeader own={own} editing={false} name={name}
+                    action={access.edit ? <ButtonLink variant="primary" icon={PencilSimpleIcon} href={`/dashboard/employees/${userId}`} prefetch={false}>{t('edit')}</ButtonLink> : undefined} />
+                {pendingRequest && <NameChangeWaiting name={`${pendingRequest.newFirstName} ${pendingRequest.newLastName}`.trim()} requestId={pendingRequest.id} />}
+                <ProfileView
+                    name={name}
+                    photo={avatarUrl}
+                    access={access}
+                    facts={{
+                        email,
+                        username: savedUsername,
+                        gender,
+                        company: role === 'SUPER_ADMIN' ? 'SHSD' : companies.find(c => c.id === companyId)?.name ?? null,
+                        role: role === 'SUPER_ADMIN' ? t('role_super_admin') : roleLabel(currentRole, t),
+                        acting: acting ? t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(digits, { day: 'numeric', month: 'long', year: 'numeric' })).replace('{role}', roleLabel(acting.returnTo, t)) : null,
+                        teamLeader: myLeader ? `${myLeader.firstName} ${myLeader.lastName}`.trim() : null,
+                        status,
+                        salary,
+                        dayOffCredit: baseDayOffCredit,
+                    }}
+                    onResetPassword={() => setConfirming('RESET_PASSWORD')}
+                    // Ending a contract, or reinstating one, saves through its own
+                    // dialog, with the settlement shown first: it's the view's,
+                    // never the form's, beside whose Update it read as though
+                    // Update would apply it.
+                    onEndContract={() => setShowEndContract(true)}
+                />
+                {showEndContract && (
+                    <EndContractModal
+                        userId={userId}
+                        name={name}
+                        status={status}
+                        onClose={() => setShowEndContract(false)}
+                        onDone={() => { setReloadKey(k => k + 1); router.refresh() }}
+                    />
+                )}
+                <ConfirmPasswordDialog open={confirming === 'RESET_PASSWORD'} onCancel={() => setConfirming(null)} onConfirm={resetPassword} />
+                <TemporaryPasswordDialog name={name} password={issuedTempPassword} onClose={() => setIssuedTempPassword(null)} />
+            </Page>
+        )
+    }
+
     return (
         <Page>
-            <ProfileHeader own={own} editing={!isViewMode} name={name} />
+            <ProfileHeader own={own} editing name={name} />
             {pendingRequest && <NameChangeWaiting name={`${pendingRequest.newFirstName} ${pendingRequest.newLastName}`.trim()} requestId={pendingRequest.id} />}
             <Card>
-                <ProfilePhoto userId={userId} name={name} photo={avatarUrl} canChange={!isViewMode} own={own} onChange={setAvatarUrl} />
+                <ProfilePhoto userId={userId} name={name} photo={avatarUrl} canChange own={own} onChange={setAvatarUrl} />
                 <form onSubmit={handleSubmit} className="ui-form">
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div>
@@ -464,8 +496,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                 value={firstName}
                                 onChange={e => setFirstName(e.target.value)}
                                 required
-                                disabled={isViewMode}
-                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                             />
                         </div>
                         <div>
@@ -475,8 +506,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                 value={lastName}
                                 onChange={e => setLastName(e.target.value)}
                                 required
-                                disabled={isViewMode}
-                                style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                             />
                         </div>
                     </div>
@@ -488,15 +518,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                             value={gender}
                             onChange={e => setGender(e.target.value)}
                             required
-                            disabled={isViewMode}
-                            style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                         >
                             <option value="MALE">{t('male')}</option>
                             <option value="FEMALE">{t('female')}</option>
                         </select>
                     </div>
 
-                    {(userRole === 'SUPER_ADMIN' || role === 'SUPER_ADMIN') && (
+                    {access.company && (
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('company_label')}</label>
                             {role === 'SUPER_ADMIN' ? (
@@ -535,8 +564,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             required
-                            disabled={isViewMode || userId === session?.user?.id}
-                            style={(isViewMode || userId === session?.user?.id) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            disabled={userId === session?.user?.id}
+                            style={userId === session?.user?.id ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                         />
                     </div>
 
@@ -547,15 +576,15 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                             spellCheck={false} autoCapitalize="none" autoComplete="off" translate="no"
                             value={username}
                             onChange={e => setUsername(e.target.value)}
-                            disabled={isViewMode || userRole !== 'SUPER_ADMIN'}
-                            style={(isViewMode || userRole !== 'SUPER_ADMIN') ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                            disabled={userRole !== 'SUPER_ADMIN'}
+                            style={userRole !== 'SUPER_ADMIN' ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                             placeholder={t('username_placeholder' as any) || 'Username'}
                         />
                     </div>
 
                     {/* Salary Field - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
                     {
-                        (can('salary.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                        access.salary && (
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('monthly_base_salary_label')}</label>
                                 <input aria-label={t('monthly_base_salary_label')}
@@ -563,9 +592,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                     className="input"
                                     value={salary}
                                     onChange={e => setSalary(e.target.value)}
-                                    disabled={isViewMode || userId === session?.user?.id || !can('salary.edit')}
+                                    disabled={userId === session?.user?.id || !can('salary.edit')}
                                     max={1000000000}
-                                    style={(isViewMode || userId === session?.user?.id || !can('salary.edit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    style={(userId === session?.user?.id || !can('salary.edit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                     placeholder={userId === session?.user?.id && !salary ? t('no_data_available') : (locale === 'ar' ? 'أدخل الراتب' : 'Enter salary')}
                                 />
                             </div>
@@ -574,7 +603,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
 
                     {/* Day Off Credit Fields - Visible to Admins and Self, Editable only by Admins (not self). Hidden for Admins and Super Admins. */}
                     {
-                        (can('dayoff.view') || userId === session?.user?.id) && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== '' && (
+                        access.dayOffCredit && (
                             <>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('day_off_credit_assigned')}</label>
@@ -583,117 +612,74 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                         className="input"
                                         value={baseDayOffCredit}
                                         onChange={e => setBaseDayOffCredit(e.target.value)}
-                                        disabled={isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')}
+                                        disabled={userId === session?.user?.id || !can('dayoff.adjust_credit')}
                                         step="0.5"
-                                        style={(isViewMode || userId === session?.user?.id || !can('dayoff.adjust_credit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        style={(userId === session?.user?.id || !can('dayoff.adjust_credit')) ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
                                     />
                                 </div>
                             </>
                         )
                     }
 
-                    {
-                        !isViewMode && (
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
-                                <div style={{ position: 'relative' }}>
-                                    <input aria-label={t('new_password_optional_label')}
-                                        type={showNewPassword ? "text" : "password"}
-                                        className="input"
-                                        value={password}
-                                        onChange={e => setPassword(e.target.value)}
-                                        minLength={12}
-                                        maxLength={72}
-                                        placeholder={t('keep_current_password_placeholder')}
-                                        style={{
-                                            textAlign: locale === 'ar' ? 'right' : 'left',
-                                            [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
-                                        }}
-                                    />
-                                    <button
-                                        type="button"
-                                        aria-label={showNewPassword ? t('hide_password' as any) : t('show_password' as any)}
-                                        aria-pressed={showNewPassword}
-                                        onClick={() => setShowNewPassword(!showNewPassword)}
-                                        style={{
-                                            position: 'absolute',
-                                            [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            padding: '0.25rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            color: 'var(--text-soft)'
-                                        }}
-                                    >
-                                        {showNewPassword ? (
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                                <line x1="1" y1="1" x2="23" y2="23"></line>
-                                            </svg>
-                                        ) : (
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                            </svg>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        )
-                    }
-
-                    {/* Password reset for Admin/Super Admin viewing another user (F-02:
-                        replaces the old password-reveal feature — admins can no longer
-                        see a user's actual password, only issue a new temporary one) */}
-                    {
-                        can('employees.reset_password') && isViewMode && userId !== session?.user?.id && (
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                                {issuedTempPassword ? (
-                                    <div>
-                                        <input aria-label={t('password')}
-                                            type="text"
-                                            className="input"
-                                            value={issuedTempPassword}
-                                            readOnly
-                                            style={{ background: 'var(--surface-sunk)', cursor: 'default', textAlign: locale === 'ar' ? 'right' : 'left' }}
-                                        />
-                                        <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--warn-fg-mid)', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                            {t('temp_password_warning' as any)}
-                                        </p>
-                                    </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('new_password_optional_label')}</label>
+                        <div style={{ position: 'relative' }}>
+                            <input aria-label={t('new_password_optional_label')}
+                                type={showNewPassword ? "text" : "password"}
+                                className="input"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                minLength={12}
+                                maxLength={72}
+                                placeholder={t('keep_current_password_placeholder')}
+                                style={{
+                                    textAlign: locale === 'ar' ? 'right' : 'left',
+                                    [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem'
+                                }}
+                            />
+                            <button
+                                type="button"
+                                aria-label={showNewPassword ? t('hide_password' as any) : t('show_password' as any)}
+                                aria-pressed={showNewPassword}
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '0.25rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    color: 'var(--text-soft)'
+                                }}
+                            >
+                                {showNewPassword ? (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
                                 ) : (
-                                    <button
-                                        type="button"
-                                        className="btn"
-                                        onClick={() => {
-                                            setVerificationCallback({ type: 'RESET_PASSWORD' })
-                                            setVerificationModalOpen(true)
-                                        }}
-                                    >
-                                        {t('reset_password_button' as any)}
-                                    </button>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
                                 )}
-                            </div>
-                        )
-                    }
+                            </button>
+                        </div>
+                    </div>
+
                     {
-                        (can('employees.assign_role') || can('employees.request_role')) && userId !== session?.user?.id && (
+                        access.role && (
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
                                 {role === 'SUPER_ADMIN' ? (
                                     <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 ) : !can('employees.assign_role') ? (
                                     // May only ask (§6.12): a request, not a change.
-                                    userId && !isViewMode ? (
-                                        <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
-                                    ) : (
-                                        <input className="input" value={currentRole ? roleLabel(currentRole, t) : ''} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
-                                    )
+                                    <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
                                 ) : (
                                     <RoleSelect
                                         companyId={companyId}
@@ -703,8 +689,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                         onChange={(id, chosen) => { setRoleId(id); if (chosen) setRole(chosen.baseRole) }}
                                         // Only the Super Admin acts on an Admin (§4.2, rule 7).
                                         locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
-                                        disabled={isViewMode}
-                                        style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                        style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                                     />
                                 )}
                                 {acting && (
@@ -712,7 +697,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                         {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
                                     </p>
                                 )}
-                                {can('employees.assign_role') && !isViewMode && roleId && roleId !== currentRole?.id && (
+                                {can('employees.assign_role') && roleId && roleId !== currentRole?.id && (
                                     <div style={{ marginTop: '0.75rem' }}>
                                         <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
                                         <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => setActingDate(e.target.value)} />
@@ -728,7 +713,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                            the field above is an Admin's control; here it is simply
                            information, because knowing who manages you is not
                            something you should have to ask a colleague for. */
-                        userId === session?.user?.id && role === 'EMPLOYEE' && (
+                        access.ownTeamLeader && (
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_yours')}</label>
                                 <p style={{
@@ -751,17 +736,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                            disappears rather than greying out when the role above is
                            changed, because an empty disabled control invites the
                            question of what it would mean. */
-                        canAssignTeam
-                            && userId !== session?.user?.id
-                            && role === 'EMPLOYEE' && (
+                        access.teamLeader && (
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('team_leader_label')}</label>
                                 <select aria-label={t('team_leader_label')}
                                     className="input"
                                     value={teamLeaderId}
                                     onChange={e => setTeamLeaderId(e.target.value)}
-                                    disabled={isViewMode}
-                                    style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 >
                                     <option value="">{t('team_leader_none')}</option>
                                     {leaders.filter(l => l.id !== userId).map(l => (
@@ -774,7 +756,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     }
 
                     {
-                        can('employees.change_status') && userId !== session?.user?.id && (
+                        access.status && (
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}</label>
                                 <select aria-label={t('status_label' as any) || (locale === 'ar' ? 'الحالة' : 'Status')}
@@ -782,8 +764,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                     value={status}
                                     onChange={e => setStatus(e.target.value)}
                                     required
-                                    disabled={isViewMode || status === 'ARCHIVED'}
-                                    style={isViewMode ? { background: 'var(--surface-sunk)', cursor: 'not-allowed', textAlign: locale === 'ar' ? 'right' : 'left' } : { textAlign: locale === 'ar' ? 'right' : 'left' }}
+                                    disabled={status === 'ARCHIVED'}
+                                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                                 >
                                     <option value="ACTIVE">{t('status_active' as any) || (locale === 'ar' ? 'نشط' : 'Active')}</option>
                                     <option value="SUSPENDED">{t('status_suspended' as any) || (locale === 'ar' ? 'موقوف' : 'Suspended')}</option>
@@ -800,47 +782,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                                         <option value="ARCHIVED">{t('status_archived')}</option>
                                     )}
                                 </select>
-
-                                {/*
-                                  Deliberately not a fourth option in the dropdown.
-                                  Ending a contract is not the same kind of act as
-                                  marking somebody offline: it has a date, it has a
-                                  settlement that falls one way or the other, and it
-                                  is the one status change that cannot be undone by
-                                  picking the previous value again. A separate
-                                  action, with the settlement shown first.
-
-                                  On the profile view, not the edit form: it saves
-                                  on its own through its own confirmation, so it
-                                  never needed the form, and next to Update it read
-                                  as though Update would apply it.
-                                */}
-                                {isViewMode && (
-                                    <button
-                                        type="button"
-                                        className="btn"
-                                        onClick={() => setShowEndContract(true)}
-                                        style={{
-                                            marginTop: '0.75rem',
-                                            background: 'transparent',
-                                            color: status === 'ARCHIVED' ? 'var(--brand-primary-text)' : 'var(--danger-fg-strong)',
-                                            border: `1px solid ${status === 'ARCHIVED' ? 'var(--primary)' : 'var(--danger-border)'}`,
-                                            fontSize: '0.85rem',
-                                        }}
-                                    >
-                                        {status === 'ARCHIVED' ? t('reinstate') : t('end_contract')}
-                                    </button>
-                                )}
                             </div>
                         )
                     }
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: isViewMode ? 'flex-end' : 'flex-start', flexDirection: 'row' }}>
-                        {!isViewMode && (
-                            <button type="submit" className="btn btn-primary" disabled={saving}>
-                                {saving ? t('updating_button') : t('update_button')}
-                            </button>
-                        )}
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-start', flexDirection: 'row' }}>
+                        <button type="submit" className="btn btn-primary" disabled={saving}>
+                            {saving ? t('updating_button') : t('update_button')}
+                        </button>
                         <button
                             type="button"
                             className="btn"
@@ -852,18 +801,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     </div>
                 </form>
             </Card>
-
-            {
-                showEndContract && (
-                    <EndContractModal
-                        userId={userId}
-                        name={`${firstName} ${lastName}`.trim() || email}
-                        status={status}
-                        onClose={() => setShowEndContract(false)}
-                        onDone={() => { setReloadKey(k => k + 1); router.refresh() }}
-                    />
-                )
-            }
 
             {
                 handoff && (
@@ -881,136 +818,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     />
                 )
             }
-            {
-                verificationModalOpen && createPortal(
-                    <div className="modal-overlay">
-                        <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }} {...verifyDialog.panelProps}>
-                            <div className="modal-header">
-                                <h3 className="modal-title" id={verifyDialog.titleId}>{t('verify_identity')}</h3>
-                                <button aria-label={t('close')}
-                                    className="modal-close"
-                                    onClick={closeVerification}
-                                >
-                                    &times;
-                                </button>
-                            </div>
-                            <div className="modal-body" style={{ textAlign: 'center' }}>
-                                <div style={{
-                                    width: '64px',
-                                    height: '64px',
-                                    background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '0 auto 1.5rem',
-                                    color: 'var(--brand-primary-text)'
-                                }}>
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                    </svg>
-                                </div>
-                                <p style={{ marginBottom: '1.5rem', fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-                                    {t('enter_password_confirm')}
-                                </p>
-                                <div style={{ position: 'relative' }}>
-                                    <input
-                                        type={showVerificationPassword ? "text" : "password"}
-                                        className="input"
-                                        placeholder={t('enter_your_password')}
-                                        value={verificationPassword}
-                                        onChange={(e) => setVerificationPassword(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && verificationPassword && !isVerifying) {
-                                                if (verificationCallback?.type === 'UPDATE') {
-                                                    handleVerifyAndUpdate(verificationPassword)
-                                                } else {
-                                                    handleResetPassword(verificationPassword)
-                                                }
-                                            }
-                                        }}
-                                        autoFocus
-                                        style={{
-                                            textAlign: locale === 'ar' ? 'right' : 'left',
-                                            height: '54px',
-                                            fontSize: '1.125rem',
-                                            borderRadius: '1.25rem',
-                                            paddingRight: (locale === 'ar' ? '1rem' : '3.5rem'),
-                                            paddingLeft: (locale === 'ar' ? '3.5rem' : '1rem'),
-                                            background: 'var(--surface-subtle)',
-                                            border: '2px solid var(--border)',
-                                            boxShadow: 'inset 0 2px 4px 0 var(--shadow-faint)'
-                                        }}
-                                    />
-                                    <button
-                                        type="button"
-                                        aria-label={showVerificationPassword ? t('hide_password' as any) : t('show_password' as any)}
-                                        aria-pressed={showVerificationPassword}
-                                        onClick={() => setShowVerificationPassword(!showVerificationPassword)}
-                                        style={{
-                                            position: 'absolute',
-                                            [locale === 'ar' ? 'left' : 'right']: '1rem',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            padding: '0.5rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            color: 'var(--text-soft)'
-                                        }}
-                                    >
-                                        {showVerificationPassword ? (
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                                <line x1="1" y1="1" x2="23" y2="23"></line>
-                                            </svg>
-                                        ) : (
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                            </svg>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="modal-footer" style={{ background: 'var(--surface)', borderTop: 'none', paddingBottom: '2.5rem', justifyContent: 'center' }}>
-                                <button
-                                    className="btn"
-                                    style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', minWidth: '100px' }}
-                                    onClick={closeVerification}
-                                >
-                                    {t('cancel')}
-                                </button>
-                                <button
-                                    className="btn btn-primary"
-                                    style={{ minWidth: '140px' }}
-                                    onClick={() => {
-                                        if (verificationPassword && !isVerifying) {
-                                            if (verificationCallback?.type === 'UPDATE') {
-                                                handleVerifyAndUpdate(verificationPassword)
-                                            } else {
-                                                handleResetPassword(verificationPassword)
-                                            }
-                                        }
-                                    }}
-                                    disabled={!verificationPassword || isVerifying}
-                                >
-                                    {isVerifying ? (
-                                        <>
-                                            <div className="animate-spin" style={{ width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', marginRight: '8px' }}></div>
-                                            {t('verifying')}
-                                        </>
-                                    ) : t('confirm')}
-                                </button>
-                            </div>
-                        </div>
-                    </div>,
-                    document.body
-                )
-            }
+            <ConfirmPasswordDialog open={confirming === 'UPDATE'} onCancel={() => setConfirming(null)} onConfirm={confirmAndSave} />
         </Page>
     )
 }

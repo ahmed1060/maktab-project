@@ -517,9 +517,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in the old window, merged in #189 on 2026-11-04, then the last
      loading spinners, merged in #190 on 2026-11-04, then a person's
      profile, in four parts: its page, its photo and a name change
-     waiting, in #191; then what it shows of someone else's, as their
-     details; then its form; then ending a contract and handing over a
-     team;
+     waiting, merged in #191 on 2026-11-04, then what it shows of someone
+     else's, as their details, in #192; then its form; then ending a
+     contract and handing over a team;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3854,3 +3854,46 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the photo and what changes it are as wide as the form under them, at
     most: on a computer, the picker's box ran on to the card's far side
     (browser flows).
+- **2026-11-04:** A person's profile, part 1, was merged in #191. Part 2,
+  in #192 (§5 step 5, the pages left), is what it shows of someone else's:
+  - their photo and their facts, as details (DESIGN.md §5.5, Details),
+    where it was the edit form with every field turned off. Each fact is
+    shown to whoever the form showed it to: pay and day off credit for
+    someone paid on payroll, their role and status to whoever may change
+    them, and a team leader only for an employee. What decides it is in
+    one place, for the view and the form (`lib/profile-access.ts`);
+  - Edit is the page header's, for whoever may edit them, as the
+    Employees list has it: an Admin's only for the Super Admin. There was
+    no way from someone's profile to its form;
+  - resetting their password is a fact of its own, with its button. It
+    asks for one's own password in the building blocks' dialog, a form,
+    with a wrong one said under the field, where it was said in a toast
+    over a window of its own making. Saving the form asks in the same
+    dialog. The temporary password is shown once, large, in a dialog of
+    its own, as an attendance agent's code is, where it sat among the
+    fields as one of them;
+  - a reset the route refuses says why in the page's language: a role
+    that holds access the viewer's doesn't, or an Admin's, which only the
+    Super Admin resets. Its English came as it was;
+  - its words are in sentence case: End contract, and Assigned day off
+    credit.
+  - End contract, and Reinstate, are offered to whoever may end a
+    contract, as their route asks, where they followed changing a status:
+    a role of the company's that may change a status but not end a
+    contract was offered them, and refused. An Admin's are offered only to
+    the Super Admin, who alone ends one (found reading the code).
+  - Reset password is offered on an Admin's profile only to the Super
+    Admin, who alone resets an Admin's password: another Admin was offered
+    it, asked for their password, and refused (found reading the code).
+  - a password that couldn't be checked, as when the server fails, says
+    so, where it was said to be wrong, and retyped (found reading the
+    code).
+  - told a password is wrong, the focus is back in the field, to type it
+    again: the field is off while it's checked, so the focus went with it,
+    and there was nowhere to type (browser flows).
+  - the temporary password stays on one line on a phone, a size smaller
+    than a code: its 16 characters broke over two lines, and read as two
+    words (browser flows).
+  - the note under a fact is spaced with a logical property, as DESIGN.md
+    §7 asks, and the password field says why it's focused as the dialog
+    opens: it's the one thing the dialog asks for (web interface audit).
