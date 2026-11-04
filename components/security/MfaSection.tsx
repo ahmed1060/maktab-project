@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
+import { DevicesIcon, HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, Card, Dialog, DialogActions, EmptyState, Field, PasswordInput, Row, Rows, Section, StatusBadge, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { apiErrorText } from '@/lib/api-error-text'
+import { CODE_LENGTH, isCode, refusalText } from '@/lib/security-forms'
 import { fetcher } from '@/lib/swr-fetcher'
+import { useViewer } from '@/lib/useCan'
 
 type TrustedDevice = {
     id: string
@@ -21,273 +26,302 @@ type TrustedDevice = {
 // that's what "enforced" actually means for that account, not a separate
 // flag flipped elsewhere later.
 //
-// Was app/(dashboard)/dashboard/mfa-settings/page.tsx until Security Settings
-// merged it with the email screen. Moved, not rewritten — the enrollment flow
-// and the one-way door for a protected Super Admin are the parts of this app
-// least worth retyping from memory.
-export default function MfaSection() {
-    const { locale } = useLanguage()
-    const { data: session, update } = useSession()
+// On the building blocks (UI_PLAN.md §5 step 5, the pages left): a settings
+// card with where it stands as a badge, setting it up in the card, and
+// turning it off asked in a dialog, with the password and the danger
+// button. Each mistake is said under its field in the reader's language, the
+// server's refusals too (lib/security-forms.ts). The
+// trusted devices are a list under their own heading, each removed only once
+// it's asked, where a click removed them at once; and a list that didn't load
+// says so, where it said there were none. It was cards of their own making,
+// their words typed into the page in both languages.
+
+/** Whether two-factor authentication is on, setting it up, and turning it off. */
+export function TwoFactorCard() {
+    const { t } = useLanguage()
+    // From the layout on the first paint, as the email card's.
+    const viewer = useViewer()
+    const { update } = useSession()
     const { showToast } = useToast()
-    const isAr = locale === 'ar'
 
-    const mfaEnabled = !!session?.user?.mfaEnabled
-    const isProtectedActor = session?.user?.role === 'SUPER_ADMIN' && !!session?.user?.isProtected
+    const on = !!viewer?.mfaEnabled
+    const isProtectedActor = viewer?.role === 'SUPER_ADMIN' && !!viewer?.isProtected
 
-    // Enrollment state
-    const [enrolling, setEnrolling] = useState(false)
-    const [secret, setSecret] = useState('')
-    const [qrCodeDataUrl, setQrCodeDataUrl] = useState('')
+    const [starting, setStarting] = useState(false)
+    const [startError, setStartError] = useState('')
+    const [enrolment, setEnrolment] = useState<{ secret: string; qrCodeDataUrl: string } | null>(null)
     const [code, setCode] = useState('')
+    const [codeErr, setCodeErr] = useState<string>()
     const [confirming, setConfirming] = useState(false)
-
-    // Disable state
-    const [disabling, setDisabling] = useState(false)
-    const [password, setPassword] = useState('')
-    const [submittingDisable, setSubmittingDisable] = useState(false)
-
-    const [error, setError] = useState('')
-
-    // F-27, Phase 6
-    const devicesQuery = mfaEnabled ? '/api/account/mfa/trusted-devices' : null
-    const { data: devicesResult, mutate: mutateDevices } = useSWR(devicesQuery, fetcher)
-    const devices: TrustedDevice[] = devicesResult?.data?.devices || []
-    const [revokingId, setRevokingId] = useState<string | null>(null)
-    const [revokingAll, setRevokingAll] = useState(false)
-
-    const formatDate = (iso: string) => new Date(iso).toLocaleDateString(isAr ? 'ar' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-
-    const revokeDevice = async (id: string) => {
-        setRevokingId(id)
-        try {
-            const res = await fetch(`/api/account/mfa/trusted-devices/${id}`, { method: 'DELETE' })
-            const data = await res.json()
-            if (!res.ok || !data.success) throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
-            mutateDevices()
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setRevokingId(null)
-        }
-    }
-
-    const revokeAllDevices = async () => {
-        setRevokingAll(true)
-        try {
-            const res = await fetch('/api/account/mfa/trusted-devices/revoke-all', { method: 'POST' })
-            const data = await res.json()
-            if (!res.ok || !data.success) throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
-            mutateDevices()
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setRevokingAll(false)
-        }
-    }
+    const [turningOff, setTurningOff] = useState(false)
+    const form = useRef<HTMLFormElement>(null)
+    const focusWrong = () => requestAnimationFrame(() => form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
 
     const startEnroll = async () => {
-        setError('')
-        setEnrolling(true)
+        setStartError('')
+        setStarting(true)
         try {
             const res = await fetch('/api/account/mfa/enroll', { method: 'POST' })
-            const data = await res.json()
-            if (!res.ok || !data.success) throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
-            setSecret(data.data.secret)
-            setQrCodeDataUrl(data.data.qrCodeDataUrl)
-        } catch (err: any) {
-            setError(err.message)
-            setEnrolling(false)
+            const text = await res.text()
+            if (!res.ok) {
+                setStartError(apiErrorText(text, t('error_generic')))
+                return
+            }
+            const { data } = JSON.parse(text) as { data: { secret: string; qrCodeDataUrl: string } }
+            setEnrolment({ secret: data.secret, qrCodeDataUrl: data.qrCodeDataUrl })
+            setCode('')
+            setCodeErr(undefined)
+        } catch {
+            setStartError(t('error_generic'))
+        } finally {
+            setStarting(false)
         }
     }
 
-    const confirmEnroll = async (e: React.FormEvent) => {
+    const confirmEnroll = async (e: FormEvent) => {
         e.preventDefault()
-        setError('')
+        if (!enrolment) return
+        if (!isCode(code)) {
+            setCodeErr(t('security_mfa_code_invalid'))
+            focusWrong()
+            return
+        }
+        setCodeErr(undefined)
         setConfirming(true)
         try {
             const res = await fetch('/api/account/mfa/confirm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret, code }),
+                body: JSON.stringify({ secret: enrolment.secret, code: code.trim() }),
             })
-            const data = await res.json()
-            if (!res.ok || !data.success) throw new Error(data.error || (isAr ? 'رمز غير صالح' : 'Invalid code'))
+            if (!res.ok) {
+                setCodeErr(refusalText('mfaCode', res.status, await res.text(), t))
+                focusWrong()
+                return
+            }
             await update({ mfaEnabled: true })
-            showToast(isAr ? 'تم تفعيل المصادقة الثنائية.' : 'Two-factor authentication enabled.', 'success')
-            setEnrolling(false)
+            showToast(t('security_mfa_on_done'), 'success')
+            setEnrolment(null)
             setCode('')
-            setSecret('')
-            setQrCodeDataUrl('')
-        } catch (err: any) {
-            setError(err.message)
+        } catch {
+            setCodeErr(t('error_generic'))
         } finally {
             setConfirming(false)
         }
     }
 
-    const confirmDisable = async (e: React.FormEvent) => {
+    const cancelEnroll = () => {
+        setEnrolment(null)
+        setCode('')
+        setCodeErr(undefined)
+    }
+
+    return (
+        <Card title={t('security_mfa_title')}>
+            <div className="ui-state-line">
+                <StatusBadge tone={on ? 'good' : 'neutral'}>{on ? t('security_mfa_on') : t('security_mfa_off')}</StatusBadge>
+            </div>
+            {on ? (
+                <>
+                    <p className="ui-card-note">{isProtectedActor ? t('security_mfa_required_note') : t('security_mfa_on_note')}</p>
+                    {!isProtectedActor && (
+                        <div className="ui-card-actions">
+                            <Button onClick={() => setTurningOff(true)}>{t('security_mfa_turn_off')}</Button>
+                        </div>
+                    )}
+                </>
+            ) : enrolment ? (
+                <form ref={form} onSubmit={confirmEnroll} noValidate className="ui-card-form">
+                    <p className="ui-card-note">{t('security_mfa_scan')}</p>
+                    {/* A data URL made by the server for this one secret: nothing for next/image to do. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={enrolment.qrCodeDataUrl} alt={t('security_mfa_qr_alt')} width={200} height={200} />
+                    <details className="ui-more">
+                        <summary>{t('security_mfa_cant_scan')}</summary>
+                        {/* A key to type as it is: left to right, never translated. */}
+                        <p className="ui-note-text"><code dir="ltr" translate="no">{enrolment.secret}</code></p>
+                    </details>
+                    <Field label={t('verification_code_label')} error={codeErr}>{p => (
+                        <TextInput {...p} name="mfaCode" inputMode="numeric" autoComplete="one-time-code" maxLength={CODE_LENGTH} spellCheck={false} dir="ltr"
+                            value={code} disabled={confirming} onChange={e => { setCode(e.target.value); setCodeErr(undefined) }} />
+                    )}</Field>
+                    <div className="ui-card-actions">
+                        <Button disabled={confirming} onClick={cancelEnroll}>{t('cancel')}</Button>
+                        <Button type="submit" variant="primary" busy={confirming}>{t('security_mfa_turn_on')}</Button>
+                    </div>
+                </form>
+            ) : (
+                <>
+                    <p className="ui-card-note">{t('security_mfa_off_note')}</p>
+                    {startError && <p className="ui-error" role="alert">{startError}</p>}
+                    <div className="ui-card-actions">
+                        <Button variant="primary" busy={starting} onClick={startEnroll}>{t('security_mfa_set_up')}</Button>
+                    </div>
+                </>
+            )}
+            {turningOff && <TurnOffDialog onClose={() => setTurningOff(false)} />}
+        </Card>
+    )
+}
+
+/** Turning two-factor authentication off: the password, asked in a dialog, and the danger button. */
+function TurnOffDialog({ onClose }: { onClose: () => void }) {
+    const { t } = useLanguage()
+    const { update } = useSession()
+    const { showToast } = useToast()
+    const [password, setPassword] = useState('')
+    const [error, setError] = useState<string>()
+    const [busy, setBusy] = useState(false)
+    const form = useRef<HTMLFormElement>(null)
+    const focusWrong = () => requestAnimationFrame(() => form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+
+    const submit = async (e: FormEvent) => {
         e.preventDefault()
-        setError('')
-        setSubmittingDisable(true)
+        if (busy) return
+        if (!password) {
+            setError(t('security_mfa_password_missing'))
+            focusWrong()
+            return
+        }
+        setError(undefined)
+        setBusy(true)
         try {
             const res = await fetch('/api/account/mfa/disable', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password }),
             })
-            const data = await res.json()
-            if (!res.ok || !data.success) throw new Error(data.error || (isAr ? 'كلمة مرور غير صحيحة' : 'Incorrect password'))
+            if (!res.ok) {
+                setError(refusalText('password', res.status, await res.text(), t))
+                setBusy(false)
+                focusWrong()
+                return
+            }
             await update({ mfaEnabled: false })
-            showToast(isAr ? 'تم إيقاف المصادقة الثنائية.' : 'Two-factor authentication disabled.', 'success')
-            setDisabling(false)
-            setPassword('')
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setSubmittingDisable(false)
+            showToast(t('security_mfa_off_done'), 'success')
+            onClose()
+        } catch {
+            setError(t('error_generic'))
+            setBusy(false)
         }
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="glass-card" style={{ padding: '2rem' }}>
-                <h2 style={{ margin: '0 0 0.5rem', color: 'var(--text-main)' }}>
-                    {isAr ? 'المصادقة الثنائية' : 'Two-factor authentication'}
-                </h2>
+        // Once it's under way it can't be called off, so it can't look as if it was.
+        <Dialog open onClose={() => { if (!busy) onClose() }} title={t('security_mfa_off_title')}>
+            <form ref={form} className="ui-form" noValidate onSubmit={submit}>
+                <p>{t('security_mfa_off_body')}</p>
+                <Field label={t('password')} error={error}>{p => (
+                    // Focused: the one thing this dialog asks for.
+                    <PasswordInput {...p} name="password" autoComplete="current-password" autoFocus value={password} disabled={busy}
+                        onChange={e => { setPassword(e.target.value); setError(undefined) }} />
+                )}</Field>
+                <DialogActions>
+                    <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
+                    <Button type="submit" variant="danger" busy={busy}>{t('security_mfa_off_confirm')}</Button>
+                </DialogActions>
+            </form>
+        </Dialog>
+    )
+}
 
-                <div style={{
-                    display: 'inline-block', margin: '0 0 1.5rem', padding: '0.2rem 0.6rem',
-                    borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
-                    background: mfaEnabled ? 'var(--ok-bg)' : 'var(--surface-sunk)',
-                    color: mfaEnabled ? 'var(--ok-fg)' : 'var(--text-soft)'
-                }}>
-                    {mfaEnabled ? (isAr ? 'مفعّلة' : 'Enabled') : (isAr ? 'غير مفعّلة' : 'Not enabled')}
-                </div>
+/**
+ * The devices that skip the code for 30 days, a list under its own heading,
+ * each removed only once it's asked (F-27, Phase 6).
+ */
+export function TrustedDevices() {
+    const { t, locale } = useLanguage()
+    const { data, error, isValidating, mutate } = useSWR<{ data: { devices: TrustedDevice[] } }>('/api/account/mfa/trusted-devices', fetcher)
+    const devices = data?.data?.devices
+    const [removing, setRemoving] = useState<{ device: TrustedDevice } | { all: true } | null>(null)
 
-                {error && <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-fg-strong)' }}>{error}</div>}
+    const day = (iso: string) => new Date(iso).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    const nameOf = (device: TrustedDevice) => device.label || t('security_device_unknown')
 
-                {mfaEnabled ? (
-                    isProtectedActor ? (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            {isAr
-                                ? 'المصادقة الثنائية مفعّلة ومطلوبة لهذا الحساب. لا يمكن إيقافها.'
-                                : 'MFA is enabled and required for this account. It cannot be disabled.'}
-                        </p>
-                    ) : !disabling ? (
-                        <button className="btn" onClick={() => setDisabling(true)} style={{ background: 'transparent', border: '1px solid var(--danger-solid)', color: 'var(--danger-fg-strong)' }}>
-                            {isAr ? 'إيقاف المصادقة الثنائية' : 'Disable two-factor authentication'}
-                        </button>
-                    ) : (
-                        <form onSubmit={confirmDisable}>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                    {isAr ? 'أدخل كلمة المرور للتأكيد' : 'Enter your password to confirm'}
-                                </label>
-                                <input aria-label={isAr ? 'أدخل كلمة المرور للتأكيد' : 'Enter your password to confirm'} type="password" className="input" value={password} onChange={e => setPassword(e.target.value)} required autoFocus />
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                <button type="button" className="btn" onClick={() => { setDisabling(false); setPassword(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
-                                    {isAr ? 'رجوع' : 'Back'}
-                                </button>
-                                <button type="submit" className="btn" disabled={submittingDisable} style={{ flex: 1, background: 'var(--danger-fill)' }}>
-                                    {submittingDisable ? (isAr ? 'جارٍ الإيقاف...' : 'Disabling...') : (isAr ? 'إيقاف' : 'Disable')}
-                                </button>
-                            </div>
-                        </form>
-                    )
-                ) : !enrolling ? (
-                    <>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                            {isAr
-                                ? 'أضف طبقة حماية إضافية لحسابك باستخدام تطبيق مصادقة مثل Google Authenticator.'
-                                : 'Add an extra layer of protection to your account using an authenticator app like Google Authenticator.'}
-                        </p>
-                        <button className="btn" onClick={startEnroll} style={{ width: '100%' }}>
-                            {isAr ? 'تفعيل المصادقة الثنائية' : 'Enable two-factor authentication'}
-                        </button>
-                    </>
-                ) : (
-                    <form onSubmit={confirmEnroll}>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                            {isAr
-                                ? 'امسح هذا الرمز باستخدام تطبيق المصادقة الخاص بك، ثم أدخل الرمز المكوّن من 6 أرقام.'
-                                : 'Scan this with your authenticator app, then enter the 6-digit code it shows.'}
-                        </p>
-                        {qrCodeDataUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={qrCodeDataUrl} alt="QR code" style={{ display: 'block', margin: '0 auto 1rem', width: '200px', height: '200px' }} />
-                        )}
-                        <details style={{ marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                            <summary style={{ cursor: 'pointer' }}>{isAr ? "لا يمكنك المسح؟ أدخل الرمز يدويًا" : "Can't scan? Enter the code manually"}</summary>
-                            <code style={{ display: 'block', marginTop: '0.5rem', wordBreak: 'break-all' }}>{secret}</code>
-                        </details>
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                {isAr ? 'رمز التحقق' : 'Verification code'}
-                            </label>
-                            <input aria-label={isAr ? 'رمز التحقق' : 'Verification code'} type="text" inputMode="numeric" className="input" value={code} onChange={e => setCode(e.target.value)} maxLength={6} minLength={6} required autoFocus />
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <button type="button" className="btn" onClick={() => { setEnrolling(false); setCode(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
-                                {isAr ? 'إلغاء' : 'Cancel'}
-                            </button>
-                            <button type="submit" className="btn" disabled={confirming} style={{ flex: 1 }}>
-                                {confirming ? (isAr ? 'جارٍ التحقق...' : 'Verifying...') : (isAr ? 'تحقق وتفعيل' : 'Verify & enable')}
-                            </button>
-                        </div>
-                    </form>
-                )}
-            </div>
-
-            {mfaEnabled && (
-                <div className="glass-card" style={{ padding: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.05rem' }}>
-                            {isAr ? 'الأجهزة الموثوقة' : 'Trusted devices'}
-                        </h3>
-                        {devices.length > 0 && (
-                            <button
-                                onClick={revokeAllDevices}
-                                disabled={revokingAll}
-                                style={{ background: 'none', border: 'none', color: 'var(--danger-fg-strong)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingAll ? 'not-allowed' : 'pointer' }}
-                            >
-                                {revokingAll ? (isAr ? 'جارٍ الإلغاء...' : 'Revoking...') : (isAr ? 'إلغاء الكل' : 'Revoke all')}
-                            </button>
-                        )}
+    return (
+        <Section title={t('security_devices_title')} action={devices && devices.length > 0 ? (
+            <Button variant="quiet" size="sm" onClick={() => setRemoving({ all: true })}>{t('security_devices_remove_all')}</Button>
+        ) : undefined}>
+            <p className="ui-hint">{t('security_devices_note')}</p>
+            {!devices ? (
+                error ? (
+                    <div className="ui-panel">
+                        <EmptyState icon={WarningCircleIcon} title={t('security_devices_load_failed')}
+                            action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
                     </div>
-
-                    {devices.length === 0 ? (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            {isAr ? 'لا توجد أجهزة موثوقة' : 'No trusted devices'}
-                        </p>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {devices.map(device => (
-                                <div key={device.id} style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '0.75rem 0.9rem', border: '1px solid var(--border)', borderRadius: '8px'
-                                }}>
-                                    <div>
-                                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                                            {device.label || (isAr ? 'جهاز غير معروف' : 'Unknown device')}
-                                        </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                            {(isAr ? 'آخر استخدام' : 'Last used')}: {formatDate(device.lastUsedAt)} · {(isAr ? 'تنتهي الصلاحية' : 'Expires')}: {formatDate(device.expiresAt)}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => revokeDevice(device.id)}
-                                        disabled={revokingId === device.id}
-                                        style={{ background: 'none', border: 'none', color: 'var(--danger-fg-strong)', fontSize: '0.8rem', fontWeight: 600, cursor: revokingId === device.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
-                                    >
-                                        {revokingId === device.id ? (isAr ? 'جارٍ...' : '...') : (isAr ? 'إلغاء' : 'Revoke')}
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                ) : (
+                    <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+                )
+            ) : devices.length === 0 ? (
+                <div className="ui-panel"><EmptyState icon={DevicesIcon} title={t('security_devices_none')} /></div>
+            ) : (
+                <Rows label={t('security_devices_title')}>
+                    {devices.map(device => (
+                        <Row key={device.id}
+                            // Named from the browser that asked: its own words, left to right or right to left as they are.
+                            title={<span dir="auto">{nameOf(device)}</span>}
+                            detail={t('security_device_last_used').replace('{date}', day(device.lastUsedAt))}
+                            note={t('security_device_until').replace('{date}', day(device.expiresAt))}
+                            end={(
+                                <Button variant="quiet" size="sm" aria-label={t('security_device_remove_named').replace('{device}', nameOf(device))}
+                                    onClick={() => setRemoving({ device })}>{t('remove')}</Button>
+                            )} />
+                    ))}
+                </Rows>
             )}
-        </div>
+            {removing && (
+                <RemoveDialog
+                    title={'all' in removing ? t('security_devices_remove_all_title') : t('security_device_remove_title').replace('{device}', nameOf(removing.device))}
+                    body={'all' in removing ? t('security_devices_remove_all_body') : t('security_device_remove_body')}
+                    confirmLabel={'all' in removing ? t('security_devices_remove_all') : t('remove')}
+                    url={'all' in removing ? '/api/account/mfa/trusted-devices/revoke-all' : `/api/account/mfa/trusted-devices/${removing.device.id}`}
+                    method={'all' in removing ? 'POST' : 'DELETE'}
+                    onDone={() => { setRemoving(null); void mutate() }}
+                    onCancel={() => setRemoving(null)} />
+            )}
+        </Section>
+    )
+}
+
+/** Removing one trusted device, or all of them, once it's asked; the refusal said in the dialog. */
+function RemoveDialog({ title, body, confirmLabel, url, method, onDone, onCancel }: {
+    title: string
+    body: string
+    confirmLabel: string
+    url: string
+    method: 'POST' | 'DELETE'
+    onDone: () => void
+    onCancel: () => void
+}) {
+    const { t } = useLanguage()
+    const [busy, setBusy] = useState(false)
+    const [error, setError] = useState('')
+
+    const remove = async () => {
+        setError('')
+        setBusy(true)
+        try {
+            const res = await fetch(url, { method })
+            if (!res.ok) {
+                setError(apiErrorText(await res.text(), t('error_generic')))
+                setBusy(false)
+                return
+            }
+            onDone()
+        } catch {
+            setError(t('error_generic'))
+            setBusy(false)
+        }
+    }
+
+    return (
+        <Dialog open onClose={() => { if (!busy) onCancel() }} title={title}
+            actions={<>
+                <Button onClick={onCancel} disabled={busy}>{t('cancel')}</Button>
+                <Button variant="danger" busy={busy} onClick={() => { void remove() }}>{confirmLabel}</Button>
+            </>}>
+            <p>{body}</p>
+            {error && <p className="ui-error" role="alert">{error}</p>}
+        </Dialog>
     )
 }

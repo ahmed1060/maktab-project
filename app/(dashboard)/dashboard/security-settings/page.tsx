@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { Columns, Page, PageHeader } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
-import { useHeader } from '@/context/HeaderContext'
+import { useViewer } from '@/lib/useCan'
 import EmailSection from '@/components/security/EmailSection'
-import MfaSection from '@/components/security/MfaSection'
+import { TrustedDevices, TwoFactorCard } from '@/components/security/MfaSection'
 
 /**
  * Email and two-factor authentication on one screen — both answers to "how do
@@ -13,48 +12,43 @@ import MfaSection from '@/components/security/MfaSection'
  *
  * The page has two states, and the difference is not cosmetic.
  *
- * Unverified: this is a gate. middleware.ts redirects every dashboard route
- * here until the address is confirmed, so it shows the email section alone, in
- * its own framing, with no page header and nothing else to look at. Offering to
- * set up an authenticator app to somebody who cannot yet reach the dashboard is
- * two jobs at the worst possible moment.
+ * Unverified: this is a gate. proxy.ts redirects every dashboard route here
+ * until the address is confirmed, so it shows the email alone, under a page
+ * header that says what it's for, with nothing else to look at. Offering to
+ * set up an authenticator app to somebody who cannot yet reach the dashboard
+ * is two jobs at the worst possible moment.
  *
- * Verified: this is a settings screen, with a header and both sections.
+ * Verified: this is a settings screen, with the email and two-factor cards
+ * side by side, and the trusted devices under them while two-factor is on.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, the pages left). Which state
+ * it's in comes from the layout on the first paint: read from the session
+ * hook, still loading then, the gate showed itself to everybody for a moment.
+ * Its title was set into the old top bar, and the gate had none.
  */
 export default function SecuritySettingsPage() {
-    const { t, locale } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
-    const { data: session } = useSession()
+    const { t } = useLanguage()
+    const viewer = useViewer()
+    const isVerified = !!viewer?.emailVerified
+    const mfaEnabled = !!viewer?.mfaEnabled
 
-    const isAr = locale === 'ar'
-    const isVerified = !!session?.user?.emailVerified
-
-    useEffect(() => {
-        // No header while the gate is up: the section supplies its own framing,
-        // and a settings-page title over a "you must verify" card reads as
-        // though the rest of the screen failed to load.
-        if (!isVerified) return
-        setTitle(t('security_settings_nav'))
-        setSubtitle(t('security_settings_subtitle'))
-        return () => {
-            setTitle(null)
-            setSubtitle(null)
-        }
-    }, [setTitle, setSubtitle, t, isVerified])
+    if (!isVerified) {
+        return (
+            <Page>
+                <PageHeader title={t('verify_email_required_title')} subtitle={t('verify_email_required_message')} />
+                <EmailSection gate />
+            </Page>
+        )
+    }
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-            maxWidth: '460px',
-            width: '100%',
-            marginInline: 'auto',
-            paddingBlock: isVerified ? '0' : '3rem',
-            direction: isAr ? 'rtl' : 'ltr',
-        }}>
-            <EmailSection />
-            {isVerified && <MfaSection />}
-        </div>
+        <Page>
+            <PageHeader title={t('security_settings_nav')} subtitle={t('security_settings_subtitle')} />
+            <Columns>
+                <EmailSection gate={false} />
+                <TwoFactorCard />
+            </Columns>
+            {mfaEnabled && <TrustedDevices />}
+        </Page>
     )
 }

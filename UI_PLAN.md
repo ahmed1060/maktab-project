@@ -512,7 +512,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      at a time: Add employee, merged in #180 on 2026-11-03, then Add a
      bonus and Add a deduction, merged in #181 on 2026-11-03, then
      Usernames, merged in #182 on 2026-11-03, then Change password and
-     the maintenance screen, in #187;
+     the maintenance screen, merged in #187 on 2026-11-04, then Security
+     settings, in #188;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3706,3 +3707,41 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   area, ran its lines together, and a long link in it pushed a phone's
   screen sideways. It's shown as a task's description is: each line as
   typed, and a long word broken to fit.
+- **2026-11-04:** Change password and the maintenance screen were merged in
+  #187. Security settings moves onto the building blocks in #188 (§5 step
+  5, the pages left), the last of the three:
+  - the email gate has a page header saying what it's for, and the email in
+    one card, as Change password has. Once the address is verified, the
+    email and two-factor authentication are settings cards side by side
+    under the page header, where its title was set into the old top bar;
+  - each mistake is said under its field in the reader's language, where
+    the browser's own bubbles said most of them, in the browser's language,
+    and an address they let through, such as a@b, came back "Validation
+    Error". Where a code went is said beside its field, the address left to
+    right in either language, where a toast said to check the inbox;
+  - Send code is on only once the address is changed: it sent the address
+    already verified a code. A change made here stays here, the new address
+    in place, where it went to the dashboard; verifying in the gate loads
+    the dashboard afresh, as Change password does, where it came back to
+    this page;
+  - turning two-factor authentication off asks for the password in a
+    dialog, with the danger button, where a form opened in the card. The QR
+    code is named in the reader's language, where it was "QR code" in
+    either, and the key to type is left to right and never translated;
+  - the trusted devices are a list under their own heading. One, or all of
+    them, is removed only once it's asked, where a click removed them at
+    once; and a list that didn't load says so, with Try again, where it said
+    there were none;
+  - which state the page is in comes from the layout on the first paint.
+    Read from the session hook, which is still loading then, the server's
+    first copy of the page was the email gate for everybody;
+  - its Arabic asks nothing in the masculine: "تحقق" (Verify) is "تأكيد",
+    and the rest is said with "يُرجى" and verbal nouns;
+  - a card's note breaks a word too long for it. The address a code went
+    to, with no hyphen to break at, ran past the card and pushed a phone's
+    screen sideways (web interface audit);
+  - the server's refusals a person meets are said under their fields in the
+    reader's language too, with what to do next: a taken address, too many
+    codes, a wrong code and a wrong password. They came in the server's
+    English as they were, "Invalid or expired code" in Arabic too (web
+    interface audit).

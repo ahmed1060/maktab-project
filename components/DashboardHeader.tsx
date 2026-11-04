@@ -277,10 +277,6 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
         if (path === '/dashboard/requests') return modules.label('requests')
         if (path === '/dashboard/requests/history') return t('requests_history')
         if (path === '/dashboard/usernames') return t('usernames_list')
-        // Named here as well as set by the page, because the page deliberately
-        // sets no header while the email gate is up — without this the fallback
-        // below would title that screen "System".
-        if (path === '/dashboard/security-settings') return t('security_settings_nav')
         return t('system')
     }
 
