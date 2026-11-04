@@ -21,6 +21,8 @@ import { assertStepUp } from "@/lib/step-up"
 // Validate before it reaches Prisma.
 const VALID_ROLES: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYEE']
 const VALID_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE', 'ARCHIVED']
+// Matched by the profile form, which says it in the reader's language.
+const USERNAME_RESERVED = "Username follows another company's username code"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -187,6 +189,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (error.message === 'TARGET_COMPANY_NOT_FOUND') return ApiResponse.forbidden("Target company not found or access restricted")
         if (error.message === 'USER_ALREADY_EXISTS') return ApiResponse.badRequest("User already exists")
         if (error.message === 'USERNAME_IN_USE') return ApiResponse.badRequest("Username in use")
+        if (error.message === 'USERNAME_RESERVED') return ApiResponse.badRequest(USERNAME_RESERVED)
         if (error.message === 'TEAM_LEADER_NOT_FOUND') return ApiResponse.badRequest("That team leader no longer exists")
         if (error.message === 'NOT_A_LEADER') return ApiResponse.badRequest("That person is not a team leader")
         if (error.message === 'ONLY_EMPLOYEES_HAVE_LEADERS') return ApiResponse.badRequest("Only employees are assigned to a team leader")
@@ -230,6 +233,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     } catch (error: any) {
         // 4. Error Mapping
         if (error.message === 'USER_NOT_FOUND') return ApiResponse.notFound("User not found")
+        if (error.message === 'USERNAME_RESERVED') return ApiResponse.badRequest(USERNAME_RESERVED)
         if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
         if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
         if (error.message === 'STATUS_HAS_ITS_OWN_FLOW') return ApiResponse.badRequest("Archive by ending the contract, and delete from the employee list — not through an edit")

@@ -382,6 +382,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 if (text.includes("Username already in use")) {
                     throw new Error(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
                 }
+                if (text.includes("Username follows another company's username code")) throw new Error(t('username_reserved'))
                 throw new Error(apiErrorText(text, t('error_generic')))
             }
 

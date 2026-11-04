@@ -3579,3 +3579,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the 30 seconds. Each run has an id of its own (a new column, added only),
   and a try is given back, or marked wrong, only in the run it was counted
   in.
+- **2026-11-04:** Signing in's limit was merged in #183. Each company gets
+  a username code of its own in #184 (decided 2026-11-03, option 1):
+  - a username Nizmo makes up is the company's code and a number, counting
+    from 0, as before (ds0, ds1). The code was the name's initials, so two
+    companies with the same initials shared them and took turns with the
+    numbers; now no company's code is another's, and no company's usernames
+    follow another's code;
+  - Add a company has a Username code field after the name, filled in from
+    it with a code nobody has as the name is typed, and changeable: 2 to 8
+    English letters, written left to right in either language, with an
+    example of its usernames under it. Edit has it too, until the company's
+    first username has been given; then it's shown fixed, and renaming the
+    company doesn't change it;
+  - a number is never given twice, even once its person has gone, and two
+    people added at once get different ones;
+  - a username typed for somebody (by a Super Admin) is refused when it's
+    another company's code and a number, as that company would one day make
+    it up for somebody of its own;
+  - the companies already there keep the letters their people's usernames
+    use, carrying on after the highest number: Karavan keeps k and goes on
+    at k2. One whose usernames give it none gets a code from its name the
+    first time it needs one (Nizmo Test Co: ntc).

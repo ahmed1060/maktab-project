@@ -13,11 +13,21 @@ import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverride
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
 import type { CompanyBranding } from "@/lib/company-scope"
 import { uploadToCloud } from "@/lib/storage"
+import { codeInUse, firstNumber, suggestCode } from "@/lib/username"
 
 // cost is a Prisma.Decimal (F-07); Decimal.toJSON() returns a string, which
 // would silently change this response field's type on the wire.
 function serializeCompanyPayment<T extends { cost: Prisma.Decimal }>(payment: T) {
     return { ...payment, cost: Number(payment.cost) }
+}
+
+/**
+ * Whether a unique clash is on the username code, not the name: two
+ * companies given the same code at once. Prisma names the column in the
+ * error's meta, which a driver adapter nests.
+ */
+function onUsernameCode(error: unknown): boolean {
+    return (error as { code?: string })?.code === "P2002" && JSON.stringify((error as { meta?: unknown }).meta ?? {}).includes("usernameCode")
 }
 
 /**
@@ -37,20 +47,32 @@ export class CompanyService {
         // applies when nobody is thinking about it should be the sensible one.
         const trialPreset = input.trialPreset ?? DEFAULT_TRIAL_PRESET
 
-        // With its Admin, Team Leader and Employee roles, in the same
-        // transaction: an account can only be created on one of a company's
-        // roles, so a company without them could hire nobody.
-        const company = await prisma.$transaction(async (tx) => {
-            const created = await tx.company.create({
-                data: {
-                    name: input.name,
-                    trialPreset,
-                    packageId: input.packageId ?? null,
-                },
-            })
-            await RoleService.seedBuiltInRoles(tx, created.id)
-            return created
-        })
+        // Its username code: the one typed, or one suggested from its name.
+        // A suggestion another company took a moment ago is suggested again;
+        // a typed one is refused.
+        const typed = input.usernameCode
+        if (typed && await codeInUse(typed, null)) throw new Error("COMPANY_CODE_TAKEN")
+
+        const company = await (async () => {
+            for (let attempt = 0; ; attempt++) {
+                const usernameCode = typed ?? await suggestCode(input.name, null)
+                const usernameNext = await firstNumber(usernameCode)
+                try {
+                    // With its Admin, Team Leader and Employee roles, in the same
+                    // transaction: an account can only be created on one of a company's
+                    // roles, so a company without them could hire nobody.
+                    return await prisma.$transaction(async (tx) => {
+                        const data = { name: input.name, trialPreset, packageId: input.packageId ?? null, usernameCode, usernameNext }
+                        const created = await tx.company.create({ data })
+                        await RoleService.seedBuiltInRoles(tx, created.id)
+                        return created
+                    })
+                } catch (error) {
+                    if (!onUsernameCode(error)) throw error
+                    if (typed || attempt >= 2) throw new Error("COMPANY_CODE_TAKEN")
+                }
+            }
+        })()
 
         const { AuditLogService } = await import("./audit-log.service")
         await AuditLogService.log('CREATE_COMPANY', 'COMPANY', company.id, {
@@ -63,10 +85,16 @@ export class CompanyService {
                 // it from createdAt months afterwards is guesswork.
                 trialEnd: computeTrialEnd(company.createdAt, trialPreset, 0)?.toISOString() ?? null,
                 packageId: input.packageId ?? null,
+                usernameCode: company.usernameCode,
             },
         })
 
         return company
+    }
+
+    /** A free username code for a company's name, for the dialog to fill in; a company's own code is free for it. */
+    static async suggestUsernameCode(name: string, companyId: string | null) {
+        return suggestCode(name, companyId)
     }
 
     /**
@@ -231,9 +259,29 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn } = input
+        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
+
+        // The username code, before anything else changes: it's fixed once
+        // the first username is given, and the counter is read and moved in
+        // the same statement as it's checked, so a username given meanwhile
+        // fixes it.
+        const newCode = usernameCode !== undefined && usernameCode !== existing.usernameCode ? usernameCode : undefined
+        if (newCode !== undefined) {
+            if (existing.usernameNext > 0) throw new Error("COMPANY_CODE_LOCKED")
+            if (await codeInUse(newCode, id)) throw new Error("COMPANY_CODE_TAKEN")
+            try {
+                const moved = await prisma.company.updateMany({
+                    where: { id, usernameNext: 0, usernameCode: existing.usernameCode },
+                    data: { usernameCode: newCode, usernameNext: await firstNumber(newCode) },
+                })
+                if (moved.count === 0) throw new Error("COMPANY_CODE_LOCKED")
+            } catch (error) {
+                if (onUsernameCode(error)) throw new Error("COMPANY_CODE_TAKEN")
+                throw error
+            }
+        }
 
         // Both maps are stored the same way now that vendorsLabel is gone — see
         // planOverrideWrite for what undefined, null and a map each mean here.
@@ -280,6 +328,7 @@ export class CompanyService {
         // Audit Log (Centralized)
         const changes: any = {}
         if (name && name !== existing.name) changes.name = { old: existing.name, new: name }
+        if (newCode !== undefined) changes.usernameCode = { old: existing.usernameCode, new: newCode }
         if (isBanned !== undefined && isBanned !== existing.isBanned) changes.isBanned = { old: existing.isBanned, new: isBanned }
         if (autoVerifyLocation !== undefined && autoVerifyLocation !== existing.autoVerifyLocation) {
             changes.autoVerifyLocation = { old: existing.autoVerifyLocation, new: autoVerifyLocation }
@@ -557,6 +606,8 @@ export class CompanyService {
             select: {
                 id: true,
                 name: true,
+                usernameCode: true,
+                usernameNext: true,
                 isBanned: true,
                 createdAt: true,
                 trialPreset: true,
@@ -590,6 +641,9 @@ export class CompanyService {
             return {
                 id: company.id,
                 name: company.name,
+                // For the Edit dialog: the code, and whether it's fixed now.
+                usernameCode: company.usernameCode,
+                usernameLocked: company.usernameNext > 0,
                 isBanned: company.isBanned,
                 package: company.package,
                 hasUnpaidPayment: facts.hasUnpaidPayment,

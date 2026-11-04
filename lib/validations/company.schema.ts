@@ -4,6 +4,11 @@ import { MAX_PAYROLL_DAY } from "@/lib/payday"
 import { checkTimeZone } from "@/lib/timezone"
 import { ELIGIBLE_SETTINGS_TABS } from "@/lib/company-settings-access"
 import { brandColourSchema } from "./brand-colour.schema"
+import { CODE_PATTERN } from "@/lib/username-code"
+
+// A company's username code (lib/username-code.ts): 2 to 8 English letters,
+// kept in lower case however it was typed.
+const usernameCodeSchema = z.string().trim().toLowerCase().regex(CODE_PATTERN, "A username code is 2 to 8 English letters")
 
 // Mirrors the TrialPreset database enum. Declared here rather than imported
 // from @prisma/client so this module stays usable anywhere, including the
@@ -19,11 +24,15 @@ export const createCompanySchema = z.object({
     // Null means grandfathered — unrestricted. A company may be created without
     // a package and assigned one later.
     packageId: z.string().min(1).nullable().optional(),
+    // Optional: without one, the service suggests one from the name.
+    usernameCode: usernameCodeSchema.optional(),
 })
 
 export const updateCompanySchema = z.object({
     id: z.string().min(1, "Company ID is required"),
     name: z.string().min(2).max(50).optional(),
+    // Changes only until the company's first username is given.
+    usernameCode: usernameCodeSchema.optional(),
     isBanned: z.boolean().optional(),
     // Company Settings: whether task-location auto-verify runs at all for
     // this company's tasks. See the matching comment on the Company model.

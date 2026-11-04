@@ -47,7 +47,11 @@ const models: Record<string, any> = {
     // Taking someone off their check-in places, recorded with the fields written. Editing a person never
     // does it, now that a person stays in their company (#90); should an edit do it, the tests see it.
     userWorkLocation: model({ deleteMany: async () => { state.written.push({ workLocations: true }); return { count: 0 } } }),
-    company: model({ findUnique: async ({ where }: any) => ({ id: where.id, name: where.id, isBanned: false }) }),
+    company: model({
+        findUnique: async ({ where }: any) => ({ id: where.id, name: where.id, isBanned: false, usernameCode: "co", usernameNext: 0 }),
+        // The next made-up username's number, counted (lib/username.ts).
+        update: async ({ where, data }: any) => data?.usernameNext?.increment ? { id: where.id, usernameCode: "co", usernameNext: 1 } : { ...where, ...data },
+    }),
     user: model({
         // Each person on their company's built-in role, as the roles migration
         // put them — what the last-Admin rule reads.

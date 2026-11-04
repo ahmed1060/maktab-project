@@ -2269,3 +2269,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-03:** Usernames was merged in #182. Signing in's limit becomes
   the account's, with Unlock on Employees and All users, in #183
   (`UI_PLAN.md`). It doesn't touch clients or locations.
+- **2026-11-04:** Signing in's limit was merged in #183. Each company gets a
+  username code of its own in #184 (`UI_PLAN.md`). It doesn't touch clients
+  or locations.

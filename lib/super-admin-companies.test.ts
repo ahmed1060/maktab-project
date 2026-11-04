@@ -267,15 +267,74 @@ describe("the company dialogs", () => {
             return new Response(JSON.stringify(url.endsWith("/package") ? { error: "Package retired" } : { data: {} }), { status: url.endsWith("/package") ? 400 : 200 })
         })
         try {
-            const result = await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p2" })
+            const result = await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p2", usernameCode: "" })
             expect(result.step).toBe("package")
             expect(sent).toEqual(["PUT /api/companies", "PUT /api/companies/c1/package"])
-            expect((await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p1" })).step).toBe("saved")
+            expect((await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "" })).step).toBe("saved")
         } finally {
             vi.unstubAllGlobals()
         }
         const source = readFileSync("components/CompanyDialogs.tsx", "utf8")
         expect(source).toMatch(/if \(result\.step === 'package'\) \{\s*onChanged\(\)/)
+    })
+
+    it("adds a company with its username code, filled in from its name, in English letters", async () => {
+        const { CompanyDialog } = await import("@/components/CompanyDialogs")
+        const html = render(h(CompanyDialog, { company: null, onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
+        expect(html).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.companies_code_label}</label>`))
+        const input = html.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0] ?? ""
+        for (const attribute of ['maxLength="8"', 'dir="ltr"', 'autoCapitalize="none"', 'spellCheck="false"', 'autoComplete="off"']) expect(input, attribute).toContain(attribute)
+        expect(input).not.toContain("readOnly")
+        // Empty until the name suggests one: the rule, not an example.
+        expect(html).toContain(esc(en.companies_code_rule))
+        // After the name, before the trial.
+        expect(html.indexOf('name="usernameCode"')).toBeGreaterThan(html.indexOf('name="name"'))
+        expect(html.indexOf('name="usernameCode"')).toBeLessThan(html.indexOf('name="trialPreset"'))
+    })
+
+    it("edits one's code, its usernames said as an example, until its first username is given, then shows it fixed", async () => {
+        const { CompanyDialog } = await import("@/components/CompanyDialogs")
+        const open = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: false }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
+        expect(open).toMatch(/<input[^>]*name="usernameCode"[^>]*value="ds"/)
+        expect(open).toContain(esc(en.companies_code_hint.replace("{example}", "ds0, ds1…")))
+        const fixed = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: true }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
+        expect(fixed.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0]).toContain('readOnly=""')
+        expect(fixed).toContain(esc(en.companies_code_fixed.replace("{example}", "ds0, ds1…")))
+    })
+
+    it("sends the code with a new company, and with an edit only when it's changed and not fixed", async () => {
+        const { saveCompany } = await import("@/components/CompanyDialogs")
+        const bodies: Record<string, unknown>[] = []
+        vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
+            bodies.push(JSON.parse(init.body))
+            return new Response(JSON.stringify({ data: {} }), { status: 200 })
+        })
+        try {
+            await saveCompany(null, { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "", usernameCode: " DS " })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "ds" })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: true }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
+        } finally {
+            vi.unstubAllGlobals()
+        }
+        expect(bodies.map(body => body.usernameCode)).toEqual(["ds", "dsi", undefined, undefined])
+    })
+
+    it("says the server's refusal under the field it's about", async () => {
+        const { refusedField } = await import("@/components/CompanyDialogs")
+        expect(refusedField("Company already exists")).toEqual({ field: "name", key: "companies_name_taken" })
+        expect(refusedField("Company name already exists")).toEqual({ field: "name", key: "companies_name_taken" })
+        expect(refusedField("Username code taken")).toEqual({ field: "usernameCode", key: "companies_code_taken" })
+        expect(refusedField("Username code fixed")).toEqual({ field: "usernameCode", key: "companies_code_locked" })
+        expect(refusedField("Database unavailable")).toBeNull()
+    })
+
+    it("asks for a suggestion once the name is long enough, for the company being edited", async () => {
+        const { suggestionUrl } = await import("@/components/CompanyDialogs")
+        expect(suggestionUrl("D", null)).toBeNull()
+        expect(suggestionUrl("  ", null)).toBeNull()
+        expect(suggestionUrl("Delta & Sons", null)).toBe("/api/companies/username-code?name=Delta+%26+Sons")
+        expect(suggestionUrl("Delta Sites ", "c1")).toBe("/api/companies/username-code?name=Delta+Sites&id=c1")
     })
 
     it("asks before a ban, in the danger colour, and before an unban, saying what each does to its people", async () => {

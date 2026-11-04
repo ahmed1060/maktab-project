@@ -17,7 +17,10 @@ const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true 
 // FOLDER_INVALID: a caller asking MaintenanceService.removeFolder for the
 // whole bucket or a path, which only code can do, and CompanyService.delete
 // catches and logs it.
-const FAULTS = new Set(["BUILT_IN_ROLE_MISSING", "FOLDER_INVALID"])
+// INVALID_USERNAME_CODE: a code that isn't letters reaching lib/username.ts,
+// which the schemas keep from happening. USERNAME_CODE_UNAVAILABLE and
+// USERNAME_UNAVAILABLE: every code, or a hundred numbers in a row, taken.
+const FAULTS = new Set(["BUILT_IN_ROLE_MISSING", "FOLDER_INVALID", "INVALID_USERNAME_CODE", "USERNAME_CODE_UNAVAILABLE", "USERNAME_UNAVAILABLE"])
 
 describe("codes a service throws", () => {
     it("are each answered by a route, a shared answer, or the refusals map", async () => {
