@@ -143,6 +143,10 @@ describe("what can be done to a detail, beside it", () => {
         const rule = css.slice(at, css.indexOf("}", at))
         for (const decl of ["display: flex;", "flex-wrap: wrap;", "align-items: center;", "gap: var(--space-2);"]) expect(rule, decl).toContain(decl)
         expect(css).toMatch(/\n\.ui-detail-note \{[^}]*display: block;[^}]*color: var\(--muted\);[^}]*font-size: var\(--text-sm\);/)
+        // Only logical properties, as DESIGN.md §7 asks (web interface audit).
+        const note = css.slice(css.indexOf("\n.ui-detail-note {"), css.indexOf("}", css.indexOf("\n.ui-detail-note {")))
+        expect(note).toContain("margin-block-start: var(--space-1);")
+        expect(note).not.toMatch(/margin-(top|bottom)/)
     })
 })
 
@@ -170,8 +174,10 @@ describe("confirming with one's own password", () => {
         const src = DIALOG_SRC()
         expect(src).toContain("<Dialog open={open} onClose={cancel} title={t('profile_verify_title')}>")
         expect(src).toContain('className="ui-form" noValidate onSubmit={submit}>')
-        expect(src).toMatch(/<Field label=\{t\('profile_verify_password'\)\} error=\{error\}>\{p => \(\s*<PasswordInput \{\.\.\.p\} name="password" autoComplete="current-password"/)
+        expect(src).toMatch(/<Field label=\{t\('profile_verify_password'\)\} error=\{error\}>\{p => \(\s*(?:\/\/[^\n]*\s*)?<PasswordInput \{\.\.\.p\} name="password" autoComplete="current-password"/)
         expect(src).toMatch(/<DialogActions>\s*<Button onClick=\{cancel\} disabled=\{busy\}>\{t\('cancel'\)\}<\/Button>\s*<Button type="submit" variant="primary" busy=\{busy\}>\{t\('confirm'\)\}<\/Button>\s*<\/DialogActions>/)
+        // Focused, and why: the one thing it asks for (web interface audit).
+        expect(src).toMatch(/\/\/ Focused: the one thing this dialog asks for\.\s*<PasswordInput \{\.\.\.p\} name="password" autoComplete="current-password" autoFocus/)
         // Busy, it stays open: what was sent can't be called off.
         expect(src).toContain("const cancel = () => { if (!busy) onCancel() }")
         // The window of its own making is gone, with its hand-drawn lock and eye.

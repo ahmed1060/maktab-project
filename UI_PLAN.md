@@ -3894,3 +3894,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the temporary password stays on one line on a phone, a size smaller
     than a code: its 16 characters broke over two lines, and read as two
     words (browser flows).
+  - the note under a fact is spaced with a logical property, as DESIGN.md
+    §7 asks, and the password field says why it's focused as the dialog
+    opens: it's the one thing the dialog asks for (web interface audit).

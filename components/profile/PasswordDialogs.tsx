@@ -54,6 +54,7 @@ export function ConfirmPasswordDialog({ open, onCancel, onConfirm }: {
             <form ref={form} className="ui-form" noValidate onSubmit={submit}>
                 <p>{t('profile_verify_body')}</p>
                 <Field label={t('profile_verify_password')} error={error}>{p => (
+                    // Focused: the one thing this dialog asks for.
                     <PasswordInput {...p} name="password" autoComplete="current-password" autoFocus value={password} disabled={busy}
                         onChange={e => { setPassword(e.target.value); setError(null) }} />
                 )}</Field>
