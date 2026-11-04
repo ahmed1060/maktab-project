@@ -3885,3 +3885,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Reset password is offered on an Admin's profile only to the Super
     Admin, who alone resets an Admin's password: another Admin was offered
     it, asked for their password, and refused (found reading the code).
+  - a password that couldn't be checked, as when the server fails, says
+    so, where it was said to be wrong, and retyped (found reading the
+    code).

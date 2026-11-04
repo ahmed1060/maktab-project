@@ -264,9 +264,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 headers: { 'Content-Type': 'application/json' }
             })
             const result = await res.json().catch(() => null)
-            if (!result?.data?.valid) return t('incorrect_password')
+            // A check that failed, as when the server does, isn't a wrong password.
+            if (!res.ok || !result?.success) return t('profile_verify_failed')
+            if (!result.data?.valid) return t('incorrect_password')
         } catch {
-            return t('error_generic')
+            return t('profile_verify_failed')
         }
         setConfirming(null)
         await executeSubmit()

@@ -172,6 +172,14 @@ describe("confirming with one's own password", () => {
         expect(FORM).toContain("<TemporaryPasswordDialog")
     })
 
+    // The check failing, as when the server does, isn't the password being wrong.
+    it("says a password that couldn't be checked apart from a wrong one", () => {
+        const save = FORM.slice(FORM.indexOf("const confirmAndSave"), FORM.indexOf("const handleSubmit"))
+        expect(save).toContain("if (!res.ok || !result?.success) return t('profile_verify_failed')")
+        expect(save).toContain("if (!result.data?.valid) return t('incorrect_password')")
+        expect(save).not.toContain("error_generic")
+    })
+
     it("says what's wrong under the field, in the page's language", async () => {
         const src = DIALOG_SRC()
         expect(src).toContain("if (!password) {\n            setError(t('profile_verify_empty'))")
@@ -186,7 +194,7 @@ describe("confirming with one's own password", () => {
 
 describe("its words", () => {
     const KEYS = ["profile_verify_title", "profile_verify_body", "profile_verify_password", "profile_verify_empty", "profile_reset_password", "profile_temp_password_title",
-        "profile_temp_password_hint", "profile_temp_password_once", "profile_reset_exceeds", "profile_reset_admin_only", "profile_reset_failed", "profile_none"] as const
+        "profile_temp_password_hint", "profile_temp_password_once", "profile_reset_exceeds", "profile_reset_admin_only", "profile_reset_failed", "profile_none", "profile_verify_failed"] as const
 
     it("are in both languages, and the Arabic asks nothing in the masculine", () => {
         for (const key of KEYS) {

@@ -842,6 +842,7 @@ export const en = {
         profile_verify_body: "Enter your password to go on.",
         profile_verify_password: "Your password",
         profile_verify_empty: "Enter your password.",
+        profile_verify_failed: "Your password couldn't be checked. Try again.",
         profile_temp_password_title: "Temporary password for {name}",
         profile_temp_password_hint: "Give them this password to sign in with. They're asked to choose a new one when they do.",
         profile_temp_password_once: "It's shown this once only: copy it now.",

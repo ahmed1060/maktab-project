@@ -796,6 +796,7 @@ export const ar = {
         profile_verify_body: "يُرجى إدخال كلمة مرور حسابك للمتابعة.",
         profile_verify_password: "كلمة المرور",
         profile_verify_empty: "يُرجى إدخال كلمة المرور.",
+        profile_verify_failed: "تعذّر التحقق من كلمة المرور. يُرجى المحاولة مرة أخرى.",
         profile_temp_password_title: "كلمة مرور مؤقتة لـ {name}",
         profile_temp_password_hint: "يُرجى تسليم كلمة المرور هذه لصاحب الحساب لتسجيل الدخول بها، وسيُطلب اختيار كلمة مرور جديدة عند تسجيل الدخول.",
         profile_temp_password_once: "لا تظهر إلا هذه المرة، فيُرجى نسخها الآن.",
