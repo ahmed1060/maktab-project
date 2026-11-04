@@ -300,6 +300,8 @@ describe("the company dialogs", () => {
         const fixed = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: true }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(fixed.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0]).toContain('readOnly=""')
         expect(fixed).toContain(esc(en.companies_code_fixed.replace("{example}", "ds0, ds1…")))
+        // The example ends the sentence: no full stop after its "…", in either language.
+        for (const copy of [en, ar]) for (const key of ["companies_code_hint", "companies_code_fixed"] as const) expect(copy[key], key).toMatch(/\{example\}$/)
     })
 
     it("sends the code with a new company, and with an edit only when it's changed and not fixed", async () => {

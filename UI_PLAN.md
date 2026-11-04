@@ -3601,3 +3601,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     use, carrying on after the highest number: Karavan keeps k and goes on
     at k2. One whose usernames give it none gets a code from its name the
     first time it needs one (Nizmo Test Co: ntc).
+- **2026-11-04:** Found in the browser, on #184: the example under Username
+  code ended "ds0, ds1….", a full stop after the "…". The example ends the
+  sentence, in both languages.
