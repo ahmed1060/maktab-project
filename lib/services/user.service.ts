@@ -4,7 +4,7 @@ import { UserStatus } from "@prisma/client"
 import { supabase } from "@/lib/storage"
 import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
-import { generateUsername } from "@/lib/username"
+import { generateUsername, usernameReserved } from "@/lib/username"
 import { likeText } from "@/lib/saved-lists"
 import { generateTempPassword } from "@/lib/generate-password"
 
@@ -115,6 +115,9 @@ export class UserService {
             // are taken as typed, or "a_b" is taken whenever "axb" is.
             const conflict = await prisma.user.findFirst({ where: { username: { equals: likeText(finalUsername as string), mode: 'insensitive' } } })
             if (conflict) throw new Error("USERNAME_IN_USE")
+            // ds7 when ds is another company's code: that company would one
+            // day make it up for somebody of its own.
+            if (await usernameReserved(finalUsername as string, targetCompanyId ?? null)) throw new Error("USERNAME_RESERVED")
         } else if (targetCompanyId) {
             finalUsername = await generateUsername(targetCompanyId)
         }
@@ -335,7 +338,13 @@ export class UserService {
                 }
             }
 
-            if (username !== undefined && userRole === 'SUPER_ADMIN') updateData.username = username || null
+            if (username !== undefined && userRole === 'SUPER_ADMIN') {
+                // Only a new one: the form sends the username with every save,
+                // and one from before codes may follow another company's.
+                const changed = !!username && username.toLowerCase() !== regularUser.username.toLowerCase()
+                if (changed && await usernameReserved(username, regularUser.companyId)) throw new Error("USERNAME_RESERVED")
+                updateData.username = username || null
+            }
 
             // Each field is its own permission: changing a salary and changing a
             // leave balance are different acts, and in Part B a company can give

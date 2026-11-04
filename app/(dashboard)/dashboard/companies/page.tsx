@@ -38,6 +38,8 @@ import { useViewer } from '@/lib/useCan'
 type Company = {
     id: string
     name: string
+    usernameCode?: string | null
+    usernameLocked?: boolean
     isBanned?: boolean
     package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
     hasUnpaidPayment?: boolean

@@ -1,96 +1,138 @@
 import { prisma } from "./prisma";
+import { codeCandidates, getInitials } from "./username-code";
+
+export { getInitials };
 
 /**
- * Maps Arabic letters to their English equivalents for initials.
+ * Usernames Nizmo makes up: the company's own code and the next number,
+ * counting from 0 (ds0, ds1…). Each company has a code of its own
+ * (lib/username-code.ts), and a counter rather than the highest number
+ * anybody has, so a number is never given twice, even once its person has
+ * gone, and two people added at once never get the same one.
  */
-const arabicToEnglishMap: { [key: string]: string } = {
-    'أ': 'A', 'ا': 'A', 'إ': 'I', 'آ': 'A',
-    'ب': 'B',
-    'ت': 'T',
-    'ث': 'Th',
-    'ج': 'J',
-    'ح': 'H',
-    'خ': 'Kh',
-    'د': 'D',
-    'ذ': 'Dh',
-    'ر': 'R',
-    'ز': 'Z',
-    'س': 'S',
-    'ش': 'Sh',
-    'ص': 'S',
-    'ض': 'D',
-    'ط': 'T',
-    'ظ': 'Z',
-    'ع': 'A',
-    'غ': 'Gh',
-    'ف': 'F',
-    'ق': 'Q',
-    'ك': 'K',
-    'ل': 'L',
-    'م': 'M',
-    'ن': 'N',
-    'ه': 'H',
-    'و': 'W',
-    'ي': 'Y', 'ى': 'Y',
-    'ة': 'T',
-    'ؤ': 'O',
-    'ئ': 'E',
-    'ء': 'A'
-};
 
-/**
- * Converts a string's initials to English.
- * If a word starts with an Arabic letter, it uses the mapping.
- */
-export function getInitials(name: string): string {
-    const words = name.trim().split(/\s+/);
-    return words.map(word => {
-        const firstChar = word[0];
-        if (arabicToEnglishMap[firstChar]) {
-            return arabicToEnglishMap[firstChar];
-        }
-        // Fallback to English char if it's already English/Latin
-        if (/^[a-zA-Z]/.test(firstChar)) {
-            return firstChar.toUpperCase();
-        }
-        return '';
-    }).join('').toLowerCase();
+/** Letters only, so a code is safe inside a pattern. */
+const LETTERS = /^[a-z]+$/
+
+function letters(code: string): string {
+    const lower = code.toLowerCase()
+    if (!LETTERS.test(lower)) throw new Error("INVALID_USERNAME_CODE")
+    return lower
+}
+
+const isUniqueViolation = (error: unknown) => (error as { code?: string })?.code === "P2002"
+
+/** Whether anybody, a company's person or a Super Admin, has this username, capitals aside. */
+export async function usernameTaken(username: string): Promise<boolean> {
+    const rows = await prisma.$queryRaw<{ taken: boolean }[]>`
+        SELECT EXISTS (SELECT 1 FROM "User" WHERE lower(username) = lower(${username}))
+            OR EXISTS (SELECT 1 FROM "SuperAdmin" WHERE lower(username) = lower(${username})) AS taken`
+    return rows[0]?.taken === true
 }
 
 /**
- * Generates an ascending username for a user in a specific company.
- * Format: [initials][number] (e.g., mm0, mm1)
+ * Which of these codes a company can't have: another company has it, or
+ * another company's people have usernames that follow it (ds2 rules out ds),
+ * so the two would share a run of numbers.
+ */
+export async function codesInUse(codes: string[], companyId: string | null): Promise<Set<string>> {
+    const asked = codes.map(letters)
+    if (asked.length === 0) return new Set()
+    const rows = await prisma.$queryRaw<{ code: string }[]>`
+        SELECT asked.code FROM unnest(${asked}::text[]) AS asked(code)
+        WHERE EXISTS (SELECT 1 FROM "Company" WHERE "usernameCode" = asked.code AND id IS DISTINCT FROM ${companyId}::text)
+           OR EXISTS (SELECT 1 FROM "User" WHERE username ~* ('^' || asked.code || '[0-9]+$') AND "companyId" IS DISTINCT FROM ${companyId}::text)`
+    return new Set(rows.map(row => row.code))
+}
+
+export async function codeInUse(code: string, companyId: string | null): Promise<boolean> {
+    return (await codesInUse([code], companyId)).has(letters(code))
+}
+
+/** The number a code starts at: after the highest anybody already has with it, or 0. */
+export async function firstNumber(code: string): Promise<number> {
+    const pattern = `^${letters(code)}[0-9]{1,9}$`
+    const rows = await prisma.$queryRaw<{ next: number }[]>`
+        SELECT (COALESCE(max(CAST(substring(username FROM '[0-9]+$') AS INTEGER)), -1) + 1)::int AS next
+        FROM (SELECT username FROM "User" UNION ALL SELECT username FROM "SuperAdmin") AS named
+        WHERE username ~* ${pattern}`
+    return rows[0]?.next ?? 0
+}
+
+/** The first free code for a company's name; a company's own code is free for it. */
+export async function suggestCode(name: string, companyId: string | null): Promise<string> {
+    const offered = codeCandidates(name)
+    const used = await codesInUse(offered, companyId)
+    const free = offered.find(code => !used.has(code))
+    if (free) return free
+    // Every suggestion taken, which takes 30-odd companies with the same
+    // initials: the initials and three letters picked at random.
+    for (let tries = 0; tries < 20; tries++) {
+        const random = Array.from({ length: 3 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")
+        const code = offered[0].slice(0, 5) + random
+        if (!(await codeInUse(code, companyId))) return code
+    }
+    throw new Error("USERNAME_CODE_UNAVAILABLE")
+}
+
+/**
+ * A company's code, given it the first time it's needed if it has none yet:
+ * a company added before codes whose people's usernames didn't give it one.
+ * Two at once settle on one, the second reading what the first set.
+ */
+async function codeFor(companyId: string): Promise<string | null> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { name: true, usernameCode: true } })
+        if (!company) return null
+        if (company.usernameCode) return company.usernameCode
+        const code = await suggestCode(company.name, companyId)
+        try {
+            const claimed = await prisma.company.updateMany({ where: { id: companyId, usernameCode: null }, data: { usernameCode: code, usernameNext: await firstNumber(code) } })
+            if (claimed.count === 1) return code
+        } catch (error) {
+            // Another company took the same code a moment ago: suggest again.
+            if (!isUniqueViolation(error)) throw error
+        }
+    }
+    throw new Error("USERNAME_CODE_UNAVAILABLE")
+}
+
+/**
+ * The next username for somebody joining a company: its code and the next
+ * number on its counter, skipping one somebody already has (typed by a Super
+ * Admin, say), capitals aside.
  */
 export async function generateUsername(companyId: string): Promise<string> {
-    const company = await prisma.company.findUnique({
-        where: { id: companyId },
-        select: { name: true }
-    });
+    const code = await codeFor(companyId)
+    if (!code) return `user_${Math.random().toString(36).substring(7)}`
 
-    if (!company) return `user_${Math.random().toString(36).substring(7)}`;
-
-    const initials = getInitials(company.name) || 'u';
-
-    // Find all users with usernames starting with these initials followed by a number
-    const users = await prisma.user.findMany({
-        where: {
-            username: {
-                startsWith: initials,
-                mode: 'insensitive'
-            }
-        },
-        select: { username: true }
-    });
-
-    // Extract numbers from existing usernames and find the max
-    const numbers = users
-        .map(u => {
-            const match = u.username?.slice(initials.length).match(/^\d+$/);
-            return match ? parseInt(match[0], 10) : -1;
+    for (let tries = 0; tries < 100; tries++) {
+        // Counted and read in one statement, so two people added at once
+        // never get the same number.
+        const counted = await prisma.company.update({
+            where: { id: companyId },
+            data: { usernameNext: { increment: 1 } },
+            select: { usernameCode: true, usernameNext: true },
         })
-        .filter(n => n >= 0);
+        const username = `${counted.usernameCode ?? code}${counted.usernameNext - 1}`
+        if (!(await usernameTaken(username))) return username
+    }
+    throw new Error("USERNAME_UNAVAILABLE")
+}
 
-    const nextNumber = numbers.length > 0 ? Math.max(...numbers) + 1 : 0;
-
-    return `${initials}${nextNumber}`;
+/**
+ * Whether a typed username follows another company's code and a number (ds7
+ * when ds is Delta Sites'), or another company's people's usernames: the
+ * company would one day make it up for somebody of its own. A company's own
+ * code is its own to type.
+ */
+export async function usernameReserved(username: string, companyId: string | null): Promise<boolean> {
+    const typed = /^([a-z]+)[0-9]+$/i.exec(username.trim())
+    if (!typed) return false
+    const prefix = typed[1].toLowerCase()
+    if (companyId) {
+        const own = await prisma.company.findUnique({ where: { id: companyId }, select: { usernameCode: true } })
+        if (own?.usernameCode === prefix) return false
+    }
+    return codeInUse(prefix, companyId)
 }

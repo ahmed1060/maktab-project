@@ -267,15 +267,87 @@ describe("the company dialogs", () => {
             return new Response(JSON.stringify(url.endsWith("/package") ? { error: "Package retired" } : { data: {} }), { status: url.endsWith("/package") ? 400 : 200 })
         })
         try {
-            const result = await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p2" })
+            const result = await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p2", usernameCode: "" })
             expect(result.step).toBe("package")
             expect(sent).toEqual(["PUT /api/companies", "PUT /api/companies/c1/package"])
-            expect((await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p1" })).step).toBe("saved")
+            expect((await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "" })).step).toBe("saved")
         } finally {
             vi.unstubAllGlobals()
         }
         const source = readFileSync("components/CompanyDialogs.tsx", "utf8")
         expect(source).toMatch(/if \(result\.step === 'package'\) \{\s*onChanged\(\)/)
+    })
+
+    it("adds a company with its username code, filled in from its name, in English letters", async () => {
+        const { CompanyDialog } = await import("@/components/CompanyDialogs")
+        const html = render(h(CompanyDialog, { company: null, onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
+        expect(html).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.companies_code_label}</label>`))
+        const input = html.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0] ?? ""
+        for (const attribute of ['maxLength="8"', 'dir="ltr"', 'autoCapitalize="none"', 'spellCheck="false"', 'autoComplete="off"', 'translate="no"']) expect(input, attribute).toContain(attribute)
+        expect(input).not.toContain("readOnly")
+        // Empty until the name suggests one: the rule, not an example.
+        expect(html).toContain(esc(en.companies_code_rule))
+        // After the name, before the trial.
+        expect(html.indexOf('name="usernameCode"')).toBeGreaterThan(html.indexOf('name="name"'))
+        expect(html.indexOf('name="usernameCode"')).toBeLessThan(html.indexOf('name="trialPreset"'))
+    })
+
+    it("edits one's code, its usernames said as an example, until its first username is given, then shows it fixed", async () => {
+        const { CompanyDialog } = await import("@/components/CompanyDialogs")
+        const open = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: false }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
+        expect(open).toMatch(/<input[^>]*name="usernameCode"[^>]*value="ds"/)
+        // Kept left to right inside an Arabic sentence, where "ds0, ds1…" came out as "ds0, :0" and "…ds1".
+        expect(open).toContain(`${esc(en.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr" translate="no">ds0, ds1…</bdi>`)
+        const arabic = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: false }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages, { locale: "ar" })
+        expect(arabic).toContain(`${esc(ar.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr" translate="no">ds0, ds1…</bdi>`)
+        const fixed = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: true }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
+        expect(fixed.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0]).toContain('readOnly=""')
+        expect(fixed).toContain(`${esc(en.companies_code_fixed.replace("{example}", ""))}<bdi dir="ltr" translate="no">ds0, ds1…</bdi>`)
+        // Looks like a field that can't be changed, as a disabled one does (DESIGN.md §5.3).
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-input:disabled,\s*\.ui-input\[readonly\],\s*\.ui-select:disabled \{\s*background: var\(--page\);/)
+        // The example ends the sentence: no full stop after its "…", in either language.
+        for (const copy of [en, ar]) for (const key of ["companies_code_hint", "companies_code_fixed"] as const) expect(copy[key], key).toMatch(/\{example\}$/)
+    })
+
+    it("sends the code with a new company, and with an edit only when it's changed and not fixed", async () => {
+        const { saveCompany } = await import("@/components/CompanyDialogs")
+        const bodies: Record<string, unknown>[] = []
+        vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
+            bodies.push(JSON.parse(init.body))
+            return new Response(JSON.stringify({ data: {} }), { status: 200 })
+        })
+        try {
+            await saveCompany(null, { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "", usernameCode: " DS " })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "ds" })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: true }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
+        } finally {
+            vi.unstubAllGlobals()
+        }
+        expect(bodies.map(body => body.usernameCode)).toEqual(["ds", "dsi", undefined, undefined])
+    })
+
+    it("says the server's refusal under the field it's about", async () => {
+        const { refusedField } = await import("@/components/CompanyDialogs")
+        expect(refusedField("Company already exists")).toEqual({ field: "name", key: "companies_name_taken" })
+        expect(refusedField("Company name already exists")).toEqual({ field: "name", key: "companies_name_taken" })
+        expect(refusedField("Username code taken")).toEqual({ field: "usernameCode", key: "companies_code_taken" })
+        expect(refusedField("Username code fixed")).toEqual({ field: "usernameCode", key: "companies_code_locked" })
+        expect(refusedField("Database unavailable")).toBeNull()
+        // Each says what's needed next, not only what's wrong, in both languages.
+        expect(en.companies_code_taken).toMatch(/needs letters of its own\.$/)
+        expect(ar.companies_code_taken).toMatch(/حروف خاصة بها\.$/)
+        expect(en.username_reserved).toMatch(/^Another username is needed/)
+        expect(ar.username_reserved).toMatch(/فيلزم اسم مستخدم آخر\.$/)
+    })
+
+    it("asks for a suggestion once the name is long enough, for the company being edited", async () => {
+        const { suggestionUrl } = await import("@/components/CompanyDialogs")
+        expect(suggestionUrl("D", null)).toBeNull()
+        expect(suggestionUrl("  ", null)).toBeNull()
+        expect(suggestionUrl("Delta & Sons", null)).toBe("/api/companies/username-code?name=Delta+%26+Sons")
+        expect(suggestionUrl("Delta Sites ", "c1")).toBe("/api/companies/username-code?name=Delta+Sites&id=c1")
     })
 
     it("asks before a ban, in the danger colour, and before an unban, saying what each does to its people", async () => {

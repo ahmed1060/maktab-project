@@ -64,6 +64,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
         const result = await CompanyService.create(validation.data, session)
         return ApiResponse.success(result, 201)
     } catch (error: any) {
+        if (error.message === 'COMPANY_CODE_TAKEN') return ApiResponse.badRequest("Username code taken")
         if ((error as any).code === 'P2002') return ApiResponse.badRequest("Company already exists")
         throw error
     }
@@ -96,6 +97,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'COMPANY_NOT_FOUND') return ApiResponse.notFound("Company not found")
         if (error.message === 'COMPANY_HAS_NO_TRIAL') return ApiResponse.badRequest("This company has no trial to extend")
         if (error.message === 'CANNOT_RENAME_SHSD') return ApiResponse.forbidden("Cannot rename the system company (SHSD)")
+        if (error.message === 'COMPANY_CODE_TAKEN') return ApiResponse.badRequest("Username code taken")
+        if (error.message === 'COMPANY_CODE_LOCKED') return ApiResponse.badRequest("Username code fixed")
         if ((error as any).code === 'P2002') return ApiResponse.badRequest("Company name already exists")
         throw error
     }

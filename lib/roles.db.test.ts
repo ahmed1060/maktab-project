@@ -81,6 +81,9 @@ const CHARGES_GRANTED = "20261119000000_charges_granted"
 const CASH_ADVANCES_GRANTED = "20261122000000_cash_advances_granted"
 // The built-in Employee and Team Leader roles' dayoff.request (UI_PLAN.md §2.3, part 2b).
 const DAYOFF_REQUEST_GRANTED = "20261124000000_dayoff_request_granted"
+// Company.usernameCode and usernameNext, which hiring reads and writes to
+// make up a username (lib/username.ts).
+const USERNAME_CODES = "20261129000000_company_username_code"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -141,6 +144,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(CHARGES_GRANTED))
         await db.query(sql(CASH_ADVANCES_GRANTED))
         await db.query(sql(DAYOFF_REQUEST_GRANTED))
+        await db.query(sql(USERNAME_CODES))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

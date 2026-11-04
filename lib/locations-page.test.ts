@@ -139,7 +139,8 @@ describe("the place fields", () => {
 
     it("look like fields that can't be changed, on the page's colour with readable text (DESIGN.md §5.3)", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")
-        const rule = css.match(/\.ui-input:disabled,\s*\.ui-select:disabled\s*\{([^}]*)\}/)?.[1] ?? ""
+        // A read-only one shares the rule (PR 184).
+        const rule = css.match(/\.ui-input:disabled,\s*\.ui-input\[readonly\],\s*\.ui-select:disabled\s*\{([^}]*)\}/)?.[1] ?? ""
         expect(rule).toContain("background: var(--page)")
         expect(rule).toContain("border-color: var(--rule)")
         expect(rule).toContain("color: var(--ink-2)")

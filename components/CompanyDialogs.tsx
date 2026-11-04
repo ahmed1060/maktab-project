@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
@@ -11,6 +11,7 @@ import { computeTrialEnd, DEFAULT_TRIAL_PRESET, TRIAL_PRESETS, type TrialPreset 
 import { TRIAL_PRESET_LABEL_KEY } from '@/lib/subscription-display'
 import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
+import { codeError, normaliseCode } from '@/lib/username-code'
 
 /**
  * Adding a company and changing one, and asking before a ban (the Super
@@ -19,11 +20,39 @@ import type { TranslationKey } from '@/lib/translations'
  * its button busy, until the server has answered.
  */
 
-export type ListedCompany = { id: string; name: string; isBanned?: boolean; package?: { id: string; name: string } | null }
+export type ListedCompany = {
+    id: string
+    name: string
+    isBanned?: boolean
+    package?: { id: string; name: string } | null
+    /** The letters before the number in its people's usernames, and whether they're fixed: its first username has been given. */
+    usernameCode?: string | null
+    usernameLocked?: boolean
+}
 
 /** What's wrong with a company's name on Save; null when it'll do. The server wants 2 to 50 characters. */
 export function companyNameError(name: string): TranslationKey | null {
     return name.trim().length < 2 ? 'companies_name_short' : null
+}
+
+/** Where to ask for a username code for a name, once it's long enough to have one; the company being edited is named, since its own code is free for it. */
+export function suggestionUrl(name: string, companyId: string | null): string | null {
+    const trimmed = name.trim()
+    if (companyNameError(trimmed)) return null
+    const query = new URLSearchParams({ name: trimmed })
+    if (companyId) query.set('id', companyId)
+    return `/api/companies/username-code?${query}`
+}
+
+/** The field a refusal from the server is about, and what to say under it; null for one said in a toast. */
+export function refusedField(error: unknown): { field: 'name' | 'usernameCode'; key: TranslationKey } | null {
+    if (typeof error !== 'string') return null
+    // Adding says "Company already exists", renaming "Company name already exists".
+    if (error.endsWith('already exists')) return { field: 'name', key: 'companies_name_taken' }
+    if (error === 'Username code taken') return { field: 'usernameCode', key: 'companies_code_taken' }
+    // Its first username was given while the dialog was open.
+    if (error === 'Username code fixed') return { field: 'usernameCode', key: 'companies_code_locked' }
+    return null
 }
 
 /**
@@ -32,14 +61,20 @@ export function companyNameError(name: string): TranslationKey | null {
  * step failed, with the server's answer: a package refused after the name
  * saved leaves the name saved (Codex on PR 171).
  */
-export async function saveCompany(company: ListedCompany | null, fields: { name: string; trial: TrialPreset; packageId: string }): Promise<
+export async function saveCompany(company: ListedCompany | null, fields: { name: string; trial: TrialPreset; packageId: string; usernameCode: string }): Promise<
     { step: 'saved' } | { step: 'name' | 'package'; res: Response }
 > {
     const json = { 'Content-Type': 'application/json' }
+    // A new company without one gets one suggested by the server. An edit
+    // sends one only when it's changed, and never once it's fixed.
+    const code = normaliseCode(fields.usernameCode) || undefined
+    const changedCode = company && !company.usernameLocked && code !== (company.usernameCode ?? undefined) ? code : undefined
     const res = await fetch('/api/companies', {
         method: company ? 'PUT' : 'POST',
         headers: json,
-        body: JSON.stringify(company ? { id: company.id, name: fields.name } : { name: fields.name, trialPreset: fields.trial, packageId: fields.packageId || null }),
+        body: JSON.stringify(company
+            ? { id: company.id, name: fields.name, usernameCode: changedCode }
+            : { name: fields.name, trialPreset: fields.trial, packageId: fields.packageId || null, usernameCode: code }),
     })
     if (!res.ok) return { step: 'name', res }
     if (company && fields.packageId !== (company.package?.id ?? '')) {
@@ -50,9 +85,12 @@ export async function saveCompany(company: ListedCompany | null, fields: { name:
 }
 
 /**
- * A company's name and package, and, when it's new, how long its trial is.
- * The trial is chosen once: changing it later would move an end date
- * somebody has already been told, and extending one is an action of its own.
+ * A company's name, username code and package, and, when it's new, how long
+ * its trial is. The trial is chosen once: changing it later would move an end
+ * date somebody has already been told, and extending one is an action of its
+ * own. The code follows the name, suggested by the server so it's one no
+ * other company has, until it's typed; it's fixed once the company's first
+ * username has been given.
  */
 export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     company: ListedCompany | null
@@ -69,8 +107,28 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     const [name, setName] = useState(company?.name ?? '')
     const [trial, setTrial] = useState<TrialPreset>(DEFAULT_TRIAL_PRESET)
     const [packageId, setPackageId] = useState(company?.package?.id ?? '')
+    const locked = !!company?.usernameLocked
+    const [code, setCode] = useState(company?.usernameCode ?? '')
+    const [codeTyped, setCodeTyped] = useState(!!company?.usernameCode)
     const [wrong, setWrong] = useState<TranslationKey | null>(null)
+    const [codeWrong, setCodeWrong] = useState<TranslationKey | null>(null)
     const [busy, setBusy] = useState(false)
+
+    // Asked a moment after the name stops changing, not at each letter.
+    const [askFor, setAskFor] = useState<string | null>(null)
+    useEffect(() => {
+        if (codeTyped) return
+        const wait = setTimeout(() => setAskFor(suggestionUrl(name, company?.id ?? null)), 300)
+        return () => clearTimeout(wait)
+    }, [name, codeTyped, company?.id])
+    const { data: suggested } = useSWR(codeTyped ? null : askFor, fetcher, { keepPreviousData: true })
+    const shownCode = codeTyped ? code : (suggested?.data?.code ?? code)
+    const example = /^[a-z]+$/.test(shownCode) ? `${shownCode}0, ${shownCode}1…` : null
+    // The example is English letters, kept left to right inside an Arabic sentence.
+    const withExample = (key: TranslationKey) => t(key).split('{example}').map((part, i) => <Fragment key={i}>{i > 0 && <bdi dir="ltr" translate="no">{example}</bdi>}{part}</Fragment>)
+    const codeHint = locked && example ? withExample('companies_code_fixed')
+        : example && !codeError(shownCode) ? withExample('companies_code_hint')
+            : t('companies_code_rule')
 
     // "14 days" is abstract; a date can be checked. Worked out with the
     // server's own helper: a preview worked out another way is one that can
@@ -81,12 +139,15 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     const save = async (e: FormEvent) => {
         e.preventDefault()
         const found = companyNameError(name)
+        // An empty code nobody typed is the server's to suggest.
+        const foundInCode = locked || (!shownCode && !codeTyped) ? null : codeError(shownCode)
         setWrong(found)
-        if (found) { focusFirstWrong(formRef.current); return }
+        setCodeWrong(foundInCode)
+        if (found || foundInCode) { focusFirstWrong(formRef.current); return }
         setBusy(true)
         try {
             const trimmed = name.trim()
-            const result = await saveCompany(company, { name: trimmed, trial, packageId })
+            const result = await saveCompany(company, { name: trimmed, trial, packageId, usernameCode: shownCode })
             // The package's refusal is said, where it was dropped without a
             // word, and the list shows the name that did save (Codex on PR 171).
             if (result.step === 'package') {
@@ -96,9 +157,10 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
             }
             if (result.step === 'name') {
                 const body = await result.res.clone().json().catch(() => ({}))
-                // Adding says "Company already exists", renaming "Company name already exists".
-                if (typeof body?.error === 'string' && body.error.endsWith('already exists')) {
-                    setWrong('companies_name_taken')
+                const refused = refusedField(body?.error)
+                if (refused) {
+                    if (refused.field === 'name') setWrong(refused.key)
+                    else setCodeWrong(refused.key)
                     focusFirstWrong(formRef.current)
                 } else {
                     showToast(await refusalOf(result.res, t('error_generic')), 'error')
@@ -118,6 +180,12 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
             <form ref={formRef} className="ui-form" noValidate onSubmit={save}>
                 <Field label={t('companies_name_label')} error={wrong && t(wrong)}>{p => (
                     <TextInput {...p} name="name" autoComplete="off" maxLength={50} value={name} onChange={e => { setName(e.target.value); setWrong(null) }} />
+                )}</Field>
+                {/* English letters whatever the page's language, so written left to
+                    right, and not a word for a browser to translate. */}
+                <Field label={t('companies_code_label')} hint={codeHint} error={codeWrong && t(codeWrong)}>{p => (
+                    <TextInput {...p} name="usernameCode" dir="ltr" translate="no" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={8}
+                        readOnly={locked} value={shownCode} onChange={e => { setCode(e.target.value); setCodeTyped(true); setCodeWrong(null) }} />
                 )}</Field>
                 {!company && (
                     <Field label={t('trial_length')} hint={ends && t('companies_trial_ends').replace('{date}', ends)}>{p => (

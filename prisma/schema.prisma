@@ -253,6 +253,15 @@ model Company {
   /// while both are on. Neither goes off while anyone holds advance money.
   cashAdvancesAllowed  Boolean                   @default(false)
   cashAdvancesOn       Boolean                   @default(true)
+  /// The letters before the number in a username Nizmo makes up for this
+  /// company's people (ds0, ds1…), in lower case; no other company has them
+  /// (lib/username.ts). Null for a company added before codes whose people's
+  /// usernames didn't give it one: it gets one the first time it's needed.
+  usernameCode         String?                   @unique
+  /// The number the next made-up username gets. Only ever grows, so a number
+  /// is never given twice, even once its person has gone. The code is fixed
+  /// once this has moved.
+  usernameNext         Int                       @default(0)
   cashAdvanceEntries   CashAdvanceEntry[]
   payrollRuns          PayrollRun[]
   workSchedules        WorkSchedule[]

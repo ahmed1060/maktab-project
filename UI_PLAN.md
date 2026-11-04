@@ -3579,3 +3579,48 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the 30 seconds. Each run has an id of its own (a new column, added only),
   and a try is given back, or marked wrong, only in the run it was counted
   in.
+- **2026-11-04:** Signing in's limit was merged in #183. Each company gets
+  a username code of its own in #184 (decided 2026-11-03, option 1):
+  - a username Nizmo makes up is the company's code and a number, counting
+    from 0, as before (ds0, ds1). The code was the name's initials, so two
+    companies with the same initials shared them and took turns with the
+    numbers; now no company's code is another's, and no company's usernames
+    follow another's code;
+  - Add a company has a Username code field after the name, filled in from
+    it with a code nobody has as the name is typed, and changeable: 2 to 8
+    English letters, written left to right in either language, with an
+    example of its usernames under it. Edit has it too, until the company's
+    first username has been given; then it's shown fixed, and renaming the
+    company doesn't change it;
+  - a number is never given twice, even once its person has gone, and two
+    people added at once get different ones;
+  - a username typed for somebody (by a Super Admin) is refused when it's
+    another company's code and a number, as that company would one day make
+    it up for somebody of its own;
+  - the companies already there keep the letters their people's usernames
+    use, carrying on after the highest number: Karavan keeps k and goes on
+    at k2. One whose usernames give it none gets a code from its name the
+    first time it needs one (Nizmo Test Co: ntc).
+- **2026-11-04:** Found in the browser, on #184: the example under Username
+  code ended "ds0, ds1….", a full stop after the "…". The example ends the
+  sentence, in both languages.
+- **2026-11-04:** Found in the browser, on #184: in Arabic, the example
+  under Username code came out as "nt0, :0" with "…nt1" on the next line,
+  English letters inside a sentence read right to left. The example is kept
+  left to right.
+- **2026-11-04:** Found in the browser, on #184: a Username code that's
+  fixed looked like one that could be typed in. A read-only field looks like
+  a disabled one (DESIGN.md §5.3), on the page's colour, and can still be
+  focused and copied. System settings' fields, read-only while they save,
+  look the same for that moment.
+- **2026-11-04:** Found in the web interface audit, on #184: a browser
+  translating the page could turn the Username code and its example into
+  words. Neither is translated.
+- **2026-11-04:** Found in the web interface audit, on #184: a code another
+  company has, and a username in another company's run, said what was
+  wrong and not what was needed. Each says the company needs letters of its
+  own, or the person another username.
+- **2026-11-04:** Found by Codex, on #184: changing a company's username
+  code and its name together, to a name another company has, refused the
+  save but kept the new code, with nothing in the audit log. The code is
+  saved with the rest, so a refused save leaves both as they were.
