@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { refusalOf } from '@/components/CompanyRolesCard'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
@@ -124,8 +124,10 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     const { data: suggested } = useSWR(codeTyped ? null : askFor, fetcher, { keepPreviousData: true })
     const shownCode = codeTyped ? code : (suggested?.data?.code ?? code)
     const example = /^[a-z]+$/.test(shownCode) ? `${shownCode}0, ${shownCode}1…` : null
-    const codeHint = locked && example ? t('companies_code_fixed').replace('{example}', example)
-        : example && !codeError(shownCode) ? t('companies_code_hint').replace('{example}', example)
+    // The example is English letters, kept left to right inside an Arabic sentence.
+    const withExample = (key: TranslationKey) => t(key).split('{example}').map((part, i) => <Fragment key={i}>{i > 0 && <bdi dir="ltr">{example}</bdi>}{part}</Fragment>)
+    const codeHint = locked && example ? withExample('companies_code_fixed')
+        : example && !codeError(shownCode) ? withExample('companies_code_hint')
             : t('companies_code_rule')
 
     // "14 days" is abstract; a date can be checked. Worked out with the

@@ -296,10 +296,13 @@ describe("the company dialogs", () => {
         const { CompanyDialog } = await import("@/components/CompanyDialogs")
         const open = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: false }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(open).toMatch(/<input[^>]*name="usernameCode"[^>]*value="ds"/)
-        expect(open).toContain(esc(en.companies_code_hint.replace("{example}", "ds0, ds1…")))
+        // Kept left to right inside an Arabic sentence, where "ds0, ds1…" came out as "ds0, :0" and "…ds1".
+        expect(open).toContain(`${esc(en.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr">ds0, ds1…</bdi>`)
+        const arabic = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: false }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages, { locale: "ar" })
+        expect(arabic).toContain(`${esc(ar.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr">ds0, ds1…</bdi>`)
         const fixed = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: true }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(fixed.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0]).toContain('readOnly=""')
-        expect(fixed).toContain(esc(en.companies_code_fixed.replace("{example}", "ds0, ds1…")))
+        expect(fixed).toContain(`${esc(en.companies_code_fixed.replace("{example}", ""))}<bdi dir="ltr">ds0, ds1…</bdi>`)
         // The example ends the sentence: no full stop after its "…", in either language.
         for (const copy of [en, ar]) for (const key of ["companies_code_hint", "companies_code_fixed"] as const) expect(copy[key], key).toMatch(/\{example\}$/)
     })

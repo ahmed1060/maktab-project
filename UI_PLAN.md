@@ -3604,3 +3604,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-04:** Found in the browser, on #184: the example under Username
   code ended "ds0, ds1….", a full stop after the "…". The example ends the
   sentence, in both languages.
+- **2026-11-04:** Found in the browser, on #184: in Arabic, the example
+  under Username code came out as "nt0, :0" with "…nt1" on the next line,
+  English letters inside a sentence read right to left. The example is kept
+  left to right.
