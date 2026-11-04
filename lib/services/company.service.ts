@@ -263,25 +263,14 @@ export class CompanyService {
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
-        // The username code, before anything else changes: it's fixed once
-        // the first username is given, and the counter is read and moved in
-        // the same statement as it's checked, so a username given meanwhile
-        // fixes it.
+        // The username code: it's fixed once the first username is given.
+        // Checked here, and written below with the rest of the save.
         const newCode = usernameCode !== undefined && usernameCode !== existing.usernameCode ? usernameCode : undefined
         if (newCode !== undefined) {
             if (existing.usernameNext > 0) throw new Error("COMPANY_CODE_LOCKED")
             if (await codeInUse(newCode, id)) throw new Error("COMPANY_CODE_TAKEN")
-            try {
-                const moved = await prisma.company.updateMany({
-                    where: { id, usernameNext: 0, usernameCode: existing.usernameCode },
-                    data: { usernameCode: newCode, usernameNext: await firstNumber(newCode) },
-                })
-                if (moved.count === 0) throw new Error("COMPANY_CODE_LOCKED")
-            } catch (error) {
-                if (onUsernameCode(error)) throw new Error("COMPANY_CODE_TAKEN")
-                throw error
-            }
         }
+        const codeStart = newCode !== undefined ? await firstNumber(newCode) : 0
 
         // Both maps are stored the same way now that vendorsLabel is gone — see
         // planOverrideWrite for what undefined, null and a map each mean here.
@@ -317,11 +306,28 @@ export class CompanyService {
         }
         // Switching cash advances off waits for any advance being recorded,
         // and is refused while anyone holds advance money (§7.6).
-        const updated = cashAdvancesAllowed === false || cashAdvancesOn === false
+        const advancesOff = cashAdvancesAllowed === false || cashAdvancesOn === false
+        // A new username code goes in with the rest, so a save refused (a
+        // name another company has) leaves it as it was (Codex on PR 184).
+        // It's moved only while the counter hasn't, in the same statement
+        // as that's checked, so a username given meanwhile fixes it.
+        const updated = advancesOff || newCode !== undefined
             ? await prisma.$transaction(async tx => {
-                const { CashAdvanceService } = await import("./cash-advance.service")
-                await CashAdvanceService.assertNoneHeld(tx, id)
+                if (advancesOff) {
+                    const { CashAdvanceService } = await import("./cash-advance.service")
+                    await CashAdvanceService.assertNoneHeld(tx, id)
+                }
+                if (newCode !== undefined) {
+                    const moved = await tx.company.updateMany({
+                        where: { id, usernameNext: 0, usernameCode: existing.usernameCode },
+                        data: { usernameCode: newCode, usernameNext: codeStart },
+                    })
+                    if (moved.count === 0) throw new Error("COMPANY_CODE_LOCKED")
+                }
                 return tx.company.update({ where: { id }, data })
+            }).catch(error => {
+                if (onUsernameCode(error)) throw new Error("COMPANY_CODE_TAKEN")
+                throw error
             })
             : await prisma.company.update({ where: { id }, data })
 

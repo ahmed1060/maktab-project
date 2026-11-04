@@ -3620,3 +3620,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   company has, and a username in another company's run, said what was
   wrong and not what was needed. Each says the company needs letters of its
   own, or the person another username.
+- **2026-11-04:** Found by Codex, on #184: changing a company's username
+  code and its name together, to a name another company has, refused the
+  save but kept the new code, with nothing in the audit log. The code is
+  saved with the rest, so a refused save leaves both as they were.

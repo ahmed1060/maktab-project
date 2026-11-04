@@ -181,6 +181,13 @@ describe.skipIf(!ADMIN_URL)("each company's username code, in Postgres", () => {
         expect(await codeOf(fresh.id)).toEqual({ code: "nil", next: 0 })
     })
 
+    it("leaves the code as it was when the rest of the save is refused (Codex on PR 184)", async () => {
+        const tours = await Companies.create({ name: "Red Sea Tours", usernameCode: "rst" } as any, superAdmin)
+        // Karavan's name is taken: the whole save is refused, the code with it.
+        await expect(Companies.update({ id: tours.id, name: "Karavan", usernameCode: "rsx" } as any, superAdmin)).rejects.toThrow()
+        expect(await codeOf(tours.id)).toEqual({ code: "rst", next: 0 })
+    })
+
     it("suggests a code for a name as the dialog is filled in, skipping those taken", async () => {
         // ds is Delta Sites', dst Dark Star's.
         expect(await Companies.suggestUsernameCode("Dawn Star", null)).toBe("dsta")
