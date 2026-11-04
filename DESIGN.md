@@ -561,6 +561,16 @@ These are built once, in the building-blocks PR, and every page uses them
   - The code a high-risk action asks for (two-factor sign-in) sits above
     every other dialog: the confirmation that sent the action, such as
     "Pay 7 costs, 3,450 EGP", stays open until the code is answered.
+  - One that asks for the viewer's own password before an action, such as
+    resetting someone else's, is a form: the password field, with what's
+    wrong said under it, such as a password that doesn't match, then
+    Cancel and Confirm. While the password is checked, Cancel is off and
+    Confirm is busy. What was typed is never kept: each time it opens, the
+    field is empty.
+  - A code or a password shown once, such as an attendance agent's code
+    or a temporary password, is large, left to right and never translated,
+    and chosen whole with one click to copy, with a line saying it won't
+    be shown again. Done closes it, and then it's gone.
   - One that can't be undone, such as restoring a backup, asks for a word
     typed first, such as RESTORE: the word is shown as the code has it,
     left to right and never translated, in both languages, and the main
@@ -628,6 +638,14 @@ These are built once, in the building-blocks PR, and every page uses them
   its value, up to 3 in a row on computers and 1 on phones. A phone number
   is a link that calls it. A link that opens a new tab, such as a map, says
   so to screen readers.
+  - A fact with nothing in it says so, such as "None", never a dash or a
+    blank.
+  - A note on a fact, such as until when someone is acting in a role, is a
+    second line under its value, in `--text-sm` and `--muted`.
+  - What can be done to a fact, such as ending someone's contract, is a
+    small secondary button beside its value. An action with no value to
+    sit beside, such as resetting someone's password, is a fact of its
+    own, with its button as the value.
 - **Files:**
   - adding files is a secondary "Attach files" button that opens the file
     picker. On computers, files can also be dropped on it. The hint says
@@ -635,6 +653,10 @@ These are built once, in the building-blocks PR, and every page uses them
   - each file, picked or saved, is a chip with a file icon, its name and
     its size. A saved file's chip opens it in a new tab, and says so to
     screen readers. A chip's remove button is named for its file.
+- **A person's profile,** seen by someone else, is one card: their photo,
+  then their facts as details (above), each only for whoever may see it.
+  Edit is the page header's primary button, for whoever may edit them; the
+  form is a page of its own.
 - **A person's photo,** at the top of their profile's card: a circle 96px
   across, their photo filling it, or their initials in an avatar's colours
   when they have none, never a drawing that stands in for them.
@@ -1090,3 +1112,9 @@ changed:
   the photo larger before it could be changed. Its picker took any image,
   so one the server doesn't take, such as a HEIC or an AVIF, was sent
   before it was refused, in English.
+- **2026-11-04:** A person's profile (§5.5), seen by someone else, is their
+  details, with Edit in the page header, and the two password dialogs
+  (§5.5, Dialog). It was the edit form with every field turned off, and no
+  way to edit from it. A wrong password was said in a toast, over a window
+  of its own making, and the temporary password sat among the fields, in
+  the same size as the rest.

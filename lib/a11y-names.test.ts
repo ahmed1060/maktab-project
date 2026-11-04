@@ -53,10 +53,12 @@ describe("icon-only buttons", () => {
                 return { at: `${f}: ${m[1]}`, named: /aria-label=\{\w+ \? t\('hide_password' as any\) : t\('show_password' as any\)\}/.test(before) }
             })
         })
-        // Three left: the Super Admins page's moved onto the building blocks'
-        // password field (part 2b), and Add employee's (PR 180), whose button
-        // is named below.
-        expect(toggles.length).toBeGreaterThanOrEqual(3)
+        // Two left, the sign-in page's and the profile form's new password
+        // (its part 3). The profile's confirmation with one's own password
+        // moved onto the building blocks' password field (PR 192), whose
+        // button is named below, as the Super Admins page's (part 2b) and Add
+        // employee's (PR 180) had.
+        expect(toggles.length).toBeGreaterThanOrEqual(2)
         expect(toggles.filter(t => !t.named).map(t => t.at)).toEqual([])
     })
 
