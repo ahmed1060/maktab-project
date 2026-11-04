@@ -1,5 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
+import { isUsernameClash } from "@/lib/username-rules"
 import { SuperAdminService } from "@/lib/services/super-admin.service"
 import { superAdminSchema } from "@/lib/validations/super-admin.schema"
 import { parsePaging } from "@/lib/pagination"
@@ -43,6 +44,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
         const result = await SuperAdminService.create(validation.data, session)
         return ApiResponse.success(result, 201)
     } catch (error: any) {
+        if (error.message === 'USERNAME_IN_USE' || isUsernameClash(error)) return ApiResponse.badRequest("Username in use")
+        if (error.message === 'USERNAME_RESERVED') return ApiResponse.badRequest("Username follows another company's username code")
         if ((error as any).code === 'P2002') {
             return ApiResponse.badRequest("Email already exists")
         }

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { partialWithoutDefaults } from "./partial-update"
+import { usernameSchema } from "./username.schema"
 
 export const createUserSchema = z.object({
     firstName: z.string().min(1).max(15, "First name too long"),
@@ -23,7 +24,7 @@ export const createUserSchema = z.object({
     salary: z.coerce.number().min(0).optional().default(0),
     dayOffCredit: z.coerce.number().min(0).optional(),
     baseDayOffCredit: z.coerce.number().min(0).optional(),
-    username: z.string().min(3).max(30).optional(),
+    username: usernameSchema.optional(),
     // Nullable as well as optional, and the difference matters: absent means
     // "leave it alone", null means "unassign", and an Admin resolving a
     // hand-off needs to be able to say the second one. partialWithoutDefaults

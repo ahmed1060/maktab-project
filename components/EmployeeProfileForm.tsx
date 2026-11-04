@@ -15,6 +15,7 @@ import RoleSelect from '@/components/RoleSelect'
 import RoleRequestControl from '@/components/RoleRequestControl'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
+import { changedUsername, usernameError } from "@/lib/username-rules"
 import { useDialog } from '@/lib/useDialog'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
@@ -47,6 +48,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
     const [salary, setSalary] = useState<string>('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
     const [username, setUsername] = useState('')
+    // As loaded: the username is sent only when it's been changed.
+    const [savedUsername, setSavedUsername] = useState('')
     const [status, setStatus] = useState('OFFLINE')
     const [companyId, setCompanyId] = useState('')
     // Empty string is the select's "no team leader" option; it becomes an
@@ -165,6 +168,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
                 setCompanyId(employee.companyId || '')
                 setUsername(employee.username || '')
+                setSavedUsername(employee.username || '')
                 setStatus(employee.status || 'OFFLINE')
                 setTeamLeaderId(employee.teamLeaderId || '')
                 setMyLeader(employee.teamLeader || null)
@@ -306,6 +310,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
             return
         }
 
+        // The same rule as the server's (lib/username-rules.ts), said before the round trip.
+        const sentUsername = userRole === 'SUPER_ADMIN' ? changedUsername(username, savedUsername) : undefined
+        if (sentUsername !== undefined && usernameError(sentUsername)) {
+            showToast(t('username_invalid'), 'error')
+            setSaving(false)
+            return
+        }
+
         if (salary && parseFloat(salary) > 1000000000) {
             showToast(t('salary_limit_error'), 'error')
             setSaving(false)
@@ -354,7 +366,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     avatar: avatarUrl,
                     salary: can('salary.edit') && userId !== session?.user?.id ? parseFloat(salary) || 0 : undefined,
                     baseDayOffCredit: can('dayoff.adjust_credit') && userId !== session?.user?.id ? parseFloat(baseDayOffCredit) || 0 : undefined,
-                    username: userRole === 'SUPER_ADMIN' ? username : undefined,
+                    username: userRole === 'SUPER_ADMIN' ? changedUsername(username, savedUsername) : undefined,
                     status: can('employees.change_status') && userId !== session?.user?.id ? status : undefined,
                     // undefined leaves it alone; null unassigns. The empty
                     // option means the second, so it cannot be sent as "".
@@ -379,9 +391,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                         return
                     }
                 } catch { /* not JSON, fall through to the message below */ }
-                if (text.includes("Username already in use")) {
-                    throw new Error(locale === 'ar' ? 'اسم المستخدم مستخدم بالفعل' : 'Username already in use')
-                }
+                if (text.includes('"Username in use"')) throw new Error(t('username_in_use'))
                 if (text.includes("Username follows another company's username code")) throw new Error(t('username_reserved'))
                 throw new Error(apiErrorText(text, t('error_generic')))
             }
@@ -829,6 +839,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('username_label' as any) || 'Username'}</label>
                     <input aria-label={t('username_label' as any) || 'Username'}
                         className="input"
+                        spellCheck={false} autoCapitalize="none" autoComplete="off" translate="no"
                         value={username}
                         onChange={e => setUsername(e.target.value)}
                         disabled={isViewMode || userRole !== 'SUPER_ADMIN'}

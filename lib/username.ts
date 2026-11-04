@@ -22,12 +22,29 @@ function letters(code: string): string {
 
 const isUniqueViolation = (error: unknown) => (error as { code?: string })?.code === "P2002"
 
-/** Whether anybody, a company's person or a Super Admin, has this username, capitals aside. */
-export async function usernameTaken(username: string): Promise<boolean> {
+/**
+ * Whether anybody, a company's person or a Super Admin, has this username,
+ * capitals aside: one username, one account, wherever it's set. `exceptId`
+ * is the account being changed, whose own username isn't a clash.
+ */
+export async function usernameTaken(username: string, exceptId: string | null = null): Promise<boolean> {
     const rows = await prisma.$queryRaw<{ taken: boolean }[]>`
-        SELECT EXISTS (SELECT 1 FROM "User" WHERE lower(username) = lower(${username}))
-            OR EXISTS (SELECT 1 FROM "SuperAdmin" WHERE lower(username) = lower(${username})) AS taken`
+        SELECT EXISTS (SELECT 1 FROM "User" WHERE lower(username) = lower(${username}) AND id IS DISTINCT FROM ${exceptId}::text)
+            OR EXISTS (SELECT 1 FROM "SuperAdmin" WHERE lower(username) = lower(${username}) AND id IS DISTINCT FROM ${exceptId}::text) AS taken`
     return rows[0]?.taken === true
+}
+
+/**
+ * A free username from a base (a Super Admin's from their email): the base,
+ * or with -2, -3… after it. A hyphen, so it never looks like a company's
+ * code and a number.
+ */
+export async function freeUsername(base: string): Promise<string> {
+    for (let n = 1; n < 100; n++) {
+        const name = n === 1 ? base : `${base}-${n}`
+        if (!(await usernameTaken(name)) && !(await usernameReserved(name, null))) return name
+    }
+    throw new Error("USERNAME_UNAVAILABLE")
 }
 
 /**
