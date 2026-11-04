@@ -3965,3 +3965,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     details at the same address kept the form's state, so the details
     showed what had been typed, and Edit again brought it back to be saved.
     The view and the form are each mounted afresh now (Codex review).
+  - An amount the browser can't read, such as "1e" or "-", is said to be
+    wrong under its field: it read as empty, as though left empty, and was
+    saved as 0 over their pay, where the old form's own check had stopped
+    it (Codex review).

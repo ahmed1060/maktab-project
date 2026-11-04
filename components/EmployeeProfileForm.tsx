@@ -322,10 +322,18 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         return () => window.removeEventListener('beforeunload', warn)
     }, [changed, saving, seeing])
 
-    const handleSubmit = async (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setFormError(null)
         setFocusOn(null)
+        // In a number field, what the browser can't read ("1e", "-") reads as
+        // empty, as though left empty, which is sent as 0: it's asked of the
+        // fields themselves, as the form doesn't let the browser check them.
+        const form = e.currentTarget
+        const unreadable = (['salary', 'dayOffCredit'] as const).filter(name => {
+            const field = form.elements.namedItem(name)
+            return field instanceof HTMLInputElement && field.validity.badInput
+        })
         // What's wrong is said under its field before anything is asked or
         // sent; then one's own password (ConfirmPasswordDialog), then the save.
         const wrong = profileErrors({
@@ -335,6 +343,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
             salary: access.changeSalary ? salary : undefined,
             dayOffCredit: access.changeDayOffCredit ? baseDayOffCredit : undefined,
+            unreadable,
         })
         if (Object.keys(wrong).length > 0) {
             wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))

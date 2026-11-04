@@ -91,6 +91,18 @@ describe("what's checked before anything is sent", () => {
         expect(profileErrors({ ...ok, dayOffCredit: "-0.5" })).toEqual({ dayOffCredit: "emp_new_day_off_invalid" })
     })
 
+    // In a number field, what the browser can't read ("1e", "-") reads as
+    // empty, which was taken as left empty and saved as 0, over their pay
+    // (Codex review, PR 193).
+    it("says an amount the browser couldn't read is wrong, where it read as empty and was saved as 0", async () => {
+        const { profileErrors } = await import("@/lib/profile-form")
+        const ok = { firstName: "Mona", lastName: "Ali", password: "", salary: "", dayOffCredit: "" }
+        expect(profileErrors({ ...ok, unreadable: ["salary"] })).toEqual({ salary: "emp_new_salary_invalid" })
+        expect(profileErrors({ ...ok, unreadable: ["dayOffCredit"] })).toEqual({ dayOffCredit: "emp_new_day_off_invalid" })
+        // Only where it may be changed: one that's off isn't sent.
+        expect(profileErrors({ firstName: "Mona", lastName: "Ali", password: "", unreadable: ["salary", "dayOffCredit"] })).toEqual({})
+    })
+
     it("knows its fields' order, so the first one wrong is the one focused", async () => {
         const { PROFILE_FIELDS } = await import("@/lib/profile-form")
         expect(PROFILE_FIELDS).toEqual(["firstName", "lastName", "email", "username", "salary", "dayOffCredit", "password"])
@@ -310,6 +322,9 @@ describe("the profile, wired to its form", () => {
         const submit = FORM.slice(FORM.indexOf("const handleSubmit"), FORM.indexOf("const executeSubmit"))
         expect(submit).toContain("const wrong = profileErrors({")
         expect(submit).toContain("password: access.changePassword ? password : '',")
+        // What the browser couldn't read, asked of the fields themselves, as it reads as empty.
+        expect(submit).toContain("field instanceof HTMLInputElement && field.validity.badInput")
+        expect(submit).toContain("unreadable,")
         expect(submit.indexOf("wrongAt(")).toBeLessThan(submit.indexOf("setConfirming('UPDATE')"))
         expect(FORM).toContain("const first = firstError(errors as Record<string, string>, PROFILE_FIELDS) as ProfileField | null")
         expect(FORM).toContain('document.querySelector<HTMLElement>(`[name="${focusOn.field}"]`)?.focus()')

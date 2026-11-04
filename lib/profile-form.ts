@@ -30,6 +30,11 @@ export function profileErrors(typed: {
     password: string
     salary?: string
     dayOffCredit?: string
+    /**
+     * Amounts the browser couldn't read as numbers, such as "1e" or "-": their
+     * fields read as empty, which is sent as 0, over what was there.
+     */
+    unreadable?: readonly ('salary' | 'dayOffCredit')[]
 }): Partial<Record<ProfileField, TranslationKey>> {
     const errors: Partial<Record<ProfileField, TranslationKey>> = {}
     // A name can be loaded longer than the route takes now, which its
@@ -39,10 +44,10 @@ export function profileErrors(typed: {
     if (typed.email !== undefined && !EMAIL.test(typed.email.trim())) errors.email = 'emp_new_email_invalid'
     if (typed.username !== undefined && usernameError(typed.username)) errors.username = 'username_invalid'
     if (typed.salary !== undefined) {
-        if (!zeroOrMore(typed.salary)) errors.salary = 'emp_new_salary_invalid'
+        if (typed.unreadable?.includes('salary') || !zeroOrMore(typed.salary)) errors.salary = 'emp_new_salary_invalid'
         else if (Number(typed.salary) > SALARY_MAX) errors.salary = 'salary_limit_error'
     }
-    if (typed.dayOffCredit !== undefined && !zeroOrMore(typed.dayOffCredit)) errors.dayOffCredit = 'emp_new_day_off_invalid'
+    if (typed.dayOffCredit !== undefined && (typed.unreadable?.includes('dayOffCredit') || !zeroOrMore(typed.dayOffCredit))) errors.dayOffCredit = 'emp_new_day_off_invalid'
     if (typed.password && typed.password.length < PASSWORD_MIN) errors.password = 'emp_new_password_short'
     return errors
 }

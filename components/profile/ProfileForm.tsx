@@ -49,7 +49,7 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
     busy: boolean
     /** The role, where it's chosen: its own part, until it's on the building blocks too. */
     role?: ReactNode
-    onSubmit: (e: FormEvent) => void
+    onSubmit: (e: FormEvent<HTMLFormElement>) => void
     /** Where Cancel goes, a link, as every page form's is: their details. */
     cancelHref: string
 }) {
