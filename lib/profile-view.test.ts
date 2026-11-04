@@ -160,7 +160,7 @@ describe("confirming with one's own password", () => {
     it("is the building blocks' dialog, a form with the password field and Confirm last", () => {
         const src = DIALOG_SRC()
         expect(src).toContain("<Dialog open={open} onClose={cancel} title={t('profile_verify_title')}>")
-        expect(src).toContain('<form className="ui-form" noValidate onSubmit={submit}>')
+        expect(src).toContain('className="ui-form" noValidate onSubmit={submit}>')
         expect(src).toMatch(/<Field label=\{t\('profile_verify_password'\)\} error=\{error\}>\{p => \(\s*<PasswordInput \{\.\.\.p\} name="password" autoComplete="current-password"/)
         expect(src).toMatch(/<DialogActions>\s*<Button onClick=\{cancel\} disabled=\{busy\}>\{t\('cancel'\)\}<\/Button>\s*<Button type="submit" variant="primary" busy=\{busy\}>\{t\('confirm'\)\}<\/Button>\s*<\/DialogActions>/)
         // Busy, it stays open: what was sent can't be called off.
@@ -178,6 +178,16 @@ describe("confirming with one's own password", () => {
         expect(save).toContain("if (!res.ok || !result?.success) return t('profile_verify_failed')")
         expect(save).toContain("if (!result.data?.valid) return t('incorrect_password')")
         expect(save).not.toContain("error_generic")
+    })
+
+    // The field is off while it's checked, so the focus went with it: after a
+    // wrong password, there was nowhere to type it again (browser flows).
+    it("puts the focus back on the field when it says what's wrong", () => {
+        const src = DIALOG_SRC()
+        expect(src).toContain("import { focusFirstWrong } from '@/components/attendance-calendar/focus'")
+        expect(src).toContain('<form ref={form} className="ui-form" noValidate onSubmit={submit}>')
+        expect(src).toMatch(/setError\(t\('profile_verify_empty'\)\)\s*focusFirstWrong\(form\.current\)/)
+        expect(src).toContain("if (problem) { setError(problem); focusFirstWrong(form.current) }")
     })
 
     it("says what's wrong under the field, in the page's language", async () => {

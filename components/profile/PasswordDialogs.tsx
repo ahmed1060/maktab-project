@@ -1,6 +1,7 @@
 'use client'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { Button, Dialog, DialogActions, Field, PasswordInput } from '@/components/ui'
 
@@ -14,7 +15,8 @@ import { Button, Dialog, DialogActions, Field, PasswordInput } from '@/component
  * onConfirm checks the password and does what it was asked for. It hands back
  * what's wrong, to say under the field, or null once it's done, when the
  * dialog's closed by whoever opened it. While it's checked, the dialog stays:
- * Cancel is off and Confirm is busy.
+ * Cancel is off and Confirm is busy. Told what's wrong, the focus is back in
+ * the field: it's off while it's checked, so the focus went with it.
  */
 export function ConfirmPasswordDialog({ open, onCancel, onConfirm }: {
     open: boolean
@@ -25,6 +27,7 @@ export function ConfirmPasswordDialog({ open, onCancel, onConfirm }: {
     const [password, setPassword] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
+    const form = useRef<HTMLFormElement>(null)
     // Each time it opens, from nothing: a password typed is never kept.
     useAdjustOnChange([open], () => { setPassword(''); setError(null); setBusy(false) })
 
@@ -34,12 +37,13 @@ export function ConfirmPasswordDialog({ open, onCancel, onConfirm }: {
         if (busy) return
         if (!password) {
             setError(t('profile_verify_empty'))
+            focusFirstWrong(form.current)
             return
         }
         setBusy(true)
         try {
             const problem = await onConfirm(password)
-            if (problem) setError(problem)
+            if (problem) { setError(problem); focusFirstWrong(form.current) }
         } finally {
             setBusy(false)
         }
@@ -47,7 +51,7 @@ export function ConfirmPasswordDialog({ open, onCancel, onConfirm }: {
 
     return (
         <Dialog open={open} onClose={cancel} title={t('profile_verify_title')}>
-            <form className="ui-form" noValidate onSubmit={submit}>
+            <form ref={form} className="ui-form" noValidate onSubmit={submit}>
                 <p>{t('profile_verify_body')}</p>
                 <Field label={t('profile_verify_password')} error={error}>{p => (
                     <PasswordInput {...p} name="password" autoComplete="current-password" autoFocus value={password} disabled={busy}

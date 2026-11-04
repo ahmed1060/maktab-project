@@ -3888,3 +3888,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - a password that couldn't be checked, as when the server fails, says
     so, where it was said to be wrong, and retyped (found reading the
     code).
+  - told a password is wrong, the focus is back in the field, to type it
+    again: the field is off while it's checked, so the focus went with it,
+    and there was nowhere to type (browser flows).
