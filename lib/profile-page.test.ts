@@ -148,10 +148,13 @@ describe("their photo", () => {
 
     // Web interface audit (PR 191): on a phone in Arabic, the hint broke
     // between "4" and its unit, "ميجابايت" alone on the next line.
+    // In Arabic its number is in Arabic digits, as the page's others are,
+    // where it was a 4 among them (browser flows, PR 193).
     it("keeps a size together on one line, its number with its unit", () => {
         for (const key of ["profile_photo_hint", "profile_photo_too_large"] as const) {
             expect(en[key], key).toContain("4\u00A0MB")
-            expect(ar[key], key).toContain("4\u00A0ميجابايت")
+            expect(ar[key], key).toContain("٤\u00A0ميجابايت")
+            expect(ar[key], key).not.toMatch(/[0-9]/)
         }
     })
 

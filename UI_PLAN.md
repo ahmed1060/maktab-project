@@ -3959,3 +3959,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - One's own email isn't sent with the save, as the field is off: the
     server let an unchanged one through, but the save sent it all the same
     (browser flows).
+  - In Arabic, the photo's size limit is in Arabic digits, as the page's
+    other numbers are, where it was a 4 among them (browser flows).
