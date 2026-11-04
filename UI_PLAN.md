@@ -3768,3 +3768,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     and a Latin question mark stuck on the end; it's one sentence in each
     language. The photo's reset says "Reset photo", where it said "Reset
     Photo" and "Yes, Reset", and "this" photo, where an admin's said "your".
+  - a dialog's title and what it says break a name with no space in it,
+    such as a long reference for a section or a client. On a phone the name
+    ran past the dialog's edge, and the dialog scrolled sideways (web
+    interface audit).

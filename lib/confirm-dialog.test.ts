@@ -77,6 +77,20 @@ describe("a confirmation", () => {
         expect(src).toMatch(/<Dialog open=\{open\} onClose=\{cancel\}/)
         expect(src).toContain("if (working) return")
     })
+
+    // A section, a client or a record can have a name with no space in it,
+    // such as a long reference; on a phone it ran past the dialog's edge,
+    // and the dialog scrolled sideways (found in PR 189's audit).
+    it("wraps a long name inside it, in its title and in what it asks", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rule = (selector: string) => {
+            const start = css.indexOf(`\n${selector} {`)
+            expect(start, selector).toBeGreaterThan(-1)
+            return css.slice(start, css.indexOf("}", start))
+        }
+        expect(rule(".ui-dialog-title")).toContain("overflow-wrap: anywhere")
+        expect(rule(".ui-dialog-body p")).toContain("overflow-wrap: anywhere")
+    })
 })
 
 describe("each confirmation", () => {
