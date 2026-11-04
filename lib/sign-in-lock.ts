@@ -29,17 +29,20 @@ const ACCOUNT = 'login:account:'
 export const accountLockKey = (accountId: string) => `${ACCOUNT}${accountId}`
 
 /**
- * The count for an email nobody has, kept as a hash. Of the email exactly as
- * typed, as finding the account matches it: with its capitals set aside,
- * five wrong tries as NOBODY@ paused nobody@ only when nobody had it, as
- * somebody's is counted on their account (Codex on PR 183).
+ * The count for an email or a username nobody has, kept as a hash, and set
+ * apart as finding the account sets them apart. An email exactly as typed:
+ * with its capitals set aside, five wrong tries as NOBODY@ paused nobody@
+ * only when nobody had it, as somebody's is counted on their account (Codex
+ * on PR 183). A username, which has no @, capitals aside: as typed, five
+ * wrong tries as NOBODY left nobody free only when nobody had it (Codex on
+ * PR 186).
  */
-export const unknownLockKey = (email: string) =>
-    `login:unknown:${createHash('sha256').update(email).digest('hex')}`
+export const unknownLockKey = (typed: string) =>
+    `login:unknown:${createHash('sha256').update(typed.includes('@') ? typed : typed.toLowerCase()).digest('hex')}`
 
 /** Whose count a sign-in uses: the account's when there is one. */
-export const lockKeyFor = (account: { id: string } | null, email: string) =>
-    account ? accountLockKey(account.id) : unknownLockKey(email)
+export const lockKeyFor = (account: { id: string } | null, typed: string) =>
+    account ? accountLockKey(account.id) : unknownLockKey(typed)
 
 /** What holds sign-in back: the 30 seconds after five, or the fifteen minutes after ten. */
 export type Hold = { kind: 'pause' | 'lock'; until: Date }

@@ -467,6 +467,21 @@ describe("signing in with a username, or the email", () => {
         expect(Object.keys(db.limits).every(key => key.startsWith("login:unknown:"))).toBe(true)
     })
 
+    it("counts a username nobody has in other capitals as the one, as finding the account does, so a pause says nothing of who's registered (Codex on PR 186)", async () => {
+        // Finding the account matches a username capitals aside. Counted as
+        // typed, five wrong tries as NOBODY left nobody free when nobody had
+        // it, and paused it when somebody did, as theirs is the account's.
+        for (const who of ["nobody", "colleague"]) {
+            for (let i = 0; i < 5; i++) expect(await authorize({ email: who.toUpperCase(), password: "wrong" })).toBeNull()
+            await expect(authorize({ email: who, password: "wrong" }), who).rejects.toThrow("Sign-in paused")
+        }
+        // The same when the code is asked for by email.
+        for (let i = 0; i < 5; i++) expect((await emailMeACode({ email: "NOBODY.ELSE", password: "wrong" })).status).toBe(403)
+        expect((await emailMeACode({ email: "nobody.else", password: "wrong" })).status).toBe(429)
+        // Still kept as a hash, not as it was typed.
+        expect(Object.keys(db.limits).some(key => /nobody/i.test(key))).toBe(false)
+    })
+
     it("emails a code instead to the account the username names", async () => {
         const res = await emailMeACode({ email: "SA.One", password })
         expect(res.status).toBe(200)

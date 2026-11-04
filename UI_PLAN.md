@@ -3670,3 +3670,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   email's @ and dots jump about as it's typed. It's left to right in both
   languages (DESIGN.md §3.3), as Add employee's email is, aligned with its
   label; the Arabic placeholder has no "…", which would land at its start.
+- **2026-11-04:** Found by Codex, on #186: a username nobody has was counted
+  as it was typed, while finding the account sets its capitals aside. So
+  five wrong tries as NOBODY, then one as nobody, paused it only when
+  somebody had it, which said who's registered without a password. A
+  username nobody has is counted capitals aside, as it's looked up; an
+  email nobody has is still counted exactly as typed, as it's looked up.
