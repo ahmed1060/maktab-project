@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Button, Card, Field, Page, PageHeader, PasswordInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
@@ -30,7 +29,6 @@ export default function ChangePasswordPage() {
     const viewer = useViewer()
     const { update } = useSession()
     const { showToast } = useToast()
-    const router = useRouter()
 
     const [newPassword, setNewPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
@@ -73,8 +71,13 @@ export default function ChangePasswordPage() {
             // Clear the flag on the live JWT so middleware stops redirecting here.
             await update({ mustChangePassword: false })
             showToast(t('change_password_done'), 'success')
-            // Still busy while the dashboard opens, so it isn't sent twice.
-            router.replace('/dashboard')
+            // Loaded afresh rather than moved to within the app. Signing in
+            // went to the dashboard, which was turned to this page, and the
+            // app kept that answer: moving to the dashboard again came
+            // straight back here, asking the server nothing (browser flows,
+            // PR 187). Loaded afresh, the gate and the layout read the new
+            // session. Still busy meanwhile, so it isn't sent twice.
+            window.location.replace('/dashboard')
         } catch {
             setError(t('change_password_failed'))
             setSaving(false)

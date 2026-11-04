@@ -3694,3 +3694,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     line's place. The wrench emoji is gone, and so is the ring that turned
     by itself beside "Checking...": nothing moves unless somebody acts
     (DESIGN.md §8).
+- **2026-11-04:** Found in the browser flows, on #187, and so before it
+  too: once a temporary password was changed, the page came back to
+  itself, the form empty, rather than opening the dashboard, and only
+  reloading let them in. Signing in had gone to the dashboard, which was
+  turned to Change password, and the app kept that answer: going to the
+  dashboard again within the app came straight back, asking the server
+  nothing. The dashboard is loaded afresh once the password is saved.

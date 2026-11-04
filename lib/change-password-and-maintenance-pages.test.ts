@@ -102,6 +102,16 @@ describe("Change password on the building blocks", () => {
         expect(src).toContain("useViewer()")
         expect(src).not.toContain("session?.user?.id")
     })
+
+    it("opens the dashboard once it's changed, where it came back to this page (browser flows on PR 187)", () => {
+        // Signing in went to the dashboard, which was turned to this page,
+        // and the app kept that answer: going to the dashboard again within
+        // the app came straight back here, asking the server nothing, with
+        // the password changed. Loaded afresh, the gate reads the new session.
+        const src = readFileSync(CHANGE, "utf8")
+        expect(src).toContain("window.location.replace('/dashboard')")
+        expect(src).not.toContain("router.replace(")
+    })
 })
 
 describe("The maintenance screen on the building blocks", () => {
