@@ -3952,3 +3952,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Cancel is a link to their details, as every page form's Cancel is a
     link: it went back, so in a tab opened onto the form it did nothing
     (web interface audit).
+  - What takes the focus on a page of the dashboard, such as the first
+    field that's wrong, stops below the sticky header: told what's wrong,
+    a field at the window's top edge took the focus where it was, under
+    the header (browser flows).

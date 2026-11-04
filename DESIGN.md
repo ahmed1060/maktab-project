@@ -448,7 +448,8 @@ These are built once, in the building-blocks PR, and every page uses them
 - **A form on a page of its own,** such as Create task, is one panel: its
   fields one under the other, at most 640px wide, then its buttons, the
   one primary button first. Submitting with something wrong shows each
-  error under its field and puts the focus on the first one.
+  error under its field and puts the focus on the first one, below the
+  sticky header, never under it.
 - **The filter bar** is a panel that holds:
   - a search field, which takes the spare width;
   - the selects for that page;
@@ -1120,3 +1121,7 @@ changed:
   way to edit from it. A wrong password was said in a toast, over a window
   of its own making, and the temporary password sat among the fields, in
   the same size as the rest.
+- **2026-11-04:** What takes the focus on a page of the dashboard, such as
+  the first field that's wrong, stops below the sticky header (§5.3, a form
+  on a page of its own). Told what's wrong, a field at the window's top
+  edge took the focus where it was, under the header.

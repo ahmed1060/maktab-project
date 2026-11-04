@@ -804,6 +804,13 @@ html[dir="rtl"] select.input {
 #main-content {
   scroll-margin-top: calc(72px + 1rem);
 }
+/* Whatever takes the focus or is scrolled to on a page of the dashboard,
+   such as the first field that's wrong, stops below the sticky header too,
+   with room to spare: at the window's top edge, a field took the focus
+   where it was, under the header (PR 193). */
+html:has(#main-content) {
+  scroll-padding-top: calc(72px + 2rem);
+}
 #main-content:focus {
   outline: none;
 }

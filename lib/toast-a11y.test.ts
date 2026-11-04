@@ -127,4 +127,11 @@ describe("the skip link's target (review on #37)", () => {
         expect(shell).toContain("marginTop: isScrolled ? '1rem' : '0'")
         expect(css).toMatch(/#main-content \{\s*scroll-margin-top: calc\(72px \+ 1rem\);/)
     })
+
+    // Told what's wrong, a field at the window's top edge took the focus
+    // where it was, under the header (PR 193, browser flows).
+    it("and so does whatever takes the focus or is scrolled to, on every page of the dashboard", () => {
+        const css = readFileSync("app/globals.css", "utf8")
+        expect(css).toMatch(/\nhtml:has\(#main-content\) \{\s*scroll-padding-top: calc\(72px \+ 2rem\);\s*\}/)
+    })
 })
