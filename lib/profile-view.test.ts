@@ -103,11 +103,20 @@ describe("what can be done to a detail, beside it", () => {
         const { TemporaryPasswordDialog } = await import("@/components/profile/PasswordDialogs")
         expect(TemporaryPasswordDialog).toBeTypeOf("function")
         const src = DIALOG_SRC()
-        expect(src).toContain('<p className="ui-code" dir="ltr" translate="no">{password}</p>')
+        expect(src).toContain('<p className="ui-code ui-code-long" dir="ltr" translate="no">{password}</p>')
         expect(src).toContain("actions={<Button variant=\"primary\" onClick={onClose}>{t('done')}</Button>}")
         expect(src).toMatch(/<p>\{t\('profile_temp_password_hint'\)\}<\/p>[\s\S]*<p className="ui-hint">\{t\('profile_temp_password_once'\)\}<\/p>/)
         // Shown once: nothing keeps it once the dialog's closed.
         expect(FORM).toContain("onClose={() => setIssuedTempPassword(null)}")
+    })
+
+    // Its 16 characters at a code's size broke over two lines on a phone, and
+    // read as two words (browser flows).
+    it("keeps a temporary password on one line on a phone, a size smaller than a code", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\n\.ui-code-long \{[^}]*font-size: var\(--text-xl\);[^}]*line-height: var\(--leading-xl\);[^}]*letter-spacing: 0\.05em;/)
+        // After the code's own rule, so it wins.
+        expect(css.indexOf("\n.ui-code-long {")).toBeGreaterThan(css.indexOf("\n.ui-code {"))
     })
 
     it("offers End contract beside the status, and Reinstate once it's ended", async () => {

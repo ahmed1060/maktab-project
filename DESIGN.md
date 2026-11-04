@@ -570,7 +570,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - A code or a password shown once, such as an attendance agent's code
     or a temporary password, is large, left to right and never translated,
     and chosen whole with one click to copy, with a line saying it won't
-    be shown again. Done closes it, and then it's gone.
+    be shown again. A longer one, such as a password, is a size smaller,
+    so it stays on one line on a phone. Done closes it, and then it's
+    gone.
   - One that can't be undone, such as restoring a backup, asks for a word
     typed first, such as RESTORE: the word is shown as the code has it,
     left to right and never translated, in both languages, and the main

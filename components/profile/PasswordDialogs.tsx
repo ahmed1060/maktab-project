@@ -83,7 +83,7 @@ export function TemporaryPasswordDialog({ name, password, onClose }: { name: str
         >
             <p>{t('profile_temp_password_hint')}</p>
             {/* Typed as shown: left to right, and never translated by the page. */}
-            <p className="ui-code" dir="ltr" translate="no">{password}</p>
+            <p className="ui-code ui-code-long" dir="ltr" translate="no">{password}</p>
             <p className="ui-hint">{t('profile_temp_password_once')}</p>
         </Dialog>
     )

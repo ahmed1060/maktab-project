@@ -680,6 +680,14 @@
   user-select: all;
   overflow-wrap: anywhere;
 }
+/* A longer one, such as a temporary password's 16 characters: a size
+   smaller and spaced less, so it stays on one line on a phone, where a
+   break read as two words (a person's profile, part 2, PR 192). */
+.ui-code-long {
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  letter-spacing: 0.05em;
+}
 /* A link that goes with a field, such as a typed point's map, under it. */
 .ui-field-link {
   align-self: flex-start;

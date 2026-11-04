@@ -3891,3 +3891,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - told a password is wrong, the focus is back in the field, to type it
     again: the field is off while it's checked, so the focus went with it,
     and there was nowhere to type (browser flows).
+  - the temporary password stays on one line on a phone, a size smaller
+    than a code: its 16 characters broke over two lines, and read as two
+    words (browser flows).
