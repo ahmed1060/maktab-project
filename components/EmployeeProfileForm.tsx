@@ -314,7 +314,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         // What's wrong is said under its field before anything is asked or
         // sent; then one's own password (ConfirmPasswordDialog), then the save.
         const wrong = profileErrors({
-            firstName, lastName, password,
+            firstName, lastName,
+            password: access.changePassword ? password : '',
             email: access.changeEmail ? email : undefined,
             username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
             salary: access.changeSalary ? salary : undefined,
@@ -369,7 +370,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     firstName: access.nameByRequest ? undefined : firstName,
                     lastName: access.nameByRequest ? undefined : lastName,
                     email,
-                    password: password || undefined,
+                    password: access.changePassword && password ? password : undefined,
                     role,
                     // Only a different role is a change; the server refuses
                     // what the dropdown would not have offered.

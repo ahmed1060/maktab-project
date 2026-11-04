@@ -133,6 +133,17 @@ describe("what the form may change", () => {
         expect(access(custom({ "employees.edit": "COMPANY" }), someone("EMPLOYEE")).changeUsername).toBe(false)
     })
 
+    // Its route sets somebody else's password only with employees.reset_password,
+    // and an Admin's only for the Super Admin (FORBIDDEN_PASSWORD_RESET).
+    it("sets a new password on one's own profile, and on someone else's with the reset permission", () => {
+        expect(access(EMPLOYEE, { id: "emp", role: "EMPLOYEE" }).changePassword).toBe(true)
+        expect(access(ADMIN, someone("EMPLOYEE")).changePassword).toBe(true)
+        expect(access(custom({ "employees.edit": "COMPANY" }), someone("EMPLOYEE")).changePassword).toBe(false)
+        expect(access(custom({ "employees.edit": "COMPANY", "employees.reset_password": "COMPANY" }), someone("EMPLOYEE")).changePassword).toBe(true)
+        expect(access(ADMIN, someone("ADMIN")).changePassword).toBe(false)
+        expect(access(SUPER, someone("ADMIN")).changePassword).toBe(true)
+    })
+
     // As the route does (NAME_CHANGE_REQUIRES_ADMIN): the form sends it as a
     // name change to be decided.
     it("asks for one's own name on an employee's or a team leader's footing", () => {

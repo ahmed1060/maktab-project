@@ -3930,3 +3930,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     (`lib/profile-access.ts`), so its save sends what its fields offer.
   - Update and Close are Save and Cancel, Save first; New password is in
     sentence case. The old fields' four words are gone.
+  - A new password is offered only to whoever may set it: on one's own
+    profile, or on someone else's with the reset permission, an Admin's
+    only by the Super Admin. A role that may edit a profile but not reset
+    a password was offered it, and its save was refused (found reading the
+    code).

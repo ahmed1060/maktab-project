@@ -103,10 +103,12 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
                 )}</Field>
             )}
 
-            <Field label={t('new_password_optional_label')} hint={t('profile_new_password_hint')} error={errors.password}>{p => (
-                <PasswordInput {...p} name="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={values.password} disabled={busy}
-                    onChange={e => set('password', e.target.value)} />
-            )}</Field>
+            {access.changePassword && (
+                <Field label={t('new_password_optional_label')} hint={t('profile_new_password_hint')} error={errors.password}>{p => (
+                    <PasswordInput {...p} name="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={values.password} disabled={busy}
+                        onChange={e => set('password', e.target.value)} />
+                )}</Field>
+            )}
 
             {role}
 

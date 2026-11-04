@@ -26,7 +26,7 @@ const SRC = () => readFileSync("components/profile/ProfileForm.tsx", "utf8")
 const ACCESS = {
     own: false, edit: true, company: false, salary: true, dayOffCredit: true, resetPassword: true, role: false, ownTeamLeader: false,
     teamLeader: true, status: true, endContract: true, changeEmail: true, changeUsername: false, changeSalary: true, changeDayOffCredit: true,
-    nameByRequest: false,
+    nameByRequest: false, changePassword: true,
 }
 const VALUES = {
     firstName: "Mona", lastName: "Ali", gender: "FEMALE", email: "mona@delta.test", username: "ds7",
@@ -188,6 +188,10 @@ describe("the form, on the building blocks", () => {
         expect(hint(password)).toBe(esc(en.profile_new_password_hint))
     })
 
+    it("offers a new password only to whoever may set it", async () => {
+        expect(await form({ access: { ...ACCESS, changePassword: false } })).not.toContain(esc(en.new_password_optional_label))
+    })
+
     it("offers the team leaders by name, or none", async () => {
         const select = field(await form(), en.team_leader_label)
         expect(select).toContain('name="teamLeaderId"')
@@ -300,6 +304,7 @@ describe("the profile, wired to its form", () => {
     it("checks the form before it asks for one's password, and focuses the first field wrong", () => {
         const submit = FORM.slice(FORM.indexOf("const handleSubmit"), FORM.indexOf("const executeSubmit"))
         expect(submit).toContain("const wrong = profileErrors({")
+        expect(submit).toContain("password: access.changePassword ? password : '',")
         expect(submit.indexOf("wrongAt(")).toBeLessThan(submit.indexOf("setConfirming('UPDATE')"))
         expect(FORM).toContain("const first = firstError(errors as Record<string, string>, PROFILE_FIELDS) as ProfileField | null")
         expect(FORM).toContain('document.querySelector<HTMLElement>(`[name="${focusOn.field}"]`)?.focus()')
@@ -324,6 +329,7 @@ describe("the profile, wired to its form", () => {
             "username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,",
             "status: access.status ? status : undefined,",
             "teamLeaderId: access.teamLeader ? (teamLeaderId || null) : undefined,",
+            "password: access.changePassword && password ? password : undefined,",
         ]) expect(payload, sent).toContain(sent)
         expect(FORM).toContain("if (access.nameByRequest && isNameChanged) {")
     })

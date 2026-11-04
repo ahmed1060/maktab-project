@@ -37,6 +37,8 @@ export type ProfileAccess = {
     changeDayOffCredit: boolean
     /** One's own name, on an employee's or a team leader's footing, is asked for, not changed. */
     nameByRequest: boolean
+    /** A new password: one's own, or someone else's with the reset permission, as the route sets it. */
+    changePassword: boolean
 }
 
 export function profileAccess({ can, viewer, person }: {
@@ -68,5 +70,7 @@ export function profileAccess({ can, viewer, person }: {
         changeDayOffCredit: can('dayoff.adjust_credit') && !own && paid,
         // As the route refuses it otherwise (NAME_CHANGE_REQUIRES_ADMIN).
         nameByRequest: own && (person.role === 'EMPLOYEE' || person.role === 'TEAM_LEADER'),
+        // The route refuses anyone else (FORBIDDEN_PASSWORD_RESET), and an Admin's but the Super Admin's.
+        changePassword: own || (can('employees.reset_password') && actsOnThem),
     }
 }
