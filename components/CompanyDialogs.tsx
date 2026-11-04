@@ -125,7 +125,7 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     const shownCode = codeTyped ? code : (suggested?.data?.code ?? code)
     const example = /^[a-z]+$/.test(shownCode) ? `${shownCode}0, ${shownCode}1…` : null
     // The example is English letters, kept left to right inside an Arabic sentence.
-    const withExample = (key: TranslationKey) => t(key).split('{example}').map((part, i) => <Fragment key={i}>{i > 0 && <bdi dir="ltr">{example}</bdi>}{part}</Fragment>)
+    const withExample = (key: TranslationKey) => t(key).split('{example}').map((part, i) => <Fragment key={i}>{i > 0 && <bdi dir="ltr" translate="no">{example}</bdi>}{part}</Fragment>)
     const codeHint = locked && example ? withExample('companies_code_fixed')
         : example && !codeError(shownCode) ? withExample('companies_code_hint')
             : t('companies_code_rule')
@@ -181,9 +181,10 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
                 <Field label={t('companies_name_label')} error={wrong && t(wrong)}>{p => (
                     <TextInput {...p} name="name" autoComplete="off" maxLength={50} value={name} onChange={e => { setName(e.target.value); setWrong(null) }} />
                 )}</Field>
-                {/* English letters whatever the page's language, so written left to right. */}
+                {/* English letters whatever the page's language, so written left to
+                    right, and not a word for a browser to translate. */}
                 <Field label={t('companies_code_label')} hint={codeHint} error={codeWrong && t(codeWrong)}>{p => (
-                    <TextInput {...p} name="usernameCode" dir="ltr" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={8}
+                    <TextInput {...p} name="usernameCode" dir="ltr" translate="no" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={8}
                         readOnly={locked} value={shownCode} onChange={e => { setCode(e.target.value); setCodeTyped(true); setCodeWrong(null) }} />
                 )}</Field>
                 {!company && (

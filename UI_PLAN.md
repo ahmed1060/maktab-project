@@ -3613,3 +3613,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   a disabled one (DESIGN.md §5.3), on the page's colour, and can still be
   focused and copied. System settings' fields, read-only while they save,
   look the same for that moment.
+- **2026-11-04:** Found in the web interface audit, on #184: a browser
+  translating the page could turn the Username code and its example into
+  words. Neither is translated.

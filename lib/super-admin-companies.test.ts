@@ -283,7 +283,7 @@ describe("the company dialogs", () => {
         const html = render(h(CompanyDialog, { company: null, onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(html).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.companies_code_label}</label>`))
         const input = html.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0] ?? ""
-        for (const attribute of ['maxLength="8"', 'dir="ltr"', 'autoCapitalize="none"', 'spellCheck="false"', 'autoComplete="off"']) expect(input, attribute).toContain(attribute)
+        for (const attribute of ['maxLength="8"', 'dir="ltr"', 'autoCapitalize="none"', 'spellCheck="false"', 'autoComplete="off"', 'translate="no"']) expect(input, attribute).toContain(attribute)
         expect(input).not.toContain("readOnly")
         // Empty until the name suggests one: the rule, not an example.
         expect(html).toContain(esc(en.companies_code_rule))
@@ -297,12 +297,12 @@ describe("the company dialogs", () => {
         const open = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: false }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(open).toMatch(/<input[^>]*name="usernameCode"[^>]*value="ds"/)
         // Kept left to right inside an Arabic sentence, where "ds0, ds1…" came out as "ds0, :0" and "…ds1".
-        expect(open).toContain(`${esc(en.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr">ds0, ds1…</bdi>`)
+        expect(open).toContain(`${esc(en.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr" translate="no">ds0, ds1…</bdi>`)
         const arabic = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: false }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages, { locale: "ar" })
-        expect(arabic).toContain(`${esc(ar.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr">ds0, ds1…</bdi>`)
+        expect(arabic).toContain(`${esc(ar.companies_code_hint.replace("{example}", ""))}<bdi dir="ltr" translate="no">ds0, ds1…</bdi>`)
         const fixed = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: true }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(fixed.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0]).toContain('readOnly=""')
-        expect(fixed).toContain(`${esc(en.companies_code_fixed.replace("{example}", ""))}<bdi dir="ltr">ds0, ds1…</bdi>`)
+        expect(fixed).toContain(`${esc(en.companies_code_fixed.replace("{example}", ""))}<bdi dir="ltr" translate="no">ds0, ds1…</bdi>`)
         // Looks like a field that can't be changed, as a disabled one does (DESIGN.md §5.3).
         const css = readFileSync("components/ui/ui.css", "utf8")
         expect(css).toMatch(/\.ui-input:disabled,\s*\.ui-input\[readonly\],\s*\.ui-select:disabled \{\s*background: var\(--page\);/)
