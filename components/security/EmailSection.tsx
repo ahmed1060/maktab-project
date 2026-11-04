@@ -1,198 +1,190 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRef, useState, type FormEvent } from 'react'
 import { useSession } from 'next-auth/react'
+import { Button, Card, Field, StatusBadge, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { apiErrorText } from '@/lib/api-error-text'
+import { CODE_LENGTH, EMAIL_MAX, emailError, isCode } from '@/lib/security-forms'
+import { useViewer } from '@/lib/useCan'
 
 // F-27: one component, two doors in. Reached two ways —
-// (a) forced, via middleware.ts's redirect, whenever emailVerified is
-//     false: the email field is editable here on purpose, since a user
-//     blocked from the rest of the dashboard has no other way to fix a
-//     wrong/dead address before verifying it.
-// (b) voluntary, from Security Settings, once already verified — the same
-//     component, just no forced framing.
+// (a) forced, via proxy.ts's redirect, whenever emailVerified is false: the
+//     email field is editable here on purpose, since a user blocked from the
+//     rest of the dashboard has no other way to fix a wrong/dead address
+//     before verifying it.
+// (b) voluntary, from Security Settings, once already verified, to change
+//     the address — the same component, as a settings card.
 // The protected super admin reaches the same gate to verify their (fixed)
-// email once, but can't edit it — the field is disabled, and the backend
-// (/api/account/email/*) enforces this independently regardless.
+// email once, but can't edit it — the field is off, its hint says why, and
+// the backend (/api/account/email/*) enforces this independently regardless.
 //
-// Was app/(dashboard)/dashboard/email-settings/page.tsx until Security
-// Settings merged it with MFA. Moved rather than rewritten: everything below
-// the outer wrapper is the code that was already working, and a gate screen
-// that a person cannot get past is the wrong place to be clever.
-export default function EmailSection() {
-    const { locale } = useLanguage()
-    const { data: session, update } = useSession()
+// On the building blocks (UI_PLAN.md §5 step 5, the pages left): in the gate,
+// a card holding a form on a page of its own, as Change password is; after
+// it, a settings card saying the address is verified. Each mistake is said
+// under its field in the reader's language, where the server's refusals of
+// a malformed address or code read "Validation Error"; where the code went is
+// said beside it, rather than in a toast that left. It was a card of its own
+// making, its words typed into the page in both languages.
+export default function EmailSection({ gate }: { gate: boolean }) {
+    const { t } = useLanguage()
+    // Whose address, from the layout on the first paint: the session hook's
+    // own copy is still loading then. update() is the session hook's.
+    const viewer = useViewer()
+    const { update } = useSession()
     const { showToast } = useToast()
-    const router = useRouter()
 
-    const isAr = locale === 'ar'
-    const currentEmail = session?.user?.email || ''
-    const isVerified = !!session?.user?.emailVerified
-    const isProtectedActor = session?.user?.role === 'SUPER_ADMIN' && !!session?.user?.isProtected
+    const currentEmail = viewer?.email || ''
+    const isProtectedActor = viewer?.role === 'SUPER_ADMIN' && !!viewer?.isProtected
 
     const [email, setEmail] = useState(currentEmail)
+    const [touched, setTouched] = useState(false)
+    // The address the code went to, once one has: the second step.
+    const [sentTo, setSentTo] = useState<string | null>(null)
     const [code, setCode] = useState('')
-    const [codeSent, setCodeSent] = useState(false)
     const [sending, setSending] = useState(false)
     const [verifying, setVerifying] = useState(false)
-    const [error, setError] = useState('')
+    const [emailErr, setEmailErr] = useState<string>()
+    const [codeErr, setCodeErr] = useState<string>()
+    const form = useRef<HTMLFormElement>(null)
+    // To the field said to be wrong, once it says so (DESIGN.md §5.3).
+    const focusWrong = () => requestAnimationFrame(() => form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
 
-    // session.user.email can arrive after this component's first render
-    // (the session hook resolves asynchronously); keep the editable field
-    // in sync until the user actually starts typing.
-    const [touched, setTouched] = useState(false)
-    if (!touched && currentEmail && email !== currentEmail && !codeSent) {
-        setEmail(currentEmail)
-    }
+    // The address can change under this (verified, or changed here): follow
+    // it until somebody starts typing.
+    if (!touched && !sentTo && email !== currentEmail) setEmail(currentEmail)
 
-    const handleSendCode = async (e: React.FormEvent) => {
+    // In the gate, the address to verify, even unchanged; after it, only a
+    // new one: the one already verified needs nothing.
+    const changed = email.trim() !== currentEmail
+
+    const sendCode = async (e: FormEvent) => {
         e.preventDefault()
-        setError('')
+        const wrong = emailError(email)
+        if (wrong) {
+            setEmailErr(t(wrong))
+            focusWrong()
+            return
+        }
+        setEmailErr(undefined)
         setSending(true)
         try {
             const res = await fetch('/api/account/email/request-code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email: email.trim() }),
             })
-            const data = await res.json()
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
+            if (!res.ok) {
+                setEmailErr(apiErrorText(await res.text(), t('error_generic')))
+                focusWrong()
+                return
             }
-            setCodeSent(true)
-            showToast(isAr ? 'تم إرسال الرمز — تحقق من بريدك الوارد.' : 'Code sent — check your inbox.', 'success')
-        } catch (err: any) {
-            setError(err.message)
+            setSentTo(email.trim())
+            setCode('')
+            setCodeErr(undefined)
+        } catch {
+            setEmailErr(t('error_generic'))
         } finally {
             setSending(false)
         }
     }
 
-    const handleVerifyCode = async (e: React.FormEvent) => {
+    const handleVerifyCode = async (e: FormEvent) => {
         e.preventDefault()
-        setError('')
+        if (!sentTo) return
+        if (!isCode(code)) {
+            setCodeErr(t('security_email_code_invalid'))
+            focusWrong()
+            return
+        }
+        setCodeErr(undefined)
         setVerifying(true)
         try {
             const res = await fetch('/api/account/email/confirm', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code }),
+                body: JSON.stringify({ email: sentTo, code: code.trim() }),
             })
-            const data = await res.json()
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || (isAr ? 'رمز غير صالح أو منتهي الصلاحية' : 'Invalid or expired code'))
+            const text = await res.text()
+            if (!res.ok) {
+                setCodeErr(apiErrorText(text, t('error_generic')))
+                setVerifying(false)
+                focusWrong()
+                return
             }
-
-            const changed = email !== currentEmail
-            await update({ emailVerified: true, email: data.data.email })
-            showToast(
-                changed
-                    ? (isAr ? 'تم تحديث البريد الإلكتروني وتأكيده.' : 'Email updated and verified.')
-                    : (isAr ? 'تم تأكيد البريد الإلكتروني.' : 'Email verified.'),
-                'success'
-            )
-            setCodeSent(false)
+            const confirmed = (JSON.parse(text) as { data?: { email?: string } }).data?.email ?? sentTo
+            const changedAddress = sentTo !== currentEmail
+            await update({ emailVerified: true, email: confirmed })
+            if (gate) {
+                // Loaded afresh rather than moved to within the app, as Change
+                // password is (PR 187): signing in went to the dashboard, which
+                // was turned to this page, and the app kept that answer, so
+                // moving there again came straight back here. Loaded afresh,
+                // the gate and the layout read the new session. Still busy
+                // meanwhile, so it isn't sent twice.
+                window.location.replace('/dashboard')
+                return
+            }
+            // Changed from the settings: it stays here, the new address in place.
+            showToast(t(changedAddress ? 'email_changed_success' : 'email_verified_success'), 'success')
+            setSentTo(null)
             setCode('')
-            router.replace('/dashboard')
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
+            setTouched(false)
+            setVerifying(false)
+        } catch {
+            setCodeErr(t('error_generic'))
             setVerifying(false)
         }
     }
 
+    const formClass = gate ? 'ui-form' : 'ui-card-form'
+    // A form on a page of its own has its main button first; a card's are on
+    // its end side, the main one last (DESIGN.md §5.3, §5.5).
+    const actionsClass = gate ? 'ui-form-actions' : 'ui-card-actions'
+    const [before, after] = t('security_code_sent').split('{email}')
+
+    const verifyButton = <Button type="submit" variant="primary" busy={verifying}>{t('verify_code_button')}</Button>
+    const backButton = (
+        <Button disabled={verifying} onClick={() => { setSentTo(null); setCode(''); setCodeErr(undefined) }}>{t('go_back')}</Button>
+    )
+
     return (
-        <div className="glass-card" style={{ padding: '2rem' }}>
-                {!isVerified && (
-                    <>
-                        <h2 style={{ margin: '0 0 0.5rem', color: 'var(--text-main)' }}>
-                            {isAr ? 'يجب عليك تأكيد بريدك الإلكتروني' : 'You must verify your email'}
-                        </h2>
-                        <p style={{ margin: '0 0 1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                            {isAr
-                                ? 'هذا يؤكد أنك تتحكم فعليًا في هذا العنوان — وهو مطلوب قبل استخدام باقي لوحة التحكم، وهو ما يُرسل إليه رمز تسجيل الدخول إذا فقدت الوصول إلى تطبيق المصادقة الخاص بك.'
-                                : "This confirms you actually control this address — it's needed before you can use the rest of the dashboard, and it's what a sign-in code gets sent to if you're ever locked out of your authenticator app."}
-                        </p>
-                    </>
-                )}
-                {isVerified && (
-                    <>
-                        <h2 style={{ margin: '0 0 0.5rem', color: 'var(--text-main)' }}>
-                            {isAr ? 'إعدادات البريد الإلكتروني' : 'Email settings'}
-                        </h2>
-                        <div style={{
-                            display: 'inline-block', margin: '0 0 1.5rem', padding: '0.2rem 0.6rem',
-                            borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700,
-                            background: 'var(--ok-bg)', color: 'var(--ok-fg)'
-                        }}>
-                            {isAr ? 'موثّق' : 'Verified'}
+        <Card title={gate ? undefined : t('email')}>
+            {!gate && (
+                <div className="ui-state-line">
+                    <StatusBadge tone="good">{t('email_verified_badge')}</StatusBadge>
+                </div>
+            )}
+            {!sentTo ? (
+                <form ref={form} onSubmit={sendCode} noValidate className={formClass}>
+                    <Field label={t('email_address_label')} error={emailErr}
+                        hint={isProtectedActor ? t('email_protected_note') : gate ? undefined : t('security_email_change_hint')}>{p => (
+                        <TextInput {...p} name="email" type="email" autoComplete="email" spellCheck={false} dir="ltr" maxLength={EMAIL_MAX}
+                            value={email} disabled={isProtectedActor || sending}
+                            onChange={e => { setTouched(true); setEmail(e.target.value); setEmailErr(undefined) }} />
+                    )}</Field>
+                    {/* A protected Super Admin verifies their address, and can't change it. */}
+                    {(gate || !isProtectedActor) && (
+                        <div className={actionsClass}>
+                            <Button type="submit" variant="primary" busy={sending} disabled={!gate && !changed}>{t('send_code_button')}</Button>
                         </div>
-                    </>
-                )}
-
-                {error && (
-                    <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--danger-fg-strong)' }}>{error}</div>
-                )}
-
-                {isProtectedActor ? (
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                        {isAr ? 'بريد هذا الحساب محمي ولا يمكن تغييره.' : "This account's email is protected and can't be changed."}
-                    </p>
-                ) : null}
-
-                {!codeSent ? (
-                    <form onSubmit={handleSendCode}>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                {isAr ? 'عنوان البريد الإلكتروني' : 'Email address'}
-                            </label>
-                            <input aria-label={isAr ? 'عنوان البريد الإلكتروني' : 'Email address'}
-                                type="email"
-                                className="input"
-                                value={email}
-                                onChange={e => { setTouched(true); setEmail(e.target.value) }}
-                                disabled={isProtectedActor}
-                                style={isProtectedActor ? { background: 'var(--surface-sunk)', cursor: 'not-allowed' } : undefined}
-                                required
-                            />
-                        </div>
-                        <button type="submit" className="btn" disabled={sending} style={{ width: '100%' }}>
-                            {sending ? (isAr ? 'جارٍ الإرسال...' : 'Sending...') : (isAr ? 'إرسال الرمز' : 'Send code')}
-                        </button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleVerifyCode}>
-                        <div style={{ marginBottom: '0.5rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                {isAr ? 'رمز التحقق' : 'Verification code'}
-                            </label>
-                            <input aria-label={isAr ? 'رمز التحقق' : 'Verification code'}
-                                type="text"
-                                inputMode="numeric"
-                                className="input"
-                                value={code}
-                                onChange={e => setCode(e.target.value)}
-                                maxLength={6}
-                                minLength={6}
-                                required
-                                autoFocus
-                            />
-                        </div>
-                        <p style={{ margin: '0 0 1.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                            {isAr ? 'لم يصلك؟ تحقق من مجلد الرسائل غير المرغوب فيها.' : "Didn't get it? Check your spam folder."}
-                        </p>
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                            <button type="button" className="btn" onClick={() => { setCodeSent(false); setCode(''); setError('') }} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)' }}>
-                                {isAr ? 'رجوع' : 'Back'}
-                            </button>
-                            <button type="submit" className="btn" disabled={verifying} style={{ flex: 1 }}>
-                                {verifying ? (isAr ? 'جارٍ التحقق...' : 'Verifying...') : (isAr ? 'تحقق' : 'Verify')}
-                            </button>
-                        </div>
-                    </form>
-                )}
-        </div>
+                    )}
+                </form>
+            ) : (
+                <form ref={form} onSubmit={handleVerifyCode} noValidate className={formClass}>
+                    {/* The address left to right in either language (DESIGN.md §3.3). */}
+                    <p className="ui-card-note" role="status">{before}<bdi dir="ltr" translate="no">{sentTo}</bdi>{after}</p>
+                    <Field label={t('verification_code_label')} hint={t('check_spam_note')} error={codeErr}>{p => (
+                        // Focused: the step it opens asks only for this.
+                        <TextInput {...p} name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={CODE_LENGTH} spellCheck={false} dir="ltr" autoFocus
+                            value={code} disabled={verifying} onChange={e => { setCode(e.target.value); setCodeErr(undefined) }} />
+                    )}</Field>
+                    <div className={actionsClass}>
+                        {gate ? <>{verifyButton}{backButton}</> : <>{backButton}{verifyButton}</>}
+                    </div>
+                </form>
+            )}
+        </Card>
     )
 }
