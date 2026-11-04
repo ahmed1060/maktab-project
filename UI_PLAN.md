@@ -3938,3 +3938,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - An email somebody else has is said under the email when someone's is
     changed: the save failed as the app failing, a 500, since only a
     username's clash was caught (found reading the code).
+  - Add employee's mistakes, which the profile now says too, ask neutrally
+    in Arabic: they asked in the masculine (أدخل، اختر، اتركه), as the
+    profile's own words don't (found reading the words).

@@ -363,6 +363,14 @@ describe("its words", () => {
         }
     })
 
+    // The profile says Add employee's mistakes too, and they asked in the
+    // masculine (أدخل، اختر، اتركه): both forms ask neutrally now.
+    it("share Add employee's mistakes, which ask nothing in the masculine in Arabic either", () => {
+        const shared = Object.keys(ar).filter(key => key.startsWith("emp_new_")) as (keyof typeof ar)[]
+        expect(shared.length).toBeGreaterThan(5)
+        for (const key of shared) expect(ar[key], key).not.toMatch(/(^|\s)(أدخل|اختر|اتركه|اتركها|حاول|اكتب|انسخ|تحقق)(\s|$|[،.])/)
+    })
+
     it("are in sentence case, where it said New Password", () => {
         expect(en.new_password_optional_label).toBe("New password (optional)")
     })
