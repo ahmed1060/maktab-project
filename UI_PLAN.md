@@ -3735,4 +3735,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Read from the session hook, which is still loading then, the server's
     first copy of the page was the email gate for everybody;
   - its Arabic asks nothing in the masculine: "تحقق" (Verify) is "تأكيد",
-    and the rest is said with "يُرجى" and verbal nouns.
+    and the rest is said with "يُرجى" and verbal nouns;
+  - a card's note breaks a word too long for it. The address a code went
+    to, with no hyphen to break at, ran past the card and pushed a phone's
+    screen sideways (web interface audit).

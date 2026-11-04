@@ -514,6 +514,9 @@
   color: var(--muted);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
+  /* A word too long for the card, such as an address with no hyphen to break
+     at, broken to fit: it pushed a phone's screen sideways. */
+  overflow-wrap: anywhere;
 }
 /* A settings card's button, on its end side. */
 .ui-card-actions {

@@ -124,6 +124,17 @@ describe("the email gate", () => {
         // The code: digits, filled in from the message where the phone offers it.
         expect(src).toMatch(/name="code"[^>]*inputMode="numeric"[^>]*autoComplete="one-time-code"/)
     })
+
+    it("breaks a long address to fit, where one with no hyphen ran past the card and pushed a phone sideways (web interface audit, PR 188)", () => {
+        // Up to 254 characters, said in the card's note: with no hyphen in it,
+        // an address has nowhere to break.
+        const src = readFileSync(EMAIL, "utf8")
+        expect(src).toContain('<p className="ui-card-note" role="status">{before}<bdi dir="ltr" translate="no">{sentTo}</bdi>{after}</p>')
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const start = css.indexOf(".ui-card-note {")
+        const note = css.slice(start, css.indexOf("}", start))
+        expect(note).toContain("overflow-wrap: anywhere")
+    })
 })
 
 describe("security settings once the email is verified", () => {
