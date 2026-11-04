@@ -13,11 +13,10 @@ import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import AccessDenied from '@/components/AccessDenied'
-import ConfirmModal from '@/components/ConfirmModal'
 import { SignInLock } from '@/components/SignInLock'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import {
-    Avatar, Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
+    Avatar, Button, ButtonLink, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
     RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
@@ -397,25 +396,24 @@ export default function EmployeesPage() {
                         : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
             />
 
-            <ConfirmModal
-                isOpen={!!resetConfirm}
+            {/* Neither can be undone, so both are in the danger colour; resetting points was amber. */}
+            <ConfirmDialog
+                open={!!resetConfirm}
                 title={t('reset_points')}
-                message={`${t('reset_points_question').replace('{name}', resetConfirm?.name ?? '')} ${t('undone_warning_plain')}`}
-                confirmText={t('reset_points')}
-                cancelText={t('cancel')}
+                body={`${t('reset_points_question').replace('{name}', resetConfirm?.name ?? '')} ${t('undone_warning_plain')}`}
+                confirmLabel={t('reset_points')}
+                danger
                 onConfirm={() => resetConfirm && resetPoints(resetConfirm.id)}
                 onCancel={() => setResetConfirm(null)}
-                variant="warning"
             />
-            <ConfirmModal
-                isOpen={!!deleteConfirm}
+            <ConfirmDialog
+                open={!!deleteConfirm}
                 title={t('delete_employee')}
-                message={`${t('delete_employee_question').replace('{name}', deleteConfirm?.name ?? '')} ${t('undone_warning_plain')}`}
-                confirmText={t('delete_employee')}
-                cancelText={t('cancel')}
+                body={`${t('delete_employee_question').replace('{name}', deleteConfirm?.name ?? '')} ${t('undone_warning_plain')}`}
+                confirmLabel={t('delete_employee')}
+                danger
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteConfirm(null)}
-                variant="danger"
             />
         </Page>
     )

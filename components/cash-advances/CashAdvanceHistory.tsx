@@ -9,9 +9,8 @@ import {
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import ConfirmModal from '@/components/ConfirmModal'
 import {
-    Button, DataList, EmptyState, FileChip, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, StatusBadge, TotalTiles, type Column,
+    Button, ConfirmDialog, DataList, EmptyState, FileChip, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, StatusBadge, TotalTiles, type Column,
 } from '@/components/ui'
 import { fetcher } from '@/lib/swr-fetcher'
 import { countOf } from '@/lib/plural'
@@ -177,12 +176,12 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                 onClose={() => setRecording(null)}
                 onSaved={() => { void mutate() }}
             />
-            <ConfirmModal
-                isOpen={!!confirming}
+            {/* Saying it arrived deletes nothing: the main button, where it was the old window's red. */}
+            <ConfirmDialog
+                open={!!confirming}
                 title={t('advances_confirm_receipt')}
-                message={t('advances_confirm_question').replace('{amount}', confirming ? money(confirming.amount) : '').replace('{date}', confirming ? dayLabel(confirming.date, locale) : '')}
-                confirmText={t('advances_confirm_button').replace('{amount}', confirming ? money(confirming.amount) : '')}
-                cancelText={t('cancel')}
+                body={t('advances_confirm_question').replace('{amount}', confirming ? money(confirming.amount) : '').replace('{date}', confirming ? dayLabel(confirming.date, locale) : '')}
+                confirmLabel={t('advances_confirm_button').replace('{amount}', confirming ? money(confirming.amount) : '')}
                 onConfirm={confirm}
                 onCancel={() => setConfirming(null)}
             />

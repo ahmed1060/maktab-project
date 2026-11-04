@@ -10,9 +10,8 @@ import {
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import ConfirmModal from '@/components/ConfirmModal'
 import {
-    Button, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Pager, RowMenu, SearchInput, Select, StatusBadge, Tabs, TextInput,
+    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Pager, RowMenu, SearchInput, Select, StatusBadge, Tabs, TextInput,
     type Column, type MenuItem,
 } from '@/components/ui'
 import type { TranslationKey } from '@/lib/translations'
@@ -173,15 +172,13 @@ export default function SavedLists({ adding, onAddingChange }: {
                 merge={into => change({ id: merging!.id, into }, 'lists_merged')}
                 onClose={() => setMerging(null)}
             />
-            <ConfirmModal
-                isOpen={!!toArchive}
+            <ConfirmDialog
+                open={!!toArchive}
                 title={t('lists_archive')}
-                message={t('lists_archive_question').replace('{name}', toArchive?.name ?? '')}
-                confirmText={t('lists_archive')}
-                cancelText={t('cancel')}
+                body={t('lists_archive_question').replace('{name}', toArchive?.name ?? '')}
+                confirmLabel={t('lists_archive')}
                 onConfirm={async () => { if (toArchive) await change({ id: toArchive.id, archived: true }, 'lists_archived_done'); setToArchive(null) }}
                 onCancel={() => setToArchive(null)}
-                variant="warning"
             />
         </>
     )

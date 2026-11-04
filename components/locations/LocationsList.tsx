@@ -11,9 +11,8 @@ import {
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import ConfirmModal from '@/components/ConfirmModal'
 import {
-    Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Select, StatusBadge,
+    Button, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Select, StatusBadge,
     type Column, type MenuItem,
 } from '@/components/ui'
 import type { TranslationKey } from '@/lib/translations'
@@ -244,15 +243,13 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
             {/* To this client, or on the Locations page to the one chosen in the form. */}
             <LocationForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} onSaved={changed} />
             <LocationForm open={!!editing} onClose={() => setEditing(null)} location={editing} onSaved={changed} />
-            <ConfirmModal
-                isOpen={!!toArchive}
+            <ConfirmDialog
+                open={!!toArchive}
                 title={t('locations_archive')}
-                message={t('locations_archive_question').replace('{name}', toArchive ? locationLabel(toArchive.name, toArchive.client?.name) : '')}
-                confirmText={t('locations_archive')}
-                cancelText={t('cancel')}
+                body={t('locations_archive_question').replace('{name}', toArchive ? locationLabel(toArchive.name, toArchive.client?.name) : '')}
+                confirmLabel={t('locations_archive')}
                 onConfirm={confirmArchive}
                 onCancel={() => setToArchive(null)}
-                variant="warning"
             />
         </>
     )

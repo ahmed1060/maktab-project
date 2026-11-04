@@ -513,7 +513,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      bonus and Add a deduction, merged in #181 on 2026-11-03, then
      Usernames, merged in #182 on 2026-11-03, then Change password and
      the maintenance screen, merged in #187 on 2026-11-04, then Security
-     settings, in #188;
+     settings, merged in #188 on 2026-11-04, then the last confirmations
+     in the old window, in #189;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3745,3 +3746,36 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     codes, a wrong code and a wrong password. They came in the server's
     English as they were, "Invalid or expired code" in Arabic too (web
     interface audit).
+- **2026-11-04:** Security settings was merged in #188. The last
+  confirmations move onto the building blocks in #189 (§5 step 5, the pages
+  left):
+  - eleven still asked in the old confirmation window, of its own making:
+    resetting a person's points and deleting them on the Employees list,
+    Mark all as paid on Costs, archiving or deleting a client, deleting a
+    records section or a record, archiving a location or a saved name, Mark
+    collected and Mark uncollected, confirming a cash advance's receipt,
+    and resetting a profile photo. Each is the building blocks' dialog now,
+    through a confirmation of their own (DESIGN.md §5.5, Dialog), and the
+    old window is gone, with the red and amber hover colours only it used;
+  - the button is in the danger colour only for what deletes or can't be
+    undone. Confirming a cash advance's receipt was red, the old window's
+    default; resetting points, which can't be undone, was amber;
+  - each stays open, busy, until its work is done, as the old window did,
+    and the photo's reset is asked over the photo window, above it;
+  - their Arabic asks nothing in the masculine: "هل أنت متأكد أنك تريد" and
+    "هل تريد" are verbal nouns, and "لا تؤكّد" is "يُرجى عدم التأكيد". A
+    client's deletion was "Are you sure you want to delete" with the name
+    and a Latin question mark stuck on the end; it's one sentence in each
+    language. The photo's reset says "Reset photo", where it said "Reset
+    Photo" and "Yes, Reset", and "this" photo, where an admin's said "your".
+  - a dialog's title and what it says break a name with no space in it,
+    such as a long reference for a section or a client. On a phone the name
+    ran past the dialog's edge, and the dialog scrolled sideways (web
+    interface audit).
+  - a dialog's button that doesn't fit on one line takes two (DESIGN.md
+    §5.5, Dialog). Mark collected's "Collect 10 charges, 4,525.50 EGP" ran
+    past its own edges on a phone in Arabic, as a button keeps to one line;
+    the old window's buttons had wrapped. One line is as tall as ever.
+  - beside Confirm receipt, a person's own cash advance asks for each one
+    to be confirmed with "يُرجى تأكيد", where it said "أكّد" in the
+    masculine (web interface audit).

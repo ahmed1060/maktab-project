@@ -18,10 +18,11 @@ describe("the code prompt", () => {
         const prompt = readFileSync("components/StepUpInterceptor.tsx", "utf8")
         // Both of its windows: the code, and "set up two-factor sign-in first".
         expect(prompt.match(/<Modal\b.*zIndex=\{LAYER\.codePrompt\}/g)).toHaveLength(2)
-        expect(readFileSync("components/ConfirmModal.tsx", "utf8")).toMatch(/zIndex: LAYER\.confirm\b/)
         expect(readFileSync("components/Modal.tsx", "utf8")).toMatch(/zIndex = LAYER\.modal\b/)
-        // A building-block dialog over an older page's modal sits with the confirmations, under the code.
+        // A building-block dialog over an older page's modal sits on the confirmations' layer, under
+        // the code: the old confirmation window that held it went in PR 189.
         const over = readFileSync("components/ui/ui.css", "utf8").match(/\.ui-dialog-backdrop\.is-over-modal \{\s*z-index: (\d+);/)
+        expect(Number(over?.[1])).toBe(LAYER.confirm)
         expect(Number(over?.[1])).toBeLessThan(LAYER.codePrompt)
     })
 })

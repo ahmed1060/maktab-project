@@ -9,9 +9,8 @@ import {
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import ConfirmModal from '@/components/ConfirmModal'
 import {
-    Button, DataList, EmptyState, ExpiryBadge, ExpiryDate, Field, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Select,
+    Button, ConfirmDialog, DataList, EmptyState, ExpiryBadge, ExpiryDate, Field, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Select,
     type Column, type MenuItem,
 } from '@/components/ui'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
@@ -261,15 +260,15 @@ export default function RecordsList({ clientId, sections = [], adding = false, o
                 record={editing}
                 onSaved={changed}
             />
-            <ConfirmModal
-                isOpen={!!deleting}
+            {/* Asked from a row's menu, or over the record's own dialog, which it stays above. */}
+            <ConfirmDialog
+                open={!!deleting}
                 title={t('records_delete')}
-                message={`${t('records_delete_question')} ${t('undone_warning_plain')}`}
-                confirmText={t('records_delete')}
-                cancelText={t('cancel')}
+                body={`${t('records_delete_question')} ${t('undone_warning_plain')}`}
+                confirmLabel={t('records_delete')}
+                danger
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleting(null)}
-                variant="danger"
             />
         </>
     )

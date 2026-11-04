@@ -55,7 +55,6 @@ describe("no control restores a hardcoded white on mouse-out", () => {
     // stayed that way. A background, not a text colour: white text on an
     // accent fill is correct in both themes.
     const FILES = [
-        "components/ConfirmModal.tsx",
         "components/EmployeeFilter.tsx",
         "components/EmployeeProfileForm.tsx",
         "components/DashboardHeader.tsx",

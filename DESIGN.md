@@ -366,7 +366,8 @@ These are built once, in the building-blocks PR, and every page uses them
 - An icon is optional and goes before the label. The label is never only
   an icon, unless the button has an accessible name and a tooltip.
 - **Busy and disabled states** follow the existing rules from the buttons
-  work (global CSS, and `ConfirmModal` showing progress).
+  work (global CSS, and a confirmation showing its work under way, §5.5,
+  Dialog).
 
 ### 5.3 Fields and the filter bar
 
@@ -549,7 +550,9 @@ These are built once, in the building-blocks PR, and every page uses them
   corners and 24px inside (16px on phones), over the dimmed page.
   - The title is `--text-xl`, weight 500.
   - The buttons are at the bottom on the end side, the main one last. On
-    phones they stack full width, the main one on top.
+    phones they stack full width, the main one on top. A button that
+    doesn't fit on one line, such as one that says a count and an amount,
+    takes two.
   - Escape closes it, and focus goes back to what opened it.
   - One that holds a long list of controls, such as a role's permissions,
     is up to 640px wide, so each control sits beside what it's for.
@@ -563,6 +566,13 @@ These are built once, in the building-blocks PR, and every page uses them
     left to right and never translated, in both languages, and the main
     button stays off until it's typed as shown. Enter is the main button
     once it is.
+  - A confirmation asks before an action: what it does, in a sentence or
+    two, then Cancel and the button that does it, which says what it does
+    as the action's own button does, such as "Delete record". The button
+    is in the danger colour only when the action deletes something or
+    can't be undone. Once confirmed, it stays open until the work is done:
+    Cancel is off, the main button is busy, and Escape or a click outside
+    does nothing, since what was sent can't be called off.
 - **Selection bar:** when items in a list are picked with their
   checkboxes, a panel above the list says how many are picked and holds
   what can be done to all of them, with a quiet "Clear selection" on the
@@ -1046,3 +1056,9 @@ changed:
 - **2026-11-03:** A card that loads its own data holds the room of the most
   it can show (§5.5, Card), with a building block for it. Face
   verification on System settings held it with copies of its own making.
+- **2026-11-04:** A confirmation is a building block (§5.5, Dialog). The
+  last eleven were the old confirmation window, of its own making, with a
+  warning sign and an amber or red button, red too where nothing was
+  deleted, as on confirming a cash advance's receipt. A dialog's button that
+  doesn't fit on one line takes two: "Collect 10 charges, 4,525.50 EGP"
+  ran past its own edges on a phone in Arabic.

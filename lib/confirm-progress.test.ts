@@ -6,33 +6,36 @@ import { stripComments } from "./strip-comments"
 
 /**
  * The confirm dialog shows the work it started. Every delete, approve and
- * reject confirmation goes through ConfirmModal, and only 3 of its 43 data
- * confirmations showed anything while the request was out: the dialog had no
- * way to, and most callers closed it before their request had even left.
+ * reject confirmation went through the old ConfirmModal, and only 3 of its 43
+ * data confirmations showed anything while the request was out: the dialog had
+ * no way to, and most callers closed it before their request had even left.
+ * The last of them moved to the building blocks' ConfirmDialog in PR 189,
+ * which waits the same way.
  */
 
-describe("ConfirmModal", () => {
-    const src = stripComments(readFileSync("components/ConfirmModal.tsx", "utf8"))
+describe("ConfirmDialog", () => {
+    const src = stripComments(readFileSync("components/ui/Dialog.tsx", "utf8"))
 
     it("waits for the promise its onConfirm returns, and says it is working", () => {
-        expect(src).toMatch(/onConfirm: \(reason\?: string\) => unknown/)
+        expect(src).toMatch(/onConfirm: \(\) => unknown/)
         expect(src).toMatch(/typeof \(work as Promise<unknown>\)\.then !== 'function'/)
         expect(src).toMatch(/setWorking\(true\)/)
         expect(src).toMatch(/\.finally\(\(\) => setWorking\(false\)\)/)
-        expect(src).toMatch(/aria-busy=\{busy \|\| undefined\}/)
+        // The button says so: busy, and so aria-busy (components/ui/Button.tsx).
+        expect(src).toMatch(/busy=\{working\} onClick=\{confirm\}/)
     })
 
     it("can't be cancelled or confirmed twice while it works", () => {
-        expect(src).toMatch(/const cancel = \(\) => \{ if \(!busy\) onCancel\(\) \}/)
-        expect(src).toMatch(/useDialog\(isOpen, cancel\)/)
-        expect(src).toMatch(/onClick=\{cancel\}\s+disabled=\{busy\}/)
-        expect(src).toMatch(/if \(busy\) return/)
+        expect(src).toMatch(/const cancel = \(\) => \{ if \(!working\) onCancel\(\) \}/)
+        expect(src).toMatch(/<Dialog open=\{open\} onClose=\{cancel\}/)
+        expect(src).toMatch(/onClick=\{cancel\} disabled=\{working\}/)
+        expect(src).toMatch(/if \(working\) return/)
     })
 })
 
-/** Each ConfirmModal's onConfirm, with the local function it calls inlined. */
+/** Each ConfirmDialog's onConfirm, with the local function it calls inlined. */
 function confirmHandlers() {
-    const files = execSync("grep -rl '<ConfirmModal' app components --include=*.tsx").toString().trim().split("\n")
+    const files = execSync("grep -rl '<ConfirmDialog' app components --include=*.tsx").toString().trim().split("\n")
     const found: { where: string; text: string }[] = []
     for (const file of files) {
         const sf = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
@@ -43,7 +46,7 @@ function confirmHandlers() {
         }
         collect(sf)
         const visit = (n: ts.Node) => {
-            if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === "ConfirmModal") {
+            if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === "ConfirmDialog") {
                 const attr = n.attributes.properties.find(p => ts.isJsxAttribute(p) && p.name.getText(sf) === "onConfirm") as ts.JsxAttribute
                 const expr = (attr.initializer as ts.JsxExpression).expression!
                 let text = expr.getText(sf)
@@ -63,13 +66,14 @@ describe("every confirmation", () => {
     const handlers = confirmHandlers().filter(h => !NOT_WORK.some(f => h.where.startsWith(f)))
 
     it("finds them all", () => {
-        // Only that the search finds them: there are fewer as pages move onto
-        // the building blocks' dialog (UI_PLAN.md §5 step 5), 39 at PR 152 and
-        // 26 at PR 164. So it's every one written, however many are left: a
-        // tag that starts a line, as JSX is written and a comment's isn't.
-        const files = execSync("grep -rl '<ConfirmModal' app components --include=*.tsx").toString().trim().split("\n")
+        // Only that the search finds them: there were fewer of the old ones as
+        // pages moved onto the building blocks' dialog (UI_PLAN.md §5 step 5),
+        // 39 at PR 152 and 26 at PR 164, and the last 11 became ConfirmDialog
+        // in PR 189. So it's every one written: a tag that starts a line, as
+        // JSX is written and a comment's isn't.
+        const files = execSync("grep -rl '<ConfirmDialog' app components --include=*.tsx").toString().trim().split("\n")
         const written = files.filter(f => !NOT_WORK.includes(f))
-            .reduce((n, f) => n + (readFileSync(f, "utf8").match(/^\s*<ConfirmModal\b/gm)?.length ?? 0), 0)
+            .reduce((n, f) => n + (readFileSync(f, "utf8").match(/^\s*<ConfirmDialog\b/gm)?.length ?? 0), 0)
         expect(handlers.length).toBe(written)
         expect(handlers.length).toBeGreaterThan(0)
     })

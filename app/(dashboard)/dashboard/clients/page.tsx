@@ -8,10 +8,9 @@ import {
     ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CheckSquareIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon, PhoneIcon, PlusIcon, StorefrontIcon, TrashIcon, UserIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import ConfirmModal from '@/components/ConfirmModal'
 import PlaceFields from '@/components/locations/PlaceFields'
 import {
-    Button, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, TextInput,
+    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, TextInput,
     type Column, type MenuItem,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
@@ -271,15 +270,15 @@ export default function ClientsPage() {
                     }}
                 />
             )}
-            <ConfirmModal
-                isOpen={!!toDelete}
+            {/* Deleting can't be undone, so it's in the danger colour; archiving can be, and isn't. */}
+            <ConfirmDialog
+                open={!!toDelete}
                 title={toDelete?.inUse ? t('clients_archive') : say('clients_delete', 'حذف {name}', 'Delete {name}')}
-                message={toDelete?.inUse ? t('clients_archive_question').replace('{name}', toDelete.name) : `${t('delete_client_warning')} ${toDelete?.name ?? ''}?`}
-                confirmText={toDelete?.inUse ? t('clients_archive') : t('delete')}
-                cancelText={t('cancel')}
+                body={(toDelete?.inUse ? t('clients_archive_question') : t('clients_delete_question')).replace('{name}', toDelete?.name ?? '')}
+                confirmLabel={toDelete?.inUse ? t('clients_archive') : t('delete')}
+                danger={!toDelete?.inUse}
                 onConfirm={confirmDelete}
                 onCancel={() => setToDelete(null)}
-                variant={toDelete?.inUse ? 'warning' : 'danger'}
             />
         </Page>
     )

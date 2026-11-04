@@ -391,12 +391,15 @@
 .ui-dialog:focus:not(:focus-visible) {
   outline: none;
 }
+/* A name with no space in it, such as a long reference, breaks where it
+   must, in its title and in what it says, rather than run past the dialog. */
 .ui-dialog-title {
   margin: 0;
   font-size: var(--text-xl);
   line-height: var(--leading-xl);
   font-weight: 500;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 .ui-dialog-body {
   display: flex;
@@ -408,6 +411,7 @@
 }
 .ui-dialog-body p {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 /* Fields that go together, such as a task's client and location, spaced as in a dialog. */
 .ui-field-group {
@@ -458,6 +462,18 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+/* A button that says a count and an amount, such as "Collect 10 charges,
+   4,525.50 EGP", takes two lines where one doesn't fit, rather than run
+   past its own edges, as it did on a phone in Arabic. One line is as tall
+   as any button's. */
+.ui-dialog-actions > .ui-btn {
+  height: auto;
+  min-height: 36px;
+  padding-block: var(--space-1);
+  white-space: normal;
+  text-align: center;
+  line-height: var(--leading-md);
 }
 
 /* ── Panels and cards (§5.5) ── */
@@ -2734,6 +2750,10 @@ html[lang="ar"] .ui-empty-title {
   }
   .ui-dialog-actions > * {
     width: 100%;
+  }
+  .ui-dialog-actions > .ui-btn {
+    min-height: 44px;
+    line-height: var(--leading-lg);
   }
   .ui-menu-item {
     min-height: 44px;
