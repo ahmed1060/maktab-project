@@ -134,7 +134,16 @@ describe("their photo", () => {
         expect(html).not.toMatch(/<input[^>]*multiple/)
         // Nothing to remove yet.
         expect(html).not.toContain(esc(en.profile_photo_remove))
-        expect(en.profile_photo_hint).toBe("JPG, PNG, GIF or WebP, up to 4 MB. It's saved as soon as it's uploaded.")
+        expect(en.profile_photo_hint).toBe("JPG, PNG, GIF or WebP, up to 4\u00A0MB. It's saved as soon as it's uploaded.")
+    })
+
+    // Web interface audit (PR 191): on a phone in Arabic, the hint broke
+    // between "4" and its unit, "ميجابايت" alone on the next line.
+    it("keeps a size together on one line, its number with its unit", () => {
+        for (const key of ["profile_photo_hint", "profile_photo_too_large"] as const) {
+            expect(en[key], key).toContain("4\u00A0MB")
+            expect(ar[key], key).toContain("4\u00A0ميجابايت")
+        }
     })
 
     it("offers Change photo once there's one, and Remove photo as a quiet button", async () => {

@@ -3846,3 +3846,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     as their own (found reading the code);
   - its words are in sentence case: Employee profile, Edit employee, and My
     profile, which the account menu says too.
+  - the photo's size keeps its number with its unit: on a phone in Arabic,
+    "ميجابايت" stood alone on the line after the 4 (web interface audit).
