@@ -2115,12 +2115,14 @@ a.ui-row:focus-visible {
   object-fit: cover;
 }
 /* The photo, and beside it what changes it; under it on a phone, where
-   they don't fit beside it. */
+   they don't fit beside it. As wide as the form under it, at most: the
+   picker's box ran on to the card's far side (PR 191). */
 .ui-photo-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-4);
+  max-width: 640px;
 }
 .ui-photo-controls {
   display: flex;

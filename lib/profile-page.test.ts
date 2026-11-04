@@ -116,6 +116,13 @@ describe("their photo", () => {
         expect(rule(".ui-photo img")).toContain("object-fit: cover;")
     })
 
+    // Browser flows (PR 191): on a computer, the picker's dashed box ran on
+    // past the form under it, to the card's far side.
+    it("keeps to the form's width, with what changes it", () => {
+        expect(rule(".ui-photo-row")).toContain("max-width: 640px;")
+        expect(rule(".ui-form")).toContain("max-width: 640px;")
+    })
+
     it("is their initials when they have none, as an avatar's, never a drawing chosen by their gender", async () => {
         const { Photo } = await import("@/components/ui")
         // Beside their name, so the initials are hidden from screen readers.

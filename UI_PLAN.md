@@ -3851,3 +3851,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - a file that can't be used says what to do about it, a smaller photo or
     one of the kinds it takes, where it said only what was wrong (web
     interface audit).
+  - the photo and what changes it are as wide as the form under them, at
+    most: on a computer, the picker's box ran on to the card's far side
+    (browser flows).
