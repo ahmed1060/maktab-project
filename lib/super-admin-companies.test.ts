@@ -335,6 +335,11 @@ describe("the company dialogs", () => {
         expect(refusedField("Username code taken")).toEqual({ field: "usernameCode", key: "companies_code_taken" })
         expect(refusedField("Username code fixed")).toEqual({ field: "usernameCode", key: "companies_code_locked" })
         expect(refusedField("Database unavailable")).toBeNull()
+        // Each says what's needed next, not only what's wrong, in both languages.
+        expect(en.companies_code_taken).toMatch(/needs letters of its own\.$/)
+        expect(ar.companies_code_taken).toMatch(/حروف خاصة بها\.$/)
+        expect(en.username_reserved).toMatch(/^Another username is needed/)
+        expect(ar.username_reserved).toMatch(/فيلزم اسم مستخدم آخر\.$/)
     })
 
     it("asks for a suggestion once the name is long enough, for the company being edited", async () => {

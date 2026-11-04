@@ -3616,3 +3616,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-04:** Found in the web interface audit, on #184: a browser
   translating the page could turn the Username code and its example into
   words. Neither is translated.
+- **2026-11-04:** Found in the web interface audit, on #184: a code another
+  company has, and a username in another company's run, said what was
+  wrong and not what was needed. Each says the company needs letters of its
+  own, or the person another username.
