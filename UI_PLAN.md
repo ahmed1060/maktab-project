@@ -3647,3 +3647,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-04:** Found in the web interface audit, on #185: a person's
   profile spell-checked, capitalised and could translate the username typed
   in it. It's typed as it is.
+- **2026-11-04:** Found by Codex, on #185: a person and a Super Admin given
+  the same username at the same moment would both pass the check and both
+  be saved, as each table's own index sees only its own. The database holds
+  a username while it's saved and looks in the other table too: the second
+  is told the username is in use.

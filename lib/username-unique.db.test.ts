@@ -138,6 +138,37 @@ describe.skipIf(!ADMIN_URL)("one username, one account, in Postgres", () => {
         await expect(takenAtTheLastMoment("same.name", "c1", () => hire(adminOf("a1", "c1"), "same.name"))).rejects.toThrow("USERNAME_IN_USE")
     })
 
+    // Another account given `name` in a save not yet finished, in the other
+    // table: what the check can't see, and each table's index can't either.
+    const savingElsewhere = async (insert: string, act: () => Promise<unknown>) => {
+        const other = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+        await other.connect()
+        try {
+            await other.query("BEGIN")
+            await other.query(insert)
+            const acting = act().then(() => "saved", (error: Error) => error.message)
+            await new Promise(resolve => setTimeout(resolve, 500))
+            await other.query("COMMIT")
+            return await acting
+        } finally {
+            await other.end()
+        }
+    }
+
+    it("never gives a person and a Super Admin the same username, even saved at the same moment (Codex on PR 185)", async () => {
+        expect(await savingElsewhere(
+            `INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "roleId")
+             SELECT 'race1', 'race1@x', 'p', 'R', 'A', 'EMPLOYEE', 2026, 'race.one', 'c1', id FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`,
+            () => SuperAdmins.create({ firstName: "R", lastName: "A", email: "race@z.co", password: "a-long-password-123", username: "Race.One" } as any, superAdmin),
+        )).toBe("USERNAME_IN_USE")
+        expect(await savingElsewhere(
+            `INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", "updatedAt", username) VALUES ('sa-race', 'race2@x', 'p', 'R', 'B', now(), 'race.two')`,
+            () => hire(adminOf("a1", "c1"), "RACE.TWO"),
+        )).toBe("USERNAME_IN_USE")
+        const holders = await db.query(`SELECT count(*)::int AS n FROM (SELECT username FROM "User" UNION ALL SELECT username FROM "SuperAdmin") e WHERE lower(username) IN ('race.one', 'race.two')`)
+        expect(holders.rows[0].n).toBe(2)
+    })
+
     it("makes up another username when the one made up is taken at the last moment", async () => {
         const hired: any = await takenAtTheLastMoment("ab0", "c2", () => hire(adminOf("a2", "c2")))
         expect(hired.username).toBe("ab1")
