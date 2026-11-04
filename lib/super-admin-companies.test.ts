@@ -303,6 +303,9 @@ describe("the company dialogs", () => {
         const fixed = render(h(CompanyDialog, { company: company({ usernameCode: "ds", usernameLocked: true }), onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(fixed.match(/<input[^>]*name="usernameCode"[^>]*>/)?.[0]).toContain('readOnly=""')
         expect(fixed).toContain(`${esc(en.companies_code_fixed.replace("{example}", ""))}<bdi dir="ltr">ds0, ds1…</bdi>`)
+        // Looks like a field that can't be changed, as a disabled one does (DESIGN.md §5.3).
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-input:disabled,\s*\.ui-input\[readonly\],\s*\.ui-select:disabled \{\s*background: var\(--page\);/)
         // The example ends the sentence: no full stop after its "…", in either language.
         for (const copy of [en, ar]) for (const key of ["companies_code_hint", "companies_code_fixed"] as const) expect(copy[key], key).toMatch(/\{example\}$/)
     })

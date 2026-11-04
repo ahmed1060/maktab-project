@@ -268,13 +268,18 @@
   border-color: var(--brand-text);
 }
 /* A field that can't be changed (DESIGN.md §5.3): on the page's colour,
-   its text still readable (--ink-2 on --page is one of the checked pairs). */
+   its text still readable (--ink-2 on --page is one of the checked pairs).
+   A read-only one looks the same, and can still be focused and copied. */
 .ui-input:disabled,
+.ui-input[readonly],
 .ui-select:disabled {
   background: var(--page);
   border-color: var(--rule);
   color: var(--ink-2);
   cursor: not-allowed;
+}
+.ui-input[readonly] {
+  cursor: text;
 }
 .ui-input[aria-invalid="true"],
 .ui-select[aria-invalid="true"],

@@ -3608,3 +3608,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   under Username code came out as "nt0, :0" with "…nt1" on the next line,
   English letters inside a sentence read right to left. The example is kept
   left to right.
+- **2026-11-04:** Found in the browser, on #184: a Username code that's
+  fixed looked like one that could be typed in. A read-only field looks like
+  a disabled one (DESIGN.md §5.3), on the page's colour, and can still be
+  focused and copied. System settings' fields, read-only while they save,
+  look the same for that moment.
