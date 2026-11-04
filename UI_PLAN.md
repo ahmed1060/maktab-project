@@ -3882,3 +3882,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     a role of the company's that may change a status but not end a
     contract was offered them, and refused. An Admin's are offered only to
     the Super Admin, who alone ends one (found reading the code).
+  - Reset password is offered on an Admin's profile only to the Super
+    Admin, who alone resets an Admin's password: another Admin was offered
+    it, asked for their password, and refused (found reading the code).

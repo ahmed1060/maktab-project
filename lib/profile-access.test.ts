@@ -84,6 +84,13 @@ describe("a person's company, status and password", () => {
         expect(access(LEADER, someone("EMPLOYEE")).resetPassword).toBe(false)
         expect(access(ADMIN, { id: "admin", role: "ADMIN" }).resetPassword).toBe(false)
     })
+
+    // Its route refuses anyone else ("Only the Super Admin resets an Admin's password").
+    it("offers Reset password on an Admin's profile only to the Super Admin", () => {
+        expect(access(ADMIN, someone("ADMIN")).resetPassword).toBe(false)
+        expect(access(custom({ "employees.reset_password": "COMPANY" }), someone("ADMIN")).resetPassword).toBe(false)
+        expect(access(SUPER, someone("ADMIN")).resetPassword).toBe(true)
+    })
 })
 
 describe("Edit, from the view of someone's profile", () => {

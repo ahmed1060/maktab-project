@@ -44,7 +44,7 @@ export function profileAccess({ can, viewer, person }: {
         company: superAdmin || person.role === 'SUPER_ADMIN',
         salary: (can('salary.view') || own) && paid,
         dayOffCredit: (can('dayoff.view') || own) && paid,
-        resetPassword: can('employees.reset_password') && !own,
+        resetPassword: can('employees.reset_password') && !own && actsOnThem,
         role: (can('employees.assign_role') || can('employees.request_role')) && !own,
         ownTeamLeader: own && person.role === 'EMPLOYEE',
         teamLeader: can('employees.assign_team') && !own && person.role === 'EMPLOYEE',
