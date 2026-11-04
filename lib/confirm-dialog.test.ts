@@ -57,6 +57,15 @@ describe("the old confirmation window", () => {
     })
 })
 
+/** One rule of the building blocks' stylesheet, or of its phones' part. */
+const CSS = readFileSync("components/ui/ui.css", "utf8")
+const PHONES = CSS.slice(CSS.indexOf("/* ── Phones ── */"))
+function rule(selector: string, css = CSS) {
+    const start = css.search(new RegExp(`\\n\\s*${selector.replace(/[.*+?^${}()|[\]\\>]/g, "\\$&")} \\{`))
+    expect(start, selector).toBeGreaterThan(-1)
+    return css.slice(start, css.indexOf("}", start))
+}
+
 describe("a confirmation", () => {
     const src = readFileSync(DIALOG, "utf8")
 
@@ -82,14 +91,21 @@ describe("a confirmation", () => {
     // such as a long reference; on a phone it ran past the dialog's edge,
     // and the dialog scrolled sideways (found in PR 189's audit).
     it("wraps a long name inside it, in its title and in what it asks", () => {
-        const css = readFileSync("components/ui/ui.css", "utf8")
-        const rule = (selector: string) => {
-            const start = css.indexOf(`\n${selector} {`)
-            expect(start, selector).toBeGreaterThan(-1)
-            return css.slice(start, css.indexOf("}", start))
-        }
         expect(rule(".ui-dialog-title")).toContain("overflow-wrap: anywhere")
         expect(rule(".ui-dialog-body p")).toContain("overflow-wrap: anywhere")
+    })
+
+    // A button that says a count and an amount, such as "Collect 10 charges,
+    // 4,525.50 EGP", ran past its own edges on a phone in Arabic, as a
+    // button keeps to one line (found in PR 189's flows).
+    it("takes two lines for a button that doesn't fit on one, and one line is as tall as ever", () => {
+        const button = rule(".ui-dialog-actions > .ui-btn")
+        expect(button).toContain("white-space: normal")
+        expect(button).toContain("height: auto")
+        expect(button).toContain("min-height: 36px")
+        expect(button).toContain("text-align: center")
+        // On phones, as tall as a phone's buttons.
+        expect(rule(".ui-dialog-actions > .ui-btn", PHONES)).toContain("min-height: 44px")
     })
 })
 

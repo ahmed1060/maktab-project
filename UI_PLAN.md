@@ -3772,3 +3772,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     such as a long reference for a section or a client. On a phone the name
     ran past the dialog's edge, and the dialog scrolled sideways (web
     interface audit).
+  - a dialog's button that doesn't fit on one line takes two (DESIGN.md
+    §5.5, Dialog). Mark collected's "Collect 10 charges, 4,525.50 EGP" ran
+    past its own edges on a phone in Arabic, as a button keeps to one line;
+    the old window's buttons had wrapped. One line is as tall as ever.

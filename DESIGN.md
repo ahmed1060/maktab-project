@@ -550,7 +550,9 @@ These are built once, in the building-blocks PR, and every page uses them
   corners and 24px inside (16px on phones), over the dimmed page.
   - The title is `--text-xl`, weight 500.
   - The buttons are at the bottom on the end side, the main one last. On
-    phones they stack full width, the main one on top.
+    phones they stack full width, the main one on top. A button that
+    doesn't fit on one line, such as one that says a count and an amount,
+    takes two.
   - Escape closes it, and focus goes back to what opened it.
   - One that holds a long list of controls, such as a role's permissions,
     is up to 640px wide, so each control sits beside what it's for.
@@ -1057,4 +1059,6 @@ changed:
 - **2026-11-04:** A confirmation is a building block (§5.5, Dialog). The
   last eleven were the old confirmation window, of its own making, with a
   warning sign and an amber or red button, red too where nothing was
-  deleted, as on confirming a cash advance's receipt.
+  deleted, as on confirming a cash advance's receipt. A dialog's button that
+  doesn't fit on one line takes two: "Collect 10 charges, 4,525.50 EGP"
+  ran past its own edges on a phone in Arabic.
