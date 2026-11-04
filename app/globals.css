@@ -81,7 +81,6 @@
   --danger-fg: #991b1b;
   --danger-fg-strong: #b91c1c;
   --danger-solid: #ef4444;
-  --danger-solid-hover: #dc2626;
 
   --warn-bg: #fef3c7;
   --warn-border: #fcd34d;
@@ -116,7 +115,6 @@
 
   --warn-bg-yellow-subtle: #fffbeb;
   --warn-fg-mid: #b45309;
-  --warn-solid-hover: #d97706;
 
   --info-bg-sky: #f0f9ff;
   --info-bg-sky-firm: #bae6fd;
@@ -1172,7 +1170,6 @@ input::-webkit-credentials-auto-fill-button {
     --danger-fg: #ff9d9d;
     --danger-fg-strong: #ffb3b3;
     --danger-solid: #f2565a;
-    --danger-solid-hover: #d9484c;
 
     --warn-bg: #3a2c0d;
     --warn-border: #6b5117;
@@ -1185,7 +1182,6 @@ input::-webkit-credentials-auto-fill-button {
     --warn-solid-warm: #e08a4e;
     --warn-bg-yellow-subtle: #262208;
     --warn-fg-mid: #f0c96b;
-    --warn-solid-hover: #c79127;
 
     --info-bg: #0d2b3d;
     --info-bg-subtle: #0a1f2e;

@@ -3756,7 +3756,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     collected and Mark uncollected, confirming a cash advance's receipt,
     and resetting a profile photo. Each is the building blocks' dialog now,
     through a confirmation of their own (DESIGN.md §5.5, Dialog), and the
-    old window is gone;
+    old window is gone, with the red and amber hover colours only it used;
   - the button is in the danger colour only for what deletes or can't be
     undone. Confirming a cash advance's receipt was red, the old window's
     default; resetting points, which can't be undone, was amber;
