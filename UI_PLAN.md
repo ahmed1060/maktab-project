@@ -516,7 +516,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      settings, merged in #188 on 2026-11-04, then the last confirmations
      in the old window, merged in #189 on 2026-11-04, then the last
      loading spinners, merged in #190 on 2026-11-04, then a person's
-     profile, in four parts: its page, its photo and a name change
+     profile, in five parts: its page, its photo and a name change
      waiting, merged in #191 on 2026-11-04, then what it shows of someone
      else's, as their details, merged in #192 on 2026-11-04, then its form,
      each field's mistake under it, in #193; then its role field; then
