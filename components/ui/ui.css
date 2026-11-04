@@ -355,6 +355,20 @@
   outline-offset: 2px;
 }
 
+/* While the language changes (context/LanguageContext.tsx): the whole
+   screen, in the page's colour, says it's loading for the moment it takes,
+   so the old language and the new never show side by side. Above
+   everything, toasts included, as the old spinner's screen was. */
+.ui-switching {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page);
+}
+
 /* ── Dialog (§5.5) ── */
 .ui-dialog-backdrop {
   position: fixed;

@@ -3,12 +3,10 @@
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { useParams, useSearchParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-import { ArrowCounterClockwiseIcon, MapPinPlusIcon, PlusIcon, StorefrontIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { ArrowCounterClockwiseIcon, HourglassIcon, MapPinPlusIcon, PlusIcon, StorefrontIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import AccessDenied from '@/components/AccessDenied'
-import LoadingSpinner from '@/components/LoadingSpinner'
 import { Button, Card, Details, EmptyState, Page, PageHeader, Section, SectionLink, StatusBadge } from '@/components/ui'
 import LocationsList from '@/components/locations/LocationsList'
 import ChargesList from '@/components/charges/ChargesList'
@@ -18,7 +16,7 @@ import type { SectionItem } from '@/components/records/types'
 import { googleMapsLink } from '@/lib/attendance/geo'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
-import { useCan } from '@/lib/useCan'
+import { useCan, useViewer } from '@/lib/useCan'
 
 type Client = {
     id: string
@@ -47,7 +45,8 @@ export default function ClientPage() {
     const { id } = useParams<{ id: string }>()
     const params = useSearchParams()
     const openRecordId = params.get('record')
-    const { data: session } = useSession()
+    // Who's looking, from the layout on the first paint: the session hook comes a moment later.
+    const viewer = useViewer()
     const { can } = useCan()
     const seesClient = can('clients.view')
     const seesRecords = can('records.view')
@@ -69,9 +68,20 @@ export default function ClientPage() {
         chargesOnly ? `/api/charges?clientId=${encodeURIComponent(id)}&status=all&limit=1` : null, fetcher,
     )
 
-    if (!session?.user) return <LoadingSpinner />
+    const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') }
+        : seesRecords ? { href: '/dashboard/records', label: modules.label('records') }
+            : { href: '/dashboard/costs?tab=charges', label: t('costs_tab_charges') }
+    // While it loads: its header and back link, as when it doesn't load, so
+    // nothing moves when it comes. It was the old spinner (PR 190).
+    const waiting = (
+        <Page>
+            <PageHeader title={modules.label('clients')} back={back} />
+            <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+        </Page>
+    )
+    if (!viewer) return waiting
     if (!seesClient && !seesRecords && !seesCharges) return <AccessDenied />
-    if ((clientLoading && !clientBody) || (sectionsLoading && !sectionsBody) || (chargesLoading && !chargesBody)) return <LoadingSpinner />
+    if ((clientLoading && !clientBody) || (sectionsLoading && !sectionsBody) || (chargesLoading && !chargesBody)) return waiting
 
     const client = clientBody?.data
     const name = client?.name ?? sectionsBody?.data.client.name ?? chargesBody?.data.client?.name
@@ -107,9 +117,6 @@ export default function ClientPage() {
     // Its sections say so too, for whoever may add records but not see clients. Its details,
     // once loaded, say it first: Restore reloads them, not its sections.
     const archived = client ? !!client.archivedAt : !!sectionsBody?.data.client.archived
-    const back = seesClient ? { href: '/dashboard/clients', label: modules.label('clients') }
-        : seesRecords ? { href: '/dashboard/records', label: modules.label('records') }
-            : { href: '/dashboard/costs?tab=charges', label: t('costs_tab_charges') }
 
     if (!name) {
         const missing = (clientError as { status?: number } | undefined)?.status === 404 || (sectionsError as { status?: number } | undefined)?.status === 404

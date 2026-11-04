@@ -2289,3 +2289,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   them archiving or deleting a client, deleting a records section or a
   record, archiving a location, and Mark collected and Mark uncollected on
   a client's charges.
+- **2026-11-04:** The last confirmations were merged in #189. The last
+  loading spinners move onto the building blocks in #190 (`UI_PLAN.md`),
+  among them a client's page, which has its header and back link while it
+  loads.

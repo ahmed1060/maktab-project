@@ -6,7 +6,7 @@ import { useToast } from '@/context/ToastContext'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
 import { useLanguage } from '@/context/LanguageContext'
-import LoadingSpinner from './LoadingSpinner'
+import { HourglassIcon } from '@phosphor-icons/react/ssr'
 import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
 import { useCan } from '@/lib/useCan'
@@ -16,7 +16,7 @@ import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
 import { changedUsername, usernameError } from "@/lib/username-rules"
 import { useDialog } from '@/lib/useDialog'
-import { ConfirmDialog } from '@/components/ui'
+import { ConfirmDialog, EmptyState } from '@/components/ui'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 
@@ -495,8 +495,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
         }
     }
 
+    // The building blocks' panel while it loads; it was the old spinner (PR 190).
     if (loading) {
-        return <LoadingSpinner />
+        return <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
     }
 
 

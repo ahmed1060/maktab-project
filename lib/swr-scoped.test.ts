@@ -53,7 +53,8 @@ describe("a list's rows, kept within one company", () => {
     it("is how the lists say they didn't load, with Try again", () => {
         const employees = readFileSync("app/(dashboard)/dashboard/employees/page.tsx", "utf8")
         expect(employees).toContain("const failed = loadFailed(scoped, error, listUrl)")
-        expect(employees).toContain("if (isLoading && !result && !failed) return <LoadingSpinner")
+        // Loading, and only that, where nothing has come and nothing failed (PR 190).
+        expect(employees).toMatch(/!result && !failed\s+\? <div className="ui-panel" role="status"><EmptyState icon=\{HourglassIcon\}/)
         expect(employees).toContain("<EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />")
         expect(readFileSync("components/EmployeeFilter.tsx", "utf8")).toContain("{totalCount !== undefined && <div style={{")
     })

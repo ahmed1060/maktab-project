@@ -514,7 +514,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Usernames, merged in #182 on 2026-11-03, then Change password and
      the maintenance screen, merged in #187 on 2026-11-04, then Security
      settings, merged in #188 on 2026-11-04, then the last confirmations
-     in the old window, in #189;
+     in the old window, merged in #189 on 2026-11-04, then the last
+     loading spinners, in #190;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3779,3 +3780,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - beside Confirm receipt, a person's own cash advance asks for each one
     to be confirmed with "يُرجى تأكيد", where it said "أكّد" in the
     masculine (web interface audit).
+- **2026-11-04:** The last confirmations were merged in #189. The last
+  loading spinners move onto the building blocks in #190 (§5 step 5, the
+  pages left):
+  - five places still waited behind the old spinner, a ring of its own
+    making with "Loading data..." beside it: the dashboard's wait between
+    pages, the Employees list, a client's page, My cash advance and a
+    person's profile. Each says it's loading the building blocks' way now
+    (DESIGN.md §5.5, Loading), in the panel with the hourglass, and the
+    spinner is gone, with its two words;
+  - the language's switch covers the screen in the page's colour, with the
+    same block, for the moment it takes. It showed the spinner there;
+  - the Employees list keeps its header and filters while its people
+    load, where the spinner took the whole page;
+  - a client's page has its header and back link while it loads, as when
+    it doesn't load, and from the first paint: who's looking comes from
+    the layout, where it waited for the session hook behind the spinner;
+  - My cash advance waits in the frame its history shows while it loads,
+    so nothing moves when it comes.

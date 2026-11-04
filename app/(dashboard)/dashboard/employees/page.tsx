@@ -7,14 +7,13 @@ import { useSession } from 'next-auth/react'
 import {
     ArrowCounterClockwiseIcon, ClockCounterClockwiseIcon, EnvelopeSimpleIcon, IdentificationBadgeIcon, MinusCircleIcon,
     LockIcon, PauseCircleIcon, PencilSimpleIcon, PlayCircleIcon, PlusCircleIcon, ShieldIcon, SortAscendingIcon, TrashIcon,
-    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, WarningCircleIcon,
+    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, HourglassIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import AccessDenied from '@/components/AccessDenied'
 import { SignInLock } from '@/components/SignInLock'
-import LoadingSpinner from '@/components/LoadingSpinner'
 import {
     Avatar, Button, ButtonLink, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
     RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem,
@@ -237,8 +236,6 @@ export default function EmployeesPage() {
         }
     }
 
-    if (isLoading && !result && !failed) return <LoadingSpinner message={t('loading_users')} />
-
     // Once the session is known: before it loads nobody holds anything, and
     // this would flash "access denied" at everyone on the way in.
     if (session?.user && !can('employees.view')) return <AccessDenied />
@@ -370,31 +367,36 @@ export default function EmployeesPage() {
                 </SelectionBar>
             )}
 
-            <DataList
-                caption={modules.label('employees')}
-                columns={columns}
-                rows={employees}
-                rowKey={e => e.id}
-                card={e => (
-                    <ListCard
-                        title={<span className="ui-person">{checkbox(e)}{name(e)}</span>}
-                        status={statusBadge(e)}
-                        details={[
-                            { icon: EnvelopeSimpleIcon, text: <bdi>{e.email}</bdi> },
-                            { icon: IdentificationBadgeIcon, text: roleWord(e.role) },
-                            ...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),
-                            ...(e.signInLockedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
-                        ]}
-                        foot={<>{points(e) ?? <span />}{canActOnPeople && actions(e)}</>}
+            {/* Under its header and filters, where the list goes; it was the old spinner instead of the whole page (PR 190). */}
+            {isLoading && !result && !failed
+                ? <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+                : (
+                    <DataList
+                        caption={modules.label('employees')}
+                        columns={columns}
+                        rows={employees}
+                        rowKey={e => e.id}
+                        card={e => (
+                            <ListCard
+                                title={<span className="ui-person">{checkbox(e)}{name(e)}</span>}
+                                status={statusBadge(e)}
+                                details={[
+                                    { icon: EnvelopeSimpleIcon, text: <bdi>{e.email}</bdi> },
+                                    { icon: IdentificationBadgeIcon, text: roleWord(e.role) },
+                                    ...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),
+                                    ...(e.signInLockedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
+                                ]}
+                                foot={<>{points(e) ?? <span />}{canActOnPeople && actions(e)}</>}
+                            />
+                        )}
+                        footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'employees')} />}
+                        empty={failed
+                            ? <EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
+                            : <EmptyState icon={UsersIcon} title={t('no_employees_found')} action={filtersOn > 0 || search
+                                ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
+                                : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
                     />
                 )}
-                footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'employees')} />}
-                empty={failed
-                    ? <EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
-                    : <EmptyState icon={UsersIcon} title={t('no_employees_found')} action={filtersOn > 0 || search
-                        ? <Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>
-                        : can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>} />}
-            />
 
             {/* Neither can be undone, so both are in the danger colour; resetting points was amber. */}
             <ConfirmDialog
