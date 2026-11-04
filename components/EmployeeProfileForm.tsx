@@ -292,6 +292,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const name = `${originalFirstName} ${originalLastName}`.trim() || email
     // What they may see here and do, for the view and the form alike (PR 192).
     const access = profileAccess({ can, viewer, person: { id: userId, role } })
+    // Seen, too, where its form would be refused: at the form's address,
+    // by someone who may not edit them, as the notice of an acting role
+    // held back sends whoever decides roles.
+    const seeing = isViewMode || !access.edit
 
     // The form's fields are its own (components/profile/ProfileForm.tsx);
     // what's typed is kept here, and sent from here.
@@ -446,13 +450,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     if (loading) {
         return (
             <Page>
-                <ProfileHeader own={own} editing={!isViewMode} name={null} />
+                <ProfileHeader own={own} editing={!seeing} name={null} />
                 <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
             </Page>
         )
     }
 
-    if (isViewMode) {
+    if (seeing) {
         const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
         return (
             <Page>

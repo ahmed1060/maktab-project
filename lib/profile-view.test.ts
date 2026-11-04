@@ -152,7 +152,7 @@ describe("what can be done to a detail, beside it", () => {
 
 describe("the profile, as the form draws it", () => {
     it("is the details when it's seen, where it was the form with every field off", () => {
-        expect(FORM).toMatch(/if \(isViewMode\) \{[^}]*?return \(\s*<Page>[\s\S]*?<ProfileView/)
+        expect(FORM).toMatch(/if \(seeing\) \{[^}]*?return \(\s*<Page>[\s\S]*?<ProfileView/)
         expect(FORM).not.toMatch(/disabled=\{isViewMode/)
         expect(FORM).not.toMatch(/isViewMode \? \{ background: 'var\(--surface-sunk\)'/)
     })

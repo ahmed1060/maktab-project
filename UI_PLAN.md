@@ -3941,3 +3941,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Add employee's mistakes, which the profile now says too, ask neutrally
     in Arabic: they asked in the masculine (أدخل، اختر، اتركه), as the
     profile's own words don't (found reading the words).
+  - Someone who may not edit a person, at the form's address, sees their
+    details: an Admin at another Admin's, as the notice of an acting role
+    held back sends whoever decides roles, or a role without the edit
+    permission. It was the form to fill in, and its save was refused
+    (found reading the code).

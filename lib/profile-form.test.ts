@@ -339,6 +339,17 @@ describe("the profile, wired to its form", () => {
         expect(FORM).toContain("if (access.nameByRequest && isNameChanged) {")
     })
 
+    // Reached at its address by someone who may not edit them, as the notice
+    // of an acting role held back sends whoever decides roles, it was the
+    // form to fill in, and its save was refused.
+    it("is the view to whoever may not edit them, at the form's address too", () => {
+        expect(FORM).toContain("const seeing = isViewMode || !access.edit")
+        expect(FORM).toMatch(/if \(seeing\) \{[^}]*?return \(\s*<Page>[\s\S]*?<ProfileView/)
+        expect(FORM).not.toContain("if (isViewMode) {")
+        // Its header says what the page is from the start.
+        expect(FORM).toContain("<ProfileHeader own={own} editing={!seeing} name={null} />")
+    })
+
     it("is the building blocks' form, and Cancel goes back", () => {
         expect(FORM).toContain("<ProfileForm")
         expect(FORM).toContain("onCancel={() => { startNavigationProgress(); router.back() }}")

@@ -73,7 +73,7 @@ describe("a person's profile, as a page", () => {
         expect(html).toContain(`<h1 class="ui-page-title">${esc(en.employee_profile)}</h1>`)
         expect(html).not.toContain("ui-page-subtitle")
         // Its header from the start, whose profile it is known from the layout, and the panel where the profile will be.
-        expect(FORM).toMatch(/if \(loading\) \{\s*return \(\s*<Page>\s*<ProfileHeader own=\{own\} editing=\{!isViewMode\} name=\{null\} \/>\s*<div className="ui-panel" role="status"><EmptyState icon=\{HourglassIcon\} title=\{t\('loading'\)\} \/><\/div>\s*<\/Page>/)
+        expect(FORM).toMatch(/if \(loading\) \{\s*return \(\s*<Page>\s*<ProfileHeader own=\{own\} editing=\{!seeing\} name=\{null\} \/>\s*<div className="ui-panel" role="status"><EmptyState icon=\{HourglassIcon\} title=\{t\('loading'\)\} \/><\/div>\s*<\/Page>/)
         expect(FORM).toContain("const own = userId === viewer?.id")
     })
 
