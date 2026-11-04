@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
-import ConfirmModal from './ConfirmModal'
 import { useLanguage } from '@/context/LanguageContext'
 import LoadingSpinner from './LoadingSpinner'
 import EndContractModal from './EndContractModal'
@@ -17,6 +16,7 @@ import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
 import { changedUsername, usernameError } from "@/lib/username-rules"
 import { useDialog } from '@/lib/useDialog'
+import { ConfirmDialog } from '@/components/ui'
 import { startNavigationProgress } from '@/components/NavigationProgress'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 
@@ -719,14 +719,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false, onClos
                 document.body
             )}
 
-            <ConfirmModal
-                isOpen={showResetConfirm}
+            {/* Asked over the photo window, so it sits above it. */}
+            <ConfirmDialog
+                open={showResetConfirm}
                 title={t('reset_photo_title')}
-                message={t('reset_photo_warning')}
-                confirmText={t('yes_reset')}
+                body={t('reset_photo_warning')}
+                confirmLabel={t('reset_photo_title')}
+                danger
+                overModal
                 onConfirm={handleResetPhoto}
                 onCancel={() => setShowResetConfirm(false)}
-                variant="danger"
             />
 
             {pendingRequest && (

@@ -4,8 +4,7 @@ import { useId, useState } from 'react'
 import { FolderIcon, FolderPlusIcon, PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import ConfirmModal from '@/components/ConfirmModal'
-import { Button, Card, Dialog, EmptyState, Field, RowMenu, TextInput, type MenuItem } from '@/components/ui'
+import { Button, Card, ConfirmDialog, Dialog, EmptyState, Field, RowMenu, TextInput, type MenuItem } from '@/components/ui'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { SECTION_TITLE_MAX } from '@/lib/validations/record.schema'
@@ -125,17 +124,16 @@ export default function SectionsCard({ clientId, sections, archived = false, onC
                     )}</Field>
                 </form>
             </Dialog>
-            <ConfirmModal
-                isOpen={!!deleting}
+            <ConfirmDialog
+                open={!!deleting}
                 title={t('records_delete_section')}
-                message={`${deleting && deleting.records > 0
+                body={`${deleting && deleting.records > 0
                     ? t('records_delete_section_question').replace('{title}', deleting.title).replace('{count}', countOf(t, locale, deleting.records, 'records'))
                     : t('records_delete_empty_section_question').replace('{title}', deleting?.title ?? '')} ${t('undone_warning_plain')}`}
-                confirmText={t('records_delete_section')}
-                cancelText={t('cancel')}
+                confirmLabel={t('records_delete_section')}
+                danger
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleting(null)}
-                variant="danger"
             />
         </Card>
     )

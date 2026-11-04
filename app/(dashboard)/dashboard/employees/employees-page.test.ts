@@ -39,7 +39,7 @@ describe("the Employees page", () => {
 
     it("asks before deleting, and says so after", () => {
         expect(page).toMatch(/onSelect: \(\) => setDeleteConfirm\(\{ id: e\.id, name: nameOf\(e\) \}\)/)
-        expect(page).toContain("<ConfirmModal")
+        expect(page).toContain("<ConfirmDialog")
         expect(page).toContain("showToast(t('employee_deleted'), 'success')")
     })
 

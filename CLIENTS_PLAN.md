@@ -2284,3 +2284,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-04:** Change password and the maintenance screen were merged in
   #187. Security settings moves onto the building blocks in #188
   (`UI_PLAN.md`). It doesn't touch clients or locations.
+- **2026-11-04:** Security settings was merged in #188. The last
+  confirmations move onto the building blocks in #189 (`UI_PLAN.md`), among
+  them archiving or deleting a client, deleting a records section or a
+  record, archiving a location, and Mark collected and Mark uncollected on
+  a client's charges.

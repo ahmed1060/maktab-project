@@ -10,11 +10,10 @@ import {
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
-import ConfirmModal from '@/components/ConfirmModal'
 import DateRangePicker from '@/components/DateRangePicker'
 import SafeDate from '@/components/SafeDate'
 import {
-    Button, DataList, EmptyState, Field, FileChip, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Section, Select,
+    Button, ConfirmDialog, DataList, EmptyState, Field, FileChip, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Section, Select,
     StatusBadge, TotalTiles, type Column, type MenuItem, type StatusTone,
 } from '@/components/ui'
 import { useClientOptions } from '@/components/locations/useClientOptions'
@@ -297,26 +296,23 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
                 )}
 
             <ChargeFeeDialog charge={editing} onClose={() => setEditing(null)} onSaved={() => { void mutate() }} />
-            <ConfirmModal
-                isOpen={!!uncollecting}
+            <ConfirmDialog
+                open={!!uncollecting}
                 title={t('charges_uncollect_title').replace('{name}', uncollecting ? name(uncollecting) : '')}
-                message={t('charges_uncollect_question').replace('{client}', uncollecting?.task.client?.name ?? onPage?.name ?? '')}
-                confirmText={t('charges_mark_uncollected')}
-                cancelText={t('cancel')}
+                body={t('charges_uncollect_question').replace('{client}', uncollecting?.task.client?.name ?? onPage?.name ?? '')}
+                confirmLabel={t('charges_mark_uncollected')}
                 onConfirm={uncollect}
                 onCancel={() => setUncollecting(null)}
-                variant="warning"
             />
+            {/* The code a high-risk action asks for opens above it, and it stays open, busy, until that's answered. */}
             {onPage && (
-                <ConfirmModal
-                    isOpen={!!wording}
+                <ConfirmDialog
+                    open={!!wording}
                     title={t('charges_mark_collected')}
-                    message={wording?.question ?? ''}
-                    confirmText={wording?.button ?? ''}
-                    cancelText={t('cancel')}
+                    body={wording?.question ?? ''}
+                    confirmLabel={wording?.button ?? ''}
                     onConfirm={collect}
                     onCancel={() => setConfirming(null)}
-                    variant="warning"
                 />
             )}
         </>

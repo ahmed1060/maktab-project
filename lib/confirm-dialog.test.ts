@@ -1,0 +1,134 @@
+import { describe, it, expect } from "vitest"
+import { existsSync, readFileSync } from "node:fs"
+import { execSync } from "node:child_process"
+import ts from "typescript"
+import { ar } from "./translations/ar"
+import { en } from "./translations/en"
+
+/**
+ * The last confirmations onto the building blocks (UI_PLAN.md §5 step 5, the
+ * pages left). Eleven still asked in the old confirmation window, a box of its
+ * own making with an amber or red button and a warning sign; each is now the
+ * building blocks' dialog, through one confirmation of their own.
+ */
+
+const DIALOG = "components/ui/Dialog.tsx"
+
+/** Where each confirmation is, and how many of them want the danger button. */
+const ASKED: { file: string; count: number; danger: number }[] = [
+    // Resetting points can't be undone; deleting someone can't either.
+    { file: "app/(dashboard)/dashboard/employees/page.tsx", count: 2, danger: 2 },
+    { file: "app/(dashboard)/dashboard/costs/CostsClient.tsx", count: 1, danger: 0 },
+    // Deleting a client, never archiving one.
+    { file: "app/(dashboard)/dashboard/clients/page.tsx", count: 1, danger: 1 },
+    { file: "components/records/SectionsCard.tsx", count: 1, danger: 1 },
+    { file: "components/records/RecordsList.tsx", count: 1, danger: 1 },
+    { file: "components/locations/LocationsList.tsx", count: 1, danger: 0 },
+    { file: "components/charges/ChargesList.tsx", count: 2, danger: 0 },
+    // Saying a cash advance arrived: it was red, the old window's default.
+    { file: "components/cash-advances/CashAdvanceHistory.tsx", count: 1, danger: 0 },
+    { file: "components/lists/SavedLists.tsx", count: 1, danger: 0 },
+    { file: "components/EmployeeProfileForm.tsx", count: 1, danger: 1 },
+]
+
+/** Each <ConfirmDialog> in a file, with its attributes' text by name. */
+function confirmations(file: string) {
+    const sf = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const found: Map<string, string>[] = []
+    const visit = (n: ts.Node) => {
+        if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === "ConfirmDialog") {
+            const attrs = new Map<string, string>()
+            for (const p of n.attributes.properties) {
+                if (ts.isJsxAttribute(p)) attrs.set(p.name.getText(sf), p.initializer ? p.initializer.getText(sf) : "true")
+            }
+            found.push(attrs)
+        }
+        ts.forEachChild(n, visit)
+    }
+    visit(sf)
+    return found
+}
+
+describe("the old confirmation window", () => {
+    it("is gone, and nothing asks through it", () => {
+        expect(existsSync("components/ConfirmModal.tsx")).toBe(false)
+        const users = execSync(`grep -rlE "from ['\\"](@/components|\\.)/ConfirmModal['\\"]" app components lib --include=*.tsx --include=*.ts || true`).toString().trim()
+        expect(users).toBe("")
+    })
+})
+
+describe("a confirmation", () => {
+    const src = readFileSync(DIALOG, "utf8")
+
+    it("is one of the building blocks: a dialog with Cancel and the button that does it, the main one last", () => {
+        expect(readFileSync("components/ui/index.ts", "utf8")).toContain("export { Dialog, DialogActions, ConfirmDialog } from './Dialog'")
+        expect(src).toContain("export function ConfirmDialog(")
+        expect(src).toContain("<Button onClick={cancel} disabled={working}>{t('cancel')}</Button>")
+        // In the danger colour only for what deletes or can't be undone (DESIGN.md §5.2).
+        expect(src).toContain("<Button variant={danger ? 'danger' : 'primary'} busy={working} onClick={confirm}>{confirmLabel}</Button>")
+    })
+
+    it("stays open and busy until the work its onConfirm hands back is done", () => {
+        expect(src).toContain("onConfirm: () => unknown")
+        expect(src).toContain("if (!work || typeof (work as Promise<unknown>).then !== 'function') return")
+        expect(src).toContain(".finally(() => setWorking(false))")
+        // Escape, a click outside and Cancel do nothing meanwhile, and Confirm can't go twice.
+        expect(src).toContain("const cancel = () => { if (!working) onCancel() }")
+        expect(src).toMatch(/<Dialog open=\{open\} onClose=\{cancel\}/)
+        expect(src).toContain("if (working) return")
+    })
+})
+
+describe("each confirmation", () => {
+    for (const { file, count, danger } of ASKED) {
+        it(`${file}: asked in the building blocks' dialog, the danger button only for what deletes or can't be undone`, () => {
+            const asked = confirmations(file)
+            expect(asked).toHaveLength(count)
+            expect(asked.filter(a => a.has("danger")).length).toBe(danger)
+            for (const a of asked) {
+                for (const prop of ["open", "title", "body", "confirmLabel", "onConfirm", "onCancel"]) expect(a.has(prop), prop).toBe(true)
+            }
+        })
+    }
+
+    it("deletes a client in red, and archives one without", () => {
+        const [asked] = confirmations("app/(dashboard)/dashboard/clients/page.tsx")
+        expect(asked.get("danger")).toBe("{!toDelete?.inUse}")
+    })
+
+    it("over the photo window, the reset is asked above it, where the old window sat", () => {
+        const [asked] = confirmations("components/EmployeeProfileForm.tsx")
+        expect(asked.has("overModal")).toBe(true)
+    })
+})
+
+describe("what they say", () => {
+    it("asks for nothing in the masculine in Arabic", () => {
+        const keys = ["reset_points_question", "delete_employee_question", "clients_delete_question", "clients_archive_question", "records_delete_section_question",
+            "records_delete_empty_section_question", "records_delete_question", "locations_archive_question", "charges_uncollect_title", "charges_uncollect_question",
+            "advances_confirm_question", "lists_archive_question", "reset_photo_warning", "costs_pay_question", "costs_pay_question_one", "charges_collect_question"] as const
+        for (const key of keys) {
+            expect(ar[key], key).toBeTruthy()
+            expect(ar[key], key).not.toMatch(/هل أنت متأكد|أنك تريد|هل تريد|لا تؤكّد|لا تؤكد/)
+        }
+    })
+
+    it("deletes a client by name in one sentence in each language, where the name was stuck on the end with a Latin question mark", () => {
+        expect(en.clients_delete_question).toBe("Delete {name}? This can't be undone.")
+        expect(ar.clients_delete_question).toContain("{name}؟")
+        const page = readFileSync("app/(dashboard)/dashboard/clients/page.tsx", "utf8")
+        expect(page).not.toContain("delete_client_warning")
+        expect(en).not.toHaveProperty("delete_client_warning")
+        expect(ar).not.toHaveProperty("delete_client_warning")
+    })
+
+    it("resets a photo with a button that says so, in sentence case", () => {
+        expect(en.reset_photo_title).toBe("Reset photo")
+        // A profile an admin opens is somebody else's, so it's "this" photo, not "your".
+        expect(en.reset_photo_warning).not.toMatch(/\byour\b/i)
+        expect(en).not.toHaveProperty("yes_reset")
+        expect(ar).not.toHaveProperty("yes_reset")
+        const [asked] = confirmations("components/EmployeeProfileForm.tsx")
+        expect(asked.get("confirmLabel")).toBe("{t('reset_photo_title')}")
+    })
+})

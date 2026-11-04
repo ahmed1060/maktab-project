@@ -96,7 +96,6 @@ describe("the app draws its own dialogs", () => {
 describe("what replaced them says the same thing", () => {
     const PAYROLL = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
     const REQUEST = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
-    const MODAL = readFileSync("components/ConfirmModal.tsx", "utf8")
 
     it("the payroll screen confirms through the building blocks' dialog", () => {
         // Anchored on the tag boundary: toContain("<Dialog") is satisfied by
@@ -116,32 +115,18 @@ describe("what replaced them says the same thing", () => {
 
     it("the write-off still records a reason, now in the dialog", () => {
         // It was a window.prompt, which is the one native dialog that also
-        // cannot be styled, translated or cancelled meaningfully. The themed
-        // modal still asks for one where other pages use it.
-        expect(MODAL).toContain("reason?: {")
-        expect(MODAL).toContain("reasonValue.trim().length < (reason.minLength ?? 3)")
+        // cannot be styled, translated or cancelled meaningfully. The old
+        // confirmation window that could ask for one is gone (PR 189): nothing
+        // else asked it for a reason.
         expect(PAYROLL).toContain("payroll_debt_waive_reason_label")
         expect(PAYROLL).toContain("if (writeOffReason.trim().length < 3)")
         expect(PAYROLL).toContain("waive(confirming.debt)")
     })
 
-    it("and the reason gates the confirm button rather than being optional", () => {
-        expect(MODAL).toContain("|| reasonTooShort")
-    })
-
-    it("both of the modal's fields set their own ground and ink", () => {
-        // An input with neither falls back to the browser's white ground and
-        // black text, which is a white box inside a dark dialog. globals.css
-        // records fixing exactly this for .input across 115 elements; these two
-        // are styled inline and the typed-confirmation one had been missed —
-        // on the dialog that guards restoring a backup over live data.
-        const fields = MODAL.match(/<(input|textarea)[\s\S]*?\/>/g) ?? []
-        expect(fields.length, "expected the typed-confirm input and the reason textarea").toBe(2)
-        for (const field of fields) {
-            expect(field, `a field with no background:\n${field}`).toMatch(/background: 'var\(--/)
-            expect(field, `a field with no colour:\n${field}`).toMatch(/color: 'var\(--/)
-        }
-    })
+    // The old window's own reason box and typed-word box went with it (PR 189):
+    // the word a backup restore asks for is the building blocks' field now
+    // (components/HealthDialogs.tsx), which sets its ground and ink as every
+    // field does.
 
     it("the request delete confirms in place, in a dialog of the building blocks (UI_PLAN.md §2.3)", () => {
         expect(REQUEST).toContain("open={!!deleting}")

@@ -12,7 +12,6 @@ import { namedParts, payWording } from '@/lib/costs-total'
 import { useNameFilter } from '@/components/lists/useNameFilter'
 import { countOf } from '@/lib/plural'
 import type { TranslationKey } from '@/lib/translations'
-import ConfirmModal from '@/components/ConfirmModal'
 import DateRangePicker from '@/components/DateRangePicker'
 import CostsHeader from '@/components/charges/CostsHeader'
 import ExtraFilterSelects from '@/components/filters/ExtraFilterSelects'
@@ -20,7 +19,7 @@ import { pickExtra } from '@/components/filters/extra-filters'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import {
-    Button, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, Pager, SearchInput, Select, StatusBadge, TotalTiles,
+    Button, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, Pager, SearchInput, Select, StatusBadge, TotalTiles,
     taskStatusTone, type Column,
 } from '@/components/ui'
 
@@ -286,15 +285,13 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
                 empty={empty}
             />
 
-            <ConfirmModal
-                isOpen={confirming && !!toPay}
+            <ConfirmDialog
+                open={confirming && !!toPay}
                 title={t('mark_all_as_paid')}
-                message={wording?.question ?? ''}
-                confirmText={wording?.button ?? ''}
-                cancelText={t('cancel')}
+                body={wording?.question ?? ''}
+                confirmLabel={wording?.button ?? ''}
                 onConfirm={handleMarkAllAsPaid}
                 onCancel={() => setConfirming(false)}
-                variant="warning"
             />
         </Page>
     )
