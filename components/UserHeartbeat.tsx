@@ -154,6 +154,9 @@ export default function UserHeartbeat() {
         const checkStatus = async () => {
             try {
                 const res = await fetch('/api/user/activity', { method: 'POST' })
+                // Refused, it has no answer to read: a 401 signs the page out
+                // (AuthInterceptor), as a session the server ended gets.
+                if (!res.ok) return
                 const result = await res.json()
                 const data = result.data
 

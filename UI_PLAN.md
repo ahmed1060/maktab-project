@@ -4226,3 +4226,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     session someone opened with the old password, such as by somebody who
     had learned it, stayed open after a reset (found at the sign-in page's
     part 2).
+  - Refused, the heartbeat read an answer it didn't have, and the console
+    said "Heartbeat failed: TypeError" as the page signed out. It says
+    nothing of a refusal now (browser flows).

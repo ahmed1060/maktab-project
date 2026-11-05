@@ -92,6 +92,12 @@ describe("the pages", () => {
     it("left open, sign themselves out once the server refuses the session", () => {
         expect(source("components/AuthInterceptor.tsx")).toMatch(/if \(res\.status === 401\) \{[^]*?if \(targetUrl && !targetUrl\.includes\('\/api\/auth\/'\)\) \{[^]*?signOut\(\{ callbackUrl: '\/login' \}\)/)
     })
+
+    // Refused, the heartbeat read an answer it didn't have, and the console
+    // said "Heartbeat failed: TypeError" as the page signed out (browser flows).
+    it("say nothing of a heartbeat refused, which signs them out", () => {
+        expect(source("components/UserHeartbeat.tsx")).toMatch(/const res = await fetch\('\/api\/user\/activity', \{ method: 'POST' \}\)\s*(\/\/[^\n]*\n\s*)*if \(!res\.ok\) return\s*const result = await res\.json\(\)/)
+    })
 })
 
 // Signed in elsewhere with the old password, such as by someone who had
