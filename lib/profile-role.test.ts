@@ -207,6 +207,19 @@ describe("the role field, to whoever may only ask for one", () => {
     })
 })
 
+describe("a change waiting that the viewer can't see", () => {
+    // Asked for by someone else who may only ask, a change waiting isn't in
+    // the list whoever may only ask is given, which holds their own: told one
+    // waits, the field stayed open, and every save asked again (Codex review).
+    it("is off once the server says one waits, and says so, with nothing more asked", async () => {
+        const role = field(await fields({ how: "ask", value: "r-tl", blocked: true }), en.role_label)
+        expect(tag(role, "select")).toContain('disabled=""')
+        expect(role).toMatch(/<option value="r-emp" selected="">/)
+        expect(hint(role)).toBe(esc(en.profile_role_already_asked))
+        expect(await fields({ how: "ask", value: "r-tl", blocked: true })).not.toContain(`>${esc(en.acting_until_label)}</label>`)
+    })
+})
+
 describe("a role that isn't changed here", () => {
     it("is a Super Admin's, shown off, and says so", async () => {
         const role = field(await fields({ superAdmin: true, how: null, current: null, value: "" }), en.role_label)
@@ -252,6 +265,11 @@ describe("asking for another role from their details", () => {
         const got = await view({ roleAsk: { waiting: WAITING, onAsk: () => {} }, facts: { ...FACTS, acting: "Acting until 5 December 2026" } })
         const [before, after] = en.role_requests_pending_for.split("{role}")
         expect(got[en.role_label]).toBe(`Employee<span class="ui-detail-note">Acting until 5 December 2026</span><span class="ui-detail-note"><a href="/dashboard/requests?kind=role&amp;highlight=rq1">${esc(before)}<bdi>Accountant</bdi>${esc(after)}</a></span>`)
+    })
+
+    it("is said waiting, with no button, once asking was refused as one waits", async () => {
+        const got = await view({ roleAsk: { waiting: null, blocked: true, onAsk: () => {} } })
+        expect(got[en.role_label]).toBe(`Employee<span class="ui-detail-note">${esc(en.profile_role_already_asked)}</span>`)
     })
 
     it("is nothing beside the role to whoever may not ask", async () => {
@@ -364,12 +382,15 @@ describe("the profile, wired to its role", () => {
         const ask = FORM.slice(FORM.indexOf("const askForRole"), FORM.indexOf("const executeSubmit"))
         expect(ask.indexOf("void mutateWaiting()")).toBeGreaterThan(ask.indexOf("const text = await res.text()"))
         // While one waits, a role picked before is no change of theirs to ask for.
-        expect(FORM).toContain("const roleChange = !!access.changeRole && !(access.changeRole === 'ask' && waitingRole) && !!roleId && roleId !== currentRole?.id")
+        expect(FORM).toContain("const roleChange = !!access.changeRole && !(access.changeRole === 'ask' && (waitingRole || askedElsewhere)) && !!roleId && roleId !== currentRole?.id")
+        // One asked for by someone else isn't in the list theirs is given: the refusal is remembered.
+        expect(ask).toContain("if (answer?.code === 'ALREADY_PENDING') setAskedElsewhere(true)")
+        expect(FORM).toContain("blocked={askedElsewhere}")
+        expect(FORM).toContain("roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, blocked: askedElsewhere, onAsk: () => setAsking(true) } : undefined}")
     })
 
     it("asks from their details, and shows the change waiting, to whoever may only ask", () => {
         expect(FORM).toContain("access.changeRole === 'ask' ? `/api/role-requests?userId=${encodeURIComponent(userId)}&status=PENDING` : null")
-        expect(FORM).toContain("roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, onAsk: () => setAsking(true) } : undefined}")
         expect(FORM).toContain("{asking && (")
         expect(FORM).toContain("<RoleRequestDialog")
     })

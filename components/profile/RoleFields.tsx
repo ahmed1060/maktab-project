@@ -35,7 +35,7 @@ export function RoleWaiting({ request }: { request: WaitingRole }) {
     return <Link href={`/dashboard/requests?kind=role&highlight=${encodeURIComponent(request.id)}`}>{before}<bdi>{roleLabel(request.role, t)}</bdi>{after}</Link>
 }
 
-export function RoleFields({ how, superAdmin, roles, current, value, onChange, actingUntil, onActingUntil, actingFrom, acting, waiting, errors, busy }: {
+export function RoleFields({ how, superAdmin, roles, current, value, onChange, actingUntil, onActingUntil, actingFrom, acting, waiting, blocked = false, errors, busy }: {
     /** As the profile may change it (lib/profile-access.ts): given, asked for, or neither, when it's off. */
     how: 'assign' | 'ask' | null
     /** A Super Admin's, which isn't changed here. */
@@ -53,6 +53,11 @@ export function RoleFields({ how, superAdmin, roles, current, value, onChange, a
     acting: string | null
     /** A change asked for, waiting: nothing more is asked meanwhile. */
     waiting: WaitingRole | null
+    /**
+     * Told by the server a change already waits, though it isn't one the
+     * viewer is shown: whoever may only ask sees their own requests alone.
+     */
+    blocked?: boolean
     errors: { roleId?: string; actingUntil?: string }
     busy: boolean
 }) {
@@ -64,17 +69,18 @@ export function RoleFields({ how, superAdmin, roles, current, value, onChange, a
             )}</Field>
         )
     }
-    const changing = !!how && !waiting && !!value && value !== current?.id
+    const changing = !!how && !waiting && !blocked && !!value && value !== current?.id
     // Why it's off, or what picking another means, which its date then says
     // for one given; otherwise until when they're acting in theirs.
     const hint = !how ? t('profile_role_admin')
         : waiting ? <RoleWaiting request={waiting} />
+        : blocked ? t('profile_role_already_asked')
         : changing ? (how === 'ask' ? t('profile_role_will_ask') : null)
         : acting
     return (
         <>
             <Field label={t('role_label')} hint={hint} error={errors.roleId}>{p => (
-                <Select {...p} name="roleId" value={waiting ? current?.id ?? '' : value} disabled={busy || !how || !!waiting}
+                <Select {...p} name="roleId" value={waiting || blocked ? current?.id ?? '' : value} disabled={busy || !how || !!waiting || blocked}
                     options={roleOptions(roles, current, t)}
                     onChange={e => onChange(e.target.value, roles.find(r => r.id === e.target.value) ?? null)} />
             )}</Field>

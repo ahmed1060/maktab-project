@@ -4023,3 +4023,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the field shows the change waiting, and the rest saves: it still
     offered the role it had picked, and every save asked again, and was
     refused again (browser flows).
+  - Told a role change already waits, asked for by someone else who may
+    only ask, the field is off and says so, and the rest saves: the list
+    whoever may only ask is given holds their own requests alone, so the
+    form never learned of it, and every save asked again (Codex review).

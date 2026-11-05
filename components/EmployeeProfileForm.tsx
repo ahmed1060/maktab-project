@@ -100,6 +100,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [showEndContract, setShowEndContract] = useState(false)
     // Asking for another role, from their details (RoleRequestDialog).
     const [asking, setAsking] = useState(false)
+    // Told by the server a change already waits for them, though it isn't in
+    // the list whoever may only ask is given, which holds their own requests:
+    // remembered, so nothing more is asked, and the rest still saves.
+    const [askedElsewhere, setAskedElsewhere] = useState(false)
     // Bumped after ending or reinstating a contract, so the profile reloads and
     // shows the new status (and the button its opposite action). The view has
     // no save that would otherwise bring it up to date.
@@ -324,7 +328,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const waitingRole: WaitingRole | null = waitingData?.data?.[0] ?? null
     // Only a different role is a change, and none is asked for while one
     // waits: one picked before it was known to wait isn't sent.
-    const roleChange = !!access.changeRole && !(access.changeRole === 'ask' && waitingRole) && !!roleId && roleId !== currentRole?.id
+    const roleChange = !!access.changeRole && !(access.changeRole === 'ask' && (waitingRole || askedElsewhere)) && !!roleId && roleId !== currentRole?.id
     const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
     // Until when they're acting in their role, as their details and the form's role field say it.
     const actingNote = acting ? t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(digits, { day: 'numeric', month: 'long', year: 'numeric' })).replace('{role}', roleLabel(acting.returnTo, t)) : null
@@ -409,6 +413,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             void mutateWaiting()
             let answer: { error?: string; code?: string } | null = null
             try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
+            if (answer?.code === 'ALREADY_PENDING') setAskedElsewhere(true)
             const refused = refusedField(answer)
             return refused ? { field: refused.field, message: t(refused.key) } : { message: apiErrorText(text, t('error_generic')) }
         } catch {
@@ -594,7 +599,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // Whoever may only ask for a role asks from here too, beside
                     // it (ROLES_PLAN.md §6.12): the form isn't everyone's who
                     // may ask.
-                    roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, onAsk: () => setAsking(true) } : undefined}
+                    roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, blocked: askedElsewhere, onAsk: () => setAsking(true) } : undefined}
                 />
                 {asking && (
                     <RoleRequestDialog
@@ -676,6 +681,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                             actingFrom={tomorrow}
                             acting={actingNote}
                             waiting={waitingRole}
+                            blocked={askedElsewhere}
                             errors={{ roleId: fieldErrors.roleId, actingUntil: fieldErrors.actingUntil }}
                             busy={saving}
                         />

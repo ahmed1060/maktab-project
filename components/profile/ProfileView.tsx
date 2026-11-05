@@ -47,7 +47,7 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
      * (ROLES_PLAN.md §6.12), or the change asked for, under it, while it
      * waits (part 4, PR 194).
      */
-    roleAsk?: { waiting: WaitingRole | null; onAsk: () => void }
+    roleAsk?: { waiting: WaitingRole | null; blocked?: boolean; onAsk: () => void }
 }) {
     const { t, locale } = useLanguage()
     const money = (n: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
@@ -61,11 +61,14 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
             label: t('role_label'),
             value: (
                 <>
-                    {roleAsk && !roleAsk.waiting
+                    {roleAsk && !roleAsk.waiting && !roleAsk.blocked
                         ? <span className="ui-detail-act">{facts.role}<Button size="sm" onClick={roleAsk.onAsk}>{t('profile_role_ask')}</Button></span>
                         : facts.role}
                     {facts.acting && <span className="ui-detail-note">{facts.acting}</span>}
-                    {roleAsk?.waiting && <span className="ui-detail-note"><RoleWaiting request={roleAsk.waiting} /></span>}
+                    {roleAsk?.waiting
+                        ? <span className="ui-detail-note"><RoleWaiting request={roleAsk.waiting} /></span>
+                        // Told one waits that isn't theirs to see: said, without its link.
+                        : roleAsk?.blocked && <span className="ui-detail-note">{t('profile_role_already_asked')}</span>}
                 </>
             ),
         }] : []),

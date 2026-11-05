@@ -87,7 +87,7 @@ describe("someone else's profile, seen", () => {
         // Its note stays under it.
         const acting = Object.fromEntries(details(await view({ roleAsk: { waiting: null, onAsk: () => {} }, facts: { ...FACTS, acting: "Acting until 5 December 2026" } })))
         expect(acting[en.role_label]).toBe(`<span class="ui-detail-act">Employee<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">${en.profile_role_ask}</button></span><span class="ui-detail-note">Acting until 5 December 2026</span>`)
-        expect(FORM).toContain("roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, onAsk: () => setAsking(true) } : undefined}")
+        expect(FORM).toContain("roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, blocked: askedElsewhere, onAsk: () => setAsking(true) } : undefined}")
     })
 
     it("says only what the person looking may see", async () => {
