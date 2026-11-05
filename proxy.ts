@@ -18,9 +18,13 @@ export default withAuth(
     function proxy(req) {
         const token = req.nextauth.token
         const { pathname } = req.nextUrl
+        // Signed in: a token with somebody in it. One the server ended is
+        // emptied (lib/auth.ts) and counts as signed out; it counted as signed
+        // in, and the sign-in page sent it back into the dashboard.
+        const signedIn = !!token?.sub
 
         // 1. If user is authenticated and tries to access /login or /, redirect to /dashboard
-        if (token && (pathname === '/login' || pathname === '/')) {
+        if (signedIn && (pathname === '/login' || pathname === '/')) {
             return NextResponse.redirect(new URL('/dashboard', req.url))
         }
 
@@ -29,7 +33,7 @@ export default withAuth(
         // trip on every first visit (Lighthouse: up to 0.75 s on a phone),
         // through app/page.tsx checking the session only to send the browser
         // on. The address stays /, and signing in works the same.
-        if (!token && pathname === '/') {
+        if (!signedIn && pathname === '/') {
             return NextResponse.rewrite(new URL('/login', req.url))
         }
 
@@ -109,9 +113,10 @@ export default withAuth(
             authorized: ({ token, req }) => {
                 const { pathname } = req.nextUrl
 
-                // If it's the dashboard, require a token
+                // If it's the dashboard, require a token with somebody in
+                // it: an emptied one is a session the server ended.
                 if (pathname.startsWith('/dashboard')) {
-                    return !!token
+                    return !!token?.sub
                 }
 
                 // Always allow other paths (middleware function above handles /login and /)

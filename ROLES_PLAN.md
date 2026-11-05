@@ -12,6 +12,10 @@ Where the build settled something this plan left open, the PRs say so:
 - `settings.view` and `settings.edit` open a company's own settings, the tabs
   the Super Admin shows it (attendance plan §5.2, #5); the built-in Admin role
   holds both. `audit.view` is still reserved: nothing checks it yet.
+- "Apply now" signs the affected people out in earnest (§4.4). Their
+  sessions' tokens were emptied and kept, and counted as signed in: the
+  dashboard crashed reading them, and the sign-in page sent the browser back
+  into it (#198).
 
 §2 is the snapshot the work started from, kept as the record of what changed.
 
@@ -495,7 +499,12 @@ Permissions are stored in the token as short numeric codes with a scope digit, n
 as full key strings, so even a role holding every permission stays well under the
 limit. The catalogue assigns each permission a stable code that is never reused. For a removal that must be instant — someone is dismissed, a role
 is found to be too wide — the Super Admin can choose *"apply now"*, which uses the
-existing `sessionVersion` bump and signs the affected people out.
+existing `sessionVersion` bump and signs the affected people out. At each
+session's next check its token is emptied, and an emptied token is no session
+and counts as signed out (`lib/auth.ts`, `proxy.ts`): a page left open signs
+itself out when a request of its own is refused, the heartbeat's at the
+latest, and a server page sends the browser to `/api/auth/ended`, which
+clears its cookie on the way to sign in.
 
 ---
 

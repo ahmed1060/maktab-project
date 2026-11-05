@@ -4206,3 +4206,19 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     break: on a phone, one of 73 characters ran off the card, and the page
     was zoomed out to fit it. It wraps within the card (web interface
     audit).
+- **2026-11-05:** A session the server ends signs the browser out, in #198
+  (ROLES_PLAN.md §4.4). Found at the sign-in page's part 2: a reset password
+  was to sign the account out wherever it was signed in, and that stranded
+  the browsers it signed out.
+  - The token of a session the server ended, by a role edited with "apply
+    now" or a check it couldn't make, was emptied and kept. `proxy.ts`
+    counted any token as signed in, and the session it made had nobody in it:
+    the dashboard crashed reading it, `/login` sent the browser back into the
+    dashboard, and the routes took it for somebody's.
+  - An emptied token is no session now, and signed out: the routes refuse
+    it, a server page sends the browser to `/api/auth/ended`, which clears
+    its cookie and goes on to sign in, and a page left open signs itself out
+    when a request of its own is refused, the heartbeat's at the latest (89
+    seconds after, in the browser flows).
+  - A session that's still good, sent to `/api/auth/ended`, goes to the
+    dashboard: a link there signs nobody out.

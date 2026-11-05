@@ -10,10 +10,10 @@ describe("the site's root", () => {
     const proxy = readFileSync("proxy.ts", "utf8")
 
     it("is rewritten to the login page when signed out", () => {
-        expect(proxy).toMatch(/if \(!token && pathname === '\/'\) \{\s*return NextResponse\.rewrite\(new URL\('\/login', req\.url\)\)/)
+        expect(proxy).toMatch(/if \(!signedIn && pathname === '\/'\) \{\s*return NextResponse\.rewrite\(new URL\('\/login', req\.url\)\)/)
     })
 
     it("still sends someone signed in to the dashboard", () => {
-        expect(proxy).toMatch(/if \(token && \(pathname === '\/login' \|\| pathname === '\/'\)\) \{\s*return NextResponse\.redirect\(new URL\('\/dashboard', req\.url\)\)/)
+        expect(proxy).toMatch(/if \(signedIn && \(pathname === '\/login' \|\| pathname === '\/'\)\) \{\s*return NextResponse\.redirect\(new URL\('\/dashboard', req\.url\)\)/)
     })
 })
