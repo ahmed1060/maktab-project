@@ -307,20 +307,60 @@ These are built once, in the building-blocks PR, and every page uses them
 
 ### 5.1 The app shell
 
-- **Side bar** (computer):
-  - 248px wide, on the start side (right in Arabic);
-  - `--panel` background with a hairline edge;
+- **Side bar** (computer), as the mock-up of the app's frame approved by
+  the product owner on 2026-11-05 draws it:
+  - 248px wide, on the start side (right in Arabic), the window's full
+    height, staying put as the page scrolls;
+  - `--panel` background with a hairline `--rule` edge, in both themes. It
+    was dark slate in both;
+  - at its top, the company's mark and name. The mark is 32px across, with
+    `--radius-menu` corners: the company's logo on its light plate
+    (`--logo-plate`), which keeps a dark logo readable in dark mode, or
+    else the first letter of its name in `--on-brand` on a `--brand` tile.
+    The name is beside it in `--ink` at `--text-lg` and weight 500, on two
+    lines at most. The Super Admin, looking at no one company, sees
+    Nizmo's;
   - groups as in `UI_PLAN.md` §2.1, each with a `--text-sm` group name in
     `--muted`;
   - a group is hidden when the person can't see anything in it;
   - a module the company's package doesn't include isn't in it, for anyone
     in the company. Its pages, opened by their address, say they can't be
     opened, and why (§5.5, A page someone can't open);
-  - the selected item has `--brand-tint` behind it, `--brand-text` text,
-    and the filled version of its icon;
-  - Company Settings sits at the bottom.
-- **Side bar on phones:** a drawer from the start side, opened from the
-  menu button. Check in sits at the top, beside Dashboard.
+  - an item is 36px tall, with `--radius-field` corners, its icon (§6) and
+    its name in `--ink-2` at `--text-md`, and `--brand-tint` behind it
+    under the pointer;
+  - the selected item has `--brand-tint` behind it, `--brand-text` text at
+    weight 500, and the filled version of its icon;
+  - a company that chose its own icon for a module, an emoji, sees it in
+    place of the module's icon, until companies choose theirs from the
+    side bar's own icons, a later step;
+  - Company settings, Roles and access and Saved lists sit at the bottom,
+    under a hairline, and stay there while the groups above them scroll,
+    as the Super Admin's do;
+  - under them, the privacy policy and the terms of service, as `--muted`
+    links at `--text-xs`, side by side;
+  - it doesn't fold down to its icons. The old side bar folded to 80px
+    when its name was clicked, which nothing on the screen said and a
+    keyboard couldn't do.
+- **Side bar on phones** (narrower than 1024px): a drawer from the start
+  side, opened from the menu button:
+  - 296px wide, or the window's width less 48px where that's narrower, so
+    the page shows beside it;
+  - its items are 44px tall, with `--text-lg` names and 20px icons, and its
+    legal links are 44px tall too (§9);
+  - at its top, the company's mark and name, and a button that closes it;
+  - it's a dialog over the dimmed page (`--scrim`): focus moves into it and
+    stays there, and goes back to the menu button when it closes. Escape,
+    that button, a tap on the page beside it, or picking a page closes it;
+  - closed, it isn't drawn, so neither Tab nor a screen reader goes
+    through its links. The old drawer only slid out of sight, and Tab went
+    through every one of them;
+  - it slides in and out over 200ms (§8);
+  - Check in sits at the top, beside Dashboard.
+- **The "Powered by" signature** stays as it is (decided by the product
+  owner on 2026-11-05): on a computer in the page's bottom corner on the
+  end side, on a phone at the end of the page, and with the same look. It
+  isn't in the side bar.
 - **Top bar:** 60px tall (56px on phones). On the end side it has the
   language switch, the bell and the account menu (`UI_PLAN.md` §2.1). It
   stays at the top as the page scrolls, and is kept as it is today
@@ -903,11 +943,26 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Phosphor Icons, regular weight,** imported one at a time
   (`UI_PLAN.md` §4.4).
 - **Sizes:**
-  - 18px in the side bar and in buttons;
+  - 18px in the side bar and in buttons, and 20px in the side bar's drawer
+    on phones;
   - 16px in fields and detail lines;
   - 20–22px in the phone top bar;
   - 40px in empty states.
 - **The selected side bar item** uses the filled version of its icon.
+- **The side bar's icons** (§5.1), as the approved mock-up has them:
+  - a company's: Dashboard `SquaresFour`, Check in `MapPin`, Tasks
+    `CheckSquare`, Obligations `PushPin`, Clients `Handshake`, Locations
+    `MapTrifold`, Records `Folders`, Employees `Users`, Attendance and My
+    attendance `Clock`, Requests `Tray`, Costs `Coins`, Payroll `Receipt`,
+    My payslips `FileText`, My cash advance `Wallet`, Roles and access
+    `IdentificationBadge`, Saved lists `ListChecks`, Company settings
+    `GearSix`;
+  - the Super Admin's: Companies `Buildings`, Packages `Package`, All users
+    `UsersThree`, Role templates `Stack`, Policy templates `Clock`, Public
+    holidays `CalendarBlank`, Super Admins `ShieldCheck`, Role changes
+    `ArrowsLeftRight`, Access reviews `ListChecks`, Who can
+    `MagnifyingGlass`, Check-ins `MapPin`, Audit logs `ClipboardText`,
+    System health `Heartbeat`, System settings `GearSix`.
 - **Icons that point a direction are flipped in Arabic:** arrows, chevrons,
   and "back" and "next" icons. Icons that don't point (a check, a bell, a
   pin) are never flipped.
@@ -1280,3 +1335,12 @@ changed:
   off credit, and one without Company Management its tasks and
   obligations; a profile showed pay and day off credit, and Add employee
   asked for both.
+- **2026-11-05:** The side bar (§5.1, §6), as the mock-up of the app's
+  frame approved by the product owner draws it: light, on `--panel` in
+  both themes, with Phosphor icons where it had emoji, the privacy policy
+  and the terms at its foot, and on a phone a drawer that is a dialog. It
+  was dark slate in both themes, with the company's name in a gradient
+  under a rocket emoji, folded to its icons when the name was clicked, and
+  on a phone only slid out of sight, Tab still going through its links.
+  The "Powered by" signature stays as it was, decided by the product
+  owner.
