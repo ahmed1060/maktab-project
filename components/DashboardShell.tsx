@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import PageTitle from './PageTitle'
-import SubscriptionBanner from './SubscriptionBanner'
+import SubscriptionNote from './SubscriptionNote'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { hasBundle } from '@/lib/features/bundles'
 import { inNativeApp } from '@/lib/mobile/native'
@@ -19,7 +19,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
 import { permissionsOf } from '@/lib/useCan'
-import PreviewBanner from '@/components/PreviewBanner'
+import PreviewNote from '@/components/PreviewNote'
 
 interface DashboardShellProps {
     children: React.ReactNode
@@ -500,13 +500,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 {/* The skip link's target: the page itself, after the header's
                     controls (bell, account menu), which repeat on every page too. */}
                 <div id="main-content" tabIndex={-1} style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-                    {/* Above the page rather than inside it, so it appears on
-                        every screen without thirty pages having to remember. It
-                        renders nothing at all when the subscription is simply
-                        working — there is no dismiss control because grace is
-                        not something a customer should be able to dismiss. */}
-                    <PreviewBanner preview={user?.preview} />
-                    <SubscriptionBanner />
+                    {/* Notes above the page (DESIGN.md §5.5), rather than in it,
+                        so they're on every screen without each page having to
+                        remember. Neither can be closed: each goes when what it
+                        says stops being true, and draws nothing until then. */}
+                    <PreviewNote preview={user?.preview} />
+                    <SubscriptionNote />
                     {children}
                 </div>
                 {/* Floating Attribution - Minimalist CYSHIELD style.

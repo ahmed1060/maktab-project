@@ -58,7 +58,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const leave = useLeaveGuard()
 
     // See the dashboard as a holder of this role would (§6.6). Read-only;
-    // the banner on every screen is the way out.
+    // the note above every screen is the way out.
     const preview = async (role: Role) => {
         // The session comes back without the preview if the update failed:
         // stay, and say so, rather than open an ordinary dashboard (review on #49).

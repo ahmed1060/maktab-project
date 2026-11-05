@@ -1665,6 +1665,48 @@ a.ui-file-open:focus-visible,
   font-variant-numeric: tabular-nums;
 }
 
+/* ── A note above the page (§5.5) ── */
+/* Something true on every page for now, such as a company's free trial, 24px
+   over the page header. Its meaning is a bar on its start edge, as a card's
+   is, and its words say it too; the one thing to do about it is on its end
+   side, under the words on a phone. */
+.ui-page-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  margin-block-end: var(--space-6);
+}
+.ui-page-note[data-tone="neutral"] {
+  border-inline-start: 3px solid var(--status-neutral-fg);
+}
+.ui-page-note[data-tone="waiting"] {
+  border-inline-start: 3px solid var(--status-waiting-fg);
+}
+.ui-page-note[data-tone="problem"] {
+  border-inline-start: 3px solid var(--problem-text);
+}
+.ui-page-note-text {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  overflow-wrap: anywhere;
+}
+.ui-page-note-action {
+  display: flex;
+  flex-shrink: 0;
+}
+@media (max-width: 767px) {
+  .ui-page-note {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ui-page-note-action {
+    flex-direction: column;
+  }
+}
+
 /* ── Page layout and sections (§5.5) ── */
 .ui-page {
   display: flex;

@@ -114,10 +114,8 @@
   --warn-fg-mid: #b45309;
 
   --info-bg-sky: #f0f9ff;
-  --info-bg-sky-firm: #bae6fd;
   --info-bg-indigo: #dbeafe;
   --info-border-indigo: #a5b4fc;
-  --info-fg-deep: #075985;
   --info-fg-indigo: #1e40af;
 
   --accent-solid: #a855f7;
@@ -1177,10 +1175,8 @@ input::-webkit-credentials-auto-fill-button {
     --info-solid: #4aa3e0;
     --info-solid-hover: #3d8cc4;
     --info-bg-sky: #0a2130;
-    --info-bg-sky-firm: #16455e;
     --info-bg-indigo: #16243f;
     --info-border-indigo: #3d4b7a;
-    --info-fg-deep: #96d4f5;
     --info-fg-indigo: #9db4f0;
 
     --accent-solid: #a86ef0;
