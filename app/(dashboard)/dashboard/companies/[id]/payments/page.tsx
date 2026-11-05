@@ -42,7 +42,7 @@ export default function CompanyPaymentsPage() {
     const [removing, setRemoving] = useState<Payment | null>(null)
     const [busy, setBusy] = useState(false)
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const paymentName = (p: Payment) => namedPayment(t, locale, p)
     const payingNow = payments?.find(p => p.id === paying && p.status === 'UNPAID')

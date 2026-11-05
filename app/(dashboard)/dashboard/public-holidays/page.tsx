@@ -59,7 +59,7 @@ export default function PublicHolidaysPage() {
     const holidays: Holiday[] | null = body && !error ? body.data?.holidays ?? [] : null
 
     if (status === 'loading') return null
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const digits = isRtl ? 'ar-EG' : 'en-GB'
     const years = yearsAround(now.getFullYear(), year).map(y => ({ value: String(y), label: y.toLocaleString(digits, { useGrouping: false }) }))

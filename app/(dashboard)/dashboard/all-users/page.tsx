@@ -102,7 +102,7 @@ export default function AllUsersPage() {
     const pageCount = listed?.totalPages
     useAdjustOnChange([pageCount], () => { if (pageCount !== undefined) setPage(p => pageInRange(p, pageCount)) })
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const nameOf = (p: Person) => `${p.firstName} ${p.lastName}`
     const roleWord = (r: string) => t(`role_${r.toLowerCase()}` as TranslationKey) || r

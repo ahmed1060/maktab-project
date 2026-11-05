@@ -48,7 +48,7 @@ export default function PolicyTemplatesPage() {
     const [nameError, setNameError] = useState<string | undefined>()
 
     if (status === 'loading') return null
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     // Days in the page's language (DESIGN.md §3.3); counts go through countOf.
     const weekday = (d: number) => new Date(Date.UTC(2026, 2, 1 + d)).toLocaleDateString(intl, { weekday: 'short', timeZone: 'UTC' })

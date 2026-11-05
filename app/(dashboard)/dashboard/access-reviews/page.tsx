@@ -18,7 +18,7 @@ export default function AccessReviewsPage() {
     const highlight = useSearchParams().get('highlight')
 
     if (status === 'loading') return null
-    if (session?.user?.role !== 'SUPER_ADMIN') return <AccessDenied />
+    if (session?.user?.role !== 'SUPER_ADMIN') return <AccessDenied superAdmins />
     return (
         <Page>
             <PageHeader title={t('access_review_title')} subtitle={t('access_review_hint')} />

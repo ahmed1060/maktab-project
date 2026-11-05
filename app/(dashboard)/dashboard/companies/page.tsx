@@ -98,7 +98,7 @@ export default function CompaniesPage() {
     const pageCount = listed?.totalPages
     useAdjustOnChange([pageCount], () => { if (pageCount !== undefined) setPage(p => pageInRange(p, pageCount)) })
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const tab = (label: string, count: number | undefined) => <>{label}{count !== undefined && <>{' '}<span className="ui-tab-count">{num(count)}</span></>}</>

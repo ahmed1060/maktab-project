@@ -72,7 +72,7 @@ export default function WhoCanPage() {
         ? `/api/users?companyId=${company}&includeDeleted=false&limit=${PEOPLE_LISTED}&search=${encodeURIComponent(search)}` : null, fetcher, { keepPreviousData: true })
     const person = useSWR(asking && mode === 'person' && personId ? `/api/roles/who-can?userId=${personId}` : null, fetcher)
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const tabs = (
         <TabLinks label={t('who_can_title')} items={[

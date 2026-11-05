@@ -37,7 +37,7 @@ export default function PackagesPage() {
     const [removing, setRemoving] = useState<ListedPackage | null>(null)
     const [busy, setBusy] = useState(false)
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const said = (key: Parameters<typeof t>[0], name: string) => t(key).replace('{name}', name)
     const money = (n: number) => platformMoney(n, locale)

@@ -55,7 +55,7 @@ export default function CheckInReviewPage() {
     const [rejecting, setRejecting] = useState<Waiting | null>(null)
     const [faceOf, setFaceOf] = useState<Waiting | null>(null)
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const list = (parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(t('list_separator'))

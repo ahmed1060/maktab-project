@@ -39,7 +39,7 @@ export default function RoleTemplatesPage() {
     const [offering, setOffering] = useState<Template | null>(null)
 
     if (status === 'loading') return null
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const save = async (submission: RoleSubmission): Promise<boolean> => {
         const isNew = editing === 'new'

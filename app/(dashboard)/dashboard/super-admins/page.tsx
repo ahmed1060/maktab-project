@@ -42,7 +42,7 @@ export default function SuperAdminsPage() {
     const admins: SuperAdmin[] | null = data ? data.data?.data ?? [] : null
     const pageCount: number = data?.data?.totalPages ?? 1
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const name = (a: SuperAdmin) => `${a.firstName} ${a.lastName}`
     const remove = async (admin: SuperAdmin) => {

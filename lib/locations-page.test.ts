@@ -20,7 +20,7 @@ const state = {
     failed: false,
 }
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u1", role: state.role } } }) }))
-vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.grants.has(p) }) }))
+vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.grants.has(p) }), useViewer: () => ({ id: "u1", role: "EMPLOYEE" }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: null }) }))
@@ -62,7 +62,7 @@ describe("the Locations page", () => {
         state.role = "EMPLOYEE"
         state.grants = new Set()
         const html = await page()
-        expect(html).toContain("Access Restricted")
+        expect(html).toContain("access_denied_title")
         expect(state.keys).toEqual([])
     })
 

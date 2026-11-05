@@ -18,7 +18,7 @@ const state = {
     list: { data: { data: [] as unknown[] } } as { data?: unknown; error?: Error },
 }
 vi.mock("next-auth/react", () => ({ useSession: () => (state.loaded ? { data: { user: { id: "u1", role: state.role } }, status: "authenticated" } : { data: undefined, status: "loading" }) }))
-vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.grants.has(p) }) }))
+vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.grants.has(p) }), useViewer: () => ({ id: "u1", role: "EMPLOYEE" }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => (key === "clients" ? "Clients" : key) }) }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: null }) }))
@@ -49,7 +49,7 @@ describe("the Clients list", () => {
         state.role = "EMPLOYEE"
         state.grants = new Set()
         const html = await page()
-        expect(html).toContain("Access Restricted")
+        expect(html).toContain("access_denied_title")
         expect(html).not.toContain("clients_load_failed")
         expect(state.keys.filter(Boolean)).toEqual([])
     })
@@ -61,7 +61,7 @@ describe("the Clients list", () => {
         const html = await page()
         expect(html).toContain("clients_loading")
         expect(html).not.toContain("clients_none")
-        expect(html).not.toContain("Access Restricted")
+        expect(html).not.toContain("access_denied_title")
     })
 
     it("says the list didn't load, with Try again, rather than that there are none", async () => {

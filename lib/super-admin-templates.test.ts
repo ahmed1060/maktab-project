@@ -94,7 +94,8 @@ describe("Role templates", () => {
 
     it("is the Super Admin's only, and asks the server nothing for anyone else", async () => {
         const html = await roleTemplates({ [ROLE_TEMPLATES]: ok([roleTemplate()]) }, { role: "ADMIN" })
-        expect(html).not.toContain("ui-page-header")
+        // It says so, in place of the page (lib/access-denied-page.test.ts).
+        expect(html).toContain(en.access_denied_super_admins)
         expect(state.keys.every(k => k === null)).toBe(true)
     })
 
@@ -207,7 +208,8 @@ describe("Attendance policy templates", () => {
 
     it("is the Super Admin's only, and asks the server nothing for anyone else", async () => {
         const html = await policyTemplates({ [POLICY_TEMPLATES]: ok({ templates: [policyTemplate()] }) }, { role: "ADMIN" })
-        expect(html).not.toContain("ui-page-header")
+        // It says so, in place of the page (lib/access-denied-page.test.ts).
+        expect(html).toContain(en.access_denied_super_admins)
         expect(state.keys.every(k => k === null)).toBe(true)
     })
 

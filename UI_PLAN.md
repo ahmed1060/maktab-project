@@ -524,7 +524,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      handing over a team, merged in #195 on 2026-11-05, which finished it,
      then the sign-in page, in two parts: its screen, signing in and the
      two-factor code, merged in #196 on 2026-11-05, then Forgot your
-     password, in #197;
+     password, merged in #197 on 2026-11-05, which finished it, then a
+     page someone can't open and a company whose subscription has ended,
+     in #199;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4229,3 +4231,31 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Refused, the heartbeat read an answer it didn't have, and the console
     said "Heartbeat failed: TypeError" as the page signed out. It says
     nothing of a refusal now (browser flows).
+- **2026-11-05:** The sign-in page, part 2, was merged in #197, which
+  finished it. A page someone can't open, and a company whose subscription
+  has ended, are in #199 (DESIGN.md §5.5).
+  - A page someone can't open says so in its page header, in the page's
+    language, and under it why, and who can change it. It was a page of its
+    own making, in English only, "Access Restricted" in Title Case under a
+    no-entry emoji, telling everyone to ask their administrator.
+  - Why is what's true for who is asking: a role that doesn't include it,
+    which an Admin of their company can add it to; a page only a Super
+    Admin opens, which each of the 17 now says (an Admin was told to ask
+    their administrator: themselves); a company's own page, for a Super
+    Admin; and an account that can't open pages for now, such as a
+    suspended one, until the heartbeat signs it out and says why.
+  - Go to the dashboard is in the header, except on the dashboard itself,
+    which an account that can't open pages was sent back to, and for that
+    account anywhere, where every page says the same.
+  - A company whose subscription has ended says so in its page header,
+    with the day access was paused, in the page's language and digits, and
+    that renewing it lets everyone back in. The day was in red, on the
+    reader's own calendar: a phone in the Gulf showed the next day, and a
+    different one from the server's. It's on Egypt's calendar now, as
+    subscriptions are counted.
+  - Under the header, a card says first that nothing was deleted, with a
+    check in the Good colour. It was a green box under a glass card and an
+    hourglass emoji.
+  - Its words no longer say access is paused for everyone but
+    administrators: its Admin is held on this page too, the one who can
+    still sign in.

@@ -35,7 +35,7 @@ export default function CompanySettingsPage() {
     const setCompany = (next: CompanySettings & Pick<SettingsExposure, 'package'>) => { mutate({ data: next }, { revalidate: false }) }
 
     if (viewer?.role !== 'SUPER_ADMIN') {
-        return <AccessDenied />
+        return <AccessDenied superAdmins />
     }
 
     // The company is the heading: this page is the only answer to "whose
