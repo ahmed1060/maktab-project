@@ -98,7 +98,7 @@ export default function AuditLogsPage() {
     // Another company, picked in the top bar, starts from its first page, as another filter does.
     useAdjustOnChange([selectedCompanyId], () => { if (page !== 1) go({ page: '1' }) })
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const dateLocale = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const label = (prefix: 'audit_action_' | 'audit_entity_', code: string) => t(`${prefix}${code}` as TranslationKey) || code

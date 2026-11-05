@@ -621,7 +621,7 @@ describe("the stylesheet keeps the rules", () => {
 describe("the building blocks page", () => {
     it("is the Super Admin's only", () => {
         const page = readFileSync("app/(dashboard)/dashboard/ui-kit/page.tsx", "utf8")
-        expect(page).toMatch(/if \(viewer\?\.role !== 'SUPER_ADMIN'\) return <AccessDenied \/>/)
+        expect(page).toMatch(/if \(viewer\?\.role !== 'SUPER_ADMIN'\) return <AccessDenied superAdmins \/>/)
     })
 })
 

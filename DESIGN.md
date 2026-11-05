@@ -731,6 +731,26 @@ These are built once, in the building-blocks PR, and every page uses them
     the three tries.
   - Only loading is tried again. A save is sent once: sent again, it
     might be done twice.
+- **A page someone can't open,** such as one their role doesn't include,
+  says so in its page header, in the page's language: "You can't open
+  this page", and under it why, and who can change it.
+  - A role that doesn't include it: an Admin of their company can add it
+    to their role.
+  - A page only a Super Admin opens, or, for a Super Admin, a company's
+    own page: just that, as nobody's role changes it.
+  - An account that can't open pages at all for now, such as a suspended
+    one: just that, until it's signed out and told why.
+  - Go to the dashboard is in the header, except on the dashboard itself
+    and for an account that can't open pages: there it would only be
+    told the same again. The side bar stays, as on any page.
+- **A company whose subscription has ended:** the page its people are
+  held on, where its Admin, the one who can still sign in, renews it.
+  - Its page header says so, and under it the day access was paused, in
+    the page's language and digits, on Egypt's calendar, as subscriptions
+    are counted. Renewing it lets everyone back in at once.
+  - Under the header, a card says first that nothing was deleted, with a
+    check in the Good colour (§2.3): someone who thinks their records are
+    gone doesn't renew.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
   - A card that needs someone before going on has the Waiting on someone
@@ -1206,3 +1226,10 @@ changed:
   page, its mistakes said at the top of the card in English, too many
   tries a time to try again at in the server's own time zone, and once
   reset it went back to signing in without a word.
+- **2026-11-05:** A page someone can't open, and a company whose
+  subscription has ended (§5.5). The first was a page of its own making,
+  in English only, titled "Access Restricted" under a no-entry emoji. It
+  said the same to everyone, an Admin on a Super Admin's page told to ask
+  their administrator, and on the dashboard itself it sent them back to
+  the dashboard. The second was a glass card under an hourglass emoji,
+  the day it locked in red, on the reader's own calendar.

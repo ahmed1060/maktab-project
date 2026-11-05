@@ -18,7 +18,7 @@ export default function RoleChangeRequestsPage() {
     const highlight = useSearchParams().get('highlight')
 
     if (status === 'loading') return null
-    if (session?.user?.role !== 'SUPER_ADMIN') return <AccessDenied />
+    if (session?.user?.role !== 'SUPER_ADMIN') return <AccessDenied superAdmins />
     return (
         <Page>
             <PageHeader title={t('role_changes_title')} subtitle={t('role_changes_hint')} />

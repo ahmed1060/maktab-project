@@ -1,51 +1,46 @@
 'use client'
-import Link from 'next/link'
 
-export default function AccessDenied() {
+import { usePathname } from 'next/navigation'
+import { ButtonLink, Page, PageHeader } from '@/components/ui'
+import { useLanguage } from '@/context/LanguageContext'
+import { useViewer } from '@/lib/useCan'
+import { accountRefusal } from '@/lib/account-refusal'
+
+/**
+ * A page someone can't open (DESIGN.md §5.5): its header says so, in the
+ * page's language, and under it why, and who can change it.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, the pages left): it was a
+ * page of its own making, its title in English only, in Title Case, under
+ * a no-entry emoji. It told everyone to ask their administrator, an Admin
+ * on a Super Admin's page too, and on the dashboard itself it sent them
+ * back to the dashboard.
+ *
+ * `superAdmins`: the page is one only a Super Admin opens, which nobody's
+ * role changes. The rest it knows from who is asking.
+ */
+export default function AccessDenied({ superAdmins = false }: { superAdmins?: boolean }) {
+    const { t } = useLanguage()
+    const viewer = useViewer()
+    const pathname = usePathname()
+    // An account that can't open pages at all for now, such as a suspended
+    // one, until the heartbeat signs it out and says why (UserHeartbeat):
+    // every page says this, so it isn't sent to another.
+    const refused = !!viewer && !!accountRefusal(viewer)
+
+    const why = superAdmins ? t('access_denied_super_admins')
+        : refused ? t('access_denied_account')
+            : viewer?.role === 'SUPER_ADMIN' ? t('access_denied_company')
+                : t('access_denied_role')
+    const onwards = !refused && pathname !== '/dashboard'
+
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '60vh',
-            textAlign: 'center',
-            padding: '2rem'
-        }}>
-            <div style={{
-                fontSize: '4rem',
-                marginBottom: '1rem'
-            }}>
-                <span aria-hidden="true">🚫</span>
-            </div>
-            <h1 style={{
-                fontSize: '2rem',
-                fontWeight: 'bold',
-                color: 'var(--text-main)',
-                marginBottom: '1rem'
-            }}>
-                Access Restricted
-            </h1>
-            <p style={{
-                color: 'var(--text-soft)',
-                marginBottom: '2rem',
-                maxWidth: '400px',
-                lineHeight: '1.6'
-            }}>
-                You do not have permission to view this page. Please contact your administrator if you believe this is an error.
-            </p>
-            <Link
-                href="/dashboard"
-                className="btn btn-primary"
-                style={{
-                    textDecoration: 'none',
-                    padding: '0.75rem 2rem',
-                    borderRadius: '0.5rem',
-                    fontWeight: 600
-                }}
-            >
-                Back to Dashboard
-            </Link>
-        </div>
+        <Page>
+            <PageHeader
+                title={t('access_denied_title')}
+                subtitle={why}
+                action={onwards ? <ButtonLink href="/dashboard">{t('access_denied_dashboard')}</ButtonLink> : undefined}
+            />
+        </Page>
     )
 }

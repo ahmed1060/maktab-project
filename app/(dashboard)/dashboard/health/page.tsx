@@ -83,7 +83,7 @@ export default function SystemHealthPage() {
     const [picker, setPicker] = useState<{ request: number; backups: BackupEntry[]; loading: boolean; error: string | null; reason?: string | null } | null>(null)
     const pickerAsked = useRef(0)
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const days = (c: Counted) => num(c.retentionDays)

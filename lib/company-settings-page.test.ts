@@ -90,7 +90,7 @@ describe("a company's own settings", () => {
         expect(failed).toContain(">Try again</button>")
         // A refusal is the answer, not a failure: there is nothing to try again.
         const denied = await own({ swr: { "/api/company-settings": refused(403) } })
-        expect(denied).toContain("Access Restricted")
+        expect(denied).toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
         expect(denied).not.toContain(">Try again</button>")
     })
 })

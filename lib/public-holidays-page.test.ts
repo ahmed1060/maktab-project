@@ -79,7 +79,8 @@ describe("Public holidays' page header", () => {
 
     it("is the Super Admin's only, and nobody else's page asks the server anything", async () => {
         const html = await page({ shows: [holiday()], role: "ADMIN" })
-        expect(html).not.toContain("ui-page-header")
+        // It says so, in place of the page (lib/access-denied-page.test.ts).
+        expect(html).toContain(en.access_denied_super_admins)
         expect(state.keys.every(k => k === null)).toBe(true)
     })
 })

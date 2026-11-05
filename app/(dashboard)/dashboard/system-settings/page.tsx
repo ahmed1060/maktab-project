@@ -46,7 +46,7 @@ export default function SystemSettingsPage() {
     const [leaving, setLeaving] = useState<{ href: string } | { go: () => void } | null>(null)
     useGuardLinks(dirty, href => setLeaving({ href }))
 
-    if (!isSuperAdmin) return <AccessDenied />
+    if (!isSuperAdmin) return <AccessDenied superAdmins />
 
     // The server's copy, as each card saves: what that save sent, as the
     // server saved it, then the rest read again. Answers can come back in

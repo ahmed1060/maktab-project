@@ -75,7 +75,7 @@ export default function UiKitPage() {
         return () => { setTitle(null); setSubtitle(null) }
     }, [s.page, setTitle, setSubtitle])
 
-    if (viewer?.role !== 'SUPER_ADMIN') return <AccessDenied />
+    if (viewer?.role !== 'SUPER_ADMIN') return <AccessDenied superAdmins />
 
     const pick = (pair: [string, string]) => pair[ar ? 1 : 0]
     const day = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' })
