@@ -93,3 +93,14 @@ describe("the pages", () => {
         expect(source("components/AuthInterceptor.tsx")).toMatch(/if \(res\.status === 401\) \{[^]*?if \(targetUrl && !targetUrl\.includes\('\/api\/auth\/'\)\) \{[^]*?signOut\(\{ callbackUrl: '\/login' \}\)/)
     })
 })
+
+// Signed in elsewhere with the old password, such as by someone who had
+// learned it, the account stayed signed in after a reset (found at the
+// sign-in page's part 2). Held back until an ended session signed its
+// browser out: it would have stranded the person's own other browsers.
+describe("a password reset", () => {
+    it("ends the account's sessions wherever they are, a Super Admin's as well as anyone's", () => {
+        const route = source("app/api/auth/forgot-password/confirm/route.ts")
+        expect(route.match(/data: \{ password: hashed, mustChangePassword: false, emailVerifiedAt, sessionVersion: \{ increment: 1 \} \}/g)).toHaveLength(2)
+    })
+})

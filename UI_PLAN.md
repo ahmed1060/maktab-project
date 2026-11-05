@@ -4222,3 +4222,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     seconds after, in the browser flows).
   - A session that's still good, sent to `/api/auth/ended`, goes to the
     dashboard: a link there signs nobody out.
+  - A password reset signs the account out wherever it's signed in: a
+    session someone opened with the old password, such as by somebody who
+    had learned it, stayed open after a reset (found at the sign-in page's
+    part 2).

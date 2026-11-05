@@ -50,16 +50,19 @@ export async function POST(req: NextRequest) {
         // picking one arbitrarily.
         const hashed = await bcrypt.hash(newPassword, superAdmin ? 12 : 10)
         const emailVerifiedAt = (account as any).emailVerifiedAt ?? new Date()
+        // The account is signed out wherever it's signed in, too, at each
+        // session's next check (lib/auth.ts): a session someone opened with
+        // the old password stayed open after a reset.
 
         if (superAdmin) {
             await prisma.superAdmin.update({
                 where: { id: account.id },
-                data: { password: hashed, mustChangePassword: false, emailVerifiedAt },
+                data: { password: hashed, mustChangePassword: false, emailVerifiedAt, sessionVersion: { increment: 1 } },
             })
         } else {
             await prisma.user.update({
                 where: { id: account.id },
-                data: { password: hashed, mustChangePassword: false, emailVerifiedAt },
+                data: { password: hashed, mustChangePassword: false, emailVerifiedAt, sessionVersion: { increment: 1 } },
             })
         }
 
