@@ -4159,3 +4159,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The words spoke as "we", which the app never does: "the code we
     emailed you", "We couldn't sign you in". They say what was done, as
     "Couldn't load your trusted devices" does (web interface audit).
+  - On a phone, the language and theme switches' options were 30px tall,
+    under the 44px a finger needs (DESIGN.md §9). They're 44px there; the
+    switches themselves are the account menu's, until the app shell
+    replaces them (web interface audit).

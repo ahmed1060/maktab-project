@@ -1560,7 +1560,8 @@ a.ui-file-open:focus-visible,
   gap: var(--space-3);
 }
 /* Sign-in on phones: the page's 16px edge around the card, 24px inside it,
-   and links tall enough to tap. */
+   and links and switches tall enough to tap. The switches are the account
+   menu's, until the app shell replaces them: their options were 30px. */
 @media (max-width: 767px) {
   .ui-signin-card {
     padding: var(--space-6);
@@ -1569,6 +1570,9 @@ a.ui-file-open:focus-visible,
     padding-block-start: var(--space-6);
   }
   .ui-signin-links a {
+    min-height: 44px;
+  }
+  .ui-signin-switches button {
     min-height: 44px;
   }
 }

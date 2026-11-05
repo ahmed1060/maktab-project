@@ -121,6 +121,14 @@ describe("the sign-in screen", () => {
         expect(existsSync("components/PreferenceBar.tsx")).toBe(false)
     })
 
+    // Tall enough to tap on a phone (DESIGN.md §9): the account menu's
+    // switches, kept until the app shell replaces them, were 30px there
+    // (web interface audit).
+    it("makes the switches' options tall enough to tap on a phone", () => {
+        const phone = css().slice(css().indexOf("/* Sign-in on phones"))
+        expect(phone.slice(0, phone.indexOf("\n}\n"))).toMatch(/\.ui-signin-switches button \{\s*min-height: 44px;\s*\}/)
+    })
+
     it("is in the building blocks' font", () => {
         expect(css().slice(0, css().indexOf("font-family: var(--font-ui);"))).toContain(".ui-signin,")
     })
