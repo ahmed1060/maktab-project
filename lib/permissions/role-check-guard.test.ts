@@ -116,6 +116,9 @@ const ALLOWED: [file: string, line: string, why: string][] = [
 
     // lib/billing/state.ts
     ["lib/billing/state.ts", "if (role === 'SUPER_ADMIN' || role === 'ADMIN') return false", ADMIN_ROLE],
+    // components/SubscriptionNote.tsx: grace's note tells the one who renews,
+    // the Admin billing/state.ts never locks out, and everyone else who can.
+    ["components/SubscriptionNote.tsx", "const who = grace ? t(viewer?.role === 'ADMIN' ? 'note_grace_admin' : 'note_grace_others') : null", ADMIN_ROLE],
 
     // components/filters/useEmployeeOptions.ts
     ["components/filters/useEmployeeOptions.ts", "...people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN').map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName}`.trim() })),", THE_PERSON],

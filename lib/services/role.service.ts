@@ -37,7 +37,7 @@ export type RoleForToken = {
 export type RolePreview = {
     roleId: string
     roleName: string
-    /** Which built-in role, if one, so the banner can name it in the viewer's language. */
+    /** Which built-in role, if one, so the preview note can name it in the viewer's language. */
     roleBuiltIn?: UserRole | null
     baseRole: UserRole
     companyId: string

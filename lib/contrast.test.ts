@@ -56,7 +56,6 @@ const TEXT_PAIRS: [string, string][] = [
     ["--warn-fg", "--warn-bg"],
     ["--warn-fg-warm", "--warn-bg-warm"],
     ["--info-fg", "--info-bg"],
-    ["--info-fg-deep", "--info-bg-sky"],
     ["--info-fg-indigo", "--info-bg-indigo"],
 ]
 

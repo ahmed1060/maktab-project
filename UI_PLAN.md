@@ -534,7 +534,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      page someone can't open and a company whose subscription has ended,
      merged in #199 on 2026-11-05, then a module's page the package doesn't
      include, which says so as they do, with what the package doesn't
-     include gone from the side bar, in #200;
+     include gone from the side bar, merged in #200 on 2026-11-05, then the
+     notes above the page, a company's free trial or its grace and a role
+     being previewed, in #201;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4292,3 +4294,26 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Part 2, to follow: what's of a module the package doesn't include, inside
     pages it does: the dashboard's tiles and cards (tasks, pay, day off),
     and a person's pay and day off credit on their profile.
+- **2026-11-05:** What the package doesn't include was merged in #200.
+  The notes above the page, a company's free trial or its grace and a role
+  a Super Admin is previewing, are on the building blocks in #201
+  (`DESIGN.md` §5.5, A note above the page).
+  - Each is a panel above the page header, its meaning's bar on its start
+    edge (Neutral for a trial, Problem for grace, Waiting on someone for a
+    preview), in the page's language and digits. They were boxes of their
+    own making under an emoji, the preview's with the old primary button.
+  - A trial and grace say their last day on Egypt's calendar, as
+    subscriptions are counted, and how many days there are to it: tomorrow,
+    and today, on those days. The days were counted in hours from the
+    date's time of day, so a trial said "0 day(s) left" all through its
+    last day, and two ending on the same day could differ by one. The
+    server counts them by the day on Egypt's calendar now, and the session
+    carries them.
+  - The trial's said "2 day(s) left" in English, and "2" in Arabic among
+    Arabic-Indic digits: each language's own plural now, with its digits.
+  - Grace told everyone to renew, which only an Admin can. Its Admin is
+    told renewing it keeps everyone's access, and everyone else that an
+    Admin of their company can renew it.
+  - They're read from the account the layout passed until the session has
+    loaded, so they're there from the page's first paint: the trial's and
+    grace's came a moment after the page, and pushed it down.

@@ -9,7 +9,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { useLanguage } from '@/context/LanguageContext'
 import { useHeader } from '@/context/HeaderContext'
 import {
-    Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, PageHeader, Pager, Person,
+    Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, PageHeader, PageNote, Pager, Person,
     Row, RowMenu, Rows, SearchInput, Section, SectionLink, Select, StatusBadge, Tabs, TextInput, TotalTiles, taskStatusTone, type Column,
 } from '@/components/ui'
 
@@ -42,6 +42,7 @@ const TEXT = {
         badges: 'Status badges', empty: 'No tasks yet', emptyAction: 'Create a task', pts: (n: number) => n === 1 ? '1 pt' : `${n} pts`,
         rows: 'Needs attention', viewAll: 'View all', more: 'More actions', moreFor: (name: string) => `More actions for ${name}`,
         edit: 'Edit', history: 'History', remove: 'Delete', note: 'This week',
+        pageNote: "A note above the page, for what's true on every page for now, such as a free trial.",
     },
     ar: {
         page: 'مكونات الواجهة', title: 'المهام', subtitle: 'إدارة مهام الفريق والمواعيد النهائية وتقدم المشروع', create: 'إنشاء مهمة جديدة',
@@ -55,6 +56,7 @@ const TEXT = {
         badges: 'حالات', empty: 'لا توجد مهام بعد', emptyAction: 'إنشاء مهمة', pts: (n: number) => n === 1 ? 'نقطة واحدة' : n === 2 ? 'نقطتان' : `${n.toLocaleString('ar-EG')} نقاط`,
         rows: 'تحتاج إلى متابعة', viewAll: 'عرض الكل', more: 'إجراءات أخرى', moreFor: (name: string) => `إجراءات أخرى لـ ${name}`,
         edit: 'تعديل', history: 'السجل', remove: 'حذف', note: 'هذا الأسبوع',
+        pageNote: 'ملاحظة فوق الصفحة، لما يصح على كل صفحة حاليًا، مثل الفترة التجريبية.',
     },
 }
 
@@ -106,7 +108,11 @@ export default function UiKitPage() {
 
     return (
         <div style={{ background: 'var(--page)', padding: 'clamp(var(--space-4), 4vw, var(--space-8))', borderRadius: 'var(--radius-panel)', display: 'grid', gap: 'var(--space-6)' }}>
-            <PageHeader title={s.title} subtitle={s.subtitle} action={<ButtonLink href="#" variant="primary" icon={PlusIcon}>{s.create}</ButtonLink>} />
+            {/* Together, so the note keeps its own 24px over the header, as on a page. */}
+            <div>
+                <PageNote tone="neutral">{s.pageNote}</PageNote>
+                <PageHeader title={s.title} subtitle={s.subtitle} action={<ButtonLink href="#" variant="primary" icon={PlusIcon}>{s.create}</ButtonLink>} />
+            </div>
 
             <TotalTiles items={s.tiles.map((label, i) => ({
                 label,

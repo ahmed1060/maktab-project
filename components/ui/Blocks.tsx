@@ -167,6 +167,22 @@ export function Card({ title, actions, children, className, tone, role }: {
     )
 }
 
+/**
+ * A note above the page (DESIGN.md §5.5), for something true on every page
+ * for now, such as a company's free trial: what's so, with its meaning's bar
+ * on its start edge, and the one thing to do about it on its end side, if it
+ * can be done there. It can't be closed: it's drawn until what it says stops
+ * being true. Read out once, as it appears, and at once for a problem.
+ */
+export function PageNote({ tone, children, action }: { tone: 'neutral' | 'waiting' | 'problem'; children: ReactNode; action?: ReactNode }) {
+    return (
+        <div className="ui-panel ui-page-note" data-tone={tone} role={tone === 'problem' ? 'alert' : 'status'}>
+            <p className="ui-page-note-text">{children}</p>
+            {action && <div className="ui-page-note-action">{action}</div>}
+        </div>
+    )
+}
+
 export type Tile = {
     label: ReactNode
     value: ReactNode

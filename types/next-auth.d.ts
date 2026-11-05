@@ -81,7 +81,7 @@ declare module "next-auth" {
             // not survive the token's JSON round trip, and the state travels
             // already decided: no part of the lockout is computed in the
             // browser. Null for a Super Admin, who has no company.
-            subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
+            subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null; daysToLastDay?: number | null } | null
         } & DefaultSession["user"]
     }
 
@@ -109,7 +109,7 @@ declare module "next-auth" {
         moduleIcons?: Record<string, string> | null
         logoUrl?: string | null
         featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
-        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
+        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null; daysToLastDay?: number | null } | null
     }
 }
 
@@ -148,7 +148,7 @@ declare module "next-auth/jwt" {
         moduleIcons?: Record<string, string> | null
         logoUrl?: string | null
         featureAccess?: import('@/lib/features/bundles').SerializedAccess | null
-        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null } | null
+        subscription?: { state: 'TRIAL' | 'ACTIVE' | 'GRACE' | 'LOCKED' | 'LIFETIME'; date: string | null; daysRemaining: number | null; daysToLastDay?: number | null } | null
         // F-11: last time the merged revocation/suspension check actually
         // ran against the database, so it can be throttled instead of
         // running on every single request.
