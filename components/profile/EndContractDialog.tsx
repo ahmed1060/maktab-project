@@ -263,11 +263,11 @@ export function SettlementPreview({ settlement, undecided = 0, stale = false, fa
     let content
     if (failed) {
         content = <>
-            <p className="ui-error" role="alert">{t('end_contract_preview_failed')}</p>
+            <p className="ui-error">{t('end_contract_preview_failed')}</p>
             <Button size="sm" onClick={onRetry}>{t('try_again')}</Button>
         </>
     } else if (!settlement) {
-        content = <p className="ui-hint" role="status">{t('loading')}</p>
+        content = <p className="ui-hint">{t('loading')}</p>
     } else {
         const held = settlement.cashAdvanceHeld ?? 0
         const remains = settlement.debtsOutstanding - settlement.debtRecovered
@@ -306,8 +306,10 @@ export function SettlementPreview({ settlement, undecided = 0, stale = false, fa
         </>
     }
 
+    // Said to screen readers as it changes: once it's in, not while the last
+    // date's figures stand in for the next.
     return (
-        <section className="ui-settlement" aria-labelledby={id} aria-busy={stale || undefined}>
+        <section className="ui-settlement" aria-labelledby={id} aria-live="polite" aria-busy={stale || undefined}>
             <h3 id={id} className="ui-settlement-title">{t('settlement_preview')}</h3>
             {content}
         </section>

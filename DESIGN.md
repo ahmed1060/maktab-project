@@ -596,7 +596,8 @@ These are built once, in the building-blocks PR, and every page uses them
     will have them. While it's worked out for what's picked, such as the
     last working day, it says so, the last figures staying until the next
     are in, and the main button waits for its own: the figure confirmed is
-    the figure recorded. One that didn't load says so, with Try again.
+    the figure recorded. Screen readers hear the figures once they're in.
+    One that didn't load says so, with Try again.
   - One that asks who takes over, such as a leader's team when they stop
     leading it, names whom it's about, each in a list, then who takes
     them, with no one among the choices. Answered, it stays open until the

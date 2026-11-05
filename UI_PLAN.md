@@ -4091,3 +4091,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - A month they had no salary in says what to do: choose a day in a month
     they're paid for. It said only that the settlement couldn't be worked
     out (web interface audit).
+  - Worked out again for another date, the settlement's figures were
+    redrawn without a word to a screen reader. They're said once they're
+    in, and not while the last date's stand in for them (web interface
+    audit).

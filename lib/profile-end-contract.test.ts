@@ -119,7 +119,8 @@ describe("ending a contract", () => {
     // load, with none (found reading the code).
     it("says the settlement is being worked out, and End contract waits for the date's own", async () => {
         const html = await endDialog()
-        expect(html).toContain(`<p class="ui-hint" role="status">${esc(en.loading)}</p>`)
+        // Heard by screen readers as the region it's in changes (web interface audit).
+        expect(html).toContain(`<p class="ui-hint">${esc(en.loading)}</p>`)
         expect(html).toContain(`<div class="ui-dialog-actions"><button type="button" class="ui-btn ui-btn-secondary">${esc(en.cancel)}</button><button type="submit" class="ui-btn ui-btn-danger" disabled="">${esc(en.end_contract_confirm)}</button></div>`)
         const src = DIALOG()
         expect(src).toContain("const current = shown?.for === lastWorkingDay ? shown : null")
@@ -215,9 +216,17 @@ describe("the settlement, before it's recorded", () => {
         expect(await figures({ undecided: 3 })).toContain(note("waiting", ar.end_contract_undecided.replace("{days}", "٣ أيام")))
     })
 
+    // Worked out again for another date, its figures were redrawn without a
+    // word to a screen reader. They're said once they're in, not while the
+    // last date's stand in for them (web interface audit).
+    it("is said to screen readers once it's in, and not while it's worked out again", async () => {
+        expect(await figures()).toMatch(/<section class="ui-settlement" aria-labelledby="[^"]+" aria-live="polite">/)
+        expect(await figures({ stale: true })).toMatch(/<section class="ui-settlement" aria-labelledby="[^"]+" aria-live="polite" aria-busy="true">/)
+    })
+
     it("says so when it couldn't be worked out, with Try again", async () => {
         const html = await figures({ settlement: null, failed: true })
-        expect(html).toContain(`<p class="ui-error" role="alert">${esc(en.end_contract_preview_failed)}</p>`)
+        expect(html).toContain(`<p class="ui-error">${esc(en.end_contract_preview_failed)}</p>`)
         expect(html).toContain(`<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">${esc(en.try_again)}</button>`)
     })
 })
