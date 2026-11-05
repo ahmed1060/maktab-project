@@ -803,6 +803,39 @@ These are built once, in the building-blocks PR, and every page uses them
     in its own words, for the Super Admin, who has no attendance, and
     where the company's package hasn't the app. One whose phone details
     didn't load says so, with Try again.
+- **Sign-in:** the one screen before the app, so it has no side bar and
+  no top bar. It's in the default brand colour (§2.1).
+  - On `--page`, a card in the middle of the screen, at most 400px wide,
+    with 32px inside (24px on phones, which keep the page's 16px edge
+    around it). Behind it the page is flat: no gradient, no glass and
+    nothing moving (§4.3, §8).
+  - The card's title says what's done here, and where: "Sign in to
+    Nizmo", as a page title is (§5.5, Page header). A step after it, such
+    as the two-factor code, has its own title, with a line under it on
+    what to type.
+  - Its fields are the building blocks' (§5.3), one under the other: the
+    email or username, written left to right in both languages (§3.3),
+    then the password, with its eye button. "Forgot your password?" is a
+    quiet button under the password, on the end side.
+  - "Stay signed in", and on the code step "Remember this device for 30
+    days", are checkboxes, each with its label.
+  - The step's one primary button takes the card's width. Its other
+    actions, such as "Email me a code instead" and "Back to sign in", are
+    quiet buttons under it.
+  - What's wrong with what was typed, such as a field left empty or a
+    code that isn't six digits, is said under its field before anything
+    is sent, with the focus on the first. A code that isn't right is said
+    under the code, too.
+  - What the server says, such as a wrong password, an account held back
+    after wrong tries, counting down, or a company whose subscription has
+    ended, is said above the primary button, in the page's language, and
+    screen readers hear it. The primary button can still be pressed while
+    an account is held back, as an Admin may unlock it before the time
+    is up.
+  - Under the card, as part of the page and never over it: the privacy
+    policy, the terms, and the language and theme switches, in a row that
+    wraps on phones. The switches are the ones the account menu has,
+    until the app shell (§5.1) replaces them.
 
 ---
 
@@ -1152,3 +1185,10 @@ changed:
   colours typed in, its button taking a date whose figures weren't on
   screen yet, and the hand-off closing before the change was sent, its
   refusal a toast, in English.
+- **2026-11-05:** The sign-in screen (§5.5, Sign-in), the one screen with
+  no app shell. It was a glass card of its own making over a moving
+  gradient, its title in gradient letters, its checkboxes drawn by hand
+  and its words typed into the page in both languages. The language and
+  theme switches and the legal links were pinned to the screen's bottom
+  corners: on a phone the theme switch covered Sign in, and the language
+  switch the legal links.
