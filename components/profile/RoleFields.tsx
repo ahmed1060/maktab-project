@@ -80,7 +80,7 @@ export function RoleFields({ how, superAdmin, roles, current, value, onChange, a
             )}</Field>
             {changing && (
                 <Field label={t('acting_until_label')} hint={t('acting_until_hint')} error={errors.actingUntil}>{p => (
-                    <TextInput {...p} name="actingUntil" type="date" min={actingFrom} value={actingUntil} disabled={busy}
+                    <TextInput {...p} name="actingUntil" type="date" autoComplete="off" min={actingFrom} value={actingUntil} disabled={busy}
                         onChange={e => onActingUntil(e.target.value)} />
                 )}</Field>
             )}

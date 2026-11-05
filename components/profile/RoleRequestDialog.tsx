@@ -82,7 +82,7 @@ export function RoleRequestDialog({ name, roles, current, actingFrom, onCancel, 
                 )}</Field>
                 {changing && (
                     <Field label={t('acting_until_label')} hint={t('acting_until_hint')} error={errors.actingUntil}>{p => (
-                        <TextInput {...p} name="actingUntil" type="date" min={actingFrom} value={actingUntil} disabled={busy}
+                        <TextInput {...p} name="actingUntil" type="date" autoComplete="off" min={actingFrom} value={actingUntil} disabled={busy}
                             onChange={e => { setActingUntil(e.target.value); setErrors(was => ({ ...was, actingUntil: undefined })) }} />
                     )}</Field>
                 )}

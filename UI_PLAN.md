@@ -4016,3 +4016,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The save's refusals of acting on an Admin, and of leaving a company
     with no Admin at work, carry their codes, as asking for a role's do, so
     the profile says them in the reader's language (`lib/role-errors.ts`).
+  - The date an acting role ends on keeps password managers off, as the
+    form's other fields do: it's not a sign-in field (web interface audit).

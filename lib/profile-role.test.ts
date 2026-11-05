@@ -278,6 +278,15 @@ describe("the dialog to ask in", () => {
         expect(html).toMatch(new RegExp(`<div class="ui-dialog-actions"><button type="button" class="ui-btn ui-btn-secondary">${en.cancel}</button><button type="submit" class="ui-btn ui-btn-primary">${en.profile_role_ask_send}</button></div>`))
     })
 
+    // Not a sign-in field: a password manager has nothing to offer it, as the
+    // form's other fields say (web interface audit).
+    it("keeps password managers off the date, in the form and in the dialog", async () => {
+        expect(tag(field(await fields({ value: "r-tl" }), en.acting_until_label))).toMatch(/autocomplete="off"/i)
+        const asked = await dialog()
+        expect(asked).not.toContain(`>${esc(en.acting_until_label)}</label>`)
+        expect(DIALOG()).toContain('<TextInput {...p} name="actingUntil" type="date" autoComplete="off"')
+    })
+
     it("is the same role field, its date and its words, as the form's", () => {
         const src = DIALOG()
         expect(src).toContain("roleOptions(roles, current, t)")
@@ -286,7 +295,7 @@ describe("the dialog to ask in", () => {
         // Told what's wrong, it stays, with the field it's about.
         expect(src).toContain("const problem = await onSend({ roleId, actingUntil: changing ? actingUntil : '' })")
         expect(src).toContain("const cancel = () => { if (!busy) onCancel() }")
-        expect(src).toContain('<TextInput {...p} name="actingUntil" type="date"')
+        expect(src).toContain('<TextInput {...p} name="actingUntil" type="date" autoComplete="off"')
     })
 })
 
