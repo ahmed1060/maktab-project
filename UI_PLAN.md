@@ -94,7 +94,9 @@ permissions allow, as today.
   the company (decided by the product owner on 2026-11-05, `DESIGN.md`
   §5.1). Its pages, opened by their address, say they can't be opened
   because the package doesn't include them. It was there, faded and with a
-  padlock, as the way to find out what else the product does.
+  padlock, as the way to find out what else the product does. Inside the
+  pages it does include, what's of it isn't there either, such as the
+  dashboard's tiles and a person's pay (`DESIGN.md` §5.5, Page layout).
 - **Me holds what people often check about themselves:**
   - My payslips;
   - My attendance, for someone who can only see their own. Someone who can
@@ -536,7 +538,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      include, which says so as they do, with what the package doesn't
      include gone from the side bar, merged in #200 on 2026-11-05, then the
      notes above the page, a company's free trial or its grace and a role
-     being previewed, in #201;
+     being previewed, merged in #201 on 2026-11-05, then what's of a module
+     the package doesn't include inside the pages it does, in #202;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4317,3 +4320,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - They're read from the account the layout passed until the session has
     loaded, so they're there from the page's first paint: the trial's and
     grace's came a moment after the page, and pushed it down.
+- **2026-11-05:** The notes above the page were merged in #201. What's of a
+  module the package doesn't include isn't there inside the pages it does
+  either, in #202 (`DESIGN.md` §5.5, Page layout), which finishes hiding
+  what the package doesn't include.
+  - The dashboard: a company without HR had its team's bonuses and
+    deductions, its day off requests to decide, and on one's own dashboard,
+    one's pay adjustments, day off credit and latest request; one without
+    Company Management had its tasks, the tasks to review, the overdue ones,
+    Create new task, and one's obligations. None is there now, nor read,
+    and a section left with nothing in it goes.
+  - A person's pay and day off credit, on their profile and in Add
+    employee, aren't shown or asked for where the package hasn't HR: pay is
+    Payroll's, a day off balance Day off's. The server doesn't save them
+    there either, whatever is sent, as it doesn't save what the sender's
+    role may not set.

@@ -24,6 +24,8 @@ import { CompanyService } from "@/lib/services/company.service"
 import { scopesToTeam, assignedToTeamWhere, teamMemberWhere, and } from '@/lib/team-scope'
 import { can, grantFor } from '@/lib/permissions/can'
 import { accountRefusal } from "@/lib/account-refusal"
+import { sessionHasModule } from "@/lib/features/require"
+import type { Module } from "@/lib/features/bundles"
 import AccessDenied from "@/components/AccessDenied"
 
 export const dynamic = 'force-dynamic'
@@ -45,6 +47,13 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
     // maintenance, before anything is read (found after PR 139).
     if (accountRefusal(viewer)) return <AccessDenied />
     const userId = (session?.user as any)?.id
+    // What the company's package includes (DESIGN.md §5.5, Page layout): a
+    // part of a module it leaves out isn't shown, and what that part would
+    // count isn't read. The Super Admin's holds everything.
+    const has = (module: Module) => sessionHasModule({ user: viewer }, module)
+    const tasks = has('TASKS')
+    const pay = has('PAYROLL')
+    const leave = has('DAY_OFF')
     // A Team Leader's task numbers are their team's; their links say so.
     const tasksTeamOnly = grantFor(viewer, 'tasks.view') === 'TEAM'
 
@@ -207,13 +216,13 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         // apply, so the whole page can still await one Promise.all.
         const [taskStats, salaryStats, overdueTasks, pendingDayOffRequests, pendingProfileRequests] = await Promise.all([
             // Optimized status counts using groupBy
-            prisma.task.groupBy({
+            tasks ? prisma.task.groupBy({
                 where: baseWhere,
                 by: ['status'],
                 _count: true
-            }),
+            }) : Promise.resolve([]),
             // Salary aggregates for the company
-            prisma.salaryRecord.aggregate({
+            pay ? prisma.salaryRecord.aggregate({
                 where: {
                     month: currentMonth,
                     year: currentYear,
@@ -225,16 +234,16 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     bonusDays: true,
                     deductions: true
                 }
-            }),
+            }) : Promise.resolve(null),
             // Overdue: past deadline, not in a final state — same idea as the
             // employee "due today" list, but for this admin's whole team.
-            prisma.task.findMany({
+            tasks ? prisma.task.findMany({
                 where: { ...baseWhere, deadline: { lt: new Date() }, status: { notIn: ['COMPLETED', 'APPROVED'] } },
                 orderBy: { deadline: 'asc' },
                 take: 5,
                 select: { id: true, title: true, deadline: true, status: true }
-            }),
-            can(viewer, 'dayoff.approve')
+            }) : Promise.resolve([]),
+            leave && can(viewer, 'dayoff.approve')
                 ? prisma.dayOffRequest.count({ where: { status: 'PENDING', user: { companyId: finalCompanyId } } })
                 : Promise.resolve(0),
             can(viewer, 'profile_requests.review')
@@ -245,34 +254,42 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
         const completedTasks = taskStats.find(s => s.status === 'COMPLETED')?._count || 0
         const reviewTasks = taskStats.find(s => s.status === 'PENDING_CONFIRMATION')?._count || 0
-
+        const mayAdd = can(viewer, 'employees.create')
+        const totals = [
+            ...(tasks ? [{ label: t('task_completion'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: tasksListHref({ teamOnly: tasksTeamOnly }) }] : []),
+            ...(pay ? [
+                { label: t('team_bonuses'), value: days(Number(salaryStats?._sum.bonusDays || 0)), note: t('total_this_month') },
+                { label: t('team_deductions'), value: days(Number(salaryStats?._sum.deductions || 0)), note: t('total_this_month') },
+            ] : []),
+        ]
+        // The queues this person can act on in the package; a section left
+        // with none goes (DESIGN.md §5.5, Page layout).
+        const queues = [
+            ...(tasks ? [{ label: t('pending_task_reviews'), value: num(reviewTasks), href: tasksListHref({ status: 'PENDING_CONFIRMATION', teamOnly: tasksTeamOnly }) }] : []),
+            ...(leave && can(viewer, 'dayoff.approve') ? [{ label: t('pending_day_off_requests'), value: num(pendingDayOffRequests), href: '/dashboard/requests?tab=review&kind=dayOff&show=waiting' }] : []),
+            ...(can(viewer, 'profile_requests.review') ? [{ label: t('pending_profile_requests'), value: num(pendingProfileRequests), href: '/dashboard/requests?tab=review&kind=nameChange&show=waiting' }] : []),
+        ]
 
         return (
             <Page>
                 <PageHeader
                     title={tasksTeamOnly ? t('team_performance') : t('admin_overview')}
                     subtitle={t('dashboard_subtitle' as any)}
-                    action={<>
-                        <ButtonLink href="/dashboard/tasks/new" variant="primary" icon={PlusIcon}>{t('create_new_task')}</ButtonLink>
-                        {can(viewer, 'employees.create') && <ButtonLink href="/dashboard/employees/new" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>}
-                    </>}
+                    action={tasks || mayAdd ? <>
+                        {tasks && <ButtonLink href="/dashboard/tasks/new" variant="primary" icon={PlusIcon}>{t('create_new_task')}</ButtonLink>}
+                        {mayAdd && <ButtonLink href="/dashboard/employees/new" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>}
+                    </> : undefined}
                 />
 
-                <TotalTiles items={[
-                    { label: t('task_completion'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: tasksListHref({ teamOnly: tasksTeamOnly }) },
-                    { label: t('team_bonuses'), value: days(Number(salaryStats._sum.bonusDays || 0)), note: t('total_this_month') },
-                    { label: t('team_deductions'), value: days(Number(salaryStats._sum.deductions || 0)), note: t('total_this_month') },
-                ]} />
+                {totals.length > 0 && <TotalTiles items={totals} />}
 
-                <Section title={t('needs_your_review')}>
-                    <TotalTiles items={[
-                        { label: t('pending_task_reviews'), value: num(reviewTasks), href: tasksListHref({ status: 'PENDING_CONFIRMATION', teamOnly: tasksTeamOnly }) },
-                        ...(can(viewer, 'dayoff.approve') ? [{ label: t('pending_day_off_requests'), value: num(pendingDayOffRequests), href: '/dashboard/requests?tab=review&kind=dayOff&show=waiting' }] : []),
-                        ...(can(viewer, 'profile_requests.review') ? [{ label: t('pending_profile_requests'), value: num(pendingProfileRequests), href: '/dashboard/requests?tab=review&kind=nameChange&show=waiting' }] : []),
-                    ]} />
-                </Section>
+                {queues.length > 0 && (
+                    <Section title={t('needs_your_review')}>
+                        <TotalTiles items={queues} />
+                    </Section>
+                )}
 
-                <Columns>
+                {tasks && <Columns>
                     <Section title={t('overdue_tasks')}>
                         {overdueTasks.length === 0 ? (
                             <Panel><EmptyState icon={CheckCircleIcon} title={t('no_overdue_tasks')} /></Panel>
@@ -293,7 +310,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                     <Section title={t('team_workload')}>
                         {byStatus(taskStats as any, t('team_workload'))}
                     </Section>
-                </Columns>
+                </Columns>}
             </Page>
         )
     } else {
@@ -309,21 +326,22 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         // previously fired as sequential awaits, so this page paid for a
         // separate round trip to Postgres for each before it could render.
         // Running them together costs one round trip's worth of latency.
+        const obligations = has('OBLIGATIONS')
         const [taskStats, currentUser, salaryRecord, myObligations, myLatestDayOffRequest, upcomingTasks] = await Promise.all([
-            prisma.task.groupBy({
+            tasks ? prisma.task.groupBy({
                 where: {
                     assignees: { some: { id: userId } }
                 },
                 by: ['status'],
                 _count: true
-            }),
+            }) : Promise.resolve([]),
             // The credit left and the year's allowance, for "used".
-            prisma.user.findUnique({
+            leave ? prisma.user.findUnique({
                 where: { id: userId },
                 select: { dayOffCredit: true, baseDayOffCredit: true }
-            }),
+            }) : Promise.resolve(null),
             // Salary record for current month
-            prisma.salaryRecord.findUnique({
+            pay ? prisma.salaryRecord.findUnique({
                 where: {
                     userId_month_year: {
                         userId: userId,
@@ -331,23 +349,23 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                         year: currentYear
                     }
                 }
-            }),
-            prisma.obligation.findMany({
+            }) : Promise.resolve(null),
+            obligations ? prisma.obligation.findMany({
                 where: {
                     assignees: { some: { id: userId } }
                 },
                 orderBy: { deadline: 'asc' },
                 take: 5
-            }),
+            }) : Promise.resolve([]),
             // My latest day-off request — otherwise the only way to see where
             // a request stands is opening the requests page.
-            prisma.dayOffRequest.findFirst({
+            leave ? prisma.dayOffRequest.findFirst({
                 where: { userId },
                 orderBy: { createdAt: 'desc' }
-            }),
+            }) : Promise.resolve(null),
             // Widened from "due today" to "due this week" — a same-day-only
             // view means this section is empty most days.
-            prisma.task.findMany({
+            tasks ? prisma.task.findMany({
                 where: {
                     assignees: { some: { id: userId } },
                     deadline: {
@@ -360,7 +378,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                 include: {
                     assignees: { select: { id: true, firstName: true, lastName: true } }
                 }
-            })
+            }) : Promise.resolve([])
         ])
 
         const totalTasks = taskStats.reduce((acc, s) => acc + s._count, 0)
@@ -374,22 +392,24 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             <Page>
                 <PageHeader title={t('hello_name').replace('{name}', (session?.user as any)?.firstName ?? '')} subtitle={t('dashboard_subtitle' as any)} />
 
-                <TotalTiles items={[
-                    { label: t('overall_progress'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: tasksListHref({ teamOnly: tasksTeamOnly }) },
-                    { label: t('bonus'), value: days(Number(salaryRecord?.bonusDays || 0)), note: t('extra_earnings') },
-                    { label: t('payroll_deductions'), value: days(Number(salaryRecord?.deductions || 0)), note: t('total_lost_days') },
-                ]} />
+                {(tasks || pay) && <TotalTiles items={[
+                    ...(tasks ? [{ label: t('overall_progress'), value: `${num(completedTasks)}/${num(totalTasks)}`, note: share(completedTasks, totalTasks), href: tasksListHref({ teamOnly: tasksTeamOnly }) }] : []),
+                    ...(pay ? [
+                        { label: t('bonus'), value: days(Number(salaryRecord?.bonusDays || 0)), note: t('extra_earnings') },
+                        { label: t('payroll_deductions'), value: days(Number(salaryRecord?.deductions || 0)), note: t('total_lost_days') },
+                    ] : []),
+                ]} />}
 
-                <Columns>
-                    <Section title={t('task_distribution')}>
+                {(tasks || leave) && <Columns>
+                    {tasks && <Section title={t('task_distribution')}>
                         {byStatus(taskStats as any, t('task_distribution'))}
-                    </Section>
-                    <Section title={t('credit_overview')}>
+                    </Section>}
+                    {leave && <Section title={t('credit_overview')}>
                         <DayOffCreditDonut remaining={remainingCredit} used={usedCredits} t={t} locale={locale} href="/dashboard/requests?tab=mine&kind=dayOff" />
-                    </Section>
-                </Columns>
+                    </Section>}
+                </Columns>}
 
-                <Section title={t('due_this_week')} action={<SectionLink href="/dashboard/tasks">{t('view_all')}</SectionLink>}>
+                {tasks && <Section title={t('due_this_week')} action={<SectionLink href="/dashboard/tasks">{t('view_all')}</SectionLink>}>
                     {upcomingTasks.length === 0 ? (
                         <Panel><EmptyState icon={CheckCircleIcon} title={t('no_pending_tasks_week')} /></Panel>
                     ) : (
@@ -408,9 +428,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                             ))}
                         </Rows>
                     )}
-                </Section>
+                </Section>}
 
-                <Columns>
+                {(myLatestDayOffRequest || obligations) && <Columns>
                     {myLatestDayOffRequest && (
                         <Section title={t('my_day_off_request')} action={<SectionLink href="/dashboard/requests?tab=mine&kind=dayOff">{t('view_all')}</SectionLink>}>
                             <Rows label={t('my_day_off_request')}>
@@ -426,7 +446,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                             </Rows>
                         </Section>
                     )}
-                    <Section title={modules.label('obligations')} action={<SectionLink href="/dashboard/obligations">{t('view_all')}</SectionLink>}>
+                    {obligations && <Section title={modules.label('obligations')} action={<SectionLink href="/dashboard/obligations">{t('view_all')}</SectionLink>}>
                         {myObligations.length === 0 ? (
                             <Panel><EmptyState icon={ClipboardTextIcon} title={t('no_obligations_assigned')} /></Panel>
                         ) : (
@@ -446,8 +466,8 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
                                 ))}
                             </Rows>
                         )}
-                    </Section>
-                </Columns>
+                    </Section>}
+                </Columns>}
             </Page>
         )
     }

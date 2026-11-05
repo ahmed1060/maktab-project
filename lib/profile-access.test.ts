@@ -3,6 +3,7 @@ import { permissionsOf } from "@/lib/useCan"
 import { withGrants } from "@/lib/permissions/test-actors"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
 import { profileAccess } from "@/lib/profile-access"
+import type { Module } from "@/lib/features/bundles"
 
 /**
  * What a person's profile shows, and offers, to whoever is looking (UI_PLAN.md
@@ -18,7 +19,11 @@ const EMPLOYEE = withGrants({ role: "EMPLOYEE", id: "emp", companyId: "c1" })
 /** A role of the company's own, on an employee's footing, holding these. */
 const custom = (grants: Grants) => ({ role: "EMPLOYEE", id: "hr", companyId: "c1", grants: encodeGrants(grants) })
 type Viewer = { role: string; id: string; companyId: string | null; grants?: string }
-const access = (viewer: Viewer, person: { id: string; role: string }) => profileAccess({ can: permissionsOf(viewer).can, viewer, person })
+/** Whether the company's package includes a module: everything, unless said. */
+const everything = () => true
+const access = (viewer: Viewer, person: { id: string; role: string }, has: (module: Module) => boolean = everything) => profileAccess({ can: permissionsOf(viewer).can, viewer, person, has })
+/** A package without these modules. */
+const without = (...left: Module[]) => (module: Module) => !left.includes(module)
 const someone = (role: string) => ({ id: "p1", role })
 
 describe("a person's pay and day off credit", () => {
@@ -31,6 +36,17 @@ describe("a person's pay and day off credit", () => {
 
     it("are never an Admin's or a Super Admin's, nor anyone's before their role is known", () => {
         for (const role of ["ADMIN", "SUPER_ADMIN", ""]) expect(access(SUPER, someone(role)), role).toMatchObject({ salary: false, dayOffCredit: false })
+    })
+
+    // DESIGN.md §5.5, Page layout: pay is Payroll's, a day off balance Day
+    // off's. They were shown, and changed, whatever the package.
+    it("aren't shown or changed where the company's package doesn't include them", () => {
+        expect(access(ADMIN, someone("EMPLOYEE"), without("PAYROLL"))).toMatchObject({ salary: false, changeSalary: false, dayOffCredit: true, changeDayOffCredit: true })
+        expect(access(ADMIN, someone("EMPLOYEE"), without("DAY_OFF"))).toMatchObject({ salary: true, changeSalary: true, dayOffCredit: false, changeDayOffCredit: false })
+        // Nor on one's own profile.
+        expect(access(EMPLOYEE, { id: "emp", role: "EMPLOYEE" }, without("PAYROLL", "DAY_OFF"))).toMatchObject({ own: true, salary: false, dayOffCredit: false })
+        // The rest of the profile is Core, so it stays.
+        expect(access(ADMIN, someone("EMPLOYEE"), without("PAYROLL", "DAY_OFF"))).toMatchObject({ edit: true, role: true, teamLeader: true, status: true, endContract: true })
     })
 })
 

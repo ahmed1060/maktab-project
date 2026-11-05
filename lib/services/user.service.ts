@@ -22,6 +22,7 @@ import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/te
 import { notifyTeamMoves } from "./team-notify.service"
 import { TeamHandOff, type Rehome } from "./team-handoff.service"
 import { assertStepUp, assertRecentStepUp } from "@/lib/step-up"
+import { sessionHasModule } from "@/lib/features/require"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -36,9 +37,11 @@ export class UserService {
         // Each of these is its own permission, as it is when editing somebody
         // (update() below): creating an account is not a way round them. What
         // the creator may not set is not written, as an edit leaves it; the
-        // form does not offer those fields to them.
-        const salary = can(session.user, "salary.edit") ? input.salary : undefined
-        const canCredit = can(session.user, "dayoff.adjust_credit")
+        // form does not offer those fields to them. Nor what the company's
+        // package doesn't include: pay is Payroll's, a day off balance Day
+        // off's (DESIGN.md §5.5, Page layout).
+        const salary = can(session.user, "salary.edit") && sessionHasModule(session, "PAYROLL") ? input.salary : undefined
+        const canCredit = can(session.user, "dayoff.adjust_credit") && sessionHasModule(session, "DAY_OFF")
         const dayOffCredit = canCredit ? input.dayOffCredit : undefined
         const baseDayOffCredit = canCredit ? input.baseDayOffCredit : undefined
         const teamLeaderId = can(session.user, "employees.assign_team") ? input.teamLeaderId : undefined
@@ -371,8 +374,10 @@ export class UserService {
 
             // Each field is its own permission: changing a salary and changing a
             // leave balance are different acts, and in Part B a company can give
-            // them to different people.
-            if (salary !== undefined && can(session.user, "salary.edit", person)) {
+            // them to different people. Each is its module's too, so neither is
+            // written where the company's package leaves it out, as the profile
+            // doesn't offer it there (DESIGN.md §5.5, Page layout).
+            if (salary !== undefined && can(session.user, "salary.edit", person) && sessionHasModule(session, "PAYROLL")) {
                 // Changing somebody's pay is high-risk (ROLES_PLAN.md §6.15); the
                 // form sends the salary with every save, so only a new figure asks.
                 if (Number(salary) !== Number(regularUser.salary)) await assertStepUp(session, "salary.edit")
@@ -385,7 +390,7 @@ export class UserService {
                 // update has succeeded.
                 updateData.salary = salary
             }
-            if (can(session.user, "dayoff.adjust_credit", person)) {
+            if (can(session.user, "dayoff.adjust_credit", person) && sessionHasModule(session, "DAY_OFF")) {
                 if (dayOffCredit !== undefined) updateData.dayOffCredit = dayOffCredit
                 if (baseDayOffCredit !== undefined) {
                     updateData.baseDayOffCredit = baseDayOffCredit

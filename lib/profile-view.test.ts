@@ -176,7 +176,7 @@ describe("the profile, as the form draws it", () => {
     })
 
     it("asks what may be seen and done in one place", () => {
-        expect(FORM).toContain("const access = profileAccess({ can, viewer, person: { id: userId, role } })")
+        expect(FORM).toContain("const access = profileAccess({ can, has: features.has, viewer, person: { id: userId, role } })")
         // The form's fields are its own since PR 193, each behind the same question.
         const fields = readFileSync("components/profile/ProfileForm.tsx", "utf8")
         for (const gate of ["access.salary && (", "access.dayOffCredit && (", "access.ownTeamLeader && (", "access.teamLeader && (", "access.status && ("]) expect(fields, gate).toContain(gate)

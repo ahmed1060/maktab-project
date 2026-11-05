@@ -370,9 +370,9 @@ describe("the profile, wired to them", () => {
     it("offers End contract on no Super Admin's details", async () => {
         const { profileAccess } = await import("@/lib/profile-access")
         const can = () => true
-        expect(profileAccess({ can, viewer: { id: "sa1", role: "SUPER_ADMIN" }, person: { id: "sa2", role: "SUPER_ADMIN" } }).endContract).toBe(false)
-        expect(profileAccess({ can, viewer: { id: "sa1", role: "SUPER_ADMIN" }, person: { id: "a1", role: "ADMIN" } }).endContract).toBe(true)
-        expect(profileAccess({ can, viewer: { id: "a1", role: "ADMIN" }, person: { id: "e1", role: "EMPLOYEE" } }).endContract).toBe(true)
+        expect(profileAccess({ can, has: () => true, viewer: { id: "sa1", role: "SUPER_ADMIN" }, person: { id: "sa2", role: "SUPER_ADMIN" } }).endContract).toBe(false)
+        expect(profileAccess({ can, has: () => true, viewer: { id: "sa1", role: "SUPER_ADMIN" }, person: { id: "a1", role: "ADMIN" } }).endContract).toBe(true)
+        expect(profileAccess({ can, has: () => true, viewer: { id: "a1", role: "ADMIN" }, person: { id: "e1", role: "EMPLOYEE" } }).endContract).toBe(true)
     })
 })
 
