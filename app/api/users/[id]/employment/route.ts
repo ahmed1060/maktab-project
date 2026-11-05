@@ -9,9 +9,8 @@ import { toMajor } from "@/lib/payroll"
 import { calendarMonth } from "@/lib/time"
 import { prisma } from "@/lib/prisma"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
+import { adminRefusal } from "@/lib/role-errors"
 import { assertStepUp } from "@/lib/step-up"
-
-const ONLY_SUPER_ADMIN = "Only the Super Admin acts on an Admin"
 
 /**
  * Ending a contract, and seeing what it would settle at first.
@@ -19,6 +18,10 @@ const ONLY_SUPER_ADMIN = "Only the Super Admin acts on an Admin"
  * GET previews, POST commits. They are the same calculation over the same
  * date, which is the point: an admin should never be told one figure on the
  * confirmation screen and have a different one recorded.
+ *
+ * Its refusals carry their codes, so the profile says them in the reader's
+ * language, under the date where they're about it (a person's profile, part
+ * 5, PR 195).
  */
 
 /** Preview: what ending on `lastWorkingDay` would settle at, plus this month's timeline. */
@@ -74,10 +77,10 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         // read, or a person with no salary history covering the month they
         // would leave in.
         if (/Not a date/.test(message)) {
-            return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
+            return ApiResponse.refused(400, "lastWorkingDay must be YYYY-MM-DD", "NOT_A_DATE")
         }
         if (/No salary in effect/.test(message)) {
-            return ApiResponse.badRequest(message)
+            return ApiResponse.refused(400, message, "NO_SALARY")
         }
         throw error
     }
@@ -94,8 +97,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (!target) return ApiResponse.notFound("User not found")
     try {
         RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, target)
-    } catch {
-        return ApiResponse.forbidden(ONLY_SUPER_ADMIN)
+    } catch (error) {
+        const refusal = adminRefusal(error)
+        if (refusal) return refusal
+        throw error
     }
     // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
     await assertStepUp(session, "employees.end_contract")
@@ -154,15 +159,17 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         // refusal, with the same names, as the edit form gets.
         const teamRefusal = teamRefusalResponse(error)
         if (teamRefusal) return teamRefusal
-        if (message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
+        // The company's last Admin at work, with its code, as a role's is.
+        const refusal = adminRefusal(error)
+        if (refusal) return refusal
         if (/Not a date/.test(message)) {
-            return ApiResponse.badRequest("lastWorkingDay must be YYYY-MM-DD")
+            return ApiResponse.refused(400, "lastWorkingDay must be YYYY-MM-DD", "NOT_A_DATE")
         }
         if (/No salary in effect/.test(message)) {
-            return ApiResponse.badRequest(message)
+            return ApiResponse.refused(400, message, "NO_SALARY")
         }
         if (message === "USER_HAS_NO_COMPANY") {
-            return ApiResponse.badRequest("This account belongs to no company, so there is nobody to settle with.")
+            return ApiResponse.refused(400, "This account belongs to no company, so there is nobody to settle with.", "USER_HAS_NO_COMPANY")
         }
         throw error
     }

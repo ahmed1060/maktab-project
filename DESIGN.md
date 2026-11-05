@@ -590,6 +590,18 @@ These are built once, in the building-blocks PR, and every page uses them
     can't be undone. Once confirmed, it stays open until the work is done:
     Cancel is off, the main button is busy, and Escape or a click outside
     does nothing, since what was sent can't be called off.
+  - One that records money owed, such as ending a contract, shows what
+    it would record before it does: the statement's own lines, totals and
+    notes (Document, below), under a heading of its own, as the statement
+    will have them. While it's worked out for what's picked, such as the
+    last working day, it says so, the last figures staying until the next
+    are in, and the main button waits for its own: the figure confirmed is
+    the figure recorded. One that didn't load says so, with Try again.
+  - One that asks who takes over, such as a leader's team when they stop
+    leading it, names whom it's about, each in a list, then who takes
+    them, with no one among the choices. Answered, it stays open until the
+    change is sent, as a confirmation does, and why the one picked can't
+    take them is said under the choice.
 - **Selection bar:** when items in a list are picked with their
   checkboxes, a panel above the list says how many are picked and holds
   what can be done to all of them, with a quiet "Clear selection" on the
@@ -1132,3 +1144,10 @@ changed:
   the first field that's wrong, stops below the sticky header (§5.3, a form
   on a page of its own). Told what's wrong, a field at the window's top
   edge took the focus where it was, under the header.
+- **2026-11-05:** A dialog that shows what it would record before it does,
+  and one that asks who takes over (§5.5, Dialog), for ending a contract
+  and handing over a leader's team. Each was a window of its own making:
+  the settlement in a sunk box with a heading in small capitals and
+  colours typed in, its button taking a date whose figures weren't on
+  screen yet, and the hand-off closing before the change was sent, its
+  refusal a toast, in English.

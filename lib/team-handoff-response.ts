@@ -24,8 +24,13 @@ export function teamRefusalResponse(error: any) {
             code: 'LEADER_HAS_REPORTS',
         }, { status: 400 })
     }
-    const message = TEAM_REFUSALS[error?.message as keyof typeof TEAM_REFUSALS]
-    return message ? ApiResponse.badRequest(message) : null
+    // With their codes, so the hand-off says under the leader picked why that
+    // one can't take the team, in the reader's language (a person's profile,
+    // part 5, PR 195).
+    const code = error?.message
+    return typeof code === 'string' && Object.hasOwn(TEAM_REFUSALS, code)
+        ? ApiResponse.refused(400, TEAM_REFUSALS[code as keyof typeof TEAM_REFUSALS], code)
+        : null
 }
 
 const TEAM_REFUSALS = {

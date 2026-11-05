@@ -18,7 +18,8 @@ const SETTLEMENT = stripComments(readFileSync("lib/services/settlement.service.t
 const RUN_SERVICE = stripComments(readFileSync("lib/services/payroll-run.service.ts", "utf8"))
 const SETTLEMENT_API = stripComments(readFileSync("app/api/settlements/[id]/route.ts", "utf8"))
 const STATEMENT = readFileSync("app/(dashboard)/dashboard/documents/settlement/[id]/page.tsx", "utf8")
-const MODAL = readFileSync("components/EndContractModal.tsx", "utf8")
+// Ending a contract, on the building blocks since a person's profile, part 5 (PR 195).
+const MODAL = readFileSync("components/profile/EndContractDialog.tsx", "utf8")
 const REGISTER = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
 const DEBTS_API = stripComments(readFileSync("app/api/users/[id]/debts/route.ts", "utf8"))
 // The page and its Salary tab, its own file since PR 157.

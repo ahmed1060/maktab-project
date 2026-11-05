@@ -100,7 +100,6 @@
      counterpart rather than being collapsed into the nearest neighbour. */
   --ok-bg-strong: #bbf7d0;
   --ok-fg-deep: #065f46;
-  --ok-solid-alt: #22c55e;
   --ok-border: #86efac;
 
   --danger-border-firm: #fca5a5;
@@ -1165,7 +1164,6 @@ input::-webkit-credentials-auto-fill-button {
     --ok-fg: #6fdc9b;
     --ok-bg-strong: #12402a;
     --ok-fg-deep: #9beec0;
-    --ok-solid-alt: #35c97f;
     --ok-border: #1c5c3a;
 
     --danger-bg: #3a161a;
