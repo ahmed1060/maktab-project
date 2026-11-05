@@ -193,7 +193,8 @@ describe("the colour settings' hints", () => {
         // Drawn by its steps, on the building blocks, since the sign-in
         // page's part 1: the page itself draws nothing of its own.
         { file: "components/sign-in/CredentialsStep.tsx", en: "the sign-in page", ar: "صفحة تسجيل الدخول", hints: ["brand_colour_system_hint"] },
-        { file: "components/DashboardShell.tsx", en: "the side bar", ar: "الشريط الجانبي", hints: ["brand_colour_company_hint", "brand_colour_system_hint"] },
+        // Its own file since it moved onto the building blocks (DESIGN.md §5.1).
+        { file: "components/SideBar.tsx", en: "the side bar", ar: "الشريط الجانبي", hints: ["brand_colour_company_hint", "brand_colour_system_hint"] },
     ]
     const languages = [
         { dict: en as Record<string, string>, lang: "en" as const, keeps: /take it: (.*) keep Nizmo's indigo/ },

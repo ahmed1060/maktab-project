@@ -158,8 +158,8 @@ describe("the company settings tabs", () => {
             const sidebarLink = { href: new URL("/dashboard/tasks", here).href, target: "", hasAttribute: () => false }
             expect(startsNavigation(click, sidebarLink, here)).toBe(true)
             expect(startsNavigation({ ...click, defaultPrevented: true }, sidebarLink, here)).toBe(false)
-            // The sidebar's links close it in their own click.
-            expect(readFileSync("components/DashboardShell.tsx", "utf8")).toContain("onClick={() => isMobile && setIsSidebarOpen(false)}")
+            // The sidebar's links close its drawer in their own click (components/SideBar.tsx).
+            expect(readFileSync("components/SideBar.tsx", "utf8")).toContain("onClick={asDialog ? onClose : undefined}")
         })
 
         it("is wired to the tabs, and the back link is a link", () => {

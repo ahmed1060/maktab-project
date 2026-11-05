@@ -40,3 +40,25 @@ export function Person({ names, moreLabel }: { names: string[]; moreLabel?: (n: 
         </span>
     )
 }
+
+/** The first letter of a name, in whatever script it's written: a company's mark without a logo. */
+export function firstLetter(name: string): string {
+    return (Array.from(name.trim())[0] ?? '').toLocaleUpperCase()
+}
+
+/**
+ * A company's mark (DESIGN.md §5.1), at the top of the side bar and in its
+ * preview on the Branding tab: its logo on its light plate, or else the
+ * first letter of its name on a brand tile. Always beside the company's
+ * name, so it's hidden from screen readers.
+ */
+export function CompanyMark({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+    return (
+        <span className="ui-company-mark" aria-hidden="true">
+            {logoUrl
+                // eslint-disable-next-line @next/next/no-img-element -- next/image would need every company's storage host in next.config, for one small image
+                ? <img src={logoUrl} alt="" width={32} height={32} className="ui-logo-plate" />
+                : <span className="ui-company-letter">{firstLetter(name)}</span>}
+        </span>
+    )
+}

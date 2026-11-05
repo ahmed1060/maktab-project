@@ -84,7 +84,8 @@ describe("the app links to them", () => {
     // user signs in on, and the shell every signed-in page renders inside.
     const LINK_SITES = [
         { name: "the sign-in screen", file: "components/sign-in/SignInScreen.tsx" },
-        { name: "the dashboard shell", file: "components/DashboardShell.tsx" },
+        // At the side bar's foot (DESIGN.md §5.1).
+        { name: "the side bar", file: "components/SideBar.tsx" },
     ]
 
     it.each(LINK_SITES.map(s => [s.name, s.file]))("%s links to both", (_name, file) => {

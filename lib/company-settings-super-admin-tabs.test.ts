@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
 import { MODULES, MODULE_KEYS } from "./modules"
+import { CheckSquareIcon, HandshakeIcon } from "@phosphor-icons/react/ssr"
+import { Icon } from "@/components/ui"
 
 /**
  * Company settings on the building blocks, part 4a (UI_PLAN.md §5 step 5):
@@ -28,6 +30,15 @@ vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
 vi.mock("react-dom", async (importOriginal) => ({ ...(await importOriginal<typeof import("react-dom")>()), createPortal: (node: unknown) => node }))
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
+/** A side bar icon as the building blocks draw it (DESIGN.md §6). */
+const icon = (glyph: typeof CheckSquareIcon, size = 18) => renderToStaticMarkup(h(Icon, { icon: glyph, size }))
+/** What the button named `label` holds. */
+function inside(html: string, label: string): string {
+    const at = html.indexOf(`aria-label="${esc(label)}"`)
+    expect(at, label).toBeGreaterThan(-1)
+    const open = html.indexOf(">", at) + 1
+    return html.slice(open, html.indexOf("</button>", open))
+}
 
 function render(element: Parameters<typeof renderToStaticMarkup>[0], locale: "en" | "ar" = "en") {
     state.locale = locale
@@ -83,17 +94,18 @@ describe("the Modules tab", () => {
             expect(html, key).toContain(`aria-label="${esc(en.module_icon_choose_for.replace("{name}", name))}"`)
             expect(html, key).toMatch(new RegExp(`<input[^>]*name="label-${key}"`))
         }
-        // The company's own name and icon, where it has them; the default icon otherwise.
+        // The company's own name and icon, where it has them; the side bar's icon otherwise (DESIGN.md §6).
         expect(html).toMatch(/<input[^>]*name="label-clients"[^>]*value="Vendors"/)
-        expect(html).toMatch(new RegExp(`aria-label="${esc(en.module_icon_choose_for.replace("{name}", en.clients))}"[^>]*>🚚</button>`))
-        expect(html).toMatch(new RegExp(`aria-label="${esc(en.module_icon_choose_for.replace("{name}", en.tasks))}"[^>]*>${MODULES.tasks.icon}</button>`))
+        expect(inside(html, en.module_icon_choose_for.replace("{name}", en.clients))).toBe("🚚")
+        expect(inside(html, en.module_icon_choose_for.replace("{name}", en.tasks))).toBe(icon(CheckSquareIcon, 20))
     })
 
-    it("shows the side bar as it would be, on the side bar's own ground, its icons hidden from screen readers", async () => {
+    it("shows the side bar as it would be, in its own look, its icons hidden from screen readers", async () => {
         const html = await modules()
         expect(html).toContain(`<p class="ui-label">${en.module_names_preview}</p>`)
         expect(html).toContain('<div class="ui-sidebar-preview">')
         expect(html).toContain(`<span class="ui-sidebar-preview-item"><span aria-hidden="true">🚚</span><bdi>Vendors</bdi></span>`)
+        expect(html).toContain(`<span class="ui-sidebar-preview-item">${icon(CheckSquareIcon)}<bdi>${en.tasks}</bdi></span>`)
         expect(html).toContain(`<p class="ui-sidebar-preview-group">${en.nav_group_work}</p>`)
     })
 
@@ -107,7 +119,7 @@ describe("the Modules tab", () => {
 
     it("picks an icon in the building blocks' dialog: the palette, any emoji pasted, and the default", async () => {
         const { IconDialog } = await import("@/components/CompanyModulesCard")
-        const html = render(h(IconDialog, { name: "Clients", current: "🚚", fallback: "🤝", onPick: () => {}, onClose: () => {} }))
+        const html = render(h(IconDialog, { name: "Clients", current: "🚚", fallback: HandshakeIcon, onPick: () => {}, onClose: () => {} }))
         expect(html).toContain('role="dialog"')
         expect(html).toContain(`class="ui-dialog-title">${en.module_icon_title.replace("{name}", "Clients")}</h2>`)
         expect(html).toContain('<div class="ui-emoji-grid">')
@@ -115,7 +127,11 @@ describe("the Modules tab", () => {
         expect(html).toMatch(/<button type="button" class="ui-emoji" aria-pressed="true">🚚<\/button>/)
         expect(html).toMatch(/<button type="button" class="ui-emoji" aria-pressed="false">📊<\/button>/)
         expect(html).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.module_icon_custom}</label>`))
-        expect(html).toContain(`${en.module_icon_reset} (🤝)</button>`)
+        // The side bar's own, drawn beside its words: an emoji's no longer the default.
+        expect(html).toContain(`<button type="button" class="ui-btn ui-btn-secondary">${icon(HandshakeIcon)}${en.module_icon_reset}</button>`)
+        // Nothing of the palette chosen while the company has none of its own.
+        const none = render(h(IconDialog, { name: "Clients", current: null, fallback: HandshakeIcon, onPick: () => {}, onClose: () => {} }))
+        expect(none).not.toContain('aria-pressed="true"')
         expect(html).toMatch(new RegExp(`<button type="submit" class="ui-btn ui-btn-primary"[^>]*>${en.module_icon_use}</button>`))
     })
 
@@ -152,20 +168,24 @@ describe("nothing of the old cards is left", () => {
 })
 
 describe("found in the browser and the audit (company settings part 4a)", () => {
-    it("marks the icon in use in the dialog, the module's own among them, and picking that one sets nothing", async () => {
-        // With no icon of its own chosen, nothing in the palette was marked.
-        expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain("current={icons[pickerFor] || MODULES[pickerFor].icon}")
+    it("marks the company's own icon in the dialog, and any emoji picked is theirs, as the module's own isn't one", async () => {
+        // The module's own is the side bar's (DESIGN.md §6): an emoji that was
+        // its default, as 🚚 was Clients', is now the company's choice too.
+        const source = readFileSync("components/CompanyModulesCard.tsx", "utf8")
+        expect(source).toContain("current={icons[pickerFor] ?? null}")
+        expect(source).not.toContain("MODULES[pickerFor].icon")
         const { overrideFor } = await import("@/components/CompanyModulesCard")
-        expect(overrideFor("clients", MODULES.clients.icon)).toBeNull()
-        expect(overrideFor("clients", null)).toBeNull()
-        expect(overrideFor("clients", "🏗️")).toBe("🏗️")
+        expect(overrideFor("🚚")).toBe("🚚")
+        expect(overrideFor(null)).toBeNull()
+        expect(overrideFor("🏗️")).toBe("🏗️")
     })
 
     it("offers the module's own icon beside the palette, leaving the dialog's buttons to Cancel and Use this emoji", async () => {
         // In the dialog's buttons it pushed Use this emoji onto a line of its own.
         const { IconDialog } = await import("@/components/CompanyModulesCard")
-        const html = render(h(IconDialog, { name: "Clients", current: "🚚", fallback: "🤝", onPick: () => {}, onClose: () => {} }))
-        expect(html).toMatch(new RegExp(`<div class="ui-emoji-grid">[^]*?</div><p><button type="button" class="ui-btn ui-btn-secondary"[^>]*>${en.module_icon_reset} \\(🤝\\)</button></p><form`))
+        const html = render(h(IconDialog, { name: "Clients", current: "🚚", fallback: HandshakeIcon, onPick: () => {}, onClose: () => {} }))
+        const reset = `<p><button type="button" class="ui-btn ui-btn-secondary">${icon(HandshakeIcon)}${en.module_icon_reset}</button></p><form`
+        expect(html).toMatch(new RegExp(`<div class="ui-emoji-grid">[^]*?</div>${reset.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`))
         expect(html).toMatch(new RegExp(`<div class="ui-dialog-actions"><button type="button" class="ui-btn ui-btn-secondary"[^>]*>${en.cancel}</button><button type="submit" class="ui-btn ui-btn-primary"[^>]*>${en.module_icon_use}</button></div>`))
     })
 

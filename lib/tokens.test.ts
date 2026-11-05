@@ -169,7 +169,7 @@ describe("a token is used in the role it was defined for", () => {
     const code = (file: string) => stripComments(readFileSync(file, "utf8"))
     const CSS_CODE = stripComments(CSS)
 
-    const SURFACE_ONLY = ["--panel-", "--veil-", "--sidebar-bg", "--segment-raised", "--logo-plate"]
+    const SURFACE_ONLY = ["--panel-", "--veil-", "--segment-raised", "--logo-plate"]
 
     it("never paints text with a surface or elevation token", () => {
         const offenders: string[] = []
@@ -186,14 +186,16 @@ describe("a token is used in the role it was defined for", () => {
         expect(offenders, `surface token used as a colour:\n${offenders.join("\n")}`).toEqual([])
     })
 
-    it("gives the sidebar its own foreground, declared once for both themes", () => {
-        // The sidebar is dark in light mode too, which is why --logo-plate is
-        // also theme-independent. A dark value for these would be the original
-        // bug wearing a better name.
-        for (const token of ["--sidebar-fg", "--sidebar-fg-strong"]) {
+    it("keeps no tokens of the old dark side bar's", () => {
+        // It was dark in light mode too, so it had its own ground, text, ring
+        // and accent, declared once for both themes. The side bar is on the
+        // building blocks' tokens now, light on --panel (DESIGN.md §5.1).
+        for (const token of ["--sidebar-bg", "--sidebar-fg", "--sidebar-fg-strong", "--sidebar-ring", "--sidebar-accent"]) {
             const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
-            expect(declarations, token).toHaveLength(1)
+            expect(declarations, token).toHaveLength(0)
         }
+        const users = SOURCES.filter(file => code(file).includes("var(--sidebar-"))
+        expect(users, "still drawn with the old side bar's tokens").toEqual([])
     })
 
     it("gives the raised half of a toggle a value in each theme", () => {

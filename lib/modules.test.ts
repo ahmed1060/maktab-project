@@ -43,13 +43,15 @@ describe("the module registry", () => {
         }
     })
 
-    it("defines a label key, an icon and an href for every module", () => {
+    it("defines a label key and an href for every module, and no icon of its own", () => {
+        // Each module's icon is the side bar's (lib/side-bar-icons.ts, DESIGN.md §6),
+        // which the server, reading this registry, has no use for.
         for (const key of MODULE_KEYS) {
             const def = MODULES[key]
             expect(def, key).toBeDefined()
             expect(def.labelKey, key).toBeTruthy()
-            expect(def.icon, key).toBeTruthy()
             expect(def.href.startsWith("/dashboard"), key).toBe(true)
+            expect(def, key).not.toHaveProperty("icon")
         }
     })
 
@@ -59,13 +61,6 @@ describe("the module registry", () => {
             expect(en, `${key} → ${labelKey} missing in en`).toHaveProperty(labelKey)
             expect(ar, `${key} → ${labelKey} missing in ar`).toHaveProperty(labelKey)
         }
-    })
-
-    it("gives every module a distinct icon", () => {
-        // Two modules sharing an emoji makes the sidebar unreadable at a glance,
-        // which is the only thing an icon is for.
-        const icons = MODULE_KEYS.map(k => MODULES[k].icon)
-        expect(new Set(icons).size).toBe(icons.length)
     })
 
     it("is the only place the sidebar's module entries are written", () => {
@@ -146,7 +141,9 @@ describe("resolving a module's name and icon", () => {
     it("falls back to the translated default when nothing is overridden", () => {
         expect(resolveModuleLabel("clients", {}, t)).toBe(en.clients)
         expect(resolveModuleLabel("clients", null, t)).toBe(en.clients)
-        expect(resolveModuleIcon("clients", null)).toBe("🚚")
+        // No icon of the company's own: the side bar draws the module's (lib/side-bar-icons.ts).
+        expect(resolveModuleIcon("clients", null)).toBeNull()
+        expect(resolveModuleIcon("clients", {})).toBeNull()
     })
 
     it("prefers the company's own name and icon", () => {
@@ -158,7 +155,7 @@ describe("resolving a module's name and icon", () => {
         // parseModuleOverrides already drops these, but the resolvers are also
         // called with maps straight off a form, which has not.
         expect(resolveModuleLabel("records", { records: "" }, t)).toBe(en.records)
-        expect(resolveModuleIcon("records", { records: "" })).toBe("🗂️")
+        expect(resolveModuleIcon("records", { records: "" })).toBeNull()
     })
 
     it("renames a module in every locale, because a name is not a translation", () => {
@@ -186,7 +183,7 @@ describe("modulesFrom", () => {
             key: "tasks",
             href: "/dashboard/tasks",
             label: en.tasks,
-            icon: "✅",
+            icon: null,
         })
     })
 
@@ -194,7 +191,7 @@ describe("modulesFrom", () => {
         const modules = modulesFrom(undefined, t)
         for (const key of MODULE_KEYS) {
             expect(modules.label(key)).toBe((en as Record<string, string>)[MODULES[key].labelKey])
-            expect(modules.icon(key)).toBe(MODULES[key].icon)
+            expect(modules.icon(key)).toBeNull()
         }
     })
 
@@ -203,7 +200,7 @@ describe("modulesFrom", () => {
         // or written by anything other than this app — must not put the word
         // "Clients" where a 1.4rem glyph belongs.
         const modules = modulesFrom({ moduleIcons: { clients: "VEND" } }, t)
-        expect(modules.icon("clients")).toBe("🚚")
+        expect(modules.icon("clients")).toBeNull()
     })
 })
 

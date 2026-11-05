@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Button, Card, Dialog } from '@/components/ui'
+import { Button, Card, CompanyMark, Dialog } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { MAX_LOGO_BYTES } from '@/lib/company-logo'
@@ -85,19 +85,15 @@ export default function CompanyLogoCard({ companyId, companyName, logoUrl, onCha
         <Card title={t('company_logo_setting')}>
             <p className="ui-card-note">{t('company_logo_setting_hint')}</p>
 
-            {/* The preview is the side bar's own header, on its own dark
-                ground: a logo judged against a white settings card tells you
-                nothing about how it will read where it appears. That is why
-                the light plate it's drawn on is shown here rather than being
-                a surprise after saving. */}
+            {/* The preview is the side bar's own top, its mark and name
+                (DESIGN.md §5.1): the same mark, on the light plate it's drawn
+                on, which is shown here rather than being a surprise after
+                saving. */}
             <div className="ui-logo-preview-wrap">
                 <p className="ui-label">{t('company_logo_preview')}</p>
                 <div className="ui-logo-preview">
-                    {logoUrl
-                        // eslint-disable-next-line @next/next/no-img-element -- next/image would need every company's storage host in next.config, for one small image
-                        ? <img src={logoUrl} alt="" width={32} height={32} className="ui-logo-plate" />
-                        : <span className="ui-logo-mark" aria-hidden="true">🚀</span>}
-                    <span className="ui-logo-preview-name"><bdi>{companyName}</bdi></span>
+                    <CompanyMark name={companyName} logoUrl={logoUrl} />
+                    <span className="ui-side-name"><bdi>{companyName}</bdi></span>
                 </div>
                 {!logoUrl && <p className="ui-card-note">{t('company_logo_none')}</p>}
                 <p className="ui-card-note">{t('company_logo_plate_note')}</p>

@@ -35,9 +35,11 @@ interface DashboardHeaderProps {
         gender: string
     }
     onMenuClick?: () => void
+    /** Whether the side bar's drawer it opens is open, on a phone (DESIGN.md §5.1). */
+    menuOpen?: boolean
 }
 
-export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderProps) {
+export default function DashboardHeader({ user, onMenuClick, menuOpen = false }: DashboardHeaderProps) {
     const pathname = usePathname()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -329,6 +331,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
                 {onMenuClick && (
                     <button aria-label={t('open_menu' as any)}
+                        aria-haspopup="dialog"
+                        aria-expanded={menuOpen}
                         onClick={onMenuClick}
                         style={{
                             background: 'transparent',

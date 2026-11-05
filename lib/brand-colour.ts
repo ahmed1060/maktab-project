@@ -288,22 +288,12 @@ function fromLch(lch: Lch): string {
     return hex(linearOf({ ...lch, c }).map(v => fromLinear(Math.min(1, Math.max(0, v)))) as Rgb)
 }
 
-/** `top` at `alpha` over `under`: what a see-through ground looks like. */
-function over(top: Rgb, alpha: number, under: string): string {
-    const u = rgb(under)
-    return hex([0, 1, 2].map(i => top[i] * alpha + u[i] * (1 - alpha)) as Rgb)
-}
-
 /** A shade at least this light keeps its lightness (a ground, a pale tint, light text on dark). */
 const PALE = 0.75
 
 /** The older pages' grounds (app/globals.css --surface, --surface-subtle, --surface-sunk). */
 const OLD_LIGHT = ['#ffffff', '#f8fafc', '#f1f5f9']
 const OLD_DARK = ['#161b22', '#1c2128', '#21262d', '#0b0f14']
-/** The side bar, dark in both themes (--sidebar-bg), over the page. */
-const SIDEBAR_LIGHT: Rgb = [15, 23, 42], SIDEBAR_LIGHT_ALPHA = 0.65
-const SIDEBAR_DARK: Rgb = [9, 12, 17], SIDEBAR_DARK_ALPHA = 0.78
-const OLD_DARK_PAGE = '#0b0f14'
 /** The map's tiles are light in both themes (components/PointPicker.tsx). */
 const MAP = ['#ffffff']
 
@@ -316,7 +306,7 @@ const MAP = ['#ffffff']
  * - decor: a tint in a gradient, held to nothing.
  */
 type Role = 'fill' | 'text' | 'edge' | 'ground' | 'decor'
-type Behind = 'pages' | 'sidebar' | 'map'
+type Behind = 'pages' | 'map'
 
 /**
  * The older pages' shades that follow the brand colour, with their values
@@ -338,10 +328,6 @@ export const OLD_PAGE_SHADES = [
     // A highlight bar (an obligation's card), held as text as it was a link's colour too.
     { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'text' },
     { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
-    { token: '--sidebar-ring', light: '#c7d2fe', role: 'edge', behind: 'sidebar' },
-    // The end of the company name's gradient, which starts from white: text on
-    // the side bar, the same in both themes.
-    { token: '--sidebar-accent', light: '#a5b4fc', role: 'text', behind: 'sidebar' },
     { token: '--page-bg', light: '#eef2ff', lightOnly: true, role: 'ground' },
 ] as const satisfies readonly { token: string; light: string; dark?: string; role: Role; behind?: Behind; lightOnly?: boolean }[]
 
@@ -372,9 +358,6 @@ const TEXT_TINTS = [0.10, 0.20]
  */
 function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: string, primary?: string): string[] {
     if (behind === 'map') return MAP
-    // The side bar's shades are the same in both themes, so each is held on
-    // the side bar as each theme draws it.
-    if (behind === 'sidebar') return [over(SIDEBAR_LIGHT, SIDEBAR_LIGHT_ALPHA, page), over(SIDEBAR_DARK, SIDEBAR_DARK_ALPHA, OLD_DARK_PAGE)]
     const grounds = theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
     const panel = grounds[0]
     return primary ? [...grounds, ...TEXT_TINTS.map(share => mix(primary, panel, share))] : grounds
@@ -453,7 +436,7 @@ export function oldPageShades(picked: string | null | undefined): { light: Recor
                 }
             } else {
                 // Darker on a light ground or under white text; lighter on a dark one.
-                const towardsLight = role !== 'fill' && (theme === 'dark' || behind === 'sidebar')
+                const towardsLight = role !== 'fill' && theme === 'dark'
                 c = stepUntil(follow(value, base), ok, towardsLight ? lighter : darker)
             }
             if (theme === 'light') light[shade.token] = c
