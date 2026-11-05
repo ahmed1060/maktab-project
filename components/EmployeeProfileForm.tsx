@@ -640,6 +640,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                         userId={userId}
                         name={name}
                         status={status}
+                        leadsATeam={role === 'TEAM_LEADER'}
                         today={today}
                         onClose={() => setShowEndContract(false)}
                         onDone={() => { setReloadKey(k => k + 1); router.refresh() }}

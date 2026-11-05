@@ -337,7 +337,8 @@ describe("the profile, wired to them", () => {
         const form = FORM()
         expect(form).toContain("import { EndContractDialog } from './profile/EndContractDialog'")
         expect(form).toContain("const today = calendarDateStr(openedAt, companyZone ?? DEFAULT_TIME_ZONE)")
-        expect(form).toMatch(/<EndContractDialog[\s\S]{0,200}today=\{today\}/)
+        expect(form).toMatch(/<EndContractDialog[\s\S]{0,300}today=\{today\}/)
+        expect(form).toMatch(/<EndContractDialog[\s\S]{0,300}leadsATeam=\{role === 'TEAM_LEADER'\}/)
         expect(form).not.toMatch(/EndContractModal|TeamHandOffModal/)
     })
 
@@ -354,7 +355,10 @@ describe("the profile, wired to them", () => {
     it("asks ending a contract's hand-off in the same dialog, with leaders asked for only then", () => {
         const src = DIALOG()
         expect(src).toMatch(/<TeamHandOffDialog[\s\S]{0,80}leaderId=\{userId\}/)
-        expect(src).toContain("useSWR(handoff ? TEAM_LEADERS : null, fetcher)")
+        // Asked for as it opens, for a team leader, who may have a team: asked for
+        // only once the question came, they were still loading as it was asked,
+        // the picker off and the focus on Cancel the change (browser flows).
+        expect(src).toContain("useSWR(handoff || leadsATeam ? TEAM_LEADERS : null, fetcher)")
         // No answer on the first attempt, so the server can ask.
         expect(src).toContain("...(reassignTo !== undefined && { reassignReportsTo: reassignTo })")
         expect(src).toContain("const handedOff = reassignTo !== undefined ? handoffRefusal(answer) : null")

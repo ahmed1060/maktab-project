@@ -4095,3 +4095,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     redrawn without a word to a screen reader. They're said once they're
     in, and not while the last date's stand in for them (web interface
     audit).
+  - Asked where a leader's team goes as their contract ended, the leaders
+    were still loading, so the picker was off and the focus was on Cancel
+    the change. For a Team Leader, they're asked for as the dialog opens,
+    so the picker has the focus (browser flows).

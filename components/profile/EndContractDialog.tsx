@@ -41,11 +41,13 @@ function Named({ text, name }: { text: string; name: string }) {
  * otherwise, in the reader's language. A leader with a team is asked where it
  * goes first, in the hand-off, and the contract ends with the answer.
  */
-export function EndContractDialog({ userId, name, status, today, onClose, onDone }: {
+export function EndContractDialog({ userId, name, status, leadsATeam = false, today, onClose, onDone }: {
     userId: string
     name: string
     /** ARCHIVED reinstates instead. */
     status: string
+    /** They're a Team Leader, so a team may be theirs to hand over. */
+    leadsATeam?: boolean
     /** Today in the company's calendar: the leaving date offered first, and what's past. */
     today: string
     onClose: () => void
@@ -65,9 +67,11 @@ export function EndContractDialog({ userId, name, status, today, onClose, onDone
     const [busy, setBusy] = useState(false)
     // Set when the server says they still lead a team: who's in it, for the hand-off to ask about.
     const [handoff, setHandoff] = useState<Person[] | null>(null)
-    // Who could take them, asked for only once the question comes up; after
-    // its three tries, a picker left with only Leave them unassigned.
-    const { data: leadersAnswer, error: leadersError } = useSWR(handoff ? TEAM_LEADERS : null, fetcher)
+    // Who could take them, asked for as it opens for a Team Leader, so they're
+    // there when the question comes, and the picker has the focus; for anyone
+    // else only if it comes. After its three tries, a picker left with only
+    // Leave them unassigned.
+    const { data: leadersAnswer, error: leadersError } = useSWR(handoff || leadsATeam ? TEAM_LEADERS : null, fetcher)
     const leaders: Leader[] | null = leadersError ? [] : leadersAnswer ? (leadersAnswer?.data?.data ?? []) : null
 
     useEffect(() => {
