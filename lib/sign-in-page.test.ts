@@ -356,6 +356,12 @@ describe("the words", () => {
         expect(en.sign_in_back).toBe("Back to sign in")
     })
 
+    // The app never speaks as "we": it says what was done, as "Couldn't load
+    // your trusted devices" does (web interface audit).
+    it("speak to the reader, never as \"we\"", () => {
+        for (const key of keys) expect(en[key], key).not.toMatch(/\bwe\b/i)
+    })
+
     it("ask nothing of anyone in the masculine, in Arabic", () => {
         // As words of their own: "المحاولة" asks nothing, "حاول" does.
         for (const key of keys) {

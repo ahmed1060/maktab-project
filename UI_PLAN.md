@@ -4156,3 +4156,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The email or username is sent without spaces at its ends, such as one
     a phone's keyboard adds after a suggestion, which made it "not right"
     (found reading the code).
+  - The words spoke as "we", which the app never does: "the code we
+    emailed you", "We couldn't sign you in". They say what was done, as
+    "Couldn't load your trusted devices" does (web interface audit).
