@@ -226,6 +226,10 @@ describe("the side bar's look (components/ui/ui.css)", () => {
         expect(phone).toContain("position: fixed;")
         expect(phone).toContain("inset-inline-start: 0;")
         expect(phone).toContain("inline-size: min(296px, calc(100vw - 48px));")
+        // The window's height, its foot in view: aligned to the start, as it is
+        // beside the page, a fixed box is only as tall as its content (found in
+        // the browser: 955px on a 780px phone).
+        expect(phone).toMatch(/\.ui-side-bar \{[^}]*inset-block: 0;[^}]*align-self: stretch;/)
         // Closed, it isn't drawn: neither Tab nor a screen reader goes through it.
         expect(phone).toMatch(/\.ui-side-bar \{[^}]*transform: translateX\(-100%\);[^}]*visibility: hidden;/)
         expect(phone).toMatch(/\[dir="rtl"\] \.ui-side-bar \{\s*transform: translateX\(100%\);\s*\}/)
@@ -240,6 +244,12 @@ describe("the side bar's look (components/ui/ui.css)", () => {
         expect(phone).toMatch(/\.ui-side-item > \.ui-icon \{[^}]*inline-size: 20px;[^}]*block-size: 20px;/)
         expect(phone).toMatch(/\.ui-side-legal a \{[^}]*padding-block: var\(--space-3\);/)
         expect(phone).toMatch(/\.ui-side-close \{[^}]*inline-size: 44px;[^}]*block-size: 44px;/)
+    })
+
+    it("answers a tap at once, as the building blocks' other controls do (web interface audit)", () => {
+        const touch = css.slice(0, css.indexOf("touch-action: manipulation;"))
+        const list = touch.slice(touch.lastIndexOf("}") + 1)
+        for (const selector of [".ui-side-item", ".ui-side-close", ".ui-side-legal a"]) expect(list, selector).toContain(selector)
     })
 
     it("slides over 200ms, and at once with reduce motion on (DESIGN.md §8)", () => {

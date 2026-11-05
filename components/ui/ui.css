@@ -36,7 +36,10 @@
 .ui-choice,
 .ui-check-target,
 .ui-date-trigger,
-.ui-swatch-option {
+.ui-swatch-option,
+.ui-side-item,
+.ui-side-close,
+.ui-side-legal a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -3429,6 +3432,7 @@ html[lang="ar"] .ui-empty-title {
     position: fixed;
     inset-block: 0;
     inset-inline-start: 0;
+    align-self: stretch;
     z-index: 50;
     inline-size: min(296px, calc(100vw - 48px));
     block-size: auto;
@@ -3442,7 +3446,10 @@ html[lang="ar"] .ui-empty-title {
   [dir="rtl"] .ui-side-bar {
     transform: translateX(100%);
   }
-  /* After the right to left rule, so it wins there too. Shown at once and
+  /* Stretched between its insets, the window's height, whatever its
+     content's: aligned to the start, as it is beside the page, a fixed box
+     is only as tall as what's in it, and its foot fell off the screen.
+     After the right to left rule, so it wins there too. Shown at once and
      slid in; slid out, then hidden, so neither Tab nor a screen reader goes
      through its links while it's closed. */
   .ui-side-bar[data-open="true"] {
