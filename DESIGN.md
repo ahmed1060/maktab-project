@@ -832,6 +832,15 @@ These are built once, in the building-blocks PR, and every page uses them
     screen readers hear it. The primary button can still be pressed while
     an account is held back, as an Admin may unlock it before the time
     is up.
+  - "Forgot your password?" is two steps in the same card: the account's
+    email, then the code sent to it with the new password, asked twice, as
+    Change password asks it, its hint saying how long it must be. Neither
+    says whether the email is on an account: the second says a code was
+    sent if it is, naming the email as typed. Reset, it's back to signing
+    in, the email filled in and the password focused, saying the password
+    was reset.
+  - Too many tries to reset a password are counted down above the primary
+    button, as an account held back is, until it can be tried again.
   - Under the card, as part of the page and never over it: the privacy
     policy, the terms, and the language and theme switches, in a row that
     wraps on phones. The switches are the ones the account menu has,
@@ -1192,3 +1201,8 @@ changed:
   theme switches and the legal links were pinned to the screen's bottom
   corners: on a phone the theme switch covered Sign in, and the language
   switch the legal links.
+- **2026-11-05:** Forgot your password (§5.5, Sign-in), two steps in the
+  sign-in card. It was a form of its own making, its words typed into the
+  page, its mistakes said at the top of the card in English, too many
+  tries a time to try again at in the server's own time zone, and once
+  reset it went back to signing in without a word.
