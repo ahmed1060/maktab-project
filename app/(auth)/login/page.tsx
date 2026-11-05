@@ -142,8 +142,14 @@ export default function LoginPage() {
         setError(ref ? t('sign_in_failed_ref').replace('{ref}', ref) : t('sign_in_failed'))
     }
 
-    const finishLogin = async () => {
-        if (rememberDevice) {
+    /**
+     * Into the app, trusting this device first only at the end of a sign-in
+     * that took a code (app/api/account/mfa/trust-device/route.ts): ticked at
+     * a code, then Back to sign in and an account without two-factor, it was
+     * trusted for that one too.
+     */
+    const finishLogin = async (trustDevice: boolean) => {
+        if (trustDevice) {
             // Best-effort — a failed trust-device call just means being
             // asked for a code again next time, not a login failure.
             try {
@@ -198,7 +204,7 @@ export default function LoginPage() {
                 }
                 setLoading(false)
             } else if (res?.ok) {
-                await finishLogin()
+                await finishLogin(false)
             } else {
                 setError(t('sign_in_failed'))
                 setLoading(false)
@@ -235,7 +241,7 @@ export default function LoginPage() {
             })
 
             if (res?.ok) {
-                await finishLogin()
+                await finishLogin(rememberDevice)
                 return
             }
 

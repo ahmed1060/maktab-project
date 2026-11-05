@@ -334,6 +334,16 @@ describe("the page", () => {
         expect(PAGE()).toContain("<CodeStep key={stage}")
     })
 
+    // Ticked at a code, then Back to sign in and another account without
+    // two-factor, the device was trusted for that one, which took no code
+    // (found reading the code).
+    it("trusts the device only at the end of a sign-in that took a code", () => {
+        expect(PAGE()).toMatch(/const finishLogin = async \(trustDevice: boolean\) => \{\s*if \(trustDevice\) \{/)
+        expect(PAGE()).toMatch(/\} else if \(res\?\.ok\) \{\s*await finishLogin\(false\)/)
+        expect(PAGE()).toMatch(/if \(res\?\.ok\) \{\s*await finishLogin\(rememberDevice\)/)
+        expect(PAGE().match(/finishLogin\(/g)).toHaveLength(2)
+    })
+
     it("readies the password to type again after a wrong one, where the focus was lost", () => {
         expect(PAGE()).toMatch(/if \(key === 'error_invalid_credentials'\) \{[^}]*select\(\)/)
     })

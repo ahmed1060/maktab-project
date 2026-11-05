@@ -4163,3 +4163,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     under the 44px a finger needs (DESIGN.md §9). They're 44px there; the
     switches themselves are the account menu's, until the app shell
     replaces them (web interface audit).
+  - Ticked at a code, Remember this device stayed ticked after Back to sign
+    in, so signing in then with an account without two-factor trusted the
+    device for it, with no code given. The device is trusted only at the end
+    of a sign-in that took a code (found reading the code).
