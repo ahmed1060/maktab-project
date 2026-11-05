@@ -519,8 +519,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      profile, in five parts: its page, its photo and a name change
      waiting, merged in #191 on 2026-11-04, then what it shows of someone
      else's, as their details, merged in #192 on 2026-11-04, then its form,
-     each field's mistake under it, in #193; then its role field; then
-     ending a contract and handing over a team;
+     each field's mistake under it, merged in #193 on 2026-11-04, then its
+     role field, in #194; then ending a contract and handing over a team;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -3974,3 +3974,56 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the role: the form was the only place, which the change above made the
     details for them (Codex review). Its control is as it was until the
     role's part.
+- **2026-11-05:** A person's profile, part 3, was merged in #193. Part 4,
+  in #194 (§5 step 5, the pages left), is its role field, on the building
+  blocks (`components/profile/RoleFields.tsx`).
+  - Whoever may give a role picks one of those theirs may give, theirs
+    among them where it isn't one, and once another is picked, until when,
+    for an acting one, from tomorrow.
+  - Whoever may only ask for one (ROLES_PLAN.md §6.12) picks one too, and
+    is told it's sent to an Admin for approval: the save asks for it before
+    the rest is saved. While it waits, the field is off and says which role
+    waits, linked to it on the Requests page. It was a select with a button
+    of its own beside it, which asked at once, apart from the save.
+  - From their details, whoever may only ask asks beside the role, in a
+    dialog (`components/profile/RoleRequestDialog.tsx`), and a change
+    waiting is said under it. It was the form's control, put there as it
+    was in part 3.
+  - What's wrong is said under the role or its date, in the reader's
+    language: a role theirs can't give or ask for, or one holding access
+    theirs doesn't, or one that's gone; an Admin's, which only the Super
+    Admin changes; the company's last Admin; a change already waiting; and
+    a date that isn't after today, or isn't typed in full. They were
+    toasts, in English.
+  - A Super Admin's role, and an Admin's to anyone but the Super Admin, is
+    off, and says why.
+  - How a role may be changed, given or asked for, is asked in one place
+    with the rest (`lib/profile-access.ts`).
+  - The roles to pick from are the server's, as Add employee's are
+    (`lib/useAssignableRoles.ts`). The old dropdown and request control are
+    gone, with their styles typed in and their sides picked by hand, and
+    the request control's "Request this role" with them.
+  - In Arabic, the acting date's hint and an acting role's note ask nothing
+    in the masculine (اتركه، يعود إلى دوره).
+  - An assigner who picked another role, then picked back one theirs
+    couldn't give, left the form sending the other's kind, and the server
+    gave that kind's built-in role. Only a role picked is sent now, never
+    its kind (found reading the code).
+  - Tomorrow, the first day an acting role may end on, is the company's, as
+    the server reads a return date in the company's calendar. It was UTC's,
+    a day out for part of every day east or west of it (found reading the
+    code), then the browser's, a day out for a viewer in another zone,
+    whose own check then refused a day the server takes (Codex review).
+  - The save's refusals of acting on an Admin, and of leaving a company
+    with no Admin at work, carry their codes, as asking for a role's do, so
+    the profile says them in the reader's language (`lib/role-errors.ts`).
+  - The date an acting role ends on keeps password managers off, as the
+    form's other fields do: it's not a sign-in field (web interface audit).
+  - Told a role change already waits, asked for meanwhile in another tab,
+    the field shows the change waiting, and the rest saves: it still
+    offered the role it had picked, and every save asked again, and was
+    refused again (browser flows).
+  - Told a role change already waits, asked for by someone else who may
+    only ask, the field is off and says so, and the rest saves: the list
+    whoever may only ask is given holds their own requests alone, so the
+    form never learned of it, and every save asked again (Codex review).

@@ -694,11 +694,12 @@ describe("the old history page and links to it", () => {
     })
 
     it("are a role request's notices, and the Role field's waiting one, on the Requests page (part 5b)", () => {
-        expect(readFileSync("components/RoleRequestControl.tsx", "utf8")).toContain("href={`/dashboard/requests?kind=role&highlight=${pending.id}`}")
+        // The profile's role field, and its details, since part 4 of a person's profile (PR 194).
+        expect(readFileSync("components/profile/RoleFields.tsx", "utf8")).toContain("href={`/dashboard/requests?kind=role&highlight=${encodeURIComponent(request.id)}`}")
         // Asking the Super Admin to change a role, and access reviews, on their own page.
         expect(readFileSync("lib/services/role-change-request.service.ts", "utf8")).toContain("`/dashboard/roles-and-access?tab=changes&highlight=${id}`")
         expect(readFileSync("lib/services/access-review.service.ts", "utf8")).toContain("`/dashboard/roles-and-access?tab=reviews&highlight=${review.id}`")
-        for (const f of ["components/RoleRequestControl.tsx", "lib/services/role-request.service.ts", "lib/services/role-change-request.service.ts", "lib/services/access-review.service.ts"]) {
+        for (const f of ["components/profile/RoleFields.tsx", "lib/services/role-request.service.ts", "lib/services/role-change-request.service.ts", "lib/services/access-review.service.ts"]) {
             expect(readFileSync(f, "utf8"), f).not.toContain("/dashboard/role-requests")
         }
     })

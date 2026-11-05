@@ -379,6 +379,10 @@ These are built once, in the building-blocks PR, and every page uses them
   - when focused, a 2px `--brand-text` ring;
   - when it can't be changed, it's on `--page`, with a `--rule` edge and
     `--ink-2` text, and its hint says why.
+- **A change that goes for approval,** such as a role asked for by someone
+  who may not give it, says so in its field's hint once it's changed.
+  While one waits, the field can't be changed, and its hint is the change
+  waiting, linked to the request.
 - **A password** is a field with a button at its end that shows what's
   typed, and hides it again. The button shows only an eye, so it's named
   for which it will do ("Show password") and says so on hover (§5.2).
@@ -649,6 +653,9 @@ These are built once, in the building-blocks PR, and every page uses them
     small secondary button beside its value. An action with no value to
     sit beside, such as resetting someone's password, is a fact of its
     own, with its button as the value.
+  - While what was asked for waits for approval, such as another role, a
+    note under the value says so, linked to the request, where its button
+    was.
 - **Files:**
   - adding files is a secondary "Attach files" button that opens the file
     picker. On computers, files can also be dropped on it. The hint says

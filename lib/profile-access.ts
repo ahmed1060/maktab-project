@@ -10,7 +10,8 @@ import type { Can } from '@/lib/useCan'
  * Admin acts on an Admin (ROLES_PLAN.md §4.2, rule 7).
  *
  * What the form may change, and so what its save sends, is here too (part
- * 3, PR 193): a field it may not change is shown off, with why under it.
+ * 3, PR 193): a field it may not change is shown off, with why under it. How
+ * their role may be changed, given or asked for, too (part 4, PR 194).
  */
 export type ProfileAccess = {
     /** Their own profile. */
@@ -39,6 +40,13 @@ export type ProfileAccess = {
     nameByRequest: boolean
     /** A new password: one's own, or someone else's with the reset permission, as the route sets it. */
     changePassword: boolean
+    /**
+     * How their role may be changed here: given, by whoever may give one, or
+     * asked for, by whoever may only ask (ROLES_PLAN.md §6.12). Never one's
+     * own, nor a Super Admin's, and an Admin's only by the Super Admin (§4.2,
+     * rule 7).
+     */
+    changeRole: 'assign' | 'ask' | null
 }
 
 export function profileAccess({ can, viewer, person }: {
@@ -72,5 +80,9 @@ export function profileAccess({ can, viewer, person }: {
         nameByRequest: own && (person.role === 'EMPLOYEE' || person.role === 'TEAM_LEADER'),
         // The route refuses anyone else (FORBIDDEN_PASSWORD_RESET), and an Admin's but the Super Admin's.
         changePassword: own || (can('employees.reset_password') && actsOnThem),
+        changeRole: own || !actsOnThem || person.role === 'SUPER_ADMIN' || person.role === '' ? null
+            : can('employees.assign_role') ? 'assign'
+            : can('employees.request_role') ? 'ask'
+            : null,
     }
 }

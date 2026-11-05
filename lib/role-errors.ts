@@ -59,6 +59,21 @@ export function assignmentRefusal(error: any) {
     return null
 }
 
+/**
+ * Refusals of acting on an Admin, which is the Super Admin's alone (ROLES_PLAN.md
+ * §4.2, rule 7), and of leaving a company with no Admin at work (rule 8):
+ * asking for a role, deciding one, or saving a person's profile, where the
+ * profile says them under the field they're about (a person's profile, part
+ * 4, PR 194).
+ */
+export function adminRefusal(error: any) {
+    switch (error?.message) {
+        case "ADMIN_IS_SUPER_ADMINS": return refused(403, "Only the Super Admin acts on an Admin", "ADMIN_IS_SUPER_ADMINS")
+        case "LAST_ADMIN": return refused(400, "A company must keep at least one Admin at work. Give its Admin role to someone else first.", "LAST_ADMIN")
+    }
+    return null
+}
+
 /** Refusals of asking for, or deciding, a role request (ROLES_PLAN.md §6.12). */
 export function roleRequestRefusal(error: any) {
     switch (error?.message) {
@@ -70,8 +85,6 @@ export function roleRequestRefusal(error: any) {
         case "ALREADY_DECIDED": return refused(400, "This request has already been decided", "ALREADY_DECIDED")
         case "OWN_REQUEST": return refused(403, "Somebody else must decide a request you made", "OWN_REQUEST")
         case "REASON_REQUIRED": return refused(400, "Say why it is declined", "REASON_REQUIRED")
-        case "ADMIN_IS_SUPER_ADMINS": return refused(403, "Only the Super Admin acts on an Admin", "ADMIN_IS_SUPER_ADMINS")
-        case "LAST_ADMIN": return refused(400, "A company must keep at least one Admin at work. Give its Admin role to someone else first.", "LAST_ADMIN")
     }
-    return assignmentRefusal(error)
+    return adminRefusal(error) ?? assignmentRefusal(error)
 }

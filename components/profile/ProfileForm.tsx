@@ -47,7 +47,7 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
     ownTeamLeader: string | null
     leaders: { id: string; name: string }[]
     busy: boolean
-    /** The role, where it's chosen: its own part, until it's on the building blocks too. */
+    /** The role, where it's shown: its own fields, given or asked for (./RoleFields.tsx). */
     role?: ReactNode
     onSubmit: (e: FormEvent<HTMLFormElement>) => void
     /** Where Cancel goes, a link, as every page form's is: their details. */

@@ -11,7 +11,7 @@ import { buildUserWhereClause, buildUserOrderBy } from "@/lib/services/user-quer
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
-import { assignmentRefusal } from "@/lib/role-errors"
+import { adminRefusal, assignmentRefusal } from "@/lib/role-errors"
 import { assertStepUp } from "@/lib/step-up"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
@@ -63,6 +63,10 @@ export const GET = withStandardHandler(async (req, session) => {
                 roleId: true, assignedRole: { select: { name: true, builtIn: true } },
                 // A cover in progress (§6.13): until when, and back to what.
                 actingUntil: true, returnRole: { select: { name: true, builtIn: true } },
+                // The company's calendar, which a return date is read in
+                // (RoleAssignmentService.returnOn): the profile offers its
+                // tomorrow as the first day a cover may end on (PR 194).
+                company: { select: { timezone: true } },
                 // The name, so somebody can be told who manages them. Selected
                 // fields rather than the relation, for the same reason the
                 // list does it: a leader is a User, and `teamLeader: true`
@@ -236,8 +240,10 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'USERNAME_IN_USE') return ApiResponse.badRequest("Username in use")
         if (error.message === 'USERNAME_RESERVED') return ApiResponse.badRequest(USERNAME_RESERVED)
         if (error.message === 'EMAIL_IN_USE') return ApiResponse.badRequest("Email in use")
-        if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin acts on an Admin")
-        if (error.message === 'LAST_ADMIN') return ApiResponse.badRequest("A company must keep at least one Admin at work. Give its Admin role to someone else first.")
+        // With their codes, as asking for a role answers them, so the profile
+        // says them in the reader's language (part 4, PR 194).
+        const refusedAdmin = adminRefusal(error)
+        if (refusedAdmin) return refusedAdmin
         if (error.message === 'STATUS_HAS_ITS_OWN_FLOW') return ApiResponse.badRequest("Archive by ending the contract, and delete from the employee list — not through an edit")
         // Somebody in another company. Refused inside UserService, and until
         // this was mapped the refusal escaped as a 500 — logged as a system
