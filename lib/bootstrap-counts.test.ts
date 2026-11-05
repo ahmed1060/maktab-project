@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from "vitest"
 import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
- * The header's name-change badge counts the viewer's own company.
+ * GET /api/me/bootstrap counts only unread notifications, for the bell.
  *
- * GET /api/me/bootstrap counted every company's pending name-change requests
- * for an Admin, so the badge on one company's screen carried the others'
- * numbers. Each count's query is captured here rather than trusted.
+ * It also counted name changes waiting, for the top bar's button for them
+ * alone. What waits to be reviewed, name changes among it, is counted on
+ * Requests in the side bar now (lib/requests-waiting.test.ts), and the button
+ * is gone, so nothing here asks for name changes, for anyone.
  */
 
 const seen: any[] = []
@@ -19,27 +20,24 @@ vi.mock("@/lib/prisma", () => ({
                 tl: { id: "tl", role: "TEAM_LEADER", companyId: "c1", firstName: "T" },
             } as any)[where.id] ?? null,
         },
-        notification: { count: async () => 0 },
+        superAdmin: { findUnique: async ({ where }: any) => (where.id === "sa" ? { id: "sa", firstName: "S" } : null) },
+        notification: { count: async () => 4 },
         company: { findMany: async () => [] },
         profileUpdateRequest: { count: async (args: any) => { seen.push(args.where); return 7 } },
     },
 }))
 vi.mock("@/lib/services/notification.service", () => ({ NotificationService: { recipientFilter: () => ({}) } }))
 
-describe("the name-change badge", () => {
-    it("counts only the Admin's own company", async () => {
+describe("the bootstrap's counts", () => {
+    it.each([
+        ["an Admin", withGrants({ id: "admin", role: "ADMIN", companyId: "c1" })],
+        ["a Team Leader", withGrants({ id: "tl", role: "TEAM_LEADER", companyId: "c1" })],
+        ["the Super Admin", { id: "sa", role: "SUPER_ADMIN", companyId: null }],
+    ])("are the unread notifications alone, for %s", async (_who, viewer) => {
         seen.length = 0
         const { SystemService } = await import("@/lib/services/system.service")
-        const data = await SystemService.getBootstrapData(withGrants({ id: "admin", role: "ADMIN", companyId: "c1" }))
-        expect(seen).toEqual([{ status: "PENDING", user: { companyId: "c1" } }])
-        expect(data.counts.pendingProfileRequests).toBe(7)
-    })
-
-    it("is not counted for someone who does not decide them", async () => {
-        seen.length = 0
-        const { SystemService } = await import("@/lib/services/system.service")
-        const data = await SystemService.getBootstrapData(withGrants({ id: "tl", role: "TEAM_LEADER", companyId: "c1" }))
+        const data = await SystemService.getBootstrapData(viewer as never)
+        expect(data.counts).toEqual({ unreadNotifications: 4 })
         expect(seen).toEqual([])
-        expect(data.counts.pendingProfileRequests).toBe(0)
     })
 })

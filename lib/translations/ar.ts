@@ -57,6 +57,8 @@ export const ar = {
         // The side bar (DESIGN.md §5.1): the menu's name, and the drawer's close button on a phone.
         nav_main_menu: "القائمة الرئيسية",
         close_menu: "إغلاق القائمة",
+        // Heard after Requests in the side bar: how many wait on this person under To review (DESIGN.md §5.1).
+        side_bar_to_review: "، {count} للمراجعة",
         remove: "إزالة",
         change_person: "اختر شخصًا آخر",
         make_a_request: "تقديم طلب",
@@ -873,7 +875,6 @@ export const ar = {
         mark_as_paid: "تحديد كمدفوع",
         paid_label: "مدفوع",
         filter_by_company_placeholder: "الشركة...",
-        profile_name_requests: "طلبات تغيير الاسم",
         profile_requests_subtitle: "مراجعة والموافقة على طلبات تغيير أسماء الموظفين",
         current_name_label: "الاسم الحالي",
         requested_name_label: "الاسم المطلوب",

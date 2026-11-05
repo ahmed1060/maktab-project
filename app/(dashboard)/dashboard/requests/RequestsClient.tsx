@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSWRConfig } from 'swr'
 import { ArrowUUpLeftIcon, CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, ClockIcon, DeviceMobileIcon, EyeIcon, IdentificationCardIcon, MapPinIcon, PlayIcon, PlusIcon, ProhibitIcon, ShapesIcon, ShieldCheckIcon, TrashIcon, TrayIcon, UserFocusIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -13,7 +14,7 @@ import { spansDays, workDays } from '@/lib/day-off-range'
 import { DAY_OFF_TYPE_LABEL } from '@/lib/day-off-types'
 import { roleLabel } from '@/lib/role-label'
 import type { TranslationKey } from '@/lib/translations'
-import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from '@/lib/requests/kinds'
+import { REQUEST_KINDS, WAITING_FOR_REVIEW_KEY, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from '@/lib/requests/kinds'
 import SafeDate from '@/components/SafeDate'
 import DateRangePicker from '@/components/DateRangePicker'
 import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
@@ -112,6 +113,11 @@ export default function RequestsClient({
     const { showToast } = useToast()
     const modules = useModules()
     const router = useRouter()
+    // The page again, and with it the count on Requests in the side bar
+    // (DESIGN.md §5.1), once something here is decided, deleted, withdrawn,
+    // revoked or asked for.
+    const { mutate } = useSWRConfig()
+    const refreshed = () => { router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }
     const action = useBusyAction()
     const { picked, listed, go } = useListAddress('/dashboard/requests')
     const review = tab === 'review'
@@ -165,7 +171,7 @@ export default function RequestsClient({
             }
             showToast(t('request_action_success'), 'success')
             setViewing(null)
-            router.refresh()
+            refreshed()
         } catch {
             showToast(t('error_generic'), 'error')
         }
@@ -181,7 +187,7 @@ export default function RequestsClient({
         }
         showToast(t('request_action_success'), 'success')
         setViewing(null)
-        router.refresh()
+        refreshed()
     })
 
     const remove = (r: FeedRow) => action.run('delete', async () => {
@@ -195,7 +201,7 @@ export default function RequestsClient({
             showToast(t('requests_deleted'), 'success')
             setDeleting(null)
             setViewing(null)
-            router.refresh()
+            refreshed()
         } catch {
             showToast(t('error_generic'), 'error')
         }
@@ -555,7 +561,7 @@ export default function RequestsClient({
 
             {deciding && (
                 <DecideDayOff key={`${deciding.row.id}-${deciding.decision}`} request={deciding.row} decision={deciding.decision}
-                    onClose={() => setDeciding(null)} onDecided={() => { setDeciding(null); router.refresh() }} />
+                    onClose={() => setDeciding(null)} onDecided={() => { setDeciding(null); refreshed() }} />
             )}
             {rejecting && (
                 <RejectRequest key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
@@ -564,26 +570,26 @@ export default function RequestsClient({
                             : rejecting.nameChange ? 'requests_name_change_reject_placeholder'
                                 : rejecting.role ? 'requests_role_reject_placeholder' : 'requests_permission_reject_placeholder')}
                     reasonRequired={rejecting.kind === 'role'}
-                    onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); router.refresh() }} />
+                    onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); refreshed() }} />
             )}
             {withdrawing && (
                 <WithdrawAttendance key={withdrawing.id} request={withdrawing}
                     title={t(withdrawing.overtime ? 'requests_overtime_withdraw_title' : 'requests_withdraw_title')}
                     hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : withdrawing.overtime ? 'requests_overtime_withdraw_hint'
                         : withdrawing.role ? 'requests_role_withdraw_hint' : 'req_withdraw_hint')}
-                    onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); router.refresh() }} />
+                    onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); refreshed() }} />
             )}
 
             {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.who.name} onClose={() => setFaceOf(null)} />}
             {revoking && (
                 <RevokePhone key={revoking.id} request={revoking}
-                    onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); router.refresh() }} />
+                    onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); refreshed() }} />
             )}
 
             <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} onClose={() => setAsking(false)} onAsked={() => {
                 setAsking(false)
                 // Theirs, waiting: where it now is.
-                if (tab === 'mine' && show === 'waiting') router.refresh()
+                if (tab === 'mine' && show === 'waiting') refreshed()
                 else go({ tab: 'mine', show: 'waiting', kind: '', employeeId: '', search: '', highlight: '' })
             }} />
         </Page>

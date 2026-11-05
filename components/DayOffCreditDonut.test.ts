@@ -75,7 +75,9 @@ describe("the day off credit donut", () => {
         const server = readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")
         expect(server).toContain("prisma.user.findUnique({ where: { id: viewer.id }, select: { dayOffCredit: true, baseDayOffCredit: true } })")
         const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
-        expect(client).not.toContain("useSWR")
+        // No SWR hook loads anything here. useSWRConfig only asks the side
+        // bar's count again after a decision (DESIGN.md §5.1).
+        expect(client).not.toMatch(/\buseSWR(Immutable|Infinite)?\s*[<(]/)
     })
 
     it("is the one the dashboard home and the Requests page's Mine both show", () => {

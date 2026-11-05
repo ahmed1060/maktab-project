@@ -62,6 +62,8 @@ export const en = {
         // The side bar (DESIGN.md §5.1): the menu's name, and the drawer's close button on a phone.
         nav_main_menu: "Main menu",
         close_menu: "Close menu",
+        // Heard after Requests in the side bar: how many wait on this person under To review (DESIGN.md §5.1).
+        side_bar_to_review: ", {count} to review",
         remove: "Remove",
         change_person: "Choose someone else",
         make_a_request: "Make a Request",
@@ -920,7 +922,6 @@ export const en = {
         mark_as_paid: "Mark as paid",
         paid_label: "Paid",
         filter_by_company_placeholder: "Company...",
-        profile_name_requests: "Profile Name Requests",
         profile_requests_subtitle: "Review and approve employee name change requests",
         current_name_label: "Current Name",
         requested_name_label: "Requested Name",

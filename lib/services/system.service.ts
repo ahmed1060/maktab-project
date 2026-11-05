@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { NotificationService } from "./notification.service"
-import { can, type Actor } from "@/lib/permissions/can"
+import type { Actor } from "@/lib/permissions/can"
 
 export class SystemService {
     static async getBootstrapData(viewer: Actor & { id: string }) {
@@ -47,23 +47,16 @@ export class SystemService {
                     orderBy: { name: 'asc' },
                     select: { id: true, name: true }
                 })
-                const pendingProfileRequestsCount = await prisma.profileUpdateRequest.count({
-                    where: { status: 'PENDING' }
-                })
                 return {
                     user: { ...superAdmin, role: 'SUPER_ADMIN', language: 'en' },
                     companies,
-                    counts: {
-                        unreadNotifications: unreadNotificationsCount,
-                        pendingProfileRequests: pendingProfileRequestsCount
-                    }
+                    counts: { unreadNotifications: unreadNotificationsCount }
                 }
             }
             throw new Error("USER_NOT_FOUND")
         }
 
         let companies: any[] = []
-        let pendingProfileRequestsCount = 0
 
         const extraTasks = []
         if (role === 'SUPER_ADMIN') {
@@ -75,26 +68,16 @@ export class SystemService {
             )
         }
 
-        // The header's name-change badge: for whoever decides them, and only
-        // their own company's. It counted every company's pending requests,
-        // so an Admin's badge carried other companies' numbers.
-        if (can(viewer, "profile_requests.review")) {
-            extraTasks.push(
-                prisma.profileUpdateRequest.count({
-                    where: { status: 'PENDING', user: { companyId: user.companyId } }
-                }).then(res => pendingProfileRequestsCount = res)
-            )
-        }
+        // What waits to be reviewed, name changes among it, is counted on
+        // Requests in the side bar (lib/requests/feed.ts, waitingForReview),
+        // not here: the top bar's button for name changes alone is gone.
 
         if (extraTasks.length > 0) await Promise.all(extraTasks)
 
         return {
             user,
             companies,
-            counts: {
-                unreadNotifications: unreadNotificationsCount,
-                pendingProfileRequests: pendingProfileRequestsCount
-            }
+            counts: { unreadNotifications: unreadNotificationsCount }
         }
     }
 

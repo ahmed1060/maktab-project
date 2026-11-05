@@ -675,9 +675,10 @@ describe("the old history page and links to it", () => {
         expect(profile).toContain("highlight")
     })
 
-    it("are the header's name-change count, the dashboard's tile, and a decision's notice, all on the Requests page (part 5a)", () => {
-        // Waiting, which they count, as the day off tile says too.
-        expect(readFileSync("components/DashboardHeader.tsx", "utf8")).toContain('href="/dashboard/requests?tab=review&kind=nameChange&show=waiting"')
+    it("are the dashboard's tile and a decision's notice, both on the Requests page (part 5a)", () => {
+        // Waiting, which it counts, as the day off tile says too. The top
+        // bar's count of them is gone: what waits is counted on Requests in
+        // the side bar (lib/requests-waiting.test.ts).
         expect(readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")).toContain("href: '/dashboard/requests?tab=review&kind=nameChange&show=waiting'")
         expect(readFileSync("components/NotificationBell.tsx", "utf8")).toContain("router.push(`/dashboard/requests?kind=nameChange&highlight=${notification.relatedId}`)")
         for (const f of ["components/DashboardHeader.tsx", "app/(dashboard)/dashboard/page.tsx", "components/NotificationBell.tsx"]) {

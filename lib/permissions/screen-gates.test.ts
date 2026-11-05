@@ -76,7 +76,8 @@ const GATES: Gate[] = [
     { what: "requests: decide one", file: "lib/requests/feed.ts", uses: 'can(v, "requests.view", target) && can(v, "requests.review", target)', before: managers, now: p => p.can("requests.view") && p.can("requests.review") },
     // On the one Requests page since UI_PLAN.md §2.3, part 5a: To review has others' name changes for whoever decides them.
     { what: "name changes: page", file: "lib/requests/feed.ts", uses: 'const reach = grantFor(v, "profile_requests.review")', before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("profile_requests.review") },
-    { what: "name changes: header counter", file: "components/DashboardHeader.tsx", uses: "permissionsOf(currentUser as any).can('profile_requests.review')", before: admins, now: p => p.can("profile_requests.review") },
+    // The top bar's counter for them went in PR 204: they're counted, with all
+    // that waits, on Requests in the side bar, by the page's own rule above.
 
     // --- Sidebar and dashboard --------------------------------------------------
     { what: "sidebar: costs", file: "lib/side-bar.ts", uses: "costs: 'tasks.pay'", before: managers, now: p => p.can("tasks.pay") },

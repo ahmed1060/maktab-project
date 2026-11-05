@@ -5,6 +5,7 @@ import { XIcon } from '@phosphor-icons/react/ssr'
 import { CompanyMark, Icon } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useDialog } from '@/lib/useDialog'
+import { countOf } from '@/lib/plural'
 import { isModuleKey, type ResolvedModules } from '@/lib/modules'
 import { PAGES, type SideBarGroup, type SideBarItemKey } from '@/lib/side-bar'
 import { ITEM_ICONS } from '@/lib/side-bar-icons'
@@ -22,7 +23,7 @@ import { ITEM_ICONS } from '@/lib/side-bar-icons'
  * (.ui-side-bar, components/ui/ui.css), not `drawer`, which is known only
  * once the page has run, so the first paint is already right on both.
  */
-export default function SideBar({ groups, modules, company, pathname, drawer, open, onClose }: {
+export default function SideBar({ groups, modules, company, pathname, drawer, open, onClose, waiting }: {
     groups: SideBarGroup[]
     modules: ResolvedModules
     /** The company's name and logo; Nizmo's, for the Super Admin looking at no one company. */
@@ -32,8 +33,10 @@ export default function SideBar({ groups, modules, company, pathname, drawer, op
     drawer: boolean
     open: boolean
     onClose: () => void
+    /** How many wait on this person under the Requests page's To review tab; not known yet while undefined. */
+    waiting?: number
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const asDialog = drawer && open
     const dialog = useDialog(asDialog, onClose, { label: t('nav_main_menu') })
 
@@ -41,6 +44,9 @@ export default function SideBar({ groups, modules, company, pathname, drawer, op
     // chosen. The dashboard itself only on its own page, not on every page under /dashboard.
     const here = (href: string) => pathname === href || (href !== '/dashboard' && !!pathname?.startsWith(href + '/'))
     const currentFor = (href: string) => (here(href) ? { 'aria-current': 'page' as const } : {})
+
+    // What waits on this person under To review, on Requests (DESIGN.md §5.1); nothing when none does.
+    const counted = (key: SideBarItemKey) => key === 'requests' && !!waiting && waiting > 0
 
     const item = (key: SideBarItemKey) => {
         // A module's name and icon are the company's where it chose its own (lib/modules.ts).
@@ -53,7 +59,9 @@ export default function SideBar({ groups, modules, company, pathname, drawer, op
                 {entry.icon
                     ? <span className="ui-side-emoji" aria-hidden="true">{entry.icon}</span>
                     : <Icon icon={ITEM_ICONS[key]} weight={here(entry.href) ? 'fill' : 'regular'} />}
-                <span className="ui-side-label"><bdi>{entry.label}</bdi></span>
+                {/* The count, heard with the name: the pill beside it is hidden from screen readers. */}
+                <span className="ui-side-label"><bdi>{entry.label}</bdi>{counted(key) && <span className="ui-visually-hidden">{t('side_bar_to_review').replace('{count}', countOf(t, locale, waiting!, 'requests'))}</span>}</span>
+                {counted(key) && <span className="ui-side-count" aria-hidden="true">{waiting!.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')}</span>}
             </Link>
         )
     }
