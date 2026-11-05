@@ -18,6 +18,7 @@
 .ui-avatar,
 .ui-photo,
 .ui-page,
+.ui-signin,
 .ui-menu,
 .ui-selectionbar,
 .ui-donut {
@@ -1470,6 +1471,110 @@ a.ui-file-open:focus-visible,
 /* The consent's own paragraphs, as written. */
 .ui-checkin-consent {
   white-space: pre-line;
+}
+
+/* ── Sign-in (§5.5) ── */
+/* The one screen with no app shell: a card in the middle of the flat page,
+   and under it, as part of the page, the legal links and the switches. They
+   were pinned to the screen's corners, over Sign in on a phone. */
+.ui-signin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--space-12) var(--space-4) var(--space-6);
+  background: var(--page);
+  color: var(--ink);
+}
+.ui-signin-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ui-signin-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8);
+}
+.ui-signin-form {
+  max-width: none;
+}
+/* Forgot your password? under the password, on the end side. */
+.ui-signin-password {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ui-signin-forgot {
+  align-self: flex-end;
+  /* Its words end where the field does: the quiet button's own padding is
+     for its hover tint. */
+  margin-inline-end: calc(-1 * var(--space-2));
+}
+/* The step's primary button takes the card's width, with what the server
+   answered above it and its other actions quiet under it. */
+.ui-signin-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.ui-signin-actions > p {
+  margin: 0;
+}
+.ui-signin-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3) var(--space-6);
+}
+.ui-signin-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-signin-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--brand-text);
+}
+.ui-signin-links a:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.ui-signin-switches {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+/* Sign-in on phones: the page's 16px edge around the card, 24px inside it,
+   and links and switches tall enough to tap. The switches are the account
+   menu's, until the app shell replaces them: their options were 30px. */
+@media (max-width: 767px) {
+  .ui-signin-card {
+    padding: var(--space-6);
+  }
+  .ui-signin {
+    padding-block-start: var(--space-6);
+  }
+  .ui-signin-links a {
+    min-height: 44px;
+  }
+  .ui-signin-switches button {
+    min-height: 44px;
+  }
 }
 
 /* ── Face photos (Attendance, ATTENDANCE_PLAN.md §9.5) ── */

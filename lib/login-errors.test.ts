@@ -13,13 +13,13 @@ describe("the sign-in page's message", () => {
 
     it("says to wait when there have been too many tries, at either step", () => {
         expect(signInErrorKey(tooMany)).toBe("error_too_many_attempts")
-        expect(codeErrorKey(tooMany)).toBe("error_too_many_attempts")
+        expect(codeErrorKey(tooMany, "app")).toBe("error_too_many_attempts")
     })
 
     it("says to wait 30 seconds after five wrong tries, at either step (decided 2026-11-03)", () => {
         const paused = "Sign-in paused for 30 seconds after five wrong tries for this account."
         expect(signInErrorKey(paused)).toBe("error_sign_in_paused")
-        expect(codeErrorKey(paused)).toBe("error_sign_in_paused")
+        expect(codeErrorKey(paused, "app")).toBe("error_sign_in_paused")
         expect(en.error_sign_in_paused).toContain("30 seconds")
         expect(ar.error_sign_in_paused).toContain("٣٠ ثانية")
         // Said to anybody, not told to a man to wait (PR 183).
@@ -36,12 +36,15 @@ describe("the sign-in page's message", () => {
 
     it("keeps a wrong email or password vague", () => {
         expect(signInErrorKey("CredentialsSignin")).toBe("error_invalid_credentials")
-        expect(codeErrorKey("INVALID_MFA_CODE")).toBe("error_invalid_code")
-        expect(codeErrorKey(undefined)).toBe("error_generic")
+        // A wrong code says what to do next, as Security settings does
+        // (DESIGN.md §5.5, Sign-in): it was "Invalid code".
+        expect(codeErrorKey("INVALID_MFA_CODE", "app")).toBe("security_mfa_code_wrong")
+        expect(codeErrorKey("INVALID_MFA_CODE", "email")).toBe("sign_in_email_code_wrong")
+        expect(codeErrorKey(undefined, "app")).toBe("error_generic")
     })
 
     it("exists in English and Arabic", () => {
-        for (const key of ["error_too_many_attempts", "error_subscription_expired", "error_account_closed", "error_access_denied", "error_invalid_code"] as const) {
+        for (const key of ["error_too_many_attempts", "error_subscription_expired", "error_account_closed", "error_access_denied", "security_mfa_code_wrong", "sign_in_email_code_wrong"] as const) {
             expect(en[key], key).toBeTruthy()
             expect(ar[key], key).toBeTruthy()
         }

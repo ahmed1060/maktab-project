@@ -169,10 +169,10 @@ describe("text and controls the audit measured below AA (4 October 2026, H2)", (
         for (const t of ["--hero-from", "--hero-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
     })
 
+    // The brand-coloured link's token went with the old sign-in page, its
+    // last user (the sign-in page's part 1); the building blocks' links are
+    // --brand-text, held to 4.5:1 with the brand colour (lib/brand-colour.ts).
     for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
-        it(`${themeName}: a brand-coloured link is 4.5:1 on the surface`, () => {
-            expect(ratio(tokens["--link"], tokens["--surface"])).toBeGreaterThanOrEqual(4.5)
-        })
         it(`${themeName}: a field's outline is 3:1 on the surface and the page (was 1.4:1)`, () => {
             for (const bg of ["--surface", "--page-bg"]) expect(ratio(tokens["--field-border"], tokens[bg])).toBeGreaterThanOrEqual(3)
         })

@@ -14,7 +14,7 @@ import { stripComments } from "./strip-comments"
 const read = (path: string) => stripComments(readFileSync(path, "utf8"))
 
 const TOGGLE = readFileSync("components/LanguageToggleButton.tsx", "utf8")
-const BAR = readFileSync("components/PreferenceBar.tsx", "utf8")
+const SCREEN = readFileSync("components/sign-in/SignInScreen.tsx", "utf8")
 const LOGIN = readFileSync("app/(auth)/login/page.tsx", "utf8")
 
 describe("each language names itself", () => {
@@ -65,10 +65,14 @@ describe("a switch cannot be started twice", () => {
     })
 })
 
-describe("the login page stops hand-positioning its controls", () => {
-    it("mounts one bar instead of two fixed elements", () => {
-        expect(LOGIN).toContain("<PreferenceBar />")
+describe("the sign-in screen stops hand-positioning its controls", () => {
+    // Under the card, as part of the page (DESIGN.md §5.5, Sign-in): pinned
+    // to the screen's corners, on a phone they covered Sign in.
+    it("holds both switches in the page, under the card, instead of fixed to a corner", () => {
+        expect(SCREEN).toContain('<ThemeToggleButton variant="inline" />')
+        expect(SCREEN).toContain('<LanguageToggleButton variant="inline" />')
         expect(read("app/(auth)/login/page.tsx")).not.toContain('variant="fixed"')
+        expect(LOGIN).toContain("<SignInScreen ")
     })
 
     it("has no hand-measured offset left in either control", () => {
@@ -79,8 +83,9 @@ describe("the login page stops hand-positioning its controls", () => {
         expect(read("components/LanguageToggleButton.tsx")).not.toContain("position: 'fixed'")
     })
 
-    it("lets the bar wrap rather than run off a narrow screen", () => {
-        expect(BAR).toContain("flexWrap: 'wrap'")
-        expect(BAR).toContain("maxWidth: 'calc(100vw - 4rem)'")
+    it("lets them wrap rather than run off a narrow screen", () => {
+        const css = read("components/ui/ui.css")
+        const at = css.indexOf("\n.ui-signin-switches {")
+        expect(css.slice(at, css.indexOf("}", at))).toContain("flex-wrap: wrap;")
     })
 })

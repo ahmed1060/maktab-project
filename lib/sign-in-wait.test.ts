@@ -73,7 +73,8 @@ describe("the count down on the sign-in page", () => {
     it("is used for both steps and for \"email me a code instead\", and says when it's over", () => {
         const src = read("app/(auth)/login/page.tsx")
         for (const call of ["held(res.error)", "held(res?.error)", "held(data.error)"]) expect(src, call).toContain(call)
-        expect(src).toContain("<SignInWait ")
+        expect(read("components/sign-in/SignInMessage.tsx")).toContain("<SignInWait ")
+        expect(src).toContain("<SignInMessage hold={hold}")
         expect(src).toContain("setNotice(t('sign_in_wait_over'))")
     })
 

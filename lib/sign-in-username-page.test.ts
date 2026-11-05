@@ -6,23 +6,26 @@ import { en } from "./translations/en"
 /**
  * The sign-in page asks for an email or a username (decided 2026-11-03):
  * every username is one account's, never with an @ in it (lib/username-rules.ts).
+ * Its field is the building blocks' since the sign-in page's part 1
+ * (DESIGN.md §5.5, Sign-in), in the first step's own file.
  */
 
+const step = readFileSync("components/sign-in/CredentialsStep.tsx", "utf8")
 const page = readFileSync("app/(auth)/login/page.tsx", "utf8")
 const field = (() => {
-    const start = page.indexOf("value={email}")
-    return page.slice(page.lastIndexOf("<input", start), page.indexOf("/>", start))
+    const start = step.indexOf("value={identifier}")
+    return step.slice(step.lastIndexOf("<TextInput", start), step.indexOf("/>", start))
 })()
-const label = page.slice(page.lastIndexOf("<label", page.indexOf("value={email}")), page.indexOf("value={email}"))
+const label = step.slice(step.lastIndexOf("<Field", step.indexOf("value={identifier}")), step.indexOf("value={identifier}"))
 
 describe("the sign-in page's first field", () => {
     it("asks for an email or a username, in both languages", () => {
         expect(en.sign_in_identifier).toBe("Email or username")
         expect(ar.sign_in_identifier).toBe("البريد الإلكتروني أو اسم المستخدم")
-        expect(label).toContain("{t('sign_in_identifier')}")
-        expect(field).toContain("aria-label={t('sign_in_identifier')}")
-        expect(field).toContain("placeholder={t('sign_in_identifier_placeholder')}")
-        expect(en.sign_in_identifier_placeholder).not.toMatch(/^Enter/)
+        expect(label).toContain("label={t('sign_in_identifier')}")
+        // Its label says what it is: the placeholder said it again, and in
+        // Arabic, written left to right, it was cut short at its start.
+        expect(field).not.toContain("placeholder")
     })
 
     it("takes either: plain text, filled in as the account's name, never spell-checked or capitalised", () => {
@@ -36,8 +39,6 @@ describe("the sign-in page's first field", () => {
     it("is written left to right in Arabic too, as emails and usernames are (DESIGN.md §3.3)", () => {
         expect(field).toContain('dir="ltr"')
         expect(field).not.toMatch(/direction: locale === 'ar' \? 'rtl'/)
-        // An ellipsis after Arabic in a left-to-right field lands at its start.
-        expect(ar.sign_in_identifier_placeholder).not.toMatch(/…$/)
     })
 
     it("says a wrong try is the email, username or password, not only the email", () => {
@@ -46,6 +47,6 @@ describe("the sign-in page's first field", () => {
     })
 
     it("carries an email, not a username, over to Forgot your password", () => {
-        expect(page).toMatch(/setForgotEmail\(email\.includes\('@'\) \? email : ''\)/)
+        expect(page).toMatch(/setForgotEmail\(identifier\.includes\('@'\) \? identifier\.trim\(\) : ''\)/)
     })
 })

@@ -21,12 +21,22 @@ export function signInErrorKey(error: string): MessageKey {
     return "error_invalid_credentials"
 }
 
-/** The same, for the step that asks for the two-factor code. */
-export function codeErrorKey(error: string | undefined | null): MessageKey {
-    if (error === "INVALID_MFA_CODE") return "error_invalid_code"
-    if (error?.includes("Sign-in paused")) return "error_sign_in_paused"
-    if (error?.includes("Too many login attempts")) return "error_too_many_attempts"
-    return "error_generic"
+/** A two-factor code the server turned down, said under the code (DESIGN.md §5.5, Sign-in). */
+export function isWrongCode(error: string | undefined | null): boolean {
+    return error === "INVALID_MFA_CODE"
+}
+
+/**
+ * The same, for the step that asks for the two-factor code: a code that isn't
+ * right as where it came from says it, as Security settings does, and with
+ * what to do next; anything else as the first step says it. Everything but a
+ * wrong code was "Something went wrong" here, an account suspended meanwhile
+ * included, and a wrong code was "Invalid code".
+ */
+export function codeErrorKey(error: string | undefined | null, kind: "app" | "email"): MessageKey {
+    if (isWrongCode(error)) return kind === "app" ? "security_mfa_code_wrong" : "sign_in_email_code_wrong"
+    if (!error) return "error_generic"
+    return signInErrorKey(error)
 }
 
 /** Held back after wrong tries, and for how many seconds more, as the server counted them (lib/sign-in-lock.ts, holdMessage). */

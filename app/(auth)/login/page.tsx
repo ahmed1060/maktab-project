@@ -1,21 +1,43 @@
 'use client'
 import { signIn } from 'next-auth/react'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
-import PreferenceBar from '@/components/PreferenceBar'
-import { reportClientError, friendlyErrorMessage } from '@/lib/client-error-report'
-import { signInErrorKey, codeErrorKey, waitOf } from '@/lib/login-errors'
-import { SignInWait } from '@/components/SignInWait'
+import { reportClientError } from '@/lib/client-error-report'
+import { apiErrorText } from '@/lib/api-error-text'
+import { signInErrorKey, codeErrorKey, isWrongCode, waitOf } from '@/lib/login-errors'
+import { codeError, emailCodeRefusal, signInErrors, type CodeKind, type SignInField } from '@/lib/sign-in-form'
+import { focusFirstWrong } from '@/components/attendance-calendar/focus'
+import { SignInScreen } from '@/components/sign-in/SignInScreen'
+import { CredentialsStep } from '@/components/sign-in/CredentialsStep'
+import { CodeStep } from '@/components/sign-in/CodeStep'
+import { SignInMessage, type Hold } from '@/components/sign-in/SignInMessage'
 
+/**
+ * Signing in (DESIGN.md §5.5, Sign-in): the email or username and the
+ * password, then, for an account with two-factor authentication on a device
+ * it doesn't trust yet, the code from the authenticator app or one emailed
+ * instead.
+ *
+ * On the building blocks, the sign-in page's part 1 (UI_PLAN.md §5 step 5,
+ * the pages left): what's wrong with what was typed is said under its field
+ * before anything is sent, and what the server answered above the step's
+ * primary button, in the page's language. Forgot your password stays as it
+ * was until part 2.
+ */
 export default function LoginPage() {
     const { t, locale } = useLanguage()
-    const [email, setEmail] = useState('')
+    const router = useRouter()
+
+    const [identifier, setIdentifier] = useState('')
     const [password, setPassword] = useState('')
+    const [staySignedIn, setStaySignedIn] = useState(false)
+    const [fieldErrors, setFieldErrors] = useState<Partial<Record<SignInField, string>>>({})
+    const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     // Held back after wrong tries, counted down until it's over, and then
     // said that it's over (lib/sign-in-lock.ts, decided 2026-11-03).
-    const [hold, setHold] = useState<{ kind: 'pause' | 'lock'; until: number } | null>(null)
+    const [hold, setHold] = useState<Hold | null>(null)
     const [notice, setNotice] = useState('')
     /** Whether the server held sign-in back; if so, the count down is shown in place of an error. */
     const held = (serverError: string | undefined | null) => {
@@ -25,22 +47,21 @@ export default function LoginPage() {
         setHold({ kind: wait.kind, until: Date.now() + wait.seconds * 1000 })
         return true
     }
-    const [showPassword, setShowPassword] = useState(false)
-    const router = useRouter()
+    const clearMessages = () => {
+        setError('')
+        setHold(null)
+        setNotice('')
+    }
 
-    const [loading, setLoading] = useState(false)
-    const [staySignedIn, setStaySignedIn] = useState(false)
-
-    // F-27: 'credentials' -> (if MFA is enabled and this browser isn't a
-    // trusted device) 'code', with 'recovery' as a sub-branch of 'code'
-    // for the "email me a code instead" fallback. Neither of the latter
-    // two is reachable for an account without MFA enabled — authorize()
-    // just returns a session directly in that case, same as before this
-    // phase existed.
-    const [stage, setStage] = useState<'credentials' | 'code' | 'recovery'>('credentials')
-    const [mfaCode, setMfaCode] = useState('')
+    // F-27: 'credentials', then, if MFA is on and this browser isn't a
+    // trusted device, the code: from the authenticator app ('app'), or one
+    // emailed instead ('email'). An account without MFA never reaches the
+    // code: authorize() returns a session at once.
+    const [stage, setStage] = useState<'credentials' | CodeKind>('credentials')
+    const [code, setCode] = useState('')
+    const [codeErr, setCodeErr] = useState<string>()
     const [rememberDevice, setRememberDevice] = useState(false)
-    const [recoverySending, setRecoverySending] = useState(false)
+    const [sending, setSending] = useState(false)
     const isAr = locale === 'ar'
 
     // F-27, Phase 3.5: entirely separate from the MFA stage machine above
@@ -104,7 +125,7 @@ export default function LoginPage() {
             if (!res.ok || !data.success) {
                 throw new Error(data.error || (isAr ? 'رمز غير صالح أو منتهي الصلاحية' : 'Invalid or expired code'))
             }
-            setEmail(forgotEmail)
+            setIdentifier(forgotEmail)
             setPassword('')
             resetForgotState()
             setError('')
@@ -115,8 +136,20 @@ export default function LoginPage() {
         }
     }
 
-    const finishLogin = async () => {
-        if (rememberDevice) {
+    /** A failure nothing answered for, such as no connection: in the page's language, with a reference for the admin when there is one. */
+    const failed = async (err: unknown) => {
+        const ref = await reportClientError(err, '/login')
+        setError(ref ? t('sign_in_failed_ref').replace('{ref}', ref) : t('sign_in_failed'))
+    }
+
+    /**
+     * Into the app, trusting this device first only at the end of a sign-in
+     * that took a code (app/api/account/mfa/trust-device/route.ts): ticked at
+     * a code, then Back to sign in and an account without two-factor, it was
+     * trusted for that one too.
+     */
+    const finishLogin = async (trustDevice: boolean) => {
+        if (trustDevice) {
             // Best-effort — a failed trust-device call just means being
             // asked for a code again next time, not a login failure.
             try {
@@ -127,468 +160,209 @@ export default function LoginPage() {
         router.refresh()
     }
 
-    const handleCredentialsSubmit = async (e: React.FormEvent) => {
+    const handleCredentialsSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
+        const form = e.currentTarget
+        clearMessages()
+        const wrong = signInErrors({ identifier, password })
+        if (Object.keys(wrong).length > 0) {
+            setFieldErrors(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))
+            focusFirstWrong(form)
+            return
+        }
+        setFieldErrors({})
         setLoading(true)
-        setError('')
-        setHold(null)
-        setNotice('')
-
         try {
+            // Without spaces at its ends, such as one a phone's keyboard adds
+            // after a suggestion: what's sent is matched as it is
+            // (lib/sign-in-account.ts), so "x@y.com " wasn't anybody's.
             const res = await signIn('credentials', {
-                email,
+                email: identifier.trim(),
                 password,
                 remember: staySignedIn.toString(),
                 redirect: false,
             })
 
             if (res?.error === 'MFA_REQUIRED') {
-                setStage('code')
+                setStage('app')
+                setCode('')
+                setCodeErr(undefined)
                 setLoading(false)
                 return
             }
 
             if (res?.error) {
-                if (!held(res.error)) setError(t(signInErrorKey(res.error)))
+                if (!held(res.error)) {
+                    const key = signInErrorKey(res.error)
+                    setError(t(key))
+                    // Readied to type again: Sign in, turned busy, took the focus with it.
+                    if (key === 'error_invalid_credentials') {
+                        const typed = form.querySelector<HTMLInputElement>('[name="password"]')
+                        typed?.focus()
+                        typed?.select()
+                    }
+                }
                 setLoading(false)
             } else if (res?.ok) {
-                await finishLogin()
+                await finishLogin(false)
             } else {
-                setError(t('error_generic'))
+                setError(t('sign_in_failed'))
                 setLoading(false)
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error('Login error:', err)
-            const ref = await reportClientError(err, '/login')
-            setError(friendlyErrorMessage(ref))
+            await failed(err)
             setLoading(false)
         }
     }
 
-    const handleCodeSubmit = async (e: React.FormEvent) => {
+    const handleCodeSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
+        if (stage === 'credentials') return
+        const form = e.currentTarget
+        const kind = stage
+        clearMessages()
+        const wrong = codeError(code, kind)
+        if (wrong) {
+            setCodeErr(t(wrong))
+            focusFirstWrong(form)
+            return
+        }
+        setCodeErr(undefined)
         setLoading(true)
-        setError('')
-        setHold(null)
-        setNotice('')
 
         try {
             const res = await signIn('credentials', {
-                email,
+                email: identifier.trim(),
                 password,
                 remember: staySignedIn.toString(),
-                ...(stage === 'recovery' ? { mfaRecoveryCode: mfaCode } : { mfaCode }),
+                ...(kind === 'email' ? { mfaRecoveryCode: code.trim() } : { mfaCode: code.trim() }),
                 redirect: false,
             })
 
             if (res?.ok) {
-                await finishLogin()
+                await finishLogin(rememberDevice)
                 return
             }
 
-            if (!held(res?.error)) setError(t(codeErrorKey(res?.error)))
+            if (!held(res?.error)) {
+                const key = codeErrorKey(res?.error, kind)
+                if (isWrongCode(res?.error)) {
+                    setCodeErr(t(key))
+                    focusFirstWrong(form)
+                } else {
+                    setError(t(key))
+                }
+            }
             setLoading(false)
-        } catch (err: any) {
-            const ref = await reportClientError(err, '/login')
-            setError(friendlyErrorMessage(ref))
+        } catch (err) {
+            await failed(err)
             setLoading(false)
         }
     }
 
-    const requestRecoveryCode = async () => {
-        setError('')
-        setHold(null)
-        setNotice('')
-        setRecoverySending(true)
+    /** "Email me a code instead", and from the emailed code's own step, a new one. */
+    const emailCode = async () => {
+        clearMessages()
+        setSending(true)
         try {
             const res = await fetch('/api/auth/mfa-recovery/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email: identifier.trim(), password }),
             })
-            const data = await res.json()
+            const text = await res.text()
+            let data: { success?: boolean; error?: string; code?: string } = {}
+            try {
+                data = JSON.parse(text)
+            } catch { /* not JSON: said as the fallback below */ }
             if (!res.ok || !data.success) {
                 if (held(data.error)) return
-                throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
+                const key = emailCodeRefusal(data.code)
+                setError(key ? t(key) : apiErrorText(text, t('sign_in_failed')))
+                return
             }
-            setStage('recovery')
-            setMfaCode('')
-        } catch (err: any) {
-            setError(err.message)
+            if (stage === 'email') setNotice(t('sign_in_email_code_sent'))
+            setStage('email')
+            setCode('')
+            setCodeErr(undefined)
+        } catch (err) {
+            await failed(err)
         } finally {
-            setRecoverySending(false)
+            setSending(false)
         }
     }
 
-    return (
-        <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
-            {/* Animated background elements */}
-            <div style={{
-                position: 'absolute',
-                top: '-50%',
-                left: '-50%',
-                width: '200%',
-                height: '200%',
-                background: 'radial-gradient(circle, var(--veil-10) 1px, transparent 1px)',
-                backgroundSize: '50px 50px',
-                animation: 'float 20s linear infinite',
-                pointerEvents: 'none'
-            }} />
-            <div style={{
-                width: '100%',
-                maxWidth: '420px',
-                position: 'relative',
-                zIndex: 1,
-                padding: '0 1rem'
-            }}>
-                <div style={{
-                    background: 'var(--panel-95)',
-                    backdropFilter: 'blur(20px)',
-                    borderRadius: '24px',
-                    padding: '2.5rem',
-                    boxShadow: '0 20px 60px var(--shadow-mid), 0 0 0 1px var(--veil-10)',
-                    border: '1px solid var(--veil-20)'
-                }}>
-                    <h1 style={{
-                        marginBottom: '0.5rem',
+    const switchToApp = () => {
+        clearMessages()
+        setStage('app')
+        setCode('')
+        setCodeErr(undefined)
+    }
+
+    const backToSignIn = () => {
+        clearMessages()
+        setStage('credentials')
+        setCode('')
+        setCodeErr(undefined)
+        setPassword('')
+        // The password, cleared, is what's asked for again.
+        requestAnimationFrame(() => document.querySelector<HTMLInputElement>('input[name="password"]')?.focus())
+    }
+
+    const message = (
+        <SignInMessage hold={hold} error={error} notice={notice} onHoldOver={() => { setHold(null); setNotice(t('sign_in_wait_over')) }} />
+    )
+
+    if (mode === 'forgot') {
+        return (
+            <SignInScreen
+                title={isAr ? 'إعادة تعيين كلمة المرور' : 'Reset your password'}
+                subtitle={forgotStage === 'request'
+                    ? (isAr ? 'أدخل بريدك الإلكتروني وسنرسل لك رمزًا لإعادة التعيين.' : "Enter your email and we'll send you a reset code.")
+                    : (isAr ? 'أدخل الرمز وكلمة المرور الجديدة.' : 'Enter the code and your new password.')}
+            >
+                {forgotMessage && !error && (
+                    <div style={{
+                        padding: '0.85rem 1rem',
+                        background: 'linear-gradient(135deg, var(--ok-bg) 0%, var(--ok-bg-strong) 100%)',
+                        color: 'var(--ok-fg)',
+                        borderRadius: '12px',
+                        fontSize: '0.85rem',
                         textAlign: 'center',
-                        fontSize: '2rem',
-                        fontWeight: '700',
-                        background: 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text'
-                    }}>
-                        {mode === 'forgot'
-                            ? (isAr ? 'إعادة تعيين كلمة المرور' : 'Reset your password')
-                            : stage === 'credentials' ? t('welcome_back') : (isAr ? 'التحقق المطلوب' : 'Verification required')}
-                    </h1>
-                    <p style={{
+                        border: '1px solid var(--ok-border)',
+                    }}>{forgotMessage}</div>
+                )}
+                {error && (
+                    <div style={{
+                        padding: '1rem',
+                        background: 'linear-gradient(135deg, var(--danger-bg) 0%, var(--danger-border) 100%)',
+                        color: 'var(--danger-fg)',
+                        borderRadius: '12px',
+                        fontSize: '0.875rem',
                         textAlign: 'center',
-                        color: 'var(--text-soft)',
-                        marginBottom: '2rem',
-                        fontSize: '0.875rem'
-                    }}>
-                        {mode === 'forgot'
-                            ? forgotStage === 'request'
-                                ? (isAr ? 'أدخل بريدك الإلكتروني وسنرسل لك رمزًا لإعادة التعيين.' : "Enter your email and we'll send you a reset code.")
-                                : (isAr ? 'أدخل الرمز وكلمة المرور الجديدة.' : 'Enter the code and your new password.')
-                            : stage === 'credentials'
-                                ? t('sign_in_subtitle')
-                                : stage === 'recovery'
-                                    ? (isAr ? 'أدخل الرمز المرسل إلى بريدك الإلكتروني.' : 'Enter the code sent to your email.')
-                                    : (isAr ? 'أدخل الرمز من تطبيق المصادقة الخاص بك.' : 'Enter the code from your authenticator app.')}
-                    </p>
-                    {forgotMessage && !error && (
-                        <div style={{
-                            padding: '0.85rem 1rem',
-                            marginBottom: '1.5rem',
-                            background: 'linear-gradient(135deg, var(--ok-bg) 0%, var(--ok-bg-strong) 100%)',
-                            color: 'var(--ok-fg)',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            textAlign: 'center',
-                            border: '1px solid var(--ok-border)',
-                        }}>{forgotMessage}</div>
-                    )}
-                    {error && (
-                        <div style={{
-                            padding: '1rem',
-                            marginBottom: '1.5rem',
-                            background: 'linear-gradient(135deg, var(--danger-bg) 0%, var(--danger-border) 100%)',
-                            color: 'var(--danger-fg)',
-                            borderRadius: '12px',
-                            fontSize: '0.875rem',
-                            textAlign: 'center',
-                            border: '1px solid var(--danger-border-firm)',
-                            fontWeight: '500'
-                        }}>{error}</div>
-                    )}
-                    {hold && (
-                        <div role="alert" style={{
-                            padding: '1rem',
-                            marginBottom: '1.5rem',
-                            background: 'linear-gradient(135deg, var(--danger-bg) 0%, var(--danger-border) 100%)',
-                            color: 'var(--danger-fg)',
-                            borderRadius: '12px',
-                            fontSize: '0.875rem',
-                            textAlign: 'center',
-                            border: '1px solid var(--danger-border-firm)',
-                            fontWeight: '500',
-                            fontVariantNumeric: 'tabular-nums',
-                        }}>
-                            <SignInWait kind={hold.kind} until={hold.until} onOver={() => { setHold(null); setNotice(t('sign_in_wait_over')) }} />
+                        border: '1px solid var(--danger-border-firm)',
+                        fontWeight: '500'
+                    }}>{error}</div>
+                )}
+                <form onSubmit={forgotStage === 'request' ? handleForgotRequest : handleForgotConfirm}>
+                    {forgotStage === 'request' ? (
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
+                            <input aria-label={t('email')}
+                                type="email"
+                                autoComplete="username"
+                                className="input"
+                                value={forgotEmail}
+                                onChange={(e) => setForgotEmail(e.target.value.slice(0, 254))}
+                                required
+                                maxLength={254}
+                                autoFocus
+                                style={{ padding: '0.625rem 1rem', height: '42px', textAlign: locale === 'ar' ? 'right' : 'left', direction: locale === 'ar' ? 'rtl' : 'ltr' }}
+                            />
                         </div>
-                    )}
-                    {notice && !error && !hold && (
-                        <div role="status" style={{
-                            padding: '0.85rem 1rem',
-                            marginBottom: '1.5rem',
-                            background: 'linear-gradient(135deg, var(--ok-bg) 0%, var(--ok-bg-strong) 100%)',
-                            color: 'var(--ok-fg)',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            textAlign: 'center',
-                            border: '1px solid var(--ok-border)',
-                        }}>{notice}</div>
-                    )}
-
-                    {mode === 'forgot' ? (
-                        <form onSubmit={forgotStage === 'request' ? handleForgotRequest : handleForgotConfirm}>
-                            {forgotStage === 'request' ? (
-                                <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                                    <input aria-label={t('email')}
-                                        type="email"
-                                        autoComplete="username"
-                                        className="input"
-                                        value={forgotEmail}
-                                        onChange={(e) => setForgotEmail(e.target.value.slice(0, 254))}
-                                        required
-                                        maxLength={254}
-                                        autoFocus
-                                        style={{ padding: '0.625rem 1rem', height: '42px', textAlign: locale === 'ar' ? 'right' : 'left', direction: locale === 'ar' ? 'rtl' : 'ltr' }}
-                                    />
-                                </div>
-                            ) : (
-                                <>
-                                    <div style={{ marginBottom: '1rem' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                            {isAr ? 'الرمز' : 'Code'}
-                                        </label>
-                                        <input aria-label={isAr ? 'الرمز' : 'Code'}
-                                            type="text"
-                                            inputMode="numeric"
-                                            autoComplete="one-time-code"
-                                            className="input"
-                                            value={forgotCode}
-                                            onChange={(e) => setForgotCode(e.target.value)}
-                                            maxLength={6}
-                                            minLength={6}
-                                            required
-                                            autoFocus
-                                            style={{ padding: '0.625rem 1rem', height: '42px', textAlign: 'center', letterSpacing: '0.2em', fontSize: '1.1rem' }}
-                                        />
-                                    </div>
-                                    <div style={{ marginBottom: '1.25rem' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                            {isAr ? 'كلمة المرور الجديدة' : 'New password'}
-                                        </label>
-                                        <input aria-label={isAr ? 'كلمة المرور الجديدة' : 'New password'}
-                                            type="password"
-                                            autoComplete="new-password"
-                                            className="input"
-                                            value={forgotNewPassword}
-                                            onChange={(e) => setForgotNewPassword(e.target.value.slice(0, 72))}
-                                            required
-                                            minLength={12}
-                                            maxLength={72}
-                                            style={{ padding: '0.625rem 1rem', height: '42px' }}
-                                        />
-                                    </div>
-                                </>
-                            )}
-
-                            <button
-                                type="submit"
-                                disabled={forgotSubmitting}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.875rem',
-                                    background: forgotSubmitting ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
-                                    color: 'var(--text-on-accent)',
-                                    border: 'none',
-                                    borderRadius: '12px',
-                                    fontSize: '1rem',
-                                    fontWeight: '600',
-                                    cursor: forgotSubmitting ? 'not-allowed' : 'pointer',
-                                    marginBottom: '0.75rem'
-                                }}
-                            >
-                                {forgotSubmitting
-                                    ? (isAr ? 'جارٍ الإرسال...' : 'Sending...')
-                                    : forgotStage === 'request'
-                                        ? (isAr ? 'إرسال الرمز' : 'Send code')
-                                        : (isAr ? 'إعادة تعيين كلمة المرور' : 'Reset password')}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={resetForgotState}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.6rem',
-                                    background: 'transparent',
-                                    color: 'var(--text-faint)',
-                                    border: 'none',
-                                    fontSize: '0.8rem',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                {isAr ? 'العودة إلى تسجيل الدخول' : 'Back to sign in'}
-                            </button>
-                        </form>
-                    ) : stage === 'credentials' ? (
-                        <form onSubmit={handleCredentialsSubmit}>
-                            <div style={{ marginBottom: '1.25rem' }}>
-                                {/* An email or a username (lib/sign-in-account.ts). */}
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('sign_in_identifier')}</label>
-                                {/* Left to right in Arabic too, as emails and usernames are (DESIGN.md §3.3). */}
-                                <input aria-label={t('sign_in_identifier')}
-                                    type="text"
-                                    dir="ltr"
-                                    autoComplete="username"
-                                    spellCheck={false}
-                                    autoCapitalize="none"
-                                    className="input"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value.slice(0, 254))}
-                                    required
-                                    placeholder={t('sign_in_identifier_placeholder')}
-                                    maxLength={254}
-                                    style={{
-                                        padding: '0.625rem 1rem',
-                                        height: '42px',
-                                        textAlign: locale === 'ar' ? 'right' : 'left'
-                                    }}
-                                />
-                            </div>
-                            <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('password')}</label>
-                                <input aria-label={t('password')}
-                                    type={showPassword ? "text" : "password"}
-                                    autoComplete="current-password"
-                                    className="input"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value.slice(0, 72))}
-                                    required
-                                    placeholder={locale === 'ar' ? 'أدخل كلمة المرور' : 'Enter Password'}
-                                    maxLength={72}
-                                    style={{
-                                        padding: '0.625rem 1rem',
-                                        height: '42px',
-                                        [locale === 'ar' ? 'paddingLeft' : 'paddingRight']: '2.5rem',
-                                        textAlign: locale === 'ar' ? 'right' : 'left',
-                                        direction: locale === 'ar' ? 'rtl' : 'ltr'
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    aria-label={showPassword ? t('hide_password' as any) : t('show_password' as any)}
-                                    aria-pressed={showPassword}
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    style={{
-                                        position: 'absolute',
-                                        [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                        top: '2.25rem',
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        padding: '0.25rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        color: 'var(--text-soft)'
-                                    }}
-                                >
-                                    {showPassword ? (
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                            <line x1="1" y1="1" x2="23" y2="23"></line>
-                                        </svg>
-                                    ) : (
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                    )}
-                                </button>
-                                <div style={{ textAlign: locale === 'ar' ? 'left' : 'right', marginTop: '0.5rem' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setMode('forgot'); setForgotEmail(email.includes('@') ? email : ''); setError('') }}
-                                        style={{ background: 'none', border: 'none', color: 'var(--link)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
-                                    >
-                                        {isAr ? 'هل نسيت كلمة المرور؟' : 'Forgot your password?'}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Stay Signed In Checkbox */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                marginBottom: '1.5rem',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                justifyContent: locale === 'ar' ? 'flex-end' : 'flex-start'
-                            }}
-                                onClick={() => setStaySignedIn(!staySignedIn)}
-                            >
-                                <div style={{
-                                    width: '18px',
-                                    height: '18px',
-                                    borderRadius: '4px',
-                                    border: '2px solid var(--hero-from)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: staySignedIn ? 'var(--hero-from)' : 'transparent',
-                                    transition: 'all 0.2s ease',
-                                    flexShrink: 0
-                                }}>
-                                    {staySignedIn && (
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                        </svg>
-                                    )}
-                                </div>
-                                <span style={{ fontSize: '0.875rem', color: 'var(--text-soft)' }}>
-                                    {t('stay_signed_in')}
-                                </span>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.875rem',
-                                    background: loading ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
-                                    color: 'var(--text-on-accent)',
-                                    border: 'none',
-                                    borderRadius: '12px',
-                                    fontSize: '1rem',
-                                    fontWeight: '600',
-                                    cursor: loading ? 'not-allowed' : 'pointer',
-                                    transition: 'all 0.3s ease',
-                                    boxShadow: loading ? 'none' : '0 4px 15px color-mix(in srgb, var(--hero-from) 40%, transparent)',
-                                }}
-                            >
-                                {loading ? (
-                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                        <span style={{
-                                            width: '16px',
-                                            height: '16px',
-                                            border: '2px solid var(--veil-30)',
-                                            borderTopColor: 'var(--text-on-accent)',
-                                            borderRadius: '50%',
-                                            animation: 'spin 0.6s linear infinite'
-                                        }}></span>
-                                        {t('signing_in')}
-                                    </span>
-                                ) : t('sign_in')}
-                            </button>
-                        </form>
                     ) : (
-                        <form onSubmit={handleCodeSubmit}>
+                        <>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                     {isAr ? 'الرمز' : 'Code'}
@@ -598,8 +372,8 @@ export default function LoginPage() {
                                     inputMode="numeric"
                                     autoComplete="one-time-code"
                                     className="input"
-                                    value={mfaCode}
-                                    onChange={(e) => setMfaCode(e.target.value)}
+                                    value={forgotCode}
+                                    onChange={(e) => setForgotCode(e.target.value)}
                                     maxLength={6}
                                     minLength={6}
                                     required
@@ -607,152 +381,106 @@ export default function LoginPage() {
                                     style={{ padding: '0.625rem 1rem', height: '42px', textAlign: 'center', letterSpacing: '0.2em', fontSize: '1.1rem' }}
                                 />
                             </div>
-
-                            {stage === 'code' && (
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    marginBottom: '1.25rem',
-                                    cursor: 'pointer',
-                                    userSelect: 'none'
-                                }}
-                                    onClick={() => setRememberDevice(!rememberDevice)}
-                                >
-                                    <div style={{
-                                        width: '18px',
-                                        height: '18px',
-                                        borderRadius: '4px',
-                                        border: '2px solid var(--hero-from)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: rememberDevice ? 'var(--hero-from)' : 'transparent',
-                                        flexShrink: 0
-                                    }}>
-                                        {rememberDevice && (
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                            </svg>
-                                        )}
-                                    </div>
-                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-soft)' }}>
-                                        {isAr ? 'تذكر هذا الجهاز لمدة 30 يومًا' : 'Remember this device for 30 days'}
-                                    </span>
-                                </div>
-                            )}
-
-                            {stage === 'recovery' && (
-                                <p style={{ fontSize: '0.78rem', color: 'var(--text-soft)', marginBottom: '1.25rem' }}>
-                                    {isAr ? 'لم يصلك؟ تحقق من مجلد الرسائل غير المرغوب فيها.' : "Didn't get it? Check your spam folder."}
-                                </p>
-                            )}
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.875rem',
-                                    background: loading ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
-                                    color: 'var(--text-on-accent)',
-                                    border: 'none',
-                                    borderRadius: '12px',
-                                    fontSize: '1rem',
-                                    fontWeight: '600',
-                                    cursor: loading ? 'not-allowed' : 'pointer',
-                                    marginBottom: '0.75rem'
-                                }}
-                            >
-                                {loading ? (isAr ? 'جارٍ التحقق...' : 'Verifying...') : (isAr ? 'تحقق' : 'Verify')}
-                            </button>
-
-                            {stage === 'code' ? (
-                                <button
-                                    type="button"
-                                    onClick={requestRecoveryCode}
-                                    disabled={recoverySending}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.6rem',
-                                        background: 'transparent',
-                                        color: 'var(--link)',
-                                        border: 'none',
-                                        fontSize: '0.85rem',
-                                        fontWeight: '600',
-                                        cursor: recoverySending ? 'not-allowed' : 'pointer',
-                                    }}
-                                >
-                                    {recoverySending
-                                        ? (isAr ? 'جارٍ الإرسال...' : 'Sending...')
-                                        : (isAr ? 'إرسال رمز عبر البريد الإلكتروني بدلاً من ذلك' : 'Email me a code instead')}
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => { setStage('code'); setMfaCode(''); setError('') }}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.6rem',
-                                        background: 'transparent',
-                                        color: 'var(--text-soft)',
-                                        border: 'none',
-                                        fontSize: '0.85rem',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    {isAr ? 'استخدام تطبيق المصادقة بدلاً من ذلك' : 'Use my authenticator app instead'}
-                                </button>
-                            )}
-
-                            <button
-                                type="button"
-                                onClick={() => { setStage('credentials'); setMfaCode(''); setError(''); setPassword('') }}
-                                style={{
-                                    width: '100%',
-                                    padding: '0.6rem',
-                                    background: 'transparent',
-                                    color: 'var(--text-faint)',
-                                    border: 'none',
-                                    fontSize: '0.8rem',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                {isAr ? 'رجوع' : 'Back'}
-                            </button>
-                        </form>
+                            <div style={{ marginBottom: '1.25rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                    {isAr ? 'كلمة المرور الجديدة' : 'New password'}
+                                </label>
+                                <input aria-label={isAr ? 'كلمة المرور الجديدة' : 'New password'}
+                                    type="password"
+                                    autoComplete="new-password"
+                                    className="input"
+                                    value={forgotNewPassword}
+                                    onChange={(e) => setForgotNewPassword(e.target.value.slice(0, 72))}
+                                    required
+                                    minLength={12}
+                                    maxLength={72}
+                                    style={{ padding: '0.625rem 1rem', height: '42px' }}
+                                />
+                            </div>
+                        </>
                     )}
-                </div>
-            </div>
-            {/* The policy has to be reachable from the product, not only from
-                Google's consent screen. This is the one page every user passes
-                through, and the app has no footer to put them in. */}
-            <div style={{
-                // Mirrors PreferenceBar's anchoring so the two never collide:
-                // it takes the reading-end corner, these take the other one,
-                // and both flip together with direction. Fixed rather than a
-                // flex child, because the parent centres a single card in a
-                // row and an extra child would sit beside it.
-                position: 'fixed',
-                bottom: '2rem',
-                [isAr ? 'right' : 'left']: '2rem',
-                [isAr ? 'left' : 'right']: 'auto',
-                display: 'flex',
-                gap: '1.25rem',
-                flexWrap: 'wrap',
-                maxWidth: 'calc(100vw - 4rem)',
-                zIndex: 1000,
-                fontSize: '0.8rem',
-            }}>
-                <a href="/privacy" style={{ color: 'var(--text-on-accent)', opacity: 0.75, textDecoration: 'none' }}>
-                    {isAr ? 'سياسة الخصوصية' : 'Privacy Policy'}
-                </a>
-                <a href="/terms" style={{ color: 'var(--text-on-accent)', opacity: 0.75, textDecoration: 'none' }}>
-                    {isAr ? 'شروط الخدمة' : 'Terms of Service'}
-                </a>
-            </div>
-            <PreferenceBar />
-        </div>
+
+                    <button
+                        type="submit"
+                        disabled={forgotSubmitting}
+                        style={{
+                            width: '100%',
+                            padding: '0.875rem',
+                            background: forgotSubmitting ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
+                            color: 'var(--text-on-accent)',
+                            border: 'none',
+                            borderRadius: '12px',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            cursor: forgotSubmitting ? 'not-allowed' : 'pointer',
+                            marginBottom: '0.75rem'
+                        }}
+                    >
+                        {forgotSubmitting
+                            ? (isAr ? 'جارٍ الإرسال...' : 'Sending...')
+                            : forgotStage === 'request'
+                                ? (isAr ? 'إرسال الرمز' : 'Send code')
+                                : (isAr ? 'إعادة تعيين كلمة المرور' : 'Reset password')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={resetForgotState}
+                        style={{
+                            width: '100%',
+                            padding: '0.6rem',
+                            background: 'transparent',
+                            color: 'var(--text-faint)',
+                            border: 'none',
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        {isAr ? 'العودة إلى تسجيل الدخول' : 'Back to sign in'}
+                    </button>
+                </form>
+            </SignInScreen>
+        )
+    }
+
+    if (stage === 'credentials') {
+        return (
+            <SignInScreen title={t('sign_in_title')}>
+                <CredentialsStep
+                    identifier={identifier}
+                    password={password}
+                    staySignedIn={staySignedIn}
+                    errors={fieldErrors}
+                    message={message}
+                    busy={loading}
+                    onIdentifier={value => { setIdentifier(value); if (fieldErrors.identifier) setFieldErrors({ ...fieldErrors, identifier: undefined }) }}
+                    onPassword={value => { setPassword(value); if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: undefined }) }}
+                    onStaySignedIn={setStaySignedIn}
+                    onSubmit={handleCredentialsSubmit}
+                    // Forgot your password asks for the email, as the code goes
+                    // there: filled in from here only when an email was typed.
+                    onForgot={() => { setMode('forgot'); setForgotEmail(identifier.includes('@') ? identifier.trim() : ''); clearMessages() }}
+                />
+            </SignInScreen>
+        )
+    }
+
+    return (
+        <SignInScreen title={t('sign_in_code_title')} subtitle={t(stage === 'app' ? 'sign_in_code_app_hint' : 'sign_in_code_email_hint')}>
+            <CodeStep key={stage}
+                kind={stage}
+                code={code}
+                rememberDevice={rememberDevice}
+                error={codeErr}
+                message={message}
+                busy={loading}
+                sending={sending}
+                onCode={value => { setCode(value); setCodeErr(undefined) }}
+                onRememberDevice={setRememberDevice}
+                onSubmit={handleCodeSubmit}
+                onEmailCode={() => { void emailCode() }}
+                onUseApp={switchToApp}
+                onBack={backToSignIn}
+            />
+        </SignInScreen>
     )
 }

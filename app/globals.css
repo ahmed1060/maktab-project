@@ -165,9 +165,6 @@
   --map-halo: #ffffff;
   --map-shadow: rgba(0, 0, 0, 0.5);
 
-  /* A text link in the brand colour, at least 4.5:1 on the surface. */
-  --link: #4f46e5;
-
   /* A field's outline, at least 3:1 against the surface it sits on (WCAG
      1.4.11): the border is what shows where a field is. Was indigo at 25%,
      1.4:1. */
@@ -1200,7 +1197,6 @@ input::-webkit-credentials-auto-fill-button {
     --accent-solid: #a86ef0;
     --brand-primary-text: #a5b4fc;
     --focus-ring: #a5b4fc;
-    --link: #a5b4fc;
     --field-border: #6e7681;
 
     /* The fills again: white on them at least 4.5:1, and the shape itself

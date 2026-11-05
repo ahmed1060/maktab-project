@@ -73,7 +73,7 @@ export class ApiResponse {
      * a known one (lib/api-errors.ts), so a screen can say it in the person's
      * language: ending a contract does (a person's profile, part 5, PR 195).
      */
-    static refused(status: 400 | 403 | 404 | 409, message: string, code: string) {
+    static refused(status: 400 | 403 | 404 | 409 | 429, message: string, code: string) {
         return NextResponse.json({ success: false, error: message, code }, { status })
     }
 

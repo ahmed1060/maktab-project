@@ -7,8 +7,12 @@ import { readFileSync } from "node:fs"
  * users depend on, fill the right one instead of guessing. None did
  * (accessibility audit, 4 October 2026).
  */
-const page = readFileSync("app/(auth)/login/page.tsx", "utf8")
-const inputs = [...page.matchAll(/<input\b([\s\S]*?)\/>/g)].map(m => m[1])
+// The page's own (Forgot your password, until part 2), then each step's, on
+// the building blocks (DESIGN.md §5.5, Sign-in). Checkboxes name no purpose.
+const files = ["app/(auth)/login/page.tsx", "components/sign-in/CredentialsStep.tsx", "components/sign-in/CodeStep.tsx"]
+const inputs = files
+    .flatMap(f => [...readFileSync(f, "utf8").matchAll(/<(?:input|TextInput|PasswordInput)\b([\s\S]*?)\/>/g)].map(m => m[1]))
+    .filter(attrs => !attrs.includes('type="checkbox"'))
 const purpose = (attrs: string) => attrs.match(/autoComplete="([^"]+)"/)?.[1] ?? null
 
 describe("the sign-in fields", () => {
@@ -25,9 +29,9 @@ describe("the sign-in fields", () => {
             "forgotEmail: username",
             "forgotCode: one-time-code",
             "forgotNewPassword: new-password",
-            "email: username",
+            "identifier: username",
             "password: current-password",
-            "mfaCode: one-time-code",
+            "code: one-time-code",
         ])
     })
 })
