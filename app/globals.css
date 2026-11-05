@@ -176,25 +176,12 @@
   --glass-card-hover: rgba(255, 255, 255, 0.75);
   --glass-card-border-hover: rgba(255, 255, 255, 0.8);
   --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
-  --sidebar-bg: rgba(15, 23, 42, 0.65);
-  /* The ground a company's own logo is drawn on. Near-white in both themes on
-     purpose: the sidebar is dark in both, so this is not a theme decision, it
-     is what makes an arbitrary customer logo legible there at all. */
+  /* The ground a company's own logo is drawn on, in the side bar and its
+     previews (DESIGN.md §5.1). Near-white in both themes on purpose: a logo's
+     colours are anyone's, and the side bar is dark in dark mode, so this is
+     not a theme decision, it is what makes an arbitrary customer logo legible
+     there at all. */
   --logo-plate: #f4f6fa;
-
-  /* Text on that same sidebar, and so declared once for both themes for the
-     same reason --logo-plate is. The nav links used --panel-80, which is a
-     *surface* token: white at 80% on light, so it happened to look right, and
-     near-black on dark — which painted the labels the colour of the sidebar
-     they sit on. A background token read as a foreground one. */
-  --sidebar-fg: rgba(255, 255, 255, 0.8);
-  --sidebar-fg-strong: #ffffff;
-  /* The side bar's touches of the brand colour, which follow it (DESIGN.md
-     §2.1, lib/brand-colour.ts). Both are light, on its dark ground, in both
-     themes: its focus ring, and the end of the company name's gradient,
-     which starts from --sidebar-fg-strong. */
-  --sidebar-ring: #c7d2fe;
-  --sidebar-accent: #a5b4fc;
 
   /* The raised half of a segmented toggle, and the shadow under it.
      Not --surface: the toggle's track is a percentage of the text colour, so
@@ -234,7 +221,6 @@
                dropdown, the login card. On dark it has to become a near-opaque
                dark surface, not a faint white, or the content behind it reads
                straight through. */
-  --veil-10: rgba(255, 255, 255, 0.1);
   --veil-20: rgba(255, 255, 255, 0.2);
   --veil-30: rgba(255, 255, 255, 0.3);
   --veil-40: rgba(255, 255, 255, 0.4);
@@ -281,7 +267,6 @@
   --problem-on-paper: #b3093c;
 
   --hairline: rgba(0, 0, 0, 0.05);
-  --hairline-firm: rgba(0, 0, 0, 0.1);
 
   /* The page ground itself. */
   --page-bg: #eef2ff;
@@ -416,15 +401,11 @@ body::before {
   transition: all 0.3s ease;
 }
 
-/* The dashboard's layout on a phone and a desktop (components/DashboardShell.tsx).
-   In CSS, not decided by script after the page has run, so the first paint is
-   already right: before, a phone first got the desktop layout and the page
-   then slid 270px into place, which Lighthouse scored as a layout shift of up
-   to 0.85. */
-.shell-main {
-  margin-inline-start: var(--shell-sidebar, 270px);
-  transition: margin 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
+/* The "Powered by" signature (components/DashboardShell.tsx), kept as it is
+   (DESIGN.md §5.1): floating in the corner on a desktop, at the end of the
+   page on a phone. In CSS, not decided by script after the page has run, so
+   the first paint is already right. Where the side bar sits is
+   components/ui/ui.css (.ui-side-bar). */
 .floating-attribution {
   position: fixed;
   bottom: 1rem;
@@ -432,15 +413,6 @@ body::before {
   z-index: 30;
 }
 @media (max-width: 1023px) {
-  .shell-main {
-    margin-inline-start: 0;
-  }
-  .shell-aside:not([data-open="true"]) {
-    transform: translateX(-100%);
-  }
-  .shell-aside[data-rtl="true"]:not([data-open="true"]) {
-    transform: translateX(100%);
-  }
   .floating-attribution {
     position: static;
     width: 100%;
@@ -626,19 +598,6 @@ body::before {
   border-radius: var(--radius);
 }
 
-.glass-dark {
-  /* The sidebar is dark in both themes, so its ring is light in both, and
-     lighter than the dark theme's: in the light theme the sidebar is slate 900
-     at 65% over the pale page, a ground the dark ring only reaches 2.97:1 on. */
-  --focus-ring: var(--sidebar-ring);
-  background: var(--sidebar-bg);
-  /* Slate 900 at 65% */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid var(--hairline-firm);
-  color: var(--sidebar-fg-strong);
-}
-
 .glass-card {
   background: var(--glass-card-bg);
   backdrop-filter: blur(12px);
@@ -797,13 +756,6 @@ html:has(#main-content) {
 }
 #main-content:focus {
   outline: none;
-}
-
-/* The sidebar link for the page you're on (aria-current, DashboardShell). */
-.nav-link[aria-current="page"] {
-  background: var(--veil-10) !important;
-  color: var(--sidebar-fg-strong) !important;
-  border-color: var(--veil-20) !important;
 }
 
 /* The pin and the centre cross on the map for placing a check-in place
@@ -1207,15 +1159,12 @@ input::-webkit-credentials-auto-fill-button {
     --glass-card-hover: rgba(28, 33, 41, 0.85);
     --glass-card-border-hover: rgba(255, 255, 255, 0.16);
     --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
-    --sidebar-bg: rgba(9, 12, 17, 0.78);
     --header-glass-bg: rgba(13, 17, 23, 0.88);
     --header-glass-border: rgba(255, 255, 255, 0.1);
     --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
     --highlight-tint: rgba(168, 85, 247, 0.14);
     --chip-solid-bg: #2b3340;
     --chip-solid-fg: #f0f6fc;
-
-    --veil-10: rgba(255, 255, 255, 0.04);
     --veil-20: rgba(255, 255, 255, 0.06);
     --veil-30: rgba(255, 255, 255, 0.07);
     --veil-40: rgba(255, 255, 255, 0.09);
@@ -1235,7 +1184,6 @@ input::-webkit-credentials-auto-fill-button {
     --scrim-deep: rgba(0, 0, 0, 0.9);
 
     --hairline: rgba(255, 255, 255, 0.06);
-    --hairline-firm: rgba(255, 255, 255, 0.1);
 
     --page-bg: #0b0f14;
     --page-veil-a: color-mix(in srgb, var(--primary) 10%, transparent);

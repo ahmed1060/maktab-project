@@ -3,22 +3,22 @@
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import PageTitle from './PageTitle'
 import SubscriptionNote from './SubscriptionNote'
+import SideBar from './SideBar'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { hasBundle } from '@/lib/features/bundles'
 import { inNativeApp } from '@/lib/mobile/native'
 import AppPush from './AppPush'
-import { isModuleKey } from '@/lib/modules'
-import { PAGES, sideBarFor } from '@/lib/side-bar'
+import { sideBarFor } from '@/lib/side-bar'
 import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
-import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
 import { permissionsOf } from '@/lib/useCan'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import PreviewNote from '@/components/PreviewNote'
 
 interface DashboardShellProps {
@@ -41,10 +41,21 @@ interface DashboardShellProps {
 
 const subscribeNever = () => () => {}
 
+// A phone's or a tablet's width, where the side bar is a drawer: the same
+// query as its CSS (.ui-side-bar in components/ui/ui.css).
+const phoneQuery = () => window.matchMedia('(max-width: 1023px)')
+const subscribePhone = (onChange: () => void) => {
+    const query = phoneQuery()
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+}
+const isPhoneNow = () => phoneQuery().matches
+
 export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false, cashAdvances: advancesOnFirstPaint = false }: DashboardShellProps) {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-    const [isMobile, setIsMobile] = useState(false)
-    const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
+    // The side bar's drawer, on a phone or a tablet (DESIGN.md §5.1). Where the
+    // side bar sits is CSS; this is only whether it's a dialog, and open.
+    const isPhone = useSyncExternalStore(subscribePhone, isPhoneNow, () => false)
+    const [drawerOpen, setDrawerOpen] = useState(false)
     const { t, locale } = useLanguage()
     // The company's package, from the account the layout passed until the
     // session has loaded (useFeatures), so what it leaves out never shows.
@@ -86,24 +97,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const logoUrl = scopedBranding ? scopedBranding.logoUrl : (user?.logoUrl ?? null)
     const isRtl = locale === 'ar'
 
-    // Handle responsive state matches
-    useEffect(() => {
-        const checkMobile = () => {
-            const mobile = window.innerWidth < 1024
-            setIsMobile(mobile)
-            if (mobile) {
-                setIsSidebarOpen(false)
-                setIsCollapsed(false) // Reset collapse on mobile
-            } else {
-                setIsSidebarOpen(true)
-                // Keep existing collapsed state on desktop resize or default to false
-            }
-        }
-
-        checkMobile()
-        window.addEventListener('resize', checkMobile)
-        return () => window.removeEventListener('resize', checkMobile)
-    }, [])
+    // Closed on another page, and when the window grows past a phone's.
+    useAdjustOnChange([pathname, isPhone], () => setDrawerOpen(false))
 
     const [isScrolled, setIsScrolled] = useState(false)
 
@@ -115,9 +110,6 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
-    // Dynamic width based on state
-    const sidebarWidth = isMobile ? '270px' : (isCollapsed ? '80px' : '270px')
-
     const searchParams = useSearchParams()
     const selectedCompanyName = searchParams.get('company')
 
@@ -125,15 +117,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         ? (selectedCompanyName || t('app_name'))
         : (user?.companyName || t('app_name'));
 
-    // The sidebar link for the page you're on says so (aria-current), and is
-    // drawn as chosen (.nav-link[aria-current] in globals.css). The dashboard
-    // itself only on its own page, not on every page under /dashboard.
-    const currentFor = (href: string) => {
-        const here = pathname === href || (href !== '/dashboard' && pathname?.startsWith(href + '/'))
-        return here ? { 'aria-current': 'page' as const } : {}
-    }
-
     return (
+        // The side bar beside the page on a computer, in its flow, and a
+        // drawer over it on a phone: CSS (.ui-side-bar), so the first paint is
+        // already right, with no margin kept in step with its width.
         <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
             {/* Inside the Nizmo app: pushes on, and a tapped notice opens its page. */}
             {inApp && <AppPush />}
@@ -142,319 +129,25 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 dashboard pages are Client Components and cannot export metadata. */}
             <PageTitle />
 
-            {/* Sidebar Overlay for Mobile */}
-            {isMobile && isSidebarOpen && (
-                <div
-                    onClick={() => setIsSidebarOpen(false)}
-                    style={{
-                        position: 'fixed', inset: 0,
-                        backgroundColor: 'var(--scrim)',
-                        backdropFilter: 'blur(4px)',
-                        zIndex: 49
-                    }}
-                />
-            )}
-
             {/* The first thing Tab reaches: past the 10 to 20 sidebar links, to the page itself. */}
             <a href="#main-content" className="skip-link">{t('skip_to_content' as any)}</a>
 
-            {/* Glass Sidebar */}
-            {/* Where the sidebar sits on a phone (off screen unless opened) is
-                decided by CSS (.shell-aside, globals.css), not by isMobile: that
-                is only known after the page runs, so the first paint used to be
-                the desktop layout, with the content pushed 270px aside, which
-                then slid into place (Lighthouse: layout shift up to 0.85). */}
-            <aside className="glass-dark shell-aside" data-open={isMobile && isSidebarOpen ? 'true' : 'false'} data-rtl={isRtl ? 'true' : 'false'} style={{
-                width: sidebarWidth,
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'fixed',
-                height: '100vh',
-                zIndex: 50,
-                transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                [isRtl ? 'right' : 'left']: 0,
-                boxShadow: (isMobile && isSidebarOpen) ? (isRtl ? '-20px 0 50px var(--shadow-mid)' : '20px 0 50px var(--shadow-mid)') : 'none',
-                overflow: 'hidden',
-                direction: isRtl ? 'rtl' : 'ltr'
-            }}>
-                <div style={{
-                    minHeight: (user?.role === 'SUPER_ADMIN') ? '70px' : '55px',
-                    paddingInlineStart: isCollapsed ? '0' : '1.25rem',
-                    paddingInlineEnd: isCollapsed ? '0' : '0.75rem',
-                    paddingTop: (user?.role === 'SUPER_ADMIN' ? '0.25rem' : 0),
-                    display: 'flex',
-                    justifyContent: isCollapsed ? 'center' : 'flex-start',
-                    alignItems: 'center',
-                    transition: 'all 0.4s ease',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    position: 'relative'
-                }}>
-                    <div
-                        onClick={() => !isMobile && setIsCollapsed(!isCollapsed)}
-                        style={{
-                            fontSize: '1.5rem',
-                            fontWeight: '800',
-                            letterSpacing: '-0.025em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            color: 'var(--text-on-accent)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'visible',
-                            cursor: !isMobile ? 'pointer' : 'default',
-                            flex: 1,
-                            minWidth: 0, // Allow shrinking to prevent overflow
-                            width: 'auto'
-                        }}
-                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                    >
-                        <span style={{
-                            fontSize: '1.4rem',
-                            filter: 'drop-shadow(0 2px 4px var(--shadow-weak))',
-                            width: isCollapsed ? '100%' : 'auto',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            marginLeft: (!isCollapsed && locale === 'en') ? '0.8rem' : '0',
-                            marginRight: (!isCollapsed && locale === 'ar') ? '0.8rem' : '0',
-                            transition: 'all 0.3s ease'
-                        }}>
-                            {logoUrl ? (
-                                /* On a plate, always, in both themes — and the plate is
-                                   not a dark-mode concession. This sidebar is dark in
-                                   light mode too (--sidebar-bg is slate-900 at 65%), so
-                                   a logo with a baked-in white background was already a
-                                   white rectangle here before dark mode existed, and a
-                                   dark-ink logo on a transparent background would be
-                                   invisible on it either way. Requiring transparency
-                                   would trade one of those failures for the other; a
-                                   light plate is the only thing that renders every
-                                   customer's logo the same way in both themes.
-                                   eslint-disable-next-line @next/next/no-img-element —
-                                   next/image would need every customer's Supabase host
-                                   in next.config, and this is one small image. */
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={logoUrl}
-                                    alt=""
-                                    style={{
-                                        width: '2rem',
-                                        height: '2rem',
-                                        objectFit: 'contain',
-                                        background: 'var(--logo-plate)',
-                                        borderRadius: '0.45rem',
-                                        padding: '0.15rem',
-                                        boxSizing: 'border-box',
-                                    }}
-                                />
-                            ) : <span aria-hidden="true">🚀</span>}
-                        </span>
-                        {!isCollapsed && (
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center', // Centered horizontally
-                                justifyContent: 'center',
-                                flex: 1,
-                                position: 'relative',
-                                padding: '0.4rem 0.25rem 0.5rem 0.25rem',
-                                boxSizing: 'border-box',
-                                width: '100%',
-                                overflow: 'hidden',
-                                textAlign: 'left'
-                            }}>
-                                {(() => {
-                                    const cleanName = displayName.trim();
-                                    const isArabicName = /[\u0600-\u06FF]/.test(cleanName);
-                                    const isAppTitle = cleanName === t('app_name');
-                                    const words = cleanName.split(/\s+/);
-                                    const isTwoWords = words.length === 2 && !isAppTitle;
-
-                                    // Case 1: 1 word
-                                    // Case 2: 2 words -> Part 1 = Word 1, Part 2 = Word 2 (Diagonal)
-                                    // Case 3: 3+ words -> Part 1 = All but last, Part 2 = Last word (Centered)
-                                    const part1 = words.length > 1 ? words.slice(0, -1).join(' ') : words[0] || '';
-                                    const part2 = words.length > 1 ? words.slice(-1)[0] : '';
-
-                                    const nameLength = cleanName.length;
-                                    const textStyle: React.CSSProperties = {
-                                        // White to a pale shade of the brand: the side bar is dark in both
-                                        // themes, so --surface would start it dark in dark mode (DESIGN.md §2.1).
-                                        background: 'linear-gradient(to right, var(--sidebar-fg-strong), var(--sidebar-accent))',
-                                        WebkitBackgroundClip: 'text',
-                                        WebkitTextFillColor: 'transparent',
-                                        fontSize: nameLength > 20
-                                            ? 'clamp(0.9rem, 1.4vw, 1.2rem)'
-                                            : nameLength > 12
-                                                ? 'clamp(1.1rem, 1.7vw, 1.5rem)'
-                                                : 'clamp(1.2rem, 1.8vw, 1.7rem)',
-                                        fontWeight: '900',
-                                        lineHeight: '1.2',
-                                        fontFamily: 'inherit',
-                                        display: 'block',
-                                        letterSpacing: isArabicName ? 'normal' : '-0.02em',
-                                        transition: 'font-size 0.2s ease',
-                                        width: 'fit-content',
-                                        whiteSpace: 'pre-wrap' // Handle internal wrapping if name is extremely long
-                                    };
-
-                                    if (!part2) {
-                                        return (
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
-                                                <span style={{ ...textStyle, textAlign: 'center', width: '100%' }}>{part1}</span>
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <div style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: '100%',
-                                            direction: isArabicName ? 'rtl' : 'ltr'
-                                        }}>
-                                            <span style={{
-                                                ...textStyle,
-                                                textAlign: 'center',
-                                                transform: isTwoWords ? (isArabicName ? 'translateX(0.8rem)' : 'translateX(-0.8rem)') : 'none'
-                                            }}>{part1}</span>
-                                            <span style={{
-                                                ...textStyle,
-                                                textAlign: 'center',
-                                                transform: isTwoWords ? (isArabicName ? 'translateX(-0.8rem)' : 'translateX(0.8rem)') : 'none',
-                                                marginTop: '-0.3rem'
-                                            }}>
-                                                {part2}
-                                            </span>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Mobile Close */}
-                    {isMobile && (
-                        <button aria-label={t('close')}
-                            onClick={() => setIsSidebarOpen(false)}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-on-accent)', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.7 }}
-                        >
-                            ×
-                        </button>
-                    )}
-                </div>
-
-                <nav style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.5rem',
-                    padding: (user?.role === 'SUPER_ADMIN') ? '0.25rem 1rem 1rem' : '0 1rem 1rem', // Reduced top padding
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    scrollbarGutter: 'stable'
-                }}>
-                    {/* Grouped by what people do (UI_PLAN.md §2.1, §2.2), and
-                        a group with nothing this person may see is left out:
-                        lib/side-bar.ts, which the Company Settings preview of
-                        the side bar reads too. A module's name and icon come
-                        from lib/modules.ts, with the company's own. A Super
-                        Admin, who belongs to no one company, sees the defaults
-                        (lib/auth.ts). */}
-                    {groups.map((group, index) => (
-                        <div key={group.key} role="group" aria-label={group.labelKey ? t(group.labelKey) : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: index === 0 ? 0 : group.labelKey ? 'var(--space-4)' : 'var(--space-6)' }}>
-                            {group.labelKey && (isCollapsed ? (
-                                <hr style={{ border: 'none', borderTop: '1px solid var(--veil-30)', margin: 'var(--space-2) auto', width: '50%' }} />
-                            ) : (
-                                // Sentence case, as every label is (DESIGN.md §3.4): Arabic has no capitals.
-                                <p aria-hidden="true" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--sidebar-fg)', paddingInlineStart: 'var(--space-4)', margin: 0 }}>{t(group.labelKey)}</p>
-                            ))}
-                            {group.items.map(key => {
-                                const link = isModuleKey(key) ? modules.entry(key) : { href: PAGES[key].href, label: t(PAGES[key].labelKey), icon: PAGES[key].icon }
-                                return (
-                                    <Link
-                                        key={key}
-                                        href={link.href} {...currentFor(link.href)}
-                                        // Prefetch on: a small fixed set of links, and the most used
-                                        // way around the app (not one per row of a growing list).
-                                        onClick={() => isMobile && setIsSidebarOpen(false)}
-                                        title={isCollapsed ? link.label : ''}
-                                        className="nav-link"
-                                        style={{
-                                            color: 'var(--sidebar-fg)',
-                                            textDecoration: 'none',
-                                            padding: '0.85rem 1rem',
-                                            borderRadius: '1rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: isCollapsed ? 'center' : 'flex-start',
-                                            gap: isCollapsed ? '0' : '1rem',
-                                            transition: 'background-color 0.2s, color 0.2s, transform 0.2s',
-                                            fontSize: '0.95rem',
-                                            fontWeight: '500',
-                                            border: '1px solid transparent'
-                                        }}
-                                        onMouseOver={(e) => {
-                                            e.currentTarget.style.background = 'var(--veil-10)'
-                                            e.currentTarget.style.color = 'var(--sidebar-fg-strong)'
-                                            e.currentTarget.style.transform = isCollapsed ? 'scale(1.1)' : `translateX(${isRtl ? -5 : 5}px)`
-                                        }}
-                                        onMouseOut={(e) => {
-                                            e.currentTarget.style.background = 'transparent'
-                                            e.currentTarget.style.color = 'var(--sidebar-fg)'
-                                            e.currentTarget.style.transform = 'none'
-                                        }}
-                                    >
-                                        <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>{link.icon}</span>
-                                        {!isCollapsed && (
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                {link.label}
-                                            </span>
-                                        )}
-                                    </Link>
-                                )
-                            })}
-                        </div>
-                    ))}
-                </nav>
-
-                {/* Sidebar Bottom — the legal documents live here because the
-                    app has no footer, and a policy reachable only from Google's
-                    consent screen is a link in a console rather than something
-                    a user can find. marginTop:auto keeps them pinned under the
-                    nav whatever its length, which is what the old spacer did.
-                    Hidden when collapsed: the rail is icon-width there, and a
-                    truncated "Priv…" is worse than nothing. */}
-                <div style={{ marginTop: 'auto', padding: '1rem' }}>
-                    {!isCollapsed && (
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.35rem',
-                            fontSize: '0.7rem',
-                        }}>
-                            <a
-                                href="/privacy"
-                                style={{ color: 'var(--sidebar-fg)', textDecoration: 'none', opacity: 0.7 }}
-                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--sidebar-fg-strong)'; e.currentTarget.style.opacity = '1' }}
-                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-fg)'; e.currentTarget.style.opacity = '0.7' }}
-                            >
-                                {t('privacy_policy' as any)}
-                            </a>
-                            <a
-                                href="/terms"
-                                style={{ color: 'var(--sidebar-fg)', textDecoration: 'none', opacity: 0.7 }}
-                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--sidebar-fg-strong)'; e.currentTarget.style.opacity = '1' }}
-                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--sidebar-fg)'; e.currentTarget.style.opacity = '0.7' }}
-                            >
-                                {t('terms_of_service' as any)}
-                            </a>
-                        </div>
-                    )}
-                </div>
-            </aside>
+            {/* Grouped by what people do (UI_PLAN.md §2.1, §2.2), and a group
+                with nothing this person may see is left out: lib/side-bar.ts,
+                which the Company Settings preview of the side bar reads too. A
+                module's name comes from lib/modules.ts, with the company's own,
+                and its icon from lib/side-bar-icons.ts, unless the company
+                chose its own. A Super Admin, who belongs to no one company,
+                sees the defaults (lib/auth.ts). */}
+            <SideBar
+                groups={groups}
+                modules={modules}
+                company={{ name: displayName, logoUrl }}
+                pathname={pathname}
+                drawer={isPhone}
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+            />
 
             {/* Main Content Wrapper */}
             <main className="shell-main" style={{
@@ -465,9 +158,6 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 minWidth: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                // Beside the sidebar on a desktop, full width on a phone: CSS
-                // (.shell-main), so it is right from the first paint.
-                ['--shell-sidebar' as string]: sidebarWidth,
                 minHeight: '100vh',
                 background: 'transparent',
                 direction: isRtl ? 'rtl' : 'ltr',
@@ -493,7 +183,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 }}>
                     <DashboardHeader
                         user={user}
-                        onMenuClick={() => setIsSidebarOpen(true)}
+                        onMenuClick={() => setDrawerOpen(true)}
+                        menuOpen={drawerOpen}
                     />
                 </div>
 

@@ -128,17 +128,12 @@ describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
         }
     }
 
-    it("on the sidebar, dark in both themes, it is the light ring", () => {
-        // The side bar's own ring, which follows the brand colour (DESIGN.md
-        // §2.1). Nizmo's indigo gives this one; lib/brand-colour-old-pages.test.ts
-        // holds every other colour's to the same 3:1.
-        expect(CSS).toMatch(/\.glass-dark \{[^}]*--focus-ring: var\(--sidebar-ring\);/)
-        const ring = CSS.match(/^\s*--sidebar-ring: (#[0-9a-fA-F]{6});/m)?.[1]
-        expect(ring).toBeDefined()
-        // Against the sidebar's darkest ground (slate 900) and its lightest:
-        // slate 900 at 65% over the light page (#eef2ff), which is #5d6475.
-        expect(ratio(ring!, "#0f172a")).toBeGreaterThanOrEqual(3)
-        expect(ratio(ring!, "#5d6475")).toBeGreaterThanOrEqual(3)
+    it("has no ring of its own on the side bar, which is light now, as the page is", () => {
+        // It was dark slate in both themes, with a light ring of its own that
+        // followed the brand colour; the building blocks' ring is --brand-text,
+        // held to the brand colour (lib/brand-colour.ts, DESIGN.md §5.1).
+        expect(CSS).not.toContain(".glass-dark")
+        expect(CSS).not.toContain("--sidebar-ring")
     })
 
     it("is shown for keyboard focus, and nothing turns it off", () => {
@@ -181,11 +176,22 @@ describe("text and controls the audit measured below AA (4 October 2026, H2)", (
         expect(found).toEqual([])
     })
 
-    it("the sidebar's section headings use the sidebar's own text colour (were 1.2 to 3.7:1)", () => {
-        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        expect(shell).not.toContain("color: 'var(--text-faint)'")
-        // One heading, drawn for each of the side bar's groups (lib/side-bar.ts).
-        expect(shell.split("fontWeight: 600, color: 'var(--sidebar-fg)'").length - 1).toBe(1)
+    it("the side bar's group names and items read on its panel in both themes (were 1.2 to 3.7:1)", () => {
+        const sideBar = readFileSync("components/SideBar.tsx", "utf8")
+        expect(sideBar).not.toContain("var(--text-faint)")
+        // One name, drawn for each of the side bar's groups (lib/side-bar.ts), in --muted (components/ui/ui.css).
+        expect(sideBar.split('className="ui-side-group-name"').length - 1).toBe(1)
+        const tokens = (selector: string) => {
+            const at = CSS.indexOf(selector, CSS.indexOf("Design tokens (DESIGN.md)"))
+            const body = CSS.slice(at, CSS.indexOf("\n}", at))
+            return Object.fromEntries([...body.matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/g)].map(m => [m[1], m[2]]))
+        }
+        for (const [name, theme] of [["light", tokens(":root {")], ["dark", tokens(':root[data-theme="dark"] {')]] as const) {
+            for (const [fg, bg] of [["--muted", "--panel"], ["--ink-2", "--panel"], ["--ink-2", "--brand-tint"], ["--brand-text", "--brand-tint"]]) {
+                const r = ratio(theme[fg], theme[bg])
+                expect(r, `${name}: ${fg} on ${bg} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+            }
+        }
     })
 })
 
@@ -203,20 +209,13 @@ describe("the two themes are actually different", () => {
         // ground goes, and the login hero gradient is a decorative statement
         // that does not follow the theme.
         //
-        // --logo-plate is invariant for a different and stronger reason: the
-        // sidebar it appears in is dark in *both* themes (--sidebar-bg is
-        // slate-900 at 65% even in light mode), so the plate behind a customer's
-        // logo is not following the page ground and must not be made to. Giving
-        // it a dark value would make every white-background logo vanish into it
-        // — the failure it exists to prevent.
-        //
-        // --sidebar-fg/-strong are invariant for exactly that reason: same
-        // sidebar, other end of the contrast. So are --sidebar-ring, the focus
-        // ring on it, and --sidebar-accent, the end of the company name. They exist because the nav links
-        // used --panel-* — a surface token — as their text colour, so the dark
-        // palette dutifully gave the labels the sidebar's own colour and they
-        // disappeared. A dark value here would restore that bug under a name
-        // that reads correct.
+        // --logo-plate is invariant for a different and stronger reason: a
+        // customer's logo is drawn on it, in the side bar and wherever the
+        // side bar is previewed, whatever its colours, so the plate behind it
+        // must not follow the page ground. The side bar is dark in dark mode,
+        // and a dark value would make every dark logo vanish into it, and
+        // every white-background logo a white box on it, which is the failure
+        // it exists to prevent.
         //
         // --paper and --ink-on-paper are invariant because they are not on a
         // screen at all. They exist for the print stylesheet, where the ground
@@ -236,7 +235,7 @@ describe("the two themes are actually different", () => {
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
             "--text-on-accent",
-            "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong", "--sidebar-ring", "--sidebar-accent",
+            "--logo-plate",
             "--paper", "--ink-on-paper",
             "--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper",
             "--button-from", "--button-to",

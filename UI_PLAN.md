@@ -84,7 +84,7 @@ permissions allow, as today.
 | **People** (الموظفون) | Employees · Attendance · Requests |
 | **Money** (المالية) | Costs · Payroll |
 | **Me** (حسابي) | My payslips · My attendance · My cash advance |
-| *(bottom)* | Company Settings |
+| *(bottom)* | Company settings · Roles and access · Saved lists |
 
 - **Check in sits at the top,** beside Dashboard. It's what people use most
   on the phone, every day.
@@ -346,6 +346,10 @@ Three Arabic names were chosen so that no two things share a name
    - Arrows and other icons that point a direction are flipped in Arabic.
    - Companies can rename modules and pick an emoji for each today. Instead,
      they'll pick from a short list of about 50 business icons.
+   - The side bar draws Phosphor icons since #203, each item's as
+     `DESIGN.md` §6 names it. A company's own emoji for a module still
+     shows there in place of the module's icon, and the Modules tab still
+     offers emoji, until the icons PR.
    - The setting stays live until the icons PR deploys, so a company can
      still pick any emoji, a pasted one included, before then. The PR maps
      every stored choice, not only the defaults: each default emoji to its
@@ -539,7 +543,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      include gone from the side bar, merged in #200 on 2026-11-05, then the
      notes above the page, a company's free trial or its grace and a role
      being previewed, merged in #201 on 2026-11-05, then what's of a module
-     the package doesn't include inside the pages it does, in #202;
+     the package doesn't include inside the pages it does, merged in #202
+     on 2026-11-05, then the app's frame, from a mock-up the product owner
+     approved on 2026-11-05, a part at a time: the side bar, in #203, then
+     the count of what waits on Requests in it, then the top bar, then the
+     notifications;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4335,3 +4343,30 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Payroll's, a day off balance Day off's. The server doesn't save them
     there either, whatever is sent, as it doesn't save what the sender's
     role may not set.
+- **2026-11-05:** What's of a module the package doesn't include, inside the
+  pages it does, was merged in #202. The app's frame comes next, from a
+  mock-up the product owner approved on 2026-11-05, which keeps the
+  "Powered by" signature as it is (decided by the product owner). The side
+  bar is the first part, on the building blocks in #203 (`DESIGN.md` §5.1,
+  §6).
+  - It's light, on `--panel` in both themes, where it was dark slate in
+    both, with the company's mark and name at its top: its logo on the
+    light plate, or the first letter of its name on a brand tile. The name
+    was a gradient under a rocket emoji.
+  - Its items have the Phosphor icons `DESIGN.md` §6 names, filled for the
+    page you're on, where they were emoji. A company that chose its own
+    emoji for a module still sees it there (§4.4).
+  - Company settings, Roles and access and Saved lists are pinned at its
+    foot while the rest scrolls, as the Super Admin's long list does, over
+    the privacy policy and the terms of service, both now in sentence case.
+  - On a phone it's a drawer from the start side, 296px wide, with 44px
+    items. It's a dialog while it's open: focus moves into it and stays
+    there, and Escape, a tap on the page beside it, its close button or
+    picking a page closes it, with focus back on the menu button. Closed,
+    it isn't drawn: it only slid out of sight, and Tab went through every
+    one of its links.
+  - It no longer folds down to its icons. It did when its name was clicked,
+    which nothing said and a keyboard couldn't do.
+  - The Branding tab's logo preview and the Modules tab's side bar preview
+    draw the same mark, icons and look. The old dark side bar's tokens, and
+    the brand shades that followed them, are gone with it.

@@ -10,21 +10,26 @@ import { readFileSync } from "node:fs"
  */
 describe("the dashboard's layout on a phone", () => {
     const shell = readFileSync("components/DashboardShell.tsx", "utf8")
+    const sideBar = readFileSync("components/SideBar.tsx", "utf8")
     const css = readFileSync("app/globals.css", "utf8")
+    const ui = readFileSync("components/ui/ui.css", "utf8")
 
     it("is decided by CSS, so the first paint is already right", () => {
         expect(shell).toContain('<main className="shell-main"')
-        expect(shell).toContain("['--shell-sidebar' as string]: sidebarWidth")
-        expect(shell).not.toMatch(/marginLeft'\]: \(!isMobile\)/)
-        expect(shell).toContain('className="glass-dark shell-aside"')
-        expect(shell).not.toMatch(/transform: \(isMobile && !isSidebarOpen\)/)
+        // The side bar is in the page's flow on a computer, beside it, so the
+        // page keeps no margin in step with its width (DESIGN.md §5.1).
+        expect(shell).not.toContain("--shell-sidebar")
+        expect(css).not.toContain("margin-inline-start: var(--shell-sidebar")
+        // Nothing the script works out after the page has run moves it.
+        expect(sideBar).not.toMatch(/style=\{/)
+        expect(shell).not.toMatch(/transform: \(isMobile/)
         expect(shell).not.toMatch(/\.\.\.\(isMobile\s*\? \{\s*position: 'static'/)
     })
 
-    it("hides the sidebar and drops the margin below 1024px", () => {
-        const phone = css.slice(css.indexOf(".shell-main {"), css.indexOf("/* Responsive Utilities */"))
-        expect(phone).toContain("margin-inline-start: var(--shell-sidebar, 270px);")
-        expect(phone).toMatch(/@media \(max-width: 1023px\) \{[\s\S]*\.shell-main \{\s*margin-inline-start: 0;[\s\S]*\.shell-aside:not\(\[data-open="true"\]\) \{\s*transform: translateX\(-100%\);[\s\S]*\.shell-aside\[data-rtl="true"\]:not\(\[data-open="true"\]\) \{\s*transform: translateX\(100%\);/)
+    it("takes the side bar out of the page below 1024px, out of sight", () => {
+        const phone = ui.slice(ui.indexOf(".ui-side-bar {"))
+        expect(phone).toMatch(/@media \(max-width: 1023px\) \{\s*\.ui-side-bar \{[^}]*position: fixed;[^}]*transform: translateX\(-100%\);/)
+        expect(phone).toMatch(/\[dir="rtl"\] \.ui-side-bar \{\s*transform: translateX\(100%\);/)
     })
 })
 

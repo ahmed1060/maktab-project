@@ -24,36 +24,36 @@ type PageKey =
 
 export type SideBarItemKey = ModuleKey | PageKey
 
-/** The app's own pages: where each goes, its name and its icon. */
-export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey; icon: string }> = {
-    checkIn: { href: '/dashboard/check-in', labelKey: 'ci_title', icon: '📲' },
-    attendance: { href: '/dashboard/attendance', labelKey: 'attendance_title', icon: '🕘' },
+/** The app's own pages: where each goes, and its name. Its icon is lib/side-bar-icons.ts's, as every item's is. */
+export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey }> = {
+    checkIn: { href: '/dashboard/check-in', labelKey: 'ci_title' },
+    attendance: { href: '/dashboard/attendance', labelKey: 'attendance_title' },
     // The same page, for someone who sees only their own punches on it.
-    myAttendance: { href: '/dashboard/attendance', labelKey: 'my_attendance', icon: '🕘' },
+    myAttendance: { href: '/dashboard/attendance', labelKey: 'my_attendance' },
     // Asking the Super Admin to change a role, and access reviews: the Role
     // requests page's other two tabs, once role requests moved to the Requests page (UI_PLAN.md §2.3, part 5b).
-    rolesAndAccess: { href: '/dashboard/roles-and-access', labelKey: 'roles_access_title', icon: '🪪' },
-    payroll: { href: '/dashboard/payroll', labelKey: 'payroll', icon: '🧾' },
-    myPayslips: { href: '/dashboard/documents', labelKey: 'my_payslips', icon: '📄' },
+    rolesAndAccess: { href: '/dashboard/roles-and-access', labelKey: 'roles_access_title' },
+    payroll: { href: '/dashboard/payroll', labelKey: 'payroll' },
+    myPayslips: { href: '/dashboard/documents', labelKey: 'my_payslips' },
     // Everyone's own cash advance (CLIENTS_PLAN.md §7.5).
-    myCashAdvance: { href: '/dashboard/cash-advances/mine', labelKey: 'my_cash_advance', icon: '💵' },
-    companySettings: { href: '/dashboard/settings', labelKey: 'company_settings_title', icon: '⚙️' },
+    myCashAdvance: { href: '/dashboard/cash-advances/mine', labelKey: 'my_cash_advance' },
+    companySettings: { href: '/dashboard/settings', labelKey: 'company_settings_title' },
     // The saved lists of cost names and task titles (CLIENTS_PLAN.md §5.6).
-    savedLists: { href: '/dashboard/lists', labelKey: 'saved_lists_title', icon: '📋' },
-    companies: { href: '/dashboard/companies', labelKey: 'companies', icon: '🏢' },
-    packages: { href: '/dashboard/packages', labelKey: 'packages', icon: '📦' },
-    allUsers: { href: '/dashboard/all-users', labelKey: 'all_users', icon: '👥' },
-    roleTemplates: { href: '/dashboard/role-templates', labelKey: 'role_templates_title', icon: '🧩' },
-    policyTemplates: { href: '/dashboard/policy-templates', labelKey: 'ptpl_title', icon: '⏱️' },
-    publicHolidays: { href: '/dashboard/public-holidays', labelKey: 'public_holidays_title', icon: '🗓️' },
-    superAdmins: { href: '/dashboard/super-admins', labelKey: 'super_admins', icon: '🛡️' },
-    roleChanges: { href: '/dashboard/role-change-requests', labelKey: 'role_changes_title', icon: '📨' },
-    accessReviews: { href: '/dashboard/access-reviews', labelKey: 'access_review_title', icon: '🗂️' },
-    whoCan: { href: '/dashboard/who-can', labelKey: 'who_can_title', icon: '🔎' },
-    checkIns: { href: '/dashboard/check-ins', labelKey: 'chk_title', icon: '📍' },
-    auditLogs: { href: '/dashboard/audit-logs', labelKey: 'audit_logs', icon: '📜' },
-    systemHealth: { href: '/dashboard/health', labelKey: 'system_health', icon: '❤️' },
-    systemSettings: { href: '/dashboard/system-settings', labelKey: 'system_settings', icon: '⚙️' },
+    savedLists: { href: '/dashboard/lists', labelKey: 'saved_lists_title' },
+    companies: { href: '/dashboard/companies', labelKey: 'companies' },
+    packages: { href: '/dashboard/packages', labelKey: 'packages' },
+    allUsers: { href: '/dashboard/all-users', labelKey: 'all_users' },
+    roleTemplates: { href: '/dashboard/role-templates', labelKey: 'role_templates_title' },
+    policyTemplates: { href: '/dashboard/policy-templates', labelKey: 'ptpl_title' },
+    publicHolidays: { href: '/dashboard/public-holidays', labelKey: 'public_holidays_title' },
+    superAdmins: { href: '/dashboard/super-admins', labelKey: 'super_admins' },
+    roleChanges: { href: '/dashboard/role-change-requests', labelKey: 'role_changes_title' },
+    accessReviews: { href: '/dashboard/access-reviews', labelKey: 'access_review_title' },
+    whoCan: { href: '/dashboard/who-can', labelKey: 'who_can_title' },
+    checkIns: { href: '/dashboard/check-ins', labelKey: 'chk_title' },
+    auditLogs: { href: '/dashboard/audit-logs', labelKey: 'audit_logs' },
+    systemHealth: { href: '/dashboard/health', labelKey: 'system_health' },
+    systemSettings: { href: '/dashboard/system-settings', labelKey: 'system_settings' },
 }
 
 export type SideBarGroup = {

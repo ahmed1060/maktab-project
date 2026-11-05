@@ -56,16 +56,22 @@ describe("decorative emoji", () => {
     })
 
     it("are hidden where icons passed as data are drawn", () => {
-        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        expect(shell.match(/<span (?!aria-hidden)[^>]*>\{link\.icon\}<\/span>/g) ?? []).toEqual([])
+        // A company's own icon for a module, in the side bar (components/SideBar.tsx).
+        const sideBar = readFileSync("components/SideBar.tsx", "utf8")
+        const drawn = sideBar.match(/<span [^>]*>\{entry\.icon\}<\/span>/g) ?? []
+        expect(drawn.length).toBeGreaterThan(0)
+        for (const span of drawn) expect(span).toContain('aria-hidden="true"')
         // The Modules tab's side bar preview (company settings part 4a): the name beside it says it.
-        expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain('<span aria-hidden="true">{entry.icon}</span><bdi>{entry.label}</bdi>')
+        const preview = readFileSync("components/CompanyModulesCard.tsx", "utf8")
+        expect(preview).toContain('<span aria-hidden="true">{entry.icon}</span>')
+        expect(preview).toContain("<bdi>{entry.label}</bdi>")
     })
 
     // The locked-module padlock was the one that meant something: a module
     // the package doesn't include isn't in the side bar now (DESIGN.md §5.1).
     it("include no padlock: what the package doesn't include isn't there", () => {
         expect(readFileSync("components/DashboardShell.tsx", "utf8")).not.toContain("🔒")
+        expect(readFileSync("components/SideBar.tsx", "utf8")).not.toContain("🔒")
     })
 })
 

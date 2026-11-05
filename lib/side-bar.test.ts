@@ -147,16 +147,20 @@ describe("the side bar", () => {
             expect(en[group.labelKey], group.key).toMatch(/^[A-Z][a-z ]+$/)
             expect((ar as Record<string, string>)[group.labelKey], group.key).toBeTruthy()
         }
-        // The headings in the shell aren't upper-cased by CSS either (DESIGN.md §3.4).
-        const nav = readFileSync("components/DashboardShell.tsx", "utf8").split("<nav")[1].split("</nav>")[0]
-        expect(nav).not.toContain("uppercase")
+        // The headings in the side bar aren't upper-cased by CSS either (DESIGN.md §3.4).
+        expect(readFileSync("components/SideBar.tsx", "utf8")).not.toContain("uppercase")
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const heading = css.slice(css.indexOf(".ui-side-group-name {"), css.indexOf("}", css.indexOf(".ui-side-group-name {")))
+        expect(heading).not.toContain("uppercase")
     })
 
     it("draws its group headings and their spacing with the design's tokens (DESIGN.md §10)", () => {
-        const nav = readFileSync("components/DashboardShell.tsx", "utf8").split("<nav")[1].split("</nav>")[0]
-        const group = nav.slice(nav.indexOf('role="group"'), nav.indexOf("group.items.map("))
-        expect(group).not.toMatch(/'\d*\.?\d+rem'/)
-        expect(group).toContain("var(--text-sm)")
+        // The side bar's own, from the building blocks' CSS (components/SideBar.tsx).
+        expect(readFileSync("components/SideBar.tsx", "utf8")).toContain('<p className="ui-side-group-name" aria-hidden="true">{t(g.labelKey)}</p>')
+        const sideCss = readFileSync("components/ui/ui.css", "utf8")
+        const own = sideCss.slice(sideCss.indexOf(".ui-side-group-name {"), sideCss.indexOf("}", sideCss.indexOf(".ui-side-group-name {")))
+        expect(own).not.toMatch(/\d*\.?\d+rem/)
+        expect(own).toContain("var(--text-sm)")
         // The Modules tab's preview draws its headings as the side bar does,
         // from the building blocks' CSS (company settings part 4a).
         expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain('<p className="ui-sidebar-preview-group">{t(group.labelKey)}</p>')

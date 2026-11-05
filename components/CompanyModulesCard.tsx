@@ -3,7 +3,7 @@
 import { Fragment, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import { Button, Card, Dialog, DialogActions, Field, TextInput } from '@/components/ui'
+import { Button, Card, Dialog, DialogActions, Field, Icon, TextInput, type PhosphorIcon } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useReportUnsaved } from '@/lib/useUnsavedChanges'
@@ -22,6 +22,7 @@ import {
     type ModuleOverrides,
 } from '@/lib/modules'
 import { COMPANY_GROUPS } from '@/lib/side-bar'
+import { ITEM_ICONS } from '@/lib/side-bar-icons'
 
 /**
  * What a company calls each module, and its icon, in the Super Admin's
@@ -58,12 +59,14 @@ export function iconError(text: string): TranslationKey | null {
 }
 
 /**
- * The icon to store for a module: none when it's the module's own, so
- * picking that from the palette is the same as Use the default icon
- * (audit on part 4a), as a blank name is no name.
+ * The icon to store for a module: the emoji picked, or none for Use the
+ * default icon, as a blank name is no name. The module's own icon is the
+ * side bar's (lib/side-bar-icons.ts, DESIGN.md §6), not an emoji, so any
+ * emoji picked is the company's own, even the one that was the module's
+ * default until the side bar moved onto the building blocks.
  */
-export function overrideFor(key: ModuleKey, icon: string | null): string | null {
-    return icon && icon !== MODULES[key].icon ? icon : null
+export function overrideFor(icon: string | null): string | null {
+    return icon?.trim() || null
 }
 
 type Props = {
@@ -97,7 +100,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
     })
 
     // What the sidebar would say if this were saved. The same resolver the real
-    // sidebar uses, so the preview cannot drift from the thing it previews.
+    // sidebar uses, and its icons, so the preview cannot drift from the thing it previews.
     const preview = modulesFrom({ moduleLabels: labels, moduleIcons: icons }, t)
 
     const isDirty = !sameOverrides(savedLabels, labels) || !sameOverrides(savedIcons, icons)
@@ -116,7 +119,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
     }
 
     const setIcon = (key: ModuleKey, picked: string | null) => {
-        const value = overrideFor(key, picked)
+        const value = overrideFor(picked)
         setIcons(prev => {
             const next = { ...prev }
             if (value) next[key] = value
@@ -173,7 +176,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                         <span className="ui-module-name">
                             <Button className="ui-emoji-button" aria-label={t('module_icon_choose_for').replace('{name}', nameOf(key))}
                                 title={t('module_icon_choose')} aria-haspopup="dialog" disabled={saving} onClick={() => setPickerFor(key)}>
-                                {icons[key] || MODULES[key].icon}
+                                {icons[key] ?? <Icon icon={ITEM_ICONS[key]} size={20} />}
                             </Button>
                             <TextInput {...p} name={`label-${key}`} autoComplete="off" maxLength={MAX_MODULE_LABEL_LENGTH}
                                 value={labels[key] || ''} onChange={e => setLabel(key, e.target.value)} disabled={saving} />
@@ -181,8 +184,8 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                     )}</Field>
                 ))}
 
-                {/* The side bar's groups, with only the modules in them, on the
-                    side bar's own ground: the names and icons here are the
+                {/* The side bar's groups, with only the modules in them, in the
+                    side bar's own look: the names and icons here are the
                     company's to choose (lib/side-bar.ts). */}
                 <div className="ui-field">
                     <p className="ui-label">{t('module_names_preview')}</p>
@@ -194,7 +197,12 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                                     {group.labelKey && <p className="ui-sidebar-preview-group">{t(group.labelKey)}</p>}
                                     {keys.map(key => {
                                         const entry = preview.entry(key)
-                                        return <span key={key} className="ui-sidebar-preview-item"><span aria-hidden="true">{entry.icon}</span><bdi>{entry.label}</bdi></span>
+                                        return (
+                                            <span key={key} className="ui-sidebar-preview-item">
+                                                {entry.icon ? <span aria-hidden="true">{entry.icon}</span> : <Icon icon={ITEM_ICONS[key]} />}
+                                                <bdi>{entry.label}</bdi>
+                                            </span>
+                                        )
                                     })}
                                 </Fragment>
                             )
@@ -209,7 +217,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
             </form>
 
             {pickerFor && (
-                <IconDialog name={nameOf(pickerFor)} current={icons[pickerFor] || MODULES[pickerFor].icon} fallback={MODULES[pickerFor].icon}
+                <IconDialog name={nameOf(pickerFor)} current={icons[pickerFor] ?? null} fallback={ITEM_ICONS[pickerFor]}
                     onPick={icon => setIcon(pickerFor, icon)} onClose={() => setPickerFor(null)} />
             )}
         </Card>
@@ -218,13 +226,14 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
 
 /**
  * A module's icon: one from the palette at a press, any emoji pasted in, or
- * back to the module's own. Picked into the form; saved with it.
+ * back to the module's own, the side bar's. Picked into the form; saved with it.
  */
 export function IconDialog({ name, current, fallback, onPick, onClose }: {
     name: string
-    /** The icon in use: the company's own choice, or the module's. */
-    current: string
-    fallback: string
+    /** The company's own icon for it, if it chose one. */
+    current: string | null
+    /** The module's own: the side bar's (lib/side-bar-icons.ts). */
+    fallback: PhosphorIcon
     onPick: (icon: string | null) => void
     onClose: () => void
 }) {
@@ -251,7 +260,7 @@ export function IconDialog({ name, current, fallback, onPick, onClose }: {
             {/* A choice like the palette's, so beside it: among the dialog's
                 buttons it pushed Use this emoji onto a line of its own (audit
                 on part 4a). */}
-            <p><Button onClick={() => onPick(null)}>{`${t('module_icon_reset')} (${fallback})`}</Button></p>
+            <p><Button icon={fallback} onClick={() => onPick(null)}>{t('module_icon_reset')}</Button></p>
             <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
                 <Field label={t('module_icon_custom')} error={wrong ? t(wrong) : undefined}>{p => (
                     <TextInput {...p} name="icon" autoComplete="off" maxLength={16} value={pasted}

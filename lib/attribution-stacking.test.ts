@@ -22,6 +22,10 @@ import { readFileSync } from "node:fs"
 const SHELL = "components/DashboardShell.tsx"
 const lines = readFileSync(SHELL, "utf8").split("\n")
 const CSS = readFileSync("app/globals.css", "utf8")
+// The side bar's layers, the drawer and its scrim on a phone, in the building
+// blocks' CSS since it moved onto them (DESIGN.md §5.1).
+const UI = readFileSync("components/ui/ui.css", "utf8")
+const sideBarCss = UI.slice(UI.indexOf(".ui-side-bar {"), UI.indexOf("/* end of the side bar */"))
 const floating = CSS.match(/\n\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
 const phone = CSS.match(/@media \(max-width: 1023px\) \{[\s\S]*?\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
 
@@ -52,7 +56,10 @@ describe("the attribution never covers the navigation", () => {
     it("floats it below every other layer in the shell", () => {
         const mine = [...floating.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1]))
         expect(zIndexesIn(block), "the layer is set in CSS, not inline").toEqual([])
-        const others = zIndexesIn([...lines.slice(0, start), ...lines.slice(end + 1)])
+        const others = [
+            ...zIndexesIn([...lines.slice(0, start), ...lines.slice(end + 1)]),
+            ...[...sideBarCss.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1])),
+        ]
 
         expect(mine, "the floating branch declares exactly one z-index").toHaveLength(1)
         // Vacuous otherwise: if the shell stopped declaring layers, any value

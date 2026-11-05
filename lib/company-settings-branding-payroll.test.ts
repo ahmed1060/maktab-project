@@ -49,11 +49,20 @@ describe("the logo card", () => {
         expect(html).toContain(esc(en.company_logo_plate_note))
     })
 
+    it("shows the first letter of the company's name on the brand tile without one, as the side bar does (DESIGN.md §5.1)", async () => {
+        const html = await logo()
+        expect(html).toContain('<div class="ui-logo-preview"><span class="ui-company-mark" aria-hidden="true"><span class="ui-company-letter">D</span></span><span class="ui-side-name"><bdi>Delta Sites</bdi></span></div>')
+        expect(html).not.toContain("🚀")
+        // The side bar is light now, in light mode: the note says why the plate stays.
+        expect(en.company_logo_plate_note).not.toMatch(/dark in both/)
+        expect(ar.company_logo_plate_note).not.toContain("داكنة في الوضعين")
+    })
+
     it("offers Replace and Remove for a logo, and Upload a logo without one", async () => {
         const has = await logo({ logoUrl: "https://files.test/logo.png" })
         expect(has).toMatch(new RegExp(`<div class="ui-card-actions">[\\s\\S]*ui-btn-secondary[^>]*>${en.company_logo_remove}</button>[\\s\\S]*ui-btn-primary[^>]*>${en.company_logo_replace}</button>`))
         const none = await logo()
-        expect(none).toContain(en.company_logo_none)
+        expect(none).toContain(esc(en.company_logo_none))
         expect(none).toMatch(new RegExp(`ui-btn-primary[^>]*>${en.company_logo_upload}</button>`))
         expect(none).not.toContain(`>${en.company_logo_remove}</button>`)
     })
