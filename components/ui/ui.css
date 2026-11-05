@@ -1501,6 +1501,11 @@ a.ui-file-open:focus-visible,
   max-width: 400px;
   padding: var(--space-8);
 }
+/* The title and the line under it, which can name an email as typed: one
+   without a hyphen has nowhere else to break, and ran off the card. */
+.ui-signin-head {
+  overflow-wrap: anywhere;
+}
 .ui-signin-form {
   max-width: none;
 }

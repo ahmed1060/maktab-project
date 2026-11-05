@@ -322,3 +322,15 @@ describe("the words", () => {
         expect(ar.forgot_code_hint).toContain("٦")
     })
 })
+
+// An email without a hyphen has nowhere to break: on a phone, one of 73
+// characters ran off the card, and the page was zoomed out to fit it (web
+// interface audit).
+describe("a long email named under the title", () => {
+    it("wraps within the card", () => {
+        const css = source("components/ui/ui.css")
+        const at = css.indexOf("\n.ui-signin-head {")
+        expect(at, "no rule for .ui-signin-head").toBeGreaterThan(-1)
+        expect(css.slice(at, css.indexOf("}", at))).toContain("overflow-wrap: anywhere;")
+    })
+})

@@ -4202,3 +4202,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - At signing in's emailed code, Send a new code left the focus on the
     page: turned busy, the button lost it. The code, cleared for the new
     one, takes it, as at Forgot your password (browser flows).
+  - An email without a hyphen, named under the title, had nowhere to
+    break: on a phone, one of 73 characters ran off the card, and the page
+    was zoomed out to fit it. It wraps within the card (web interface
+    audit).
