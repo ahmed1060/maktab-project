@@ -63,6 +63,10 @@ export const GET = withStandardHandler(async (req, session) => {
                 roleId: true, assignedRole: { select: { name: true, builtIn: true } },
                 // A cover in progress (§6.13): until when, and back to what.
                 actingUntil: true, returnRole: { select: { name: true, builtIn: true } },
+                // The company's calendar, which a return date is read in
+                // (RoleAssignmentService.returnOn): the profile offers its
+                // tomorrow as the first day a cover may end on (PR 194).
+                company: { select: { timezone: true } },
                 // The name, so somebody can be told who manages them. Selected
                 // fields rather than the relation, for the same reason the
                 // list does it: a leader is a User, and `teamLeader: true`

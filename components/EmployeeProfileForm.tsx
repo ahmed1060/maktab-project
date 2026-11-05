@@ -26,6 +26,7 @@ import { profileAccess } from '@/lib/profile-access'
 import { dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
 import { resetRefusal } from '@/lib/profile-password'
 import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
+import { DEFAULT_TIME_ZONE } from '@/lib/time'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -62,9 +63,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // An acting role (§6.13): the return date for a new one, and the cover
     // already running, if any.
     const [actingDate, setActingDate] = useState('')
-    // The earliest return date the picker offers: tomorrow, where the person
-    // is. Worked out once, not on every render.
-    const [tomorrow] = useState(() => dayAfter(new Date()))
+    // The company's calendar, which a return date is read in, as loaded with
+    // them; and when the profile was opened, for the day after it.
+    const [companyZone, setCompanyZone] = useState<string | null>(null)
+    const [openedAt] = useState(() => new Date())
     const [acting, setActing] = useState<{ until: string; returnTo: { name: string; builtIn?: string | null } | null } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
@@ -187,6 +189,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
                 setCompanyId(employee.companyId || '')
+                setCompanyZone(employee.company?.timezone ?? null)
                 setUsername(employee.username || '')
                 setSavedUsername(employee.username || '')
                 setStatus(employee.status || 'OFFLINE')
@@ -307,6 +310,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // by someone who may not edit them, as the notice of an acting role
     // held back sends whoever decides roles.
     const seeing = isViewMode || !access.edit
+    // The earliest return date offered: tomorrow in the company's calendar,
+    // as the server reads it (lib/profile-form.ts), its default while none.
+    const tomorrow = dayAfter(openedAt, companyZone ?? DEFAULT_TIME_ZONE)
     // The roles to pick from, where a role is picked: the form, or asking
     // from their details (lib/useAssignableRoles.ts). Their details alone
     // don't need them.

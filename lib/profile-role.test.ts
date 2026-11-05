@@ -71,13 +71,23 @@ describe("what's checked before it's sent", () => {
         expect(profileErrors({ ...ok, actingUntil: undefined, unreadable: ["actingUntil"] })).toEqual({})
     })
 
-    it("offers tomorrow where the person is as the first day it may end on, as the server reads the date in the company's calendar", async () => {
+    // The server reads the date in the company's calendar
+    // (RoleAssignmentService.returnOn): the browser's was a day out for a
+    // viewer in another zone, and its own check then refused a day the
+    // server takes (Codex review, PR 194). It was UTC's before this part.
+    it("offers tomorrow in the company's calendar as the first day it may end on, wherever the viewer is", async () => {
         const { dayAfter } = await import("@/lib/profile-form")
-        expect(dayAfter(new Date(2026, 10, 4, 0, 30))).toBe("2026-11-05")
-        expect(dayAfter(new Date(2026, 11, 31, 23, 30))).toBe("2027-01-01")
-        // It was UTC's, which is a day out for part of every day east or west of it.
-        expect(FORM).toContain("const [tomorrow] = useState(() => dayAfter(new Date()))")
+        // 16:00 UTC on 5 November: still the 5th in London, already the 6th in Tokyo.
+        const at = new Date(Date.UTC(2026, 10, 5, 16))
+        expect(dayAfter(at, "Europe/London")).toBe("2026-11-06")
+        expect(dayAfter(at, "Asia/Tokyo")).toBe("2026-11-07")
+        expect(dayAfter(new Date(Date.UTC(2026, 11, 31, 22, 30)), "Africa/Cairo")).toBe("2027-01-02")
+        // The company's zone, loaded with them; the server's own default while it has none.
+        expect(FORM).toContain("const tomorrow = dayAfter(openedAt, companyZone ?? DEFAULT_TIME_ZONE)")
+        expect(FORM).toContain("setCompanyZone(employee.company?.timezone ?? null)")
         expect(FORM).not.toContain("toISOString().slice(0, 10)")
+        const route = readFileSync("app/api/users/route.ts", "utf8")
+        expect(route).toContain("company: { select: { timezone: true } },")
     })
 
     it("asks, from their details, for a role that isn't theirs already", async () => {

@@ -4009,10 +4009,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     couldn't give, left the form sending the other's kind, and the server
     gave that kind's built-in role. Only a role picked is sent now, never
     its kind (found reading the code).
-  - Tomorrow, the first day an acting role may end on, is where the person
-    is, as the server reads the date in the company's calendar. It was
-    UTC's, a day out for part of every day east or west of it (found
-    reading the code).
+  - Tomorrow, the first day an acting role may end on, is the company's, as
+    the server reads a return date in the company's calendar. It was UTC's,
+    a day out for part of every day east or west of it (found reading the
+    code), then the browser's, a day out for a viewer in another zone,
+    whose own check then refused a day the server takes (Codex review).
   - The save's refusals of acting on an Admin, and of leaving a company
     with no Admin at work, carry their codes, as asking for a role's do, so
     the profile says them in the reader's language (`lib/role-errors.ts`).

@@ -1,4 +1,5 @@
 import type { TranslationKey } from '@/lib/translations'
+import { calendarParts } from '@/lib/time'
 import { NAME_MAX, PASSWORD_MIN } from '@/lib/new-employee-form'
 import { usernameError } from '@/lib/username-rules'
 
@@ -83,13 +84,14 @@ function actingError(until: string, from: string | undefined, unreadable: boolea
 }
 
 /**
- * The day after `now`, where the person is, as a date field takes it: the
- * first an acting role may end on. The server reads the date in the company's
- * calendar; UTC's was a day out for part of every day east or west of it.
+ * The day after `now` in the company's calendar, as a date field takes it:
+ * the first an acting role may end on. The server reads a return date in that
+ * calendar (RoleAssignmentService.returnOn), so a viewer elsewhere, a day
+ * ahead or behind, is offered the company's tomorrow, not their own.
  */
-export function dayAfter(now: Date): string {
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-    return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
+export function dayAfter(now: Date, timeZone: string): string {
+    const { year, month, day } = calendarParts(now, timeZone)
+    return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10)
 }
 
 const named = (name: string) => name.trim().length > 0 && name.trim().length <= NAME_MAX
