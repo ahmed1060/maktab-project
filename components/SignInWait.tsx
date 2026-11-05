@@ -3,14 +3,25 @@
 import { useEffect, useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { waitText } from '@/lib/login-errors'
+import type { TranslationKey } from '@/lib/translations'
+
+/** What's waited for: signing in after five wrong tries or ten, or resetting a password after too many. */
+export type WaitKind = 'pause' | 'lock' | 'reset'
+
+const SAID: Record<WaitKind, TranslationKey> = {
+    pause: 'sign_in_paused_wait',
+    lock: 'sign_in_locked_wait',
+    reset: 'forgot_wait',
+}
 
 /**
  * Held back from signing in after wrong tries (lib/sign-in-lock.ts): the 30
  * seconds after five, or the fifteen minutes after ten, counted down as they
- * pass (decided 2026-11-03). The time is a timer, so a screen reader says the
+ * pass (decided 2026-11-03). So is Forgot your password after too many tries
+ * (lib/password-reset.ts). The time is a timer, so a screen reader says the
  * sentence once rather than every second. Once it's over, onOver.
  */
-export function SignInWait({ kind, until, onOver }: { kind: 'pause' | 'lock'; until: number; onOver: () => void }) {
+export function SignInWait({ kind, until, onOver }: { kind: WaitKind; until: number; onOver: () => void }) {
     const { t, locale } = useLanguage()
     const [now, setNow] = useState(() => Date.now())
     const left = until - now
@@ -28,7 +39,7 @@ export function SignInWait({ kind, until, onOver }: { kind: 'pause' | 'lock'; un
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [over])
 
-    const [before, after] = t(kind === 'pause' ? 'sign_in_paused_wait' : 'sign_in_locked_wait').split('{time}')
+    const [before, after] = t(SAID[kind]).split('{time}')
     return (
         <>
             {before}<span role="timer" aria-live="off">{waitText(left, locale)}</span>{after}

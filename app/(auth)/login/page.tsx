@@ -1,6 +1,6 @@
 'use client'
 import { signIn } from 'next-auth/react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { reportClientError } from '@/lib/client-error-report'
@@ -11,6 +11,7 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { SignInScreen } from '@/components/sign-in/SignInScreen'
 import { CredentialsStep } from '@/components/sign-in/CredentialsStep'
 import { CodeStep } from '@/components/sign-in/CodeStep'
+import { ResetPassword } from '@/components/sign-in/ResetPassword'
 import { SignInMessage, type Hold } from '@/components/sign-in/SignInMessage'
 
 /**
@@ -19,14 +20,14 @@ import { SignInMessage, type Hold } from '@/components/sign-in/SignInMessage'
  * it doesn't trust yet, the code from the authenticator app or one emailed
  * instead.
  *
- * On the building blocks, the sign-in page's part 1 (UI_PLAN.md §5 step 5,
- * the pages left): what's wrong with what was typed is said under its field
- * before anything is sent, and what the server answered above the step's
- * primary button, in the page's language. Forgot your password stays as it
- * was until part 2.
+ * On the building blocks (UI_PLAN.md §5 step 5, the pages left): what's
+ * wrong with what was typed is said under its field before anything is sent,
+ * and what the server answered above the step's primary button, in the
+ * page's language. Forgot your password is two steps of its own
+ * (components/sign-in/ResetPassword.tsx).
  */
 export default function LoginPage() {
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     const router = useRouter()
 
     const [identifier, setIdentifier] = useState('')
@@ -62,78 +63,34 @@ export default function LoginPage() {
     const [codeErr, setCodeErr] = useState<string>()
     const [rememberDevice, setRememberDevice] = useState(false)
     const [sending, setSending] = useState(false)
-    const isAr = locale === 'ar'
 
     // F-27, Phase 3.5: entirely separate from the MFA stage machine above
     // — this is "I can't get in at all," not a second factor on top of a
-    // password that already checked out.
+    // password that already checked out. It starts from the email typed
+    // here, if one was.
     const [mode, setMode] = useState<'login' | 'forgot'>('login')
-    const [forgotStage, setForgotStage] = useState<'request' | 'confirm'>('request')
     const [forgotEmail, setForgotEmail] = useState('')
-    const [forgotCode, setForgotCode] = useState('')
-    const [forgotNewPassword, setForgotNewPassword] = useState('')
-    const [forgotSubmitting, setForgotSubmitting] = useState(false)
-    const [forgotMessage, setForgotMessage] = useState('')
 
-    const resetForgotState = () => {
+    // Where the focus goes once the step it's in is on screen. Chosen after an
+    // answer came, a step isn't put there at once, so it couldn't be focused
+    // straight away. Counted, so the same place can be asked for again.
+    const [focusOn, setFocusOn] = useState<{ selector: string; n: number } | null>(null)
+    const focusNext = (selector: string) => setFocusOn(was => ({ selector, n: (was?.n ?? 0) + 1 }))
+    useEffect(() => {
+        if (focusOn) document.querySelector<HTMLElement>(focusOn.selector)?.focus()
+    }, [focusOn])
+
+    const resetBack = () => {
         setMode('login')
-        setForgotStage('request')
-        setForgotCode('')
-        setForgotNewPassword('')
-        setError('')
-        setForgotMessage('')
+        focusNext('.ui-signin-forgot')
     }
-
-    const handleForgotRequest = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError('')
-        setForgotSubmitting(true)
-        try {
-            const res = await fetch('/api/auth/forgot-password/request', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: forgotEmail }),
-            })
-            const data = await res.json()
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || (isAr ? 'حدث خطأ' : 'Something went wrong'))
-            }
-            // F-27: shown regardless of whether the email actually matched
-            // an account — see the matching comment in the request route.
-            setForgotMessage(isAr
-                ? 'إذا كان هذا البريد الإلكتروني مرتبطًا بحساب، فقد أرسلنا إليه رمزًا.'
-                : "If that email is on an account, we've sent a code.")
-            setForgotStage('confirm')
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setForgotSubmitting(false)
-        }
-    }
-
-    const handleForgotConfirm = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError('')
-        setForgotSubmitting(true)
-        try {
-            const res = await fetch('/api/auth/forgot-password/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: forgotEmail, code: forgotCode, newPassword: forgotNewPassword }),
-            })
-            const data = await res.json()
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || (isAr ? 'رمز غير صالح أو منتهي الصلاحية' : 'Invalid or expired code'))
-            }
-            setIdentifier(forgotEmail)
-            setPassword('')
-            resetForgotState()
-            setError('')
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setForgotSubmitting(false)
-        }
+    /** Reset: back to signing in, the email filled in, saying so, with the new password asked for. */
+    const resetDone = (email: string) => {
+        setIdentifier(email)
+        setPassword('')
+        setNotice(t('forgot_done'))
+        setMode('login')
+        focusNext('input[name="password"]')
     }
 
     /** A failure nothing answered for, such as no connection: in the page's language, with a reference for the admin when there is one. */
@@ -282,7 +239,13 @@ export default function LoginPage() {
                 setError(key ? t(key) : apiErrorText(text, t('sign_in_failed')))
                 return
             }
-            if (stage === 'email') setNotice(t('sign_in_email_code_sent'))
+            // Sent again from the emailed code's own step: said so, and the
+            // code, cleared for the new one, focused, as Send a new code,
+            // turned busy, lost the focus.
+            if (stage === 'email') {
+                setNotice(t('sign_in_email_code_sent'))
+                focusNext('input[name="code"]')
+            }
             setStage('email')
             setCode('')
             setCodeErr(undefined)
@@ -314,133 +277,7 @@ export default function LoginPage() {
         <SignInMessage hold={hold} error={error} notice={notice} onHoldOver={() => { setHold(null); setNotice(t('sign_in_wait_over')) }} />
     )
 
-    if (mode === 'forgot') {
-        return (
-            <SignInScreen
-                title={isAr ? 'إعادة تعيين كلمة المرور' : 'Reset your password'}
-                subtitle={forgotStage === 'request'
-                    ? (isAr ? 'أدخل بريدك الإلكتروني وسنرسل لك رمزًا لإعادة التعيين.' : "Enter your email and we'll send you a reset code.")
-                    : (isAr ? 'أدخل الرمز وكلمة المرور الجديدة.' : 'Enter the code and your new password.')}
-            >
-                {forgotMessage && !error && (
-                    <div style={{
-                        padding: '0.85rem 1rem',
-                        background: 'linear-gradient(135deg, var(--ok-bg) 0%, var(--ok-bg-strong) 100%)',
-                        color: 'var(--ok-fg)',
-                        borderRadius: '12px',
-                        fontSize: '0.85rem',
-                        textAlign: 'center',
-                        border: '1px solid var(--ok-border)',
-                    }}>{forgotMessage}</div>
-                )}
-                {error && (
-                    <div style={{
-                        padding: '1rem',
-                        background: 'linear-gradient(135deg, var(--danger-bg) 0%, var(--danger-border) 100%)',
-                        color: 'var(--danger-fg)',
-                        borderRadius: '12px',
-                        fontSize: '0.875rem',
-                        textAlign: 'center',
-                        border: '1px solid var(--danger-border-firm)',
-                        fontWeight: '500'
-                    }}>{error}</div>
-                )}
-                <form onSubmit={forgotStage === 'request' ? handleForgotRequest : handleForgotConfirm}>
-                    {forgotStage === 'request' ? (
-                        <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('email')}</label>
-                            <input aria-label={t('email')}
-                                type="email"
-                                autoComplete="username"
-                                className="input"
-                                value={forgotEmail}
-                                onChange={(e) => setForgotEmail(e.target.value.slice(0, 254))}
-                                required
-                                maxLength={254}
-                                autoFocus
-                                style={{ padding: '0.625rem 1rem', height: '42px', textAlign: locale === 'ar' ? 'right' : 'left', direction: locale === 'ar' ? 'rtl' : 'ltr' }}
-                            />
-                        </div>
-                    ) : (
-                        <>
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                    {isAr ? 'الرمز' : 'Code'}
-                                </label>
-                                <input aria-label={isAr ? 'الرمز' : 'Code'}
-                                    type="text"
-                                    inputMode="numeric"
-                                    autoComplete="one-time-code"
-                                    className="input"
-                                    value={forgotCode}
-                                    onChange={(e) => setForgotCode(e.target.value)}
-                                    maxLength={6}
-                                    minLength={6}
-                                    required
-                                    autoFocus
-                                    style={{ padding: '0.625rem 1rem', height: '42px', textAlign: 'center', letterSpacing: '0.2em', fontSize: '1.1rem' }}
-                                />
-                            </div>
-                            <div style={{ marginBottom: '1.25rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                    {isAr ? 'كلمة المرور الجديدة' : 'New password'}
-                                </label>
-                                <input aria-label={isAr ? 'كلمة المرور الجديدة' : 'New password'}
-                                    type="password"
-                                    autoComplete="new-password"
-                                    className="input"
-                                    value={forgotNewPassword}
-                                    onChange={(e) => setForgotNewPassword(e.target.value.slice(0, 72))}
-                                    required
-                                    minLength={12}
-                                    maxLength={72}
-                                    style={{ padding: '0.625rem 1rem', height: '42px' }}
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={forgotSubmitting}
-                        style={{
-                            width: '100%',
-                            padding: '0.875rem',
-                            background: forgotSubmitting ? 'var(--grey-400)' : 'linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%)',
-                            color: 'var(--text-on-accent)',
-                            border: 'none',
-                            borderRadius: '12px',
-                            fontSize: '1rem',
-                            fontWeight: '600',
-                            cursor: forgotSubmitting ? 'not-allowed' : 'pointer',
-                            marginBottom: '0.75rem'
-                        }}
-                    >
-                        {forgotSubmitting
-                            ? (isAr ? 'جارٍ الإرسال...' : 'Sending...')
-                            : forgotStage === 'request'
-                                ? (isAr ? 'إرسال الرمز' : 'Send code')
-                                : (isAr ? 'إعادة تعيين كلمة المرور' : 'Reset password')}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={resetForgotState}
-                        style={{
-                            width: '100%',
-                            padding: '0.6rem',
-                            background: 'transparent',
-                            color: 'var(--text-faint)',
-                            border: 'none',
-                            fontSize: '0.8rem',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        {isAr ? 'العودة إلى تسجيل الدخول' : 'Back to sign in'}
-                    </button>
-                </form>
-            </SignInScreen>
-        )
-    }
+    if (mode === 'forgot') return <ResetPassword email={forgotEmail} onBack={resetBack} onDone={resetDone} />
 
     if (stage === 'credentials') {
         return (
@@ -458,7 +295,7 @@ export default function LoginPage() {
                     onSubmit={handleCredentialsSubmit}
                     // Forgot your password asks for the email, as the code goes
                     // there: filled in from here only when an email was typed.
-                    onForgot={() => { setMode('forgot'); setForgotEmail(identifier.includes('@') ? identifier.trim() : ''); clearMessages() }}
+                    onForgot={() => { setMode('forgot'); setForgotEmail(identifier.includes('@') ? identifier.trim() : ''); setFieldErrors({}); clearMessages() }}
                 />
             </SignInScreen>
         )

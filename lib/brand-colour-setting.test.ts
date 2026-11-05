@@ -190,7 +190,9 @@ describe("the colour settings' hints", () => {
         return new RegExp(`var\\(--(brand(-hover|-press|-text|-tint|-tint-strong)?|${following})\\)`).test(src) || /from ["']@\/components\/ui["']/.test(src)
     }
     const places = [
-        { file: "app/(auth)/login/page.tsx", en: "the sign-in page", ar: "صفحة تسجيل الدخول", hints: ["brand_colour_system_hint"] },
+        // Drawn by its steps, on the building blocks, since the sign-in
+        // page's part 1: the page itself draws nothing of its own.
+        { file: "components/sign-in/CredentialsStep.tsx", en: "the sign-in page", ar: "صفحة تسجيل الدخول", hints: ["brand_colour_system_hint"] },
         { file: "components/DashboardShell.tsx", en: "the side bar", ar: "الشريط الجانبي", hints: ["brand_colour_company_hint", "brand_colour_system_hint"] },
     ]
     const languages = [

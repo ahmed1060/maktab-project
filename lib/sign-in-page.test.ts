@@ -313,8 +313,10 @@ describe("emailing a code instead", () => {
         expect(PAGE()).toMatch(/const key = emailCodeRefusal\(data\.code\)\s*setError\(key \? t\(key\) : apiErrorText\(text, t\('sign_in_failed'\)\)\)/)
     })
 
-    it("says so when a new one is sent", () => {
-        expect(PAGE()).toMatch(/if \(stage === 'email'\) setNotice\(t\('sign_in_email_code_sent'\)\)/)
+    // Turned busy, Send a new code lost the focus, which was left on the page
+    // (browser flows, the sign-in page's part 2).
+    it("says so when a new one is sent, and asks for it, the focus on the code", () => {
+        expect(PAGE()).toMatch(/if \(stage === 'email'\) \{\s*setNotice\(t\('sign_in_email_code_sent'\)\)\s*focusNext\('input\[name="code"\]'\)/)
     })
 })
 

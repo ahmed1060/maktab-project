@@ -523,7 +523,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      role field, merged in #194 on 2026-11-05, then ending a contract and
      handing over a team, merged in #195 on 2026-11-05, which finished it,
      then the sign-in page, in two parts: its screen, signing in and the
-     two-factor code, in #196, then Forgot your password;
+     two-factor code, merged in #196 on 2026-11-05, then Forgot your
+     password, in #197;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4167,3 +4168,41 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     in, so signing in then with an account without two-factor trusted the
     device for it, with no code given. The device is trusted only at the end
     of a sign-in that took a code (found reading the code).
+- **2026-11-05:** The sign-in page, part 1, was merged in #196. Part 2,
+  Forgot your password, is in #197, which finishes it (DESIGN.md §5.5,
+  Sign-in).
+  - It's two steps in the sign-in card, titled "Reset your password": the
+    account's email, then the code sent to it with the new password, asked
+    twice as Change password asks it, its hint saying how long it must be.
+    It was a form of its own making, its words typed into the page in both
+    languages.
+  - Neither step says whether the email is on an account: the second says
+    a code was sent if it is, naming the email as typed, so a mistake in it
+    shows, and Use a different email goes back to put it right. Send a new
+    code sends one again, saying so in the same way.
+  - What's wrong with what was typed is said under its field before
+    anything is sent, with the focus on the first, in the page's language:
+    an email that isn't one, a code that isn't six digits, a password too
+    short or not the same twice. They were the browser's bubbles, in the
+    browser's language.
+  - What the server answers is said above the step's primary button, by the
+    codes its refusals now carry (`ApiResponse.refused`), and an email that
+    isn't one or a code that isn't right, or has expired, under its field.
+    They were at the top of the card, in English.
+  - Too many tries are counted down, as signing in counts down an account
+    held back, from how long is left in seconds, counted on the server
+    (`lib/password-reset.ts`). It said a time to try again at, written on
+    the server, so in the server's own time zone, and in English.
+  - Reset, it's back to signing in, the email filled in and the password
+    focused, saying the password was reset. It went back without a word.
+    Back to sign in puts the focus back on Forgot your password?.
+  - The colours the old form was the last to use are gone (`--ok-bg-strong`,
+    `--grey-400`, `--hero-from`, `--hero-to`), and with them the shades of
+    the brand colour worked out for two of them.
+  - At signing in's emailed code, Send a new code left the focus on the
+    page: turned busy, the button lost it. The code, cleared for the new
+    one, takes it, as at Forgot your password (browser flows).
+  - An email without a hyphen, named under the title, had nowhere to
+    break: on a phone, one of 73 characters ran off the card, and the page
+    was zoomed out to fit it. It wraps within the card (web interface
+    audit).

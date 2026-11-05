@@ -51,9 +51,6 @@ function ratio(a: string, b: string): number {
 /** Text pairs, held to AA 4.5:1. */
 const TEXT_PAIRS: [string, string][] = [
     ["--ok-fg", "--ok-bg"],
-    // The real pairing: --ok-bg-strong is the far stop of the login success
-    // gradient and a ring colour, and the green text on it is --ok-fg.
-    ["--ok-fg", "--ok-bg-strong"],
     ["--danger-fg", "--danger-bg"],
     ["--danger-fg-strong", "--danger-bg"],
     ["--warn-fg", "--warn-bg"],
@@ -165,10 +162,6 @@ describe("text and controls the audit measured below AA (4 October 2026, H2)", (
         for (const t of ["--button-from", "--button-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
     })
 
-    it("white on the sign-in button is 4.5:1 (was 3.7:1)", () => {
-        for (const t of ["--hero-from", "--hero-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
-    })
-
     // The brand-coloured link's token went with the old sign-in page, its
     // last user (the sign-in page's part 1); the building blocks' links are
     // --brand-text, held to 4.5:1 with the brand colour (lib/brand-colour.ts).
@@ -243,7 +236,7 @@ describe("the two themes are actually different", () => {
         // it, and its guidance is light over it whatever the page around is.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
-            "--text-on-accent", "--hero-from", "--hero-to",
+            "--text-on-accent",
             "--logo-plate", "--sidebar-fg", "--sidebar-fg-strong", "--sidebar-ring", "--sidebar-accent",
             "--paper", "--ink-on-paper",
             "--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper",

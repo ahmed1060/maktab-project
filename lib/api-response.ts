@@ -72,9 +72,11 @@ export class ApiResponse {
      * A refusal with its code beside its words, as withStandardHandler answers
      * a known one (lib/api-errors.ts), so a screen can say it in the person's
      * language: ending a contract does (a person's profile, part 5, PR 195).
+     * `more` is what else the screen needs to say it, such as how long is
+     * left to wait (lib/password-reset.ts), never in place of the code.
      */
-    static refused(status: 400 | 403 | 404 | 409 | 429, message: string, code: string) {
-        return NextResponse.json({ success: false, error: message, code }, { status })
+    static refused(status: 400 | 403 | 404 | 409 | 429, message: string, code: string, more?: Record<string, unknown>) {
+        return NextResponse.json({ ...more, success: false, error: message, code }, { status })
     }
 
     static unauthorized(message = "Unauthorized") {
