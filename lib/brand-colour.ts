@@ -332,8 +332,6 @@ export const OLD_PAGE_SHADES = [
     { token: '--accent', light: '#8b5cf6', role: 'fill' },
     { token: '--button-from', light: '#4f46e5', role: 'fill' },
     { token: '--button-to', light: '#7c3aed', role: 'fill' },
-    { token: '--hero-from', light: '#4f46e5', role: 'fill' },
-    { token: '--hero-to', light: '#764ba2', role: 'fill' },
     { token: '--accent-fill', light: '#942ff5', dark: '#9047ec', role: 'fill' },
     { token: '--brand-primary-text', light: '#4f46e5', dark: '#a5b4fc', role: 'text' },
     { token: '--focus-ring', light: '#4338ca', dark: '#a5b4fc', role: 'edge' },

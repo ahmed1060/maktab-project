@@ -1,14 +1,15 @@
 'use client'
 
-import { SignInWait } from '@/components/SignInWait'
+import { SignInWait, type WaitKind } from '@/components/SignInWait'
 
-export type Hold = { kind: 'pause' | 'lock'; until: number }
+export type Hold = { kind: WaitKind; until: number }
 
 /**
  * What the server answered, above a step's primary button (DESIGN.md §5.5,
  * Sign-in), and heard by screen readers: an account held back after wrong
- * tries, counted down in even-width digits, in place of anything else; a
- * refusal; or a line of news, such as the hold being over.
+ * tries, or Forgot your password after too many, counted down in even-width
+ * digits, in place of anything else; a refusal; or a line of news, such as
+ * the hold being over.
  */
 export function SignInMessage({ hold, error, notice, onHoldOver }: {
     hold: Hold | null

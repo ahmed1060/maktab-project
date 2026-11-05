@@ -7,9 +7,15 @@ import { readFileSync } from "node:fs"
  * users depend on, fill the right one instead of guessing. None did
  * (accessibility audit, 4 October 2026).
  */
-// The page's own (Forgot your password, until part 2), then each step's, on
-// the building blocks (DESIGN.md §5.5, Sign-in). Checkboxes name no purpose.
-const files = ["app/(auth)/login/page.tsx", "components/sign-in/CredentialsStep.tsx", "components/sign-in/CodeStep.tsx"]
+// The page's own, none since Forgot your password has its steps too, then
+// each step's, on the building blocks (DESIGN.md §5.5, Sign-in). Checkboxes
+// name no purpose.
+const files = [
+    "app/(auth)/login/page.tsx",
+    "components/sign-in/CredentialsStep.tsx",
+    "components/sign-in/CodeStep.tsx",
+    "components/sign-in/ResetPassword.tsx",
+]
 const inputs = files
     .flatMap(f => [...readFileSync(f, "utf8").matchAll(/<(?:input|TextInput|PasswordInput)\b([\s\S]*?)\/>/g)].map(m => m[1]))
     .filter(attrs => !attrs.includes('type="checkbox"'))
@@ -17,7 +23,7 @@ const purpose = (attrs: string) => attrs.match(/autoComplete="([^"]+)"/)?.[1] ??
 
 describe("the sign-in fields", () => {
     it("are all found", () => {
-        expect(inputs).toHaveLength(6)
+        expect(inputs).toHaveLength(7)
     })
 
     it("name the account, the password, a new password and one-time codes", () => {
@@ -26,12 +32,15 @@ describe("the sign-in fields", () => {
             return `${kind}: ${purpose(a)}`
         })
         expect(got).toEqual([
-            "forgotEmail: username",
-            "forgotCode: one-time-code",
-            "forgotNewPassword: new-password",
             "identifier: username",
             "password: current-password",
             "code: one-time-code",
+            // Forgot your password: the account's email, the code sent to it,
+            // and the new password, asked twice.
+            "email: username",
+            "code: one-time-code",
+            "newPassword: new-password",
+            "confirmPassword: new-password",
         ])
     })
 })

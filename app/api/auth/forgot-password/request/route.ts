@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
+import { resetHeldBack } from "@/lib/password-reset"
 import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { forgotPasswordRequestSchema } from "@/lib/validations/forgot-password.schema"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
@@ -19,17 +20,15 @@ export async function POST(req: NextRequest) {
         const json = await req.json().catch(() => null)
         const validation = forgotPasswordRequestSchema.safeParse(json)
         if (!validation.success) {
-            return ApiResponse.badRequest("Validation Error", validation.error.format())
+            // Said under the email, in the page's language (lib/sign-in-form.ts, resetRefusal).
+            return ApiResponse.refused(400, "Validation Error", "NOT_AN_EMAIL")
         }
 
         const { email } = validation.data
         const ip = getClientIp(req.headers)
 
         const { limited, resetAt } = await RateLimiter.getLimitData(`password-reset:${ip}`, 5, 15 * 60 * 1000)
-        if (limited) {
-            const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            return ApiResponse.error(`Too many attempts. Please try again at ${timeStr}.`, 429)
-        }
+        if (limited) return resetHeldBack(resetAt)
 
         const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
         const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })

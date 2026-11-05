@@ -140,7 +140,7 @@ describe("the older pages' shades", () => {
     it("keep white text readable on a button brightened on hover", () => {
         for (const picked of ["#0891b2", "#16a34a", "#ea580c", "#0d9488"]) {
             const shades = oldPageShades(picked).light
-            for (const token of ["--button-from", "--button-to", "--hero-from", "--hero-to"] as const) {
+            for (const token of ["--button-from", "--button-to"] as const) {
                 const today = OLD_PAGE_SHADES.find(s => s.token === token)!.light
                 const need = Math.min(4.5, contrast("#ffffff", hovered(today)))
                 expect(contrast("#ffffff", hovered(shades[token])), `${picked} ${token}`).toBeGreaterThanOrEqual(need)
@@ -153,7 +153,7 @@ describe("the older pages' shades", () => {
     it("stand out from the dark page in dark mode as well as Nizmo's indigo does", () => {
         for (const picked of ["#1e3a8a", "#475569", "#000000"]) {
             const shades = oldPageShades(picked)
-            for (const token of ["--primary", "--button-from", "--button-to", "--hero-from", "--hero-to", "--accent"] as const) {
+            for (const token of ["--primary", "--button-from", "--button-to", "--accent"] as const) {
                 const today = OLD_PAGE_SHADES.find(s => s.token === token)!.light
                 const now = shades.dark[token]
                 expect(now, `${picked} ${token}`).toMatch(/^#[0-9a-f]{6}$/)
@@ -226,7 +226,7 @@ describe("the older pages' shades", () => {
         expect(oldPageShades("#2563eb").light["--primary"]).toBe("#2563eb")
         // A green page is green, not indigo: more green than blue in every fill.
         const green = oldPageShades("#16a34a").light
-        for (const token of ["--primary", "--button-from", "--hero-from", "--brand-primary-text"] as const) {
+        for (const token of ["--primary", "--button-from", "--brand-primary-text"] as const) {
             const [, g, b] = [1, 3, 5].map(i => parseInt(green[token].slice(i, i + 2), 16))
             expect(g, token).toBeGreaterThan(b)
         }

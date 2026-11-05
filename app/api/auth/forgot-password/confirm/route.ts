@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { ApiResponse } from "@/lib/api-response"
+import { resetHeldBack } from "@/lib/password-reset"
 import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { unlockSignIn } from "@/lib/sign-in-lock"
 import { forgotPasswordConfirmSchema } from "@/lib/validations/forgot-password.schema"
@@ -29,13 +30,11 @@ export async function POST(req: NextRequest) {
         const ip = getClientIp(req.headers)
 
         const { limited, resetAt } = await RateLimiter.getLimitData(`password-reset:${ip}`, 5, 15 * 60 * 1000)
-        if (limited) {
-            const timeStr = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            return ApiResponse.error(`Too many attempts. Please try again at ${timeStr}.`, 429)
-        }
+        if (limited) return resetHeldBack(resetAt)
 
         const ok = await VerificationCodeService.verify(email, 'PASSWORD_RESET', code)
-        if (!ok) return ApiResponse.badRequest("Invalid or expired code")
+        // Said under the code, in the page's language (lib/sign-in-form.ts, resetRefusal).
+        if (!ok) return ApiResponse.refused(400, "Invalid or expired code", "CODE_WRONG")
 
         const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
         const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })

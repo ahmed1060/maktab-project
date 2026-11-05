@@ -1,5 +1,6 @@
 import type { TranslationKey } from '@/lib/translations'
 import { isCode } from '@/lib/security-forms'
+import { newPasswordErrors } from '@/lib/new-password-form'
 
 /**
  * The sign-in page's checks (DESIGN.md §5.5, Sign-in), before anything is
@@ -47,4 +48,37 @@ const EMAIL_CODE_REFUSALS: Record<string, TranslationKey> = {
 
 export function emailCodeRefusal(code: unknown): TranslationKey | null {
     return typeof code === 'string' && Object.hasOwn(EMAIL_CODE_REFUSALS, code) ? EMAIL_CODE_REFUSALS[code] : null
+}
+
+/** Forgot your password's second step: the code sent, then the new password, asked twice. */
+export type ResetField = 'code' | 'newPassword' | 'confirmPassword'
+
+/**
+ * What's wrong with the second step before it's sent: a code that isn't six
+ * digits, and the new password as Change password checks it
+ * (lib/new-password-form.ts). The email was checked at the first step.
+ */
+export function resetErrors(typed: { code: string; newPassword: string; confirmPassword: string }): Partial<Record<ResetField, TranslationKey>> {
+    const wrong: Partial<Record<ResetField, TranslationKey>> = {}
+    if (!isCode(typed.code)) wrong.code = 'security_email_code_invalid'
+    return { ...wrong, ...newPasswordErrors(typed) }
+}
+
+/** How a refusal of Forgot your password is said: under its field, or counted down above the primary button. */
+export type ResetRefusal = { field: 'email' | 'code'; key: TranslationKey } | { wait: number }
+
+/**
+ * Forgot your password turned down, by the code the server answers with
+ * (app/api/auth/forgot-password/*), in the page's language: its words came in
+ * English, at the top of the card. Anything not here is said as the server
+ * put it.
+ */
+export function resetRefusal(body: { code?: unknown; wait?: unknown } | null): ResetRefusal | null {
+    switch (body?.code) {
+        case 'NOT_AN_EMAIL': return { field: 'email', key: 'security_email_invalid' }
+        case 'CODE_WRONG': return { field: 'code', key: 'sign_in_email_code_wrong' }
+        // How long is left, in seconds counted on the server (lib/password-reset.ts).
+        case 'TOO_MANY_TRIES': return typeof body.wait === 'number' && body.wait > 0 ? { wait: body.wait } : null
+        default: return null
+    }
 }
