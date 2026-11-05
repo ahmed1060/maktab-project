@@ -239,7 +239,13 @@ export default function LoginPage() {
                 setError(key ? t(key) : apiErrorText(text, t('sign_in_failed')))
                 return
             }
-            if (stage === 'email') setNotice(t('sign_in_email_code_sent'))
+            // Sent again from the emailed code's own step: said so, and the
+            // code, cleared for the new one, focused, as Send a new code,
+            // turned busy, lost the focus.
+            if (stage === 'email') {
+                setNotice(t('sign_in_email_code_sent'))
+                focusNext('input[name="code"]')
+            }
             setStage('email')
             setCode('')
             setCodeErr(undefined)

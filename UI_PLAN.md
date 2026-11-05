@@ -4199,3 +4199,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The colours the old form was the last to use are gone (`--ok-bg-strong`,
     `--grey-400`, `--hero-from`, `--hero-to`), and with them the shades of
     the brand colour worked out for two of them.
+  - At signing in's emailed code, Send a new code left the focus on the
+    page: turned busy, the button lost it. The code, cleared for the new
+    one, takes it, as at Forgot your password (browser flows).
