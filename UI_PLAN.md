@@ -4085,3 +4085,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - End contract was offered on another Super Admin's details, who has no
     contract nor a company to settle with, and was refused. It isn't now
     (found reading the code).
+  - A name with no space in it, in the list of a leader's team, breaks
+    where it must, as the dialog's title and paragraphs do: it ran past the
+    dialog (web interface audit).

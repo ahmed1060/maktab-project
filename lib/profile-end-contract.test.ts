@@ -281,6 +281,14 @@ describe("handing over a team", () => {
         expect(html).toContain(`<div class="ui-dialog-actions"><button type="button" class="ui-btn ui-btn-secondary">${esc(en.handoff_cancel)}</button><button type="submit" class="ui-btn ui-btn-primary">${esc(en.handoff_confirm)}</button></div>`)
     })
 
+    // A name with no space in it breaks where it must, as the dialog's title
+    // and paragraphs do, rather than run past the dialog (web interface audit).
+    it("breaks a name with no space in it, rather than run past the dialog", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const at = css.indexOf(".ui-dialog-list {")
+        expect(css.slice(at, css.indexOf("}", at))).toContain("overflow-wrap: anywhere;")
+    })
+
     it("says the leaders are loading, and waits for them", async () => {
         const html = await handoff({ leaders: null })
         const to = field(html, en.handoff_move_to)

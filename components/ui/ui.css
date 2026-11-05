@@ -883,10 +883,12 @@
   padding-inline-start: var(--space-6);
 }
 /* The names a dialog is about, such as the team a leader leaves (a person's
-   profile, part 5): named, not counted. */
+   profile, part 5): named, not counted. One with no space in it breaks where
+   it must, as the title does, rather than run past the dialog. */
 .ui-dialog-list {
   margin: 0;
   padding-inline-start: var(--space-6);
+  overflow-wrap: anywhere;
 }
 /* Ending a contract (a person's profile, part 5): its settlement before it's
    recorded, with the statement's own lines, totals and notes (§5.5,
