@@ -49,8 +49,8 @@ const ALLOWED: [file: string, line: string, why: string][] = [
 
     // app/(dashboard)/dashboard/employees/new/page.tsx
     ["app/(dashboard)/dashboard/employees/new/page.tsx", "if (role === 'EMPLOYEE' && teamLeaderId) {", THE_PERSON],
-    ["app/(dashboard)/dashboard/employees/new/page.tsx", "const salaryShown = !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== ''", THE_PERSON],
-    ["app/(dashboard)/dashboard/employees/new/page.tsx", "const dayOffShown = role === 'EMPLOYEE' || role === 'TEAM_LEADER'", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/new/page.tsx", "const salaryShown = features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== ''", THE_PERSON],
+    ["app/(dashboard)/dashboard/employees/new/page.tsx", "const dayOffShown = features.has('DAY_OFF') && (role === 'EMPLOYEE' || role === 'TEAM_LEADER')", THE_PERSON],
     ["app/(dashboard)/dashboard/employees/new/page.tsx", "{role === 'EMPLOYEE' && canAssignTeam && (", THE_PERSON],
 
     // app/(dashboard)/dashboard/employees/page.tsx

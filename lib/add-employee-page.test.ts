@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
+import { serializeAccess, type Bundle } from "./features/bundles"
 
 /**
  * Add employee on the building blocks (UI_PLAN.md §5 step 5, the pages
@@ -250,5 +251,34 @@ describe("Add employee, found by Codex", () => {
         // Sent only where they're asked for.
         expect(src).toContain("if (salaryShown && salary) {")
         expect(src).toContain("...(dayOffShown ? { dayOffCredit: parseFloat(dayOffCredit) || 0 } : {})")
+    })
+})
+
+describe("Add employee, where the company's package leaves pay or day off out", () => {
+    // DESIGN.md §5.5, Page layout: pay is Payroll's, a day off balance Day
+    // off's. Both were asked for whatever the package, and saved.
+    const at = (...bundles: Bundle[]) => ({ id: "a1", role: "ADMIN", featureAccess: serializeAccess({ unrestricted: false, bundles: new Set(bundles) }) })
+
+    it("asks for neither where the package hasn't HR", async () => {
+        const html = await render({ viewer: at("COMPANY_MANAGEMENT") })
+        expect(html).not.toContain('name="salary"')
+        expect(html).not.toContain('name="dayOffCredit"')
+        expect(html).not.toMatch(label(en.monthly_base_salary_label))
+        expect(html).not.toMatch(label(en.day_off_credit))
+        // The rest of the form stays.
+        expect(html).toMatch(input({ name: "firstName" }))
+        expect(html).toMatch(input({ name: "password" }))
+    })
+
+    it("asks for both where it has", async () => {
+        const html = await render({ viewer: at("COMPANY_MANAGEMENT", "HR") })
+        expect(html).toMatch(input({ name: "salary" }))
+        expect(html).toMatch(input({ name: "dayOffCredit" }))
+    })
+
+    it("neither checks nor sends what it doesn't ask for", () => {
+        const src = readFileSync(PAGE, "utf8")
+        expect(src).toContain("const salaryShown = features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== ''")
+        expect(src).toContain("const dayOffShown = features.has('DAY_OFF') && (role === 'EMPLOYEE' || role === 'TEAM_LEADER')")
     })
 })

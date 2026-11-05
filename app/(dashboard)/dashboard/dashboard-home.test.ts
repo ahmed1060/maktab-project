@@ -37,7 +37,8 @@ describe("the dashboard home", () => {
     it("offers each review queue only to someone who can act on it, as before", () => {
         expect(page).toMatch(/can\(viewer, 'dayoff\.approve'\) \? \[\{ label: t\('pending_day_off_requests'\)/)
         expect(page).toMatch(/can\(viewer, 'profile_requests\.review'\) \? \[\{ label: t\('pending_profile_requests'\)/)
-        expect(page).toMatch(/can\(viewer, 'employees\.create'\) && <ButtonLink href="\/dashboard\/employees\/new"/)
+        expect(page).toContain("const mayAdd = can(viewer, 'employees.create')")
+        expect(page).toMatch(/\{mayAdd && <ButtonLink href="\/dashboard\/employees\/new"/)
     })
 
     it("marks overdue tasks with the word, not only the colour", () => {

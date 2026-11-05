@@ -1,4 +1,5 @@
 import type { Can } from '@/lib/useCan'
+import type { Module } from '@/lib/features/bundles'
 
 /**
  * What a person's profile shows, and offers, to whoever is looking (a
@@ -12,6 +13,10 @@ import type { Can } from '@/lib/useCan'
  * What the form may change, and so what its save sends, is here too (part
  * 3, PR 193): a field it may not change is shown off, with why under it. How
  * their role may be changed, given or asked for, too (part 4, PR 194).
+ *
+ * And what the company's package includes: pay is Payroll's and a day off
+ * balance Day off's, so neither is shown nor sent where the package leaves
+ * them out (DESIGN.md §5.5, Page layout).
  */
 export type ProfileAccess = {
     /** Their own profile. */
@@ -49,8 +54,10 @@ export type ProfileAccess = {
     changeRole: 'assign' | 'ask' | null
 }
 
-export function profileAccess({ can, viewer, person }: {
+export function profileAccess({ can, has, viewer, person }: {
     can: Can['can']
+    /** Whether the company's package includes a module (useFeatures). */
+    has: (module: Module) => boolean
     viewer: { id?: string | null; role?: string | null } | null | undefined
     /** Their role's kind, '' until it's loaded. */
     person: { id: string; role: string }
@@ -59,12 +66,14 @@ export function profileAccess({ can, viewer, person }: {
     const superAdmin = viewer?.role === 'SUPER_ADMIN'
     const actsOnThem = person.role !== 'ADMIN' || superAdmin
     const paid = !['ADMIN', 'SUPER_ADMIN'].includes(person.role) && person.role !== ''
+    const payroll = has('PAYROLL')
+    const leave = has('DAY_OFF')
     return {
         own,
         edit: own || (can('employees.edit') && actsOnThem),
         company: superAdmin || person.role === 'SUPER_ADMIN',
-        salary: (can('salary.view') || own) && paid,
-        dayOffCredit: (can('dayoff.view') || own) && paid,
+        salary: (can('salary.view') || own) && paid && payroll,
+        dayOffCredit: (can('dayoff.view') || own) && paid && leave,
         resetPassword: can('employees.reset_password') && !own && actsOnThem,
         role: (can('employees.assign_role') || can('employees.request_role')) && !own,
         ownTeamLeader: own && person.role === 'EMPLOYEE',
@@ -76,8 +85,8 @@ export function profileAccess({ can, viewer, person }: {
         endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',
         changeEmail: !own,
         changeUsername: superAdmin,
-        changeSalary: can('salary.edit') && !own && paid,
-        changeDayOffCredit: can('dayoff.adjust_credit') && !own && paid,
+        changeSalary: can('salary.edit') && !own && paid && payroll,
+        changeDayOffCredit: can('dayoff.adjust_credit') && !own && paid && leave,
         // As the route refuses it otherwise (NAME_CHANGE_REQUIRES_ADMIN).
         nameByRequest: own && (person.role === 'EMPLOYEE' || person.role === 'TEAM_LEADER'),
         // The route refuses anyone else (FORBIDDEN_PASSWORD_RESET), and an Admin's but the Super Admin's.

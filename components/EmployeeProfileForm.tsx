@@ -7,6 +7,7 @@ import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { HourglassIcon, PencilSimpleIcon } from '@phosphor-icons/react/ssr'
 import { useCan, useViewer } from '@/lib/useCan'
+import { useFeatures } from '@/lib/features/useFeatures'
 import { useAssignableRoles, type AssignableRole } from '@/lib/useAssignableRoles'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
@@ -117,6 +118,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // checks for it.
     const { can } = useCan()
     const viewer = useViewer()
+    // What the company's package includes: pay and a day off balance are HR's.
+    const features = useFeatures()
     const canAssignTeam = can('employees.assign_team')
 
     // What's wrong, under each field, and what isn't a field's, above the buttons.
@@ -310,7 +313,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const own = userId === viewer?.id
     const name = `${originalFirstName} ${originalLastName}`.trim() || email
     // What they may see here and do, for the view and the form alike (PR 192).
-    const access = profileAccess({ can, viewer, person: { id: userId, role } })
+    const access = profileAccess({ can, has: features.has, viewer, person: { id: userId, role } })
     // Seen, too, where its form would be refused: at the form's address,
     // by someone who may not edit them, as the notice of an acting role
     // held back sends whoever decides roles.

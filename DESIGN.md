@@ -522,6 +522,11 @@ These are built once, in the building-blocks PR, and every page uses them
     section headings, keeps its contrast.
 - **Page layout:** a page's parts are stacked with the "between sections"
   spacing from §4.1.
+  - A part that belongs to a module the company's package doesn't include
+    isn't there, for anyone in the company, as the module isn't in the
+    side bar (§5.1): a tile, a section, a field or a link to it, such as a
+    person's pay on their profile where the package hasn't Payroll. The
+    rest closes up, and a section left with nothing in it goes too.
 - **Section:** a part of a page made of several panels, such as a row of
   tiles. Its heading is `--text-xl`, weight 500, above the panels, with an
   optional quiet link on the end side, such as "View all". A part made of
@@ -1269,3 +1274,9 @@ changed:
   an emoji. The trial's said "2 day(s) left" in English, and "2" in Arabic
   among Arabic-Indic digits; grace told everyone to renew, which only an
   Admin can; and both read their day on the reader's own calendar.
+- **2026-11-05:** A part of a page that belongs to a module the company's
+  package doesn't include isn't there either (§5.5, Page layout). The
+  dashboard showed a company without HR its bonuses, deductions and day
+  off credit, and one without Company Management its tasks and
+  obligations; a profile showed pay and day off credit, and Add employee
+  asked for both.

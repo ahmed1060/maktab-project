@@ -14,6 +14,7 @@ import { FIELDS, NAME_MAX, PASSWORD_MAX, newEmployeeErrors, refusedField, type N
 import { roleLabel } from '@/lib/role-label'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
+import { useFeatures } from '@/lib/features/useFeatures'
 import { useModules } from '@/lib/useModules'
 
 type Company = { id: string; name: string }
@@ -47,9 +48,12 @@ export default function NewEmployeePage() {
     const [dayOffCredit, setDayOffCredit] = useState('0')
     const [teamLeaderId, setTeamLeaderId] = useState('')
     // Which the role picked has: pay for anyone but an Admin, a day off
-    // balance for an employee or a team leader. Checked and sent only then.
-    const salaryShown = !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== ''
-    const dayOffShown = role === 'EMPLOYEE' || role === 'TEAM_LEADER'
+    // balance for an employee or a team leader. Checked and sent only then,
+    // and only where the company's package includes them: pay is Payroll's,
+    // a day off balance Day off's (DESIGN.md §5.5, Page layout).
+    const features = useFeatures()
+    const salaryShown = features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== ''
+    const dayOffShown = features.has('DAY_OFF') && (role === 'EMPLOYEE' || role === 'TEAM_LEADER')
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<NewEmployeeField, string>>>({})
     const [loading, setLoading] = useState(false)

@@ -85,7 +85,7 @@ const GATES: Gate[] = [
     { what: "sidebar: payroll", file: "lib/side-bar.ts", uses: "case 'payroll': return v.can('payroll.view')", before: admins, now: p => p.can("payroll.view") },
     { what: "dashboard: overview", file: D + "page.tsx", uses: "if (can(viewer, 'tasks.view'))", before: managers, now: p => p.can("tasks.view") },
     { what: "dashboard: team title", file: D + "page.tsx", uses: "grantFor(viewer, 'tasks.view') === 'TEAM'", before: r => r === "TEAM_LEADER", now: p => p.scope("tasks.view") === "TEAM" },
-    { what: "dashboard: add employee (in the overview)", file: D + "page.tsx", uses: "can(viewer, 'employees.create') && <ButtonLink href=\"/dashboard/employees/new\"", before: r => managers(r) && r !== "TEAM_LEADER", now: p => p.can("tasks.view") && p.can("employees.create") },
+    { what: "dashboard: add employee (in the overview)", file: D + "page.tsx", uses: "const mayAdd = can(viewer, 'employees.create')", before: r => managers(r) && r !== "TEAM_LEADER", now: p => p.can("tasks.view") && p.can("employees.create") },
 
     // --- Day off and payroll ---------------------------------------------------
     // On the one Requests page since UI_PLAN.md §2.3, part 2d: To review has
@@ -127,9 +127,9 @@ const GATES: Gate[] = [
     { what: "profile: sends day-off credit", file: ACCESS, uses: "changeDayOffCredit: can('dayoff.adjust_credit') && !own", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("dayoff.adjust_credit") },
     { what: "profile: sends status", file: ACCESS, uses: "status: can('employees.change_status') && !own,", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("employees.change_status") },
     { what: "profile: sends team leader", file: ACCESS, uses: "teamLeader: can('employees.assign_team') && !own", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("employees.assign_team") },
-    { what: "profile: salary shown (flag: own profile)", file: ACCESS, uses: "salary: (can('salary.view') || own) && paid,", before: (r, self) => admins(r) || self, now: (p, self) => p.can("salary.view") || self },
+    { what: "profile: salary shown (flag: own profile)", file: ACCESS, uses: "salary: (can('salary.view') || own) && paid && payroll,", before: (r, self) => admins(r) || self, now: (p, self) => p.can("salary.view") || self },
     { what: "profile: salary editable", file: ACCESS, uses: "changeSalary: can('salary.edit') && !own", before: admins, now: p => p.can("salary.edit") },
-    { what: "profile: day-off credit shown (flag: own profile)", file: ACCESS, uses: "dayOffCredit: (can('dayoff.view') || own) && paid,", before: (r, self) => admins(r) || self, now: (p, self) => p.can("dayoff.view") || self },
+    { what: "profile: day-off credit shown (flag: own profile)", file: ACCESS, uses: "dayOffCredit: (can('dayoff.view') || own) && paid && leave,", before: (r, self) => admins(r) || self, now: (p, self) => p.can("dayoff.view") || self },
     { what: "profile: day-off credit editable", file: ACCESS, uses: "changeDayOffCredit: can('dayoff.adjust_credit') && !own", before: admins, now: p => p.can("dayoff.adjust_credit") },
     { what: "profile: reset password", file: ACCESS, uses: "resetPassword: can('employees.reset_password') && !own", before: admins, now: p => p.can("employees.reset_password") },
     // B4: shown to whoever may ask for a role too (ROLES_PLAN.md §6.12). No
