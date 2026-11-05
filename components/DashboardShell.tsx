@@ -11,10 +11,12 @@ import AppPush from './AppPush'
 import { sideBarFor } from '@/lib/side-bar'
 import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
+import { useCompany } from '@/context/CompanyContext'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import { usePathname, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
+import { WAITING_FOR_REVIEW_KEY } from '@/lib/requests/kinds'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
 import { permissionsOf } from '@/lib/useCan'
@@ -90,6 +92,21 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         companySettings: showCompanySettings,
         cashAdvances: !!settingsEntry?.data?.cashAdvances,
     })
+    // How many wait on this person under the Requests page's To review tab,
+    // on Requests in the side bar (DESIGN.md §5.1): asked once Requests is
+    // there, again on every page, when they come back to the window, and when
+    // the Super Admin looks at another company, which the server reads from
+    // the cookie picking one writes. The Requests page asks again itself once
+    // something there is decided. Only the effect asks on the first paint, as
+    // for the settings above.
+    const waitingKey = groups.some(g => g.items.includes('requests')) ? WAITING_FOR_REVIEW_KEY : null
+    const { selectedCompanyId } = useCompany()
+    const { data: waiting, mutate: recheckWaiting } = useSWR<{ data?: { count: number } }>(
+        waitingKey,
+        fetcher,
+        { revalidateOnMount: false, revalidateOnFocus: true },
+    )
+    useEffect(() => { void recheckWaiting() }, [pathname, waitingKey, selectedCompanyId, recheckWaiting])
     // The mark follows the same scope as the names beside it — a Super Admin
     // looking at one company sees that company's logo, not a default mark over
     // that company's module names.
@@ -147,6 +164,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 drawer={isPhone}
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
+                waiting={waiting?.data?.count}
             />
 
             {/* Main Content Wrapper */}

@@ -1141,6 +1141,23 @@ export function tabsFor(v: Viewer): Record<RequestsTab, boolean> {
     }
 }
 
+/**
+ * How many wait on this person under To review: the list the page opens on,
+ * with every kind and no filter. The Super Admin's is the company they're
+ * looking at (`companyId`), or every company's when they look at none, as the
+ * page opens on it; the feed reads `companyId` for no one else. The side
+ * bar's count on Requests (DESIGN.md §5.1). Each kind's own rule and list, as
+ * the page's total is, asked for no rows, so the two can't drift apart.
+ */
+export async function waitingForReview(v: Viewer, companyId: string | null = null): Promise<number> {
+    const q: FeedQuery = { tab: "review", show: "waiting", kind: "", search: "", personId: "", companyId, page: 1, limit: 0 }
+    const lists = await Promise.all(SOURCES.map(source => {
+        const where = source.where(v, q)
+        return where ? source.list(v, q, where, 0) : null
+    }))
+    return lists.reduce((sum, l) => sum + (l?.total ?? 0), 0)
+}
+
 export async function requestFeed(v: Viewer, q: FeedQuery) {
     const offered = SOURCES.map(source => ({ source, where: source.where(v, q) }))
         .filter((o): o is { source: Source; where: Record<string, any> } => o.where !== null)

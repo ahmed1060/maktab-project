@@ -4,6 +4,12 @@
  * so the page in the browser takes these alone (lib/client-bundle.test.ts).
  */
 
+/**
+ * Where the side bar asks how many wait on this person under To review
+ * (DESIGN.md §5.1), and what the page asks again after a decision.
+ */
+export const WAITING_FOR_REVIEW_KEY = '/api/requests/waiting'
+
 /** The kinds the page lists, in the order its filter offers them. */
 export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone", "flagged", "nameChange", "role"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]

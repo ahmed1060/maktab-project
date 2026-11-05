@@ -219,7 +219,9 @@ one once its kind has moved in.
       own on Mine, everyone else's under To review for whoever decides
       them, approved, or rejected with a reason if there is one. The
       Profile requests page, the header's count, the dashboard's tile and
-      a decision's notice open them there.
+      a decision's notice open them there. The header's count went in
+      #204: they're counted, with all that waits, on Requests in the side
+      bar.
    2. **5b:** role requests (#138): still asked for on an employee's page;
       on the Mine of whoever asked, as the Role requests page has them, and
       decided under To review for whoever gives roles, never by whoever
@@ -545,9 +547,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      being previewed, merged in #201 on 2026-11-05, then what's of a module
      the package doesn't include inside the pages it does, merged in #202
      on 2026-11-05, then the app's frame, from a mock-up the product owner
-     approved on 2026-11-05, a part at a time: the side bar, in #203, then
-     the count of what waits on Requests in it, then the top bar, then the
-     notifications;
+     approved on 2026-11-05, a part at a time: the side bar, merged in
+     #203 on 2026-11-05, then the count of what waits on Requests in it,
+     in #204, then the top bar, then the notifications;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4370,3 +4372,22 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The Branding tab's logo preview and the Modules tab's side bar preview
     draw the same mark, icons and look. The old dark side bar's tokens, and
     the brand shades that followed them, are gone with it.
+- **2026-11-05:** The side bar was merged in #203. The frame's second part,
+  in #204: Requests in the side bar carries how many wait on this person
+  under the Requests page's To review tab (`DESIGN.md` §5.1).
+  - It's the number that tab's list totals as the page opens on it, with
+    every kind and no filter. Each kind is counted by its own rule of who
+    sees what, through the same lists the page reads
+    (`lib/requests/feed.ts`), so the two can't drift apart. The Super
+    Admin's is the company they're looking at, or every company's when they
+    look at none, as the page opens on it, and it's asked again when they
+    pick another.
+  - It's a `--brand` pill at the item's end, in the language's own digits,
+    and nothing when nothing waits. A screen reader hears it with the
+    item's name, as "Requests, 3 requests to review".
+  - It's asked again on every page, when the person comes back to the
+    window, and once something is decided, deleted, withdrawn, revoked or
+    asked for on the Requests page.
+  - The top bar's button for name changes alone is gone, with its count:
+    name changes are among what's counted on Requests. The dashboard's tile
+    for them stays, for whoever decides them.

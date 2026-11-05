@@ -14,7 +14,6 @@ import { useModules } from '@/lib/useModules'
 import LanguageToggleButton from './LanguageToggleButton'
 import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
-import { permissionsOf } from '@/lib/useCan'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { moveOption } from '@/lib/listbox-keys'
 import { useBusyAction } from '@/lib/useBusyAction'
@@ -49,7 +48,6 @@ export default function DashboardHeader({ user, onMenuClick, menuOpen = false }:
     const { title: contextTitle, subtitle: contextSubtitle } = useHeader()
     const modules = useModules()
     const [companies, setCompanies] = useState<any[]>([])
-    const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
     const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
@@ -92,9 +90,9 @@ export default function DashboardHeader({ user, onMenuClick, menuOpen = false }:
                     setCompanies(data.companies)
                 }
 
-                // Update Pending Requests Count & Notifications
+                // Unread notifications. What waits to be reviewed is counted on
+                // Requests in the side bar (DESIGN.md §5.1).
                 if (data.counts) {
-                    setPendingRequestsCount(data.counts.pendingProfileRequests || 0)
                     setUnreadNotificationsCount(data.counts.unreadNotifications || 0)
                 }
 
@@ -525,66 +523,6 @@ export default function DashboardHeader({ user, onMenuClick, menuOpen = false }:
                             </ul>
                         )}
                     </div>
-                )}
-
-                {/* Profile Name Requests Counter (for whoever decides them), opening them on the Requests page (UI_PLAN.md §2.3, part 5a) */}
-                {permissionsOf(currentUser as any).can('profile_requests.review') && (
-                    <Suspense fallback={<div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'var(--veil-20)' }} />}>
-                        <Link
-                            href="/dashboard/requests?tab=review&kind=nameChange&show=waiting"
-                            title={t('profile_name_requests')}
-                            aria-label={t('profile_name_requests')}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '45px',
-                                height: '45px',
-                                borderRadius: '50%',
-                                background: 'var(--veil-50)',
-                                border: '2px solid var(--panel-80)',
-                                color: 'var(--text-main)',
-                                position: 'relative',
-                                transition: 'all 0.2s ease',
-                                boxShadow: '0 4px 6px var(--shadow-faint)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.05)'
-                                e.currentTarget.style.background = 'var(--panel-80)'
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)'
-                                e.currentTarget.style.background = 'var(--veil-50)'
-                            }}
-                        >
-                            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="8.5" cy="7" r="4"></circle>
-                                <polyline points="17 11 19 13 23 9"></polyline>
-                            </svg>
-                            {pendingRequestsCount > 0 && (
-                                <span style={{
-                                    position: 'absolute',
-                                    top: '-5px',
-                                    right: '-5px',
-                                    background: 'var(--danger-fill)',
-                                    color: 'var(--text-on-accent)',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 'bold',
-                                    minWidth: '18px',
-                                    height: '18px',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    border: '2px solid white',
-                                    boxShadow: '0 2px 4px var(--shadow-weak)'
-                                }}>
-                                    {pendingRequestsCount}
-                                </span>
-                            )}
-                        </Link>
-                    </Suspense>
                 )}
 
                 <Suspense fallback={<div style={{ width: '24px', height: '24px' }} />}>
