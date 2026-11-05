@@ -226,7 +226,7 @@ describe("the older pages' shades", () => {
         expect(oldPageShades("#2563eb").light["--primary"]).toBe("#2563eb")
         // A green page is green, not indigo: more green than blue in every fill.
         const green = oldPageShades("#16a34a").light
-        for (const token of ["--primary", "--button-from", "--hero-from", "--link"] as const) {
+        for (const token of ["--primary", "--button-from", "--hero-from", "--brand-primary-text"] as const) {
             const [, g, b] = [1, 3, 5].map(i => parseInt(green[token].slice(i, i + 2), 16))
             expect(g, token).toBeGreaterThan(b)
         }
@@ -244,7 +244,7 @@ describe("the older pages' shades", () => {
         const shades = oldPageShades("#16a34a")
         expect(light).toContain(`--button-from:${shades.light["--button-from"]}`)
         expect(light).toContain(`--page-bg:${shades.light["--page-bg"]}`)
-        expect(dark).toContain(`--link:${shades.dark["--link"]}`)
+        expect(dark).toContain(`--brand-primary-text:${shades.dark["--brand-primary-text"]}`)
         // The page's ground is pale in light mode only; dark mode keeps its own.
         expect(dark).not.toContain("--page-bg")
     })

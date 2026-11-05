@@ -10,15 +10,6 @@ import * as Sentry from '@sentry/nextjs'
  * throwing on the login page. Never throws — a failure reporting a failure
  * must not compound into a worse one for the user.
  */
-/** Mirrors AuditLogService.friendlyErrorMessage server-side — same wording
- *  everywhere an unexpected error reaches a user, whether it was caught on
- *  the server or here on the client. */
-export function friendlyErrorMessage(ref: string | null): string {
-    return ref
-        ? `We couldn't complete that action. Please try again — if it keeps happening, share this reference with your admin: ${ref}`
-        : `We couldn't complete that action. Please try again.`
-}
-
 export async function reportClientError(error: unknown, route?: string, componentStack?: string): Promise<string | null> {
     // An error that reached here was caught by one of the app's boundaries,
     // so it never becomes an uncaught error Sentry would see by itself.

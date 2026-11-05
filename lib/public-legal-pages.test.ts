@@ -83,7 +83,7 @@ describe("the app links to them", () => {
     // else. These are the two places a person passes through: the page every
     // user signs in on, and the shell every signed-in page renders inside.
     const LINK_SITES = [
-        { name: "the login page", file: "app/(auth)/login/page.tsx" },
+        { name: "the sign-in screen", file: "components/sign-in/SignInScreen.tsx" },
         { name: "the dashboard shell", file: "components/DashboardShell.tsx" },
     ]
 

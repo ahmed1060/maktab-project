@@ -521,7 +521,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      else's, as their details, merged in #192 on 2026-11-04, then its form,
      each field's mistake under it, merged in #193 on 2026-11-04, then its
      role field, merged in #194 on 2026-11-05, then ending a contract and
-     handing over a team, in #195;
+     handing over a team, merged in #195 on 2026-11-05, which finished it,
+     then the sign-in page, in two parts: its screen, signing in and the
+     two-factor code, in #196, then Forgot your password;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4099,3 +4101,58 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     were still loading, so the picker was off and the focus was on Cancel
     the change. For a Team Leader, they're asked for as the dialog opens,
     so the picker has the focus (browser flows).
+- **2026-11-05:** A person's profile, part 5, was merged in #195, which
+  finished it. The sign-in page moves onto the building blocks next (§5 step
+  5, the pages left), in two parts: its screen, signing in and the
+  two-factor code, in #196, then Forgot your password (DESIGN.md §5.5,
+  Sign-in).
+  - The screen is a card on the flat page, titled "Sign in to Nizmo". It
+    was "Welcome Back", in gradient letters on a glass card of its own
+    making, over a moving gradient. The two-factor code has its own title,
+    "Confirm it's you", with a line under it on what to type.
+  - Its fields are the building blocks': the email or username, left to
+    right in both languages, and the password with its eye button, each
+    with its label and no placeholder. The password field's padding was set
+    twice by hand, once more for the side its button was on in each
+    language, which React warned about.
+  - Stay signed in and Remember this device for 30 days are checkboxes
+    with their labels. They were boxes drawn by hand, which neither a
+    keyboard nor a screen reader could reach.
+  - What's missing is said under its field before anything is sent, with
+    the focus on the first, in the page's language: it was the browser's
+    bubble, in the browser's language. What the server answers is said above
+    the step's primary button, which takes the card's width; the step's
+    other ways on are quiet buttons under it. They were all at the top of
+    the card.
+  - A wrong password readies the password to type again. Sign in, turned
+    busy, took the focus with it.
+  - At the code, a code that isn't six digits, or isn't right, is said under
+    the code as Security settings says it, with what to do next. It was
+    "Invalid code". Anything else is said as the first step says it: an
+    account suspended meanwhile was "Something went wrong".
+  - A code emailed instead can be sent again from its own step, which says
+    so once it's sent, and a wrong or expired one says it can be. To get
+    another, it was back to the app's code, then Email me a code instead
+    again.
+  - Remember this device is offered with an emailed code too: ticked
+    before choosing one, it was hidden there and still remembered the
+    device.
+  - "Email me a code instead"'s refusals carry their codes
+    (`ApiResponse.refused`) and are said in the page's language, as is a
+    failure nothing answered for, with its reference for the admin. They
+    were in English.
+  - Under the card, as part of the page: the privacy policy, the terms, and
+    the language and theme switches, in a row that wraps on a phone. They
+    were pinned to the screen's corners, so on a phone the theme switch
+    covered Sign in and the language switch the legal links. The bar that
+    pinned them (`components/PreferenceBar.tsx`) is gone.
+  - In Arabic, nothing is asked in the masculine (قم بتسجيل الدخول، أدخل،
+    تحقق، تذكر): it's يُرجى and verbal nouns. Stay signed in is إبقاء
+    تسجيل الدخول, where it was بقاء قيد تسجيل الدخول, and its 30 days are
+    in Arabic's digits.
+  - The old title and subtitle, the placeholders, "Signing in..." and
+    "Invalid code" are gone from the dictionaries, and so is the link
+    colour the old Forgot your password? was the last to use (`--link`).
+  - The email or username is sent without spaces at its ends, such as one
+    a phone's keyboard adds after a suggestion, which made it "not right"
+    (found reading the code).

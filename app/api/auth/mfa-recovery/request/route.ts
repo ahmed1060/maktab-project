@@ -53,9 +53,11 @@ export async function POST(req: NextRequest) {
         const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
         const isValid = await bcrypt.compare(password, passwordHash)
 
+        // Each refusal carries its code, so the sign-in page says it in the
+        // reader's language (lib/sign-in-form.ts): it came in English.
         if (!isValid || !account) {
             await markWrongSignIn(tried)
-            return ApiResponse.forbidden("Invalid credentials")
+            return ApiResponse.refused(403, "Invalid credentials", "WRONG_PASSWORD")
         }
         // The password was right: asking for a code is not a guess, so the
         // attempt is given back, as authorize() gives back the step that asks
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest) {
             // verification existed — Phase 2+3 forces verification before any
             // dashboard access, including reaching MFA settings to enroll, so
             // every real account hits this already verified.
-            return ApiResponse.forbidden("MFA recovery is not available for this account")
+            return ApiResponse.refused(403, "MFA recovery is not available for this account", "NO_EMAIL_CODES")
         }
 
         try {
@@ -78,7 +80,7 @@ export async function POST(req: NextRequest) {
                 superAdmin ? { superAdminId: account.id } : { userId: account.id }
             )
         } catch (error: any) {
-            if (error.message === 'RATE_LIMITED') return ApiResponse.error("Too many code requests — try again later", 429)
+            if (error.message === 'RATE_LIMITED') return ApiResponse.refused(429, "Too many code requests — try again later", "TOO_MANY_CODES")
             throw error
         }
 
