@@ -755,6 +755,27 @@ These are built once, in the building-blocks PR, and every page uses them
   - Under the header, a card says first that nothing was deleted, with a
     check in the Good colour (§2.3): someone who thinks their records are
     gone doesn't renew.
+- **A note above the page,** for something true on every page for now: a
+  company's free trial or its grace, or a role a Super Admin is
+  previewing. It's a level-1 panel at the page's width, above the page
+  header, 24px over it.
+  - Its meaning's colour (§2.3) is a 3px bar on its start edge, as a
+    card's is: Neutral for a trial, Problem for grace, Waiting on someone
+    for a preview. The words say it, so the colour is never the only
+    signal.
+  - What's so is in the page's language, digits too, and the one thing to
+    do about it is on its end side, if it can be done there. On a phone it
+    goes under the words.
+  - Screen readers hear it once, as it appears. It can't be closed: it
+    goes when what it says stops being true.
+  - A trial counts its days left, and says the day it ends, on Egypt's
+    calendar, as subscriptions are counted.
+  - Grace says the subscription has ended, how long is left until access
+    stops, and on what day. Its Admin is told that renewing it keeps
+    everyone's access; everyone else, that an Admin of their company can
+    renew it.
+  - A preview says which role, at which company, and that nothing can be
+    changed while it lasts, with Exit preview.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
   - A card that needs someone before going on has the Waiting on someone
@@ -1243,3 +1264,8 @@ changed:
   side bar, faded and with a padlock, as the way to find out what else the
   product does, and its pages were a card under a padlock emoji naming the
   bundle to buy.
+- **2026-11-05:** A note above the page (§5.5), for a company's trial or
+  grace and a role being previewed. Each was a box of its own making under
+  an emoji. The trial's said "2 day(s) left" in English, and "2" in Arabic
+  among Arabic-Indic digits; grace told everyone to renew, which only an
+  Admin can; and both read their day on the reader's own calendar.
