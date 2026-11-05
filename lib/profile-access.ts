@@ -70,8 +70,10 @@ export function profileAccess({ can, viewer, person }: {
         ownTeamLeader: own && person.role === 'EMPLOYEE',
         teamLeader: can('employees.assign_team') && !own && person.role === 'EMPLOYEE',
         status: can('employees.change_status') && !own,
-        // As its route asks: changing a status doesn't end a contract.
-        endContract: can('employees.end_contract') && !own && actsOnThem,
+        // As its route asks: changing a status doesn't end a contract. Never a
+        // Super Admin's, who has none, nor a company to settle with (a
+        // person's profile, part 5, PR 195).
+        endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',
         changeEmail: !own,
         changeUsername: superAdmin,
         changeSalary: can('salary.edit') && !own && paid,

@@ -16,7 +16,8 @@ import { ar } from "@/lib/translations/ar"
  */
 
 const SERVICE = stripComments(readFileSync("lib/services/settlement.service.ts", "utf8"))
-const MODAL = readFileSync("components/EndContractModal.tsx", "utf8")
+// Ending a contract, on the building blocks since a person's profile, part 5 (PR 195).
+const MODAL = readFileSync("components/profile/EndContractDialog.tsx", "utf8")
 
 describe("what the old inference got wrong, in figures", () => {
     const CAIRO = "Africa/Cairo"
@@ -108,7 +109,8 @@ describe("the screen says a true thing rather than one blanket caveat", () => {
     it("marks the actionable one differently from the other two", () => {
         // Printing "provisional" over a fact teaches people to disregard the
         // word on the day it matters.
-        expect(MODAL).toContain("preview.paidSource === 'RUN_NOT_PAID' ? 'var(--warn-fg)'")
+        // A note with the Waiting on someone bar, where the other two are quiet lines.
+        expect(MODAL).toMatch(/settlement\.paidSource === 'RUN_NOT_PAID'\s*\?\s*<DocNote tone="waiting">/)
     })
 
     it("the unpaid-run message names the remedy", () => {

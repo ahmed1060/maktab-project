@@ -68,6 +68,15 @@ export class ApiResponse {
         }, { status: 400 })
     }
 
+    /**
+     * A refusal with its code beside its words, as withStandardHandler answers
+     * a known one (lib/api-errors.ts), so a screen can say it in the person's
+     * language: ending a contract does (a person's profile, part 5, PR 195).
+     */
+    static refused(status: 400 | 403 | 404 | 409, message: string, code: string) {
+        return NextResponse.json({ success: false, error: message, code }, { status })
+    }
+
     static unauthorized(message = "Unauthorized") {
         return NextResponse.json({ success: false, error: message }, { status: 401 })
     }

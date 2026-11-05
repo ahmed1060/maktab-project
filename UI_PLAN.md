@@ -520,7 +520,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      waiting, merged in #191 on 2026-11-04, then what it shows of someone
      else's, as their details, merged in #192 on 2026-11-04, then its form,
      each field's mistake under it, merged in #193 on 2026-11-04, then its
-     role field, in #194; then ending a contract and handing over a team;
+     role field, merged in #194 on 2026-11-05, then ending a contract and
+     handing over a team, in #195;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4027,3 +4028,74 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     only ask, the field is off and says so, and the rest saves: the list
     whoever may only ask is given holds their own requests alone, so the
     form never learned of it, and every save asked again (Codex review).
+- **2026-11-05:** A person's profile, part 4, was merged in #194. Part 5,
+  in #195 (§5 step 5, the pages left), is ending their contract, or
+  reinstating it, and handing over a leader's team, in the building blocks'
+  dialogs (DESIGN.md §5.5). It finishes the profile.
+  - Ending a contract is a form under their name: the last working day,
+    from today in the company's calendar, then the settlement it would
+    record, the reason, and Cancel and End contract
+    (`components/profile/EndContractDialog.tsx`). Reinstating says what it
+    does, then Cancel and Reinstate. It was a window of its own making,
+    titled "End Contract" or "Reinstate Employee", styled by hand, with
+    Close where Cancel goes.
+  - The settlement has the statement's own lines, totals and notes, as the
+    statement will have them once it's issued: what was paid taken off, the
+    debts they owe taken from what they're paid, who owes whom in the
+    colour of what it means for them, and where the figure for what was
+    paid comes from, a month whose payroll isn't paid yet being the one to
+    act on. The days nobody has ruled on are counted in words. It was a
+    sunk box with a heading in small capitals and colours typed in.
+  - While it's worked out, it says so, and the last figures stay until the
+    next are in, so the dialog doesn't jump.
+  - What's wrong is said under the date, or above the buttons, in the
+    reader's language: a date left empty or not typed in full, a month they
+    had no salary in, an Admin's contract, which only the Super Admin ends,
+    the company's last Admin, and an account with no company. They were
+    toasts, in English. A settlement that didn't load says so, with Try
+    again. The code prompt of a high-risk action, turned down, adds nothing.
+  - Saved, it says so: ended, or the last working day recorded, as a
+    contract ending later changes nothing on their details yet.
+  - Handing over a team is one dialog for the profile's form and for
+    ending a contract (`components/profile/TeamHandOffDialog.tsx`): who
+    leaves, who's in the team, by name, and who takes them, or no one.
+    Answered, it stays open until the change is sent, and a leader who
+    can't take them is said under the leader, in the reader's language. It
+    closed first, and the refusal was a toast, or a line above the form's
+    buttons, in English. While the leaders load, it says so.
+  - The employment route's refusals, and a team change's, carry their
+    codes (`ApiResponse.refused`), as the save's about Admins do.
+  - The green the old window typed in for "the company owes them", used
+    nowhere else, is gone from the tokens (`app/globals.css`).
+  - In Arabic, nothing is asked in the masculine (اختر، انقلهم، اتركهم،
+    سجّل، حصّلها) and nobody is spoken of as "him" (معه، يكون فيه): it's
+    يُرجى and verbal nouns, and the settlement's notes the same. A team's
+    size and the days nobody ruled on are counted in words, where they were
+    "day(s)" and يوم/أيام.
+  - End contract waited for nothing: it took the date on the form with the
+    last date's figures on screen, and after a settlement that didn't load,
+    with none. It waits for the date's own now, so the figure confirmed is
+    the figure recorded (found reading the code).
+  - A contract ending today was said to end access at once, and by the
+    viewer's calendar: it ends at the start of tomorrow, in the company's.
+    Only a day before today ends it at once now (found reading the code).
+  - The hand-off offered leaders whose accounts are archived, which the
+    server refuses. They're left out now, as the leader who's going is
+    (found reading the code).
+  - End contract was offered on another Super Admin's details, who has no
+    contract nor a company to settle with, and was refused. It isn't now
+    (found reading the code).
+  - A name with no space in it, in the list of a leader's team, breaks
+    where it must, as the dialog's title and paragraphs do: it ran past the
+    dialog (web interface audit).
+  - A month they had no salary in says what to do: choose a day in a month
+    they're paid for. It said only that the settlement couldn't be worked
+    out (web interface audit).
+  - Worked out again for another date, the settlement's figures were
+    redrawn without a word to a screen reader. They're said once they're
+    in, and not while the last date's stand in for them (web interface
+    audit).
+  - Asked where a leader's team goes as their contract ended, the leaders
+    were still loading, so the picker was off and the focus was on Cancel
+    the change. For a Team Leader, they're asked for as the dialog opens,
+    so the picker has the focus (browser flows).

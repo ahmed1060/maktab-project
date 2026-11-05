@@ -13,8 +13,9 @@ import { stripComments } from "./strip-comments"
 
 const ROUTE = stripComments(readFileSync("app/api/users/route.ts", "utf8"))
 const FORM = stripComments(readFileSync("components/EmployeeProfileForm.tsx", "utf8"))
-const HANDOFF = stripComments(readFileSync("components/TeamHandOffModal.tsx", "utf8"))
-const END_CONTRACT = stripComments(readFileSync("components/EndContractModal.tsx", "utf8"))
+// The building blocks' dialogs since a person's profile, part 5 (PR 195).
+const HANDOFF = stripComments(readFileSync("components/profile/TeamHandOffDialog.tsx", "utf8"))
+const END_CONTRACT = stripComments(readFileSync("components/profile/EndContractDialog.tsx", "utf8"))
 
 /** The balanced block starting at `from`, so an assertion about one query
  *  cannot accidentally be satisfied by a different query in the same file —
@@ -110,10 +111,11 @@ describe("the hand-off modal asks a question rather than reporting an error", ()
     })
 
     it("does not offer to hand the team to the person losing it", () => {
-        expect(HANDOFF).toMatch(/leaders\.filter\(l => l\.id !== leaderId\)/)
+        expect(HANDOFF).toContain("handoffLeaders(leaders, leaderId)")
+        expect(readFileSync("lib/end-contract.ts", "utf8")).toMatch(/leaders\.filter\(l => l\.id !== leaderId/)
         // And both callers say who that is.
-        expect(FORM).toMatch(/<TeamHandOffModal[\s\S]{0,80}leaderId=\{userId\}/)
-        expect(END_CONTRACT).toMatch(/<TeamHandOffModal[\s\S]{0,80}leaderId=\{userId\}/)
+        expect(FORM).toMatch(/<TeamHandOffDialog[\s\S]{0,80}leaderId=\{userId\}/)
+        expect(END_CONTRACT).toMatch(/<TeamHandOffDialog[\s\S]{0,80}leaderId=\{userId\}/)
     })
 
     it("passes the answer through to the request", () => {
@@ -126,18 +128,18 @@ describe("ending a leader's contract asks the same question", () => {
     // demotion does, and used to skip the question: the team stayed pointing
     // at an archived account.
     it("reads the refusal as a question, not an error", () => {
-        const submit = END_CONTRACT.slice(END_CONTRACT.indexOf("const submit = async"))
-        const block = submit.slice(submit.indexOf("if (!res.ok)"), submit.indexOf("if (!res.ok)") + 600)
+        const send = END_CONTRACT.slice(END_CONTRACT.indexOf("const send = async"))
+        const block = send.slice(send.indexOf("const reports = answer?.details?.reports"))
         expect(block).toMatch(/details\?\.reports/)
-        expect(block).toContain("setHandoff(reports)")
-        // Asked before the toast, or the Admin reads a sentence instead of
-        // getting the choice.
-        expect(block.indexOf("setHandoff(reports)")).toBeLessThan(block.indexOf("showToast("))
+        expect(block).toContain("setHandoff(reports as Person[])")
+        // Asked before anything is said to be wrong, or the Admin reads a
+        // sentence instead of getting the choice.
+        expect(block.indexOf("setHandoff(reports")).toBeLessThan(block.indexOf("setError("))
     })
 
     it("uses the one hand-off popup, and resubmits the answer", () => {
-        expect(END_CONTRACT).toContain("<TeamHandOffModal")
-        expect(END_CONTRACT).toContain("submit('END_CONTRACT', reassignTo)")
+        expect(END_CONTRACT).toContain("<TeamHandOffDialog")
+        expect(END_CONTRACT).toContain("onConfirm={reassignTo => send(reassignTo)}")
     })
 
     it("sends no answer on the first attempt, so the server can ask", () => {

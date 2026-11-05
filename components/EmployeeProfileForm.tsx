@@ -6,8 +6,6 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { HourglassIcon, PencilSimpleIcon } from '@phosphor-icons/react/ssr'
-import EndContractModal from './EndContractModal'
-import TeamHandOffModal from './TeamHandOffModal'
 import { useCan, useViewer } from '@/lib/useCan'
 import { useAssignableRoles, type AssignableRole } from '@/lib/useAssignableRoles'
 import { roleLabel } from '@/lib/role-label'
@@ -22,11 +20,14 @@ import { ConfirmPasswordDialog, TemporaryPasswordDialog } from '@/components/pro
 import { ProfileForm, type ProfileValues } from '@/components/profile/ProfileForm'
 import { RoleFields, type WaitingRole } from '@/components/profile/RoleFields'
 import { RoleRequestDialog, type AskRefusal } from '@/components/profile/RoleRequestDialog'
+import { EndContractDialog } from './profile/EndContractDialog'
+import { TeamHandOffDialog } from './profile/TeamHandOffDialog'
+import { handoffRefusal } from '@/lib/end-contract'
 import { profileAccess } from '@/lib/profile-access'
 import { dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
 import { resetRefusal } from '@/lib/profile-password'
 import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
-import { DEFAULT_TIME_ZONE } from '@/lib/time'
+import { calendarDateStr, DEFAULT_TIME_ZONE } from '@/lib/time'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -317,6 +318,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // The earliest return date offered: tomorrow in the company's calendar,
     // as the server reads it (lib/profile-form.ts), its default while none.
     const tomorrow = dayAfter(openedAt, companyZone ?? DEFAULT_TIME_ZONE)
+    // Today in the company's calendar, as the server reads a leaving date: the
+    // one ending a contract offers first.
+    const today = calendarDateStr(openedAt, companyZone ?? DEFAULT_TIME_ZONE)
     // The roles to pick from, where a role is picked: the form, or asking
     // from their details (lib/useAssignableRoles.ts). Their details alone
     // don't need them.
@@ -426,8 +430,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
      * ever passed on the retry that follows the modal. undefined means nobody
      * has answered, which is what makes the first attempt get refused — the
      * three states have to survive all the way to the server.
+     *
+     * Hands back why the leader picked to take their team can't, for the
+     * hand-off to say under the leader while it stays open, or null once
+     * it's done, when the hand-off is closed.
      */
-    const executeSubmit = async (reassignTo?: string | null) => {
+    const executeSubmit = async (reassignTo?: string | null): Promise<string | null> => {
         setSaving(true)
         setFormError(null)
         // Given in the save, by whoever may give it; asked for, it's sent first.
@@ -443,7 +451,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     if (problem.field) wrongAt({ [problem.field]: problem.message })
                     else setFormError(problem.message)
                     setSaving(false)
-                    return
+                    return null
                 }
                 // Asked for: they keep their role until it's approved, as the field says now.
                 setRoleId(currentRole?.id ?? '')
@@ -510,8 +518,17 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 if (Array.isArray(reports) && reports.length > 0) {
                     setHandoff(reports)
                     setSaving(false)
-                    return
+                    return null
                 }
+                // The leader picked to take their team can't: said under the
+                // leader, in the hand-off, which stays open.
+                const handedOff = reassignTo !== undefined ? handoffRefusal(answer) : null
+                if (handedOff) {
+                    setSaving(false)
+                    return t(handedOff)
+                }
+                // Anything else is the form's, said above its buttons.
+                setHandoff(null)
                 // Under the field it's about, where it can be; above the buttons
                 // otherwise. About the role, from a save that didn't change it,
                 // as the last Admin's status can be: above the buttons, still
@@ -521,7 +538,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 else if (refused) setFormError(t(refused.key))
                 else setFormError(apiErrorText(text, t('error_generic')))
                 setSaving(false)
-                return
+                return null
             }
 
             setHandoff(null)
@@ -549,10 +566,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     router.refresh()
                 }, 1500)
             }
+            return null
         } catch (err) {
             // Above the buttons, where it stays to be read, not in a toast that left.
+            setHandoff(null)
             setFormError(err instanceof Error && err.message ? err.message : t('error_generic'))
             setSaving(false)
+            return null
         }
     }
 
@@ -616,10 +636,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     />
                 )}
                 {showEndContract && (
-                    <EndContractModal
+                    <EndContractDialog
                         userId={userId}
                         name={name}
                         status={status}
+                        leadsATeam={role === 'TEAM_LEADER'}
+                        today={today}
                         onClose={() => setShowEndContract(false)}
                         onDone={() => { setReloadKey(k => k + 1); router.refresh() }}
                     />
@@ -691,22 +713,18 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 />
             </Card>
 
-            {
-                handoff && (
-                    <TeamHandOffModal
-                        leaderId={userId}
-                        leaderName={`${firstName} ${lastName}`.trim()}
-                        reports={handoff}
-                        leaders={leaders}
-                        busy={saving}
-                        onCancel={() => setHandoff(null)}
-                        onConfirm={reassignTo => {
-                            setHandoff(null)
-                            executeSubmit(reassignTo)
-                        }}
-                    />
-                )
-            }
+            {/* Where their team goes, asked before a change that takes a
+                leader from it; open until the save with the answer settles. */}
+            {handoff && (
+                <TeamHandOffDialog
+                    leaderId={userId}
+                    leaderName={`${firstName} ${lastName}`.trim()}
+                    reports={handoff}
+                    leaders={leaders}
+                    onCancel={() => setHandoff(null)}
+                    onConfirm={reassignTo => executeSubmit(reassignTo)}
+                />
+            )}
             <ConfirmPasswordDialog open={confirming === 'UPDATE'} onCancel={() => setConfirming(null)} onConfirm={confirmAndSave} />
         </Page>
     )

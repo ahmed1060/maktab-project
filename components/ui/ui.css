@@ -882,6 +882,33 @@
 .ui-dialog-note > ul {
   padding-inline-start: var(--space-6);
 }
+/* The names a dialog is about, such as the team a leader leaves (a person's
+   profile, part 5): named, not counted. One with no space in it breaks where
+   it must, as the title does, rather than run past the dialog. */
+.ui-dialog-list {
+  margin: 0;
+  padding-inline-start: var(--space-6);
+  overflow-wrap: anywhere;
+}
+/* Ending a contract (a person's profile, part 5): its settlement before it's
+   recorded, with the statement's own lines, totals and notes (§5.5,
+   Document), under a heading of its own. */
+.ui-settlement {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+.ui-settlement-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+.ui-settlement > .ui-btn {
+  align-self: flex-start;
+}
 /* A role's permissions (company settings part 4c): each group a row that
    opens; in it, each permission's box and name, what it means under them,
    and its scope on the end side, under them on a phone. */
