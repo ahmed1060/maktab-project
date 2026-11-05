@@ -90,13 +90,19 @@ permissions allow, as today.
   on the phone, every day.
 - **A group is hidden when the person can't see anything in it.** For
   example, an ordinary employee doesn't see an empty Money heading.
+- **What the company's package doesn't include isn't there,** for anyone in
+  the company (decided by the product owner on 2026-11-05, `DESIGN.md`
+  §5.1). Its pages, opened by their address, say they can't be opened
+  because the package doesn't include them. It was there, faded and with a
+  padlock, as the way to find out what else the product does.
 - **Me holds what people often check about themselves:**
   - My payslips;
   - My attendance, for someone who can only see their own. Someone who can
     see more uses Attendance under People;
   - My cash advance, when the company uses cash advances.
 - **The account menu at the top** keeps the account settings: My profile,
-  Security settings, History and Sign out.
+  Security settings, History and Sign out. History is HR's, so it's there
+  where the package includes HR.
 - **Costs** holds its tabs: Employee costs, Charged to clients, and Cash
   advances.
 - **One Requests page** (§2.3) replaces the separate request pages: People
@@ -526,7 +532,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      two-factor code, merged in #196 on 2026-11-05, then Forgot your
      password, merged in #197 on 2026-11-05, which finished it, then a
      page someone can't open and a company whose subscription has ended,
-     in #199;
+     merged in #199 on 2026-11-05, then a module's page the package doesn't
+     include, which says so as they do, with what the package doesn't
+     include gone from the side bar, in #200;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4259,3 +4267,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - Its words no longer say access is paused for everyone but
     administrators: its Admin is held on this page too, the one who can
     still sign in.
+- **2026-11-05:** A page someone can't open, and a company whose
+  subscription has ended, were merged in #199. What the company's package
+  doesn't include is hidden, and its pages say so when opened by their
+  address, in #200 (`DESIGN.md` §5.1, §5.5), decided by the product owner.
+  - A module the package doesn't include isn't in the side bar, for anyone
+    in the company, and a group with nothing left in it goes with it. It was
+    there, faded and with a padlock, as the way to find out what else the
+    product does, and Attendance was there for whoever would run it.
+  - Its pages, opened by their address, say they can't be opened, as any
+    page someone can't open does, and why: the company's package doesn't
+    include them. They were a card under a padlock emoji naming the bundle
+    to buy. The attempt is still counted for the Super Admin, though fewer
+    arrive now that nothing in the app leads there.
+  - An employee's history, and adding a bonus or a deduction, are HR's:
+    they aren't offered in a person's row or the account menu without it,
+    and opened by their address, they say so. They opened, and every part
+    of them was refused.
+  - The package is read from the account the layout passed until the
+    session has loaded, as permissions are. Read from the session alone, it
+    was empty for the first second, and an empty one includes everything:
+    the padlocks came a moment after the page, and a task's Penalise could
+    show for that moment, for a company without HR.
+  - Part 2, to follow: what's of a module the package doesn't include, inside
+    pages it does: the dashboard's tiles and cards (tasks, pay, day off),
+    and a person's pay and day off credit on their profile.

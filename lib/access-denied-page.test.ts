@@ -26,14 +26,14 @@ vi.mock("@/context/LanguageContext", () => ({
 }))
 
 const SOURCE = "components/AccessDenied.tsx"
-let AccessDenied: (props: { superAdmins?: boolean }) => ReactElement
+let AccessDenied: (props: { superAdmins?: boolean; notInPackage?: boolean }) => ReactElement
 beforeAll(async () => { AccessDenied = (await import("@/components/AccessDenied")).default as never })
 beforeEach(() => {
     state.locale = "en"
     state.viewer = { id: "u1", role: "EMPLOYEE", companyId: "c1", userStatus: "ACTIVE" }
     state.path = "/dashboard/records"
 })
-const render = (props: { superAdmins?: boolean } = {}) => renderToStaticMarkup(h(AccessDenied, props))
+const render = (props: { superAdmins?: boolean; notInPackage?: boolean } = {}) => renderToStaticMarkup(h(AccessDenied, props))
 /** As React writes text into the page. */
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 const words = (locale: "en" | "ar", key: keyof typeof en) => (locale === "ar" ? ar : en)[key] as string
@@ -67,6 +67,8 @@ describe("A page someone can't open", () => {
         // A page only a Super Admin opens: nobody's role changes that, an Admin's included.
         state.viewer = { id: "a1", role: "ADMIN", companyId: "c1", userStatus: "ACTIVE" }
         expect(subtitle(render({ superAdmins: true }))).toBe(esc(en.access_denied_super_admins))
+        // A module the company's package doesn't include (lib/features/guard.tsx), whoever asks.
+        expect(subtitle(render({ notInPackage: true }))).toBe(esc(en.access_denied_package))
         // A Super Admin on a company's own page.
         state.viewer = { id: "s1", role: "SUPER_ADMIN" }
         expect(subtitle(render())).toBe(esc(en.access_denied_company))
@@ -80,6 +82,7 @@ describe("A page someone can't open", () => {
     it("goes to the dashboard, except where it would only be told the same again", () => {
         expect(render()).toMatch(DASHBOARD_LINK)
         expect(render({ superAdmins: true })).toMatch(DASHBOARD_LINK)
+        expect(render({ notInPackage: true })).toMatch(DASHBOARD_LINK)
         // On the dashboard itself.
         state.path = "/dashboard"
         expect(render()).not.toContain('href="/dashboard"')
@@ -112,7 +115,7 @@ describe("A page someone can't open", () => {
     })
 
     it("says nothing in Arabic in the masculine, and never speaks as \"we\"", () => {
-        const keys = ["access_denied_title", "access_denied_role", "access_denied_super_admins", "access_denied_company", "access_denied_account", "access_denied_dashboard"] as const
+        const keys = ["access_denied_title", "access_denied_role", "access_denied_super_admins", "access_denied_package", "access_denied_company", "access_denied_account", "access_denied_dashboard"] as const
         for (const key of keys) {
             expect(en[key], key).not.toMatch(/\b(we|our|us)\b/i)
             expect(ar[key], key).not.toMatch(/(^|\s)(تحقق|امسح|أدخل|اختر|حاول|انتظر|اطلب|اكتب|أكّد|انسخ|اتركه|قم|تواصل|راجع)(\s|$)|هل أنت متأكد|أنك تريد|هل تريد|سن[أتني]|نحن/)

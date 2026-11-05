@@ -118,6 +118,9 @@ export const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/locations', 'CLIENTS'],
     ['/dashboard/lists', 'TASKS'],
     ['/dashboard/costs', 'COSTS'],
+    // Cash advances pay task costs (CLIENTS_PLAN.md §7), so they're the Costs
+    // module's, as its layout guards them.
+    ['/dashboard/cash-advances', 'COSTS'],
     ['/dashboard/day-off-requests', 'DAY_OFF'],
     ['/dashboard/payroll', 'PAYROLL'],
     ['/dashboard/documents', 'PAYROLL'],

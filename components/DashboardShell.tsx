@@ -3,7 +3,6 @@
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import PageTitle from './PageTitle'
 import SubscriptionBanner from './SubscriptionBanner'
-import { moduleForPagePath } from '@/lib/features'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { hasBundle } from '@/lib/features/bundles'
 import { inNativeApp } from '@/lib/mobile/native'
@@ -47,6 +46,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const [isMobile, setIsMobile] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false) // New State for Desktop Collapse
     const { t, locale } = useLanguage()
+    // The company's package, from the account the layout passed until the
+    // session has loaded (useFeatures), so what it leaves out never shows.
     const features = useFeatures()
     // Read once in the browser: the server can't know the page is inside the app.
     const inApp = useSyncExternalStore(subscribeNever, inNativeApp, () => false)
@@ -70,8 +71,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const groups = sideBarFor({
         superAdmin: user?.role === 'SUPER_ADMIN',
         can: permission => permissions.can(permission),
-        companyWide: permission => permissions.companyWide(permission),
-        attendance: features.has('ATTENDANCE'),
+        // What the package doesn't include isn't there (DESIGN.md §5.1).
+        has: gated => features.has(gated),
         // Checking in (ATTENDANCE_PLAN.md §9): only inside the Nizmo app,
         // where the phone can prove where it is.
         checkIn: inApp && hasBundle(features.access, 'ATTENDANCE_MOBILE'),
@@ -124,24 +125,12 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         ? (selectedCompanyName || t('app_name'))
         : (user?.companyName || t('app_name'));
 
-    // A module the package does not include stays in the sidebar, marked with a
-    // lock, and still navigates. That is the point: it is the sales surface, and
-    // the page it lands on is what records the attempt. Hiding it instead would
-    // mean nobody ever discovers what else the product does — and would make the
-    // signal in LockedModuleAttempt impossible to gather.
     // The sidebar link for the page you're on says so (aria-current), and is
     // drawn as chosen (.nav-link[aria-current] in globals.css). The dashboard
     // itself only on its own page, not on every page under /dashboard.
     const currentFor = (href: string) => {
         const here = pathname === href || (href !== '/dashboard' && pathname?.startsWith(href + '/'))
         return here ? { 'aria-current': 'page' as const } : {}
-    }
-
-    const isLockedHref = (href: string) => {
-        // Not named `module`: Next forbids assigning that identifier, since it
-        // collides with the CommonJS global in some bundling paths.
-        const gated = moduleForPagePath(href)
-        return gated !== null && !features.has(gated)
     }
 
     return (
@@ -384,7 +373,6 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                             ))}
                             {group.items.map(key => {
                                 const link = isModuleKey(key) ? modules.entry(key) : { href: PAGES[key].href, label: t(PAGES[key].labelKey), icon: PAGES[key].icon }
-                                const locked = isLockedHref(link.href)
                                 return (
                                     <Link
                                         key={key}
@@ -419,11 +407,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                                             e.currentTarget.style.transform = 'none'
                                         }}
                                     >
-                                        <span aria-hidden="true" style={{ fontSize: '1.4rem', opacity: locked ? 0.45 : 1 }}>{link.icon}</span>
+                                        <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>{link.icon}</span>
                                         {!isCollapsed && (
-                                            <span style={{ opacity: locked ? 0.55 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                 {link.label}
-                                                {locked && <span role="img" aria-label={t('module_locked_title' as any)} style={{ fontSize: '0.75rem' }} title={t('module_locked_title' as any)}>🔒</span>}
                                             </span>
                                         )}
                                     </Link>

@@ -8,10 +8,12 @@ import { deserializeAccess, hasModule, bundlesFor, type Bundle, type FeatureAcce
  * standing risk is somebody picking the wrong one by accident, so the choice is
  * required at every call site — forgetting to choose should not compile.
  *
- *   'lock' — the module surface. A nav entry or a whole page for a bundle they
- *            do not have stays visible and locked, with an upgrade prompt. That
- *            is the sales surface, and it is where a customer should see what
- *            they are missing. Denials are counted (see logLockedAttempt).
+ *   'lock' — the module surface: a whole page for a bundle they do not have.
+ *            It says it can't be opened, and why (lib/features/guard.tsx), and
+ *            the attempt is counted (FeatureAccessService.recordAttempt). Its
+ *            side bar entry isn't there (DESIGN.md §5.1); it was, locked, as
+ *            the sales surface, until the product owner decided otherwise on
+ *            2026-11-05.
  *
  *   'hide' — an individual action inside a feature they already own, such as
  *            the penalty button on a task. A locked button buried in a page they

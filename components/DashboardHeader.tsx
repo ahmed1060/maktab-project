@@ -15,6 +15,7 @@ import LanguageToggleButton from './LanguageToggleButton'
 import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
 import { permissionsOf } from '@/lib/useCan'
+import { useFeatures } from '@/lib/features/useFeatures'
 import { moveOption } from '@/lib/listbox-keys'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { fetchRetrying } from '@/lib/swr-fetcher'
@@ -57,6 +58,8 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
     const switcherListId = useId()
     const accountMenuId = useId()
     const { t, locale } = useLanguage()
+    // Their own history is HR's: in the menu only where the package includes it.
+    const features = useFeatures()
 
     // Use client-side session for live updates (e.g. avatar change), fall back to prop
     const { data: session } = useSession()
@@ -703,7 +706,7 @@ export default function DashboardHeader({ user, onMenuClick }: DashboardHeaderPr
                                     >
                                         {t('security_settings_nav')}
                                     </Link>
-                                    {!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
+                                    {features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
                                         <Link
                                             href={`/dashboard/employees/${currentUser.id}/history`}
                                             onClick={() => setIsMenuOpen(false)}
