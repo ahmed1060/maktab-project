@@ -313,6 +313,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - groups as in `UI_PLAN.md` §2.1, each with a `--text-sm` group name in
     `--muted`;
   - a group is hidden when the person can't see anything in it;
+  - a module the company's package doesn't include isn't in it, for anyone
+    in the company. Its pages, opened by their address, say they can't be
+    opened, and why (§5.5, A page someone can't open);
   - the selected item has `--brand-tint` behind it, `--brand-text` text,
     and the filled version of its icon;
   - Company Settings sits at the bottom.
@@ -738,6 +741,7 @@ These are built once, in the building-blocks PR, and every page uses them
     to their role.
   - A page only a Super Admin opens, or, for a Super Admin, a company's
     own page: just that, as nobody's role changes it.
+  - A module the company's package doesn't include: just that.
   - An account that can't open pages at all for now, such as a suspended
     one: just that, until it's signed out and told why.
   - Go to the dashboard is in the header, except on the dashboard itself
@@ -1233,3 +1237,9 @@ changed:
   their administrator, and on the dashboard itself it sent them back to
   the dashboard. The second was a glass card under an hourglass emoji,
   the day it locked in red, on the reader's own calendar.
+- **2026-11-05:** A module the company's package doesn't include isn't in
+  the side bar (§5.1), decided by the product owner; its pages, opened by
+  their address, say so (§5.5, A page someone can't open). It was in the
+  side bar, faded and with a padlock, as the way to find out what else the
+  product does, and its pages were a card under a padlock emoji naming the
+  bundle to buy.
