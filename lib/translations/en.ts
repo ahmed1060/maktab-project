@@ -1246,7 +1246,7 @@ export const en = {
         end_contract_effective_later: "Access ends at the start of the following day.",
         end_contract_undecided: "This month has {days} under a suspension nobody has ruled on. They're treated as paid until somebody decides.",
         end_contract_preview_failed: "The settlement couldn't be worked out.",
-        end_contract_no_salary: "There's no salary on record for them in that month, so the settlement can't be worked out.",
+        end_contract_no_salary: "There's no salary on record for them in that month, so the settlement can't be worked out. Choose a day in a month they're paid for.",
         end_contract_date_needed: "Choose their last working day.",
         end_contract_date_incomplete: "Enter the whole date.",
         end_contract_last_admin: "They're the company's last Admin at work. Give the Admin role to someone else first.",

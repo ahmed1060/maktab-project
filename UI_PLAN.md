@@ -4088,3 +4088,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - A name with no space in it, in the list of a leader's team, breaks
     where it must, as the dialog's title and paragraphs do: it ran past the
     dialog (web interface audit).
+  - A month they had no salary in says what to do: choose a day in a month
+    they're paid for. It said only that the settlement couldn't be worked
+    out (web interface audit).

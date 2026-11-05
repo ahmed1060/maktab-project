@@ -237,6 +237,12 @@ describe("what's wrong, in the reader's language", () => {
         expect(endContractRefusal(null)).toBeNull()
     })
 
+    // What to do next, not only what's wrong (web interface audit).
+    it("says what to do about a month with no salary", () => {
+        expect(en.end_contract_no_salary).toMatch(/Choose a day in a month they're paid for\.$/)
+        expect(ar.end_contract_no_salary).toMatch(/يُرجى تحديد يوم في شهر مسجّل فيه راتب\.$/)
+    })
+
     it("is answered by the server with its code beside its words", async () => {
         const { ApiResponse } = await import("@/lib/api-response")
         const res = ApiResponse.refused(400, "No salary in effect for 2026-11", "NO_SALARY")

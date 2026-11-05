@@ -1208,7 +1208,7 @@ export const ar = {
         end_contract_effective_later: "ينتهي الدخول مع بداية اليوم التالي.",
         end_contract_undecided: "يحتوي هذا الشهر على {days} ضمن إيقاف لم يُبتّ فيه، وتُحتسب هذه المدة مدفوعة حتى يُتخذ قرار.",
         end_contract_preview_failed: "تعذّر حساب التسوية.",
-        end_contract_no_salary: "لا يوجد راتب مسجّل لهذا الشخص في ذلك الشهر، فلا يمكن حساب التسوية.",
+        end_contract_no_salary: "لا يوجد راتب مسجّل لهذا الشخص في ذلك الشهر، فلا يمكن حساب التسوية. يُرجى تحديد يوم في شهر مسجّل فيه راتب.",
         end_contract_date_needed: "يُرجى تحديد آخر يوم عمل.",
         end_contract_date_incomplete: "يُرجى إدخال التاريخ كاملاً.",
         end_contract_last_admin: "هذا آخر مسؤول على رأس العمل في الشركة، فيُرجى منح دور المسؤول لشخص آخر أولاً.",
