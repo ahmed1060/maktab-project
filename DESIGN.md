@@ -331,6 +331,14 @@ These are built once, in the building-blocks PR, and every page uses them
     under the pointer;
   - the selected item has `--brand-tint` behind it, `--brand-text` text at
     weight 500, and the filled version of its icon;
+  - Requests carries how many wait on this person under its To review tab
+    (`UI_PLAN.md` §2.3), the list the page opens on: a `--brand` pill at
+    the item's end, 20px tall, its `--text-xs` digits in `--on-brand` and in
+    the page's language, and nothing when none waits. A screen reader hears
+    it with the item, as "Requests, 3 requests to review". It's asked again
+    on every page, when the person comes back to the window, and once
+    something is decided on the Requests page. It replaces the top bar's
+    count of name changes alone, whose button is gone;
   - a company that chose its own icon for a module, an emoji, sees it in
     place of the module's icon, until companies choose theirs from the
     side bar's own icons, a later step;
@@ -1344,3 +1352,8 @@ changed:
   on a phone only slid out of sight, Tab still going through its links.
   The "Powered by" signature stays as it was, decided by the product
   owner.
+- **2026-11-05:** Requests in the side bar carries how many wait on this
+  person under its To review tab (§5.1), as the approved mock-up has it.
+  The top bar had a button of its own for name changes, which counted those
+  alone, in red, while day off, permission hours and the rest waited
+  uncounted on the same page.
