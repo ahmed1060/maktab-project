@@ -217,19 +217,29 @@ describe("what this deploy does on the day it ships", () => {
     })
 })
 
-describe("the locked screen's copy", () => {
-    for (const key of ['module_locked_title', 'module_locked_body', 'back_to_dashboard', 'bundle_hr', 'bundle_company_management']) {
+describe("the bundles' names", () => {
+    // The locked screen that named the bundle to buy is gone: a page the
+    // package doesn't include says so as any page someone can't open does
+    // (lib/features/guard.tsx). The names stay, for the Super Admin's pages.
+    for (const key of ['bundle_hr', 'bundle_company_management']) {
         it(key, () => {
             expect(en).toHaveProperty(key)
             expect(ar).toHaveProperty(key)
         })
     }
+    it("no longer words a locked screen", () => {
+        for (const key of ['module_locked_title', 'module_locked_body', 'back_to_dashboard']) {
+            expect(en, key).not.toHaveProperty(key)
+            expect(ar, key).not.toHaveProperty(key)
+        }
+    })
+})
 
-    it("keeps the {bundle} placeholder in both locales", () => {
-        // Rendered with .replace('{bundle}', …) — a translation that drops the
-        // token leaves the customer told they are missing something unnamed.
-        expect(en.module_locked_body).toContain('{bundle}')
-        expect(ar.module_locked_body).toContain('{bundle}')
+describe("cash advances", () => {
+    // Guarded as the Costs module's (its layout), and so left out of the side
+    // bar with it, as My cash advance (lib/side-bar.ts).
+    it("are the Costs module's pages", () => {
+        expect(moduleForPagePath('/dashboard/cash-advances/mine')).toBe('COSTS')
     })
 })
 

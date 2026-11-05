@@ -20,6 +20,7 @@ import {
 import { useModules } from '@/lib/useModules'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan, useViewer } from '@/lib/useCan'
+import { useFeatures } from '@/lib/features/useFeatures'
 import { countOf } from '@/lib/plural'
 import { STATUS_TONE, STATUS_WORD } from '@/lib/person-status'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -69,12 +70,16 @@ export default function EmployeesPage() {
     const userRole = viewer?.role || ''
     const isSuperAdmin = userRole === 'SUPER_ADMIN'
     const { can, companyWide } = useCan()
+    // A person's history, bonuses and deductions are HR's: offered only where
+    // the company's package includes them, as their pages open only there.
+    const features = useFeatures()
     const { selectedCompanyId } = useCompany()
 
     const canAssignTeams = can('employees.assign_team')
     // The actions on each person, each offered with the permission its route
     // checks; the column of them is shown when any is.
-    const canActOnPeople = can('employees.edit') || can('salary.view') || can('salary_adjustments.manage')
+    const canActOnPeople = can('employees.edit') || (features.has('PAYROLL') && can('salary.view'))
+        || (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage'))
         || can('requests.reset_points') || can('employees.delete')
     const teamOnly = can('employees.view') && !companyWide('employees.view')
 
@@ -246,8 +251,8 @@ export default function EmployeesPage() {
     const menuItems = (e: Employee): MenuItem[] => {
         const items: MenuItem[] = []
         const notAdmin = e.role !== 'ADMIN'
-        if (can('salary.view') && notAdmin) items.push({ key: 'history', label: t('history'), icon: ClockCounterClockwiseIcon, href: `/dashboard/employees/${e.id}/history` })
-        if (can('salary_adjustments.manage') && notAdmin) {
+        if (features.has('PAYROLL') && can('salary.view') && notAdmin) items.push({ key: 'history', label: t('history'), icon: ClockCounterClockwiseIcon, href: `/dashboard/employees/${e.id}/history` })
+        if (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage') && notAdmin) {
             items.push({ key: 'bonus', label: t('add_bonus'), icon: PlusCircleIcon, href: `/dashboard/employees/${e.id}/bonus` })
             items.push({ key: 'deduction', label: t('add_deduction'), icon: MinusCircleIcon, href: `/dashboard/employees/${e.id}/deduction` })
         }

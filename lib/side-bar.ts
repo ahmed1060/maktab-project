@@ -1,4 +1,6 @@
-import type { ModuleKey } from './modules'
+import { MODULES, type ModuleKey } from './modules'
+import { moduleForPagePath } from './features/routes'
+import type { Module } from './features/bundles'
 import type { Permission } from './permissions/catalogue'
 import type { TranslationKey } from './translations'
 
@@ -86,9 +88,8 @@ export const SUPER_ADMIN_GROUPS: readonly SideBarGroup[] = [
 export type SideBarViewer = {
     superAdmin: boolean
     can: (permission: Permission) => boolean
-    companyWide: (permission: Permission) => boolean
-    /** The company's package has Attendance. */
-    attendance: boolean
+    /** The company's package includes the module: always, for the Super Admin. */
+    has: (module: Module) => boolean
     /** Inside the Nizmo app, for a company with the Mobile App add-on: where a phone can check in. */
     checkIn: boolean
     /** This person sees their company's settings (ATTENDANCE_PLAN.md §5.2). */
@@ -99,8 +100,7 @@ export type SideBarViewer = {
 
 /**
  * Who is offered each module that not everyone is: the permission its page
- * needs. Everyone else sees the rest of the modules, locked when the package
- * doesn't have them, as the way to find out what else the product does.
+ * needs. Everyone else sees the rest of the modules their package includes.
  */
 export const MODULE_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
     costs: 'tasks.pay',
@@ -109,12 +109,23 @@ export const MODULE_PERMISSION: Partial<Record<ModuleKey, Permission>> = {
     locations: 'locations.view',
 }
 
+/** The module an item's page is in, where it's one a package can leave out (lib/features/routes.ts). */
+export function itemModule(key: SideBarItemKey): Module | null {
+    return moduleForPagePath(key in PAGES ? PAGES[key as PageKey].href : MODULES[key as ModuleKey].href)
+}
+
 /** Whether this person is shown an item. */
 export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
+    // What the company's package doesn't include isn't there, for anyone in it
+    // (DESIGN.md §5.1, decided by the product owner on 2026-11-05). It was,
+    // faded and with a padlock, as the way to find out what else the product
+    // does, and Attendance was there for whoever would run it.
+    // Not named `module`: Next forbids that identifier (no-assign-module-variable).
+    const gated = itemModule(key)
+    if (gated && !v.has(gated)) return false
     // Attendance is everyone's own punches; it's under People for someone who
-    // sees other people's too, and theirs alone under Me otherwise (§2.1). A
-    // company without it shows it only to those who would run it.
-    const attendance = !v.superAdmin && (v.attendance || v.companyWide('attendance.correct'))
+    // sees other people's too, and theirs alone under Me otherwise (§2.1).
+    const attendance = !v.superAdmin
     const seesOthersAttendance = v.can('attendance.view_team') || v.can('attendance.correct')
     switch (key) {
         case 'checkIn': return !v.superAdmin && v.checkIn

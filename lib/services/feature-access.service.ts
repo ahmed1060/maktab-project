@@ -5,8 +5,10 @@ import { startOfMonthIn } from "@/lib/time"
 /**
  * Recording how often a company reaches for a module it does not have.
  *
- * The signal is free: because a locked module stays visible, every attempt
- * already arrives at the server as a request. Nothing client-side is added.
+ * Counted where a module's page is opened by its address (lib/features/guard.tsx):
+ * it isn't in the side bar any more (DESIGN.md §5.1), so this is somebody who
+ * typed or kept the address, and the count is smaller than when a locked entry
+ * there led to it. Nothing client-side is added.
  */
 export class FeatureAccessService {
     /**

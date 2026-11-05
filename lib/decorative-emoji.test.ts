@@ -62,11 +62,10 @@ describe("decorative emoji", () => {
         expect(readFileSync("components/CompanyModulesCard.tsx", "utf8")).toContain('<span aria-hidden="true">{entry.icon}</span><bdi>{entry.label}</bdi>')
     })
 
-    it("that mean something are labelled images: the locked-module padlock", () => {
-        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        const locks = shell.match(/<span[^>]*>🔒<\/span>/g) ?? []
-        expect(locks.length).toBeGreaterThan(0)
-        for (const lock of locks) expect(lock).toMatch(/role="img" aria-label=\{t\('module_locked_title'/)
+    // The locked-module padlock was the one that meant something: a module
+    // the package doesn't include isn't in the side bar now (DESIGN.md §5.1).
+    it("include no padlock: what the package doesn't include isn't there", () => {
+        expect(readFileSync("components/DashboardShell.tsx", "utf8")).not.toContain("🔒")
     })
 })
 

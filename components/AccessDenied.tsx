@@ -17,9 +17,10 @@ import { accountRefusal } from '@/lib/account-refusal'
  * back to the dashboard.
  *
  * `superAdmins`: the page is one only a Super Admin opens, which nobody's
- * role changes. The rest it knows from who is asking.
+ * role changes. `notInPackage`: the company's package doesn't include its
+ * module (lib/features/guard.tsx). The rest it knows from who is asking.
  */
-export default function AccessDenied({ superAdmins = false }: { superAdmins?: boolean }) {
+export default function AccessDenied({ superAdmins = false, notInPackage = false }: { superAdmins?: boolean; notInPackage?: boolean }) {
     const { t } = useLanguage()
     const viewer = useViewer()
     const pathname = usePathname()
@@ -29,9 +30,10 @@ export default function AccessDenied({ superAdmins = false }: { superAdmins?: bo
     const refused = !!viewer && !!accountRefusal(viewer)
 
     const why = superAdmins ? t('access_denied_super_admins')
-        : refused ? t('access_denied_account')
-            : viewer?.role === 'SUPER_ADMIN' ? t('access_denied_company')
-                : t('access_denied_role')
+        : notInPackage ? t('access_denied_package')
+            : refused ? t('access_denied_account')
+                : viewer?.role === 'SUPER_ADMIN' ? t('access_denied_company')
+                    : t('access_denied_role')
     const onwards = !refused && pathname !== '/dashboard'
 
     return (

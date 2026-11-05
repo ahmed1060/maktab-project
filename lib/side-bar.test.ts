@@ -14,7 +14,7 @@ import { ar } from "./translations/ar"
 
 const viewer = (role: string, flags: Partial<SideBarViewer> = {}): SideBarViewer => {
     const p = permissionsOf(withGrants({ id: "u1", role, companyId: role === "SUPER_ADMIN" ? null : "c1" }) as any)
-    return { superAdmin: role === "SUPER_ADMIN", can: p.can, companyWide: p.companyWide, attendance: true, checkIn: false, companySettings: false, cashAdvances: false, ...flags }
+    return { superAdmin: role === "SUPER_ADMIN", can: p.can, has: () => true, checkIn: false, companySettings: false, cashAdvances: false, ...flags }
 }
 const shape = (v: SideBarViewer) => sideBarFor(v).map(g => `${g.key}: ${g.items.join(", ")}`)
 
@@ -87,9 +87,45 @@ describe("the side bar", () => {
         expect(shape(viewer("SUPER_ADMIN", { checkIn: true }))[0]).toBe("top: dashboard")
     })
 
-    it("shows Attendance only where the company has it, or to whoever corrects it company-wide", () => {
-        expect(shape(viewer("EMPLOYEE", { attendance: false })).join()).not.toMatch(/attendance/i)
-        expect(shape(viewer("ADMIN", { attendance: false })).join()).toContain("employees, attendance,")
+    // Decided by the product owner on 2026-11-05 (DESIGN.md §5.1): it was
+    // there, faded and with a padlock, as the way to find out what else the
+    // product does, and Attendance was there for whoever would run it.
+    it("leaves out what the company's package doesn't include, for everyone in it", () => {
+        const without = (...modules: string[]) => ({ has: (m: string) => !modules.includes(m) })
+        // Company Management alone: no pay, day off or attendance, the Admin's own payslips included.
+        const hr = ["DAY_OFF", "PAYROLL", "SALARY_ADJUSTMENTS", "ATTENDANCE"]
+        expect(shape(viewer("ADMIN", { companySettings: true, cashAdvances: true, ...without(...hr) }))).toEqual([
+            "top: dashboard",
+            "work: tasks, obligations",
+            "clients: clients, locations, records",
+            "people: employees, requests",
+            "money: costs",
+            "me: myCashAdvance",
+            "bottom: companySettings, rolesAndAccess, savedLists",
+        ])
+        // HR alone: no tasks, clients, records, costs or saved lists, so no Work, Clients or Money.
+        const management = ["TASKS", "OBLIGATIONS", "RECORDS", "CLIENTS", "COSTS"]
+        expect(shape(viewer("ADMIN", { companySettings: true, cashAdvances: true, ...without(...management, "ATTENDANCE") }))).toEqual([
+            "top: dashboard",
+            "people: employees, requests",
+            "money: payroll",
+            "me: myPayslips",
+            "bottom: companySettings, rolesAndAccess",
+        ])
+        // Nobody's role puts it back: an employee's Attendance, and a Team Leader's.
+        for (const role of ["EMPLOYEE", "TEAM_LEADER", "ADMIN"]) {
+            expect(shape(viewer(role, without("ATTENDANCE"))).join(), role).not.toMatch(/attendance/i)
+        }
+    })
+
+    it("draws nothing as locked, and asks the package what it includes", () => {
+        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
+        expect(shell).not.toContain("🔒")
+        expect(shell).not.toMatch(/isLockedHref|locked \? 0\.\d+/)
+        // From the account the layout passed until the session loads
+        // (lib/features/use-features.test.ts).
+        expect(shell).toMatch(/const features = useFeatures\(\)/)
+        expect(shell).toMatch(/has: gated => features\.has\(gated\)/)
     })
 
     it("gives the Super Admin the company's groups, then their own four", () => {

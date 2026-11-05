@@ -130,7 +130,7 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["components/DashboardHeader.tsx", "case 'EMPLOYEE': return 'role_employee'", LABEL],
     ["components/DashboardHeader.tsx", "case 'TEAM_LEADER': return 'role_team_leader'", LABEL],
     ["components/DashboardHeader.tsx", "case 'ADMIN': return 'role_admin'", LABEL],
-    ["components/DashboardHeader.tsx", "{!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (", ADMIN_ROLE],
+    ["components/DashboardHeader.tsx", "{features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (", ADMIN_ROLE],
 
     // components/EmployeeProfileForm.tsx
     ["components/EmployeeProfileForm.tsx", "if (userId === sessionUserId && (employee.role === 'EMPLOYEE' || employee.role === 'TEAM_LEADER')) {", THE_PERSON],
