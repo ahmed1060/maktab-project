@@ -347,6 +347,16 @@ describe("the profile, wired to its role", () => {
         expect(save).toContain("else if (refused) setFormError(t(refused.key))")
     })
 
+    // Told a change already waits, asked for meanwhile in another tab, the
+    // form still offered the role it had picked, and every save asked again,
+    // and was refused again: the rest couldn't be saved (browser flows).
+    it("shows the change waiting once it's told one does, and saves the rest", () => {
+        const ask = FORM.slice(FORM.indexOf("const askForRole"), FORM.indexOf("const executeSubmit"))
+        expect(ask.indexOf("void mutateWaiting()")).toBeGreaterThan(ask.indexOf("const text = await res.text()"))
+        // While one waits, a role picked before is no change of theirs to ask for.
+        expect(FORM).toContain("const roleChange = !!access.changeRole && !(access.changeRole === 'ask' && waitingRole) && !!roleId && roleId !== currentRole?.id")
+    })
+
     it("asks from their details, and shows the change waiting, to whoever may only ask", () => {
         expect(FORM).toContain("access.changeRole === 'ask' ? `/api/role-requests?userId=${encodeURIComponent(userId)}&status=PENDING` : null")
         expect(FORM).toContain("roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, onAsk: () => setAsking(true) } : undefined}")

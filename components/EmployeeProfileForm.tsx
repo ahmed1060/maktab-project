@@ -316,8 +316,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // the field and their details say so, and nothing more is asked meanwhile.
     const { data: waitingData, mutate: mutateWaiting } = useSWR(access.changeRole === 'ask' ? `/api/role-requests?userId=${encodeURIComponent(userId)}&status=PENDING` : null, fetcher)
     const waitingRole: WaitingRole | null = waitingData?.data?.[0] ?? null
-    // Only a different role is a change.
-    const roleChange = !!access.changeRole && !!roleId && roleId !== currentRole?.id
+    // Only a different role is a change, and none is asked for while one
+    // waits: one picked before it was known to wait isn't sent.
+    const roleChange = !!access.changeRole && !(access.changeRole === 'ask' && waitingRole) && !!roleId && roleId !== currentRole?.id
     const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
     // Until when they're acting in their role, as their details and the form's role field say it.
     const actingNote = acting ? t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(digits, { day: 'numeric', month: 'long', year: 'numeric' })).replace('{role}', roleLabel(acting.returnTo, t)) : null
@@ -397,6 +398,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 return null
             }
             const text = await res.text()
+            // Refused, what waits is asked again: a change asked for meanwhile,
+            // as from another tab, is what the field shows then.
+            void mutateWaiting()
             let answer: { error?: string; code?: string } | null = null
             try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
             const refused = refusedField(answer)

@@ -4018,3 +4018,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the profile says them in the reader's language (`lib/role-errors.ts`).
   - The date an acting role ends on keeps password managers off, as the
     form's other fields do: it's not a sign-in field (web interface audit).
+  - Told a role change already waits, asked for meanwhile in another tab,
+    the field shows the change waiting, and the rest saves: it still
+    offered the role it had picked, and every save asked again, and was
+    refused again (browser flows).
