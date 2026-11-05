@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { SESSION_ENDED_PATH } from '@/lib/session-ended'
 import { RecordService } from '@/lib/services/record.service'
 import { accountRefusal } from '@/lib/account-refusal'
 import AccessDenied from '@/components/AccessDenied'
@@ -16,7 +17,7 @@ const NOT_THEIRS = new Set(["RECORD_NOT_FOUND", "RECORD_FORBIDDEN"])
 export default async function RecordLink({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
     const session = await getServerSession(authOptions)
-    if (!session?.user) redirect('/login')
+    if (!session?.user) redirect(SESSION_ENDED_PATH)
     // Refused as the APIs refuse it: suspended, archived, banned, lapsed or under
     // maintenance, before anything is read (found after PR 139).
     if (accountRefusal(session.user)) return <AccessDenied />

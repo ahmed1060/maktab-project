@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { SESSION_ENDED_PATH } from '@/lib/session-ended'
 import { accountRefusal } from '@/lib/account-refusal'
 import AccessDenied from '@/components/AccessDenied'
 import { redirect } from 'next/navigation'
@@ -35,7 +36,7 @@ export default async function CostsPage(props: { searchParams: Promise<{
 
     const session = await getServerSession(authOptions)
     if (!session) {
-        redirect('/login')
+        redirect(SESSION_ENDED_PATH)
     }
     // Refused as the APIs refuse it: suspended, archived, banned, lapsed or under
     // maintenance, before anything is read (found after PR 139).

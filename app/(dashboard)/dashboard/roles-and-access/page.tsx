@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
+import { SESSION_ENDED_PATH } from "@/lib/session-ended"
 import { accountRefusal } from "@/lib/account-refusal"
 import { can } from "@/lib/permissions/can"
 import AccessDenied from "@/components/AccessDenied"
@@ -16,7 +17,7 @@ import RolesAndAccessClient from "./RolesAndAccessClient"
  */
 export default async function RolesAndAccessPage(props: { searchParams: Promise<{ tab?: string; highlight?: string }> }) {
     const session = await getServerSession(authOptions)
-    if (!session) redirect("/login")
+    if (!session) redirect(SESSION_ENDED_PATH)
     const viewer = session.user as unknown as Viewer
     if (accountRefusal(viewer) || viewer.role === "SUPER_ADMIN" || !can(viewer, "employees.assign_role")) return <AccessDenied />
     const { tab, highlight } = await props.searchParams

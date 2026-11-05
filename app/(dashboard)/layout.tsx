@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import UserHeartbeat from "@/components/UserHeartbeat"
 import { authOptions } from "@/lib/auth"
+import { SESSION_ENDED_PATH } from "@/lib/session-ended"
 import DashboardShell from "@/components/DashboardShell"
 import { ViewerProvider } from "@/lib/useCan"
 import { pageSystemSettings } from "@/lib/services/system-settings.service"
@@ -25,8 +26,11 @@ export default async function DashboardLayout({
     children: React.ReactNode
 }) {
     const session = await getServerSession(authOptions)
+    // Only a session the server has ended gets here without one: proxy.ts
+    // lets nobody into the dashboard without a token. Its cookie is cleared
+    // on the way to sign in (lib/session-ended.ts).
     if (!session) {
-        redirect('/login')
+        redirect(SESSION_ENDED_PATH)
     }
 
     // Pass user object to Shell (strip sensitive fields if cleaner, but session user is usually safe for client)

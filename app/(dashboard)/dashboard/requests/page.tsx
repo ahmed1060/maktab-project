@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
+import { SESSION_ENDED_PATH } from "@/lib/session-ended"
 import { prisma } from "@/lib/prisma"
 import { askedPage, pageRedirect } from "@/lib/list-page"
 import { accountRefusal } from "@/lib/account-refusal"
@@ -21,7 +22,7 @@ import RequestsClient from "./RequestsClient"
 export default async function RequestsPage(props: { searchParams: Promise<Record<string, string | undefined>> }) {
     const searchParams = await props.searchParams
     const session = await getServerSession(authOptions)
-    if (!session) redirect("/login")
+    if (!session) redirect(SESSION_ENDED_PATH)
     const viewer = session.user as unknown as Viewer
     // Refused as the requests API refuses it: suspended, banned, lapsed or
     // under maintenance. This page reads the database itself, past the API.

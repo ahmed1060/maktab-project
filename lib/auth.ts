@@ -387,6 +387,11 @@ export const authOptions: NextAuthOptions = {
     ],
     callbacks: {
         async session({ session, token }) {
+            // A token the server ended (the jwt() callback below empties it)
+            // has nobody in it: no session, so the pages send the browser to
+            // sign in and the routes refuse it. It was a session with no
+            // account in it, which the dashboard crashed reading.
+            if (!token.sub) return {} as any
             if (session.user) {
                 // Map all possible variations to ensure visibility
                 const avatar = (token.avatar || token.image || token.picture) as string | null
@@ -664,7 +669,7 @@ export const authOptions: NextAuthOptions = {
                             // If DB version is higher than token version, revoke!
                             if (dbVersion > tokenVersion) {
                                 console.log(`[AUTH] REVOKING session for user ${userId} (Token:${tokenVersion} vs DB:${dbVersion})`)
-                                return {} as any // Empty token = invalid session
+                                return {} as any // Emptied: no session (session() above), and signed out (proxy.ts)
                             }
                         }
 

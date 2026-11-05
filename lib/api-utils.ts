@@ -174,7 +174,9 @@ export function withStandardHandler(
         let kind: string | undefined
         try {
             const session = await getServerSession(authOptions)
-            if (!session) {
+            // Nobody in it is no session: one the server ended had no account
+            // in it, and reached the route as though it were somebody's.
+            if (!session?.user?.id) {
                 return ApiResponse.unauthorized()
             }
 
