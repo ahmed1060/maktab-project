@@ -105,7 +105,8 @@ describe("what's checked before anything is sent", () => {
 
     it("knows its fields' order, so the first one wrong is the one focused", async () => {
         const { PROFILE_FIELDS } = await import("@/lib/profile-form")
-        expect(PROFILE_FIELDS).toEqual(["firstName", "lastName", "email", "username", "salary", "dayOffCredit", "password"])
+        // The role and its date after them since part 4 (lib/profile-role.test.ts).
+        expect(PROFILE_FIELDS).toEqual(["firstName", "lastName", "email", "username", "salary", "dayOffCredit", "password", "roleId", "actingUntil"])
     })
 })
 
@@ -135,7 +136,7 @@ describe("what the server refuses, under the field it's about", () => {
 
     it("leaves anything else to be said above the buttons", async () => {
         const { refusedField } = await import("@/lib/profile-form")
-        expect(refusedField({ error: "A company must keep at least one Admin at work." })).toBeNull()
+        expect(refusedField({ error: "Archive by ending the contract, and delete from the employee list — not through an edit" })).toBeNull()
         expect(refusedField(null)).toBeNull()
     })
 })
@@ -331,9 +332,10 @@ describe("the profile, wired to its form", () => {
     })
 
     it("says a refusal under its field, or above the buttons, never in a toast", () => {
-        const save = FORM.slice(FORM.indexOf("const executeSubmit"), FORM.indexOf("// The role keeps its own controls"))
+        const save = FORM.slice(FORM.indexOf("const executeSubmit"), FORM.indexOf("// Their role, as the form may change it"))
         expect(save).toContain("const refused = refusedField(answer)")
-        expect(save).toContain("if (refused) wrongAt({ [refused.field]: t(refused.key) })")
+        // About the role, only where the save changed it (part 4, lib/profile-role.test.ts).
+        expect(save).toContain("if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: t(refused.key) })")
         expect(save).not.toMatch(/showToast\([^)]*'error'\)/)
         // The ones it said, said under their fields now.
         for (const gone of ["email_format_error", "t('username_invalid')", "t('salary_limit_error')", "text.includes('\"Username in use\"')"]) expect(save, gone).not.toContain(gone)
@@ -384,8 +386,9 @@ describe("the profile, wired to its form", () => {
         // Whatever's typed, the role and its return date too.
         const set = FORM.slice(FORM.indexOf("const set = (field: keyof ProfileValues"), FORM.indexOf("\n    }\n", FORM.indexOf("const set = (field: keyof ProfileValues")))
         expect(set).toContain("setChanged(true)")
-        expect(FORM).toContain("onChange={(id, chosen) => { setRoleId(id); setChanged(true); if (chosen) setRole(chosen.baseRole) }}")
-        expect(FORM).toContain("onChange={e => { setActingDate(e.target.value); setChanged(true) }}")
+        const pick = FORM.slice(FORM.indexOf("const pickRole = "), FORM.indexOf("\n    }\n", FORM.indexOf("const pickRole = ")))
+        expect(pick).toContain("setChanged(true)")
+        expect(FORM).toContain("onActingUntil={date => { setActingDate(date); setChanged(true);")
         // Saved, it's nothing to lose; refused, it's still there to lose.
         const saved = FORM.slice(FORM.indexOf("setHandoff(null)"), FORM.indexOf("} catch (err) {", FORM.indexOf("setHandoff(null)")))
         expect(saved.match(/setChanged\(false\)/g) ?? []).toHaveLength(1)

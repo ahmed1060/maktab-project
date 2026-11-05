@@ -258,11 +258,11 @@ describe("a row", () => {
 })
 
 describe("the Role list for asking", () => {
-    it("comes from the same roles RoleSelect offers", () => {
-        const select = readFileSync("components/RoleSelect.tsx", "utf8")
-        expect(select).toContain("export function useAssignableRoles(")
-        expect(select).toMatch(/const roles = useAssignableRoles\(companyId\)/)
+    it("comes from the same roles a person's profile and Add employee offer", () => {
+        expect(readFileSync("lib/useAssignableRoles.ts", "utf8")).toContain("export function useAssignableRoles(")
         expect(readFileSync("components/RoleChangeRequests.tsx", "utf8")).toContain("useAssignableRoles()")
+        expect(readFileSync("components/EmployeeProfileForm.tsx", "utf8")).toContain("useAssignableRoles(companyId, picksRole)")
+        expect(readFileSync("app/(dashboard)/dashboard/employees/new/page.tsx", "utf8")).toContain("useAssignableRoles(companyId)")
     })
 })
 

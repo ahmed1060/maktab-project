@@ -609,7 +609,10 @@ selector. For a TEAM_LEADER-based role, the existing team rules apply as today.
 
 For an Admin the change applies immediately. For someone who may only *request*
 (§6.12), the same dropdown submits a request instead, and the page shows it as
-pending.
+pending. On a person's profile (UI_PLAN.md §5 step 5, part 4), the request goes
+with the profile's save, before the rest is saved, and from their details,
+"Ask for another role" asks in a dialog; while it waits, the role says so,
+linked to the request on the Requests page.
 
 **Every company has a default role** — normally the built-in Employee — set by the
 Super Admin. A new account always starts on it, so nobody ever exists without a

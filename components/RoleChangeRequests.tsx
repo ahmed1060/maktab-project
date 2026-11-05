@@ -4,7 +4,7 @@ import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'reac
 import useSWR from 'swr'
 import { CheckIcon, HourglassIcon, TrayIcon, WarningCircleIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { refusalOf } from '@/components/CompanyRolesCard'
-import { useAssignableRoles } from '@/components/RoleSelect'
+import { useAssignableRoles } from '@/lib/useAssignableRoles'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, RowMenu, Select, StatusBadge, TextArea, type MenuItem, type StatusTone } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'

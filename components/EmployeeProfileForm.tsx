@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useEffectEvent, type FormEvent } from 'react'
+import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/context/ToastContext'
@@ -8,8 +9,7 @@ import { HourglassIcon, PencilSimpleIcon } from '@phosphor-icons/react/ssr'
 import EndContractModal from './EndContractModal'
 import TeamHandOffModal from './TeamHandOffModal'
 import { useCan, useViewer } from '@/lib/useCan'
-import RoleSelect from '@/components/RoleSelect'
-import RoleRequestControl from '@/components/RoleRequestControl'
+import { useAssignableRoles, type AssignableRole } from '@/lib/useAssignableRoles'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
 import { changedUsername } from "@/lib/username-rules"
@@ -20,10 +20,12 @@ import { ProfilePhoto } from '@/components/profile/ProfilePhoto'
 import { ProfileView } from '@/components/profile/ProfileView'
 import { ConfirmPasswordDialog, TemporaryPasswordDialog } from '@/components/profile/PasswordDialogs'
 import { ProfileForm, type ProfileValues } from '@/components/profile/ProfileForm'
+import { RoleFields, type WaitingRole } from '@/components/profile/RoleFields'
+import { RoleRequestDialog, type AskRefusal } from '@/components/profile/RoleRequestDialog'
 import { profileAccess } from '@/lib/profile-access'
-import { PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
+import { dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
 import { resetRefusal } from '@/lib/profile-password'
-import { fetchRetrying } from '@/lib/swr-fetcher'
+import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 
 type EmployeeProfileFormProps = {
     userId: string
@@ -39,8 +41,9 @@ type EmployeeProfileFormProps = {
  * may be seen and done asked in one place (lib/profile-access.ts), and
  * confirming with one's own password in the building blocks' dialog. Part
  * 3, PR 193: its form (components/profile/ProfileForm.tsx), each field's
- * mistake under it (lib/profile-form.ts). Its role field and its contract's
- * dialogs follow in the parts after.
+ * mistake under it (lib/profile-form.ts). Part 4, PR 194: its role field
+ * (components/profile/RoleFields.tsx), given or asked for, and asked for from
+ * their details too. Its contract's dialogs follow in the part after.
  */
 export default function EmployeeProfileForm({ userId, isViewMode = false }: EmployeeProfileFormProps) {
     const { t, locale } = useLanguage()
@@ -49,6 +52,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('')
+    // Their kind as loaded: `role` follows the role picked, for what the
+    // form shows them, and is never sent.
+    const [savedRole, setSavedRole] = useState('')
     // Which of the company's roles they hold (ROLES_PLAN.md §6.4); `role` is
     // its kind, which the rest of the form still reads.
     const [roleId, setRoleId] = useState('')
@@ -56,9 +62,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // An acting role (§6.13): the return date for a new one, and the cover
     // already running, if any.
     const [actingDate, setActingDate] = useState('')
-    // The earliest return date the picker offers: tomorrow. Worked out once,
-    // not on every render.
-    const [tomorrow] = useState(() => new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+    // The earliest return date the picker offers: tomorrow, where the person
+    // is. Worked out once, not on every render.
+    const [tomorrow] = useState(() => dayAfter(new Date()))
     const [acting, setActing] = useState<{ until: string; returnTo: { name: string; builtIn?: string | null } | null } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
@@ -90,6 +96,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
     const [showEndContract, setShowEndContract] = useState(false)
+    // Asking for another role, from their details (RoleRequestDialog).
+    const [asking, setAsking] = useState(false)
     // Bumped after ending or reinstating a contract, so the profile reloads and
     // shows the new status (and the button its opposite action). The view has
     // no save that would otherwise bring it up to date.
@@ -171,6 +179,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 const cleanEmail = employee.email?.split('_DELETED_')[0] || employee.email
                 setEmail(cleanEmail)
                 setRole(employee.role)
+                setSavedRole(employee.role)
                 setRoleId(employee.roleId || '')
                 setCurrentRole(employee.roleId ? { id: employee.roleId, name: employee.assignedRole?.name ?? '', builtIn: employee.assignedRole?.builtIn ?? null, companyId: employee.companyId } : null)
                 setActing(employee.actingUntil ? { until: employee.actingUntil, returnTo: employee.returnRole ?? null } : null)
@@ -298,6 +307,20 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // by someone who may not edit them, as the notice of an acting role
     // held back sends whoever decides roles.
     const seeing = isViewMode || !access.edit
+    // The roles to pick from, where a role is picked: the form, or asking
+    // from their details (lib/useAssignableRoles.ts). Their details alone
+    // don't need them.
+    const picksRole = !!access.changeRole && (!seeing || access.changeRole === 'ask')
+    const roles = useAssignableRoles(companyId, picksRole)
+    // A change of their role waiting for approval, for whoever may only ask:
+    // the field and their details say so, and nothing more is asked meanwhile.
+    const { data: waitingData, mutate: mutateWaiting } = useSWR(access.changeRole === 'ask' ? `/api/role-requests?userId=${encodeURIComponent(userId)}&status=PENDING` : null, fetcher)
+    const waitingRole: WaitingRole | null = waitingData?.data?.[0] ?? null
+    // Only a different role is a change.
+    const roleChange = !!access.changeRole && !!roleId && roleId !== currentRole?.id
+    const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    // Until when they're acting in their role, as their details and the form's role field say it.
+    const actingNote = acting ? t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(digits, { day: 'numeric', month: 'long', year: 'numeric' })).replace('{role}', roleLabel(acting.returnTo, t)) : null
 
     // The form's fields are its own (components/profile/ProfileForm.tsx);
     // what's typed is kept here, and sent from here.
@@ -330,7 +353,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         // empty, as though left empty, which is sent as 0: it's asked of the
         // fields themselves, as the form doesn't let the browser check them.
         const form = e.currentTarget
-        const unreadable = (['salary', 'dayOffCredit'] as const).filter(name => {
+        const unreadable = (['salary', 'dayOffCredit', 'actingUntil'] as const).filter(name => {
             const field = form.elements.namedItem(name)
             return field instanceof HTMLInputElement && field.validity.badInput
         })
@@ -343,6 +366,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
             salary: access.changeSalary ? salary : undefined,
             dayOffCredit: access.changeDayOffCredit ? baseDayOffCredit : undefined,
+            actingUntil: roleChange ? actingDate : undefined,
+            actingFrom: tomorrow,
             unreadable,
         })
         if (Object.keys(wrong).length > 0) {
@@ -354,6 +379,34 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     }
 
     /**
+     * Asking for their role to be changed, by whoever may only ask
+     * (ROLES_PLAN.md §6.12): from the form, as it's saved, or from their
+     * details. Hands back what's wrong, under the role or its date where it's
+     * about them, or null once it's asked.
+     */
+    const askForRole = async (asked: { roleId: string; actingUntil: string }): Promise<AskRefusal | null> => {
+        try {
+            const res = await fetch('/api/role-requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, roleId: asked.roleId, actingUntil: asked.actingUntil || undefined }),
+            })
+            if (res.ok) {
+                showToast(t('role_requests_sent'), 'success')
+                await mutateWaiting()
+                return null
+            }
+            const text = await res.text()
+            let answer: { error?: string; code?: string } | null = null
+            try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
+            const refused = refusedField(answer)
+            return refused ? { field: refused.field, message: t(refused.key) } : { message: apiErrorText(text, t('error_generic')) }
+        } catch {
+            return { message: t('error_generic') }
+        }
+    }
+
+    /**
      * `reassignTo` is the answer to "where does their team go", and is only
      * ever passed on the retry that follows the modal. undefined means nobody
      * has answered, which is what makes the first attempt get refused — the
@@ -362,8 +415,26 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const executeSubmit = async (reassignTo?: string | null) => {
         setSaving(true)
         setFormError(null)
+        // Given in the save, by whoever may give it; asked for, it's sent first.
+        const roleGiven = access.changeRole === 'assign' && roleChange
 
         try {
+            // Whoever may only ask asks for the role picked before the rest is
+            // saved: refused, nothing is, and what's wrong is said under the
+            // role or its date.
+            if (access.changeRole === 'ask' && roleChange) {
+                const problem = await askForRole({ roleId, actingUntil: actingDate })
+                if (problem) {
+                    if (problem.field) wrongAt({ [problem.field]: problem.message })
+                    else setFormError(problem.message)
+                    setSaving(false)
+                    return
+                }
+                // Asked for: they keep their role until it's approved, as the field says now.
+                setRoleId(currentRole?.id ?? '')
+                setActingDate('')
+            }
+
             const isNameChanged = firstName !== originalFirstName || lastName !== originalLastName
 
             // One's own name, on an employee's or a team leader's footing, is
@@ -395,11 +466,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     lastName: access.nameByRequest ? undefined : lastName,
                     email: access.changeEmail ? email : undefined,
                     password: access.changePassword && password ? password : undefined,
-                    role,
-                    // Only a different role is a change; the server refuses
-                    // what the dropdown would not have offered.
-                    roleId: roleId && roleId !== currentRole?.id ? roleId : undefined,
-                    actingUntil: roleId && roleId !== currentRole?.id && actingDate ? actingDate : undefined,
+                    // Given by whoever may give it, and never by its kind,
+                    // which the form follows only for what it shows. The
+                    // server refuses what the field wouldn't have offered.
+                    roleId: access.changeRole === 'assign' && roleChange ? roleId : undefined,
+                    actingUntil: access.changeRole === 'assign' && roleChange && actingDate ? actingDate : undefined,
                     gender,
                     avatar: avatarUrl,
                     salary: access.changeSalary ? parseFloat(salary) || 0 : undefined,
@@ -416,7 +487,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
 
             if (!res.ok) {
                 const text = await res.text()
-                let answer: { error?: string; details?: Record<string, unknown> } | null = null
+                let answer: { error?: string; code?: string; details?: Record<string, unknown> } | null = null
                 try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
                 // Read before the rest, because this one is not an error to
                 // report — it is a question to ask.
@@ -426,9 +497,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     setSaving(false)
                     return
                 }
-                // Under the field it's about, where it can be; above the buttons otherwise.
+                // Under the field it's about, where it can be; above the buttons
+                // otherwise. About the role, from a save that didn't change it,
+                // as the last Admin's status can be: above the buttons, still
+                // in the reader's language.
                 const refused = refusedField(answer)
-                if (refused) wrongAt({ [refused.field]: t(refused.key) })
+                if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: t(refused.key) })
+                else if (refused) setFormError(t(refused.key))
                 else setFormError(apiErrorText(text, t('error_generic')))
                 setSaving(false)
                 return
@@ -479,7 +554,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     }
 
     if (seeing) {
-        const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
         return (
             <Page>
                 <ProfileHeader own={own} editing={false} name={name}
@@ -495,7 +569,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                         gender,
                         company: role === 'SUPER_ADMIN' ? 'SHSD' : companies.find(c => c.id === companyId)?.name ?? null,
                         role: role === 'SUPER_ADMIN' ? t('role_super_admin') : roleLabel(currentRole, t),
-                        acting: acting ? t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(digits, { day: 'numeric', month: 'long', year: 'numeric' })).replace('{role}', roleLabel(acting.returnTo, t)) : null,
+                        acting: actingNote,
                         teamLeader: myLeader ? `${myLeader.firstName} ${myLeader.lastName}`.trim() : null,
                         status,
                         salary,
@@ -507,13 +581,25 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // never the form's, beside whose Update it read as though
                     // Update would apply it.
                     onEndContract={() => setShowEndContract(true)}
-                    // Whoever may ask for a role but may neither edit them nor
-                    // give one asks from here: the form, where they asked
-                    // before, isn't theirs (ROLES_PLAN.md §6.12).
-                    roleRequest={access.role && !access.edit && !can('employees.assign_role')
-                        ? <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} />
-                        : undefined}
+                    // Whoever may only ask for a role asks from here too, beside
+                    // it (ROLES_PLAN.md §6.12): the form isn't everyone's who
+                    // may ask.
+                    roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, onAsk: () => setAsking(true) } : undefined}
                 />
+                {asking && (
+                    <RoleRequestDialog
+                        name={name}
+                        roles={roles}
+                        current={currentRole}
+                        actingFrom={tomorrow}
+                        onCancel={() => setAsking(false)}
+                        onSend={async asked => {
+                            const problem = await askForRole(asked)
+                            if (!problem) setAsking(false)
+                            return problem
+                        }}
+                    />
+                )}
                 {showEndContract && (
                     <EndContractModal
                         userId={userId}
@@ -529,42 +615,6 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         )
     }
 
-    // The role keeps its own controls until its part (UI_PLAN.md §5 step 5).
-    const roleField = access.role && (
-        <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('role_label')}</label>
-            {role === 'SUPER_ADMIN' ? (
-                <input aria-label={t('role_label')} className="input" value={t('super_admins')} disabled style={{ background: 'var(--surface-sunk)', color: 'var(--text-soft)', textAlign: locale === 'ar' ? 'right' : 'left' }} />
-            ) : !can('employees.assign_role') ? (
-                // May only ask (§6.12): a request, not a change.
-                <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />
-            ) : (
-                <RoleSelect
-                    companyId={companyId}
-                    value={roleId}
-                    // Moved to another company, their role there is chosen afresh.
-                    current={currentRole && currentRole.companyId === companyId ? currentRole : null}
-                    onChange={(id, chosen) => { setRoleId(id); setChanged(true); if (chosen) setRole(chosen.baseRole) }}
-                    // Only the Super Admin acts on an Admin (§4.2, rule 7).
-                    locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}
-                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                />
-            )}
-            {acting && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-soft)', margin: '0.35rem 0 0' }}>
-                    {t('acting_now').replace('{date}', new Date(acting.until).toLocaleDateString(locale)).replace('{role}', roleLabel(acting.returnTo, t))}
-                </p>
-            )}
-            {can('employees.assign_role') && roleId && roleId !== currentRole?.id && (
-                <div style={{ marginTop: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem' }}>{t('acting_until_label')}</label>
-                    <input aria-label={t('acting_until_label')} type="date" className="input" value={actingDate} min={tomorrow} onChange={e => { setActingDate(e.target.value); setChanged(true) }} />
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-soft)', margin: '0.25rem 0 0' }}>{t('acting_until_hint')}</p>
-                </div>
-            )}
-        </div>
-    )
-
     const values: ProfileValues = { firstName, lastName, gender, email, username, salary, dayOffCredit: baseDayOffCredit, password, status, teamLeaderId }
     const setters: Record<keyof ProfileValues, (value: string) => void> = {
         firstName: setFirstName, lastName: setLastName, gender: setGender, email: setEmail, username: setUsername,
@@ -575,6 +625,15 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         setters[field](value)
         setChanged(true)
         if (field in fieldErrors && fieldErrors[field as ProfileField]) setFieldErrors(errors => ({ ...errors, [field]: undefined }))
+    }
+    // Picked again, the role's mistakes are gone, and its date's. Its kind is
+    // what the form shows them as, pay and team and all; their own picked
+    // back, it's theirs as loaded, though theirs may not be one to give.
+    const pickRole = (id: string, chosen: AssignableRole | null) => {
+        setRoleId(id)
+        setChanged(true)
+        setFieldErrors(errors => ({ ...errors, roleId: undefined, actingUntil: undefined }))
+        if (access.changeRole === 'assign') setRole(id === currentRole?.id ? savedRole : chosen?.baseRole ?? savedRole)
     }
 
     return (
@@ -593,7 +652,24 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     ownTeamLeader={myLeader ? `${myLeader.firstName} ${myLeader.lastName}`.trim() : null}
                     leaders={leaders.filter(l => l.id !== userId).map(l => ({ id: l.id, name: `${l.firstName} ${l.lastName}`.trim() }))}
                     busy={saving}
-                    role={roleField}
+                    // Their role, as the form may change it (components/profile/RoleFields.tsx).
+                    role={access.role && (
+                        <RoleFields
+                            how={access.changeRole}
+                            superAdmin={role === 'SUPER_ADMIN'}
+                            roles={roles}
+                            current={currentRole}
+                            value={roleId}
+                            onChange={pickRole}
+                            actingUntil={actingDate}
+                            onActingUntil={date => { setActingDate(date); setChanged(true); setFieldErrors(errors => ({ ...errors, actingUntil: undefined })) }}
+                            actingFrom={tomorrow}
+                            acting={actingNote}
+                            waiting={waitingRole}
+                            errors={{ roleId: fieldErrors.roleId, actingUntil: fieldErrors.actingUntil }}
+                            busy={saving}
+                        />
+                    )}
                     onSubmit={handleSubmit}
                     cancelHref={`/dashboard/employees/${userId}?mode=view`}
                 />

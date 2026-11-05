@@ -137,11 +137,6 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     // The Super Admin's roles card: the built-in Employee is the default when none is set, and an Admin-based role is never one
     ["components/CompanyRolesCard.tsx", "body: JSON.stringify({ companyId, roleId: role.builtIn === 'EMPLOYEE' ? null : role.id }),", THE_ROLE],
     ["components/CompanyRolesCard.tsx", "...(!role.isDefault && role.baseRole !== 'ADMIN' ? [", THE_ROLE],
-    // Only the Super Admin changes an Admin's role (§4.2, rule 7): the field shows it, locked
-    ["components/EmployeeProfileForm.tsx", "<RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} style={{ textAlign: locale === 'ar' ? 'right' : 'left' }} />", ADMIN_ROLE],
-    // The same, asked for from their details (PR 193).
-    ["components/EmployeeProfileForm.tsx", "? <RoleRequestControl userId={userId} companyId={companyId} current={currentRole} locked={role === 'ADMIN'} />", ADMIN_ROLE],
-    ["components/EmployeeProfileForm.tsx", "locked={role === 'ADMIN' && userRole !== 'SUPER_ADMIN'}", ADMIN_ROLE],
 
     // lib/profile-access.ts: what a person's profile shows, for the view and the form (PR 192)
     // Only the Super Admin acts on an Admin (§4.2, rule 7)

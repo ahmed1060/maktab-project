@@ -42,6 +42,25 @@ describe("a person's role and team", () => {
         expect(access(ADMIN, { id: "admin", role: "ADMIN" }).role).toBe(false)
     })
 
+    // Part 4, PR 194: the role field, and asking from their details, ask this.
+    it("gives a role with the assign permission, asks for one with the request permission alone", () => {
+        expect(access(ADMIN, someone("EMPLOYEE")).changeRole).toBe("assign")
+        expect(access(SUPER, someone("TEAM_LEADER")).changeRole).toBe("assign")
+        expect(access(custom({ "employees.request_role": "COMPANY" }), someone("EMPLOYEE")).changeRole).toBe("ask")
+        expect(access(custom({ "employees.request_role": "COMPANY", "employees.assign_role": "COMPANY" }), someone("EMPLOYEE")).changeRole).toBe("assign")
+        expect(access(LEADER, someone("EMPLOYEE")).changeRole).toBeNull()
+    })
+
+    it("changes no role of one's own, nor a Super Admin's, and an Admin's only for the Super Admin", () => {
+        expect(access(ADMIN, { id: "admin", role: "ADMIN" }).changeRole).toBeNull()
+        expect(access(SUPER, someone("SUPER_ADMIN")).changeRole).toBeNull()
+        expect(access(ADMIN, someone("ADMIN")).changeRole).toBeNull()
+        expect(access(custom({ "employees.request_role": "COMPANY" }), someone("ADMIN")).changeRole).toBeNull()
+        expect(access(SUPER, someone("ADMIN")).changeRole).toBe("assign")
+        // Nor before their role is known.
+        expect(access(ADMIN, someone("")).changeRole).toBeNull()
+    })
+
     it("shows an employee's team leader to whoever assigns teams, and one's own on one's own profile", () => {
         expect(access(ADMIN, someone("EMPLOYEE"))).toMatchObject({ teamLeader: true, ownTeamLeader: false })
         // Only an employee has a team leader.
