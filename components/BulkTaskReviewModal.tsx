@@ -506,16 +506,12 @@ export default function BulkTaskReviewModal({
                                             )}
 
                                         </td>
-                                        <td style={{ padding: '1rem', position: 'relative' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1, whiteSpace: 'nowrap', fontSize: '0.85rem', flex: 1 }}>
-                                                    {bt.deadline ? new Date(bt.deadline).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-US', {
-                                                        year: 'numeric', month: 'numeric', day: 'numeric',
-                                                        hour: 'numeric', minute: 'numeric', second: 'numeric',
-                                                        hour12: true
-                                                    }) : t('invalid_date')}
-                                                </div>
+                                        <td style={{ padding: '1rem' }}>
+                                            {/* Its deadline, picked as Create task's is, with what's wrong under it (DESIGN.md §5.3). */}
+                                            <div style={{ minWidth: '200px' }}>
                                                 <DateTimePicker
+                                                    hideLabel
+                                                    label={t('deadline_label')}
                                                     value={bt.deadline || ''}
                                                     onChange={v => {
                                                         const newTasks = [...bulkTasks]
@@ -525,30 +521,9 @@ export default function BulkTaskReviewModal({
                                                         setBulkTasks(newTasks)
                                                     }}
                                                     min={earliestDeadline(now).toISOString()}
-                                                    customTrigger={
-                                                        <button aria-label={t('edit_deadline')}
-                                                            style={{
-                                                                background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
-                                                                borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1.1rem',
-                                                                opacity: bt.validationErrors?.deadline ? 1 : 0.4
-                                                            }}
-                                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--hairline)'}
-                                                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                                                            title={t('edit_deadline')}
-                                                        >
-                                                            <span aria-hidden="true">📅</span>
-                                                        </button>
-                                                    }
+                                                    error={bt.validationErrors?.deadline?.join(' ')}
                                                 />
                                             </div>
-                                            {bt.validationErrors?.deadline && (
-                                                <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                                                    {bt.validationErrors.deadline.map((err: string, i: number) => (
-                                                        <div key={i}>• {err}</div>
-                                                    ))}
-                                                </div>
-                                            )}
-
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ minWidth: '170px' }}>

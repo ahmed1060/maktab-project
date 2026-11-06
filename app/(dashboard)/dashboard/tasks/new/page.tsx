@@ -549,7 +549,6 @@ export default function NewTaskPage() {
                     />
                     <div id="field-deadline">
                         <DateTimePicker
-                            asField
                             label={t('deadline_label')}
                             value={deadline}
                             onChange={v => { setDeadline(v); clearError('deadline') }}

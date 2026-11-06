@@ -87,7 +87,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                     <span className="ui-hint">{t('transfer_notice')}</span>
                 </div>
                 {/* At least 3 hours out, as the server needs (TaskService.updateDetails), as Create task's is. */}
-                <DateTimePicker asField label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={earliestDeadline(now).toISOString()} />
+                <DateTimePicker label={t('deadline_label')} value={editForm.deadline} onChange={v => setEditForm({ ...editForm, deadline: v })} min={earliestDeadline(now).toISOString()} />
                 <Field label={t('difficulty')} hint={t('points_hint')}>{p => (
                     <TextInput {...p} type="number" inputMode="numeric" name="difficulty" autoComplete="off" min={0} max={10} value={editForm.difficulty}
                         onChange={e => setEditForm({ ...editForm, difficulty: parseInt(e.target.value) || 0 })} />

@@ -8,18 +8,17 @@ import { readFileSync } from "node:fs"
  * couldn't set a deadline or a day off at all (accessibility audit,
  * 4 October 2026, C1).
  *
- * The date and the date range fields open the calendar building block
- * (components/ui/Calendar.tsx, PR 208), which draws the pop-up, its grid and
- * its days with the shared props. The date and time picker still draws its own.
+ * All three open the calendar building block (components/ui/Calendar.tsx:
+ * the date and the date range fields in PR 208, the date and time field in
+ * PR 209), which draws the pop-up, its grid and its days with the shared
+ * props.
  */
 const PICKERS = ["components/DatePickerSingle.tsx", "components/DateRangePicker.tsx", "components/DateTimePicker.tsx"]
 const CALENDAR = "components/ui/Calendar.tsx"
-/** Where a picker's pop-up, grid and days are drawn. */
-const drawnIn = (file: string) => (file === "components/DateTimePicker.tsx" ? file : CALENDAR)
 
 describe.each(PICKERS)("%s", file => {
     const s = readFileSync(file, "utf8")
-    const drawn = readFileSync(drawnIn(file), "utf8")
+    const drawn = readFileSync(CALENDAR, "utf8")
 
     it("doesn't open from a clickable div", () => {
         expect(s).not.toMatch(/<div\s+onClick=\{\(\) => setIsOpen\(!isOpen\)\}/)
@@ -40,15 +39,6 @@ describe.each(PICKERS)("%s", file => {
     it("names the month buttons", () => {
         expect(drawn).toContain("calendar_prev_month")
         expect(drawn).toContain("calendar_next_month")
-    })
-})
-
-describe("components/DateTimePicker.tsx", () => {
-    it("names each month button for what it does in Arabic too, where the first one goes forward (Codex review of #35)", () => {
-        // In Arabic the first button moves to the next month and the second to the previous one.
-        const s = readFileSync("components/DateTimePicker.tsx", "utf8")
-        expect(s).toMatch(/aria-label=\{t\(locale === 'ar' \? 'calendar_next_month' : 'calendar_prev_month'/)
-        expect(s).toMatch(/aria-label=\{t\(locale === 'ar' \? 'calendar_prev_month' : 'calendar_next_month'/)
     })
 })
 
