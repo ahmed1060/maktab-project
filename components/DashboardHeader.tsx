@@ -1,16 +1,14 @@
 'use client'
-import { useState, useEffect, useRef, useId, Suspense, type KeyboardEvent } from 'react'
+import { useState, useEffect, useRef, useId, Suspense, type KeyboardEvent, type RefObject } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
-import Image from 'next/image'
+import { CaretDownIcon, ClockCounterClockwiseIcon, ListIcon, ShieldCheckIcon, SignOutIcon, UserCircleIcon } from '@phosphor-icons/react/ssr'
 import type { TranslationKey } from '@/lib/translations'
 import NotificationBell from './NotificationBell'
 import { addressWithCompanyInView, companyLinkToFollow } from '@/lib/company-link'
 import { useCompany } from '@/context/CompanyContext'
-import { useHeader } from '@/context/HeaderContext'
 import { useLanguage } from '@/context/LanguageContext'
-import { useModules } from '@/lib/useModules'
 import LanguageToggleButton from './LanguageToggleButton'
 import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
@@ -18,6 +16,7 @@ import { useFeatures } from '@/lib/features/useFeatures'
 import { moveOption } from '@/lib/listbox-keys'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { fetchRetrying } from '@/lib/swr-fetcher'
+import { Avatar, CompanyMark, Icon } from '@/components/ui'
 
 // Fetcher for SWR
 const fetcher = (url: string) => fetchRetrying(url, { cache: 'no-store' }).then(res => res.json())
@@ -32,21 +31,98 @@ interface DashboardHeaderProps {
         image?: string | null
         picture?: string | null
         gender: string
+        companyName?: string | null
     }
+    /** The company's name and logo, for its mark at the bar's start on a phone (DESIGN.md §5.1). */
+    company: { name: string; logoUrl: string | null }
     onMenuClick?: () => void
     /** Whether the side bar's drawer it opens is open, on a phone (DESIGN.md §5.1). */
     menuOpen?: boolean
 }
 
-export default function DashboardHeader({ user, onMenuClick, menuOpen = false }: DashboardHeaderProps) {
+/** Who is signed in, as the account button and its menu show them (DESIGN.md §5.1). */
+export type AccountPerson = {
+    id: string
+    name: string
+    /** Their role, in the words the app uses for roles. */
+    role: string
+    /** Their company's name; none for the Super Admin, who belongs to no one company. */
+    companyName: string | null
+    photo: string | null
+}
+
+/**
+ * The account button at the top bar's end (DESIGN.md §5.1): the person's photo
+ * or initials, never a drawing, their name and role, and a caret; on a phone,
+ * the photo or initials alone (CSS). Named with all of them, so what it says
+ * on screen is in its name.
+ */
+export function AccountButton({ person, open, menuId, onToggle, buttonRef }: {
+    person: AccountPerson
+    open: boolean
+    menuId: string
+    onToggle: () => void
+    buttonRef?: RefObject<HTMLButtonElement | null>
+}) {
+    const { t } = useLanguage()
+    return (
+        <button type="button" ref={buttonRef} className="ui-topbar-account" aria-expanded={open} aria-controls={open ? menuId : undefined}
+            aria-label={t('account_menu_for').replace(/\{(name|role)\}/g, (_, key) => key === 'name' ? person.name : person.role)} onClick={onToggle}>
+            <Avatar name={person.name} src={person.photo} size={32} />
+            <span className="ui-topbar-who"><span className="ui-topbar-name"><bdi>{person.name}</bdi></span><span className="ui-topbar-role">{person.role}</span></span>
+            <Icon icon={CaretDownIcon} size={16} className="ui-topbar-caret" />
+        </button>
+    )
+}
+
+/**
+ * The account menu, below the account button (DESIGN.md §5.1): the person at
+ * its top, then My profile, Security settings and History where it's offered,
+ * the theme switch and Sign out, between hairlines. Not a dialog: its links
+ * and buttons are Tab's, and the header closes it.
+ */
+export function AccountMenuPanel({ id, person, showHistory, onClose, onSignOut, signingOut }: {
+    id: string
+    person: AccountPerson
+    showHistory: boolean
+    onClose: () => void
+    onSignOut: () => void
+    signingOut: boolean
+}) {
+    const { t } = useLanguage()
+    // "Admin at Nile Works", the company's name kept in its own direction.
+    const [before, after] = t('account_role_at').replace('{role}', person.role).split('{company}')
+    return (
+        <div id={id} className="ui-account-menu">
+            <div className="ui-account-head">
+                <Avatar name={person.name} src={person.photo} size={40} />
+                <span className="ui-account-who">
+                    <span className="ui-account-name"><bdi>{person.name}</bdi></span>
+                    <span className="ui-account-role">{person.companyName ? <>{before}<bdi>{person.companyName}</bdi>{after}</> : person.role}</span>
+                </span>
+            </div>
+            <div className="ui-menu-rule" />
+            <Link className="ui-menu-item" href={`/dashboard/employees/${person.id}`} onClick={onClose}><Icon icon={UserCircleIcon} />{t('my_profile')}</Link>
+            {/* One entry, not two: both screens answer "how do I get into this account". */}
+            <Link className="ui-menu-item" href="/dashboard/security-settings" onClick={onClose}><Icon icon={ShieldCheckIcon} />{t('security_settings_nav')}</Link>
+            {showHistory && <Link className="ui-menu-item" href={`/dashboard/employees/${person.id}/history`} onClick={onClose}><Icon icon={ClockCounterClockwiseIcon} />{t('history')}</Link>}
+            <div className="ui-menu-rule" />
+            {/* Switching theme keeps the menu open: the change is instant and in
+                view, and closing on it would hide what was just changed. */}
+            <ThemeToggleButton variant="menu-item" />
+            <div className="ui-menu-rule" />
+            <button type="button" className="ui-menu-item" onClick={onSignOut} disabled={signingOut} aria-busy={signingOut}><Icon icon={SignOutIcon} />{t('sign_out')}</button>
+        </div>
+    )
+}
+
+export default function DashboardHeader({ user, company, onMenuClick, menuOpen = false }: DashboardHeaderProps) {
     const pathname = usePathname()
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const action = useBusyAction()
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
-    const { title: contextTitle, subtitle: contextSubtitle } = useHeader()
-    const modules = useModules()
     const [companies, setCompanies] = useState<any[]>([])
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
     const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
@@ -54,6 +130,7 @@ export default function DashboardHeader({ user, onMenuClick, menuOpen = false }:
     const dropdownRef = useRef<HTMLDivElement>(null)
     const switcherRef = useRef<HTMLButtonElement>(null)
     const accountRef = useRef<HTMLButtonElement>(null)
+    const accountBox = useRef<HTMLDivElement>(null)
     const optionRefs = useRef<(HTMLLIElement | null)[]>([])
     const switcherListId = useId()
     const accountMenuId = useId()
@@ -258,31 +335,6 @@ export default function DashboardHeader({ user, onMenuClick, menuOpen = false }:
         }
     }
 
-    // Map path to title. A module's own landing page takes this company's name
-    // for it; the detail pages underneath keep their own translated headings
-    // ("Task Details" stays "Task Details" whatever Tasks was renamed to,
-    // because it names the record, not the module).
-    const getPageTitle = (path: string) => {
-        if (path === '/dashboard') return modules.label('dashboard')
-        if (path === '/dashboard/tasks') return modules.label('tasks')
-        if (path.startsWith('/dashboard/tasks/')) return t('task_details')
-        if (path === '/dashboard/obligations') return modules.label('obligations')
-        if (path.startsWith('/dashboard/obligations/')) return t('obligation_details')
-        if (path === '/dashboard/employees') return modules.label('employees')
-        if (path.startsWith('/dashboard/employees/')) return t('employee_profile')
-        if (path === '/dashboard/costs') return modules.label('costs')
-        if (path === '/dashboard/clients') return modules.label('clients')
-        if (path === '/dashboard/all-users') return t('all_users')
-        if (path.startsWith('/dashboard/clients/')) return t('client_page_title')
-        if (path.startsWith('/dashboard/records')) return modules.label('records')
-        if (path === '/dashboard/companies') return t('companies')
-        if (path === '/dashboard/super-admins') return t('super_admins')
-        if (path === '/dashboard/requests') return modules.label('requests')
-        if (path === '/dashboard/requests/history') return t('requests_history')
-        if (path === '/dashboard/usernames') return t('usernames_list')
-        return t('system')
-    }
-
     const getRoleKey = (role: string): TranslationKey => {
         switch (role) {
             case 'EMPLOYEE': return 'role_employee'
@@ -308,401 +360,188 @@ export default function DashboardHeader({ user, onMenuClick, menuOpen = false }:
         router.push('/login')
     }
 
-    const pathTitle = getPageTitle(pathname)
-    const title = contextTitle || pathTitle
+    // Their own history is HR's: in the menu only where the package includes it.
+    const showHistory = features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)
+    const person: AccountPerson = {
+        id: currentUser.id,
+        name: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+        role: t(getRoleKey(currentUser.role)),
+        companyName: currentUser.role === 'SUPER_ADMIN' ? null : (user.companyName ?? null),
+        photo: headerAvatar,
+    }
 
+    // The account menu closes on a click or a tap outside it (DESIGN.md §5.1).
+    useEffect(() => {
+        if (!isMenuOpen) return
+        const outside = (e: PointerEvent) => { if (!accountBox.current?.contains(e.target as Node)) setIsMenuOpen(false) }
+        document.addEventListener('pointerdown', outside)
+        return () => document.removeEventListener('pointerdown', outside)
+    }, [isMenuOpen])
+
+    // No title: every page names itself in its page header (DESIGN.md §5.1).
+    // On a phone, the menu button and the company's mark are at the start (CSS).
     return (
-        <header
-            className="mobile-padding"
-            style={{
-                padding: '0 2rem',
-                background: 'transparent',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                height: '72px',
-                width: '100%',
-                boxSizing: 'border-box'
-            }}
-        >
-            {/* Left: Page Name */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
-                {onMenuClick && (
-                    <button aria-label={t('open_menu' as any)}
-                        aria-haspopup="dialog"
-                        aria-expanded={menuOpen}
-                        onClick={onMenuClick}
+        <header className="ui-topbar">
+            {onMenuClick && (
+                <button type="button" className="ui-topbar-button ui-topbar-menu" aria-label={t('open_menu')} aria-haspopup="dialog" aria-expanded={menuOpen} onClick={onMenuClick}>
+                    <Icon icon={ListIcon} className="ui-topbar-icon" />
+                </button>
+            )}
+            <span className="ui-topbar-mark"><CompanyMark name={company.name} logoUrl={company.logoUrl} /></span>
+
+            {currentUser.role === 'SUPER_ADMIN' && (
+                <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <button
+                        type="button"
+                        ref={switcherRef}
+                        onClick={() => isCompanyDropdownOpen ? setIsCompanyDropdownOpen(false) : openSwitcher()}
+                        onKeyDown={onSwitcherKeyDown}
+                        aria-haspopup="listbox"
+                        aria-expanded={isCompanyDropdownOpen}
+                        aria-controls={isCompanyDropdownOpen ? switcherListId : undefined}
+                        aria-label={t('company_switcher_label' as TranslationKey).replace('{name}', switcherOptions[selectedOption].name)}
+                        className="glass sm-select"
                         style={{
-                            background: 'transparent',
-                            border: 'none',
-                            fontSize: '1.5rem',
+                            fontFamily: 'inherit',
+                            padding: locale === 'ar' ? '0.5rem 1.5rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1.5rem',
+                            borderRadius: '1rem',
+                            fontSize: '0.9rem',
                             cursor: 'pointer',
-                            padding: '0.25rem',
-                            lineHeight: 1,
+                            background: 'var(--veil-40)',
+                            border: '1px solid var(--veil-60)',
+                            transition: 'all 0.2s ease',
                             color: 'var(--text-main)',
+                            minWidth: '130px',
+                            maxWidth: '200px',
+                            textAlign: 'center',
+                            fontWeight: '600',
+                            boxShadow: '0 2px 4px var(--shadow-faint)',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            position: 'relative'
                         }}
-                        className="lg-hidden"
                     >
-                        <span aria-hidden="true">☰</span>
-                    </button>
-                )}
-                {/* minWidth: 0 again here — the floor applies at every level of
-                    the flex chain, so lifting it only on the row above leaves
-                    this wrapper refusing to shrink and the title still running
-                    under the buttons. */}
-                <div className="ui-topbar-title" style={{ minWidth: 0, flex: 1 }}>
-                    <h1 style={{
-                        fontSize: 'clamp(1rem, 4.5vw, 1.4rem)',
-                        fontWeight: '800',
-                        margin: 0,
-                        color: 'var(--text-main)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        lineHeight: 1.2
-                    }}>
-                        {title}
-                    </h1>
-                    {contextSubtitle && !isMobile && (
-                        <p style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--text-muted)',
-                            margin: 0,
-                            fontWeight: '500',
-                            whiteSpace: 'nowrap',
+                        <span style={{
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            marginTop: '0.1rem'
+                            whiteSpace: 'nowrap',
+                            display: isMobile ? 'none' : 'block'
                         }}>
-                            {contextSubtitle}
-                        </p>
-                    )}
-                </div>
-            </div>
+                            {selectedCompanyId
+                                ? (companies.find(c => c.id === selectedCompanyId)?.name || t('all_companies'))
+                                : t('all_companies')
+                            }
+                        </span>
 
-            {/* Right: Actions & Profile */}
-            <div
-                className="mobile-gap-dense"
-                style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', minWidth: 0, flexShrink: 0 }}
-            >
-                {currentUser.role === 'SUPER_ADMIN' && (
-                    <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <button
-                            type="button"
-                            ref={switcherRef}
-                            onClick={() => isCompanyDropdownOpen ? setIsCompanyDropdownOpen(false) : openSwitcher()}
-                            onKeyDown={onSwitcherKeyDown}
-                            aria-haspopup="listbox"
-                            aria-expanded={isCompanyDropdownOpen}
-                            aria-controls={isCompanyDropdownOpen ? switcherListId : undefined}
-                            aria-label={t('company_switcher_label' as TranslationKey).replace('{name}', switcherOptions[selectedOption].name)}
-                            className="glass sm-select"
-                            style={{
-                                fontFamily: 'inherit',
-                                padding: locale === 'ar' ? '0.5rem 1.5rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1.5rem',
-                                borderRadius: '1rem',
-                                fontSize: '0.9rem',
-                                cursor: 'pointer',
-                                background: 'var(--veil-40)',
-                                border: '1px solid var(--veil-60)',
-                                transition: 'all 0.2s ease',
-                                color: 'var(--text-main)',
-                                minWidth: '130px',
-                                maxWidth: '200px',
-                                textAlign: 'center',
-                                fontWeight: '600',
-                                boxShadow: '0 2px 4px var(--shadow-faint)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                position: 'relative'
-                            }}
-                        >
-                            <span style={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                display: isMobile ? 'none' : 'block'
-                            }}>
+                        {/* Mobile Initials */}
+                        {isMobile && (
+                            <span style={{ fontSize: '0.75rem', fontWeight: '800' }}>
                                 {selectedCompanyId
-                                    ? (companies.find(c => c.id === selectedCompanyId)?.name || t('all_companies'))
-                                    : t('all_companies')
+                                    ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
+                                    : getInitials(t('all_companies'))
                                 }
                             </span>
-
-                            {/* Mobile Initials */}
-                            {isMobile && (
-                                <span style={{ fontSize: '0.75rem', fontWeight: '800' }}>
-                                    {selectedCompanyId
-                                        ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
-                                        : getInitials(t('all_companies'))
-                                    }
-                                </span>
-                            )}
-
-                            {!isMobile && (
-                                <span style={{
-                                    position: 'absolute',
-                                    [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                    transform: isCompanyDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                                    transition: 'transform 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center'
-                                }}>
-                                    <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="6 9 12 15 18 9"></polyline>
-                                    </svg>
-                                </span>
-                            )}
-                        </button>
-
-                        {isCompanyDropdownOpen && (
-                            <ul
-                                id={switcherListId}
-                                role="listbox"
-                                aria-label={t('select_company')}
-                                tabIndex={-1}
-                                style={{
-                                    listStyle: 'none',
-                                    margin: 0,
-                                    position: 'absolute',
-                                    top: 'calc(100% + 8px)',
-                                    [locale === 'ar' ? 'left' : 'right']: 0,
-                                    background: 'var(--surface)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '0.75rem',
-                                    boxShadow: '0 10px 15px -3px var(--shadow-weak), 0 4px 6px -2px var(--shadow-faint)',
-                                    zIndex: 1000,
-                                    maxHeight: '300px',
-                                    overflowY: 'auto',
-                                    minWidth: '200px',
-                                    padding: '0.5rem'
-                                }}
-                            >
-                                {switcherOptions.map((option, i) => {
-                                    const selected = i === selectedOption
-                                    return (
-                                        <li
-                                            key={option.id ?? 'all'}
-                                            ref={el => { optionRefs.current[i] = el }}
-                                            role="option"
-                                            aria-selected={selected}
-                                            tabIndex={-1}
-                                            onClick={() => pickOption(i)}
-                                            onKeyDown={e => onOptionKeyDown(e, i)}
-                                            style={{
-                                                padding: '0.625rem 1rem',
-                                                cursor: 'pointer',
-                                                fontSize: '0.875rem',
-                                                borderRadius: '0.5rem',
-                                                color: selected ? 'var(--info-solid-hover)' : 'var(--text-muted)',
-                                                background: selected ? 'var(--info-bg-subtle)' : 'transparent',
-                                                fontWeight: selected ? 600 : 500,
-                                                marginBottom: '2px',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = selected ? 'var(--info-bg-subtle)' : 'transparent'}
-                                        >
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {option.name}
-                                            </span>
-                                            {selected && option.id && (
-                                                <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info-solid-hover)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                                </svg>
-                                            )}
-                                        </li>
-                                    )
-                                })}
-                            </ul>
                         )}
-                    </div>
-                )}
 
-                <Suspense fallback={<div style={{ width: '24px', height: '24px' }} />}>
-                    <NotificationBell initialUnreadCount={unreadNotificationsCount} />
-                </Suspense>
-
-                {/* Avatar area - Grouped for desktop info, but direct child for mobile gap consistency */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {/* User Info - Hidden on mobile, grouped with avatar on desktop */}
-                    <div className="md-hidden" style={{ textAlign: locale === 'ar' ? 'left' : 'right', flexShrink: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {t(getRoleKey(currentUser.role))}
-                        </div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {currentUser.firstName} {currentUser.lastName}
-                        </div>
-                    </div>
-
-                    {/* Avatar Container with Dropdown. Escape closes the menu
-                        from anywhere in it, the button included: right after
-                        Enter opens it, focus is still on the button. */}
-                    <div style={{ position: 'relative' }} onKeyDown={e => {
-                        if (e.key === 'Escape' && isMenuOpen) { setIsMenuOpen(false); accountRef.current?.focus() }
-                    }}>
-                        {/* A button, so the keyboard can open the account menu too. */}
-                        <button
-                            type="button"
-                            ref={accountRef}
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            aria-expanded={isMenuOpen}
-                            aria-controls={isMenuOpen ? accountMenuId : undefined}
-                            aria-label={t('account_menu' as TranslationKey)}
-                            style={{
-                                padding: 0,
-                                width: '45px',
-                                height: '45px',
-                                borderRadius: '50%',
-                                background: 'var(--veil-50)',
-                                border: '2px solid var(--panel-80)',
-                                overflow: 'hidden',
-                                cursor: 'pointer',
+                        {!isMobile && (
+                            <span style={{
+                                position: 'absolute',
+                                [locale === 'ar' ? 'left' : 'right']: '0.75rem',
+                                transform: isCompanyDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.2s',
                                 display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 4px 6px var(--shadow-faint)',
-                                position: 'relative'
+                                alignItems: 'center'
+                            }}>
+                                <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </span>
+                        )}
+                    </button>
+
+                    {isCompanyDropdownOpen && (
+                        <ul
+                            id={switcherListId}
+                            role="listbox"
+                            aria-label={t('select_company')}
+                            tabIndex={-1}
+                            style={{
+                                listStyle: 'none',
+                                margin: 0,
+                                position: 'absolute',
+                                top: 'calc(100% + 8px)',
+                                [locale === 'ar' ? 'left' : 'right']: 0,
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '0.75rem',
+                                boxShadow: '0 10px 15px -3px var(--shadow-weak), 0 4px 6px -2px var(--shadow-faint)',
+                                zIndex: 1000,
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                                minWidth: '200px',
+                                padding: '0.5rem'
                             }}
                         >
-
-                            {headerAvatar ? (
-                                <Image
-                                    src={headerAvatar}
-                                    alt=""
-                                    width={45}
-                                    height={45}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                            ) : (
-                                <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>{currentUser.gender === 'FEMALE' ? '👩🏻' : '👨🏻'}</span>
-                            )}
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        {isMenuOpen && (
-                            <>
-                                {/* Backdrop to close on click outside */}
-                                <div
-                                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
-                                    onClick={() => setIsMenuOpen(false)}
-                                />
-                                <div id={accountMenuId} className="glass" style={{
-                                    position: 'absolute',
-                                    top: '120%',
-                                    [locale === 'ar' ? 'left' : 'right']: 0,
-                                    // As wide as its widest row (the theme and language
-                                    // switches), at least 200px, never wider than the
-                                    // screen. A fixed 200px cut the theme switch off.
-                                    width: 'max-content',
-                                    minWidth: 'min(200px, calc(100vw - 3rem))',
-                                    maxWidth: 'calc(100vw - 3rem)',
-                                    zIndex: 100,
-                                    padding: '0.5rem',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '0.5rem'
-                                }}>
-                                    <Link
-                                        href={`/dashboard/employees/${currentUser.id}`}
-                                        onClick={() => setIsMenuOpen(false)}
+                            {switcherOptions.map((option, i) => {
+                                const selected = i === selectedOption
+                                return (
+                                    <li
+                                        key={option.id ?? 'all'}
+                                        ref={el => { optionRefs.current[i] = el }}
+                                        role="option"
+                                        aria-selected={selected}
+                                        tabIndex={-1}
+                                        onClick={() => pickOption(i)}
+                                        onKeyDown={e => onOptionKeyDown(e, i)}
                                         style={{
-                                            display: 'block',
-                                            padding: '0.6rem 1rem',
-                                            textDecoration: 'none',
-                                            color: 'var(--text-main)',
-                                            fontSize: '0.9rem',
-                                            borderRadius: '0.5rem',
-                                            transition: 'background 0.2s',
-                                            fontWeight: '500'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        {t('my_profile')}
-                                    </Link>
-                                    {/* One entry, not two: both screens were
-                                        answers to "how do I get into this
-                                        account", and they now live together. */}
-                                    <Link
-                                        href="/dashboard/security-settings"
-                                        onClick={() => setIsMenuOpen(false)}
-                                        style={{
-                                            display: 'block',
-                                            padding: '0.6rem 1rem',
-                                            textDecoration: 'none',
-                                            color: 'var(--text-main)',
-                                            fontSize: '0.9rem',
-                                            borderRadius: '0.5rem',
-                                            transition: 'background 0.2s',
-                                            fontWeight: '500'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        {t('security_settings_nav')}
-                                    </Link>
-                                    {features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
-                                        <Link
-                                            href={`/dashboard/employees/${currentUser.id}/history`}
-                                            onClick={() => setIsMenuOpen(false)}
-                                            style={{
-                                                display: 'block',
-                                                padding: '0.5rem 1rem',
-                                                textDecoration: 'none',
-                                                color: 'var(--text-main)',
-                                                fontSize: '0.9rem',
-                                                borderRadius: '0.5rem',
-                                                transition: 'background 0.2s',
-                                                fontWeight: '500'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--veil-40)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                        >
-                                            {t('history')}
-                                        </Link>
-                                    )}
-                                    <LanguageToggleButton variant="menu-item" onAction={() => setIsMenuOpen(false)} />
-                                    {/* No onAction, unlike the language row: switching
-                                        theme is instant and visible, so closing the
-                                        menu on the click would hide the thing you
-                                        just changed and make comparing the two a
-                                        round trip. Language closes it because the
-                                        whole page reloads behind an overlay anyway. */}
-                                    <ThemeToggleButton variant="menu-item" />
-                                    <button
-                                        onClick={() => action.run('logout', handleLogout)}
-                                        disabled={action.running}
-                                        aria-busy={action.is('logout')}
-                                        style={{
-                                            width: '100%',
-                                            textAlign: locale === 'ar' ? 'right' : 'left',
-                                            padding: '0.6rem 1rem',
-                                            background: 'none',
-                                            border: 'none',
-                                            color: 'var(--danger-fg-strong)',
-                                            fontSize: '0.9rem',
-                                            fontWeight: 'bold',
+                                            padding: '0.625rem 1rem',
                                             cursor: 'pointer',
+                                            fontSize: '0.875rem',
                                             borderRadius: '0.5rem',
-                                            transition: 'background 0.2s'
+                                            color: selected ? 'var(--info-solid-hover)' : 'var(--text-muted)',
+                                            background: selected ? 'var(--info-bg-subtle)' : 'transparent',
+                                            fontWeight: selected ? 600 : 500,
+                                            marginBottom: '2px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
                                         }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--danger-bg-subtle)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = selected ? 'var(--info-bg-subtle)' : 'transparent'}
                                     >
-                                        {t('sign_out')}
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {option.name}
+                                        </span>
+                                        {selected && option.id && (
+                                            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info-solid-hover)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        )}
+                                    </li>
+                                )
+                            })}
+                        </ul>
+                    )}
                 </div>
+            )}
+
+            <span className="ui-topbar-spacer" />
+            <LanguageToggleButton />
+            <Suspense fallback={<span className="ui-topbar-button" aria-hidden="true" />}>
+                <NotificationBell initialUnreadCount={unreadNotificationsCount} />
+            </Suspense>
+            {/* Escape closes the menu from anywhere in it, the button included:
+                right after Enter opens it, focus is still on the button. Tab
+                past its last control closes it too. */}
+            <div ref={accountBox} className="ui-account"
+                onKeyDown={e => { if (e.key === 'Escape') { setIsMenuOpen(false); accountRef.current?.focus() } }}
+                onBlur={e => { if (e.relatedTarget && !accountBox.current?.contains(e.relatedTarget as Node)) setIsMenuOpen(false) }}>
+                <AccountButton person={person} open={isMenuOpen} menuId={accountMenuId} onToggle={() => setIsMenuOpen(open => !open)} buttonRef={accountRef} />
+                {isMenuOpen && (
+                    <AccountMenuPanel id={accountMenuId} person={person} showHistory={showHistory} onClose={() => setIsMenuOpen(false)}
+                        onSignOut={() => action.run('logout', handleLogout)} signingOut={!!action.is('logout')} />
+                )}
             </div>
         </header>
     )

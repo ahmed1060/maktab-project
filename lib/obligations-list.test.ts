@@ -18,7 +18,6 @@ vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(address.query),
 }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
-vi.mock("@/context/HeaderContext", () => ({ useHeader: () => ({ setTitle: () => {}, setSubtitle: () => {} }) }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Obligations" }) }))
 vi.mock("@/lib/useCan", () => ({
     useCan: () => ({ can: (p: string) => p === "obligations.view" ? viewer.sees : p === "obligations.manage" ? viewer.manages : false }),

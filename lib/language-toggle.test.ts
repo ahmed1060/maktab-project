@@ -43,13 +43,14 @@ describe("the option order does not move", () => {
         // An RTL page mirrors a flex row, so without this the half you just
         // clicked jumps to the other end of the control the moment it takes
         // effect.
-        expect(read("components/SegmentedToggle.tsx")).toContain("direction: 'ltr' as const")
+        // The building blocks' switch since the top bar moved onto them (PR 205).
+        expect(read("components/ui/Segmented.tsx")).toContain("dir={fixedOrder ? 'ltr' : undefined}")
     })
 
     it("leaves it off by default, so page filters still mirror", () => {
         // The companies filter belongs to the page and should flip with it.
         // Only the language picker is exempt.
-        expect(read("components/SegmentedToggle.tsx")).toMatch(/fixedOrder\s*=\s*false/)
+        expect(read("components/ui/Segmented.tsx")).toMatch(/fixedOrder\s*=\s*false/)
     })
 })
 
@@ -70,7 +71,7 @@ describe("the sign-in screen stops hand-positioning its controls", () => {
     // to the screen's corners, on a phone they covered Sign in.
     it("holds both switches in the page, under the card, instead of fixed to a corner", () => {
         expect(SCREEN).toContain('<ThemeToggleButton variant="inline" />')
-        expect(SCREEN).toContain('<LanguageToggleButton variant="inline" />')
+        expect(SCREEN).toContain('<LanguageToggleButton />')
         expect(read("app/(auth)/login/page.tsx")).not.toContain('variant="fixed"')
         expect(LOGIN).toContain("<SignInScreen ")
     })

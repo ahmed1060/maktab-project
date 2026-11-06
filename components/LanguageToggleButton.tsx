@@ -1,38 +1,34 @@
 'use client';
 
-import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
-import SegmentedToggle from '@/components/SegmentedToggle';
+import { Segmented, type SegmentedOption } from '@/components/ui';
 import type { Locale } from '@/lib/translations';
 
 interface LanguageToggleButtonProps {
-    /** 'inline' is positioned by whatever holds it — see PreferenceBar. */
-    variant?: 'inline' | 'menu-item';
     onAction?: () => void;
 }
 
 /**
- * Both languages visible, the current one marked.
+ * Both languages visible, the one in use marked (DESIGN.md §5.1): on the top
+ * bar, and under the sign-in card.
  *
- * Was a single button that flipped. With two options that shape has the same
- * problem a self-renaming filter button had: it cannot say which language is on
- * and what clicking would do at the same time, so you find out by clicking.
- *
- * Each option is labelled in its own language rather than translated into the
- * other. Somebody who cannot read the current interface is exactly the person
- * reaching for this control.
+ * Each option is written in its own language rather than translated into the
+ * other: somebody who can't read the interface in use is exactly the person
+ * reaching for this switch. On a phone's top bar they're EN and ع, still named
+ * in full. English stays first in Arabic too, as the switch is about language
+ * rather than in one.
  *
  * No pending state of its own: LanguageProvider holds a full-page overlay at
- * z-index 99999 for the whole switch, so anything rendered here would be
- * underneath it. It is disabled during the switch anyway, so the control does
- * not depend on an overlay in another file to stop a second click.
+ * z-index 99999 for the whole switch, so anything drawn here would be under
+ * it. It's disabled during the switch anyway, so a second click can't depend
+ * on an overlay in another file.
  */
-const OPTIONS: { value: Locale; label: string }[] = [
-    { value: 'en', label: 'English' },
-    { value: 'ar', label: 'العربية' },
+const OPTIONS: SegmentedOption<Locale>[] = [
+    { value: 'en', label: 'English', short: 'EN', lang: 'en' },
+    { value: 'ar', label: 'العربية', short: 'ع', lang: 'ar' },
 ];
 
-export default function LanguageToggleButton({ variant = 'inline', onAction }: LanguageToggleButtonProps) {
+export default function LanguageToggleButton({ onAction }: LanguageToggleButtonProps) {
     const { locale, setLanguage, isChangingLocale, t } = useLanguage();
 
     const handleChange = (next: Locale) => {
@@ -40,30 +36,5 @@ export default function LanguageToggleButton({ variant = 'inline', onAction }: L
         if (onAction) onAction();
     };
 
-    const control = (
-        <SegmentedToggle
-            value={locale}
-            options={OPTIONS}
-            onChange={handleChange}
-            ariaLabel={t('toggle_language')}
-            disabled={isChangingLocale}
-            size={variant === 'menu-item' ? 'sm' : 'md'}
-            fixedOrder
-        />
-    );
-
-    if (variant === 'menu-item') {
-        return (
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0.35rem 1rem',
-                direction: locale === 'ar' ? 'rtl' : 'ltr',
-            }}>
-                {control}
-            </div>
-        );
-    }
-
-    return control;
+    return <Segmented value={locale} options={OPTIONS} onChange={handleChange} label={t('language')} disabled={isChangingLocale} fixedOrder />;
 }

@@ -25,7 +25,6 @@ const state = {
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: state.sessionStatus === "loading" ? null : { user: { id: "u1", role: state.role } }, status: state.sessionStatus }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => en[key as keyof typeof en] ?? key }) }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
-vi.mock("@/context/HeaderContext", () => ({ useHeader: () => ({ setTitle: () => {}, setSubtitle: () => {} }) }))
 vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.grants.has(p), companyWide: (p: string) => state.wide.has(p) }) }))
 vi.mock("swr", () => ({
     default: (key: string | null) => {

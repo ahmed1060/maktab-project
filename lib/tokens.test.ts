@@ -169,7 +169,7 @@ describe("a token is used in the role it was defined for", () => {
     const code = (file: string) => stripComments(readFileSync(file, "utf8"))
     const CSS_CODE = stripComments(CSS)
 
-    const SURFACE_ONLY = ["--panel-", "--veil-", "--segment-raised", "--logo-plate"]
+    const SURFACE_ONLY = ["--panel-", "--veil-", "--logo-plate"]
 
     it("never paints text with a surface or elevation token", () => {
         const offenders: string[] = []
@@ -178,7 +178,7 @@ describe("a token is used in the role it was defined for", () => {
             code(file).split("\n").forEach((line, i) => {
                 const m = line.match(/(?:^|\W)color:\s*'var\((--[a-z0-9-]+)\)'|style\.color\s*=\s*'var\((--[a-z0-9-]+)\)'/)
                 const token = m?.[1] ?? m?.[2]
-                if (token && SURFACE_ONLY.some(p => token.startsWith(p)) && token !== "--segment-raised-shadow") {
+                if (token && SURFACE_ONLY.some(p => token.startsWith(p))) {
                     offenders.push(`${file}:${i + 1}  ${token}`)
                 }
             })
@@ -198,27 +198,37 @@ describe("a token is used in the role it was defined for", () => {
         expect(users, "still drawn with the old side bar's tokens").toEqual([])
     })
 
-    it("gives the raised half of a toggle a value in each theme", () => {
-        // The opposite rule, and the reason it cannot share the sidebar's:
-        // this one sits on whatever the page's surface is, so it has to flip.
+    it("keeps no tokens of the old segmented toggle's", () => {
+        // Its raised half and the shadow under it had a value in each theme.
+        // The building blocks' switch draws the option in use in the brand's
+        // tint, with no shadow, so they went with the toggle (PR 205).
         for (const token of ["--segment-raised", "--segment-raised-shadow"]) {
             const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
-            expect(declarations, token).toHaveLength(2)
+            expect(declarations, token).toHaveLength(0)
         }
+        expect(SOURCES.filter(file => code(file).includes("var(--segment-raised")), "still drawn with the old toggle's tokens").toEqual([])
     })
+
+    // The switch is the building blocks' since the top bar moved onto them
+    // (PR 205): a track on the panel, the option in use in the brand's tint.
+    const segmented = (() => {
+        const ui = readFileSync("components/ui/ui.css", "utf8")
+        return ui.slice(ui.indexOf("\n.ui-segmented {"), ui.indexOf("\n.ui-segmented-short {"))
+    })()
 
     it("does not draw the selected half of a toggle with the panel behind it", () => {
         // --surface *is* the dropdown panel on dark, so the selected pill was
         // the same colour as the menu and read as a hole punched in the track.
-        const toggle = code("components/SegmentedToggle.tsx")
-        expect(toggle).not.toMatch(/background:\s*selected\s*\?\s*'var\(--surface\)'/)
-        expect(toggle).toContain("var(--segment-raised)")
+        // The theme switch sits in the account menu, on --panel-raised.
+        const pressed = segmented.match(/\.ui-segmented-option\[aria-pressed="true"\] \{([^}]*)\}/)?.[1] ?? ""
+        expect(pressed).toContain("background: var(--brand-tint);")
+        expect(pressed).not.toMatch(/var\(--(surface|panel|panel-raised)\)/)
     })
 
     it("does not build a drop shadow out of the text colour", () => {
         // color-mix over --text-strong is a shadow on light and a halo on dark.
-        const toggle = code("components/SegmentedToggle.tsx")
-        expect(toggle).not.toMatch(/boxShadow[^\n]*color-mix[^\n]*--text-strong/)
+        expect(segmented).toContain(".ui-segmented-option {")
+        expect(segmented).not.toMatch(/box-shadow[^\n]*color-mix[^\n]*--(text-strong|ink)/)
     })
 })
 

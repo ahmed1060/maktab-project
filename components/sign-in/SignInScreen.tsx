@@ -37,7 +37,7 @@ export function SignInScreen({ title, subtitle, children }: { title: string; sub
                 </div>
                 <div className="ui-signin-switches">
                     <ThemeToggleButton variant="inline" />
-                    <LanguageToggleButton variant="inline" />
+                    <LanguageToggleButton />
                 </div>
             </footer>
         </div>

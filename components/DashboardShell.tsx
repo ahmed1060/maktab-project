@@ -180,27 +180,13 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 background: 'transparent',
                 direction: isRtl ? 'rtl' : 'ltr',
             }}>
-                {/* Floating Glass Header */}
-                <div style={{
-                    // Tokenised: this was a hardcoded white glass, so on a dark
-                    // ground it became a pale bar with the page heading behind
-                    // it showing straight through. Saturation on top of the blur
-                    // is what makes it read as glass rather than as a veil.
-                    background: isScrolled ? 'var(--header-glass-bg)' : 'transparent',
-                    backdropFilter: isScrolled ? 'blur(20px) saturate(160%)' : 'none',
-                    WebkitBackdropFilter: isScrolled ? 'blur(20px) saturate(160%)' : 'none',
-                    borderBottom: isScrolled ? '1px solid var(--header-glass-border)' : '1px solid transparent',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 40,
-                    boxShadow: isScrolled ? 'var(--header-shadow)' : 'none',
-                    transition: 'all 0.3s ease',
-                    margin: isScrolled ? '1rem' : '0',
-                    borderRadius: isScrolled ? '1.5rem' : '0',
-                    marginTop: isScrolled ? '1rem' : '0',
-                }}>
+                {/* The top bar (DESIGN.md §5.1), at the top as the page scrolls.
+                    Past 10px it floats as glass, drawn on the bar inside this
+                    frame, which keeps its height: the page under it never moves. */}
+                <div className="ui-topbar-frame" data-floating={isScrolled ? 'true' : 'false'}>
                     <DashboardHeader
                         user={user}
+                        company={{ name: displayName, logoUrl }}
                         onMenuClick={() => setDrawerOpen(true)}
                         menuOpen={drawerOpen}
                     />
@@ -208,7 +194,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
                 {/* The skip link's target: the page itself, after the header's
                     controls (bell, account menu), which repeat on every page too. */}
-                <div id="main-content" tabIndex={-1} style={{ padding: '2rem', maxWidth: '1600px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+                <div id="main-content" tabIndex={-1} className="ui-page-area">
                     {/* Notes above the page (DESIGN.md §5.5), rather than in it,
                         so they're on every screen without each page having to
                         remember. Neither can be closed: each goes when what it

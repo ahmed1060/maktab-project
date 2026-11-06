@@ -39,6 +39,9 @@
 .ui-swatch-option,
 .ui-side-item,
 .ui-side-close,
+.ui-topbar-button,
+.ui-topbar-account,
+.ui-segmented-option,
 .ui-side-legal a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -1154,11 +1157,6 @@
   gap: var(--space-2);
 }
 
-/* Until the app shell (DESIGN.md §5.1) replaces it, the old top bar steps
-   aside on a page with its own page header, so the page is named once. */
-:root:has(.ui-page-header) .ui-topbar-title {
-  display: none;
-}
 /* And behind a page built from the building blocks, the old moving gradient
    gives way to the page colour, so text on the page keeps its contrast. */
 :root:has(.ui-page) body {
@@ -2296,6 +2294,23 @@ a.ui-row:focus-visible {
   font-size: var(--text-xs);
   font-weight: 600;
   line-height: 1;
+}
+/* The top bar's account button, and the head of its menu (§5.1). */
+.ui-avatar-32 {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-sm);
+}
+.ui-avatar-40 {
+  width: 40px;
+  height: 40px;
+  font-size: var(--text-md);
+}
+.ui-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 .ui-person {
   display: inline-flex;
@@ -3540,3 +3555,326 @@ html[lang="ar"] .ui-empty-title {
   }
 }
 /* end of the side bar */
+
+/* ── The switch (§5.1): the language and the theme, every choice in view ── */
+.ui-segmented {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+}
+.ui-segmented-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 30px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ui-segmented-option:hover {
+  color: var(--ink);
+}
+.ui-segmented-option[aria-pressed="true"] {
+  background: var(--brand-tint);
+  color: var(--brand-text);
+  font-weight: 500;
+}
+.ui-segmented-option:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 1px;
+}
+.ui-segmented-option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+/* A shorter label, on a phone's top bar alone. */
+.ui-segmented-short {
+  display: none;
+}
+
+/* ── The top bar (§5.1) ──
+   It takes the same room at the top of the page and floating, so the page
+   under it never moves: the frame is sticky and keeps its height, and the
+   bar inside it moves in from the edges, as glass, once the page scrolls. */
+.ui-topbar-frame {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 40;
+  block-size: 60px;
+}
+.ui-topbar {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  box-sizing: border-box;
+  block-size: 60px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-8);
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-ui);
+  transition: background-color 300ms ease-out, backdrop-filter 300ms ease-out, -webkit-backdrop-filter 300ms ease-out, border-color 300ms ease-out, box-shadow 300ms ease-out, inset 300ms ease-out, border-radius 300ms ease-out, padding 300ms ease-out;
+}
+.ui-topbar-frame[data-floating="true"] .ui-topbar {
+  inset-block-start: var(--space-4);
+  inset-inline: var(--space-4);
+  padding-inline: var(--space-4);
+  border-radius: 24px;
+  background: var(--header-glass-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-color: var(--header-glass-border);
+  box-shadow: var(--header-shadow);
+}
+/* Without the blur the glass is see-through, and its text, over a dark page,
+   could fall below 4.5:1. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ui-topbar-frame[data-floating="true"] .ui-topbar {
+    background: var(--panel);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-topbar {
+    transition: none;
+  }
+}
+.ui-topbar-spacer {
+  flex: 1;
+}
+.ui-topbar-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 150ms ease-out;
+}
+.ui-topbar-button:hover,
+.ui-topbar-account:hover,
+.ui-topbar-account[aria-expanded="true"] {
+  background: var(--brand-tint);
+}
+.ui-topbar-button:focus-visible,
+.ui-topbar-account:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+.ui-topbar-icon {
+  inline-size: 20px;
+  block-size: 20px;
+}
+/* How many notifications are unread, at the bell's top end corner. */
+.ui-topbar-count {
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-end: 4px;
+  box-sizing: border-box;
+  min-inline-size: 18px;
+  block-size: 18px;
+  padding-inline: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* The menu button and the company's mark: a phone's. */
+.ui-topbar-menu,
+.ui-topbar-mark {
+  display: none;
+}
+/* 28px across here, where the side bar's is 32px. */
+.ui-topbar-mark .ui-company-mark,
+.ui-topbar-mark .ui-logo-plate {
+  inline-size: 28px;
+  block-size: 28px;
+}
+.ui-account {
+  position: relative;
+  flex: none;
+}
+.ui-topbar-account {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 44px;
+  padding-block: 0;
+  padding-inline: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 150ms ease-out;
+}
+.ui-topbar-who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-inline-size: 0;
+  line-height: 18px;
+  text-align: start;
+}
+.ui-topbar-name {
+  max-inline-size: 200px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-topbar-role {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+.ui-topbar-caret {
+  color: var(--ink-2);
+}
+/* The account menu (§5.1): not a dialog, its links and buttons are Tab's. */
+.ui-account-menu {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  inline-size: 300px;
+  max-inline-size: calc(100vw - 32px);
+  padding: var(--space-2);
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--elev-2);
+  overscroll-behavior: contain;
+}
+.ui-account-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-3);
+}
+/* A long name or company wraps, a word with no spaces in it too. */
+.ui-account-who {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.ui-account-name {
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+.ui-account-role {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+.ui-account-menu .ui-menu-item {
+  min-block-size: 40px;
+  gap: var(--space-3);
+}
+.ui-account-menu .ui-menu-item .ui-icon {
+  color: var(--ink-2);
+}
+.ui-account-theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+}
+.ui-account-theme-label {
+  color: var(--ink);
+  font-size: var(--text-md);
+}
+@media (max-width: 1023px) {
+  .ui-topbar-frame,
+  .ui-topbar {
+    block-size: 56px;
+  }
+  .ui-topbar {
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
+  }
+  .ui-topbar-frame[data-floating="true"] .ui-topbar {
+    inset-block-start: var(--space-2);
+    inset-inline: var(--space-2);
+    padding-inline: 0;
+  }
+  .ui-topbar-menu {
+    display: inline-grid;
+  }
+  .ui-topbar-mark {
+    display: inline-flex;
+  }
+  .ui-topbar-icon {
+    inline-size: 22px;
+    block-size: 22px;
+  }
+  .ui-topbar-who,
+  .ui-topbar-caret {
+    display: none;
+  }
+  .ui-topbar-account {
+    justify-content: center;
+    inline-size: 44px;
+    padding: 0;
+  }
+  .ui-topbar .ui-segmented-long {
+    display: none;
+  }
+  .ui-topbar .ui-segmented-short {
+    display: inline;
+  }
+  .ui-topbar .ui-segmented-option {
+    justify-content: center;
+    min-inline-size: 40px;
+    min-block-size: 36px;
+    padding-inline: var(--space-2);
+  }
+}
+/* end of the top bar */
+
+/* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
+   bar, as the approved mock-up has it. */
+.ui-page-area {
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 1600px;
+  margin-inline: auto;
+  padding: var(--space-2) var(--space-8) var(--space-8);
+}
+@media (max-width: 1023px) {
+  .ui-page-area {
+    padding: var(--space-1) var(--space-4) var(--space-4);
+  }
+}

@@ -26,6 +26,8 @@ const CSS = readFileSync("app/globals.css", "utf8")
 // blocks' CSS since it moved onto them (DESIGN.md §5.1).
 const UI = readFileSync("components/ui/ui.css", "utf8")
 const sideBarCss = UI.slice(UI.indexOf(".ui-side-bar {"), UI.indexOf("/* end of the side bar */"))
+// The top bar's layer, set there too since it moved onto them (PR 205).
+const topBarCss = UI.slice(UI.indexOf(".ui-topbar-frame {"), UI.indexOf("/* end of the top bar */"))
 const floating = CSS.match(/\n\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
 const phone = CSS.match(/@media \(max-width: 1023px\) \{[\s\S]*?\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
 
@@ -59,6 +61,7 @@ describe("the attribution never covers the navigation", () => {
         const others = [
             ...zIndexesIn([...lines.slice(0, start), ...lines.slice(end + 1)]),
             ...[...sideBarCss.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1])),
+            ...[...topBarCss.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1])),
         ]
 
         expect(mine, "the floating branch declares exactly one z-index").toHaveLength(1)

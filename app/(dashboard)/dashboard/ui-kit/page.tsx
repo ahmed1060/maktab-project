@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
     CalendarBlankIcon, CircleHalfIcon, ClipboardTextIcon, ClockCounterClockwiseIcon, MapPinIcon, PencilSimpleIcon, PlusIcon, SortAscendingIcon, TrashIcon, UserIcon,
 } from '@phosphor-icons/react/ssr'
 import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import { useLanguage } from '@/context/LanguageContext'
-import { useHeader } from '@/context/HeaderContext'
 import {
     Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, PageHeader, PageNote, Pager, Person,
     Row, RowMenu, Rows, SearchInput, Section, SectionLink, Select, StatusBadge, Tabs, TextInput, TotalTiles, taskStatusTone, type Column,
@@ -31,7 +30,7 @@ const TASKS: Sample[] = [
 
 const TEXT = {
     en: {
-        page: 'Building blocks', title: 'Tasks', subtitle: 'Manage team tasks, deadlines, and project progress', create: 'Create new task',
+        title: 'Tasks', subtitle: 'Manage team tasks, deadlines, and project progress', create: 'Create new task',
         search: 'Search tasks…', employee: 'Employee', allEmployees: 'All employees', status: 'Status', allStatuses: 'All statuses', sort: 'Sort by', smart: 'Smart sort (status)',
         tabs: 'Which tasks', all: 'All tasks', mine: 'My tasks', task: 'Task', assignee: 'Assignee', deadline: 'Deadline', difficulty: 'Difficulty', actions: 'Actions',
         results: '18 tasks', start: 'Start', next: 'Continue', view: 'View',
@@ -45,7 +44,7 @@ const TEXT = {
         pageNote: "A note above the page, for what's true on every page for now, such as a free trial.",
     },
     ar: {
-        page: 'مكونات الواجهة', title: 'المهام', subtitle: 'إدارة مهام الفريق والمواعيد النهائية وتقدم المشروع', create: 'إنشاء مهمة جديدة',
+        title: 'المهام', subtitle: 'إدارة مهام الفريق والمواعيد النهائية وتقدم المشروع', create: 'إنشاء مهمة جديدة',
         search: 'بحث في المهام…', employee: 'الموظف', allEmployees: 'كل الموظفين', status: 'الحالة', allStatuses: 'جميع الحالات', sort: 'ترتيب حسب', smart: 'ترتيب ذكي (الحالة)',
         tabs: 'أي المهام', all: 'كل المهام', mine: 'مهامي', task: 'المهمة', assignee: 'المكلف', deadline: 'الموعد النهائي', difficulty: 'الصعوبة', actions: 'الإجراءات',
         results: '١٨ مهمة', start: 'بدء', next: 'متابعة', view: 'عرض',
@@ -63,19 +62,12 @@ const TEXT = {
 export default function UiKitPage() {
     const viewer = useViewer()
     const { locale } = useLanguage()
-    const { setTitle, setSubtitle } = useHeader()
     const ar = locale === 'ar'
     const s = TEXT[ar ? 'ar' : 'en']
     const [tab, setTab] = useState<'all' | 'mine'>('all')
     const [page, setPage] = useState(1)
     const [query, setQuery] = useState('')
     const [status, setStatus] = useState('')
-
-    useEffect(() => {
-        setTitle(s.page)
-        setSubtitle(null)
-        return () => { setTitle(null); setSubtitle(null) }
-    }, [s.page, setTitle, setSubtitle])
 
     if (viewer?.role !== 'SUPER_ADMIN') return <AccessDenied superAdmins />
 

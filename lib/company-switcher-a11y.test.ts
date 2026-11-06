@@ -35,7 +35,7 @@ describe("the switcher", () => {
     const list = src.slice(src.indexOf('role="listbox"'), src.indexOf("</ul>"))
 
     it("opens from a button that says it opens a list, and whether it is open", () => {
-        expect(opener).toContain('<button\n                            type="button"')
+        expect(opener).toMatch(/<button\s+type="button"/)
         expect(opener).toContain('aria-haspopup="listbox"')
         expect(opener).toContain("aria-expanded={isCompanyDropdownOpen}")
         expect(opener).toContain("onKeyDown={onSwitcherKeyDown}")

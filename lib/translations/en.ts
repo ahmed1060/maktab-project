@@ -62,6 +62,10 @@ export const en = {
         // The side bar (DESIGN.md §5.1): the menu's name, and the drawer's close button on a phone.
         nav_main_menu: "Main menu",
         close_menu: "Close menu",
+        // The top bar (DESIGN.md §5.1): the language switch's name, how many notifications are unread, heard after the bell's name, and the role under a name in the account menu.
+        language: "Language",
+        top_bar_unread: ", {count} unread",
+        account_role_at: "{role} at {company}",
         // Heard after Requests in the side bar: how many wait on this person under To review (DESIGN.md §5.1).
         side_bar_to_review: ", {count} to review",
         remove: "Remove",
@@ -78,7 +82,7 @@ export const en = {
         no_requests_found: "No requests found",
         confirm: "Confirm",
         my_profile: "My profile",
-        account_menu: "Account menu",
+        account_menu_for: "Account menu, {name}, {role}",
         salary_history: "Salary History",
         salary_label: "Salary",
         day_off_credit_tab: "Day Off Credit",
@@ -86,7 +90,7 @@ export const en = {
         cancel_button: "Cancel",
         date_label: "Date",
         actions_label: "Actions",
-        sign_out: "Sign Out",
+        sign_out: "Sign out",
         dashboard: "Dashboard",
         tasks: "Tasks",
         task_details: "Task details",
@@ -1078,7 +1082,6 @@ export const en = {
         expiry_date_label: "Expiry Date",
         reminder_days_label: "Reminder Days",
         delete_note_msg: "Are you sure you want to delete this note? This action cannot be undone.",
-        toggle_language: "العربية",
         geolocation_not_supported: "Geolocation not supported",
         failed_get_location: "Failed to get location",
         task_approved_success: "Task approved successfully",
