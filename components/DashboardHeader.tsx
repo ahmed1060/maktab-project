@@ -471,7 +471,10 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
                                 margin: 0,
                                 position: 'absolute',
                                 top: 'calc(100% + 8px)',
-                                [locale === 'ar' ? 'left' : 'right']: 0,
+                                // From the switcher's start edge: it's at the
+                                // bar's start now, so from its end the list ran
+                                // off a phone's screen (Codex review on PR 205).
+                                insetInlineStart: 0,
                                 background: 'var(--surface)',
                                 border: '1px solid var(--border)',
                                 borderRadius: '0.75rem',

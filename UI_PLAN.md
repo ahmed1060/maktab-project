@@ -4417,3 +4417,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     already are.
   - What pages set its title with is gone, with its last use, on the UI
     kit page.
+  - The Super Admin's company list opens from the switcher's start edge,
+    now that the switcher is at the bar's start. From its end edge, as it
+    opened when the switcher was at the bar's end, it ran off a phone's
+    screen, 72px in English and 79px in Arabic (Codex review).

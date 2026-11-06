@@ -250,6 +250,15 @@ describe("the bar", () => {
         expect(readFileSync("app/(dashboard)/dashboard/ui-kit/page.tsx", "utf8")).not.toMatch(/useHeader|setTitle\(/)
     })
 
+    // Codex review on PR 205: it opened from its end edge, as when the
+    // switcher was at the bar's end, so on a phone it ran off the screen's
+    // start, 72px in English and 79px in Arabic.
+    it("opens the Super Admin's company list from the switcher's start edge, into the screen", () => {
+        const list = header.slice(header.indexOf('role="listbox"'), header.indexOf("{switcherOptions.map("))
+        expect(list).toContain("insetInlineStart: 0,")
+        expect(list).not.toMatch(/\[locale === 'ar' \? 'left' : 'right'\]|\b(left|right): 0/)
+    })
+
     it("has the Super Admin's company switcher at its start, then the language switch, the bell and the account button", () => {
         const markup = header.slice(header.indexOf("return (", header.indexOf("export default function DashboardHeader")))
         const at = (s: string) => { const i = markup.indexOf(s); expect(i, s).toBeGreaterThan(-1); return i }
