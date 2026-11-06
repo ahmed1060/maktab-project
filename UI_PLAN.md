@@ -559,8 +559,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      calendar, merged in #210 on 2026-11-06, which finished it; then the
      two windows Create task opens: the Super Admin's templates for the
      bulk upload of tasks, merged in #211 on 2026-11-06, then the bulk
-     review of tasks, in two parts: its window, in #212, then reading the
-     file's rows;
+     review of tasks, in two parts: its window, merged in #212 on
+     2026-11-06, then reading the file's rows, in #213;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4629,3 +4629,24 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-06:** From Codex's review of #212: Undo stays off while the
   tasks are sent, as Edit, Remove and Cancel are. A row put back then
   wasn't among those sent, and the dialog closed without it.
+- **2026-11-06:** The bulk review's window was merged in #212. Its second
+  part, in #213: reading the file's rows moves into `lib/bulk-tasks.ts`
+  (`readRows`, `readDeadline`), with tests (`DESIGN.md` §5.5, "Rows read
+  from a file").
+  - The file is read once the people and clients its rows name have
+    loaded: a file picked as Create task opened was read before them, so
+    every username and client in it was one that wasn't found (#212's
+    browser flows). If they can't load, a toast says so.
+  - A file that can't be read, such as an old .xls, which the picker
+    offered, is said in a toast: it was an error in the console and
+    nothing on the page. The picker takes .xlsx alone. A file with no
+    tasks from row 3, or more than 50, is said in a toast too.
+  - Each cell is read as the file shows it, or kept as a mistake that
+    says what the file had. A date cell was the day before west of UTC, a
+    time that wasn't one was midnight, a typed "1" was 1 January 2001 and
+    "5.1.2027" the 1st of May, as the browser guesses, and a difficulty in
+    words was 0. Arabic digits are read, and ص or م.
+  - A row with no title was dropped with nothing said. It's read, and the
+    review says it has no title.
+  - The Upload button is busy while the file is read, and the template
+    takes its rows' limits from `lib/bulk-tasks.ts`.
