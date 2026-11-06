@@ -318,8 +318,9 @@
 /* ── A date, or a range of dates (§5.3) ──
    The calendar a date field opens, drawn as the menus are. On a computer it's
    fixed against its field: components/ui/Calendar.tsx says where, as
-   --calendar-start and --calendar-top or --calendar-bottom. The layer under
-   it is nothing there, so a click elsewhere goes on to what was clicked. */
+   --calendar-start and --calendar-top or --calendar-bottom, and how tall it
+   can be, as --calendar-max-height. The layer under it is nothing there, so
+   a click elsewhere goes on to what was clicked. */
 .ui-calendar-layer {
   display: contents;
 }
@@ -334,6 +335,10 @@
   gap: var(--space-2);
   /* As wide as its days: what's under them wraps rather than widen it. */
   width: min-content;
+  /* No taller than the room by its field: on a short screen it scrolls inside. */
+  max-block-size: var(--calendar-max-height, 100dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--space-3);
   background: var(--panel-raised);
   color: var(--ink);
@@ -449,6 +454,8 @@
     position: relative;
     inset: auto;
     width: min(100%, 360px);
+    /* The screen less its edges, as a phone on its side is short. */
+    max-block-size: 100%;
   }
   .ui-calendar-weekdays,
   .ui-calendar-days {

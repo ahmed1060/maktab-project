@@ -131,20 +131,28 @@ describe("where the calendar opens on a computer (lib/calendar-place.ts)", () =>
 
     it("is under the field, from its start edge", async () => {
         const { calendarPlace } = await import("./calendar-place")
-        expect(calendarPlace(field, size, view, false)).toEqual({ start: 100, top: 240 })
+        expect(calendarPlace(field, size, view, false)).toEqual({ start: 100, top: 240, maxHeight: 552 })
         // In Arabic the start edge is the right one, counted from the screen's right.
-        expect(calendarPlace(field, size, view, true)).toEqual({ start: 880, top: 240 })
+        expect(calendarPlace(field, size, view, true)).toEqual({ start: 880, top: 240, maxHeight: 552 })
     })
 
     it("is above the field when there's no room below", async () => {
         const { calendarPlace } = await import("./calendar-place")
-        expect(calendarPlace({ ...field, top: 600, bottom: 636 }, size, view, false)).toEqual({ start: 100, bottom: 204 })
+        expect(calendarPlace({ ...field, top: 600, bottom: 636 }, size, view, false)).toEqual({ start: 100, bottom: 204, maxHeight: 588 })
     })
 
-    it("takes the side with more room when it fits on neither", async () => {
+    it("takes the side with more room when it fits on neither, and is no taller than the room there", async () => {
         const { calendarPlace } = await import("./calendar-place")
-        expect(calendarPlace({ ...field, top: 150, bottom: 186 }, size, { width: 1280, height: 400 }, false)).toEqual({ start: 100, top: 190 })
-        expect(calendarPlace({ ...field, top: 250, bottom: 286 }, size, { width: 1280, height: 400 }, false)).toEqual({ start: 100, bottom: 154 })
+        // 202px below the field and 138px above it, for a calendar 330px tall: it scrolls inside.
+        expect(calendarPlace({ ...field, top: 150, bottom: 186 }, size, { width: 1280, height: 400 }, false)).toEqual({ start: 100, top: 190, maxHeight: 202 })
+        expect(calendarPlace({ ...field, top: 250, bottom: 286 }, size, { width: 1280, height: 400 }, false)).toEqual({ start: 100, bottom: 154, maxHeight: 238 })
+    })
+
+    it("is measured whole, though it scrolls inside", async () => {
+        const { wholeHeight } = await import("./calendar-place")
+        // Cut to 300px, it's 452px with all of it shown: its own height would say it fits where it doesn't.
+        expect(wholeHeight({ scrollHeight: 450, clientHeight: 298, offsetHeight: 300 })).toBe(452)
+        expect(wholeHeight({ scrollHeight: 328, clientHeight: 328, offsetHeight: 330 })).toBe(330)
     })
 
     it("stays on the screen sideways, 8px in from its edges", async () => {
@@ -226,6 +234,9 @@ describe("the calendar (components/ui/Calendar.tsx)", () => {
         expect(s).toContain("document.body")
         expect(s).toContain("calendarPlace(")
         expect(s).toContain("'--calendar-start'")
+        // As tall as the room it has, and measured whole, though it scrolls inside.
+        expect(s).toContain("'--calendar-max-height'")
+        expect(s).toContain("wholeHeight(panel)")
         // Follows its field as the page scrolls or the window changes size.
         expect(s).toMatch(/addEventListener\('scroll', [a-z]+, true\)/)
         expect(s).toMatch(/addEventListener\('resize', [a-z]+\)/)
@@ -371,6 +382,15 @@ describe("its look", () => {
         }
         // On a computer the layer under it is nothing: a click goes through to the page.
         expect(rule(".ui-calendar-layer")).toContain("display: contents")
+    })
+
+    it("is no taller than the room it has, and scrolls inside", () => {
+        const popup = rule(".ui-calendar")
+        expect(popup).toContain("max-block-size: var(--calendar-max-height")
+        expect(popup).toContain("overflow-y: auto")
+        expect(popup).toContain("overscroll-behavior: contain")
+        // On a phone, the screen less its edges, whatever the room by the field.
+        expect(rule("  .ui-calendar", phone)).toContain("max-block-size: 100%")
     })
 
     it("has 36px days, the day picked in the brand colour, today in its text colour, and a range's days on its tint", () => {

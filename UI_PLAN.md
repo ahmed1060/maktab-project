@@ -4513,3 +4513,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The fields' old look, which only unused code still drew, is gone, with
     the two colours only the old calendar used (`app/globals.css`): Reset's
     pale red and a range's indigo text.
+  - Codex's finding: on a screen too short for it, such as a phone on its
+    side, the calendar ran off the screen, with its month or its Done out
+    of reach. It's now as tall as the room it has, by its field or on a
+    phone's screen, and scrolls inside.
