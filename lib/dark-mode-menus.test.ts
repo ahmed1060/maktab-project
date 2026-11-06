@@ -12,10 +12,14 @@ const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true 
     e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
 
 describe("notifications in the dark theme", () => {
-    it("put read notifications on the theme's surface, not white", () => {
+    it("put read notifications on the theme's panel, not white", () => {
+        // The bell's panel draws itself with the building blocks' CSS since PR 207.
         const bell = readFileSync("components/NotificationBell.tsx", "utf8")
-        expect(bell).toContain("n.read ? 'var(--surface)'")
+        expect(bell).not.toContain("style={{")
         expect(bell).not.toMatch(/'white'|'black'/)
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const panel = css.slice(css.indexOf("\n.ui-notices {"), css.indexOf("}", css.indexOf("\n.ui-notices {")))
+        expect(panel).toContain("background: var(--panel-raised);")
     })
 
     it("and nothing paints a background in a named colour the theme can't change", () => {

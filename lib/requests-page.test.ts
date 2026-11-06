@@ -3,6 +3,7 @@ import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import type { FeedRow } from "@/lib/requests/kinds"
+import { noticeTarget } from "@/lib/notice-target"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 
@@ -680,8 +681,8 @@ describe("the old history page and links to it", () => {
         // bar's count of them is gone: what waits is counted on Requests in
         // the side bar (lib/requests-waiting.test.ts).
         expect(readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")).toContain("href: '/dashboard/requests?tab=review&kind=nameChange&show=waiting'")
-        expect(readFileSync("components/NotificationBell.tsx", "utf8")).toContain("router.push(`/dashboard/requests?kind=nameChange&highlight=${notification.relatedId}`)")
-        for (const f of ["components/DashboardHeader.tsx", "app/(dashboard)/dashboard/page.tsx", "components/NotificationBell.tsx"]) {
+        expect(noticeTarget({ id: "n1", type: "PROFILE_UPDATE_REJECTED", relatedId: "p1", userId: "u1" })).toBe("/dashboard/requests?kind=nameChange&highlight=p1")
+        for (const f of ["components/DashboardHeader.tsx", "app/(dashboard)/dashboard/page.tsx", "components/NotificationBell.tsx", "lib/notice-target.ts"]) {
             expect(readFileSync(f, "utf8"), f).not.toContain("/dashboard/profile-requests")
         }
     })
@@ -706,9 +707,8 @@ describe("the old history page and links to it", () => {
     })
 
     it("are a notification's link to its request, without asking for its status first", () => {
-        const bell = readFileSync("components/NotificationBell.tsx", "utf8")
-        expect(bell).toContain("router.push(`/dashboard/requests?highlight=${notification.relatedId}`)")
-        expect(bell).not.toContain("/dashboard/requests/history")
+        expect(noticeTarget({ id: "n1", type: "REQUEST_STATUS_UPDATED", relatedId: "q1", userId: "u1" })).toBe("/dashboard/requests?highlight=q1")
+        for (const f of ["components/NotificationBell.tsx", "lib/notice-target.ts"]) expect(readFileSync(f, "utf8"), f).not.toContain("/dashboard/requests/history")
     })
 })
 

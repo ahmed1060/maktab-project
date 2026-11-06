@@ -43,6 +43,7 @@
 .ui-topbar-account,
 .ui-segmented-option,
 .ui-company-picker-button,
+.ui-notice,
 .ui-side-legal a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -4037,6 +4038,171 @@ html[lang="ar"] .ui-empty-title {
   }
 }
 /* end of the company picker */
+
+/* ── The bell's panel (§5.1): under the bar from the bell's end edge ── */
+.ui-bell {
+  position: relative;
+  flex: none;
+}
+.ui-bell .ui-topbar-button[aria-expanded="true"] {
+  background: var(--brand-tint);
+  color: var(--brand-text);
+}
+/* Not a dialog, as the account menu isn't: its button and links are Tab's. */
+.ui-notices {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  inline-size: 380px;
+  max-inline-size: calc(100vw - 16px);
+  overflow: hidden;
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--elev-2);
+}
+/* As tall with Mark all as read as without, so nothing moves when it goes. */
+.ui-notices-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-block-size: 48px;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--rule);
+}
+.ui-notices-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: var(--leading-lg);
+}
+.ui-notices-title:focus {
+  outline: none;
+}
+.ui-notices-title:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: var(--radius-field);
+}
+/* Loading, none, or not loaded, with Try again. */
+.ui-notices-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  color: var(--muted);
+  font-size: var(--text-md);
+  text-align: center;
+}
+/* As tall as its rows, up to 480px and less on a short screen, under its head. */
+.ui-notices-list {
+  max-block-size: min(480px, calc(100vh - 160px));
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.ui-notices-list > li {
+  border-block-end: 1px solid var(--rule);
+}
+.ui-notices-list > li:last-child {
+  border-block-end: 0;
+}
+.ui-notices-list > li[data-unread] {
+  background: var(--brand-tint);
+}
+/* One to deal with now: an overdue row's look (§5.5), at the top until it's dealt with. */
+.ui-notices-list > li[data-tone="overdue"] {
+  background: var(--overdue-row);
+  border-inline-start: 3px solid var(--problem-text);
+}
+.ui-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 150ms ease-out;
+}
+a.ui-notice:hover {
+  background: var(--brand-tint);
+}
+.ui-notices-list > li[data-unread] > a.ui-notice:hover {
+  background: var(--brand-tint-strong);
+}
+a.ui-notice:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: -2px;
+}
+.ui-notice-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral-fg);
+}
+.ui-notices-list > li[data-unread] .ui-notice-icon {
+  background: var(--brand-tint-strong);
+  color: var(--brand-text);
+}
+.ui-notices-list > li[data-tone="overdue"] .ui-notice-icon {
+  background: var(--status-problem-bg);
+  color: var(--status-problem-fg);
+}
+.ui-notice-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+.ui-notice-text {
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  overflow-wrap: anywhere;
+}
+.ui-notices-list > li[data-unread] .ui-notice-text {
+  font-weight: 500;
+}
+.ui-notice-time {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+/* Level with what it says' first line. */
+.ui-notice-dot {
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  margin-block-start: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+}
+@media (max-width: 1023px) {
+  .ui-bell {
+    position: static;
+  }
+  /* Across the bar, 8px in from its edges, as the bar is its frame here. */
+  .ui-notices {
+    inset-inline: var(--space-2);
+    inline-size: auto;
+  }
+}
+/* end of the bell's panel */
 
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
    bar, as the approved mock-up has it. */

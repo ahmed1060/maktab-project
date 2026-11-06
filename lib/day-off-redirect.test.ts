@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync, existsSync } from "node:fs"
 import { dayOffAddress } from "@/lib/requests/old-addresses"
+import { noticeTarget } from "@/lib/notice-target"
 
 /**
  * The Day off page sends people to the one Requests page (UI_PLAN.md §2.3,
@@ -36,9 +37,8 @@ describe("the Day off page's address", () => {
 
 describe("the links to day off", () => {
     it("are a notification's, to its request on the Requests page", () => {
-        const bell = readFileSync("components/NotificationBell.tsx", "utf8")
-        expect(bell).toContain("router.push(`/dashboard/requests?kind=dayOff&highlight=${notification.relatedId}`)")
-        expect(bell).not.toContain("/dashboard/day-off-requests")
+        expect(noticeTarget({ id: "n1", type: "DAY_OFF_RESULT", relatedId: "d1", userId: "u1" })).toBe("/dashboard/requests?kind=dayOff&highlight=d1")
+        for (const f of ["components/NotificationBell.tsx", "lib/notice-target.ts"]) expect(readFileSync(f, "utf8"), f).not.toContain("/dashboard/day-off-requests")
     })
 
     it("are the dashboard's: the waiting ones under To review, and one's own on Mine", () => {

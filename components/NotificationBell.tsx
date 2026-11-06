@@ -1,17 +1,20 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useEffect, useId, useRef, useState, type RefObject } from "react"
+import Link from "next/link"
 import { BellIcon } from "@phosphor-icons/react/ssr"
-import { Icon } from "@/components/ui"
 import useSWR from "swr"
+import { Button, Icon } from "@/components/ui"
 import { fetcher } from "@/lib/swr-fetcher"
-import { useRouter } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
 import { renderNotice, type NoticeParam } from "@/lib/notice"
 import type { TranslationKey } from "@/lib/translations"
-import { attendanceNoticeTarget } from "@/lib/attendance-notice-target"
+import { noticeTarget } from "@/lib/notice-target"
+import { noticeAge, noticeExactTime } from "@/lib/notice-age"
+import { noticeIcon } from "@/lib/notice-icon"
+import { useNow } from "@/lib/useNow"
 
-interface Notification {
+export interface Notice {
     id: string
     type: string
     message: string
@@ -20,208 +23,166 @@ interface Notification {
     read: boolean
     priority?: 'NORMAL' | 'HIGH' | 'CRITICAL'
     // Null when the notification is addressed to a SuperAdmin instead of a
-    // User. Only the employee-scoped routes below dereference it, and those
-    // types are never sent to a SuperAdmin — but guard rather than assume.
+    // User. Only a notice of their own pay reads it, and those are never sent
+    // to a SuperAdmin; lib/notice-target.ts guards rather than assumes.
     userId: string | null
     superAdminId: string | null
     relatedId: string | null
     createdAt: string
 }
 
-const NO_NOTIFICATIONS: Notification[] = []
+const NO_NOTICES: Notice[] = []
 
-// A CRITICAL notice stays unread, red and at the top until what it is about
-// is dealt with; opening the bell does not read it (ATTENDANCE_PLAN.md §13.4).
-const pinned = (n: Notification) => n.priority === 'CRITICAL' && !n.read
-const background = (n: Notification) => pinned(n) ? 'var(--danger-bg)' : n.read ? 'var(--surface)' : 'var(--info-bg-sky)'
+/** What /api/notifications answers. */
+type NoticeList = { data?: Notice[] }
 
-export default function NotificationBell({ initialUnreadCount = 0 }: { initialUnreadCount?: number }) {
-    const [isOpen, setIsOpen] = useState(false)
-    const dropdownRef = useRef<HTMLDivElement>(null)
-    const router = useRouter()
+/**
+ * A CRITICAL notice stays unread, red and at the top until what it is about
+ * is dealt with: neither following it nor Mark all as read reads it
+ * (ATTENDANCE_PLAN.md §13.4).
+ */
+export const pinned = (n: Pick<Notice, 'priority' | 'read'>) => n.priority === 'CRITICAL' && !n.read
+
+/** The list the bell has, with those `pick` chooses read. */
+const readIn = (current: NoticeList | undefined, pick: (n: Notice) => boolean) =>
+    current ? { ...current, data: (current.data || []).map(n => pick(n) ? { ...n, read: true } : n) } : current
+
+/**
+ * The bell's panel (DESIGN.md §5.1): Notifications and Mark all as read at
+ * its top, then each notification as a link to what it's about, with its
+ * subject's icon, what it says and how long ago; tinted with a dot while
+ * unread, and with an overdue row's look while it's one to deal with now.
+ * Not a dialog: its button and links are Tab's, and the bell closes it.
+ */
+export function NotificationsPanel({ id, notices, status, now, onFollow, onMarkAll, onRetry, headingRef }: {
+    id: string
+    notices: Notice[]
+    status: 'loading' | 'failed' | 'ready'
+    now: number
+    onFollow: (n: Notice) => void
+    onMarkAll: () => void
+    onRetry: () => void
+    headingRef?: RefObject<HTMLHeadingElement | null>
+}) {
     const { t, locale } = useLanguage()
-    // The unread count in the page's own digits (DESIGN.md §7).
-    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const headingId = `${id}-title`
     // In the reader's language (lib/notice.ts). A row written before keys, or
     // with a key this version does not know, shows the English it was written with.
-    const text = (n: Notification) => {
+    const text = (n: Notice) => {
         if (!n.messageKey || !t(n.messageKey as TranslationKey)) return n.message
         return renderNotice({ key: n.messageKey as TranslationKey, params: n.messageParams ?? {} }, t, iso => new Date(iso).toLocaleDateString(locale, { timeZone: 'UTC' }))
     }
+    const canMarkAll = notices.some(n => !n.read && !pinned(n))
+
+    return (
+        <div id={id} className="ui-notices">
+            <div className="ui-notices-head">
+                {/* Where the focus goes once Mark all as read is used, as the button goes. */}
+                <h2 id={headingId} ref={headingRef} tabIndex={-1} className="ui-notices-title">{t('notifications')}</h2>
+                {status === 'ready' && canMarkAll && <Button variant="quiet" size="sm" onClick={onMarkAll}>{t('notifications_mark_all_read')}</Button>}
+            </div>
+            {status === 'loading' ? (
+                <p className="ui-notices-note" role="status">{t('loading')}</p>
+            ) : status === 'failed' ? (
+                <div className="ui-notices-note" role="alert"><span>{t('notifications_load_failed')}</span><Button size="sm" onClick={onRetry}>{t('try_again')}</Button></div>
+            ) : notices.length === 0 ? (
+                <p className="ui-notices-note">{t('no_notifications')}</p>
+            ) : (
+                <ul className="ui-notices-list" aria-labelledby={headingId}>
+                    {notices.map(n => {
+                        const href = noticeTarget(n)
+                        const unread = !n.read
+                        const inside = (
+                            <>
+                                <span className="ui-notice-icon" aria-hidden="true"><Icon icon={noticeIcon(n.type)} size={16} /></span>
+                                <span className="ui-notice-main">
+                                    {unread && <span className="ui-visually-hidden">{t('notification_unread')} </span>}
+                                    <span className="ui-notice-text">{text(n)}</span>
+                                    <time className="ui-notice-time" dateTime={n.createdAt} title={noticeExactTime(n.createdAt, locale)}>{noticeAge(n.createdAt, now, locale, t('notice_just_now'))}</time>
+                                </span>
+                                {unread && <span className="ui-notice-dot" aria-hidden="true" />}
+                            </>
+                        )
+                        return (
+                            <li key={n.id} data-unread={unread || undefined} data-tone={pinned(n) ? 'overdue' : undefined}>
+                                {href
+                                    // A middle click opens it too, in a new tab.
+                                    ? <Link href={href} className="ui-notice" onClick={() => onFollow(n)} onAuxClick={e => { if (e.button === 1) onFollow(n) }}>{inside}</Link>
+                                    : <div className="ui-notice">{inside}</div>}
+                            </li>
+                        )
+                    })}
+                </ul>
+            )}
+        </div>
+    )
+}
+
+export default function NotificationBell({ initialUnreadCount = 0 }: { initialUnreadCount?: number }) {
+    const [isOpen, setIsOpen] = useState(false)
+    const box = useRef<HTMLDivElement>(null)
+    const bellRef = useRef<HTMLButtonElement>(null)
+    const headingRef = useRef<HTMLHeadingElement>(null)
+    const panelId = useId()
+    const { t, locale } = useLanguage()
+    // So "10 minutes ago" moves on while the panel is open.
+    const now = useNow()
+    // The unread count in the page's own digits (DESIGN.md §7).
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
 
     // Polled every five minutes while the tab is visible (SWR skips hidden
     // tabs by default, which is what the visibility check here used to do).
-    const { data, mutate } = useSWR('/api/notifications', fetcher, { refreshInterval: 300_000 })
-    const notifications: Notification[] = data?.data || NO_NOTIFICATIONS
+    const { data, error, mutate } = useSWR<NoticeList>('/api/notifications', fetcher, { refreshInterval: 300_000 })
+    const notices: Notice[] = data?.data || NO_NOTICES
     // The server-rendered count stands in until the first answer arrives.
-    const unreadCount = data ? notifications.filter(n => !n.read).length : initialUnreadCount
+    const unreadCount = data ? notices.filter(n => !n.read).length : initialUnreadCount
 
-    const markAsRead = async () => {
-        try {
-            await fetch('/api/notifications', { method: 'PATCH' })
-            // Mark the list we have as read without asking again; with no list
-            // yet, ask — the answer now comes back all read.
-            mutate(
-                (current: any) => current ? { ...current, data: (current.data || []).map((n: Notification) => pinned(n) ? n : { ...n, read: true }) } : current,
-                { revalidate: !data },
-            )
-        } catch (error) {
-            console.error("Failed to mark notifications as read", error)
-        }
+    const close = () => { setIsOpen(false); bellRef.current?.focus() }
+
+    // Following one reads it: at once on screen, and on the server after,
+    // which puts back what it has if that fails.
+    const follow = (n: Notice) => {
+        setIsOpen(false)
+        if (n.read || pinned(n)) return
+        mutate(current => readIn(current, x => x.id === n.id), { revalidate: false })
+        fetch(`/api/notifications/${encodeURIComponent(n.id)}`, { method: 'PATCH', keepalive: true }).then(r => { if (!r.ok) mutate() }, () => mutate())
     }
 
-    // Close dropdown when clicking outside
+    // The rest, but not one to deal with now. The button goes, so the focus
+    // goes to the heading rather than to nowhere.
+    const markAll = () => {
+        mutate(current => readIn(current, x => !pinned(x)), { revalidate: false })
+        headingRef.current?.focus()
+        fetch('/api/notifications', { method: 'PATCH' }).then(r => { if (!r.ok) mutate() }, () => mutate())
+    }
+
+    // A click or a tap outside it closes it.
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false)
-            }
-        }
-
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside)
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside)
-        }
+        if (!isOpen) return
+        const outside = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setIsOpen(false) }
+        document.addEventListener('pointerdown', outside)
+        return () => document.removeEventListener('pointerdown', outside)
     }, [isOpen])
 
-    const toggleOpen = () => {
-        if (!isOpen && (data ? notifications.some(n => !n.read && !pinned(n)) : unreadCount > 0)) {
-            markAsRead()
-        }
-        setIsOpen(!isOpen)
-    }
-
-    const handleNotificationClick = (notification: Notification) => {
-        if (notification.relatedId) {
-            setIsOpen(false)
-
-            // Normalize type - handle subtypes like TASK_ASSIGNED, TASK_COMPLETED, etc.
-            const type = notification.type.toUpperCase()
-
-            // First: neither an attendance notification nor a role request's
-            // may fall through to the REQUEST branch below, which reads an
-            // internal request's id.
-            const attendance = attendanceNoticeTarget(type, notification.relatedId, notification.messageKey)
-            if (attendance) {
-                router.push(attendance)
-            } else if (type.startsWith('ROLE_')) {
-                if (notification.relatedId.startsWith('/')) router.push(notification.relatedId)
-            } else if (type.includes('SUBSCRIPTION')) {
-                // The first notification type a Super Admin can receive. Its
-                // relatedId is a dashboard path (see checkSubscriptions), not an
-                // entity id — the same convention NOTE uses below.
-                if (notification.relatedId.startsWith('/')) {
-                    router.push(notification.relatedId)
-                }
-            } else if (type.includes('TASK')) {
-                router.push(`/dashboard/tasks?highlight=${notification.relatedId}`)
-            } else if (type.includes('OBLIGATION')) {
-                router.push(`/dashboard/obligations?highlight=${notification.relatedId}`)
-            } else if (type.includes('DAY_OFF')) {
-                // On the one Requests page (UI_PLAN.md §2.3, part 2d).
-                router.push(`/dashboard/requests?kind=dayOff&highlight=${notification.relatedId}`)
-            } else if (type.includes('BONUS') || type.includes('DEDUCTION')) {
-                // Redirection to the user's own salary history
-                if (!notification.userId) return
-                router.push(`/dashboard/employees/${notification.userId}/history?highlight=${notification.relatedId}`)
-            } else if (type.includes('PROFILE')) {
-                // A decision on one's name change, on the one Requests page (UI_PLAN.md §2.3, part 5a).
-                // An older notice names the person rather than the request, and opens the kind's list.
-                router.push(`/dashboard/requests?kind=nameChange&highlight=${notification.relatedId}`)
-            } else if (type.includes('NOTE')) {
-                // For notes, relatedId contains the dashboard path
-                // We append the notification ID as highlight if the specific note ID isn't in the path
-                if (notification.relatedId.startsWith('/')) {
-                    const hasHighlight = notification.relatedId.includes('highlight=') || notification.relatedId.includes('noteId=')
-                    let path = notification.relatedId
-
-                    if (!hasHighlight) {
-                        path = path.includes('?')
-                            ? `${path}&highlight=${notification.id}`
-                            : `${path}?highlight=${notification.id}`
-                    }
-                    router.push(path)
-                }
-            } else if (type.includes('TEAM')) {
-                // relatedId is a dashboard path, the NOTE convention: the
-                // employee's own profile, which shows their leader, or the
-                // leader's team list.
-                if (notification.relatedId.startsWith('/')) router.push(notification.relatedId)
-            } else if (type.includes('REQUEST')) {
-                // The Requests page opens it on its tab, and on Waiting or
-                // Done by its status, so there's nothing to ask first.
-                router.push(`/dashboard/requests?highlight=${notification.relatedId}`)
-            }
-        }
-    }
-
     return (
-        <div ref={dropdownRef} style={{ position: 'relative' }}>
+        // Escape closes it from anywhere in it, the bell included. The focus
+        // leaving it closes it, Tab past its last link among them; with no
+        // element to go to (a click on nothing), the click outside does.
+        <div ref={box} className="ui-bell"
+            onKeyDown={e => { if (e.key === 'Escape' && isOpen) { e.preventDefault(); e.stopPropagation(); close() } }}
+            onBlur={e => { if (e.relatedTarget && !box.current?.contains(e.relatedTarget as Node)) setIsOpen(false) }}>
             {/* A round icon button on the top bar (DESIGN.md §5.1), named with
                 how many are unread: the pill on it is hidden from screen
                 readers, which hear it in the name instead. */}
-            <button type="button" className="ui-topbar-button"
+            <button type="button" ref={bellRef} className="ui-topbar-button"
                 aria-label={unreadCount > 0 ? `${t('notifications')}${t('top_bar_unread').replace('{count}', num(unreadCount))}` : t('notifications')}
-                aria-expanded={isOpen}
-                onClick={toggleOpen}>
+                aria-expanded={isOpen} aria-controls={isOpen ? panelId : undefined} onClick={() => setIsOpen(open => !open)}>
                 <Icon icon={BellIcon} className="ui-topbar-icon" />
                 {unreadCount > 0 && <span className="ui-topbar-count" aria-hidden="true">{num(unreadCount)}</span>}
             </button>
-
             {isOpen && (
-                <div style={{
-                    position: 'absolute',
-                    [locale === 'ar' ? 'left' : 'right']: 0,
-                    top: '100%',
-                    width: 'min(300px, calc(100vw - 3rem))',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--grey-200)',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px var(--shadow-weak)',
-                    zIndex: 1000,
-                    maxHeight: '400px',
-                    overflowY: 'auto'
-                }}>
-                    <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--grey-100)', fontWeight: 'bold' }}>
-                        {t('notifications')}
-                    </div>
-                    {notifications.length === 0 ? (
-                        <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--grey-600)' }}>
-                            {t('no_notifications')}
-                        </div>
-                    ) : (
-                        notifications.map(notification => (
-                            <div
-                                key={notification.id}
-                                onClick={() => handleNotificationClick(notification)}
-                                style={{
-                                    padding: '0.75rem',
-                                    borderBottom: '1px solid var(--grey-100)',
-                                    background: background(notification),
-                                    borderInlineStart: pinned(notification) ? '3px solid var(--danger-fill)' : undefined,
-                                    cursor: notification.relatedId ? 'pointer' : 'default',
-                                    transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (notification.relatedId) {
-                                        e.currentTarget.style.background = 'var(--info-bg)'
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = background(notification)
-                                }}
-                            >
-                                <div style={{ fontSize: '0.875rem' }}>{text(notification)}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--grey-600)', marginTop: '0.25rem' }}>
-                                    {new Date(notification.createdAt).toLocaleString(locale)}
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
+                <NotificationsPanel id={panelId} notices={notices} status={data ? 'ready' : error ? 'failed' : 'loading'} now={now}
+                    onFollow={follow} onMarkAll={markAll} onRetry={() => mutate()} headingRef={headingRef} />
             )}
         </div>
     )
