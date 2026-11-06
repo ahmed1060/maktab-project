@@ -369,14 +369,58 @@ These are built once, in the building-blocks PR, and every page uses them
   owner on 2026-11-05): on a computer in the page's bottom corner on the
   end side, on a phone at the end of the page, and with the same look. It
   isn't in the side bar.
-- **Top bar:** 60px tall (56px on phones). On the end side it has the
-  language switch, the bell and the account menu (`UI_PLAN.md` §2.1). It
-  stays at the top as the page scrolls, and is kept as it is today
+- **Top bar:** 60px tall (56px on phones), as the approved mock-up of the
+  app's frame draws it. It has no title: every page names itself in its
+  page header (§5.5). On the end side it has the language switch, the bell
+  and the account button (`UI_PLAN.md` §2.1). On a phone, the menu button
+  and the company's mark, 28px across, are at its start:
+  - its buttons are round and 44px across, with no fill until hovered,
+    when they have `--brand-tint`, and `--ink-2` icons: 20px on a
+    computer, 22px on a phone (§6);
+  - **the language switch:** both languages, each written in itself,
+    "English" and "العربية", in a pill with a `--rule` edge on `--panel`,
+    the one in use in `--brand-text` on `--brand-tint`. English stays
+    first in Arabic too: the switch is about language, not in one. It's
+    named "Language" for screen readers, and each option says whether
+    it's in use. Picking the other switches the app to it, as today. On a
+    phone the options are "EN" and "ع", still named in full;
+  - **the bell** is named "Notifications", and "Notifications, 2 unread"
+    while some are. How many is a `--brand` pill at its top end corner,
+    18px tall, its `--text-xs` digits in `--on-brand` and in the page's
+    language, as the side bar's count is, and there's none when none is
+    unread. The panel it opens is unchanged until its own part;
+  - **the account button:** the person's photo in a 32px circle, or their
+    initials in an avatar's colours (§5.5), never a drawing that stands in
+    for them; their name in `--ink` and their role in `--ink-2`, under
+    it, in the words the app uses for roles; and a caret. On a phone, the
+    photo or initials alone. Either way it's named "Account menu, Karim
+    Nabil, Employee" («قائمة الحساب، كريم نبيل، موظف»), and says whether
+    its menu is open;
+  - **the account menu,** below the button on the end side: 300px wide,
+    on `--panel-raised` with a `--rule` edge, `--radius-menu` corners and
+    `--elev-2`. At its top are the photo or initials, 40px across, the
+    name, and the role with the company, "Admin at Nile Works", or the
+    role alone for the Super Admin. Then, between hairlines, My profile,
+    Security settings and History, the theme switch (Light and Dark,
+    drawn as the language switch is), and Sign out, each 40px tall with
+    its icon. History is there where the package includes Payroll, for
+    anyone but an Admin or the Super Admin, as today. It isn't a dialog:
+    Tab moves through its links and buttons, and Escape, a click outside
+    it, following one of its links, or Tab past its last control closes
+    it. Switching the theme doesn't, so the change can be seen. Escape
+    gives focus back to the button;
+  - for the Super Admin, the company switcher is at its start, as the
+    mock-up has it. It's rebuilt, with a search of its own, in the next
+    part.
+
+  It stays at the top as the page scrolls, and is kept as it is today
   (decided by the product owner):
   - at the top of the page it has no background of its own, and sits on
     the page;
   - once the page scrolls (past 10px), it floats as a pane of glass: 16px
-    in from the page's edges, with 24px corners, a see-through
+    in from the page's edges (8px on a phone, where its buttons are
+    already 8px from the screen's edges, so they stay where they are, as
+    they do on a computer), with 24px corners, a see-through
     `--header-glass-bg` with a 20px blur and 160% saturation behind it, a
     hairline `--header-glass-border` edge and `--header-shadow`. The page
     scrolling under it shows through, blurred;
@@ -391,8 +435,9 @@ These are built once, in the building-blocks PR, and every page uses them
     `--muted` reads only 3.5:1 on the first; `--ink-2` reads 7.7:1 on both;
   - it eases between the two over 300ms, changing only its background,
     blur (`backdrop-filter` and `-webkit-backdrop-filter`), edge, shadow,
-    inset and corners, so the blur comes in with the rest rather than at
-    once. With "reduce motion" on, it changes at once;
+    inset, padding and corners, so the blur comes in with the rest rather
+    than at once, and the inset and padding, together, keep what's in it
+    where it was. With "reduce motion" on, it changes at once;
   - where the browser can't blur, supporting neither `backdrop-filter`
     nor `-webkit-backdrop-filter` (`@supports not`), it floats on solid
     `--panel` instead, with the same edge and shadow. Without the blur the
@@ -563,9 +608,8 @@ These are built once, in the building-blocks PR, and every page uses them
   - On a page that belongs to another, such as a client's page under
     Clients, a quiet back link sits above the title: a back arrow, flipped
     in Arabic, and the other page's name.
-  - Until the app shell (§5.1) replaces the old top bar, the old top bar
-    hides its own title on a page that has a page header, so the page is
-    named once. Behind such a page, the old moving gradient gives way to
+  - The top bar has no title (§5.1), so a page is named once, by its page
+    header. Behind a page with one, the old moving gradient gives way to
     `--page`, so text that sits on the page, such as the subtitle and
     section headings, keeps its contrast.
 - **Page layout:** a page's parts are stacked with the "between sections"
@@ -941,8 +985,8 @@ These are built once, in the building-blocks PR, and every page uses them
     button, as an account held back is, until it can be tried again.
   - Under the card, as part of the page and never over it: the privacy
     policy, the terms, and the language and theme switches, in a row that
-    wraps on phones. The switches are the ones the account menu has,
-    until the app shell (§5.1) replaces them.
+    wraps on phones. The switches are the top bar's language switch and
+    the account menu's theme switch (§5.1).
 
 ---
 
@@ -954,7 +998,7 @@ These are built once, in the building-blocks PR, and every page uses them
   - 18px in the side bar and in buttons, and 20px in the side bar's drawer
     on phones;
   - 16px in fields and detail lines;
-  - 20–22px in the phone top bar;
+  - 20px in the top bar on a computer, and 22px on a phone;
   - 40px in empty states.
 - **The selected side bar item** uses the filled version of its icon.
 - **The side bar's icons** (§5.1), as the approved mock-up has them:
@@ -1357,3 +1401,16 @@ changed:
   The top bar had a button of its own for name changes, which counted those
   alone, in red, while day off, permission hours and the rest waited
   uncounted on the same page.
+- **2026-11-06:** The top bar (§5.1, §6), as the approved mock-up of the
+  app's frame draws it: no title, since every page names itself; the
+  language switch on the bar, short on a phone and named "Language"; the
+  bell's count in the brand colour, heard with its name; and the account
+  button with the person's photo or initials, their name and role, opening
+  the account menu with its head, My profile, Security settings, History,
+  the theme switch and Sign out. On a phone, the glass floats 8px in from
+  the screen's edges, where the bar's buttons are, rather than 16px. The
+  bar had a title of its own, hidden where the page had a header; the
+  language switch was in the account menu, named for the other language;
+  the bell's count was red; the button showed a drawn man or woman for
+  someone with no photo, and the role in capitals; and "Sign Out" was in
+  red.
