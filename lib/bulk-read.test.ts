@@ -213,4 +213,14 @@ describe("its words", () => {
         expect(ar.bulk_limit_exceeded).toContain("٥٠")
         expect(en.bulk_deadline_unread).toBe("The file's deadline can't be read")
     })
+
+    // A file's extension ending a sentence in Arabic shows as "..xlsx", its
+    // own dot and the sentence's side by side, as Create task's templates
+    // window had it too. Written بصيغة xlsx, the sentence's dot is the one
+    // that shows before it.
+    it("end no Arabic sentence with a file's extension", () => {
+        for (const [key, text] of Object.entries(ar)) expect(text, key).not.toMatch(/\.(xlsx|xls|csv)\.(\s|$)/)
+        expect(ar.bulk_file_unreadable).toBe("تعذّرت قراءة الملف. يُرجى رفع النموذج كملف Excel بصيغة xlsx.")
+        expect(ar.template_not_xlsx).toBe("يُرجى اختيار ملف Excel بصيغة xlsx.")
+    })
 })

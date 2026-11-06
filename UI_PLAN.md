@@ -4650,3 +4650,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     review says it has no title.
   - The Upload button is busy while the file is read, and the template
     takes its rows' limits from `lib/bulk-tasks.ts`.
+  - In Arabic, a sentence ending in a file's extension, «بامتداد ‎.xlsx.»,
+    showed as "..xlsx", the extension's dot and the sentence's side by
+    side. It's «بصيغة xlsx.» now, the sentence's dot showing before it:
+    this file's message, and the templates window's from #211.
