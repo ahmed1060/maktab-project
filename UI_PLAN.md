@@ -4658,3 +4658,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     with no tasks, to add them from row 3, under the headings; and the
     Excel reader not loading, as after a new release, to reload the page,
     where it would have said only that something went wrong.
+- **2026-11-06:** From Codex's review of #213: a time given as a fraction
+  of a day drops its seconds, as a typed one does. Rounded to the minute,
+  17:45:30 was 17:46, and 23:59:45 was midnight and so not a time at all.

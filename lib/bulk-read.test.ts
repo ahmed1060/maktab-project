@@ -50,6 +50,17 @@ describe("a deadline from its date and time cells", () => {
         expect(readDeadline("2026/11/11", "").deadline).toBe(local(2026, 11, 11))
     })
 
+    // Codex review on PR 213: a fraction of a day with 30 seconds or more
+    // was rounded to the next minute, and 23:59:45 up to midnight, unread.
+    it("drops the seconds of a time given as a fraction of a day, as it does a typed time's", async () => {
+        const { readDeadline } = await import("@/lib/bulk-tasks")
+        expect(readDeadline("11/11/2026", 63930 / 86400).deadline).toBe(local(2026, 11, 11, 17, 45))
+        expect(readDeadline("11/11/2026", 86385 / 86400).deadline).toBe(local(2026, 11, 11, 23, 59))
+        expect(readDeadline("11/11/2026", 0.9999999).deadline).toBe(local(2026, 11, 11, 23, 59))
+        // A third of a day is 8:00, not a hair before it.
+        expect(readDeadline("11/11/2026", 1 / 3).deadline).toBe(local(2026, 11, 11, 8, 0))
+    })
+
     it("reads Arabic digits, and the time of day as ص or م", async () => {
         const { readDeadline } = await import("@/lib/bulk-tasks")
         expect(readDeadline("١١/١١/٢٠٢٦", "١٠:٣٠ م")).toEqual({ deadline: local(2026, 11, 11, 22, 30), unread: "" })

@@ -191,8 +191,11 @@ function timeOf(cell: unknown): { h: number; min: number } | null {
     if (cell instanceof Date) return Number.isNaN(cell.getTime()) ? null : { h: cell.getUTCHours(), min: cell.getUTCMinutes() }
     if (typeof cell === 'number') {
         if (!Number.isFinite(cell) || cell < 0 || cell >= 1) return null
-        const minutes = Math.round(cell * 24 * 60)
-        return minutes >= 24 * 60 ? null : { h: Math.floor(minutes / 60), min: minutes % 60 }
+        // To the second, which a third of a day's float falls just short of,
+        // then its seconds dropped, as a typed time's are: rounded to the
+        // minute, 17:45:30 was 17:46, and 23:59:45 midnight (Codex review).
+        const seconds = Math.min(Math.round(cell * 86400), 86399)
+        return { h: Math.floor(seconds / 3600), min: Math.floor((seconds % 3600) / 60) }
     }
     const hm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(\S+))?$/.exec(cellText(String(cell)).toUpperCase())
     if (!hm || Number(hm[2]) > 59 || Number(hm[3] ?? 0) > 59) return null
