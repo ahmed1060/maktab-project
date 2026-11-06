@@ -891,6 +891,18 @@ These are built once, in the building-blocks PR, and every page uses them
   - each file, picked or saved, is a chip with a file icon, its name and
     its size. A saved file's chip opens it in a new tab, and says so to
     screen readers. A chip's remove button is named for its file.
+- **A file that replaces one,** such as a template for the bulk upload of
+  tasks, which the Super Admin keeps, is a section of its own under its
+  heading:
+  - the one there now as a saved file's chip, with when it was last
+    uploaded under it, or that none has been yet;
+  - the file picker (above) for one file, its hint saying which kind and
+    what uploading it replaces. Once one is picked, its chip, then Upload,
+    a small primary button: nothing is replaced until it's pressed;
+  - a file of another kind is said under the picker before anything is
+    sent, as is one that couldn't be uploaded. While it's sent, the
+    picker is off, and a line under it says so, which a screen reader
+    hears. Once it's uploaded, a toast says so.
 - **A person's profile,** seen by someone else, is one card: their photo,
   then their facts as details (above), each only for whoever may see it.
   Edit is the page header's primary button, for whoever may edit them; the
@@ -1554,3 +1566,8 @@ changed:
   or PM, and its Confirm Selection button in a gradient. In the bulk
   review of tasks, a row's deadline was a date in American order, with
   its seconds, and a calendar emoji to change it.
+- **2026-11-06:** A file that replaces one (§5.5). The templates for the
+  bulk upload of tasks were a window of their own making: a national flag
+  drawn beside each, a folder emoji on its picker, its words in English
+  whatever the page's language, and Cancel, the window's primary button,
+  to close it.
