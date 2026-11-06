@@ -556,7 +556,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      parts: the calendar a date and a range open, merged in #208 on
      2026-11-06, then the date and time of a deadline, merged in #209 on
      2026-11-06, then the browser's own date fields moved onto the same
-     calendar, in #210, which finished it;
+     calendar, merged in #210 on 2026-11-06, which finished it; then the
+     two windows Create task opens: the Super Admin's templates for the
+     bulk upload of tasks, in #211, then the bulk review of tasks;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4563,3 +4565,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     on its first field wrong by name.
   - The Arabic for a cash advance's day after today no longer commands in
     the masculine.
+- **2026-11-06:** The last date fields were merged in #210. The first of
+  Create task's two windows, in #211: the Super Admin's templates for the
+  bulk upload of tasks, on the building blocks (`DESIGN.md` §5.5, "A file
+  that replaces one").
+  - The English and the Arabic are each a section under its heading: in
+    the All companies view, the one there now as a saved file that opens
+    in a new tab, with when it was last uploaded, or that none has been.
+    In a company's view, a line says where to see them, and the company's
+    own template downloads beside Close.
+  - The file picker takes one workbook. Once one is picked, its chip and
+    Upload: nothing is replaced until it's pressed. A file of another kind,
+    or one that couldn't be uploaded, is said under the picker; while it's
+    sent, the picker is off and a line says so. A toast says it's done,
+    and the one uploaded is the one there now at once, then as the store
+    says: the browser flows found it left as it was, as the status wasn't
+    always asked for again after an upload.
+  - The date it was last uploaded is in the page's language. The English
+    template's was in English in Arabic, as its own language's.
+  - Gone: the window of its own making, the national flags drawn beside
+    each (and the colour tests' exemption for them), the folder, inbox
+    and eye emoji, its words in English whatever the page's language
+    ("English Template Updated", "Upload Failed"), its tooltip borrowed
+    from the clients page, and Cancel, its primary button, which is Close.
+  - Create task's button for it is "Manage templates", as the window is,
+    rather than "Download template".

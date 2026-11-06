@@ -92,12 +92,11 @@ describe("no raw colour survives in any notation", () => {
     // control that used one was about to go on every screen. The rgba check
     // below is now general rather than per-colour, which is what closes the
     // class instead of the instance.
-    const EXEMPT_FILE = "ManageTemplatesModal"
-
+    // The templates window drew national flags, and was exempt for them,
+    // until it moved onto the building blocks without them (PR 211).
     const scan = (pattern: RegExp, what: string) => {
         const offenders: string[] = []
         for (const file of SOURCES) {
-            if (file.includes(EXEMPT_FILE)) continue
             if (file.endsWith("globals.css")) continue
             const lines = readFileSync(file, "utf8").split("\n")
             lines.forEach((line, i) => {
@@ -141,14 +140,11 @@ describe("no raw colour survives in any notation", () => {
 })
 
 describe("D1 left no raw colour behind", () => {
-    it("has no hex literals outside the two files that keep fixed identity", () => {
-        // ManageTemplatesModal draws national flags. A flag does not follow a
-        // theme, and it is the only thing left that does not.
-        const EXEMPT = ["ManageTemplatesModal"]
-
+    it("has no hex literals anywhere but the palette", () => {
+        // The templates window's national flags were the last thing that
+        // didn't follow a theme; they went with its window (PR 211).
         const offenders: string[] = []
         for (const file of SOURCES) {
-            if (EXEMPT.some(e => file.includes(e))) continue
             if (file.endsWith("globals.css")) continue
             const hits = readFileSync(file, "utf8").match(/#[0-9a-fA-F]{3,8}\b/g)
             if (hits) offenders.push(`${file}: ${[...new Set(hits)].join(" ")}`)
