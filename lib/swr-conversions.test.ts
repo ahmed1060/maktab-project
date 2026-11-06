@@ -37,8 +37,8 @@ describe("lists read from SWR are sorted on a copy", () => {
 
     it("the assignee list spreads into a new array before sorting", () => {
         const src = code("app/(dashboard)/dashboard/tasks/new/page.tsx")
-        expect(src).toContain("[...usersList].sort(")
-        expect(src).not.toMatch(/\busersList\s*\.sort\(/)
+        expect(src).toContain("[...list].sort(")
+        expect(src).not.toMatch(/\blist\s*\.sort\(/)
     })
 })
 
