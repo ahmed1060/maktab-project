@@ -554,8 +554,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #206 on 2026-11-06, then the bell's panel, merged in #207
      on 2026-11-06, which finished it; then the date fields, in three
      parts: the calendar a date and a range open, merged in #208 on
-     2026-11-06, then the date and time of a deadline, in #209, then the
-     browser's own date fields moved onto the same calendar;
+     2026-11-06, then the date and time of a deadline, merged in #209 on
+     2026-11-06, then the browser's own date fields moved onto the same
+     calendar, in #210, which finished it;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4542,3 +4543,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     (`app/globals.css`). The words only it used are gone too, and the
     Arabic for what to pick, and Create task's for a deadline not yet
     picked, no longer command in the masculine.
+- **2026-11-06:** A deadline's date and time was merged in #209. The date
+  fields' last part, in #210: the dates the browser's own date field still
+  took open the same calendar (`DESIGN.md` §5.3), and say the day in the
+  page's language and digits.
+  - The day an acting role ends, in a person's profile and when asking for
+    a role from their details: from tomorrow in the company's calendar, as
+    it was, with Clear for a change for good.
+  - A contract's last working day, with the settlement for it under it, as
+    it was.
+  - The day a cash advance changed hands: today to start from, and no day
+    after it.
+  - The building blocks' own page shows a date as the calendar too.
+  - A date can't be half typed on the calendar, so the checks for one and
+    the words asking for the whole date are gone. A date the server can't
+    read, which the calendar never sends, asks for one, as an empty one
+    does.
+  - The calendar's field takes a name, as the profile form puts the focus
+    on its first field wrong by name.
+  - The Arabic for a cash advance's day after today no longer commands in
+    the masculine.

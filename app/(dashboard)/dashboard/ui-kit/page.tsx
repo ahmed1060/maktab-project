@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import {
-    CalendarBlankIcon, CircleHalfIcon, ClipboardTextIcon, ClockCounterClockwiseIcon, MapPinIcon, PencilSimpleIcon, PlusIcon, SortAscendingIcon, TrashIcon, UserIcon,
+    CircleHalfIcon, ClipboardTextIcon, ClockCounterClockwiseIcon, MapPinIcon, PencilSimpleIcon, PlusIcon, SortAscendingIcon, TrashIcon, UserIcon,
 } from '@phosphor-icons/react/ssr'
 import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
+import DatePickerSingle from '@/components/DatePickerSingle'
 import { useLanguage } from '@/context/LanguageContext'
 import {
     Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, PageHeader, PageNote, Pager, Person,
@@ -68,6 +69,7 @@ export default function UiKitPage() {
     const [page, setPage] = useState(1)
     const [query, setQuery] = useState('')
     const [status, setStatus] = useState('')
+    const [deadline, setDeadline] = useState('2026-10-20')
 
     if (viewer?.role !== 'SUPER_ADMIN') return <AccessDenied superAdmins />
 
@@ -177,7 +179,7 @@ export default function UiKitPage() {
                 <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
                     <Field label={s.name} hint={s.nameHint}>{p => <TextInput {...p} defaultValue={ar ? 'النور للتجارة' : 'Al Noor Trading'} />}</Field>
                     <Field label={s.code} error={s.codeError}>{p => <TextInput {...p} inputMode="numeric" defaultValue="12345" />}</Field>
-                    <Field label={s.deadline}>{p => <TextInput {...p} icon={CalendarBlankIcon} type="date" defaultValue="2026-10-20" />}</Field>
+                    <DatePickerSingle label={s.deadline} value={deadline} onChange={setDeadline} />
                 </div>
             </Card>
 

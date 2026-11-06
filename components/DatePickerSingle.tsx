@@ -21,6 +21,12 @@ interface DatePickerSingleProps {
     error?: string
     /** What to know about it, under it as a field's hint is; an error takes its place. */
     hint?: string
+    /**
+     * Its button's name, for a form that puts the focus on its first field
+     * wrong by name, as a person's profile does. A button that opens the
+     * calendar, it sends nothing with the form.
+     */
+    name?: string
 }
 
 /**
@@ -28,7 +34,7 @@ interface DatePickerSingleProps {
  * language and opens the calendar. Picking a day closes it; Clear empties
  * the field.
  */
-export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, disabled = false, error, hint }: DatePickerSingleProps) {
+export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, disabled = false, error, hint, name }: DatePickerSingleProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
     // The month shown: the day to start on's, once it opens.
@@ -68,7 +74,7 @@ export default function DatePickerSingle({ value, onChange, label, minDate, maxD
             {label && <label htmlFor={openerId} className="ui-label">{label}</label>}
             <span className="ui-control has-start-icon">
                 <Icon icon={CalendarBlankIcon} size={16} />
-                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} ref={opener} onClick={toggleOpen}
+                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} name={name} ref={opener} onClick={toggleOpen}
                     className="ui-input ui-date-trigger" data-empty={!value || undefined} data-invalid={error ? true : undefined} disabled={disabled}
                     aria-describedby={described}>
                     {value ? (hydrated ? dayText(value, locale) : null) : t('select_date')}

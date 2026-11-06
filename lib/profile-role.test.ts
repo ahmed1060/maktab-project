@@ -28,6 +28,8 @@ const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").
 const FORM = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
 const FIELDS = () => readFileSync("components/profile/RoleFields.tsx", "utf8")
 const DIALOG = () => readFileSync("components/profile/RoleRequestDialog.tsx", "utf8")
+/** The day an acting role ends, on the calendar, the same in the form and in the dialog. */
+const PICKER = "<DatePickerSingle name=\"actingUntil\" label={t('acting_until_label')} hint={t('acting_until_hint')} error={errors.actingUntil} minDate={actingFrom} value={actingUntil} disabled={busy}"
 
 const ROLES = [
     { id: "r-emp", name: "Employee", baseRole: "EMPLOYEE", builtIn: "EMPLOYEE", isDefault: true },
@@ -58,17 +60,17 @@ const wrong = (chunk: string) => chunk.match(/<span id="[^"]+" class="ui-error">
 const options = (chunk: string) => [...chunk.matchAll(/<option value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(m => [m[1], m[2]])
 
 describe("what's checked before it's sent", () => {
-    it("asks for an acting role to end after today, and for the whole date, where it's offered", async () => {
+    // Picked on the calendar, it can't be half typed (PR 210): a day before
+    // tomorrow can't be picked, though the page may stay open past midnight.
+    it("asks for an acting role to end after today, where it's offered", async () => {
         const { profileErrors } = await import("@/lib/profile-form")
         const ok = { firstName: "Mona", lastName: "Ali", password: "", actingFrom: "2026-11-05" }
         // Left empty, the change is for good.
         expect(profileErrors({ ...ok, actingUntil: "" })).toEqual({})
         expect(profileErrors({ ...ok, actingUntil: "2026-11-05" })).toEqual({})
         expect(profileErrors({ ...ok, actingUntil: "2026-11-04" })).toEqual({ actingUntil: "profile_acting_past" })
-        // A date the browser couldn't read reads as empty, which would make it for good.
-        expect(profileErrors({ ...ok, actingUntil: "", unreadable: ["actingUntil"] })).toEqual({ actingUntil: "profile_acting_incomplete" })
         // Not offered, as with no other role picked: not checked.
-        expect(profileErrors({ ...ok, actingUntil: undefined, unreadable: ["actingUntil"] })).toEqual({})
+        expect(profileErrors({ ...ok, actingUntil: undefined })).toEqual({})
     })
 
     // The server reads the date in the company's calendar
@@ -92,11 +94,10 @@ describe("what's checked before it's sent", () => {
 
     it("asks, from their details, for a role that isn't theirs already", async () => {
         const { roleAskErrors } = await import("@/lib/profile-form")
-        const ask = { current: "r-emp", actingFrom: "2026-11-05", actingUntil: "", unreadable: false }
+        const ask = { current: "r-emp", actingFrom: "2026-11-05", actingUntil: "" }
         expect(roleAskErrors({ ...ask, roleId: "r-tl" })).toEqual({})
         expect(roleAskErrors({ ...ask, roleId: "r-emp" })).toEqual({ roleId: "profile_role_same" })
         expect(roleAskErrors({ ...ask, roleId: "r-tl", actingUntil: "2026-11-01" })).toEqual({ actingUntil: "profile_acting_past" })
-        expect(roleAskErrors({ ...ask, roleId: "r-tl", unreadable: true })).toEqual({ actingUntil: "profile_acting_incomplete" })
     })
 
     it("focuses the role, then its date, after the fields before them", async () => {
@@ -159,10 +160,14 @@ describe("the role field, to whoever gives a role", () => {
         expect(await fields()).not.toContain(`>${esc(en.acting_until_label)}</label>`)
         const html = await fields({ value: "r-tl", actingUntil: "2026-12-05" })
         const until = field(html, en.acting_until_label)
-        expect(tag(until)).toContain('type="date"')
-        expect(tag(until)).toContain('name="actingUntil"')
-        expect(tag(until)).toContain('min="2026-11-05"')
-        expect(tag(until)).toContain('value="2026-12-05"')
+        // The calendar every other date opens (DESIGN.md §5.3, PR 210), not
+        // the browser's own date field, named as the form finds it.
+        expect(until).not.toContain("<input")
+        expect(tag(until, "button")).toContain('aria-haspopup="dialog"')
+        expect(tag(until, "button")).toContain('name="actingUntil"')
+        // The day in the page's language; the days before tomorrow can't be picked.
+        expect(until).toContain(">5 Dec 2026</button>")
+        expect(FIELDS()).toContain("minDate={actingFrom}")
         expect(hint(until)).toBe(esc(en.acting_until_hint))
         // After the role, which it's about.
         expect(html.indexOf(`>${esc(en.acting_until_label)}</label>`)).toBeGreaterThan(html.indexOf(`>${en.role_label}</label>`))
@@ -186,7 +191,7 @@ describe("the role field, to whoever gives a role", () => {
     it("is off while the form is sent", async () => {
         const html = await fields({ value: "r-tl", busy: true })
         expect(tag(field(html, en.role_label), "select")).toContain('disabled=""')
-        expect(tag(field(html, en.acting_until_label))).toContain('disabled=""')
+        expect(tag(field(html, en.acting_until_label), "button")).toContain('disabled=""')
     })
 })
 
@@ -306,13 +311,14 @@ describe("the dialog to ask in", () => {
         expect(html).toMatch(new RegExp(`<div class="ui-dialog-actions"><button type="button" class="ui-btn ui-btn-secondary">${en.cancel}</button><button type="submit" class="ui-btn ui-btn-primary">${en.profile_role_ask_send}</button></div>`))
     })
 
-    // Not a sign-in field: a password manager has nothing to offer it, as the
-    // form's other fields say (web interface audit).
-    it("keeps password managers off the date, in the form and in the dialog", async () => {
-        expect(tag(field(await fields({ value: "r-tl" }), en.acting_until_label))).toMatch(/autocomplete="off"/i)
+    // A button that opens the calendar, so nothing a password manager could
+    // fill, as the browser's own date field was (web interface audit).
+    it("picks the date on the calendar, in the form and in the dialog", async () => {
+        expect(field(await fields({ value: "r-tl" }), en.acting_until_label)).not.toContain("<input")
         const asked = await dialog()
         expect(asked).not.toContain(`>${esc(en.acting_until_label)}</label>`)
-        expect(DIALOG()).toContain('<TextInput {...p} name="actingUntil" type="date" autoComplete="off"')
+        expect(DIALOG()).toContain(PICKER)
+        expect(DIALOG()).not.toMatch(/badInput|namedItem\(/)
     })
 
     it("is the same role field, its date and its words, as the form's", () => {
@@ -323,7 +329,8 @@ describe("the dialog to ask in", () => {
         // Told what's wrong, it stays, with the field it's about.
         expect(src).toContain("const problem = await onSend({ roleId, actingUntil: changing ? actingUntil : '' })")
         expect(src).toContain("const cancel = () => { if (!busy) onCancel() }")
-        expect(src).toContain('<TextInput {...p} name="actingUntil" type="date" autoComplete="off"')
+        expect(src).toContain(PICKER)
+        expect(FIELDS()).toContain(PICKER)
     })
 })
 
@@ -337,7 +344,8 @@ describe("the profile, wired to its role", () => {
 
     it("checks the date before one's password is asked for, and sends a request before the save", () => {
         const submit = FORM.slice(FORM.indexOf("const handleSubmit"), FORM.indexOf("const executeSubmit"))
-        expect(submit).toContain("(['salary', 'dayOffCredit', 'actingUntil'] as const).filter(")
+        // Its number fields are asked what the browser couldn't read; its date, picked on the calendar, is whole.
+        expect(submit).toContain("(['salary', 'dayOffCredit'] as const).filter(")
         expect(submit).toContain("actingUntil: roleChange ? actingDate : undefined,")
         expect(submit).toContain("actingFrom: tomorrow,")
         const save = FORM.slice(FORM.indexOf("const executeSubmit"), FORM.indexOf("// Their role, as the form may change it"))
@@ -409,7 +417,7 @@ describe("the profile, wired to its role", () => {
 
 describe("its words", () => {
     const KEYS = ["profile_role_will_ask", "profile_role_super_admin", "profile_role_not_given", "profile_role_exceeds", "profile_role_admin",
-        "profile_role_last_admin", "profile_role_same", "profile_role_already_asked", "profile_acting_past", "profile_acting_incomplete",
+        "profile_role_last_admin", "profile_role_same", "profile_role_already_asked", "profile_acting_past",
         "profile_role_ask", "profile_role_ask_body", "profile_role_ask_send", "acting_until_hint", "acting_now"] as const
 
     it("are in both languages, and the Arabic asks nothing in the masculine", () => {

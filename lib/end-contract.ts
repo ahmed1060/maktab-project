@@ -43,9 +43,8 @@ export function accessEndsNow(lastWorkingDay: string, today: string): boolean {
 }
 
 /** The date, before anything is sent: one, typed in full. */
-export function lastDayErrors({ lastWorkingDay, unreadable }: { lastWorkingDay: string; unreadable: boolean }): { lastWorkingDay?: TranslationKey } {
-    // A date the browser couldn't read reads as empty.
-    if (unreadable) return { lastWorkingDay: 'end_contract_date_incomplete' }
+export function lastDayErrors({ lastWorkingDay }: { lastWorkingDay: string }): { lastWorkingDay?: TranslationKey } {
+    // Picked on the calendar, it's whole or not there (PR 210).
     if (!lastWorkingDay) return { lastWorkingDay: 'end_contract_date_needed' }
     return {}
 }
@@ -54,7 +53,8 @@ export function lastDayErrors({ lastWorkingDay, unreadable }: { lastWorkingDay: 
 export type EndContractRefusal = { field?: 'lastWorkingDay'; key: TranslationKey }
 
 const REFUSED: Record<string, EndContractRefusal> = {
-    NOT_A_DATE: { field: 'lastWorkingDay', key: 'end_contract_date_incomplete' },
+    // A date it can't read, which the calendar never sends: one is asked for.
+    NOT_A_DATE: { field: 'lastWorkingDay', key: 'end_contract_date_needed' },
     NO_SALARY: { field: 'lastWorkingDay', key: 'end_contract_no_salary' },
     LAST_ADMIN: { key: 'end_contract_last_admin' },
     ADMIN_IS_SUPER_ADMINS: { key: 'end_contract_admin' },
