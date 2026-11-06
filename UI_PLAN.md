@@ -550,8 +550,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      approved on 2026-11-05, a part at a time: the side bar, merged in
      #203 on 2026-11-05, then the count of what waits on Requests in it,
      merged in #204 on 2026-11-05, then the top bar and its account menu,
-     in #205, then the Super Admin's company picker, then the
-     notifications;
+     merged in #205 on 2026-11-06, then the Super Admin's company picker,
+     in #206, then the notifications;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4421,3 +4421,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     now that the switcher is at the bar's start. From its end edge, as it
     opened when the switcher was at the bar's end, it ran off a phone's
     screen, 72px in English and 79px in Arabic (Codex review).
+- **2026-11-06:** The top bar and its account menu were merged in #205.
+  The frame's fourth part, in #206: the Super Admin's company picker, as
+  the approved mock-up draws it (`DESIGN.md` §5.1).
+  - The company in view is on a pill with its initials, under "Company in
+    view", or with the buildings icon for All companies. On a phone, its
+    tile alone.
+  - It opens a panel with a search of its own, "Find a company", over the
+    companies, each with its initials. Typing keeps the companies with
+    what's typed in their names, capitals aside, and the first is the one
+    Enter picks. When none has it, the panel says so.
+  - The focus stays in the search field: the up and down arrows move
+    through the list from there, and Enter picks. Escape, a click outside
+    it, or Tab out of it closes it, and Escape and a pick give the focus
+    back to the picker.
+  - A tap opens it without the keyboard, which would cover the list on a
+    phone. The search field is there to tap.
+  - On a phone the panel spans the bar, 8px in from its edges.
+  - The old switcher's code is gone from the top bar, with the screen
+    width it watched in script. CSS does that now.
+  - "All Companies" is "All companies", in sentence case.

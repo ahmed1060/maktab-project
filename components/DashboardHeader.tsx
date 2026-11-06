@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useId, Suspense, type KeyboardEvent, type RefObject } from 'react'
+import { useState, useEffect, useRef, useId, Suspense, type RefObject } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
@@ -10,10 +10,10 @@ import { addressWithCompanyInView, companyLinkToFollow } from '@/lib/company-lin
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from './LanguageToggleButton'
+import CompanyPicker from './CompanyPicker'
 import ThemeToggleButton from './ThemeToggleButton'
 import useSWR from 'swr'
 import { useFeatures } from '@/lib/features/useFeatures'
-import { moveOption } from '@/lib/listbox-keys'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import { Avatar, CompanyMark, Icon } from '@/components/ui'
@@ -125,16 +125,10 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
     const { selectedCompanyId, setSelectedCompanyId, refreshTrigger } = useCompany()
     const [companies, setCompanies] = useState<any[]>([])
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
-    const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
-    const [isMobile, setIsMobile] = useState(false)
-    const dropdownRef = useRef<HTMLDivElement>(null)
-    const switcherRef = useRef<HTMLButtonElement>(null)
     const accountRef = useRef<HTMLButtonElement>(null)
     const accountBox = useRef<HTMLDivElement>(null)
-    const optionRefs = useRef<(HTMLLIElement | null)[]>([])
-    const switcherListId = useId()
     const accountMenuId = useId()
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     // Their own history is HR's: in the menu only where the package includes it.
     const features = useFeatures()
 
@@ -245,28 +239,10 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
         lastProcessedCompany.current = companyNameFromUrl
     }, [searchParams, pathname, router, companies, selectedCompanyId, setSelectedCompanyId])
 
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 1024)
-        checkMobile()
-        window.addEventListener('resize', checkMobile)
-        return () => window.removeEventListener('resize', checkMobile)
-    }, [])
-
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsCompanyDropdownOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
-
     const handleSelectCompany = (val: string | null) => {
         // The address names the last company until the pick lands.
         companyLeftBehind.current = searchParams.get('companyId')
         setSelectedCompanyId(val)
-        setIsCompanyDropdownOpen(false)
 
         const params = new URLSearchParams(searchParams ? searchParams.toString() : '')
 
@@ -295,46 +271,6 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
         router.refresh()
     }
 
-    // The company switcher, by keyboard as well as by mouse (WAI-ARIA listbox):
-    // the arrows, Home and End move between companies, Enter or Space picks
-    // one, Escape closes and goes back to the switcher, Tab closes and moves on.
-    const switcherOptions: { id: string | null; name: string }[] = [
-        { id: null, name: t('all_companies') },
-        ...companies.map(c => ({ id: c.id as string, name: c.name as string })),
-    ]
-    const selectedOption = Math.max(0, switcherOptions.findIndex(o => o.id === (selectedCompanyId || null)))
-    const openSwitcher = () => {
-        setIsCompanyDropdownOpen(true)
-        // After the list is drawn: start on the company in view.
-        setTimeout(() => optionRefs.current[selectedOption]?.focus(), 0)
-    }
-    const onSwitcherKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            e.preventDefault()
-            openSwitcher()
-        }
-    }
-    const pickOption = (i: number) => {
-        handleSelectCompany(switcherOptions[i].id)
-        switcherRef.current?.focus()
-    }
-    const onOptionKeyDown = (e: KeyboardEvent<HTMLLIElement>, i: number) => {
-        const next = moveOption(i, e.key, switcherOptions.length)
-        if (next !== null) {
-            e.preventDefault()
-            optionRefs.current[next]?.focus()
-        } else if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            pickOption(i)
-        } else if (e.key === 'Escape') {
-            e.preventDefault()
-            setIsCompanyDropdownOpen(false)
-            switcherRef.current?.focus()
-        } else if (e.key === 'Tab') {
-            setIsCompanyDropdownOpen(false)
-        }
-    }
-
     const getRoleKey = (role: string): TranslationKey => {
         switch (role) {
             case 'EMPLOYEE': return 'role_employee'
@@ -343,16 +279,6 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
             case 'SUPER_ADMIN': return 'role_super_admin'
             default: return 'role_employee'
         }
-    }
-
-    const getInitials = (text: string) => {
-        if (!text) return ''
-        return text
-            .split(' ')
-            .filter(word => word.length > 0)
-            .map(word => word[0])
-            .join(' ')
-            .toUpperCase()
     }
 
     const handleLogout = async () => {
@@ -389,145 +315,8 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
             )}
             <span className="ui-topbar-mark"><CompanyMark name={company.name} logoUrl={company.logoUrl} /></span>
 
-            {currentUser.role === 'SUPER_ADMIN' && (
-                <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <button
-                        type="button"
-                        ref={switcherRef}
-                        onClick={() => isCompanyDropdownOpen ? setIsCompanyDropdownOpen(false) : openSwitcher()}
-                        onKeyDown={onSwitcherKeyDown}
-                        aria-haspopup="listbox"
-                        aria-expanded={isCompanyDropdownOpen}
-                        aria-controls={isCompanyDropdownOpen ? switcherListId : undefined}
-                        aria-label={t('company_switcher_label' as TranslationKey).replace('{name}', switcherOptions[selectedOption].name)}
-                        className="glass sm-select"
-                        style={{
-                            fontFamily: 'inherit',
-                            padding: locale === 'ar' ? '0.5rem 1.5rem 0.5rem 2.5rem' : '0.5rem 2.5rem 0.5rem 1.5rem',
-                            borderRadius: '1rem',
-                            fontSize: '0.9rem',
-                            cursor: 'pointer',
-                            background: 'var(--veil-40)',
-                            border: '1px solid var(--veil-60)',
-                            transition: 'all 0.2s ease',
-                            color: 'var(--text-main)',
-                            minWidth: '130px',
-                            maxWidth: '200px',
-                            textAlign: 'center',
-                            fontWeight: '600',
-                            boxShadow: '0 2px 4px var(--shadow-faint)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            position: 'relative'
-                        }}
-                    >
-                        <span style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            display: isMobile ? 'none' : 'block'
-                        }}>
-                            {selectedCompanyId
-                                ? (companies.find(c => c.id === selectedCompanyId)?.name || t('all_companies'))
-                                : t('all_companies')
-                            }
-                        </span>
-
-                        {/* Mobile Initials */}
-                        {isMobile && (
-                            <span style={{ fontSize: '0.75rem', fontWeight: '800' }}>
-                                {selectedCompanyId
-                                    ? getInitials(companies.find(c => c.id === selectedCompanyId)?.name || '')
-                                    : getInitials(t('all_companies'))
-                                }
-                            </span>
-                        )}
-
-                        {!isMobile && (
-                            <span style={{
-                                position: 'absolute',
-                                [locale === 'ar' ? 'left' : 'right']: '0.75rem',
-                                transform: isCompanyDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                                transition: 'transform 0.2s',
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}>
-                                <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
-                            </span>
-                        )}
-                    </button>
-
-                    {isCompanyDropdownOpen && (
-                        <ul
-                            id={switcherListId}
-                            role="listbox"
-                            aria-label={t('select_company')}
-                            tabIndex={-1}
-                            style={{
-                                listStyle: 'none',
-                                margin: 0,
-                                position: 'absolute',
-                                top: 'calc(100% + 8px)',
-                                // From the switcher's start edge: it's at the
-                                // bar's start now, so from its end the list ran
-                                // off a phone's screen (Codex review on PR 205).
-                                insetInlineStart: 0,
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '0.75rem',
-                                boxShadow: '0 10px 15px -3px var(--shadow-weak), 0 4px 6px -2px var(--shadow-faint)',
-                                zIndex: 1000,
-                                maxHeight: '300px',
-                                overflowY: 'auto',
-                                minWidth: '200px',
-                                padding: '0.5rem'
-                            }}
-                        >
-                            {switcherOptions.map((option, i) => {
-                                const selected = i === selectedOption
-                                return (
-                                    <li
-                                        key={option.id ?? 'all'}
-                                        ref={el => { optionRefs.current[i] = el }}
-                                        role="option"
-                                        aria-selected={selected}
-                                        tabIndex={-1}
-                                        onClick={() => pickOption(i)}
-                                        onKeyDown={e => onOptionKeyDown(e, i)}
-                                        style={{
-                                            padding: '0.625rem 1rem',
-                                            cursor: 'pointer',
-                                            fontSize: '0.875rem',
-                                            borderRadius: '0.5rem',
-                                            color: selected ? 'var(--info-solid-hover)' : 'var(--text-muted)',
-                                            background: selected ? 'var(--info-bg-subtle)' : 'transparent',
-                                            fontWeight: selected ? 600 : 500,
-                                            marginBottom: '2px',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = selected ? 'var(--info-bg-subtle)' : 'transparent'}
-                                    >
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {option.name}
-                                        </span>
-                                        {selected && option.id && (
-                                            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info-solid-hover)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                            </svg>
-                                        )}
-                                    </li>
-                                )
-                            })}
-                        </ul>
-                    )}
-                </div>
-            )}
+            {/* The Super Admin's company picker, with a search of its own (DESIGN.md §5.1). */}
+            {currentUser.role === 'SUPER_ADMIN' && <CompanyPicker companies={companies} inViewId={selectedCompanyId || null} onPick={handleSelectCompany} />}
 
             <span className="ui-topbar-spacer" />
             <LanguageToggleButton />

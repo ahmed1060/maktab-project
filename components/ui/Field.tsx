@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useState, type ComponentPropsWithoutRef, type ReactNode } from 'react'
+import { useId, useState, type ComponentProps, type ComponentPropsWithoutRef, type ReactNode } from 'react'
 import { CaretDownIcon, EyeIcon, EyeSlashIcon, MagnifyingGlassIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { Icon, type PhosphorIcon } from './Icon'
@@ -33,7 +33,8 @@ export function Field({ label, hint, error, hideLabel = false, className, childr
     )
 }
 
-export function TextInput({ icon, className, ...rest }: { icon?: PhosphorIcon } & ComponentPropsWithoutRef<'input'>) {
+// It takes a ref, as React 19 passes one as a prop, for a field the focus is moved to.
+export function TextInput({ icon, className, ...rest }: { icon?: PhosphorIcon } & ComponentProps<'input'>) {
     return (
         <span className={cx('ui-control', icon && 'has-start-icon')}>
             {icon && <Icon icon={icon} size={16} />}
@@ -95,7 +96,7 @@ export function Choice<V extends string>({ legend, name, value, onChange, option
     )
 }
 
-export function SearchInput(props: Omit<ComponentPropsWithoutRef<'input'>, 'type'>) {
+export function SearchInput(props: Omit<ComponentProps<'input'>, 'type'>) {
     return <TextInput icon={MagnifyingGlassIcon} type="search" {...props} />
 }
 
