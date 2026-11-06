@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
+import DatePickerSingle from '@/components/DatePickerSingle'
 import { Field, Select, TextInput, type SelectOption } from '@/components/ui'
 import { roleLabel, type RoleNamed } from '@/lib/role-label'
 import type { TranslationKey } from '@/lib/translations'
@@ -85,10 +86,8 @@ export function RoleFields({ how, superAdmin, roles, current, value, onChange, a
                     onChange={e => onChange(e.target.value, roles.find(r => r.id === e.target.value) ?? null)} />
             )}</Field>
             {changing && (
-                <Field label={t('acting_until_label')} hint={t('acting_until_hint')} error={errors.actingUntil}>{p => (
-                    <TextInput {...p} name="actingUntil" type="date" autoComplete="off" min={actingFrom} value={actingUntil} disabled={busy}
-                        onChange={e => onActingUntil(e.target.value)} />
-                )}</Field>
+                <DatePickerSingle name="actingUntil" label={t('acting_until_label')} hint={t('acting_until_hint')} error={errors.actingUntil} minDate={actingFrom} value={actingUntil} disabled={busy}
+                    onChange={onActingUntil} />
             )}
         </>
     )

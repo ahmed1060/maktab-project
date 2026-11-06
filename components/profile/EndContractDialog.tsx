@@ -4,7 +4,8 @@ import useSWR from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
-import { Button, Dialog, DialogActions, DocGroup, DocLine, DocNote, DocTotal, Field, TextArea, TextInput } from '@/components/ui'
+import DatePickerSingle from '@/components/DatePickerSingle'
+import { Button, Dialog, DialogActions, DocGroup, DocLine, DocNote, DocTotal, Field, TextArea } from '@/components/ui'
 import { apiErrorText } from '@/lib/api-error-text'
 import { accessEndsNow, dayLabel, endContractRefusal, handoffRefusal, lastDayErrors, TEAM_LEADERS, undecidedDays, type Settlement } from '@/lib/end-contract'
 import { countOf } from '@/lib/plural'
@@ -172,9 +173,7 @@ export function EndContractDialog({ userId, name, status, leadsATeam = false, to
         e.preventDefault()
         if (busy) return
         if (ending) {
-            // A date not typed in full reads as empty, as though left empty.
-            const date = e.currentTarget.elements.namedItem('lastWorkingDay')
-            const wrong = lastDayErrors({ lastWorkingDay, unreadable: date instanceof HTMLInputElement && date.validity.badInput })
+            const wrong = lastDayErrors({ lastWorkingDay })
             if (wrong.lastWorkingDay) {
                 setErrors({ lastWorkingDay: t(wrong.lastWorkingDay) })
                 focusFirstWrong(form.current)
@@ -197,10 +196,8 @@ export function EndContractDialog({ userId, name, status, leadsATeam = false, to
                 <form ref={form} className="ui-form" noValidate onSubmit={submit}>
                     {ending ? (
                         <>
-                            <Field label={t('last_working_day')} hint={t('last_working_day_hint')} error={errors.lastWorkingDay ?? refusedDate}>{p => (
-                                <TextInput {...p} name="lastWorkingDay" type="date" autoComplete="off" value={lastWorkingDay} disabled={busy}
-                                    onChange={e => { setLastWorkingDay(e.target.value); setErrors({}); setError(null) }} />
-                            )}</Field>
+                            <DatePickerSingle name="lastWorkingDay" label={t('last_working_day')} hint={t('last_working_day_hint')} error={errors.lastWorkingDay ?? refusedDate}
+                                value={lastWorkingDay} disabled={busy} onChange={day => { setLastWorkingDay(day); setErrors({}); setError(null) }} />
                             {lastWorkingDay && !refusedDate && (
                                 <SettlementPreview
                                     settlement={settled?.settlement ?? null}

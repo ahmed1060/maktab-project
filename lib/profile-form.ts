@@ -37,11 +37,12 @@ export function profileErrors(typed: {
     /** The first day it may end on: tomorrow. */
     actingFrom?: string
     /**
-     * What the browser couldn't read: an amount such as "1e" or "-", or a
-     * date not typed in full. Their fields read as empty, which is sent as 0
-     * over what was there, or as a change for good.
+     * What the browser couldn't read: an amount such as "1e" or "-". Its
+     * field reads as empty, which is sent as 0 over what was there. The day
+     * an acting role ends is picked on the calendar, so it's never half typed
+     * (PR 210).
      */
-    unreadable?: readonly ('salary' | 'dayOffCredit' | 'actingUntil')[]
+    unreadable?: readonly ('salary' | 'dayOffCredit')[]
 }): Partial<Record<ProfileField, TranslationKey>> {
     const errors: Partial<Record<ProfileField, TranslationKey>> = {}
     // A name can be loaded longer than the route takes now, which its
@@ -57,7 +58,7 @@ export function profileErrors(typed: {
     if (typed.dayOffCredit !== undefined && (typed.unreadable?.includes('dayOffCredit') || !zeroOrMore(typed.dayOffCredit))) errors.dayOffCredit = 'emp_new_day_off_invalid'
     if (typed.password && typed.password.length < PASSWORD_MIN) errors.password = 'emp_new_password_short'
     if (typed.actingUntil !== undefined) {
-        const wrong = actingError(typed.actingUntil, typed.actingFrom, !!typed.unreadable?.includes('actingUntil'))
+        const wrong = actingError(typed.actingUntil, typed.actingFrom)
         if (wrong) errors.actingUntil = wrong
     }
     return errors
@@ -67,24 +68,26 @@ export function profileErrors(typed: {
  * Asking for another role from their details (ROLES_PLAN.md §6.12): one that
  * isn't theirs already, and the day it ends, if it's an acting one.
  */
-export function roleAskErrors(asked: { roleId: string; current: string; actingUntil: string; actingFrom: string; unreadable: boolean }): Partial<Record<'roleId' | 'actingUntil', TranslationKey>> {
-    const wrong = actingError(asked.actingUntil, asked.actingFrom, asked.unreadable)
+export function roleAskErrors(asked: { roleId: string; current: string; actingUntil: string; actingFrom: string }): Partial<Record<'roleId' | 'actingUntil', TranslationKey>> {
+    const wrong = actingError(asked.actingUntil, asked.actingFrom)
     return {
         ...(!asked.roleId || asked.roleId === asked.current ? { roleId: 'profile_role_same' as const } : {}),
         ...(wrong ? { actingUntil: wrong } : {}),
     }
 }
 
-/** An acting role ends after today; left empty, the change is for good. */
-function actingError(until: string, from: string | undefined, unreadable: boolean): TranslationKey | null {
-    if (unreadable) return 'profile_acting_incomplete'
-    // Dates as a date field gives them, YYYY-MM-DD, compare as they're written.
+/**
+ * An acting role ends after today; left empty, the change is for good. The
+ * calendar offers no day before it, but the page can stay open past midnight.
+ */
+function actingError(until: string, from: string | undefined): TranslationKey | null {
+    // Dates as the calendar gives them, YYYY-MM-DD, compare as they're written.
     if (until && from && until < from) return 'profile_acting_past'
     return null
 }
 
 /**
- * The day after `now` in the company's calendar, as a date field takes it:
+ * The day after `now` in the company's calendar, as the calendar takes it:
  * the first an acting role may end on. The server reads a return date in that
  * calendar (RoleAssignmentService.returnOn), so a viewer elsewhere, a day
  * ahead or behind, is offered the company's tomorrow, not their own.

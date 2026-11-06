@@ -2,7 +2,8 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
-import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
+import DatePickerSingle from '@/components/DatePickerSingle'
+import { Button, Dialog, DialogActions, Field, Select } from '@/components/ui'
 import { roleAskErrors } from '@/lib/profile-form'
 import type { AssignableRole } from '@/lib/useAssignableRoles'
 import { roleOptions, type HeldRole } from './RoleFields'
@@ -46,13 +47,7 @@ export function RoleRequestDialog({ name, roles, current, actingFrom, onCancel, 
         e.preventDefault()
         if (busy) return
         setError(null)
-        // A date not typed in full reads as empty, as though left empty.
-        const date = e.currentTarget.elements.namedItem('actingUntil')
-        const wrong = roleAskErrors({
-            roleId, current: current?.id ?? '', actingFrom,
-            actingUntil: changing ? actingUntil : '',
-            unreadable: date instanceof HTMLInputElement && date.validity.badInput,
-        })
+        const wrong = roleAskErrors({ roleId, current: current?.id ?? '', actingFrom, actingUntil: changing ? actingUntil : '' })
         if (Object.keys(wrong).length > 0) {
             setErrors(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))
             focusFirstWrong(form.current)
@@ -81,10 +76,8 @@ export function RoleRequestDialog({ name, roles, current, actingFrom, onCancel, 
                         onChange={e => { setRoleId(e.target.value); setErrors({}) }} />
                 )}</Field>
                 {changing && (
-                    <Field label={t('acting_until_label')} hint={t('acting_until_hint')} error={errors.actingUntil}>{p => (
-                        <TextInput {...p} name="actingUntil" type="date" autoComplete="off" min={actingFrom} value={actingUntil} disabled={busy}
-                            onChange={e => { setActingUntil(e.target.value); setErrors(was => ({ ...was, actingUntil: undefined })) }} />
-                    )}</Field>
+                    <DatePickerSingle name="actingUntil" label={t('acting_until_label')} hint={t('acting_until_hint')} error={errors.actingUntil} minDate={actingFrom} value={actingUntil} disabled={busy}
+                        onChange={day => { setActingUntil(day); setErrors(was => ({ ...was, actingUntil: undefined })) }} />
                 )}
                 {error && <p className="ui-error" role="alert">{error}</p>}
                 <DialogActions>

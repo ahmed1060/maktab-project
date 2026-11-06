@@ -100,13 +100,16 @@ describe("ending a contract", () => {
         expect(html).toContain(`class="ui-dialog-title">${named(en.end_contract_title, "Laila Fouad")}</h2>`)
         expect(html).toMatch(/<form class="ui-form" novalidate="">/i)
         const date = field(html, en.last_working_day)
-        expect(tag(date)).toMatch(/type="date"/)
-        expect(tag(date)).toContain('name="lastWorkingDay"')
-        // Today in the company's calendar, as its parent works it out.
-        expect(tag(date)).toContain('value="2026-11-05"')
-        // Not a sign-in field: nothing for a password manager to offer.
-        expect(tag(date)).toMatch(/autocomplete="off"/i)
+        // The calendar every other date opens (DESIGN.md §5.3, PR 210), not
+        // the browser's own date field, which a password manager could fill.
+        expect(date).not.toContain("<input")
+        expect(tag(date, "button")).toContain('aria-haspopup="dialog"')
+        expect(tag(date, "button")).toContain('name="lastWorkingDay"')
+        // Today in the company's calendar, as its parent works it out, in the page's language.
+        expect(date).toContain(">5 Nov 2026</button>")
         expect(hint(date)).toBe(esc(en.last_working_day_hint))
+        expect(DIALOG()).toContain("<DatePickerSingle name=\"lastWorkingDay\" label={t('last_working_day')} hint={t('last_working_day_hint')} error={errors.lastWorkingDay ?? refusedDate}")
+        expect(DIALOG()).not.toMatch(/badInput|namedItem\(/)
         expect(html).toContain(`<h3 id="`)
         expect(html).toContain(`class="ui-settlement-title">${esc(en.settlement_preview)}</h3>`)
         expect(tag(field(html, en.end_contract_reason), "textarea")).toContain('name="reason"')
@@ -141,12 +144,11 @@ describe("ending a contract", () => {
         expect(await endDialog({ today: "2026-11-06" })).toContain(`<p class="ui-hint">${esc(en.end_contract_effective_later)}</p>`)
     })
 
-    it("asks for a date, typed in full, before anything is sent", async () => {
+    // Picked on the calendar, it can't be half typed (PR 210).
+    it("asks for a date before anything is sent", async () => {
         const { lastDayErrors } = await import("@/lib/end-contract")
-        expect(lastDayErrors({ lastWorkingDay: "2026-11-05", unreadable: false })).toEqual({})
-        expect(lastDayErrors({ lastWorkingDay: "", unreadable: false })).toEqual({ lastWorkingDay: "end_contract_date_needed" })
-        // A date the browser couldn't read reads as empty.
-        expect(lastDayErrors({ lastWorkingDay: "", unreadable: true })).toEqual({ lastWorkingDay: "end_contract_date_incomplete" })
+        expect(lastDayErrors({ lastWorkingDay: "2026-11-05" })).toEqual({})
+        expect(lastDayErrors({ lastWorkingDay: "" })).toEqual({ lastWorkingDay: "end_contract_date_needed" })
     })
 
     it("reinstates under their name, with what it does, then Cancel and Reinstate", async () => {
@@ -235,7 +237,8 @@ describe("what's wrong, in the reader's language", () => {
     it("is said under the date, or above the buttons, by the server's code", async () => {
         const { endContractRefusal } = await import("@/lib/end-contract")
         expect(endContractRefusal({ code: "NO_SALARY" })).toEqual({ field: "lastWorkingDay", key: "end_contract_no_salary" })
-        expect(endContractRefusal({ code: "NOT_A_DATE" })).toEqual({ field: "lastWorkingDay", key: "end_contract_date_incomplete" })
+        // A date the server can't read, which the calendar never sends: one is asked for.
+        expect(endContractRefusal({ code: "NOT_A_DATE" })).toEqual({ field: "lastWorkingDay", key: "end_contract_date_needed" })
         expect(endContractRefusal({ code: "LAST_ADMIN" })).toEqual({ key: "end_contract_last_admin" })
         expect(endContractRefusal({ code: "ADMIN_IS_SUPER_ADMINS" })).toEqual({ key: "end_contract_admin" })
         expect(endContractRefusal({ code: "USER_HAS_NO_COMPANY" })).toEqual({ key: "end_contract_no_company" })
@@ -383,7 +386,7 @@ describe("the words", () => {
         "settlement_person_owes", "settlement_settled", "settlement_paid_from_payslip", "settlement_run_not_paid", "settlement_debt_recovered",
         "settlement_payable", "settlement_debt_remains", "settlement_advance_to_debt", "settlement_provisional", "end_contract_confirm",
         "end_contract_effective_now", "end_contract_effective_later", "end_contract_undecided", "end_contract_preview_failed",
-        "end_contract_no_salary", "end_contract_date_needed", "end_contract_date_incomplete", "end_contract_last_admin", "end_contract_admin",
+        "end_contract_no_salary", "end_contract_date_needed", "end_contract_last_admin", "end_contract_admin",
         "end_contract_no_company", "end_contract_ended", "end_contract_recorded", "reinstate_done", "handoff_title", "handoff_body",
         "handoff_move_to", "handoff_unassign", "handoff_unassign_note", "handoff_confirm", "handoff_cancel", "handoff_leader_archived",
         "handoff_leader_gone", "handoff_leader_refused",

@@ -370,8 +370,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         // In a number field, what the browser can't read ("1e", "-") reads as
         // empty, as though left empty, which is sent as 0: it's asked of the
         // fields themselves, as the form doesn't let the browser check them.
+        // The day an acting role ends is picked on the calendar, whole.
         const form = e.currentTarget
-        const unreadable = (['salary', 'dayOffCredit', 'actingUntil'] as const).filter(name => {
+        const unreadable = (['salary', 'dayOffCredit'] as const).filter(name => {
             const field = form.elements.namedItem(name)
             return field instanceof HTMLInputElement && field.validity.badInput
         })

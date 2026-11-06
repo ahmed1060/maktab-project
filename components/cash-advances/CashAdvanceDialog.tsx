@@ -4,6 +4,7 @@ import { useId, useState } from 'react'
 import useSWR from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Choice, Details, Dialog, Field, FileChip, FileChips, FilePicker, TextArea, TextInput } from '@/components/ui'
 import {
     CASH_ADVANCE_NOTE_MAX, HANDOVER_ACCEPT, HANDOVER_FOLDER, balanceAfter, refusalText, signedAmount, todayHere, type RecordedKind,
@@ -147,9 +148,7 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
                 <Field label={t('advances_amount')} error={amountError}>{p => (
                     <TextInput {...p} name="amount" autoComplete="off" type="number" inputMode="decimal" min={0.01} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
                 )}</Field>
-                <Field label={t('advances_date')} error={dateError}>{p => (
-                    <TextInput {...p} name="date" autoComplete="off" type="date" max={today} value={date} onChange={e => setDate(e.target.value)} />
-                )}</Field>
+                <DatePickerSingle name="date" label={t('advances_date')} value={date} maxDate={today} error={dateError} onChange={setDate} />
                 <Field label={t(kind === 'CORRECTION' ? 'advances_reason' : 'advances_note')} hint={t(kind === 'CORRECTION' ? 'advances_reason_hint' : 'advances_note_hint')} error={noteError}>{p => (
                     <TextArea {...p} name="note" autoComplete="off" rows={2} maxLength={CASH_ADVANCE_NOTE_MAX} value={note} onChange={e => setNote(e.target.value)} />
                 )}</Field>
