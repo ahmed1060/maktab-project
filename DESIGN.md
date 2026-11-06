@@ -569,11 +569,34 @@ These are built once, in the building-blocks PR, and every page uses them
 - **A place on the map,** such as a location's pin (`CLIENTS_PLAN.md`
   §2.5), is a group of fields under its label:
   - a place search, which drops the pin on the place picked, and gives it
-    a name if it has none yet;
+    a name if it has none yet. It suggests places as it's typed, in the
+    same list as a name typed or picked from a saved list (below), with
+    its keys and sizes:
+    - it asks once three letters are typed, a moment after the last key,
+      for places in Egypt, with a small spinner at the field's end while
+      it waits;
+    - each suggestion is a place's name, with the rest of its address
+      under it in `--muted`. Only a place with a point on the map is
+      suggested, so picking one always drops the pin;
+    - when nothing matches, or the search isn't answering, the line under
+      the field says so, and that the pin can still be pasted or picked
+      on the map;
   - the pin as coordinates (`30.0444, 31.2357`), which can be pasted from
     Google Maps, with "Use my current location" and "Pick on the map"
-    below it as secondary buttons. The map shows the pin, which can be
-    dragged, and the check radius as a circle around it;
+    right below it as secondary buttons. Once the device gives its
+    position, a line under them says how close it is, in `--problem-text`
+    when it's too rough for the check radius. When the device can't give
+    one, the line says why, in `--problem-text` too;
+  - the map opens under the buttons, 288px tall, with a field's corners
+    and edge, and a 2px `--brand-text` ring when the keyboard reaches it.
+    It shows the pin, a dot in the brand colour with a white edge (§2.1),
+    which can be dragged, and the check radius as a circle around it. A
+    cross marks its centre: the arrow keys move the map, and "Pin the
+    centre", under it, drops the pin there. A map isn't mirrored in
+    Arabic. Its own buttons, to zoom and to switch to satellite, are
+    named in the page's language and 44px under a finger, with a 2px
+    ring in the pin's colour, which holds 3:1 on them: they're white,
+    as the map is light, in both themes;
   - the check radius in metres, below, with the default it takes when
     left empty as its hint.
 
@@ -1637,3 +1660,10 @@ changed:
   so a dark page had a white box on it; their bar of colour was on the
   left in Arabic too, the end side there, and they slid in from the right.
   Their colours weren't the meanings' (§2.3), and their ✕ was a letter.
+- **2026-11-06:** A place on the map (§5.3). The place search's
+  suggestions were a list of its own making, reached only with a mouse,
+  and a place with no point on the map could be picked, which dropped no
+  pin. A search that found nothing, or failed, said nothing. In the
+  check-in places, the map's buttons were the older pages'. Its zoom
+  buttons were named in English whatever the page's language, and were
+  30px under a finger.
