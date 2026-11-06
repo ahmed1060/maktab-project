@@ -551,7 +551,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #203 on 2026-11-05, then the count of what waits on Requests in it,
      merged in #204 on 2026-11-05, then the top bar and its account menu,
      merged in #205 on 2026-11-06, then the Super Admin's company picker,
-     in #206, then the notifications;
+     merged in #206 on 2026-11-06, then the bell's panel, in #207;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4441,3 +4441,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The old switcher's code is gone from the top bar, with the screen
     width it watched in script. CSS does that now.
   - "All Companies" is "All companies", in sentence case.
+- **2026-11-06:** The Super Admin's company picker was merged in #206.
+  The frame's fifth and last part, in #207: the bell's panel, as the
+  approved mock-up draws it (`DESIGN.md` §5.1).
+  - It's 380px under the bar from the bell's end edge, and on a phone it
+    spans the bar, 8px in from its edges. While it's open, the bell is in
+    the brand's tint.
+  - "Notifications" is at its top, with Mark all as read while there's one
+    it can read.
+  - Each notification is a link to what it's about, with its subject's
+    icon (the side bar's where its subject has a page there, a calendar
+    for a day off), what it says, and how long ago: "10 minutes ago",
+    "Yesterday", and from a week on its date, with the exact date and time
+    on hover. One with nowhere to go isn't a link.
+  - An unread one is tinted, what it says in medium, with a dot, and a
+    screen reader hears "Unread" before it. One to deal with now, such as
+    a face check waiting, has an overdue row's look, as before.
+  - Opening it doesn't read them any more. Following one reads it, through
+    a new address that reads one of the person's own,
+    `PATCH /api/notifications/[id]`, and Mark all as read reads the rest.
+    Neither reads one to deal with now.
+  - It isn't a dialog, as the account menu isn't: Escape, a click outside
+    it, following one of its links, or Tab past its last one closes it.
+  - Where a notification leads, its icon and how long ago it came are in
+    `lib/notice-target.ts`, `lib/notice-icon.ts` and `lib/notice-age.ts`.
+    The bell followed the same branches on a click. An address on another
+    site that a notice names as its page is no longer followed.
+  - While they're on their way it says "Loading…", and when they didn't
+    load, so, with Try again; before, it said there were none.
+  - The three colours only the old panel used are gone from the tokens
+    (`app/globals.css`): an unread one's sky blue, a critical one's red
+    edge and the panel's grey border.
