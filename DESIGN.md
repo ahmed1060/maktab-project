@@ -624,7 +624,9 @@ These are built once, in the building-blocks PR, and every page uses them
     edge, or above it when there's no room below. It's drawn as the menus
     are (§5.5): `--panel-raised`, a `--rule` edge, the menu's corners and
     level-2 depth. On a phone, it opens in the middle of the screen over
-    the dimmed page;
+    the dimmed page. On a screen too short for all of it, such as a phone
+    on its side, it's as tall as the room it has and scrolls inside, so
+    its month, its days and its buttons can all be reached;
   - at its top, the month and year in the page's language, between the
     buttons for the month before and the month after. The month before is
     on the start side, as the pager's previous page is, so in Arabic the
