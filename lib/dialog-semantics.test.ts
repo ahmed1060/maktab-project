@@ -22,8 +22,8 @@ const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true 
 /** Overlays that are their own kind of thing, with their own handling. */
 const OWN = new Map([
     ["components/FaceCamera.tsx", "the camera: a dialog already, with spoken progress"],
-    ["components/DatePickerSingle.tsx", "a date picker: lib/usePickerKeyboard.ts"],
-    ["components/DateRangePicker.tsx", "a date picker: lib/usePickerKeyboard.ts"],
+    // The date and date range fields draw no dimmed page of their own: their
+    // calendar is components/ui/Calendar.tsx, whose phone layer is in ui.css.
     ["components/DateTimePicker.tsx", "a date picker: lib/usePickerKeyboard.ts"],
     ["components/DashboardShell.tsx", "the phone sidebar's dimmed background, a menu drawer rather than a dialog"],
 ])

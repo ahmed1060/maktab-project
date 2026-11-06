@@ -35,10 +35,12 @@ const DEFINED = new Set(
 )
 
 // Also defined, outside globals.css: by next/font (`variable: '--font-x'`, in
-// app/layout.tsx) and inline on the element that sets it (`['--x' as string]`).
+// app/layout.tsx) and inline on the element that sets it (`['--x' as string]`,
+// or from script with `style.setProperty('--x', …)`, as a date field's
+// calendar is placed against its field, PR 208).
 for (const file of SOURCES) {
-    for (const m of readFileSync(file, "utf8").matchAll(/variable:\s*'(--[a-z0-9-]+)'|\['(--[a-z0-9-]+)' as string\]:/gi)) {
-        DEFINED.add(m[1] ?? m[2])
+    for (const m of readFileSync(file, "utf8").matchAll(/variable:\s*'(--[a-z0-9-]+)'|\['(--[a-z0-9-]+)' as string\]:|\.setProperty\('(--[a-z0-9-]+)'/gi)) {
+        DEFINED.add(m[1] ?? m[2] ?? m[3])
     }
 }
 
@@ -215,6 +217,17 @@ describe("a token is used in the role it was defined for", () => {
         // the building blocks' (PR 207): the brand's tint for an unread one,
         // an overdue row's look for a critical one, and --rule for its edge.
         for (const token of ["--info-bg-sky", "--danger-fill", "--grey-200"]) {
+            const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
+            expect(declarations, token).toHaveLength(0)
+            expect(SOURCES.filter(file => code(file).includes(`var(${token})`)), `still drawn with ${token}`).toEqual([])
+        }
+    })
+
+    it("keeps no tokens of the old calendar's", () => {
+        // Its Reset's pale red and a range's indigo days had a value in each
+        // theme. The calendar is the building blocks' (PR 208): Clear is a
+        // quiet button, and a range's days are on the brand's tint.
+        for (const token of ["--danger-bg-subtle", "--info-fg-indigo"]) {
             const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
             expect(declarations, token).toHaveLength(0)
             expect(SOURCES.filter(file => code(file).includes(`var(${token})`)), `still drawn with ${token}`).toEqual([])

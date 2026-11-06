@@ -551,7 +551,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #203 on 2026-11-05, then the count of what waits on Requests in it,
      merged in #204 on 2026-11-05, then the top bar and its account menu,
      merged in #205 on 2026-11-06, then the Super Admin's company picker,
-     merged in #206 on 2026-11-06, then the bell's panel, in #207;
+     merged in #206 on 2026-11-06, then the bell's panel, merged in #207
+     on 2026-11-06, which finished it; then the date fields, in three
+     parts: the calendar a date and a range open, in #208, then the date
+     and time of a deadline, then the browser's own date fields moved onto
+     the same calendar;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4472,3 +4476,44 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The three colours only the old panel used are gone from the tokens
     (`app/globals.css`): an unread one's sky blue, a critical one's red
     edge and the panel's grey border.
+- **2026-11-06:** The bell's panel was merged in #207, which finished the
+  app's frame. The date fields' first part, in #208: the calendar a date
+  and a range of dates open, on the building blocks (`DESIGN.md` §5.3).
+  - On a computer it opens under its field, drawn as the menus are, or
+    above it when there's no room below, and follows the field as the page
+    scrolls; a click elsewhere closes it and goes on to what was clicked.
+    On a phone it opens in the middle of the screen over the dimmed page,
+    as before. It was in the middle of the screen on a computer too, where
+    it dimmed a dialog a second time.
+  - The day picked is in the brand colour and today in its text colour. A
+    range's days are on the brand's tint. They were the info blue, the
+    colour of what waits on someone, and indigo.
+  - The month and the weekdays are in the page's language, and the days
+    in its digits: they were Western digits in Arabic, and the weekdays
+    typed in. Each day is read out as the whole date, and today as today.
+  - The month before is on the start side, as the pager's previous page
+    is, so in Arabic the next month is on the left, the way the days run.
+    It was on the right.
+  - Dates read "6 Nov 2026", and a range "6–10 Nov 2026", as Intl joins
+    it; they were in American order, and a range was joined by an arrow.
+    A range with one end only says "From" or "Until" that day. A day given
+    as a time in full, as the dashboard's link to the audit log gives one,
+    reads as its day; it read "Invalid Date".
+  - Reset, in red, is Clear, a quiet button. A range's Done is in the
+    translations, and its words for what to pick next no longer command
+    in the masculine in Arabic.
+  - A range starts again each time it opens, can be turned off, and takes
+    a hint, as a single day can. A field with something wrong shows it in
+    the field's colour, as other fields do.
+  - Closing the calendar gives the focus back to its field, unless a click
+    outside it moved the focus on to another field.
+  - The field says its day once in the browser, as `SafeDate`'s dates do:
+    the server's Intl and the browser's can write a date otherwise, and a
+    page opened with a range in its address was drawn again.
+  - The fields' old look, which only unused code still drew, is gone, with
+    the two colours only the old calendar used (`app/globals.css`): Reset's
+    pale red and a range's indigo text.
+  - Codex's finding: on a screen too short for it, such as a phone on its
+    side, the calendar ran off the screen, with its month or its Done out
+    of reach. It's now as tall as the room it has, by its field or on a
+    phone's screen, and scrolls inside.

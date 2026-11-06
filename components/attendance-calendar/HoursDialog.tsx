@@ -104,14 +104,14 @@ export default function HoursDialog({ editing, today, companyWorkWeeks, weekdayN
 
                 {isOverride ? (
                     <>
-                        <DatePickerSingle asField label={t('attendance_first_day')} value={startDate} error={errors.startDate}
+                        <DatePickerSingle label={t('attendance_first_day')} value={startDate} error={errors.startDate}
                             onChange={day => { setStartDate(day); clear('startDate') }} />
-                        <DatePickerSingle asField label={t('attendance_last_day')} value={endDate} minDate={startDate || undefined} error={errors.endDate}
+                        <DatePickerSingle label={t('attendance_last_day')} value={endDate} minDate={startDate || undefined} error={errors.endDate}
                             onChange={day => { setEndDate(day); clear('endDate') }} />
                     </>
                 ) : (
                     <div className="ui-field">
-                        <DatePickerSingle asField label={t('attendance_from_when')} value={from} error={errors.from} hint={t('attendance_from_when_hint')} onChange={changeFrom} />
+                        <DatePickerSingle label={t('attendance_from_when')} value={from} error={errors.from} hint={t('attendance_from_when_hint')} onChange={changeFrom} />
                         <div className="ui-form-actions">
                             <Button size="sm" variant="quiet" onClick={() => changeFrom(today)}>{t('attendance_from_today')}</Button>
                             <Button size="sm" variant="quiet" onClick={() => changeFrom(firstOfNextMonth(today))}>{t('attendance_from_next_month')}</Button>

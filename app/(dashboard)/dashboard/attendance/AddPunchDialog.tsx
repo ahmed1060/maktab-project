@@ -103,7 +103,7 @@ export function AddPunchForm({ companyId, today, people, initial, onRunning, onC
                     options={[{ value: '', label: t('punch_choose_person') }, ...people.map(x => ({ value: x.id, label: x.name }))]} />
             )}</Field>
             {/* A punch is something that happened: today at the latest, on the company's calendar. */}
-            <DatePickerSingle asField label={t('punch_date')} value={date} maxDate={today} error={errors.date} disabled={action.running}
+            <DatePickerSingle label={t('punch_date')} value={date} maxDate={today} error={errors.date} disabled={action.running}
                 onChange={day => { setDate(day); clear('date') }} />
             <Field label={t('punch_time')} error={errors.time}>{f => (
                 <TextInput {...f} name="time" type="time" autoComplete="off" value={time} disabled={action.running} onChange={e => { setTime(e.target.value); clear('time') }} />

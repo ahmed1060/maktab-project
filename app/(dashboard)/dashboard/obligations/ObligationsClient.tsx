@@ -185,7 +185,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                             <Select {...p} icon={CircleHalfIcon} value={filters.status} onChange={e => go({ status: e.target.value })}
                                 options={[{ value: '', label: t('all_statuses') }, ...STATUSES.map(s => ({ value: s, label: t(`status_${s.toLowerCase()}` as TranslationKey) }))]} />
                         )}</Field>
-                        <DateRangePicker asField hideLabel dateFrom={filters.dateFrom} dateTo={filters.dateTo} onChange={(dateFrom, dateTo) => go({ dateFrom, dateTo })} />
+                        <DateRangePicker hideLabel dateFrom={filters.dateFrom} dateTo={filters.dateTo} onChange={(dateFrom, dateTo) => go({ dateFrom, dateTo })} />
                         <Field label={t('sort_by')} hideLabel>{p => (
                             <Select {...p} icon={SortAscendingIcon} value={sortKey} onChange={e => { const [by, order] = e.target.value.split('_'); go({ sortBy: by, sortOrder: order, page: String(page) }) }}
                                 options={(Object.keys(SORTS) as SortKey[]).map(k => ({ value: k, label: t(SORTS[k]) }))} />

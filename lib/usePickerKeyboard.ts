@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { isoOf, monthOf, moveDay } from '@/lib/calendar-keys'
-import { trapTab } from '@/lib/focus-trap'
+import { returnsFocus, trapTab } from '@/lib/focus-trap'
 
 /**
  * What a calendar pop-up needs to work from the keyboard (WCAG 2.1.1, audit
@@ -45,10 +45,11 @@ export function usePickerKeyboard(opts: {
         day?.focus()
     }, [isOpen, moved]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Back to the opener once closed, however it was closed.
+    // Back to the opener once closed, unless a click outside it moved the
+    // focus on to something else, as another field.
     const wasOpen = useRef(false)
     useEffect(() => {
-        if (wasOpen.current && !isOpen) returnTo.current?.focus?.()
+        if (wasOpen.current && !isOpen && returnsFocus(document.activeElement, document.body)) returnTo.current?.focus?.()
         wasOpen.current = isOpen
     }, [isOpen])
 
@@ -100,6 +101,9 @@ export function usePickerKeyboard(opts: {
 
     return { opened, popupProps, gridProps: { onKeyDown: onGridKeyDown }, dayProps }
 }
+
+/** What a calendar needs from usePickerKeyboard: its pop-up's, its grid's and each day's props. */
+export type PickerKeys = ReturnType<typeof usePickerKeyboard>
 
 /** The day to start on: the chosen one if it can be chosen, else today, else the first allowed. */
 export function startDay(chosen: string | null, minIso: string | null, maxIso: string | null): string {

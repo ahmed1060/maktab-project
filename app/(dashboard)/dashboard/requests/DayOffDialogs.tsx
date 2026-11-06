@@ -186,9 +186,9 @@ export function AskDayOff({ onCancel, onAsked }: { onCancel: () => void; onAsked
                     options={ASKED_DAY_OFF_TYPES.map(v => ({ value: v, label: t(DAY_OFF_TYPE_LABEL[v]) }))} />
             )}</Field>
             {regular
-                ? <DateRangePicker asField label={t('dates_label')} dateFrom={from} dateTo={to} minDate={today()} error={dateError}
+                ? <DateRangePicker label={t('dates_label')} dateFrom={from} dateTo={to} minDate={today()} error={dateError}
                     onChange={(start, end) => { setFrom(start); setTo(end); setDateError(undefined) }} />
-                : <DatePickerSingle asField label={t('date_label')} value={from} minDate={today()} error={dateError}
+                : <DatePickerSingle label={t('date_label')} value={from} minDate={today()} error={dateError}
                     onChange={day => { setFrom(day); setTo(day); setDateError(undefined) }} />}
             <Field label={t('reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}>{p => (
                 <TextArea {...p} dir="auto" placeholder={t('reason_placeholder')} value={reason} onChange={e => setReason(e.target.value)} maxLength={100} />

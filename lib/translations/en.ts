@@ -1306,7 +1306,6 @@ export const en = {
         select_date_range: "Select date range",
         select_start_date: "Select start date",
         select_end_date: "Select end date",
-        reset: "Reset",
         status_others: "Others",
         // The side bar's groups (UI_PLAN.md §2.1, §2.2).
         nav_group_work: "Work",
@@ -1687,6 +1686,10 @@ export const en = {
         requests_empty_done: "Nothing here is done yet.",
         requests_empty_filters: "No requests match these filters.",
         select_date: "Select date",
+        // A date field (DESIGN.md §5.3): Clear empties it; a range with one end only.
+        date_clear: "Clear",
+        date_range_from: "From {date}",
+        date_range_until: "Until {date}",
         calendar_prev_month: "Previous month",
         calendar_next_month: "Next month",
         day_off_type: "Request type",

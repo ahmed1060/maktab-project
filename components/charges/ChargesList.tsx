@@ -249,7 +249,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
                 <Field label={t('charges_filter_status')} hideLabel>{p => (
                     <Select {...p} icon={CircleDashedIcon} value={status} onChange={e => { setStatus(e.target.value as ChargeStatus); setPage(1) }} options={statusOptions} />
                 )}</Field>
-                <DateRangePicker asField hideLabel dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1) }} />
+                <DateRangePicker hideLabel dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1) }} />
             </FilterBar>
 
             {onPage

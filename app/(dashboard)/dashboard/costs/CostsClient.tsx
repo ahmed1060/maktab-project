@@ -249,7 +249,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
                     <Select {...p} icon={UserIcon} value={filters.employeeId} onChange={e => go({ employeeId: e.target.value })} options={employeeOptions} />
                 )}</Field>
                 <ExtraFilterSelects filters={extraFilters} onPick={pickFilter} />
-                <DateRangePicker asField hideLabel dateFrom={filters.dateFrom} dateTo={filters.dateTo} onChange={(dateFrom, dateTo) => go({ dateFrom, dateTo })} />
+                <DateRangePicker hideLabel dateFrom={filters.dateFrom} dateTo={filters.dateTo} onChange={(dateFrom, dateTo) => go({ dateFrom, dateTo })} />
                 <Field label={t('sort_by')} hideLabel>{p => (
                     <Select {...p} icon={SortAscendingIcon} value={sortKey} onChange={e => { const [by, order] = e.target.value.split('_'); go({ sortBy: by, sortOrder: order, page: String(page) }) }}
                         options={(Object.keys(SORTS) as SortKey[]).map(k => ({ value: k, label: t(SORTS[k]) }))} />

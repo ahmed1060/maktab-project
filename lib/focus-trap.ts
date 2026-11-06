@@ -69,3 +69,14 @@ export function regainFocus(panel: { focus: () => void } | null, active: unknown
     panel.focus()
     return true
 }
+
+/**
+ * Whether a pop-up that has just closed, such as a date field's calendar,
+ * should give the focus back to what opened it: when the focus went with it
+ * (nothing, the page's body, or a node no longer on the page has it), not
+ * when a click outside it has moved the focus on to another field.
+ */
+export function returnsFocus(active: unknown, body: unknown): boolean {
+    if (!active || active === body) return true
+    return (active as { isConnected?: boolean }).isConnected === false
+}

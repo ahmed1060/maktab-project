@@ -249,7 +249,7 @@ export function OvertimeAheadForm({ today, companyId, people, onCancel, onDone }
                     onChange={e => { setUserId(e.target.value); setErrors(x => ({ ...x, userId: undefined })) }}
                     options={[{ value: '', label: t('punch_choose_person') }, ...people.map(x => ({ value: x.id, label: x.name }))]} />
             )}</Field>
-            <DatePickerSingle asField label={t('punch_date')} value={date} error={errors.date} disabled={action.running}
+            <DatePickerSingle label={t('punch_date')} value={date} error={errors.date} disabled={action.running}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
             <Field label={t('req_hours')} error={errors.hours}>{f => (
                 <TextInput {...f} name="hours" type="number" inputMode="decimal" min="0.5" max="24" step="0.5" autoComplete="off" value={hours} disabled={action.running}
