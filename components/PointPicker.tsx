@@ -4,6 +4,8 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import type * as Leaflet from 'leaflet'
 import { useLanguage } from '@/context/LanguageContext'
+import { Button } from '@/components/ui'
+import { cx } from '@/components/ui/cx'
 import { hereAttribution, hereProviders, hereTileUrl, LEAFLET_CREDIT, loadHereCopyrights, type HereStyle } from '@/lib/here-tiles'
 import { fixStillWanted, formatPoint, locateErrorKey, MAX_ACCURACY_METERS, parsePoint } from '@/lib/attendance/geo'
 
@@ -17,18 +19,20 @@ import { fixStillWanted, formatPoint, locateErrorKey, MAX_ACCURACY_METERS, parse
  * there; the pin can be dragged; the circle shows the radius. Without a
  * mouse, the arrow keys move the map and "Pin the centre" drops the pin
  * under the cross in the middle.
+ *
+ * On the building blocks (DESIGN.md §5.3, "A place on the map"): their
+ * buttons, its line in a hint's or a problem's colour, and the map's frame
+ * in components/ui/ui.css.
  */
 
 const CAIRO: [number, number] = [30.0444, 31.2357]
 
 type Status = { kind: 'accuracy'; meters: number; text: string } | { kind: 'error'; key: ReturnType<typeof locateErrorKey> | 'att_loc_here_unsupported' }
 
-export default function PointPicker({ value, radius, onChange, blocks = false }: {
+export default function PointPicker({ value, radius, onChange }: {
     value: string
     radius: number
     onChange: (text: string) => void
-    /** Drawn with the building blocks' buttons and colours (DESIGN.md §5.3), on a page moved onto them. */
-    blocks?: boolean
 }) {
     const { t, locale } = useLanguage()
     const hereKey = process.env.NEXT_PUBLIC_HERE_API_KEY
@@ -94,10 +98,16 @@ export default function PointPicker({ value, radius, onChange, blocks = false }:
             const L = (mod as unknown as { default?: typeof Leaflet }).default ?? (mod as typeof Leaflet)
             if (cancelled || !box.current) return
             const start = parsePoint(latest.current.value)
-            map = L.map(box.current, { center: start ? [start.latitude, start.longitude] : CAIRO, zoom: start ? 17 : 11 })
+            // Its own buttons are named in the page's language (DESIGN.md §5.3).
+            map = L.map(box.current, { center: start ? [start.latitude, start.longitude] : CAIRO, zoom: start ? 17 : 11, zoomControl: false })
+            L.control.zoom({ zoomInTitle: t('map_zoom_in'), zoomOutTitle: t('map_zoom_out') }).addTo(map)
             const layer = (style: HereStyle) => L.tileLayer(hereTileUrl(style, locale, hereKey!, { sharp: L.Browser.retina }), { maxZoom: 20 })
             const street = layer('map').addTo(map)
-            L.control.layers({ [t('att_loc_layer_map')]: street, [t('att_loc_layer_satellite')]: layer('satellite') }, undefined, { position: 'topright' }).addTo(map)
+            const layers = L.control.layers({ [t('att_loc_layer_map')]: street, [t('att_loc_layer_satellite')]: layer('satellite') }, undefined, { position: 'topright' }).addTo(map)
+            // Leaflet names the button that opens them "Layers", with no option to name it otherwise.
+            const toggle = layers.getContainer()?.querySelector('.leaflet-control-layers-toggle')
+            toggle?.setAttribute('title', t('att_loc_layers'))
+            toggle?.setAttribute('aria-label', t('att_loc_layers'))
             map.attributionControl.setPrefix(LEAFLET_CREDIT)
             // HERE's notice names the suppliers for the style, zoom and area showing.
             // HERE alone shows at once, so the map is never without it while the list loads.
@@ -151,15 +161,15 @@ export default function PointPicker({ value, radius, onChange, blocks = false }:
                 draggable: true,
                 title: t('att_loc_pin'),
                 alt: t('att_loc_pin'),
-                icon: lf.L.divIcon({ className: 'map-pin', iconSize: [22, 22], iconAnchor: [11, 11] }),
+                icon: lf.L.divIcon({ className: 'ui-map-pin', iconSize: [22, 22], iconAnchor: [11, 11] }),
             }).addTo(lf.map)
             pin.current.on('dragend', () => { const ll = pin.current!.getLatLng(); put(ll.lat, ll.lng) })
         }
         if (radius > 0) {
             if (rings.current.length) rings.current.forEach(r => r.setLatLng(at).setRadius(radius))
             else rings.current = [
-                lf.L.circle(at, { radius, className: 'map-ring-halo', weight: 4, fill: false, interactive: false }).addTo(lf.map),
-                lf.L.circle(at, { radius, className: 'map-ring', weight: 2, fillOpacity: 0.12, interactive: false }).addTo(lf.map),
+                lf.L.circle(at, { radius, className: 'ui-map-ring-halo', weight: 4, fill: false, interactive: false }).addTo(lf.map),
+                lf.L.circle(at, { radius, className: 'ui-map-ring', weight: 2, fillOpacity: 0.12, interactive: false }).addTo(lf.map),
             ]
         } else { rings.current.forEach(r => r.remove()); rings.current = [] }
         // Typed or found somewhere off screen: bring it into view.
@@ -172,44 +182,35 @@ export default function PointPicker({ value, radius, onChange, blocks = false }:
     }
 
     const shown = status && (status.kind === 'error' || status.text === value) ? status : null
-    // The building blocks' secondary button, or the older pages' own.
-    const button = blocks ? { className: 'ui-btn ui-btn-secondary ui-btn-sm' } : { className: 'btn btn-secondary', style: { fontSize: '0.8rem' } }
-    const soft = blocks ? 'var(--muted)' : 'var(--text-soft)'
-    const danger = blocks ? 'var(--problem-text)' : 'var(--danger-fg)'
-    const small = blocks ? 'var(--text-xs)' : '0.75rem'
+    // Too rough for the radius to tell inside from out.
+    const rough = shown?.kind === 'accuracy' && shown.meters > Math.max(MAX_ACCURACY_METERS, radius)
+    const problem = shown?.kind === 'error' || rough
+    // In the page's digits (DESIGN.md §3.3).
+    const meters = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
 
     return (
-        <div style={{ display: 'grid', gap: '0.4rem' }}>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button type="button" {...button} disabled={locating} onClick={locate}>
-                    {locating ? t('att_loc_here_busy') : t('att_loc_here')}
-                </button>
+        <div className="ui-point-picker">
+            <div className="ui-point-picker-buttons">
+                <Button busy={locating} onClick={locate}>{locating ? t('att_loc_here_busy') : t('att_loc_here')}</Button>
                 {/* No key, no map: the HERE key is what draws it. */}
-                {hereKey && (
-                    <button type="button" {...button} aria-expanded={mapOpen} onClick={() => setMapOpen(o => !o)}>
-                        {mapOpen ? t('att_loc_pick_close') : t('att_loc_pick')}
-                    </button>
-                )}
+                {hereKey && <Button aria-expanded={mapOpen} onClick={() => setMapOpen(o => !o)}>{mapOpen ? t('att_loc_pick_close') : t('att_loc_pick')}</Button>}
             </div>
-            <span role="status" style={{ fontSize: small, color: shown?.kind === 'error' || (shown?.kind === 'accuracy' && shown.meters > Math.max(MAX_ACCURACY_METERS, radius)) ? danger : soft }}>
+            <p className={cx(problem ? 'ui-error' : 'ui-hint', 'ui-point-picker-status')} role="status">
                 {shown?.kind === 'error' && t(shown.key)}
-                {shown?.kind === 'accuracy' && (shown.meters > Math.max(MAX_ACCURACY_METERS, radius)
-                    ? t('att_loc_here_rough').replace('{n}', String(shown.meters))
-                    : t('att_loc_here_found').replace('{n}', String(shown.meters)))}
-            </span>
-            {mapOpen && hereKey && (
-                <div style={{ display: 'grid', gap: '0.4rem' }}>
-                    <div style={{ position: 'relative', isolation: 'isolate' }} dir="ltr">
-                        <div ref={box} aria-label={t('att_loc_map_label')} style={{ height: '18rem', borderRadius: blocks ? 'var(--radius-field)' : '0.75rem', border: `1px solid ${blocks ? 'var(--field-line)' : 'var(--field-border)'}` }} />
-                        {/* The centre of the map, where "Pin the centre" puts the pin. */}
-                        <span aria-hidden="true" className="map-cross" />
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button type="button" {...button} onClick={pinCentre}>{t('att_loc_pin_centre')}</button>
-                        <span style={{ fontSize: small, color: soft }}>{t('att_loc_pick_hint')}</span>
-                    </div>
+                {shown?.kind === 'accuracy' && t(rough ? 'att_loc_here_rough' : 'att_loc_here_found').replace('{n}', meters(shown.meters))}
+            </p>
+            {mapOpen && hereKey && <>
+                {/* A map isn't mirrored in Arabic. */}
+                <div className="ui-map-frame" dir="ltr">
+                    <div ref={box} className="ui-map" role="region" aria-label={t('att_loc_map_label')} />
+                    {/* The centre of the map, where "Pin the centre" puts the pin. */}
+                    <span aria-hidden="true" className="ui-map-cross" />
                 </div>
-            )}
+                <div className="ui-map-actions">
+                    <Button onClick={pinCentre}>{t('att_loc_pin_centre')}</Button>
+                    <span className="ui-hint">{t('att_loc_pick_hint')}</span>
+                </div>
+            </>}
         </div>
     )
 }
