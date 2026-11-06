@@ -1936,6 +1936,137 @@ a.ui-file-open:focus-visible,
   }
 }
 
+/* ── Toast (§5.5) ── */
+/* A few words on what an action did, at the screen's top end corner: over
+   every dialog, one opened from an older page's modal (10000) included,
+   and under the screen shown while the language changes (99999). The
+   newest under the others; a stack taller than the screen scrolls, and
+   clicks go through where there's no toast. */
+.ui-toasts {
+  position: fixed;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-block-size: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+  pointer-events: none;
+}
+/* The errors' alert region and the rest's status region, always in the
+   page and drawn as their toasts. */
+.ui-toasts-group {
+  display: contents;
+}
+/* A level-2 panel; its meaning's colour is a bar on its start edge and its
+   icon's, as a note above the page's is: the toast's colour, which its
+   words don't take. It slides in from the end side. */
+.ui-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  inline-size: min(400px, calc(100vw - 2 * var(--space-4)));
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4) var(--space-2);
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-inline-start: 3px solid currentColor;
+  border-radius: var(--radius-menu);
+  box-shadow: var(--elev-2);
+  color: var(--status-neutral-fg);
+  pointer-events: auto;
+  animation: ui-toast-in 200ms ease-out;
+}
+.ui-toast[data-tone="good"] {
+  color: var(--status-good-fg);
+}
+.ui-toast[data-tone="problem"] {
+  color: var(--problem-text);
+}
+.ui-toast[data-tone="waiting"] {
+  color: var(--status-waiting-fg);
+}
+.ui-toast[data-tone="neutral"] {
+  color: var(--status-neutral-fg);
+}
+.ui-toast-icon {
+  flex: none;
+}
+.ui-toast-text {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  overflow-wrap: anywhere;
+}
+/* Close: an X, its 32px target centred on the first line's 20px. */
+.ui-toast-close {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+  margin-block: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 150ms ease-out, background-color 150ms ease-out;
+}
+.ui-toast-close:hover {
+  background: var(--brand-tint);
+  color: var(--ink);
+}
+.ui-toast-close:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: -2px;
+}
+@media (pointer: coarse) {
+  .ui-toast-close {
+    inline-size: 44px;
+    block-size: 44px;
+    margin-block: -12px;
+  }
+}
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+/* The end side is the left in Arabic. */
+@keyframes ui-toast-in-rtl {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+[dir="rtl"] .ui-toast {
+  animation-name: ui-toast-in-rtl;
+}
+@media (max-width: 767px) {
+  .ui-toasts {
+    inset-inline-start: var(--space-4);
+  }
+  .ui-toast {
+    inline-size: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-toast {
+    animation: none;
+  }
+  .ui-toast-close {
+    transition: none;
+  }
+}
+
 /* ── Page layout and sections (§5.5) ── */
 .ui-page {
   display: flex;
