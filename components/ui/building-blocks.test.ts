@@ -578,9 +578,11 @@ describe("the stylesheet keeps the rules", () => {
         expect(css).toMatch(/\.ui-menu \{[^}]*border-radius: var\(--radius-menu\);[^}]*box-shadow: var\(--elev-2\);/)
     })
 
-    it("the old top bar hides its title on a page with a page header, so the page is named once", () => {
-        expect(css).toMatch(/:root:has\(\.ui-page-header\) \.ui-topbar-title \{\s*display: none;/)
-        expect(readFileSync("components/DashboardHeader.tsx", "utf8")).toMatch(/<div className="ui-topbar-title"[^>]*>\s*<h1/)
+    it("the top bar has no title, so a page is named once, by its page header (§5.1)", () => {
+        expect(css).not.toMatch(/\.ui-topbar-title/)
+        const header = readFileSync("components/DashboardHeader.tsx", "utf8")
+        expect(header).not.toMatch(/ui-topbar-title|<h1/)
+        expect(header).not.toMatch(/getPageTitle|useHeader/)
     })
 
     it("a page on the building blocks sits on the page colour, not the old moving gradient", () => {

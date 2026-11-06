@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { BellIcon } from "@phosphor-icons/react/ssr"
+import { Icon } from "@/components/ui"
 import useSWR from "swr"
 import { fetcher } from "@/lib/swr-fetcher"
 import { useRouter } from "next/navigation"
@@ -38,6 +40,8 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
     const dropdownRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
     const { t, locale } = useLanguage()
+    // The unread count in the page's own digits (DESIGN.md §7).
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     // In the reader's language (lib/notice.ts). A row written before keys, or
     // with a key this version does not know, shows the English it was written with.
     const text = (n: Notification) => {
@@ -156,38 +160,15 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
 
     return (
         <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <button
-                aria-label={unreadCount > 0 ? `${t('notifications')} (${unreadCount})` : t('notifications')}
+            {/* A round icon button on the top bar (DESIGN.md §5.1), named with
+                how many are unread: the pill on it is hidden from screen
+                readers, which hear it in the name instead. */}
+            <button type="button" className="ui-topbar-button"
+                aria-label={unreadCount > 0 ? `${t('notifications')}${t('top_bar_unread').replace('{count}', num(unreadCount))}` : t('notifications')}
                 aria-expanded={isOpen}
-                onClick={toggleOpen}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    fontSize: '1.5rem'
-                }}
-            >
-                <span aria-hidden="true">🔔</span>
-                {unreadCount > 0 && (
-                    <span style={{
-                        position: 'absolute',
-                        top: -5,
-                        right: -5,
-                        background: 'var(--danger-fill)',
-                        color: 'var(--text-on-accent)',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.75rem',
-                        fontWeight: 'bold'
-                    }}>
-                        {unreadCount}
-                    </span>
-                )}
+                onClick={toggleOpen}>
+                <Icon icon={BellIcon} className="ui-topbar-icon" />
+                {unreadCount > 0 && <span className="ui-topbar-count" aria-hidden="true">{num(unreadCount)}</span>}
             </button>
 
             {isOpen && (

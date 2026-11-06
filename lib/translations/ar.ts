@@ -57,6 +57,10 @@ export const ar = {
         // The side bar (DESIGN.md §5.1): the menu's name, and the drawer's close button on a phone.
         nav_main_menu: "القائمة الرئيسية",
         close_menu: "إغلاق القائمة",
+        // The top bar (DESIGN.md §5.1): the language switch's name, how many notifications are unread, heard after the bell's name, and the role under a name in the account menu.
+        language: "اللغة",
+        top_bar_unread: "، غير المقروءة: {count}",
+        account_role_at: "{role} في {company}",
         // Heard after Requests in the side bar: how many wait on this person under To review (DESIGN.md §5.1).
         side_bar_to_review: "، {count} للمراجعة",
         remove: "إزالة",
@@ -73,7 +77,7 @@ export const ar = {
         no_requests_found: "لم يتم العثور على طلبات",
         confirm: "تأكيد",
         my_profile: "ملفي الشخصي",
-        account_menu: "قائمة الحساب",
+        account_menu_for: "قائمة الحساب، {name}، {role}",
         salary_history: "سجل الرواتب",
         salary_label: "الراتب",
         day_off_credit_tab: "رصيد الإجازات",
@@ -1039,7 +1043,6 @@ export const ar = {
         expiry_date_label: "تاريخ الانتهاء",
         reminder_days_label: "أيام التذكير",
         delete_note_msg: "هل أنت متأكد أنك تريد حذف هذه الملاحظة؟ لا يمكن التراجع عن هذا الإجراء.",
-        toggle_language: "English",
         geolocation_not_supported: "تحديد الموقع الجغرافي غير مدعوم",
         failed_get_location: "فشل في تحديد الموقع",
         task_approved_success: "تمت الموافقة على المهمة بنجاح",

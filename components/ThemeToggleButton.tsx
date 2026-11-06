@@ -1,66 +1,49 @@
 'use client';
 
-import React from 'react';
+import { useId } from 'react';
+import { MoonIcon, SunIcon } from '@phosphor-icons/react/ssr';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
-import SegmentedToggle from '@/components/SegmentedToggle';
+import { Segmented, type SegmentedOption } from '@/components/ui';
 import { type Theme } from '@/lib/theme';
 
 interface ThemeToggleButtonProps {
-    /** 'inline' is positioned by whatever holds it — see PreferenceBar. */
+    /** 'menu-item': a row of the account menu, named by its visible label (DESIGN.md §5.1). */
     variant?: 'inline' | 'menu-item';
     onAction?: () => void;
 }
 
-const ICON: Record<Theme, string> = { light: '☀️', dark: '🌙' };
-const LABEL_KEY: Record<Theme, string> = { light: 'theme_light', dark: 'theme_dark' };
-const ORDER: Theme[] = ['light', 'dark'];
-
 /**
- * Both themes visible, the current one marked.
+ * Both themes visible, the one in use marked: the same switch as the
+ * language's, in the account menu and under the sign-in card, so a person
+ * learns one and has learned both (DESIGN.md §5.1).
  *
- * Was a cycle through light → dark → system, which had to name the state it was
- * in and so could never say what clicking would do. With "system" gone there
- * are two options, and a segmented control shows both at once.
- *
- * Deliberately the same control as the language picker, mounted in the same two
- * places — so a person learns one and has learned both.
- *
- * Order is *not* pinned here, unlike the language picker. Light and dark have
- * no side of their own to belong on; the language control is about language
- * rather than in one, which is the whole reason that one is exempt.
+ * Its order isn't pinned, unlike the language switch's: light and dark have
+ * no side of their own, so they follow the page's.
  */
 export default function ThemeToggleButton({ variant = 'inline', onAction }: ThemeToggleButtonProps) {
-    const { locale, t } = useLanguage();
+    const { t } = useLanguage();
     const { theme, setTheme } = useTheme();
+    const labelId = useId();
 
     const handleChange = (next: Theme) => {
         setTheme(next);
         if (onAction) onAction();
     };
 
-    const control = (
-        <SegmentedToggle
-            value={theme}
-            options={ORDER.map(value => ({ value, label: `${ICON[value]} ${t(LABEL_KEY[value] as any)}` }))}
-            onChange={handleChange}
-            ariaLabel={t('theme_label' as any)}
-            size={variant === 'menu-item' ? 'sm' : 'md'}
-        />
-    );
+    const options: SegmentedOption<Theme>[] = [
+        { value: 'light', label: t('theme_light'), icon: SunIcon },
+        { value: 'dark', label: t('theme_dark'), icon: MoonIcon },
+    ];
 
     if (variant === 'menu-item') {
         return (
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0.35rem 1rem',
-                direction: locale === 'ar' ? 'rtl' : 'ltr',
-            }}>
-                {control}
+            <div className="ui-account-theme">
+                <span id={labelId} className="ui-account-theme-label">{t('theme_label')}</span>
+                <Segmented value={theme} options={options} onChange={handleChange} labelledBy={labelId} />
             </div>
         );
     }
 
-    return control;
+    return <Segmented value={theme} options={options} onChange={handleChange} label={t('theme_label')} />;
 }

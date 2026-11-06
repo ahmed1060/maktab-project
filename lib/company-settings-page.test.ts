@@ -30,7 +30,6 @@ vi.mock("@/context/LanguageContext", () => ({
     useLanguage: () => ({ locale: state.locale, t: (key: string) => (state.locale === "ar" ? ar : en)[key as keyof typeof en] ?? key }),
 }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
-vi.mock("@/context/HeaderContext", () => ({ useHeader: () => ({ setTitle: () => {}, setSubtitle: () => {} }) }))
 vi.mock("@/lib/useCan", () => ({
     useViewer: () => ({ role: state.role }),
     useCan: () => ({ can: () => true, canFor: () => true }),

@@ -119,19 +119,20 @@ describe("toasts", () => {
 describe("the skip link's target (review on #37)", () => {
     it("stops below the sticky header, not under it", () => {
         const css = readFileSync("app/globals.css", "utf8")
+        const ui = readFileSync("components/ui/ui.css", "utf8")
         const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        const header = readFileSync("components/DashboardHeader.tsx", "utf8")
-        // The header: 72px tall, sticky at the top, and 1rem down once the page has scrolled.
-        expect(header).toContain("height: '72px'")
-        expect(shell).toContain("position: 'sticky'")
-        expect(shell).toContain("marginTop: isScrolled ? '1rem' : '0'")
-        expect(css).toMatch(/#main-content \{\s*scroll-margin-top: calc\(72px \+ 1rem\);/)
+        // The top bar (PR 205): 60px tall, in a frame sticky at the top, and
+        // 16px down from it once it floats, as it does once the page has scrolled.
+        expect(ui).toMatch(/\n\.ui-topbar-frame \{\s*position: sticky;\s*inset-block-start: 0;\s*z-index: \d+;\s*block-size: 60px;\s*\}/)
+        expect(ui).toMatch(/\n\.ui-topbar-frame\[data-floating="true"\] \.ui-topbar \{\s*inset-block-start: var\(--space-4\);/)
+        expect(shell).toContain('<div className="ui-topbar-frame" data-floating={isScrolled ? \'true\' : \'false\'}>')
+        expect(css).toMatch(/#main-content \{\s*scroll-margin-top: calc\(60px \+ 16px\);/)
     })
 
     // Told what's wrong, a field at the window's top edge took the focus
     // where it was, under the header (PR 193, browser flows).
     it("and so does whatever takes the focus or is scrolled to, on every page of the dashboard", () => {
         const css = readFileSync("app/globals.css", "utf8")
-        expect(css).toMatch(/\nhtml:has\(#main-content\) \{\s*scroll-padding-top: calc\(72px \+ 2rem\);\s*\}/)
+        expect(css).toMatch(/\nhtml:has\(#main-content\) \{\s*scroll-padding-top: calc\(60px \+ 16px \+ 1rem\);\s*\}/)
     })
 })

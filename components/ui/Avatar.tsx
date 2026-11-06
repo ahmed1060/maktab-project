@@ -12,9 +12,19 @@ export function initials(name: string): string {
     return ARABIC.test(letters.join('')) ? letters.join('\u200C') : letters.join('').toUpperCase()
 }
 
-/** A person's initials in a circle. Always beside their name, so it's hidden from screen readers. */
-export function Avatar({ name }: { name: string }) {
-    return <span className="ui-avatar" aria-hidden="true">{initials(name)}</span>
+/**
+ * A person's initials in a circle, or their photo when it's given (the top
+ * bar's account button and menu, DESIGN.md §5.1), never a drawing that stands
+ * in for them. Always beside their name, so it's hidden from screen readers.
+ * 28px across, or 32px or 40px.
+ */
+export function Avatar({ name, src = null, size }: { name: string; src?: string | null; size?: 32 | 40 }) {
+    const across = size ?? 28
+    return (
+        <span className={size ? `ui-avatar ui-avatar-${size}` : 'ui-avatar'} aria-hidden="true">
+            {src ? <Image src={src} alt="" width={across} height={across} /> : initials(name)}
+        </span>
+    )
 }
 
 /**

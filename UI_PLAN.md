@@ -549,7 +549,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      on 2026-11-05, then the app's frame, from a mock-up the product owner
      approved on 2026-11-05, a part at a time: the side bar, merged in
      #203 on 2026-11-05, then the count of what waits on Requests in it,
-     in #204, then the top bar, then the notifications;
+     merged in #204 on 2026-11-05, then the top bar and its account menu,
+     in #205, then the Super Admin's company picker, then the
+     notifications;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4391,3 +4393,31 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The top bar's button for name changes alone is gone, with its count:
     name changes are among what's counted on Requests. The dashboard's tile
     for them stays, for whoever decides them.
+- **2026-11-06:** The count of what waits on Requests was merged in #204.
+  The frame's third part, in #205: the top bar and its account menu, as the
+  approved mock-up draws them (`DESIGN.md` §5.1).
+  - It has no title: every page names itself in its page header. The only
+    pages without one are old addresses that send people to another page.
+  - The language switch shows both languages, each written in itself,
+    English first in Arabic too, and "EN" and "ع" on a phone. The theme
+    switch in the account menu is drawn the same way. The old toggle they
+    replace is gone, with its two tokens.
+  - The bell has a `--brand` pill for how many are unread, and is named
+    with it. The panel it opens is unchanged until its own part.
+  - The account button has the person's photo or initials, never a drawing
+    that stands in for them, with their name and role; on a phone, the
+    photo or initials alone. Its menu has the person and their role at
+    their company, My profile, Security settings, History where it was
+    before, the theme switch and Sign out. Escape, a click outside it,
+    following one of its links or Tab past its end closes it; switching
+    the theme doesn't.
+  - At the top of the page it sits on the page, and scrolled it floats as
+    glass, as today, but within the room it takes, so the page no longer
+    moves 32px as it does. On a phone it floats 8px in, where its buttons
+    already are.
+  - What pages set its title with is gone, with its last use, on the UI
+    kit page.
+  - The Super Admin's company list opens from the switcher's start edge,
+    now that the switcher is at the bar's start. From its end edge, as it
+    opened when the switcher was at the bar's end, it ran off a phone's
+    screen, 72px in English and 79px in Arabic (Codex review).

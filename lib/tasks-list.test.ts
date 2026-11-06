@@ -17,7 +17,6 @@ vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(address.query),
 }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
-vi.mock("@/context/HeaderContext", () => ({ useHeader: () => ({ setTitle: () => {}, setSubtitle: () => {} }) }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Tasks" }) }))
 vi.mock("@/lib/useCan", () => ({
     useCan: () => ({ can: (p: string) => p !== "tasks.create" || viewer.creates, scope: () => viewer.reach, companyWide: () => viewer.reach === "COMPANY" }),

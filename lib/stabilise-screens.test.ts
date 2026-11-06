@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync, readdirSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 
 /**
@@ -52,12 +52,11 @@ describe("at phone width", () => {
     it("a row of tabs scrolls by itself, not the whole page", () => {
         // The company settings tabs and the role-requests tabs ran past the
         // screen's edge, so the page could be dragged sideways.
-        const toggle = readFileSync("components/SegmentedToggle.tsx", "utf8")
-        expect(toggle).toContain("maxWidth: '100%',")
-        expect(toggle).toContain("overflowX: 'auto',")
-        expect(toggle).toContain("flexShrink: 0,")
-        // and the chosen tab is kept in sight when the row scrolls
-        expect(toggle).toContain("box.scrollBy(")
+        // They're the building blocks' tabs now, whose row scrolls within
+        // itself (lib/phone-tabs.test.ts), and the old toggle is gone (PR 205).
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css.match(/\.ui-tabs,\s*\.ui-tablinks\s*\{([^}]*)\}/)?.[1] ?? "").toContain("overflow-x: auto")
+        expect(existsSync("components/SegmentedToggle.tsx")).toBe(false)
     })
 
     it("the task list's cards fit the screen", () => {

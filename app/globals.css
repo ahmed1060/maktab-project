@@ -183,15 +183,6 @@
      there at all. */
   --logo-plate: #f4f6fa;
 
-  /* The raised half of a segmented toggle, and the shadow under it.
-     Not --surface: the toggle's track is a percentage of the text colour, so
-     on dark the track lifts *above* --surface and the selected pill sank into
-     the panel behind it — the same hole, punched the other way. The shadow has
-     to be its own token for the same reason: a percentage of --text-strong is
-     a drop shadow on light and a white halo on dark. */
-  --segment-raised: #ffffff;
-  --segment-raised-shadow: rgba(15, 23, 42, 0.12);
-
   /* The sticky header that appears on scroll. Its own tokens rather than the
      card ones: it sits over moving content, so it needs enough opacity to stop
      that content reading through it — a translucent bar with a heading bleeding
@@ -742,17 +733,18 @@ html[dir="rtl"] select.input {
   top: 1rem;
 }
 /* Reached by the skip link: no ring around the whole page. Stopped below
-   the sticky header (72px, and 1rem down from the top once the page has
-   scrolled), not under it, so the page's first heading shows (review on #37). */
+   the sticky top bar (60px, and 16px down from the top once it floats, as it
+   does once the page has scrolled), not under it, so the page's first
+   heading shows (review on #37). */
 #main-content {
-  scroll-margin-top: calc(72px + 1rem);
+  scroll-margin-top: calc(60px + 16px);
 }
 /* Whatever takes the focus or is scrolled to on a page of the dashboard,
    such as the first field that's wrong, stops below the sticky header too,
    with room to spare: at the window's top edge, a field took the focus
    where it was, under the header (PR 193). */
 html:has(#main-content) {
-  scroll-padding-top: calc(72px + 2rem);
+  scroll-padding-top: calc(60px + 16px + 1rem);
 }
 #main-content:focus {
   outline: none;
@@ -1086,9 +1078,6 @@ input::-webkit-credentials-auto-fill-button {
 
     --border: #30363d;
     --border-firm: #474e57;
-
-    --segment-raised: #30363d;
-    --segment-raised-shadow: rgba(0, 0, 0, 0.45);
 
     --text-strong: #f0f6fc;
     --text-main: #e6edf3;

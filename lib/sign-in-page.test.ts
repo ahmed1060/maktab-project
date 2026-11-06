@@ -114,15 +114,15 @@ describe("the sign-in screen", () => {
         expect(foot).toMatch(/^<\/main><footer class="ui-signin-foot"><div class="ui-signin-links">/)
         expect(foot).toContain(`<a href="/privacy">${esc(en.privacy_policy)}</a><a href="/terms">${esc(en.terms_of_service)}</a>`)
         expect(foot).toContain(`<div class="ui-signin-switches"><div role="group" aria-label="${esc(en.theme_label)}"`)
-        expect(foot).toContain(`aria-label="${esc(en.toggle_language)}"`)
+        expect(foot).toContain(`aria-label="${esc(en.language)}"`)
         expect(rule(".ui-signin-foot")).toContain("flex-wrap: wrap;")
         expect(css().slice(css().indexOf("/* ── Sign-in"), css().indexOf("/* Sign-in on phones"))).not.toContain("position: fixed")
         // Pinned to the corners, they covered Sign in on a phone.
         expect(existsSync("components/PreferenceBar.tsx")).toBe(false)
     })
 
-    // Tall enough to tap on a phone (DESIGN.md §9): the account menu's
-    // switches, kept until the app shell replaces them, were 30px there
+    // Tall enough to tap on a phone (DESIGN.md §9): the top bar's and the
+    // account menu's switches, which these are, are 30px there
     // (web interface audit).
     it("makes the switches' options tall enough to tap on a phone", () => {
         const phone = css().slice(css().indexOf("/* Sign-in on phones"))

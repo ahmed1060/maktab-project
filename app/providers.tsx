@@ -4,7 +4,6 @@ import { SessionProvider } from "next-auth/react"
 import { SWRConfig } from "swr"
 import { CompanyProvider } from "@/context/CompanyContext"
 import { ToastProvider } from "@/context/ToastContext"
-import { HeaderProvider } from "@/context/HeaderContext"
 import { LanguageProvider } from "@/context/LanguageContext"
 import type { Locale, TranslationDict } from "@/lib/translations"
 import AuthInterceptor from "@/components/AuthInterceptor"
@@ -31,11 +30,9 @@ export function Providers({ children, initialLocale, initialDict, initialTheme, 
                         account, which needs to know who is signed in. */}
                     <ThemeProvider initialTheme={initialTheme} themeChosen={themeChosen}>
                     <CompanyProvider>
-                        <HeaderProvider>
-                            <ToastProvider>
-                                {children}
-                            </ToastProvider>
-                        </HeaderProvider>
+                        <ToastProvider>
+                            {children}
+                        </ToastProvider>
                     </CompanyProvider>
                     </ThemeProvider>
                 </LanguageProvider>
