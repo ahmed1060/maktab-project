@@ -97,6 +97,18 @@ export class NotificationService {
         })
     }
 
+    /**
+     * One of theirs, when they follow it from the bell's panel (DESIGN.md
+     * §5.1). Not a CRITICAL one, read when it's dealt with (ATTENDANCE_PLAN.md
+     * §13.4); and someone else's, or one already read, changes nothing.
+     */
+    static async markAsRead(principalId: string, id: string) {
+        return await prisma.notification.updateMany({
+            where: { id, ...NotificationService.recipientFilter(principalId), read: false, priority: { not: "CRITICAL" } },
+            data: { read: true },
+        })
+    }
+
     static async countUnread(principalId: string) {
         return await prisma.notification.count({
             where: { ...NotificationService.recipientFilter(principalId), read: false }

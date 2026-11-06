@@ -209,6 +209,18 @@ describe("a token is used in the role it was defined for", () => {
         expect(SOURCES.filter(file => code(file).includes("var(--segment-raised")), "still drawn with the old toggle's tokens").toEqual([])
     })
 
+    it("keeps no tokens of the old bell's panel's", () => {
+        // An unread notice's sky blue, a critical one's red edge and the
+        // panel's grey border had a value in each theme. The bell's panel is
+        // the building blocks' (PR 207): the brand's tint for an unread one,
+        // an overdue row's look for a critical one, and --rule for its edge.
+        for (const token of ["--info-bg-sky", "--danger-fill", "--grey-200"]) {
+            const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
+            expect(declarations, token).toHaveLength(0)
+            expect(SOURCES.filter(file => code(file).includes(`var(${token})`)), `still drawn with ${token}`).toEqual([])
+        }
+    })
+
     // The switch is the building blocks' since the top bar moved onto them
     // (PR 205): a track on the panel, the option in use in the brand's tint.
     const segmented = (() => {

@@ -288,9 +288,9 @@ describe("fills: white text on a status colour meets AA 4.5:1", () => {
     // are also text and strokes on the page, so the grounds under white text
     // are their own tokens, the same hues darkened.
     // The success fill went with the last thing on it, the Usernames page's
-    // green download button (PR 182).
-    const FILLS = ["--info-fill",
-        "--warn-fill-warm", "--danger-fill", "--accent-fill"]
+    // green download button (PR 182), and the danger fill with a critical
+    // notification's red edge in the bell's old panel (PR 207).
+    const FILLS = ["--info-fill", "--warn-fill-warm", "--accent-fill"]
 
     for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
         for (const fill of FILLS) {

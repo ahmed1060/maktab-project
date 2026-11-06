@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { attendanceNoticeTarget } from "./attendance-notice-target"
+import { attendanceNoticeTarget, ATTENDANCE_PAGE } from "./attendance-notice-target"
+import { noticeTarget } from "./notice-target"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 
@@ -45,15 +46,15 @@ describe("an attendance notification", () => {
     })
 
     it("is given the notice's key by the bell and by the push, which open the same page", () => {
-        expect(readFileSync("components/NotificationBell.tsx", "utf8")).toContain("attendanceNoticeTarget(type, notification.relatedId, notification.messageKey)")
+        // The bell's rows lead where lib/notice-target.ts says, since PR 207.
+        expect(readFileSync("lib/notice-target.ts", "utf8")).toContain("attendanceNoticeTarget(type, related, n.messageKey)")
+        expect(readFileSync("components/NotificationBell.tsx", "utf8")).toContain("const href = noticeTarget(n)")
         expect(readFileSync("lib/services/push.service.ts", "utf8")).toContain("attendanceNoticeTarget(n.type, n.relatedId, n.messageKey)")
     })
 
     it("is routed by the bell before the generic request branch", () => {
-        const bell = readFileSync("components/NotificationBell.tsx", "utf8")
-        const attendance = bell.indexOf("attendanceNoticeTarget(type")
-        const request = bell.indexOf("type.includes('REQUEST')")
-        expect(attendance).toBeGreaterThan(0)
-        expect(attendance).toBeLessThan(request)
+        // ATTENDANCE_REQUEST contains REQUEST, whose branch reads an internal request's id.
+        expect(noticeTarget({ id: "n1", type: "ATTENDANCE_REQUEST", relatedId: "r1", messageKey: null, userId: "u1" })).toBe(ATTENDANCE_PAGE)
+        expect(noticeTarget({ id: "n1", type: "NEW_REQUEST", relatedId: "r1", messageKey: null, userId: "u1" })).toBe("/dashboard/requests?highlight=r1")
     })
 })

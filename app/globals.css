@@ -113,7 +113,6 @@
 
   --warn-fg-mid: #b45309;
 
-  --info-bg-sky: #f0f9ff;
   --info-bg-indigo: #dbeafe;
   --info-border-indigo: #a5b4fc;
   --info-fg-indigo: #1e40af;
@@ -127,12 +126,10 @@
      least 4.5:1 (lib/contrast.test.ts). */
   --info-fill: #0b61ef;
   --warn-fill-warm: #ae5104;
-  --danger-fill: #d71212;
   --accent-fill: #942ff5;
 
   /* Plain greys written as shorthand or as the odd one-off. */
   --grey-100: #eee;
-  --grey-200: #ddd;
   --grey-600: #666;
 
   /* The brand marks. Aliases rather than new values, so there is still exactly
@@ -1115,7 +1112,6 @@ input::-webkit-credentials-auto-fill-button {
     --info-fg: #7cc9f0;
     --info-solid: #4aa3e0;
     --info-solid-hover: #3d8cc4;
-    --info-bg-sky: #0a2130;
     --info-bg-indigo: #16243f;
     --info-border-indigo: #3d4b7a;
     --info-fg-indigo: #9db4f0;
@@ -1130,11 +1126,9 @@ input::-webkit-credentials-auto-fill-button {
        the card it sits on. */
     --info-fill: #1f76b2;
     --warn-fill-warm: #ae5a1f;
-    --danger-fill: #e11117;
     --accent-fill: #9047ec;
 
     --grey-100: #21262d;
-    --grey-200: #30363d;
     --grey-600: #9aa4af;
 
     /* Dark glass: its own tint, at a lower alpha. White tint on a dark ground
