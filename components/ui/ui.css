@@ -45,6 +45,7 @@
 .ui-segmented-option,
 .ui-company-picker-button,
 .ui-notice,
+.ui-toast-close,
 .ui-side-legal a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -1952,6 +1953,7 @@ a.ui-file-open:focus-visible,
   gap: var(--space-2);
   max-block-size: calc(100dvh - 2 * var(--space-4));
   overflow-y: auto;
+  overscroll-behavior: contain;
   pointer-events: none;
 }
 /* The errors' alert region and the rest's status region, always in the
@@ -2058,15 +2060,6 @@ a.ui-file-open:focus-visible,
     inline-size: auto;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .ui-toast {
-    animation: none;
-  }
-  .ui-toast-close {
-    transition: none;
-  }
-}
-
 /* ── Page layout and sections (§5.5) ── */
 .ui-page {
   display: flex;
@@ -3487,10 +3480,12 @@ html[lang="ar"] .ui-empty-title {
   .ui-row,
   .ui-row-caret,
   .ui-donut-row,
-  .ui-donut-arc {
+  .ui-donut-arc,
+  .ui-toast-close {
     transition: none;
   }
-  .ui-btn[aria-busy="true"]::after {
+  .ui-btn[aria-busy="true"]::after,
+  .ui-toast {
     animation: none;
   }
 }

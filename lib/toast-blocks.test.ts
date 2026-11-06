@@ -105,7 +105,12 @@ describe("its rules (components/ui/ui.css)", () => {
         expect(UI).toMatch(/@keyframes ui-toast-in \{\s*from \{\s*opacity: 0;\s*transform: translateX\(16px\);\s*\}\s*\}/)
         expect(UI).toMatch(/@keyframes ui-toast-in-rtl \{\s*from \{\s*opacity: 0;\s*transform: translateX\(-16px\);\s*\}\s*\}/)
         expect(rule('[dir="rtl"] .ui-toast')).toMatch(/animation-name: ui-toast-in-rtl;/)
-        expect(UI).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.ui-toast \{\s*animation: none;\s*\}\s*\.ui-toast-close \{\s*transition: none;\s*\}\s*\}/)
+        // In the building blocks' one block for reduce motion, with the others.
+        const reduced = UI.slice(UI.indexOf("@media (prefers-reduced-motion: reduce) {"))
+        const shared = reduced.slice(0, reduced.indexOf("\n}\n"))
+        expect(shared).toMatch(/\.ui-toast-close \{\s*transition: none;/)
+        expect(shared).toMatch(/\.ui-toast \{\s*animation: none;/)
+        expect(UI.match(/@media \(prefers-reduced-motion: reduce\)/g)?.length).toBe(3)
     })
 
     it("make Close a 32px target, 44px under a finger, with a ring when the keyboard reaches it", () => {
@@ -115,6 +120,15 @@ describe("its rules (components/ui/ui.css)", () => {
         expect(close).toMatch(/color: var\(--muted\);/)
         expect(rule(".ui-toast-close:focus-visible")).toMatch(/outline: 2px solid var\(--brand-text\);/)
         expect(UI).toMatch(/@media \(pointer: coarse\) \{\s*\.ui-toast-close \{\s*inline-size: 44px;\s*block-size: 44px;/)
+    })
+
+    // The web interface audit on PR 214: Close was the one control left out
+    // of the shared list that takes a tap at once, with no grey flash; and a
+    // scroll past the end of a tall stack went on to the page under it.
+    it("make Close take a tap at once, as every control does, and keep a tall stack's scroll to itself", () => {
+        const shared = UI.slice(0, UI.indexOf("touch-action: manipulation;"))
+        expect(shared.slice(shared.lastIndexOf("}") + 1)).toMatch(/\.ui-toast-close,\n/)
+        expect(rule(".ui-toasts")).toMatch(/overscroll-behavior: contain;/)
     })
 
     it("stretch the toasts between the screen's edges on a phone, less 16px each side", () => {

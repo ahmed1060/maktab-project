@@ -4680,4 +4680,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     whatever the language and the setting;
   - how long each stays, and what screen readers hear, are as they were;
   - gone: the old slide's keyframes, in two places, and the toast's own
-    `<style jsx>`.
+    `<style jsx>`;
+  - from the web interface audit: Close takes a tap at once, with no grey
+    flash, as every other control does, and a scroll past the end of a tall
+    stack no longer goes on to the page under it.
