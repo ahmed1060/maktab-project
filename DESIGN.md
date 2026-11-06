@@ -903,6 +903,28 @@ These are built once, in the building-blocks PR, and every page uses them
     sent, as is one that couldn't be uploaded. While it's sent, the
     picker is off, and a line under it says so, which a screen reader
     hears. Once it's uploaded, a toast says so.
+- **Rows read from a file,** such as tasks uploaded from Excel, are
+  checked before any is saved, in a dialog up to 960px wide:
+  - a line says how many rows the file has, and how many have mistakes;
+  - the rows are a list (§5.4): a table on computers, cards on phones,
+    each with its row's number in the file, so it can be found there. A
+    row with mistakes has the red start-edge bar, and its mistakes under
+    its title, each saying what's wrong;
+  - a row's Edit opens its fields in the dialog, as the form it would be
+    added with has them, each with what's wrong under it. Done, or
+    Escape, goes back to the list, to that row. Remove takes a row out
+    without asking, as nothing has been saved yet: a line under the count
+    says which, which a screen reader hears, with Undo to put it back
+    where it was;
+  - at the bottom, Cancel, then the main button saying how many it
+    creates, such as "Create 12 tasks", off while none can be. A row with
+    mistakes is left out until it's fixed, and the line above the buttons
+    says how many are;
+  - while they're sent, Cancel is off, the main button is busy, and
+    Escape does nothing. What couldn't be saved is said above the
+    buttons, and the dialog stays open. Once they're saved, a toast says
+    how many were, as the server counted them, and the list they're on
+    opens.
 - **A person's profile,** seen by someone else, is one card: their photo,
   then their facts as details (above), each only for whoever may see it.
   Edit is the page header's primary button, for whoever may edit them; the
@@ -1571,3 +1593,10 @@ changed:
   drawn beside each, a folder emoji on its picker, its words in English
   whatever the page's language, and Cancel, the window's primary button,
   to close it.
+- **2026-11-06:** Rows read from a file (§5.5). The bulk review of tasks
+  was a window of its own making: each title and description changed in
+  a pop-up placed beside it by hand, its people added and taken off with
+  round plus and minus buttons, a writing-hand emoji on each Edit, and
+  sparkles on its main button. Its row numbers counted only the rows
+  shown, not the file's, and a row's mistake about its difficulty was
+  never shown, so the row was left out with nothing said.

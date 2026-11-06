@@ -32,8 +32,12 @@ export type Column<T> = {
     hideHeader?: boolean
 }
 
-/** How a row stands out: overdue, or selected, such as the one a notification opened. */
-export type RowTone = 'overdue' | 'selected'
+/**
+ * How a row stands out: overdue; with a problem to fix, such as a row read
+ * from a file with mistakes (DESIGN.md §5.5); or selected, such as the one a
+ * notification opened.
+ */
+export type RowTone = 'overdue' | 'problem' | 'selected'
 
 export function DataList<T>({ caption, columns, rows, rowKey, card, tone, footer, empty }: {
     /** What the list is, for screen readers ("Tasks"). */
@@ -107,9 +111,11 @@ export function DueDate({ children, overdue = false }: { children: ReactNode; ov
 }
 
 /** An item as a phone card: title and status, a line per detail, then a footer line. */
-export function ListCard({ title, status, details = [], foot, className }: {
+export function ListCard({ title, status, note, details = [], foot, className }: {
     title: ReactNode
     status?: ReactNode
+    /** What's said under its title, before its details, such as a row's mistakes (DESIGN.md §5.5). */
+    note?: ReactNode
     details?: { icon: PhosphorIcon; text: ReactNode }[]
     foot?: ReactNode
     className?: string
@@ -120,6 +126,7 @@ export function ListCard({ title, status, details = [], foot, className }: {
                 <span className="ui-item-title">{title}</span>
                 {status}
             </div>
+            {note}
             {details.map((d, i) => <div key={i} className="ui-meta"><Icon icon={d.icon} size={16} />{d.text}</div>)}
             {foot && <div className="ui-list-card-foot">{foot}</div>}
         </div>

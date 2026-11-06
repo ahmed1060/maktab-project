@@ -558,7 +558,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-06, then the browser's own date fields moved onto the same
      calendar, merged in #210 on 2026-11-06, which finished it; then the
      two windows Create task opens: the Super Admin's templates for the
-     bulk upload of tasks, in #211, then the bulk review of tasks;
+     bulk upload of tasks, merged in #211 on 2026-11-06, then the bulk
+     review of tasks, in two parts: its window, in #212, then reading the
+     file's rows;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4590,3 +4592,40 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     from the clients page, and Cancel, its primary button, which is Close.
   - Create task's button for it is "Manage templates", as the window is,
     rather than "Download template".
+- **2026-11-06:** The templates window was merged in #211. The first of the
+  bulk review's two parts, in #212: its window on the building blocks
+  (`DESIGN.md` §5.5, "Rows read from a file").
+  - The file's rows are a list, a table on computers and cards on phones,
+    in a dialog up to 960px wide, each with its row's number in the file,
+    who it's for, its deadline and where it's done. A row with mistakes
+    has the red start-edge bar and its mistakes under its title.
+  - A row's Edit opens its fields in the dialog, as Create task has them,
+    each with what's wrong under it; Done, or Escape, goes back to that
+    row. Remove takes one out without asking, and Undo puts it back where
+    it was: the old window's Delete couldn't be undone (the web interface
+    audit). Leaving the page asks first while the rows are still to
+    create. The main button says how many it creates;
+    a row with mistakes is left out until it's fixed, and the line above
+    the buttons says how many are. Once they're created, a toast says how
+    many, as the server counted them: it leaves out one it refuses, and
+    the old window said they all were.
+  - The row checks are in one place (`lib/bulk-tasks.ts`), worked out from
+    the row whenever it's shown. A username or a client the file named and
+    wasn't found stays a mistake until something is picked in its place:
+    any change on the old window dropped it, and the task was created
+    without them. A difficulty out of range is said, and can be fixed: the
+    old window left the row out with nothing said.
+  - Gone: the pop-ups placed beside each cell by hand, the round plus and
+    minus buttons for its people, the writing-hand emoji, the sparkles and
+    the warning sign, its row numbers that counted only the rows shown,
+    its words in title case ("Review Tasks", "Missing Title", "Rows with
+    errors"), 19 words only it used, and `--panel-95`, which only its
+    people pop-up used.
+  - Next, the second part: reading the file's rows moves into
+    `lib/bulk-tasks.ts`, with tests, and its words in both languages. The
+    browser flows found a file picked as Create task opens read before its
+    people and clients have loaded, so every username and client in it is
+    one that wasn't found: the second part waits for them.
+- **2026-11-06:** From Codex's review of #212: Undo stays off while the
+  tasks are sent, as Edit, Remove and Cancel are. A row put back then
+  wasn't among those sent, and the dialog closed without it.

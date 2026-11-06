@@ -15,8 +15,8 @@ import { firstError } from '@/lib/form-errors'
 import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
 import { pickIn, type CompanyPick } from '@/lib/saved-lists'
 import { useListNames } from '@/components/lists/useListNames'
-import { locationProblem, rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
-import type { TranslationKey } from '@/lib/translations'
+import { rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
+import type { BulkRow } from '@/lib/bulk-tasks'
 import BulkTaskReviewModal from '@/components/BulkTaskReviewModal'
 import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 // F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
@@ -51,7 +51,7 @@ export default function NewTaskPage() {
     const [place, setPlace] = useState<TaskPlace>({ clientId: '', locationId: '' })
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
     const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false)
-    const [bulkTasks, setBulkTasks] = useState<any[]>([])
+    const [bulkTasks, setBulkTasks] = useState<BulkRow[]>([])
     // The company's locations in use, for the upload's rows (CLIENTS_PLAN.md §2.7).
     const [bulkPlaces, setBulkPlaces] = useState<BulkPlace[]>([])
     const router = useRouter()
@@ -231,26 +231,29 @@ export default function NewTaskPage() {
 
             // Mirror XLSX.utils.sheet_to_json(worksheet, { header: 1 }): one
             // array per row, 0-indexed columns, raw cell values. exceljs's
-            // row.values is 1-indexed with index 0 always undefined, and rows
-            // are 1-indexed too (no row 0) — accounted for by both slice(1)
-            // below and by rows/jsonData already being built in sheet order.
-            const jsonData: any[] = []
+            // row.values is 1-indexed with index 0 always undefined, hence
+            // slice(1). Each keeps its row's number in the file, for the
+            // review to say where to find it.
+            const jsonData: { cells: any[]; line: number }[] = []
             worksheet.eachRow({ includeEmpty: true }, (row) => {
                 const values = Array.isArray(row.values) ? row.values.slice(1) : []
-                jsonData.push(values.map(cellToPrimitive))
+                jsonData.push({ cells: values.map(cellToPrimitive), line: row.number })
             })
 
             // Process data starting from Row 3 (index 2)
-            const rows = jsonData.slice(2).filter(row => row[0]) // row[0] is Title
+            const rows = jsonData.slice(2).filter(({ cells }) => cells[0]) // cells[0] is Title
 
             if (rows.length > 50) {
                 showToast(t('bulk_limit_exceeded'), 'error')
                 return
             }
 
-            const tasks = rows.map(row => {
-                const title = row[0] || ''
-                const description = row[1] || ''
+            // Each row as the review has it (lib/bulk-tasks.ts), which says
+            // what's wrong with it: what the file named and wasn't found is
+            // kept with it until something is picked in its place.
+            const tasks: BulkRow[] = rows.map(({ cells: row, line }) => {
+                const title = row[0] === null || row[0] === undefined ? '' : String(row[0])
+                const description = row[1] === null || row[1] === undefined ? '' : String(row[1])
                 const clientNameRaw = row[2] ? String(row[2]).trim() : '' // Column C, optional
                 // Column D, "Employee Name" — one merged column for both
                 // cases: a single assignee is normally picked from the
@@ -268,14 +271,7 @@ export default function NewTaskPage() {
                 const deadlineTimeStr = row[5] // Column F
                 const diffPoints = parseInt(row[6]) || 0 // Column G
 
-                const validationErrors: Record<string, string[]> = {}
-                const addError = (field: string, msg: string) => {
-                    if (!validationErrors[field]) validationErrors[field] = []
-                    validationErrors[field].push(msg)
-                }
-
                 // 1. Resolve usernames to IDs
-                const usernamesRaw = employeeFieldRaw
                 const usernames = employeeFieldRaw
                     .split(',')
                     .map(piece => {
@@ -284,49 +280,32 @@ export default function NewTaskPage() {
                         return dropdownMatch ? dropdownMatch[1].trim() : trimmed
                     })
                     .filter(u => u)
-                const resolvedIds: string[] = []
-                const resolvedNames: string[] = []
-                const unresolvedUsernames: string[] = []
-
-                if (usernames.length === 0) addError('assignees', t('no_assignees' as any) || 'Missing assignees')
-
+                const assigneeIds: string[] = []
+                const unknownPeople: string[] = []
                 for (const uname of usernames) {
                     const user = users.find(u => u.username?.toLowerCase() === uname.toLowerCase())
-                    if (user) {
-                        resolvedIds.push(user.id)
-                        resolvedNames.push(`${user.firstName} ${user.lastName}`)
-                    } else {
-                        unresolvedUsernames.push(uname)
-                    }
+                    if (user) assigneeIds.push(user.id)
+                    else unknownPeople.push(uname)
                 }
-                if (unresolvedUsernames.length > 0) addError('assignees', `${t('invalid_username' as any) || 'Invalid user'}: ${unresolvedUsernames.join(', ')}`)
 
                 // 1.5 Resolve client name (optional — empty cell means no
-                // client, task falls back to whatever location gets set
-                // manually in the review step). Client names are unique per
-                // company (schema constraint), so a plain name match here
-                // has no ambiguity risk the way employee full names would.
-                let clientId: string | null = null
-                if (clientNameRaw) {
-                    const client = clients.find((v: any) => v.name.toLowerCase() === clientNameRaw.toLowerCase())
-                    if (client) {
-                        clientId = client.id
-                    } else {
-                        addError('client', `${t('invalid_client_name' as any) || 'Unknown client'}: ${clientNameRaw}`)
-                    }
-                }
+                // client). Client names are unique per company (schema
+                // constraint), so a plain name match here has no ambiguity
+                // risk the way employee full names would.
+                const client = clientNameRaw ? clients.find((v: any) => v.name.toLowerCase() === clientNameRaw.toLowerCase()) : undefined
+                const clientId: string | null = client?.id ?? null
+                const unknownClient = clientNameRaw && !client ? clientNameRaw : ''
 
                 // 1.6 Its location: Column H through the template's list, or
-                // its client's HQ. A name the list doesn't have is flagged,
-                // with what was written, to be picked on the review screen.
-                const locationCell = row[7] === null || row[7] === undefined ? '' : String(row[7]).trim()
-                const { locationId, problem } = rowLocation(locationCell, clientId, sheet, places)
-                // What was written is said with it: the select can't show a
-                // location this row may not have.
-                if (problem) addError('location', locationCell ? `${t(`bulk_location_${problem}` as TranslationKey)}: ${locationCell}` : t(`bulk_location_${problem}` as TranslationKey))
+                // its client's HQ. What was written is kept to say with a
+                // location that's wrong: the select can't show a location
+                // this row may not have.
+                const locationText = row[7] === null || row[7] === undefined ? '' : String(row[7]).trim()
+                const { locationId } = rowLocation(locationText, clientId, sheet, places)
 
                 // 2. Process Deadline
-                let finalDeadline = ''
+                let deadline = ''
+                let unreadDeadline = ''
                 if (deadlineDateStr) {
                     let baseDate: Date | null = null
                     if (deadlineDateStr instanceof Date) {
@@ -373,40 +352,25 @@ export default function NewTaskPage() {
                             }
                         }
                         baseDate.setHours(hours, minutes, 0, 0)
-                        finalDeadline = baseDate.toISOString()
-
-                        const minDeadline = earliestDeadline()
-                        if (baseDate < minDeadline) addError('deadline', t('deadline_too_soon' as any) || 'Deadline must be at least 3h from now')
+                        deadline = baseDate.toISOString()
                     } else {
-                        addError('deadline', t('invalid_date' as any) || 'Invalid date')
+                        unreadDeadline = String(deadlineDateStr).trim()
                     }
-                } else {
-                    addError('deadline', t('missing_deadline' as any) || 'Missing deadline')
                 }
 
-                // 3. String Lengths
-                if (title.length < 3) addError('title', t('title_too_short' as any) || 'Title too short')
-                if (title.length > 100) addError('title', t('title_too_long' as any) || 'Title too long')
-                if (description.length < 10) addError('description', t('desc_too_short' as any) || 'Description too short')
-                if (description.length > 1000) addError('description', t('desc_too_long' as any) || 'Description too long')
-
-                // 4. Difficulty
-                if (diffPoints < 0 || diffPoints > 10) addError('difficulty', t('invalid_difficulty' as any) || 'Difficulty must be 0-10')
-
                 return {
+                    line,
                     title,
                     description,
-                    usernamesRaw,
-                    resolvedIds,
-                    resolvedNames,
-                    unresolvedUsernames,
-                    deadline: finalDeadline,
-                    difficulty: diffPoints,
-                    locationId,
                     clientId,
-                    clientNameRaw,
-                    validationErrors,
-                    isInvalid: Object.keys(validationErrors).length > 0
+                    unknownClient,
+                    locationId,
+                    locationText,
+                    assigneeIds,
+                    unknownPeople,
+                    deadline,
+                    unreadDeadline,
+                    difficulty: diffPoints,
                 }
             })
 
@@ -419,46 +383,6 @@ export default function NewTaskPage() {
             setIsBulkModalOpen(true)
         } else {
             showToast(t('no_data_available'), 'error')
-        }
-    }
-
-    const revalidateRow = (task: any) => {
-        const errors: Record<string, string[]> = {}
-        const addError = (f: string, m: string) => {
-            if (!errors[f]) errors[f] = []
-            errors[f].push(m)
-        }
-
-        if (task.title.length < 3) addError('title', t('title_too_short'))
-        if (task.title.length > 100) addError('title', t('title_too_long'))
-        if (task.description.length < 10) addError('description', t('desc_too_short'))
-        if (task.description.length > 1000) addError('description', t('desc_too_long'))
-
-        if (task.resolvedIds.length === 0) {
-            addError('assignees', t('no_assignees'))
-        }
-
-        if (task.deadline) {
-            const date = new Date(task.deadline)
-            const min = earliestDeadline()
-            if (isNaN(date.getTime())) addError('deadline', t('invalid_date'))
-            else if (date < min) addError('deadline', t('deadline_too_soon'))
-        } else {
-            addError('deadline', t('missing_deadline'))
-        }
-
-        if (task.difficulty < 0 || task.difficulty > 10) {
-            addError('difficulty', t('invalid_difficulty'))
-        }
-
-        // Its location, as picked on the review screen, for its client.
-        const problem = locationProblem(task.locationId, task.clientId, bulkPlaces)
-        if (problem) addError('location', t(`bulk_location_${problem}` as TranslationKey))
-
-        return {
-            ...task,
-            validationErrors: errors,
-            isInvalid: Object.keys(errors).length > 0
         }
     }
 
@@ -590,14 +514,13 @@ export default function NewTaskPage() {
             <BulkTaskReviewModal
                 isOpen={isBulkModalOpen}
                 onClose={() => setIsBulkModalOpen(false)}
-                bulkTasks={bulkTasks}
-                setBulkTasks={setBulkTasks}
-                users={users}
+                rows={bulkTasks}
+                onRowsChange={setBulkTasks}
+                people={usersError ? null : usersResult ? users : undefined}
+                onRetryPeople={() => { void retryUsers() }}
+                retryingPeople={retryingUsers}
                 clients={clients}
                 places={bulkPlaces}
-                revalidateRow={revalidateRow}
-                isSubmitting={isSubmitting}
-                setIsSubmitting={setIsSubmitting}
             />
 
             <ManageTemplatesModal

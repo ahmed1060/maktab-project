@@ -2293,3 +2293,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   loading spinners move onto the building blocks in #190 (`UI_PLAN.md`),
   among them a client's page, which has its header and back link while it
   loads.
+- **2026-11-06:** The bulk review of tasks moves onto the building blocks in
+  #212 (`UI_PLAN.md`). Each row's client and location are among its fields,
+  which its Edit opens, with what's wrong under each, as on the task form.
+  A client the file named that isn't one stays said, shown as not found in
+  its select, until a client is picked, No client too: any change on the
+  old review dropped it, and the task was created with no client, with
+  nothing said. A location the template's list didn't have is said with
+  what was written until another is picked.

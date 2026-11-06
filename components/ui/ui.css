@@ -1037,6 +1037,55 @@
 .ui-dialog:has(.ui-perm-matrix) {
   width: min(100%, 640px);
 }
+/* Rows read from a file, checked before any is saved (§5.5): wide enough
+   for their list on a computer, each row's mistakes under its title in the
+   problem colour, and what isn't set yet in --muted. */
+.ui-dialog:has(.ui-bulk-review) {
+  width: min(100%, 960px);
+}
+.ui-bulk-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ui-row-mistakes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  margin-block-start: var(--space-1);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--problem-text);
+}
+.ui-row-mistakes > li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  overflow-wrap: anywhere;
+}
+/* On its first line, when what's wrong takes two. */
+.ui-row-mistakes > li > svg {
+  flex: none;
+  margin-block-start: calc((var(--leading-sm) - 16px) / 2);
+}
+.ui-bulk-unset {
+  color: var(--muted);
+}
+/* Which row was removed, with Undo beside it, under the count: empty, and
+   so no height, until one is, and never hidden, for a screen reader to hear
+   it as it fills. */
+.ui-bulk-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-bulk-status:not(:empty) {
+  margin-block-start: var(--space-2);
+}
 /* What a dialog needs the person to know before saving, such as a role's
    separation of duties (company settings part 4c): its meaning's bar on the
    start edge, as a card's. */
@@ -2627,10 +2676,12 @@ a.ui-row:focus-visible {
   width: 1%;
   padding-inline-end: 0;
 }
-.ui-table tr[data-tone="overdue"] td {
+.ui-table tr[data-tone="overdue"] td,
+.ui-table tr[data-tone="problem"] td {
   background: var(--overdue-row);
 }
-.ui-table tr[data-tone="overdue"] td:first-child {
+.ui-table tr[data-tone="overdue"] td:first-child,
+.ui-table tr[data-tone="problem"] td:first-child {
   border-inline-start: 3px solid var(--problem-text);
 }
 /* The row you came to see, such as the one a notification opened. */
@@ -2709,7 +2760,8 @@ a.ui-row:focus-visible {
 .ui-cards > li:last-child .ui-list-card {
   border-bottom: 0;
 }
-.ui-cards > li[data-tone="overdue"] .ui-list-card {
+.ui-cards > li[data-tone="overdue"] .ui-list-card,
+.ui-cards > li[data-tone="problem"] .ui-list-card {
   background: var(--overdue-row);
   border-inline-start: 3px solid var(--problem-text);
 }
