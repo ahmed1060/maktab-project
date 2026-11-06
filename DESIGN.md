@@ -388,7 +388,46 @@ These are built once, in the building-blocks PR, and every page uses them
     while some are. How many is a `--brand` pill at its top end corner,
     18px tall, its `--text-xs` digits in `--on-brand` and in the page's
     language, as the side bar's count is, and there's none when none is
-    unread. The panel it opens is unchanged until its own part;
+    unread. While its panel is open, it's in `--brand-text` on
+    `--brand-tint`;
+  - **the bell's panel,** below the bar from the bell's end edge: 380px
+    wide, on `--panel-raised` with a `--rule` edge, `--radius-menu`
+    corners and `--elev-2`, as the menus are. On a phone it spans the
+    bar, 8px in from its edges. At its top, over a hairline,
+    "Notifications" at `--text-lg`, weight 500, and on its end side Mark
+    all as read, a small quiet button, there while there's one it can
+    read. Then the notifications, newest first, as rows split by
+    hairlines (§5.5):
+    - each is a link to what it's about, and one with nowhere to go is a
+      row that isn't. It has its subject's icon, 16px in a 32px circle:
+      the side bar's where its subject has a page, such as Tasks' for a
+      task and Attendance's for a punch, and a calendar for a day off.
+      Then what it says, in `--ink` at `--text-md`, and under it
+      when, in `--muted` at `--text-sm`: "Just now", "10 minutes ago",
+      "3 hours ago", "Yesterday", "4 days ago", and from a week on the
+      date, "28 Oct 2026", with the exact date and time on hover;
+    - an unread one is on `--brand-tint`, what it says at weight 500, its
+      circle in `--brand-text` on `--brand-tint-strong`, with an 8px
+      `--brand` dot at its end, and a screen reader hears "Unread" before
+      it. A read one is on the panel, its circle in the neutral status
+      colours (§2.3), and has no dot;
+    - one about something to deal with now, such as a check-in terminal
+      gone silent, stays at the top with an overdue row's look, the red
+      start-edge bar on `--overdue-row`. It's unread until it's dealt
+      with: neither following it nor Mark all as read reads it
+      (`ATTENDANCE_PLAN.md` §13.4);
+    - the list is as tall as its rows, up to 480px and less on a short
+      screen, and scrolls past that under its head. With none, it says
+      "No notifications"; while they're on their way, "Loading…"; and
+      when they can't be fetched, it says so, with Try again.
+
+    Opening it doesn't read them: following one reads it, and Mark all
+    as read reads the rest. The bell's count follows. It
+    isn't a dialog, as the account menu isn't: Tab moves through its
+    button and links, and Escape, a click outside it, following one of
+    its links, or Tab past its last one closes it. Escape gives the focus
+    back to the bell, and Mark all as read moves it to the heading, as
+    the button goes;
   - **the account button:** the person's photo in a 32px circle, or their
     initials in an avatar's colours (§5.5), never a drawing that stands in
     for them; their name in `--ink` and their role in `--ink-2`, under
@@ -1449,3 +1488,9 @@ changed:
   companies, each with its initials. The picker was a see-through pill
   with the company's name alone, and its list had no search, so a Super
   Admin with many companies scrolled through them all.
+- **2026-11-06:** The bell's panel (§5.1), as the approved mock-up of the
+  app's frame draws it: 380px, with Mark all as read at its top, and each
+  notification a link with its subject's icon, what it says and how long
+  ago, tinted with a dot while unread. Opening it read them all, so none
+  could be told apart as new once it was open; its rows were boxes that
+  only a mouse could follow, with the full date and time on each.
