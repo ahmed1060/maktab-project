@@ -1,644 +1,358 @@
 'use client'
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useDialog } from '@/lib/useDialog'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { CalendarBlankIcon, HashIcon, MapPinIcon, UsersIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
-import { Field, Select, type SelectOption } from '@/components/ui'
-import { locationForClient, type BulkPlace } from '@/lib/bulk-locations'
-import { useHydrated } from '@/lib/useHydrated'
+import AssigneeChecklist, { type Assignable } from '@/components/forms/AssigneeChecklist'
+import { Button, DataList, Dialog, Field, Icon, ListCard, Select, TextArea, TextInput, visibleRow, type Column, type SelectOption } from '@/components/ui'
 import { useNow } from '@/lib/useNow'
+import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { earliestDeadline } from '@/lib/deadline'
+import { countOf } from '@/lib/plural'
+import { dateTimeText } from '@/lib/calendar-text'
+import { locationLabel } from '@/lib/locations'
+import type { BulkPlace } from '@/lib/bulk-locations'
+import { TASK_DESCRIPTION_MAX, TASK_TITLE_MAX } from '@/lib/new-task'
+import type { TranslationKey } from '@/lib/translations'
+import {
+    createTasks, mistakesInOrder, rowMistakes, rowToSend, withClient, withDeadline, withLocation, withPeople, withoutUnknownPeople, withRowBack,
+    TASK_DIFFICULTY_MAX, type BulkField, type BulkMistake, type BulkMistakes, type BulkRow, type RemovedRow,
+} from '@/lib/bulk-tasks'
 
-// F-23: extracted verbatim out of tasks/new/page.tsx, which had grown to
-// 1386 lines. `bulkTasks`/`setBulkTasks` and `revalidateRow` stay owned by
-// the parent page (handleBulkUpload populates bulkTasks from the parsed
-// Excel file before this modal ever opens, and revalidateRow is reused
-// there too) — only this modal's own per-cell editor-popup state moved in,
-// since nothing outside this JSX ever reads it.
-interface BulkTaskReviewModalProps {
-    isOpen: boolean
-    onClose: () => void
-    bulkTasks: any[]
-    setBulkTasks: (tasks: any[]) => void
-    users: any[]
-    clients: any[]
-    /** The company's locations in use, which each row picks from (CLIENTS_PLAN.md §2.7). */
-    places: BulkPlace[]
-    revalidateRow: (task: any) => any
-    isSubmitting: boolean
-    setIsSubmitting: (v: boolean) => void
+type Client = { id: string; name: string }
+type Checked = { row: BulkRow; mistakes: BulkMistakes; wrong: boolean }
+
+/** What's wrong, then what the file had, kept apart from the sentence's direction. */
+function mistakeText(t: (key: TranslationKey) => string, mistake: BulkMistake | undefined): string | undefined {
+    if (!mistake) return undefined
+    return mistake.detail === undefined ? t(mistake.key) : `${t(mistake.key)}: \u2068${mistake.detail}\u2069`
 }
 
-export default function BulkTaskReviewModal({
-    isOpen, onClose, bulkTasks, setBulkTasks, users, clients, places, revalidateRow, isSubmitting, setIsSubmitting
-}: BulkTaskReviewModalProps) {
+/**
+ * The tasks read from an Excel file, checked before any is created
+ * (DESIGN.md §5.5, "Rows read from a file"): the rows as a list, each with
+ * its row's number in the file and its mistakes under its title; a row's
+ * Edit opens its fields in the dialog, and Done goes back to that row;
+ * Remove takes one out; the main button says how many it creates.
+ *
+ * Create task reads the file and keeps the rows; this changes them. It was a
+ * window of its own making, each title and description changed in a pop-up
+ * placed beside it by hand, its people added and taken off with round plus
+ * and minus buttons, and sparkles on its main button (PR 212).
+ */
+export default function BulkTaskReviewModal({ isOpen, onClose, rows, onRowsChange, people, onRetryPeople, retryingPeople, clients, places }: {
+    isOpen: boolean
+    onClose: () => void
+    rows: BulkRow[]
+    onRowsChange: (rows: BulkRow[]) => void
+    /** Who can be assigned: undefined while they load, null when they couldn't be. */
+    people: Assignable[] | null | undefined
+    onRetryPeople: () => void
+    retryingPeople: boolean
+    clients: Client[]
+    /** The company's locations in use, which each row picks from (CLIENTS_PLAN.md §2.7). */
+    places: BulkPlace[]
+}) {
     const { t, locale } = useLanguage()
-    // The deadline floor offered to the picker, kept current while the form
-    // stays open. See lib/useNow.ts.
+    // The deadline floor, kept current while the review stays open. See lib/useNow.ts.
     const now = useNow()
     const { showToast } = useToast()
     const router = useRouter()
+    // The row whose fields are open, by its row in the file.
+    const [editing, setEditing] = useState<number | null>(null)
+    const [sending, setSending] = useState(false)
+    // What the server said when it created none: null when it said nothing.
+    const [refused, setRefused] = useState<string | null | undefined>(undefined)
+    // The row last removed, for Undo to put back where it was.
+    const [removed, setRemoved] = useState<RemovedRow | null>(null)
+    // Where the focus goes once the view has changed: the row's first field
+    // that's wrong as its fields open, or a row's button as the list comes back.
+    const focusNext = useRef<'field' | { line: number; button: 'edit' | 'remove' } | null>(null)
+    const body = useRef<HTMLDivElement>(null)
+    // Each file's review starts at its list, with nothing said from the last.
+    useAdjustOnChange([isOpen], () => {
+        if (!isOpen) return
+        setEditing(null)
+        setSending(false)
+        setRefused(undefined)
+        setRemoved(null)
+    })
+    // Leaving the page loses the file's rows and what was fixed in them:
+    // the browser asks first, as Create task does for what's typed in it.
+    useEffect(() => {
+        if (!isOpen || sending) return
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [isOpen, sending])
+    useEffect(() => {
+        const want = focusNext.current
+        if (!want) return
+        focusNext.current = null
+        if (want === 'field') {
+            // The first field with what's wrong under it, at the control
+            // marked wrong where it says which, as the dialogs' forms do;
+            // or the title, for a row with nothing wrong.
+            const fields = body.current
+            const wrong = [...(fields?.querySelectorAll<HTMLElement>('.ui-field') ?? [])].find(f => f.querySelector(':scope > .ui-error'))
+            const target = wrong?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? wrong?.querySelector<HTMLElement>('input, select, textarea, button') ?? fields?.querySelector<HTMLElement>('input, textarea, select')
+            target?.focus()
+        } else {
+            visibleRow(String(want.line))?.querySelector<HTMLElement>(`[data-${want.button}]`)?.focus()
+        }
+    })
 
-    const mounted = useHydrated()
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const tasks = (n: number) => countOf(t, locale, n, 'tasks')
+    const checked: Checked[] = rows.map(row => {
+        const mistakes = rowMistakes(row, places, now)
+        return { row, mistakes, wrong: Object.keys(mistakes).length > 0 }
+    })
+    const ready = checked.filter(c => !c.wrong).map(c => c.row)
+    const left = rows.length - ready.length
 
-    const [activeAssigneeEdit, setActiveAssigneeEdit] = useState<{ index: number, type: 'add' | 'remove' } | null>(null)
-    const [activeCellEdit, setActiveCellEdit] = useState<{ index: number, field: 'title' | 'description' | 'deadline' } | null>(null)
-    const [editAnchorRect, setEditAnchorRect] = useState<DOMRect | null>(null)
-    const [assigneeSearch, setAssigneeSearch] = useState('')
-    // A row's locations, as the task form's picker lists them (DESIGN.md
-    // §5.3): its client's, its HQ first, then the shared ones; one with no
-    // pin greyed, with why.
+    const ignore = () => {}
+    const open = (line: number) => {
+        focusNext.current = 'field'
+        setEditing(line)
+    }
+    const back = () => {
+        if (editing !== null) focusNext.current = { line: editing, button: 'edit' }
+        setEditing(null)
+    }
+    const change = (next: BulkRow) => onRowsChange(rows.map(r => (r.line === next.line ? next : r)))
+    // Nothing is saved yet, so it doesn't ask, and Undo puts it back; the
+    // focus goes to the next row's Remove.
+    const remove = (line: number) => {
+        const at = rows.findIndex(r => r.line === line)
+        const rest = rows.filter(r => r.line !== line)
+        if (rest.length > 0) focusNext.current = { line: rest[Math.min(at, rest.length - 1)].line, button: 'remove' }
+        setRemoved({ row: rows[at], at })
+        onRowsChange(rest)
+        if (rest.length === 0) return onClose()
+    }
+    const undo = () => {
+        if (!removed) return
+        focusNext.current = { line: removed.row.line, button: 'edit' }
+        setRemoved(null)
+        onRowsChange(withRowBack(rows, removed))
+    }
+    const create = async () => {
+        if (sending || ready.length === 0) return
+        const sent = ready.map(rowToSend)
+        setSending(true)
+        setRefused(undefined)
+        const result = await createTasks(sent)
+        if ('refused' in result) {
+            setSending(false)
+            setRefused(result.refused)
+            return
+        }
+        // As the server counted them: it leaves out one it refuses.
+        const skipped = sent.length - result.created
+        showToast(skipped > 0
+            ? t('bulk_created_some').replace('{created}', tasks(result.created)).replace('{skipped}', tasks(skipped))
+            : t('bulk_created').replace('{tasks}', tasks(result.created)), skipped > 0 ? 'warning' : 'success')
+        onClose()
+        router.push('/dashboard/tasks')
+    }
+
+    const nameOf = (id: string) => {
+        const person = people?.find(p => p.id === id)
+        return person ? [person.firstName, person.lastName].filter(Boolean).join(' ') : null
+    }
+    const names = (row: BulkRow) => {
+        const known = row.assigneeIds.map(nameOf).filter((name): name is string => !!name)
+        return known.length > 0 ? known.join(t('list_separator')) : <span className="ui-bulk-unset">{t('bulk_no_one')}</span>
+    }
+    const deadline = (row: BulkRow) => dateTimeText(row.deadline, locale) ?? <span className="ui-bulk-unset">{t('bulk_none_yet')}</span>
+    const place = (row: BulkRow) => {
+        const location = places.find(p => p.id === row.locationId)
+        const client = clients.find(c => c.id === row.clientId)?.name
+        const text = location ? locationLabel(location.name, client) : client
+        return text ? <bdi>{text}</bdi> : <span className="ui-bulk-unset">{t('bulk_none_yet')}</span>
+    }
+    // Its title, the start of its description, then what's wrong with it.
+    const titled = ({ row, mistakes }: Checked) => (
+        <>
+            <div className="ui-item-title">{row.title || <span className="ui-bulk-unset">{t('bulk_no_title')}</span>}</div>
+            {row.description && <div className="ui-item-detail"><span className="ui-clamp" dir="auto">{row.description}</span></div>}
+            <RowMistakes line={row.line} mistakes={mistakes} num={num} />
+        </>
+    )
+    const buttons = (row: BulkRow) => (
+        <span className="ui-row-actions">
+            <Button size="sm" aria-label={t('bulk_edit_row').replace('{n}', num(row.line))} data-edit="" disabled={sending} onClick={() => open(row.line)}>{t('edit')}</Button>
+            <Button size="sm" variant="quiet" aria-label={t('bulk_remove_row').replace('{n}', num(row.line))} data-remove="" disabled={sending} onClick={() => remove(row.line)}>{t('remove')}</Button>
+        </span>
+    )
+    const columns: Column<Checked>[] = [
+        { key: 'line', header: t('bulk_col_row'), cell: c => num(c.row.line) },
+        { key: 'task', header: t('tasks_col_task'), cell: titled },
+        { key: 'assignees', header: t('assignees_label'), cell: c => names(c.row) },
+        { key: 'deadline', header: t('deadline_label'), cell: c => <span className="ui-due">{deadline(c.row)}</span> },
+        { key: 'place', header: t('task_location'), cell: c => place(c.row) },
+        { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: c => buttons(c.row) },
+    ]
+
+    const row = editing === null ? undefined : rows.find(r => r.line === editing)
+    return (
+        <Dialog
+            open={isOpen}
+            onClose={sending ? ignore : editing !== null ? back : onClose}
+            title={row ? t('bulk_edit_title').replace('{n}', num(row.line)) : t('bulk_review_title')}
+            actions={row ? (
+                <Button variant="primary" onClick={back}>{t('done')}</Button>
+            ) : (
+                <>
+                    <Button onClick={onClose} disabled={sending}>{t('cancel')}</Button>
+                    <Button variant="primary" busy={sending} disabled={ready.length === 0} onClick={create}>
+                        {ready.length > 0 ? t('bulk_create_n').replace('{tasks}', tasks(ready.length)) : t('create_tasks')}
+                    </Button>
+                </>
+            )}
+        >
+            <div ref={body} className="ui-bulk-review">
+                {row ? (
+                    <BulkRowFields row={row} onChange={change} people={people} onRetryPeople={onRetryPeople} retryingPeople={retryingPeople} clients={clients} places={places} now={now} />
+                ) : (
+                    <>
+                        <div>
+                            <p>{left > 0
+                                ? t('bulk_review_read_mistakes').replace('{tasks}', tasks(rows.length)).replace('{n}', num(left))
+                                : t('bulk_review_read').replace('{tasks}', tasks(rows.length))}</p>
+                            {/* Always here, empty until a row is removed, so a screen reader hears it as it changes. */}
+                            <p className="ui-bulk-status" role="status">
+                                {removed && <>
+                                    {t('bulk_removed').replace('{n}', num(removed.row.line))}
+                                    <Button size="sm" variant="quiet" onClick={undo}>{t('bulk_undo')}</Button>
+                                </>}
+                            </p>
+                        </div>
+                        <DataList
+                            caption={t('bulk_review_list')}
+                            columns={columns}
+                            rows={checked}
+                            rowKey={c => String(c.row.line)}
+                            tone={c => (c.wrong ? 'problem' : undefined)}
+                            card={c => (
+                                <ListCard
+                                    title={c.row.title || <span className="ui-bulk-unset">{t('bulk_no_title')}</span>}
+                                    note={<>
+                                        {c.row.description && <div className="ui-item-detail"><span className="ui-clamp" dir="auto">{c.row.description}</span></div>}
+                                        <RowMistakes line={c.row.line} mistakes={c.mistakes} num={num} />
+                                    </>}
+                                    details={[
+                                        { icon: HashIcon, text: t('bulk_row').replace('{n}', num(c.row.line)) },
+                                        { icon: UsersIcon, text: names(c.row) },
+                                        { icon: CalendarBlankIcon, text: deadline(c.row) },
+                                        { icon: MapPinIcon, text: place(c.row) },
+                                    ]}
+                                    foot={buttons(c.row)}
+                                />
+                            )}
+                        />
+                        {left > 0 && <p className="ui-hint">{t('bulk_left_out').replace('{tasks}', tasks(left))}</p>}
+                        {refused !== undefined && <p className="ui-error" role="alert">{refused ?? t('bulk_create_failed')}</p>}
+                    </>
+                )}
+            </div>
+        </Dialog>
+    )
+}
+
+/** What's wrong with a row, in the order its fields are in, under its title. */
+function RowMistakes({ line, mistakes, num }: { line: number; mistakes: BulkMistakes; num: (n: number) => string }) {
+    const { t } = useLanguage()
+    const list = mistakesInOrder(mistakes)
+    if (list.length === 0) return null
+    return (
+        <ul className="ui-row-mistakes" aria-label={t('bulk_mistakes').replace('{n}', num(line))}>
+            {list.map(mistake => <li key={mistake.field}><Icon icon={WarningCircleIcon} size={16} />{mistakeText(t, mistake)}</li>)}
+        </ul>
+    )
+}
+
+/**
+ * A row's fields, as Create task has them, each with what's wrong with it
+ * under it. Each change is kept as it's made: Done only goes back.
+ */
+export function BulkRowFields({ row, onChange, people, onRetryPeople, retryingPeople, clients, places, now }: {
+    row: BulkRow
+    onChange: (row: BulkRow) => void
+    people: Assignable[] | null | undefined
+    onRetryPeople: () => void
+    retryingPeople: boolean
+    clients: Client[]
+    places: BulkPlace[]
+    now: number
+}) {
+    const { t, locale } = useLanguage()
+    const mistakes = rowMistakes(row, places, now)
+    const said = (field: BulkField) => mistakeText(t, mistakes[field])
+    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const used = (n: number, max: number) => t('ui_characters_used').replace('{used}', num(n)).replace('{max}', num(max))
+
+    // Its locations as the task form's picker lists them (DESIGN.md §5.3):
+    // its client's, its HQ first, then the shared ones; one with no pin
+    // greyed, with why.
     const optionOf = (p: BulkPlace): SelectOption => ({
         value: p.id,
         label: [p.name, p.isHq && t('locations_hq'), p.needsPin && t('task_location_needs_pin')].filter(Boolean).join(' · '),
         disabled: p.needsPin,
     })
-    const groupsFor = (clientId: string | null) => [
-        { label: t('task_location_client_group').replace('{name}', clients.find((c: any) => c.id === clientId)?.name ?? ''), options: clientId ? places.filter(p => p.clientId === clientId).map(optionOf) : [] },
+    const clientName = clients.find(c => c.id === row.clientId)?.name ?? ''
+    const groups = [
+        { label: t('task_location_client_group').replace('{name}', clientName), options: row.clientId ? places.filter(p => p.clientId === row.clientId).map(optionOf) : [] },
         { label: t('task_location_shared_group'), options: places.filter(p => !p.clientId).map(optionOf) },
     ]
-    /** A row changed on this screen, checked again. */
-    const change = (idx: number, next: any) => {
-        const newTasks = [...bulkTasks]
-        newTasks[idx] = revalidateRow(next)
-        setBulkTasks(newTasks)
-    }
+    // A client the file named that isn't one stays shown, as not found, until one is picked.
+    const clientOptions: SelectOption[] = [
+        ...(row.unknownClient ? [{ value: '?', label: t('bulk_client_not_found').replace('{text}', `\u2068${row.unknownClient}\u2069`), disabled: true }] : []),
+        { value: '', label: t('task_no_client') },
+        ...clients.map(c => ({ value: c.id, label: c.name })),
+    ]
 
-    // A dialog: focus in, Tab kept inside, Escape closes, focus back where it was (Codex review of #36).
-    const dialog = useDialog(isOpen, onClose)
-
-    if (!(mounted && isOpen)) return null
-
-    return createPortal(
-        <div className="modal-overlay" style={{ zIndex: 10000 }}>
-            <div className="modal-content glass" style={{
-                width: '95%',
-                maxWidth: '1300px',
-                maxHeight: '90vh',
-                display: 'flex',
-                flexDirection: 'column'
-            }} {...dialog.panelProps}>
-                <div className="modal-header">
-                    <h2 className="modal-title" id={dialog.titleId}>{t('bulk_review_title')}</h2>
-                    <button aria-label={t('close')} className="modal-close" onClick={onClose}>×</button>
-                </div>
-
-                <div className="modal-body" style={{ overflowY: 'auto', flex: 1, padding: '1.5rem' }}>
-                    <div style={{ overflowX: 'auto', borderRadius: '1rem', border: '1px solid var(--glass-border)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--veil-40)' }}>
-                            <thead>
-                                <tr style={{ background: 'var(--veil-60)', borderBottom: '2px solid var(--glass-border)' }}>
-                                    <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>#</th>
-                                    <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('title')}</th>
-                                    <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('description_label' as any)}</th>
-                                    <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('assignees_label')}</th>
-                                    <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('deadline_label')}</th>
-                                    <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('location_name_label')}</th>
-                                    <th style={{ padding: '1rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>{t('actions_label')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {bulkTasks.map((bt, idx) => (
-                                    <tr key={idx} style={{
-                                        borderBottom: '1px solid var(--glass-border)',
-                                        background: bt.isInvalid ? 'color-mix(in srgb, var(--danger-solid) 5%, transparent)' : 'transparent',
-                                        transition: 'background 0.3s'
-                                    }}>
-                                        <td style={{ padding: '1rem' }}>{idx + 1}</td>
-                                        <td style={{ padding: '1rem', position: 'relative' }}>
-                                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                                <div style={{
-                                                    opacity: bt.isInvalid ? 0.5 : 1,
-                                                    textDecoration: bt.isInvalid && !bt.title ? 'line-through' : 'none',
-                                                    flex: 1
-                                                }}>
-                                                    {bt.title || t('missing_title')}
-                                                </div>
-                                                <button aria-label={t('edit')}
-                                                    onClick={(e) => {
-                                                        const rect = e.currentTarget.getBoundingClientRect()
-                                                        setEditAnchorRect(rect)
-                                                        setActiveCellEdit({ index: idx, field: 'title' })
-                                                    }}
-                                                    style={{
-                                                        background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
-                                                        borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
-                                                        opacity: bt.validationErrors?.title ? 1 : 0.4
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hairline)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                                                    title={t('edit')}
-                                                >
-                                                    <span aria-hidden="true">✍️</span>
-                                                </button>
-                                            </div>
-                                            {bt.validationErrors?.title && (
-                                                <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                                                    {bt.validationErrors.title.map((err: string, i: number) => (
-                                                        <div key={i}>• {err}</div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* Title Pop-up */}
-                                            {activeCellEdit?.index === idx && activeCellEdit?.field === 'title' && editAnchorRect && createPortal(
-                                                <>
-                                                    <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10500 }} />
-                                                    <div style={{
-                                                        position: 'fixed',
-                                                        top: editAnchorRect.top + editAnchorRect.height / 2,
-                                                        left: locale === 'ar' ? editAnchorRect.left - 200 : editAnchorRect.right + 20,
-                                                        transform: 'translateY(-50%)',
-                                                        zIndex: 10501, minWidth: '280px', background: 'var(--surface)', padding: '1rem',
-                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px var(--shadow-mid)', border: '1px solid var(--border)',
-                                                        direction: locale === 'ar' ? 'rtl' : 'ltr'
-                                                    }}>
-                                                        <input
-                                                            autoFocus
-                                                            className="input"
-                                                            style={{ width: '100%' }}
-                                                            value={bt.title || ''}
-                                                            onChange={e => {
-                                                                const newTasks = [...bulkTasks]
-                                                                newTasks[idx].title = e.target.value
-                                                                const validated = revalidateRow(newTasks[idx])
-                                                                newTasks[idx] = validated
-                                                                setBulkTasks(newTasks)
-                                                            }}
-                                                        />
-                                                        <button
-                                                            className="btn btn-primary"
-                                                            style={{ width: '100%', marginTop: '1rem' }}
-                                                            onClick={() => setActiveCellEdit(null)}
-                                                        >
-                                                            {t('done')}
-                                                        </button>
-                                                    </div>
-                                                </>,
-                                                document.body
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem', position: 'relative' }}>
-                                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                                <div style={{ opacity: bt.isInvalid ? 0.5 : 1, fontSize: '0.85rem', flex: 1 }}>
-                                                    {bt.description?.substring(0, 50)}...
-                                                </div>
-                                                <button aria-label={t('edit')}
-                                                    onClick={(e) => {
-                                                        const rect = e.currentTarget.getBoundingClientRect()
-                                                        setEditAnchorRect(rect)
-                                                        setActiveCellEdit({ index: idx, field: 'description' })
-                                                    }}
-                                                    style={{
-                                                        background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem',
-                                                        borderRadius: '0.3rem', transition: 'all 0.2s', fontSize: '1rem',
-                                                        opacity: bt.validationErrors?.description ? 1 : 0.4
-                                                    }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hairline)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                                                    title={t('edit')}
-                                                >
-                                                    <span aria-hidden="true">✍️</span>
-                                                </button>
-                                            </div>
-                                            {bt.validationErrors?.description && (
-                                                <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                                                    {bt.validationErrors.description.map((err: string, i: number) => (
-                                                        <div key={i}>• {err}</div>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            {/* Description Pop-up */}
-                                            {activeCellEdit?.index === idx && activeCellEdit?.field === 'description' && editAnchorRect && createPortal(
-                                                <>
-                                                    <div onClick={() => setActiveCellEdit(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10500 }} />
-                                                    <div style={{
-                                                        position: 'fixed',
-                                                        top: editAnchorRect.top + editAnchorRect.height / 2,
-                                                        left: locale === 'ar' ? editAnchorRect.left - 340 : editAnchorRect.right + 20,
-                                                        transform: 'translateY(-50%)',
-                                                        zIndex: 10501, minWidth: '320px', background: 'var(--surface)', padding: '1rem',
-                                                        borderRadius: '0.75rem', boxShadow: '0 10px 25px var(--shadow-mid)', border: '1px solid var(--border)',
-                                                        direction: locale === 'ar' ? 'rtl' : 'ltr'
-                                                    }}>
-                                                        <textarea
-                                                            autoFocus
-                                                            className="input"
-                                                            style={{ width: '100%', minHeight: '150px' }}
-                                                            value={bt.description || ''}
-                                                            onChange={e => {
-                                                                const newTasks = [...bulkTasks]
-                                                                newTasks[idx].description = e.target.value
-                                                                const validated = revalidateRow(newTasks[idx])
-                                                                newTasks[idx] = validated
-                                                                setBulkTasks(newTasks)
-                                                            }}
-                                                        />
-                                                        <button
-                                                            className="btn btn-primary"
-                                                            style={{ width: '100%', marginTop: '1rem' }}
-                                                            onClick={() => setActiveCellEdit(null)}
-                                                        >
-                                                            {t('done')}
-                                                        </button>
-                                                    </div>
-                                                </>,
-                                                document.body
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem', position: 'relative' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '250px' }}>
-                                                <div style={{
-                                                    flex: 1,
-                                                    opacity: bt.isInvalid ? 0.6 : 1,
-                                                    color: bt.unresolvedUsernames.length > 0 ? 'var(--danger-fg-strong)' : 'inherit',
-                                                    fontSize: '0.85rem',
-                                                    background: 'var(--veil-20)',
-                                                    padding: '0.5rem',
-                                                    borderRadius: '0.5rem',
-                                                    border: '1px solid var(--glass-border)',
-                                                    minHeight: '40px',
-                                                    display: 'flex',
-                                                    alignItems: 'center'
-                                                }}>
-                                                    {bt.resolvedNames && bt.resolvedNames.length > 0 ? bt.resolvedNames.join(', ') : bt.usernamesRaw || t('no_assignees')}
-                                                </div>
-                                                {bt.validationErrors?.assignees && (
-                                                    <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                                                        {bt.validationErrors.assignees.map((err: string, i: number) => (
-                                                            <div key={i}>• {err}</div>
-                                                        ))}
-                                                    </div>
-                                                )}
-
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                    {/* Plus Button */}
-                                                    <button aria-label={t('add_assignee')}
-                                                        onClick={(e) => {
-                                                            const rect = e.currentTarget.getBoundingClientRect()
-                                                            setEditAnchorRect(rect)
-                                                            setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'add' ? null : { index: idx, type: 'add' })
-                                                            setAssigneeSearch('')
-                                                        }}
-                                                        style={{
-                                                            width: '28px',
-                                                            height: '28px',
-                                                            borderRadius: '50%',
-                                                            border: '1px solid var(--glass-border)',
-                                                            background: 'var(--veil-40)',
-                                                            backdropFilter: 'blur(8px)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            cursor: 'pointer',
-                                                            fontSize: '1.2rem',
-                                                            fontWeight: 'bold',
-                                                            color: 'var(--info-fg)',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--veil-60)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--veil-40)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                                                    >
-                                                        +
-                                                    </button>
-
-                                                    {/* Minus Button */}
-                                                    <button aria-label={t('remove_assignee')}
-                                                        onClick={(e) => {
-                                                            const rect = e.currentTarget.getBoundingClientRect()
-                                                            setEditAnchorRect(rect)
-                                                            setActiveAssigneeEdit(activeAssigneeEdit?.index === idx && activeAssigneeEdit?.type === 'remove' ? null : { index: idx, type: 'remove' })
-                                                        }}
-                                                        style={{
-                                                            width: '28px',
-                                                            height: '28px',
-                                                            borderRadius: '50%',
-                                                            border: '1px solid var(--glass-border)',
-                                                            background: 'var(--veil-40)',
-                                                            backdropFilter: 'blur(8px)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            cursor: 'pointer',
-                                                            fontSize: '1.2rem',
-                                                            fontWeight: 'bold',
-                                                            color: 'var(--danger-fg-strong)',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--veil-60)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--veil-40)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                                                    >
-                                                        -
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Dropdowns/Popups */}
-                                            {activeAssigneeEdit?.index === idx && editAnchorRect && createPortal(
-                                                <>
-                                                    <div
-                                                        onClick={() => setActiveAssigneeEdit(null)}
-                                                        style={{
-                                                            position: 'fixed',
-                                                            top: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            bottom: 0,
-                                                            zIndex: 10500,
-                                                            background: 'transparent',
-                                                            cursor: 'default'
-                                                        }}
-                                                    />
-                                                    <div style={{
-                                                        position: 'fixed',
-                                                        top: editAnchorRect.top + editAnchorRect.height / 2,
-                                                        left: locale === 'ar' ? editAnchorRect.left - 260 : editAnchorRect.right + 20,
-                                                        transform: 'translateY(-50%)',
-                                                        zIndex: 10501,
-                                                        minWidth: '240px',
-                                                        background: 'var(--panel-95)',
-                                                        backdropFilter: 'blur(12px)',
-                                                        border: '1px solid var(--glass-border)',
-                                                        borderRadius: '0.75rem',
-                                                        boxShadow: '0 10px 15px -3px var(--shadow-weak)',
-                                                        padding: '0.5rem',
-                                                        animation: 'fadeIn 0.2s ease-out',
-                                                        direction: locale === 'ar' ? 'rtl' : 'ltr'
-                                                    }}>
-                                                        {activeAssigneeEdit.type === 'add' ? (
-                                                            // Add Dropdown
-                                                            <div>
-                                                                <div style={{ padding: '0.25rem 0.25rem 0.5rem 0.25rem', borderBottom: '1px solid var(--border)', marginBottom: '0.5rem' }}>
-                                                                    <input
-                                                                        autoFocus
-                                                                        type="text"
-                                                                        placeholder={t('search_placeholder')}
-                                                                        value={assigneeSearch}
-                                                                        onChange={(e) => setAssigneeSearch(e.target.value)}
-                                                                        style={{
-                                                                            width: '100%',
-                                                                            padding: '0.4rem 0.6rem',
-                                                                            fontSize: '0.8rem',
-                                                                            borderRadius: '0.5rem',
-                                                                            border: '1px solid var(--border)',
-                                                                            background: 'var(--surface-subtle)',
-                                                                            textAlign: locale === 'ar' ? 'right' : 'left'
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                                <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                                                                    {users
-                                                                        .filter(u => !bt.resolvedIds.includes(u.id))
-                                                                        .filter(u =>
-                                                                            `${u.firstName} ${u.lastName}`.toLowerCase().includes(assigneeSearch.toLowerCase())
-                                                                        )
-                                                                        .map(u => (
-                                                                            <div
-                                                                                key={u.id}
-                                                                                onClick={() => {
-                                                                                    const newTasks = [...bulkTasks]
-                                                                                    newTasks[idx].resolvedIds = [...bt.resolvedIds, u.id]
-                                                                                    newTasks[idx].resolvedNames = [...bt.resolvedNames, `${u.firstName} ${u.lastName}`]
-                                                                                    newTasks[idx].unresolvedUsernames = []
-
-                                                                                    // Re-validate row after edit
-                                                                                    const updatedErrors = { ...(bt.validationErrors || {}) }
-                                                                                    delete updatedErrors.assignees
-                                                                                    newTasks[idx].validationErrors = updatedErrors
-                                                                                    newTasks[idx].isInvalid = Object.keys(updatedErrors).length > 0
-
-                                                                                    setBulkTasks(newTasks)
-                                                                                    // Don't close pop-up as per request
-                                                                                }}
-                                                                                style={{
-                                                                                    padding: '0.5rem',
-                                                                                    fontSize: '0.85rem',
-                                                                                    cursor: 'pointer',
-                                                                                    borderRadius: '0.375rem',
-                                                                                    transition: 'background 0.2s',
-                                                                                    textAlign: locale === 'ar' ? 'right' : 'left'
-                                                                                }}
-                                                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-sunk)'}
-                                                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                                            >
-                                                                                <div style={{ fontWeight: '600' }}>{u.firstName} {u.lastName}</div>
-                                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>{t(`role_${u.role?.toLowerCase()}` as any)}</div>
-                                                                            </div>
-                                                                        ))}
-                                                                    {users.filter(u => !bt.resolvedIds.includes(u.id) && `${u.firstName} ${u.lastName}`.toLowerCase().includes(assigneeSearch.toLowerCase())).length === 0 && (
-                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-faint)' }}>{t('no_matches_found')}</div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            // Remove Popup
-                                                            <div>
-                                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-soft)', padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border)', marginBottom: '0.25rem', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-                                                                    {t('remove_assignee')}
-                                                                </div>
-                                                                <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                                                                    {bt.resolvedIds.map((id: string, ridx: number) => (
-                                                                        <div
-                                                                            key={id}
-                                                                            style={{
-                                                                                display: 'flex',
-                                                                                justifyContent: 'space-between',
-                                                                                alignItems: 'center',
-                                                                                padding: '0.5rem',
-                                                                                fontSize: '0.85rem',
-                                                                                borderRadius: '0.375rem',
-                                                                                flexDirection: locale === 'ar' ? 'row-reverse' : 'row'
-                                                                            }}
-                                                                        >
-                                                                            <span style={{ fontWeight: '500' }}>{bt.resolvedNames[ridx]}</span>
-                                                                            <button aria-label={t('remove_assignee')}
-                                                                                onClick={() => {
-                                                                                    const newTasks = [...bulkTasks]
-                                                                                    const nid = bt.resolvedIds.filter((_: any, i: number) => i !== ridx)
-                                                                                    const nname = bt.resolvedNames.filter((_: any, i: number) => i !== ridx)
-                                                                                    newTasks[idx].resolvedIds = nid
-                                                                                    newTasks[idx].resolvedNames = nname
-
-                                                                                    // Re-validate row after remove
-                                                                                    const updatedErrors = { ...(bt.validationErrors || {}) }
-                                                                                    if (nid.length === 0) {
-                                                                                        updatedErrors.assignees = [t('no_assignees' as any) || 'Missing assignees']
-                                                                                    } else {
-                                                                                        delete updatedErrors.assignees
-                                                                                    }
-                                                                                    newTasks[idx].validationErrors = updatedErrors
-                                                                                    newTasks[idx].isInvalid = Object.keys(updatedErrors).length > 0
-
-                                                                                    setBulkTasks(newTasks)
-                                                                                    // Pop-up stays open as requested
-                                                                                }}
-                                                                                style={{
-                                                                                    border: 'none',
-                                                                                    background: 'var(--danger-bg)',
-                                                                                    color: 'var(--danger-fg-strong)',
-                                                                                    borderRadius: '50%',
-                                                                                    width: '20px',
-                                                                                    height: '20px',
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    justifyContent: 'center',
-                                                                                    cursor: 'pointer',
-                                                                                    fontSize: '0.9rem'
-                                                                                }}
-                                                                            >
-                                                                                ×
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
-                                                                    {bt.resolvedIds.length === 0 && (
-                                                                        <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-faint)' }}>{t('no_assignees')}</div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </>,
-                                                document.body
-                                            )}
-
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            {/* Its deadline, picked as Create task's is, with what's wrong under it (DESIGN.md §5.3). */}
-                                            <div style={{ minWidth: '200px' }}>
-                                                <DateTimePicker
-                                                    hideLabel
-                                                    label={t('deadline_label')}
-                                                    value={bt.deadline || ''}
-                                                    onChange={v => {
-                                                        const newTasks = [...bulkTasks]
-                                                        newTasks[idx].deadline = v
-                                                        const validated = revalidateRow(newTasks[idx])
-                                                        newTasks[idx] = validated
-                                                        setBulkTasks(newTasks)
-                                                    }}
-                                                    min={earliestDeadline(now).toISOString()}
-                                                    error={bt.validationErrors?.deadline?.join(' ')}
-                                                />
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ minWidth: '170px' }}>
-                                                {/* Its client, and where it's done (CLIENTS_PLAN.md §2.3, §2.7). */}
-                                                <div className="ui-field-group" style={{ gap: 'var(--space-2)' }}>
-                                                    <Field label={t('location_client')} hideLabel>{p => (
-                                                        <Select {...p} value={bt.clientId || ''}
-                                                            onChange={e => {
-                                                                const clientId = e.target.value || null
-                                                                change(idx, { ...bt, clientId, locationId: locationForClient(bt.locationId, clientId, places) })
-                                                            }}
-                                                            options={[{ value: '', label: t('task_no_client') }, ...clients.map((v: any) => ({ value: v.id, label: v.name }))]} />
-                                                    )}</Field>
-                                                    {/* What's wrong with it, beside it and tied to it. */}
-                                                    <Field label={t('task_location')} hideLabel error={bt.validationErrors?.location?.join(' ')}>{p => (
-                                                        <Select {...p} value={bt.locationId || ''}
-                                                            onChange={e => change(idx, { ...bt, locationId: e.target.value || null })}
-                                                            options={[{ value: '', label: t('task_location_choose') }]} groups={groupsFor(bt.clientId || null)} />
-                                                    )}</Field>
-                                                </div>
-                                                {bt.validationErrors?.client && (
-                                                    <div style={{ color: 'var(--danger-fg-strong)', fontSize: '0.7rem', marginTop: '0.25rem' }}>
-                                                        {bt.validationErrors.client.map((err: string, i: number) => (
-                                                            <div key={i}>• {err}</div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <button
-                                                className="btn"
-                                                style={{
-                                                    padding: '0.4rem 0.8rem',
-                                                    background: 'color-mix(in srgb, var(--danger-solid) 10%, transparent)',
-                                                    color: 'var(--danger-fg-strong)',
-                                                    borderRadius: '0.75rem'
-                                                }}
-                                                onClick={() => {
-                                                    const newTasks = bulkTasks.filter((_, i) => i !== idx)
-                                                    setBulkTasks(newTasks)
-                                                    if (newTasks.length === 0) onClose()
-                                                }}
-                                            >
-                                                {t('delete')}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div className="modal-footer" style={{ borderTop: '1px solid var(--glass-border)', background: 'var(--veil-30)' }}>
-                    <div style={{ flex: 1 }}>
-                        {bulkTasks.some(bt => bt.isInvalid) && (
-                            <div style={{ color: 'var(--danger-fg)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span aria-hidden="true" style={{ fontSize: '1.1rem' }}>⚠️</span>
-                                {t('skipped_status')}: {bulkTasks.filter(bt => bt.isInvalid).length} {t('rows_with_errors' as any)}
-                            </div>
-                        )}
-                    </div>
-                    <button className="btn" onClick={onClose} style={{ background: 'var(--hairline)' }}>
-                        {t('cancel')}
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        disabled={isSubmitting || bulkTasks.filter(bt => !bt.isInvalid).length === 0}
-                        onClick={async () => {
-                            setIsSubmitting(true)
-                            const validToSubmit = bulkTasks.filter(bt => !bt.isInvalid).map(bt => ({
-                                title: bt.title,
-                                description: bt.description,
-                                assigneeIds: bt.resolvedIds,
-                                deadline: bt.deadline,
-                                difficulty: bt.difficulty,
-                                clientId: bt.clientId || undefined,
-                                locationId: bt.locationId
-                            }))
-
-                            try {
-                                const res = await fetch('/api/tasks/bulk', {
-                                    method: 'POST',
-                                    body: JSON.stringify({ tasks: validToSubmit }),
-                                    headers: { 'Content-Type': 'application/json' }
-                                })
-
-                                if (!res.ok) {
-                                    const errorData = await res.json().catch(() => ({}))
-                                    const msg = errorData.error || errorData.details || errorData.message || (errorData.data?.error) || t('bulk_create_failed')
-                                    throw new Error(msg)
-                                }
-
-                                showToast(t('bulk_create_success'), 'success')
-                                onClose()
-                                router.push('/dashboard/tasks')
-                            } catch (err: any) {
-                                showToast(err.message, 'error')
-                            } finally {
-                                setIsSubmitting(false)
-                            }
-                        }}
-                        style={{ minWidth: '160px' }}
-                    >
-                        {isSubmitting ? t('processing') : (
-                            <>
-                                <span aria-hidden="true">✨</span>
-                                {t('create_tasks')} ({bulkTasks.filter(bt => !bt.isInvalid).length})
-                            </>
-                        )}
-                    </button>
-                </div>
+    return (
+        <div className="ui-form">
+            <Field label={t('title_label')} hint={used(row.title.length, TASK_TITLE_MAX)} error={said('title')}>{p => (
+                <TextInput {...p} name="title" dir="auto" autoComplete="off" value={row.title} maxLength={TASK_TITLE_MAX}
+                    onChange={e => onChange({ ...row, title: e.target.value })} />
+            )}</Field>
+            <Field label={t('description_label')} hint={used(row.description.length, TASK_DESCRIPTION_MAX)} error={said('description')}>{p => (
+                <TextArea {...p} name="description" dir="auto" rows={4} value={row.description} maxLength={TASK_DESCRIPTION_MAX}
+                    onChange={e => onChange({ ...row, description: e.target.value })} />
+            )}</Field>
+            {/* Its client, and where it's done (CLIENTS_PLAN.md §2.3, §2.7). */}
+            <div className="ui-field-group">
+                <Field label={t('location_client')} error={said('client')}>{p => (
+                    <Select {...p} name="clientId" value={row.unknownClient ? '?' : row.clientId ?? ''} options={clientOptions}
+                        onChange={e => onChange(withClient(row, e.target.value || null, places))} />
+                )}</Field>
+                <Field label={t('task_location')} error={said('location')}>{p => (
+                    <Select {...p} name="locationId" value={row.locationId ?? ''} options={[{ value: '', label: t('task_location_choose') }]} groups={groups}
+                        onChange={e => onChange(withLocation(row, e.target.value || null))} />
+                )}</Field>
             </div>
-        </div>,
-        document.body
+            <div className="ui-field-group">
+                <AssigneeChecklist id="bulk-row-assignees" people={people} value={row.assigneeIds} onChange={ids => onChange(withPeople(row, ids))}
+                    onRetry={onRetryPeople} retrying={retryingPeople} error={said('assignees')} />
+                {row.unknownPeople.length > 0 && (
+                    <div><Button size="sm" onClick={() => onChange(withoutUnknownPeople(row))}>{t('bulk_ignore_usernames')}</Button></div>
+                )}
+            </div>
+            <DateTimePicker label={t('deadline_label')} value={row.deadline} onChange={v => onChange(withDeadline(row, v))}
+                min={earliestDeadline(now).toISOString()} error={said('deadline')} />
+            <Field label={t('difficulty')} hint={t('points_hint')} error={said('difficulty')}>{p => (
+                <TextInput {...p} name="difficulty" type="number" inputMode="numeric" autoComplete="off" min={0} max={TASK_DIFFICULTY_MAX}
+                    value={Number.isNaN(row.difficulty) ? '' : String(row.difficulty)}
+                    onChange={e => {
+                        const typed = parseInt(e.target.value, 10)
+                        onChange({ ...row, difficulty: Number.isNaN(typed) ? Number.NaN : Math.min(Math.max(typed, 0), TASK_DIFFICULTY_MAX) })
+                    }} />
+            )}</Field>
+        </div>
     )
 }

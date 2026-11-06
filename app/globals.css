@@ -215,7 +215,6 @@
   --panel-80: rgba(255, 255, 255, 0.8);
   --panel-85: rgba(255, 255, 255, 0.85);
   --panel-90: rgba(255, 255, 255, 0.9);
-  --panel-95: rgba(255, 255, 255, 0.95);
 
   /* Black, in the three jobs it does here. Each needs different treatment on a
      dark ground:
@@ -1152,7 +1151,6 @@ input::-webkit-credentials-auto-fill-button {
     --panel-80: rgba(22, 27, 34, 0.88);
     --panel-85: rgba(22, 27, 34, 0.91);
     --panel-90: rgba(22, 27, 34, 0.94);
-    --panel-95: rgba(22, 27, 34, 0.97);
 
     --shadow-faint: rgba(0, 0, 0, 0.3);
     --shadow-weak: rgba(0, 0, 0, 0.45);

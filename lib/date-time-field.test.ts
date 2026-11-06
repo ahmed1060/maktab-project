@@ -170,12 +170,13 @@ describe("where a deadline is picked", () => {
         expect(s).not.toContain("customTrigger")
     })
 
-    it("has a row's deadline in the bulk review as the field, its label read out, with what's wrong under it", () => {
+    it("has a row's deadline in the bulk review as the field, its label shown, with what's wrong under it", () => {
         const s = readFileSync("components/BulkTaskReviewModal.tsx", "utf8")
         const picker = s.slice(s.indexOf("<DateTimePicker"), s.indexOf("/>", s.indexOf("<DateTimePicker")))
-        expect(picker).toContain("hideLabel")
+        // Among the row's fields, which its Edit opens, as Create task has it (PR 212).
+        expect(picker).not.toContain("hideLabel")
         expect(picker).toContain("label={t('deadline_label')}")
-        expect(picker).toContain("error={bt.validationErrors?.deadline?.join(' ')}")
+        expect(picker).toContain("error={said('deadline')}")
         // Its date in American order, with its seconds, and the calendar emoji, are gone.
         expect(s).not.toContain("📅")
         expect(s).not.toContain("second: 'numeric'")
