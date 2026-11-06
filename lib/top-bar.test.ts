@@ -254,15 +254,15 @@ describe("the bar", () => {
     // switcher was at the bar's end, so on a phone it ran off the screen's
     // start, 72px in English and 79px in Arabic.
     it("opens the Super Admin's company list from the switcher's start edge, into the screen", () => {
-        const list = header.slice(header.indexOf('role="listbox"'), header.indexOf("{switcherOptions.map("))
-        expect(list).toContain("insetInlineStart: 0,")
-        expect(list).not.toMatch(/\[locale === 'ar' \? 'left' : 'right'\]|\b(left|right): 0/)
+        // The company picker's panel since PR 206, in the building blocks' CSS.
+        expect(rule(".ui-company-picker-panel")).toContain("inset-inline-start: 0;")
+        expect(header).not.toMatch(/\[locale === 'ar' \? 'left' : 'right'\]/)
     })
 
     it("has the Super Admin's company switcher at its start, then the language switch, the bell and the account button", () => {
         const markup = header.slice(header.indexOf("return (", header.indexOf("export default function DashboardHeader")))
         const at = (s: string) => { const i = markup.indexOf(s); expect(i, s).toBeGreaterThan(-1); return i }
-        expect(at("aria-haspopup=\"listbox\"")).toBeLessThan(at('<span className="ui-topbar-spacer" />'))
+        expect(at("<CompanyPicker ")).toBeLessThan(at('<span className="ui-topbar-spacer" />'))
         expect(at('<span className="ui-topbar-spacer" />')).toBeLessThan(at("<LanguageToggleButton />"))
         expect(at("<LanguageToggleButton />")).toBeLessThan(at("<NotificationBell"))
         expect(at("<NotificationBell")).toBeLessThan(at("<AccountButton"))

@@ -30,39 +30,47 @@ describe("moving through the companies", () => {
 })
 
 describe("the switcher", () => {
-    const src = readFileSync("components/DashboardHeader.tsx", "utf8")
-    const opener = src.slice(src.indexOf("ref={switcherRef}") - 200, src.indexOf('className="glass sm-select"'))
-    const list = src.slice(src.indexOf('role="listbox"'), src.indexOf("</ul>"))
+    // The company picker since the top bar moved onto the building blocks
+    // (PR 206): its markup is checked in lib/company-picker.test.ts, and what
+    // it guarantees a keyboard and a screen reader is held here too.
+    const src = readFileSync("components/CompanyPicker.tsx", "utf8")
+    const opener = src.slice(src.indexOf("export function CompanyPickerButton"), src.indexOf("export function CompanyPickerPanel"))
+    const list = src.slice(src.indexOf('role="listbox"'), src.indexOf('className="ui-company-picker-none"'))
 
     it("opens from a button that says it opens a list, and whether it is open", () => {
-        expect(opener).toMatch(/<button\s+type="button"/)
+        expect(opener).toMatch(/<button type="button"/)
         expect(opener).toContain('aria-haspopup="listbox"')
-        expect(opener).toContain("aria-expanded={isCompanyDropdownOpen}")
-        expect(opener).toContain("onKeyDown={onSwitcherKeyDown}")
+        expect(opener).toContain("aria-expanded={open}")
+        expect(opener).toContain("onKeyDown={onKeyDown}")
+        expect(src).toContain("onKeyDown={onButtonKeyDown}")
     })
 
     it("is named by the company in view, which phones show only as initials", () => {
-        expect(opener).toMatch(/aria-label=\{t\('company_switcher_label' as TranslationKey\)\.replace\('\{name\}'/)
+        expect(opener).toContain("aria-label={t('company_switcher_label').replace('{name}', () => inView.name)}")
         expect(en.company_switcher_label).toContain("{name}")
         expect(ar.company_switcher_label).toContain("{name}")
     })
 
-    it("lists the companies as options, the one in view selected", () => {
+    it("lists the companies as options, the one the keys are on selected, from a field that keeps the focus", () => {
         expect(list).toContain('role="option"')
-        expect(list).toContain("aria-selected={selected}")
-        expect(list).toContain("onKeyDown={e => onOptionKeyDown(e, i)}")
-        expect(list).toMatch(/<svg aria-hidden="true"/)
+        expect(list).toContain("aria-selected={i === active}")
+        expect(src).toContain('role="combobox"')
+        expect(src).toContain("aria-activedescendant={options[active] ? `${listId}-${active}` : undefined}")
     })
 
-    it("handles the keys: arrows, Home, End, Enter, Space, Escape, Tab", () => {
-        const keys = src.slice(src.indexOf("const onOptionKeyDown"), src.indexOf("const onOptionKeyDown") + 900)
-        expect(keys).toContain("moveOption(i, e.key, switcherOptions.length)")
-        for (const k of ["'Enter'", "' '", "'Escape'", "'Tab'"]) expect(keys).toContain(`e.key === ${k}`)
-        expect(keys).toContain("switcherRef.current?.focus()")
+    it("handles the keys: the arrows, Enter, Escape, and Tab out of it", () => {
+        const keys = src.slice(src.indexOf("const onInputKeyDown"), src.indexOf("const onInputKeyDown") + 500)
+        expect(keys).toContain("moveActive(active, e.key, options.length)")
+        expect(keys).toContain("e.key === 'Enter'")
+        // Escape from anywhere in it, on its box.
+        expect(src).toContain("onKeyDown={e => { if (e.key === 'Escape' && open) {")
+        expect(src).toContain("const close = () => { setOpen(false); buttonRef.current?.focus() }")
+        expect(src).toMatch(/onBlur=\{e => \{ if \(e\.relatedTarget && !box\.current\?\.contains\(e\.relatedTarget as Node\)\) setOpen\(false\) \}\}/)
     })
 
     it("no longer uses divs that only a mouse can use", () => {
-        expect(src).not.toContain("onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}")
-        expect(src).not.toContain("onClick={() => handleSelectCompany(null)}")
+        const header = readFileSync("components/DashboardHeader.tsx", "utf8")
+        expect(header).not.toContain("onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}")
+        expect(header).not.toContain("onClick={() => handleSelectCompany(null)}")
     })
 })

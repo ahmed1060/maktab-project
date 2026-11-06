@@ -42,6 +42,7 @@
 .ui-topbar-button,
 .ui-topbar-account,
 .ui-segmented-option,
+.ui-company-picker-button,
 .ui-side-legal a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -3863,6 +3864,179 @@ html[lang="ar"] .ui-empty-title {
   }
 }
 /* end of the top bar */
+
+/* ── The company picker (§5.1): the Super Admin's, at the top bar's start ── */
+.ui-company-picker {
+  position: relative;
+  flex: none;
+}
+.ui-company-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 44px;
+  padding-block: 0;
+  padding-inline: var(--space-1) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--brand) 33%, var(--panel));
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+.ui-company-picker-button:hover,
+.ui-company-picker-button[aria-expanded="true"] {
+  background: var(--brand-tint);
+}
+.ui-company-picker-button:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+.ui-company-picker-who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-inline-size: 0;
+  line-height: var(--leading-sm);
+  text-align: start;
+}
+.ui-company-picker-label {
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+.ui-company-picker-name {
+  max-inline-size: 180px;
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-company-picker-caret {
+  color: var(--ink-2);
+}
+/* A company's initials on a tile, or the buildings icon for All companies. */
+.ui-company-tile {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: var(--radius-field);
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral-fg);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1;
+}
+.ui-company-tile-32 {
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: var(--radius-menu);
+  font-size: var(--text-sm);
+}
+.ui-company-picker-button .ui-company-tile,
+.ui-company-picker-option[data-in-view] .ui-company-tile {
+  background: var(--brand-tint-strong);
+  color: var(--brand-text);
+}
+/* Its panel: under the bar, from the picker's start edge. */
+.ui-company-picker-panel {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-start: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  inline-size: 320px;
+  max-inline-size: calc(100vw - 16px);
+  padding: var(--space-2);
+  background: var(--panel-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--elev-2);
+}
+.ui-company-picker-find {
+  display: block;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-company-picker-panel .ui-control {
+  margin: 0 var(--space-1) var(--space-2);
+}
+/* 8 rows, fewer on a short screen, so the last is never under its edge. */
+.ui-company-picker-list {
+  display: flex;
+  flex-direction: column;
+  max-block-size: min(320px, calc(100vh - 180px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ui-company-picker-option {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: var(--space-2);
+  min-block-size: 40px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-field);
+  color: var(--ink);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+.ui-company-picker-option-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.ui-company-picker-option[data-in-view] {
+  background: var(--brand-tint);
+  color: var(--brand-text);
+  font-weight: 500;
+}
+/* The row the arrows are on: the menu's focus look, its ring while the focus
+   is in the panel. After a tap, it's on no row the arrows are on yet. */
+.ui-company-picker-option[aria-selected="true"] {
+  background: var(--brand-tint);
+}
+.ui-company-picker-panel:focus-within .ui-company-picker-option[aria-selected="true"] {
+  box-shadow: inset 0 0 0 2px var(--brand-text);
+}
+.ui-company-picker-check {
+  color: var(--brand-text);
+}
+/* Heard as it changes, so it's always there, and takes no room when empty. */
+.ui-company-picker-none {
+  margin: 0;
+  padding: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-md);
+}
+.ui-company-picker-none:empty {
+  padding: 0;
+}
+@media (max-width: 1023px) {
+  .ui-company-picker {
+    position: static;
+  }
+  .ui-company-picker-who,
+  .ui-company-picker-caret {
+    display: none;
+  }
+  .ui-company-picker-button {
+    justify-content: center;
+    inline-size: 44px;
+    padding: 0;
+  }
+  /* Across the bar, 8px in from its edges, as the bar is its frame here. */
+  .ui-company-picker-panel {
+    inset-inline: var(--space-2);
+    inline-size: auto;
+  }
+}
+/* end of the company picker */
 
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
    bar, as the approved mock-up has it. */
