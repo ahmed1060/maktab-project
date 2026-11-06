@@ -226,8 +226,10 @@ describe("a token is used in the role it was defined for", () => {
     it("keeps no tokens of the old calendar's", () => {
         // Its Reset's pale red and a range's indigo days had a value in each
         // theme. The calendar is the building blocks' (PR 208): Clear is a
-        // quiet button, and a range's days are on the brand's tint.
-        for (const token of ["--danger-bg-subtle", "--info-fg-indigo"]) {
+        // quiet button, and a range's days are on the brand's tint. The
+        // deadline's Confirm Selection ran into the brand's accent; its Done
+        // is a button of the building blocks (PR 209).
+        for (const token of ["--danger-bg-subtle", "--info-fg-indigo", "--brand-accent"]) {
             const declarations = CSS_CODE.match(new RegExp(`^\\s*${token}\\s*:`, "gm")) ?? []
             expect(declarations, token).toHaveLength(0)
             expect(SOURCES.filter(file => code(file).includes(`var(${token})`)), `still drawn with ${token}`).toEqual([])

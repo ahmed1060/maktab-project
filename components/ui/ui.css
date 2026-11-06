@@ -437,6 +437,10 @@
 .ui-calendar-done {
   margin-inline-start: auto;
 }
+/* A date and a time: the time on a line of its own under the days, then Done. */
+.ui-calendar-time .ui-field {
+  flex: 1 1 100%;
+}
 /* On a phone: in the middle of the screen over the dimmed page, with
    44px days across its width. A tap on the dimmed page closes it. */
 @media (max-width: 767px) {

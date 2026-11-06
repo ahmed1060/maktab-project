@@ -647,6 +647,19 @@ These are built once, in the building-blocks PR, and every page uses them
     outside it closes it too. The arrow keys move a day or a week, Page Up
     and Page Down a month, and Home and End to the week's ends. Tab stays
     inside it, and Escape closes it and gives the focus back to the field.
+- **A date and a time,** such as a task's deadline, is a field whose
+  button opens the same calendar, with the time under its days:
+  - the button shows them in the page's language, "6 Nov 2026, 5:00 pm".
+    With none, it says what to pick, in `--muted`. Its error is under it,
+    as a field's is; in a table, its label is read out but not shown;
+  - under the days, the time, in the browser's own time field as the
+    app's other times are, with 5 minutes between its steps, and Done on
+    the end side;
+  - picking a day keeps the time picked, or noon when there's none, and
+    leaves the calendar open for the time. Done closes it, and so does a
+    click outside it. A day that ends before the earliest time allowed
+    can't be picked; a time before it is said under the time, and Done is
+    off until it's put right.
 - **A form on a page of its own,** such as Create task, is one panel: its
   fields one under the other, at most 640px wide, then its buttons, the
   one primary button first. Submitting with something wrong shows each
@@ -1535,3 +1548,9 @@ changed:
   danger red, though it only empties the field. Its month arrows were
   characters, its weekdays typed in, its days in Western digits in Arabic,
   and its dates in American order, a range joined by an arrow.
+- **2026-11-06:** A date and a time (§5.3). A deadline's calendar was a
+  window of its own making too: its month names and weekdays typed in,
+  its time in three drop-downs of their own, the hour, the minute and AM
+  or PM, and its Confirm Selection button in a gradient. In the bulk
+  review of tasks, a row's deadline was a date in American order, with
+  its seconds, and a calendar emoji to change it.

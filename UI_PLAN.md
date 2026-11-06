@@ -553,9 +553,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #205 on 2026-11-06, then the Super Admin's company picker,
      merged in #206 on 2026-11-06, then the bell's panel, merged in #207
      on 2026-11-06, which finished it; then the date fields, in three
-     parts: the calendar a date and a range open, in #208, then the date
-     and time of a deadline, then the browser's own date fields moved onto
-     the same calendar;
+     parts: the calendar a date and a range open, merged in #208 on
+     2026-11-06, then the date and time of a deadline, in #209, then the
+     browser's own date fields moved onto the same calendar;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4517,3 +4517,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     side, the calendar ran off the screen, with its month or its Done out
     of reach. It's now as tall as the room it has, by its field or on a
     phone's screen, and scrolls inside.
+- **2026-11-06:** The date fields' calendar was merged in #208. Their
+  second part, in #209: a deadline's date and time on the same calendar
+  (`DESIGN.md` §5.3), for Create task, Add obligation, a task's Edit
+  details and the bulk review of tasks.
+  - The field says "6 Nov 2026, 5:00 pm" in the page's language, once in
+    the browser, as the date fields do.
+  - The time is under the days, in the browser's own time field as the
+    app's other times are, in 5-minute steps, with Done. It was three
+    drop-downs of the deadline picker's own: the hour, the minute, and AM
+    or PM.
+  - Picking a day keeps the time picked, or noon, and leaves the calendar
+    open for the time. A day that ends before the earliest deadline allowed
+    can't be picked; a time before it says so under the time, in the words
+    Create task already uses, and Done does nothing until it's put right,
+    though Tab still reaches it.
+  - In the bulk review of tasks, a row's deadline is the same field, its
+    label read out but not shown, with what's wrong with it under it, as
+    the row's place is. It was the date in American order, with its
+    seconds, and a calendar emoji to change it.
+  - The deadline picker's own window is gone: its month names and weekdays
+    typed in, its arrow characters, its emoji, and its Confirm Selection
+    in a gradient, with the brand's accent, which nothing else used
+    (`app/globals.css`). The words only it used are gone too, and the
+    Arabic for what to pick, and Create task's for a deadline not yet
+    picked, no longer command in the masculine.

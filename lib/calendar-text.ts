@@ -54,6 +54,17 @@ export function rangeText(from: string, to: string, locale: Lang, words: { from:
     return null
 }
 
+/**
+ * A date and a time as Intl joins them, "6 Nov 2026, 5:00 pm", «٦ نوفمبر
+ * ٢٠٢٦، ٥:٠٠ م», on the browser's clock. Null for a value that names no
+ * moment, as an upload can hold, for the field to say what to pick.
+ */
+export function dateTimeText(value: string, locale: Lang): string | null {
+    const date = value ? new Date(value) : null
+    if (!date || Number.isNaN(date.getTime())) return null
+    return new Intl.DateTimeFormat(intl(locale), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(date)
+}
+
 /** "November 2026", for the top of the calendar. */
 export function monthTitle(month: Date, locale: Lang): string {
     return new Intl.DateTimeFormat(intl(locale), { month: "long", year: "numeric" }).format(month)

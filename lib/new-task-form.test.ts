@@ -109,9 +109,10 @@ describe("Create task's words and numbers", () => {
         expect(ar.task_title_validation + ar.task_description_validation).not.toMatch(/[0-9]/)
     })
 
-    it("shows the deadline's time as the rest of the app does, 3:00 pm rather than 15:00", () => {
-        const picker = readFileSync("components/DateTimePicker.tsx", "utf8")
-        expect(picker).toContain("toLocaleTimeString(fieldLocale, { hour: 'numeric', minute: '2-digit', hour12: true })")
+    it("shows the deadline's time as the rest of the app does, 3:00 pm rather than 15:00", async () => {
+        // Its spaces as one: Intl can put a narrow one before "pm".
+        const { dateTimeText } = await import("./calendar-text")
+        expect(dateTimeText(new Date(2026, 10, 6, 15).toISOString(), "en")?.replace(/\s+/g, " ")).toMatch(/3:00 pm$/)
     })
 })
 

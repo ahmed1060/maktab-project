@@ -202,7 +202,8 @@ describe("its edit window", () => {
         expect(src).toContain("<Dialog")
         expect(src).toContain("<Field label={t('title_label')}")
         expect(src).toContain("<Field label={t('description_label')}")
-        expect(src).toContain("asField")
+        // Its deadline is a field as the others are: there's no other kind (PR 209).
+        expect(src).toContain("<DateTimePicker label={t('deadline_label')}")
         expect(src).not.toContain("style=")
         // Save with a field to fix goes to it (web interface audit).
         expect(src).toContain(`querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()`)
