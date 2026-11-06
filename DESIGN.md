@@ -409,9 +409,38 @@ These are built once, in the building-blocks PR, and every page uses them
     it, following one of its links, or Tab past its last control closes
     it. Switching the theme doesn't, so the change can be seen. Escape
     gives focus back to the button;
-  - for the Super Admin, the company switcher is at its start, as the
-    mock-up has it. It's rebuilt, with a search of its own, in the next
-    part.
+  - **the company picker,** the Super Admin's, at its start, as the
+    mock-up has it: a pill 44px tall on `--panel`, with an edge of the
+    brand colour at a third, and the company in view's initials on a 32px
+    tile with 8px corners, in `--brand-text` on `--brand-tint-strong`, or
+    the buildings icon for All companies. Then "Company in view" in
+    `--ink-2` at `--text-xs`, over the company's name in `--ink`, and a
+    caret. On a phone, the tile alone. Either way it's named "Company in
+    view: Nile Works", says that it opens a list, and whether it's open;
+  - **its panel,** below the bar from the picker's start edge: 320px
+    wide, on `--panel-raised` with a `--rule` edge, `--radius-menu`
+    corners and `--elev-2`. On a phone it spans the bar, 8px in from its
+    edges. At its top, "Find a company", in `--muted`, over a search
+    field with "Name of a company…" in it. Then All companies and every
+    company, each on a 40px row with its 28px tile (initials in
+    `--status-neutral-fg` on `--status-neutral-bg`). The one in view is
+    in `--brand-text` on `--brand-tint`, its tile as the picker's, with a
+    check at its end, and a screen reader hears it as the current one. The
+    list shows 8 rows, fewer on a short screen, and scrolls past that:
+    - typing keeps the companies whose names have what's typed in them,
+      capitals or not, without All companies, and the first is the one
+      Enter picks. When none has, the list says "No company has that
+      name";
+    - it opens with the focus in the search field, which keeps it: the up
+      and down arrows move through the list from there, Home and End stay
+      in what's typed, and Enter picks. The row they're on has the menu's
+      focus look, `--brand-tint` with a 2px `--brand-text` ring inside
+      it, while the focus is in the panel, and the pointer moves it too.
+      Picking one puts it in view, as today;
+    - a tap on a touch screen opens it without the keyboard, the search
+      field there to tap, as a phone's keyboard would cover the list;
+    - Escape, a click outside it, or Tab out of it closes it. Escape and
+      a pick give the focus back to the picker.
 
   It stays at the top as the page scrolls, and is kept as it is today
   (decided by the product owner):
@@ -1414,3 +1443,9 @@ changed:
   the bell's count was red; the button showed a drawn man or woman for
   someone with no photo, and the role in capitals; and "Sign Out" was in
   red.
+- **2026-11-06:** The Super Admin's company picker (§5.1), as the approved
+  mock-up of the app's frame draws it: the company in view on a pill, with
+  its initials, opening a panel with a search of its own above the
+  companies, each with its initials. The picker was a see-through pill
+  with the company's name alone, and its list had no search, so a Super
+  Admin with many companies scrolled through them all.
