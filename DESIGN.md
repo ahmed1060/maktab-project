@@ -613,6 +613,38 @@ These are built once, in the building-blocks PR, and every page uses them
     240px tall, each 36px (44px on phones), with what tells two apart,
     such as a person's role, on the end side;
   - its error below the box, as a field's is.
+- **A date, or a range of dates,** such as a day off, is a field whose
+  button opens a calendar:
+  - the button shows the date in the page's language, "6 Nov 2026", and a
+    range as "6–10 Nov 2026", or "From 6 Nov 2026" and "Until 10 Nov 2026"
+    when it has one end only. With none, it says what to pick, in
+    `--muted`. Its hint and its error are under it, as a field's are, and
+    it can be turned off as a field can;
+  - on a computer, the calendar opens under the field, from its start
+    edge, or above it when there's no room below. It's drawn as the menus
+    are (§5.5): `--panel-raised`, a `--rule` edge, the menu's corners and
+    level-2 depth. On a phone, it opens in the middle of the screen over
+    the dimmed page;
+  - at its top, the month and year in the page's language, between the
+    buttons for the month before and the month after. The month before is
+    on the start side, as the pager's previous page is, so in Arabic the
+    next month is on the left, the way the days run;
+  - the days of the week from Sunday, as the work week starts, each by its
+    shortest name in the page's language ("S", «ح»), and read out in full;
+  - each day is a button 36px across (44px on phones), its number in the
+    page's digits, read out as the whole date ("Friday, 6 November 2026").
+    The day picked is in `--brand` with white figures. Today is in
+    `--brand-text`, weight 600, and is read out as today. A range's days
+    between its first and last are on `--brand-tint`, in `--brand-text`.
+    A day that can't be picked is in `--muted` and does nothing, though
+    the arrow keys still pass over it;
+  - under the days, while there's a date: Clear, a quiet small button on
+    the start side. A range also says which of its days to pick next, and
+    has Done on the end side;
+  - picking a day closes it, and so does a range's last day. A click
+    outside it closes it too. The arrow keys move a day or a week, Page Up
+    and Page Down a month, and Home and End to the week's ends. Tab stays
+    inside it, and Escape closes it and gives the focus back to the field.
 - **A form on a page of its own,** such as Create task, is one panel: its
   fields one under the other, at most 640px wide, then its buttons, the
   one primary button first. Submitting with something wrong shows each
@@ -1494,3 +1526,10 @@ changed:
   ago, tinted with a dot while unread. Opening it read them all, so none
   could be told apart as new once it was open; its rows were boxes that
   only a mouse could follow, with the full date and time on each.
+- **2026-11-06:** A date, or a range of dates (§5.3). The calendar was a
+  window of its own making in the middle of the screen, on a computer
+  too, where it dimmed a dialog a second time: the day picked in the info
+  blue, today in the colour of what waits on someone, and Reset in the
+  danger red, though it only empties the field. Its month arrows were
+  characters, its weekdays typed in, its days in Western digits in Arabic,
+  and its dates in American order, a range joined by an arrow.
