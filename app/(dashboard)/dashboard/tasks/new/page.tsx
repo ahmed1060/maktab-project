@@ -15,8 +15,8 @@ import { firstError } from '@/lib/form-errors'
 import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
 import { pickIn, type CompanyPick } from '@/lib/saved-lists'
 import { useListNames } from '@/components/lists/useListNames'
-import { rowLocation, sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
-import type { BulkRow } from '@/lib/bulk-tasks'
+import { sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
+import { readRows, type BulkRow, type SheetRow } from '@/lib/bulk-tasks'
 import BulkTaskReviewModal from '@/components/BulkTaskReviewModal'
 import ManageTemplatesModal from '@/components/ManageTemplatesModal'
 // F-20: xlsx (SheetJS) is on a version with an unfixable-from-npm CVE
@@ -34,6 +34,39 @@ import { DownloadSimpleIcon, FileXlsIcon, IdentificationCardIcon, UploadSimpleIc
 import { Button, ButtonLink, Card, Field, Page, PageHeader, TextArea, TextInput } from '@/components/ui'
 
 const NO_CLIENTS: any[] = []
+
+/**
+ * Who can be assigned, from /api/users's answer, nothing before it's come:
+ * employees, then team leaders, Admins and Super Admins, each by name. On
+ * a copy, as the answer belongs to SWR's cache.
+ *
+ * No filtering here. This used to hide Admins from a Team Leader's list,
+ * which meant the request that fetched it had already returned them: every
+ * Admin's row was in the page payload, and the browser was politely not
+ * drawing it. /api/users now scopes a Team Leader to their own team
+ * server-side, so what arrives is already what they may see, and already
+ * what the server will accept when they submit. Filtering in the browser
+ * was never a restriction: it decided what a picker showed, not what a
+ * request could contain.
+ */
+function peopleIn(result: any): any[] | undefined {
+    if (!result) return undefined
+    const list = result?.data?.data || result?.data || []
+    if (!Array.isArray(list)) {
+        console.error('Invalid users data received:', result)
+        return []
+    }
+    const rolePriority: { [key: string]: number } = { EMPLOYEE: 1, TEAM_LEADER: 2, ADMIN: 3, SUPER_ADMIN: 4 }
+    return [...list].sort((a: any, b: any) => {
+        const priorityA = rolePriority[a.role] || 99
+        const priorityB = rolePriority[b.role] || 99
+        if (priorityA !== priorityB) return priorityA - priorityB
+        return a.firstName.localeCompare(b.firstName)
+    })
+}
+
+/** The company's clients, from /api/clients's answer, nothing before it's come. */
+const clientsIn = (result: any): any[] | undefined => (Array.isArray(result?.data) ? result.data : undefined)
 
 export default function NewTaskPage() {
     const { t, locale } = useLanguage()
@@ -54,6 +87,8 @@ export default function NewTaskPage() {
     const [bulkTasks, setBulkTasks] = useState<BulkRow[]>([])
     // The company's locations in use, for the upload's rows (CLIENTS_PLAN.md §2.7).
     const [bulkPlaces, setBulkPlaces] = useState<BulkPlace[]>([])
+    // While a file picked is read, its button is busy.
+    const [readingFile, setReadingFile] = useState(false)
     const router = useRouter()
 
     const { showToast } = useToast()
@@ -75,47 +110,15 @@ export default function NewTaskPage() {
         ? `/api/users?${new URLSearchParams({ limit: '1000', ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) })}`
         : null
     const { data: usersResult, error: usersError, mutate: retryUsers, isValidating: retryingUsers } = useSWR(usersKey, fetcher)
-    const users: any[] = useMemo(() => {
-        const usersList = usersResult?.data?.data || usersResult?.data || []
-        if (!Array.isArray(usersList)) {
-            console.error('Invalid users data received:', usersResult)
-            return []
-        }
-        const rolePriority: { [key: string]: number } = {
-            'EMPLOYEE': 1,
-            'TEAM_LEADER': 2,
-            'ADMIN': 3,
-            'SUPER_ADMIN': 4
-        }
-        // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN, then
-        // by name. On a copy: the array belongs to SWR's cache.
-        return [...usersList].sort((a: any, b: any) => {
-            const priorityA = rolePriority[a.role] || 99
-            const priorityB = rolePriority[b.role] || 99
-            if (priorityA !== priorityB) return priorityA - priorityB
-            return a.firstName.localeCompare(b.firstName)
-        })
-        // No filtering here any more.
-        //
-        // This used to hide Admins from a Team Leader's list, which
-        // meant the request that fetched it had already returned them:
-        // every Admin's row was in the page payload, and the browser
-        // was politely not drawing it. /api/users now scopes a Team
-        // Leader to their own team server-side, so what arrives is
-        // already what they may see — and, more to the point, already
-        // what the server will accept when they submit.
-        //
-        // Filtering in the browser was never a restriction. It decided
-        // what a picker showed, not what a request could contain.
-    }, [usersResult])
+    const users: any[] = useMemo(() => peopleIn(usersResult) ?? [], [usersResult])
 
     // Super Admin needs a company selected — same as the clients page itself,
     // no fetch at all until then rather than a 400.
     const clientsKey = !canUseClients || (userRole === 'SUPER_ADMIN' && !selectedCompanyId)
         ? null
         : `/api/clients${userRole === 'SUPER_ADMIN' ? `?companyId=${encodeURIComponent(selectedCompanyId!)}` : ''}`
-    const { data: clientsResult } = useSWR(clientsKey, fetcher)
-    const clients: any[] = clientsKey && Array.isArray(clientsResult?.data) ? clientsResult.data : NO_CLIENTS
+    const { data: clientsResult, mutate: retryClients } = useSWR(clientsKey, fetcher)
+    const clients: any[] = (clientsKey && clientsIn(clientsResult)) || NO_CLIENTS
 
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
@@ -202,188 +205,59 @@ export default function NewTaskPage() {
         }
     }
 
+    // The upload's rows, read in lib/bulk-tasks.ts and checked in the review
+    // (DESIGN.md §5.5, "Rows read from a file").
     const handleBulkUpload = async (file: File) => {
-        const { Workbook } = await import('exceljs')
-        const arrayBuffer = await file.arrayBuffer()
-        const workbook = new Workbook()
-        await workbook.xlsx.load(arrayBuffer)
-        const worksheet = workbook.worksheets[0]
+        // The people and clients the rows name, before they're read: a file
+        // picked as the page opens was read before they had loaded, and its
+        // rows matched no one (PR 212's browser flows).
+        const peopleNow = usersResult ? users : peopleIn(await retryUsers().catch(() => undefined))
+        if (!peopleNow) return showToast(t('bulk_people_load_failed'), 'error')
+        const clientsNow = !clientsKey ? NO_CLIENTS : clientsIn(clientsResult ?? await retryClients().catch(() => undefined))
+        if (!clientsNow) return showToast(t('bulk_clients_load_failed'), 'error')
 
-        if (worksheet) {
-            // The locations a row can name (CLIENTS_PLAN.md §2.7): the
-            // template's own Locations sheet, by the hidden column of each
-            // name's location; and the company's in use now, to check them
-            // against. A template from before has no such sheet, and its
-            // rows take their client's HQ.
-            const listed = workbook.worksheets.find(w => w.name === 'Locations' || w.name === 'المواقع')
-            const listedRows: unknown[][] = []
-            listed?.eachRow(row => { listedRows.push(Array.isArray(row.values) ? row.values.slice(1).map(cellToPrimitive) : []) })
-            const sheet = sheetLocations(listedRows)
-            let places: BulkPlace[]
-            try {
-                const company = userRole === 'SUPER_ADMIN' && selectedCompanyId ? `&companyId=${encodeURIComponent(selectedCompanyId)}` : ''
-                places = (await fetcher(`/api/locations?pick=all${company}`)).data.locations
-            } catch (err: any) {
-                showToast(t(err?.status === 403 ? 'task_location_no_permission' : 'task_location_load_failed'), 'error')
-                return
-            }
-            setBulkPlaces(places)
-
-            // Mirror XLSX.utils.sheet_to_json(worksheet, { header: 1 }): one
-            // array per row, 0-indexed columns, raw cell values. exceljs's
-            // row.values is 1-indexed with index 0 always undefined, hence
-            // slice(1). Each keeps its row's number in the file, for the
-            // review to say where to find it.
-            const jsonData: { cells: any[]; line: number }[] = []
-            worksheet.eachRow({ includeEmpty: true }, (row) => {
-                const values = Array.isArray(row.values) ? row.values.slice(1) : []
-                jsonData.push({ cells: values.map(cellToPrimitive), line: row.number })
-            })
-
-            // Process data starting from Row 3 (index 2)
-            const rows = jsonData.slice(2).filter(({ cells }) => cells[0]) // cells[0] is Title
-
-            if (rows.length > 50) {
-                showToast(t('bulk_limit_exceeded'), 'error')
-                return
-            }
-
-            // Each row as the review has it (lib/bulk-tasks.ts), which says
-            // what's wrong with it: what the file named and wasn't found is
-            // kept with it until something is picked in its place.
-            const tasks: BulkRow[] = rows.map(({ cells: row, line }) => {
-                const title = row[0] === null || row[0] === undefined ? '' : String(row[0])
-                const description = row[1] === null || row[1] === undefined ? '' : String(row[1])
-                const clientNameRaw = row[2] ? String(row[2]).trim() : '' // Column C, optional
-                // Column D, "Employee Name" — one merged column for both
-                // cases: a single assignee is normally picked from the
-                // dropdown, which writes "FirstName LastName (username)"
-                // (the same display text as the Users sheet, so the
-                // parenthesized username is always unambiguous even when two
-                // employees share a full name); multiple assignees are typed
-                // directly as comma-separated usernames, bypassing the
-                // dropdown. Handled as one rule below rather than two
-                // separate columns: split on comma, then per piece, a
-                // trailing "(username)" is extracted if present, otherwise
-                // the piece itself is taken as a literal username.
-                const employeeFieldRaw = row[3] ? String(row[3]) : ''
-                const deadlineDateStr = row[4] // Column E
-                const deadlineTimeStr = row[5] // Column F
-                const diffPoints = parseInt(row[6]) || 0 // Column G
-
-                // 1. Resolve usernames to IDs
-                const usernames = employeeFieldRaw
-                    .split(',')
-                    .map(piece => {
-                        const trimmed = piece.trim()
-                        const dropdownMatch = trimmed.match(/\(([^)]+)\)\s*$/)
-                        return dropdownMatch ? dropdownMatch[1].trim() : trimmed
-                    })
-                    .filter(u => u)
-                const assigneeIds: string[] = []
-                const unknownPeople: string[] = []
-                for (const uname of usernames) {
-                    const user = users.find(u => u.username?.toLowerCase() === uname.toLowerCase())
-                    if (user) assigneeIds.push(user.id)
-                    else unknownPeople.push(uname)
-                }
-
-                // 1.5 Resolve client name (optional — empty cell means no
-                // client). Client names are unique per company (schema
-                // constraint), so a plain name match here has no ambiguity
-                // risk the way employee full names would.
-                const client = clientNameRaw ? clients.find((v: any) => v.name.toLowerCase() === clientNameRaw.toLowerCase()) : undefined
-                const clientId: string | null = client?.id ?? null
-                const unknownClient = clientNameRaw && !client ? clientNameRaw : ''
-
-                // 1.6 Its location: Column H through the template's list, or
-                // its client's HQ. What was written is kept to say with a
-                // location that's wrong: the select can't show a location
-                // this row may not have.
-                const locationText = row[7] === null || row[7] === undefined ? '' : String(row[7]).trim()
-                const { locationId } = rowLocation(locationText, clientId, sheet, places)
-
-                // 2. Process Deadline
-                let deadline = ''
-                let unreadDeadline = ''
-                if (deadlineDateStr) {
-                    let baseDate: Date | null = null
-                    if (deadlineDateStr instanceof Date) {
-                        // exceljs (unlike xlsx without cellDates:true) returns a
-                        // native Date for a date-formatted cell rather than the
-                        // raw Excel serial number.
-                        baseDate = new Date(deadlineDateStr.getTime())
-                    } else if (typeof deadlineDateStr === 'number') {
-                        const excelDate = new Date((deadlineDateStr - 25569) * 86400 * 1000)
-                        baseDate = excelDate
-                    } else {
-                        const dStr = String(deadlineDateStr).trim()
-                        const dParts = dStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
-                        if (dParts) {
-                            baseDate = new Date(Number(dParts[3]), Number(dParts[2]) - 1, Number(dParts[1]))
-                        } else {
-                            const fallback = new Date(dStr)
-                            if (!isNaN(fallback.getTime())) baseDate = fallback
-                        }
-                    }
-
-                    if (baseDate && !isNaN(baseDate.getTime())) {
-                        let hours = 0
-                        let minutes = 0
-                        if (deadlineTimeStr !== undefined && deadlineTimeStr !== null && deadlineTimeStr !== '') {
-                            if (deadlineTimeStr instanceof Date) {
-                                // Same exceljs-vs-xlsx difference as the date column above.
-                                hours = deadlineTimeStr.getUTCHours()
-                                minutes = deadlineTimeStr.getUTCMinutes()
-                            } else if (typeof deadlineTimeStr === 'number') {
-                                const totalSeconds = Math.round(deadlineTimeStr * 24 * 3600)
-                                hours = Math.floor(totalSeconds / 3600)
-                                minutes = Math.floor((totalSeconds % 3600) / 60)
-                            } else {
-                                const tStr = String(deadlineTimeStr).trim().toUpperCase()
-                                const tParts = tStr.match(/^(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?$/)
-                                if (tParts) {
-                                    hours = Number(tParts[1])
-                                    minutes = Number(tParts[2])
-                                    const ampm = tParts[3]
-                                    if (ampm === 'PM' && hours < 12) hours += 12
-                                    if (ampm === 'AM' && hours === 12) hours = 0
-                                }
-                            }
-                        }
-                        baseDate.setHours(hours, minutes, 0, 0)
-                        deadline = baseDate.toISOString()
-                    } else {
-                        unreadDeadline = String(deadlineDateStr).trim()
-                    }
-                }
-
-                return {
-                    line,
-                    title,
-                    description,
-                    clientId,
-                    unknownClient,
-                    locationId,
-                    locationText,
-                    assigneeIds,
-                    unknownPeople,
-                    deadline,
-                    unreadDeadline,
-                    difficulty: diffPoints,
-                }
-            })
-
-            if (tasks.length === 0) {
-                showToast(t('no_data_available'), 'error')
-                return
-            }
-
-            setBulkTasks(tasks)
-            setIsBulkModalOpen(true)
-        } else {
-            showToast(t('no_data_available'), 'error')
+        // A file exceljs can't open, an old .xls or anything else, was an
+        // error in the console and nothing on the page. exceljs itself not
+        // loading, as after a new release, isn't the file's fault.
+        const exceljs = await import('exceljs').catch(() => null)
+        if (!exceljs) return showToast(t('bulk_reader_failed'), 'error')
+        const workbook = new exceljs.Workbook()
+        try {
+            await workbook.xlsx.load(await file.arrayBuffer())
+        } catch {
+            return showToast(t('bulk_file_unreadable'), 'error')
         }
+        const worksheet = workbook.worksheets[0]
+        if (!worksheet) return showToast(t('bulk_no_rows'), 'error')
+
+        // The locations a row can name (CLIENTS_PLAN.md §2.7): the
+        // template's own Locations sheet, by the hidden column of each
+        // name's location; and the company's in use now, to check them
+        // against. A template from before has no such sheet, and its rows
+        // take their client's HQ.
+        const listed = workbook.worksheets.find(w => w.name === 'Locations' || w.name === 'المواقع')
+        const listedRows: unknown[][] = []
+        listed?.eachRow(row => { listedRows.push(Array.isArray(row.values) ? row.values.slice(1).map(cellToPrimitive) : []) })
+        let places: BulkPlace[]
+        try {
+            const company = userRole === 'SUPER_ADMIN' && selectedCompanyId ? `&companyId=${encodeURIComponent(selectedCompanyId)}` : ''
+            places = (await fetcher(`/api/locations?pick=all${company}`)).data.locations
+        } catch (err: any) {
+            return showToast(t(err?.status === 403 ? 'task_location_no_permission' : 'task_location_load_failed'), 'error')
+        }
+
+        // Each row with its number in the file, and its cells from the
+        // first column: exceljs's row.values starts at index 1.
+        const sheetRows: SheetRow[] = []
+        worksheet.eachRow({ includeEmpty: true }, row => {
+            sheetRows.push({ line: row.number, cells: Array.isArray(row.values) ? row.values.slice(1).map(cellToPrimitive) : [] })
+        })
+        const read = readRows(sheetRows, { people: peopleNow, clients: clientsNow, sheet: sheetLocations(listedRows), places })
+        if ('problem' in read) return showToast(t(read.problem === 'too_many' ? 'bulk_limit_exceeded' : 'bulk_no_rows'), 'error')
+
+        setBulkPlaces(places)
+        setBulkTasks(read.rows)
+        setIsBulkModalOpen(true)
     }
 
     // The Excel upload's file, picked from its button in the header.
@@ -406,17 +280,19 @@ export default function NewTaskPage() {
                             ? <Button icon={FileXlsIcon} onClick={() => setIsManageTemplatesOpen(true)}>{t('manage_templates')}</Button>
                             : <ButtonLink href={`/api/templates/download?locale=${locale}`} target="_blank" prefetch={false} icon={DownloadSimpleIcon}>{t('download_template')}</ButtonLink>}
                         <ButtonLink href="/dashboard/usernames" target="_blank" prefetch={false} icon={IdentificationCardIcon}>{t('view_usernames')}</ButtonLink>
-                        <Button icon={UploadSimpleIcon} onClick={() => fileInput.current?.click()}>{t('upload_tasks_excel')}</Button>
+                        <Button icon={UploadSimpleIcon} busy={readingFile} onClick={() => fileInput.current?.click()}>{t('upload_tasks_excel')}</Button>
                         <input
                             ref={fileInput}
                             aria-label={t('upload_tasks_excel')}
                             type="file"
-                            accept=".xlsx, .xls"
+                            accept=".xlsx"
                             hidden
                             onChange={(e) => {
                                 const file = e.target.files?.[0]
-                                if (file) handleBulkUpload(file)
-                                e.target.value = '' // Reset
+                                e.target.value = '' // The same file can be picked again.
+                                if (!file) return
+                                setReadingFile(true)
+                                void handleBulkUpload(file).finally(() => setReadingFile(false))
                             }}
                         />
                     </>

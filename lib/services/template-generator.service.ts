@@ -2,6 +2,7 @@ import { Workbook } from "exceljs"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import type { Locale, TranslationKey } from "@/lib/translations"
+import { BULK_FIRST_ROW, BULK_MAX_ROWS } from "@/lib/bulk-tasks"
 
 type TemplateUser = {
     firstName: string
@@ -23,10 +24,10 @@ type TemplateLocation = {
 }
 
 // Bulk-upload template rows start at 3 (rows 1-2 are the base file's own
-// headers/instructions) and are capped at 50 — same limit the bulk-upload
-// parser itself enforces (tasks/new/page.tsx).
-const FIRST_DATA_ROW = 3
-const LAST_DATA_ROW = 52
+// headers/instructions) and are capped at 50, as the upload reads them
+// (lib/bulk-tasks.ts).
+const FIRST_DATA_ROW = BULK_FIRST_ROW
+const LAST_DATA_ROW = BULK_FIRST_ROW + BULK_MAX_ROWS - 1
 
 /**
  * Turns the Super-Admin-uploaded base file into the actual downloadable
@@ -39,7 +40,7 @@ const LAST_DATA_ROW = 52
  * The base file is the layout/branding — this never touches its existing
  * rows/columns, only adds the reference sheets, the validations, and the
  * Location column after its own. Its own column order needs to match what
- * the parser reads (tasks/new/page.tsx's handleBulkUpload): Title,
+ * the upload reads (readRows, in lib/bulk-tasks.ts): Title,
  * Description, Client Name, Employee Name, Deadline Date, Deadline Time,
  * Difficulty; then Location, added here.
  */
@@ -140,8 +141,8 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
         // which the dropdown's list validation doesn't block (it warns on a
         // value outside the list but never rejects the keystroke — Excel
         // only hard-blocks free typing when a validation explicitly sets a
-        // "Stop" error style, which this doesn't). The parser (tasks/new/
-        // page.tsx) accepts both forms in the same cell: a trailing
+        // "Stop" error style, which this doesn't). The upload (readRows, in
+        // lib/bulk-tasks.ts) takes both forms in the same cell: a trailing
         // "(username)" is extracted from a dropdown pick, anything else is
         // taken as a literal username.
         mainSheet.getCell(`D${row}`).dataValidation = {

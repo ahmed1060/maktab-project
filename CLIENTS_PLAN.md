@@ -2301,3 +2301,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   old review dropped it, and the task was created with no client, with
   nothing said. A location the template's list didn't have is said with
   what was written until another is picked.
+- **2026-11-06:** The bulk upload reads its rows in `lib/bulk-tasks.ts` in
+  #213 (`UI_PLAN.md`), once the company's clients have loaded: a file
+  picked as Create task opened was read before them, so every client it
+  named was one that wasn't found. A client is found by its name, case and
+  the spaces around it aside.

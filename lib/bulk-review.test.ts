@@ -386,9 +386,11 @@ describe("going between the list and a row", () => {
 })
 
 describe("Create task", () => {
+    // In lib/bulk-tasks.ts since PR 213, each row with what the file had
+    // that wasn't found (lib/bulk-read.test.ts).
     it("reads each row as the review has it, with what the file had that wasn't found", () => {
         const page = PAGE()
-        for (const kept of ["unknownPeople", "unknownClient", "locationText", "unreadDeadline", "line:"]) expect(page, kept).toContain(kept)
+        expect(page).toContain("readRows(sheetRows, { people: peopleNow, clients: clientsNow, sheet: sheetLocations(listedRows), places })")
         for (const gone of ["revalidateRow", "validationErrors", "isInvalid", "resolvedNames", "|| 'Missing assignees'"]) expect(page, gone).not.toContain(gone)
     })
 

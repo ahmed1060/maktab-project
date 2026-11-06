@@ -905,6 +905,12 @@ These are built once, in the building-blocks PR, and every page uses them
     hears. Once it's uploaded, a toast says so.
 - **Rows read from a file,** such as tasks uploaded from Excel, are
   checked before any is saved, in a dialog up to 960px wide:
+  - the file is read once what its rows are checked against has loaded,
+    such as the people they name. A file that can't be read, or has no
+    rows, or more than can be added at once, is said in a toast, and the
+    dialog doesn't open. A cell that isn't what its column takes, such as
+    a date that isn't one, is a mistake that says what the file had,
+    never a guess;
   - a line says how many rows the file has, and how many have mistakes;
   - the rows are a list (§5.4): a table on computers, cards on phones,
     each with its row's number in the file, so it can be found there. A
@@ -1600,3 +1606,9 @@ changed:
   sparkles on its main button. Its row numbers counted only the rows
   shown, not the file's, and a row's mistake about its difficulty was
   never shown, so the row was left out with nothing said.
+- **2026-11-06:** Rows read from a file (§5.5), as they're read. A file
+  picked as Create task opened was read before its people and clients had
+  loaded, so none of them were found, and one that couldn't be read said
+  nothing. A date cell was read as the day before west of UTC, a time that
+  wasn't one as midnight, a difficulty in words as 0, and a typed "1" as
+  1 January 2001; a row with no title was left out with nothing said.
