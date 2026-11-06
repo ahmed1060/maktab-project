@@ -133,8 +133,10 @@ export default function BulkTaskReviewModal({ isOpen, onClose, rows, onRowsChang
         onRowsChange(rest)
         if (rest.length === 0) return onClose()
     }
+    // Not while they're sent: a row put back then isn't among them, and the
+    // dialog closes without it (Codex review of PR 212).
     const undo = () => {
-        if (!removed) return
+        if (!removed || sending) return
         focusNext.current = { line: removed.row.line, button: 'edit' }
         setRemoved(null)
         onRowsChange(withRowBack(rows, removed))
@@ -227,7 +229,7 @@ export default function BulkTaskReviewModal({ isOpen, onClose, rows, onRowsChang
                             <p className="ui-bulk-status" role="status">
                                 {removed && <>
                                     {t('bulk_removed').replace('{n}', num(removed.row.line))}
-                                    <Button size="sm" variant="quiet" onClick={undo}>{t('bulk_undo')}</Button>
+                                    <Button size="sm" variant="quiet" disabled={sending} onClick={undo}>{t('bulk_undo')}</Button>
                                 </>}
                             </p>
                         </div>

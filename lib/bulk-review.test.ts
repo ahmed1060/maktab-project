@@ -360,7 +360,15 @@ describe("going between the list and a row", () => {
         const src = SRC()
         expect(src).toContain("<p className=\"ui-bulk-status\" role=\"status\">")
         expect(src).toContain("t('bulk_removed').replace('{n}', num(removed.row.line))")
-        expect(src).toContain("<Button size=\"sm\" variant=\"quiet\" onClick={undo}>{t('bulk_undo')}</Button>")
+        expect(src).toContain("<Button size=\"sm\" variant=\"quiet\" disabled={sending} onClick={undo}>{t('bulk_undo')}</Button>")
+    })
+
+    // Codex review of PR 212: a row put back while the tasks were sent
+    // wasn't among them, and the dialog closed without it.
+    it("keeps the rows as they are while they're sent: Undo is off, as Edit and Remove are", () => {
+        const src = SRC()
+        expect(src).toContain("if (!removed || sending) return")
+        for (const button of ["data-edit=\"\" disabled={sending}", "data-remove=\"\" disabled={sending}", "variant=\"quiet\" disabled={sending} onClick={undo}"]) expect(src, button).toContain(button)
     })
 
     it("asks before the page is left with the file's rows still to create", () => {

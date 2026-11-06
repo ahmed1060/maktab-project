@@ -4626,3 +4626,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     browser flows found a file picked as Create task opens read before its
     people and clients have loaded, so every username and client in it is
     one that wasn't found: the second part waits for them.
+- **2026-11-06:** From Codex's review of #212: Undo stays off while the
+  tasks are sent, as Edit, Remove and Cancel are. A row put back then
+  wasn't among those sent, and the dialog closed without it.
