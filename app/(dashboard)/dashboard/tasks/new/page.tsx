@@ -30,7 +30,7 @@ import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useCan } from '@/lib/useCan'
 import { useModules } from '@/lib/useModules'
-import { DownloadSimpleIcon, IdentificationCardIcon, UploadSimpleIcon } from '@phosphor-icons/react/ssr'
+import { DownloadSimpleIcon, FileXlsIcon, IdentificationCardIcon, UploadSimpleIcon } from '@phosphor-icons/react/ssr'
 import { Button, ButtonLink, Card, Field, Page, PageHeader, TextArea, TextInput } from '@/components/ui'
 
 const NO_CLIENTS: any[] = []
@@ -479,7 +479,7 @@ export default function NewTaskPage() {
                 action={(
                     <>
                         {userRole === 'SUPER_ADMIN'
-                            ? <Button icon={DownloadSimpleIcon} onClick={() => setIsManageTemplatesOpen(true)}>{t('download_template')}</Button>
+                            ? <Button icon={FileXlsIcon} onClick={() => setIsManageTemplatesOpen(true)}>{t('manage_templates')}</Button>
                             : <ButtonLink href={`/api/templates/download?locale=${locale}`} target="_blank" prefetch={false} icon={DownloadSimpleIcon}>{t('download_template')}</ButtonLink>}
                         <ButtonLink href="/dashboard/usernames" target="_blank" prefetch={false} icon={IdentificationCardIcon}>{t('view_usernames')}</ButtonLink>
                         <Button icon={UploadSimpleIcon} onClick={() => fileInput.current?.click()}>{t('upload_tasks_excel')}</Button>

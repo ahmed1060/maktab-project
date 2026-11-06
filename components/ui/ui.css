@@ -1492,6 +1492,27 @@ a.ui-file-open:focus-visible,
   border-color: var(--brand-text);
   background: var(--brand-tint);
 }
+/* A file that replaces one (§5.5), such as a bulk upload's template: a
+   section under its heading, the one there now, the picker, and once a file
+   is picked, its chip and Upload on a line. */
+.ui-template {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-template-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+.ui-template-picked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
 
 /* Rows that are the whole of a card, edge to edge under its title. */
 .ui-card > .ui-rows-flush {
