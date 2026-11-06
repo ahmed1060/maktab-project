@@ -217,9 +217,10 @@ export default function NewTaskPage() {
         if (!clientsNow) return showToast(t('bulk_clients_load_failed'), 'error')
 
         // A file exceljs can't open, an old .xls or anything else, was an
-        // error in the console and nothing on the page.
+        // error in the console and nothing on the page. exceljs itself not
+        // loading, as after a new release, isn't the file's fault.
         const exceljs = await import('exceljs').catch(() => null)
-        if (!exceljs) return showToast(t('error_generic'), 'error')
+        if (!exceljs) return showToast(t('bulk_reader_failed'), 'error')
         const workbook = new exceljs.Workbook()
         try {
             await workbook.xlsx.load(await file.arrayBuffer())

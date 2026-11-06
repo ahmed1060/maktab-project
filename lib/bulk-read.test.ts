@@ -184,7 +184,7 @@ describe("Create task, reading the file", () => {
         const page = PAGE()
         expect(page).toContain("showToast(t('bulk_file_unreadable'), 'error')")
         // Its library not loading isn't the file's fault.
-        expect(page).toContain("if (!exceljs) return showToast(t('error_generic'), 'error')")
+        expect(page).toContain("if (!exceljs) return showToast(t('bulk_reader_failed'), 'error')")
         expect(page).toContain('accept=".xlsx"')
         expect(page).not.toContain(".xls,")
         expect(page).not.toContain("'.xlsx, .xls'")
@@ -200,7 +200,7 @@ describe("Create task, while the file is read", () => {
 })
 
 describe("its words", () => {
-    const KEYS = ["bulk_limit_exceeded", "bulk_no_rows", "bulk_file_unreadable", "bulk_people_load_failed", "bulk_clients_load_failed", "bulk_deadline_unread"] as const
+    const KEYS = ["bulk_limit_exceeded", "bulk_no_rows", "bulk_file_unreadable", "bulk_reader_failed", "bulk_people_load_failed", "bulk_clients_load_failed", "bulk_deadline_unread"] as const
 
     it("are in both languages, in sentence case, its numbers in Arabic digits, and the Arabic commands nothing in the masculine", () => {
         for (const key of KEYS) {
@@ -212,6 +212,9 @@ describe("its words", () => {
         expect(en.bulk_limit_exceeded).toContain("50")
         expect(ar.bulk_limit_exceeded).toContain("٥٠")
         expect(en.bulk_deadline_unread).toBe("The file's deadline can't be read")
+        // Each says what to do next (the web interface audit).
+        expect(en.bulk_no_rows).toBe("The file has no tasks. Add them from row 3, under the headings.")
+        expect(en.bulk_reader_failed).toBe("The file couldn't be opened. Reload the page, then upload it again.")
     })
 
     // A file's extension ending a sentence in Arabic shows as "..xlsx", its

@@ -4654,3 +4654,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     showed as "..xlsx", the extension's dot and the sentence's side by
     side. It's «بصيغة xlsx.» now, the sentence's dot showing before it:
     this file's message, and the templates window's from #211.
+  - From the web interface audit, each toast says what to do next: a file
+    with no tasks, to add them from row 3, under the headings; and the
+    Excel reader not loading, as after a new release, to reload the page,
+    where it would have said only that something went wrong.
