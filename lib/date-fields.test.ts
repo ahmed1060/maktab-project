@@ -30,6 +30,14 @@ const RANGE = "components/DateRangePicker.tsx"
 const CALENDAR = "components/ui/Calendar.tsx"
 const code = (file: string) => stripComments(readFileSync(file, "utf8"))
 
+/**
+ * That a range is `want` as Intl joins it, whatever spaces its version puts
+ * round the dash: Node 22's writes "6–10 Nov 2026", Node 24's, which CI
+ * runs, puts spaces round it, and a browser does as its own Intl does.
+ */
+const dashAside = (text: string) => text.replace(/\s*–\s*/g, "–")
+const expectRange = (range: string | null | undefined, want: string) => expect(typeof range === "string" ? dashAside(range) : range).toBe(dashAside(want))
+
 /** Runs `check` with the browser's clock in another time zone, then puts it back. */
 const inZone = (zone: string, check: () => void) => {
     const was = process.env.TZ
@@ -52,12 +60,12 @@ describe("a date's words (lib/calendar-text.ts)", () => {
     it("are a range's days as Intl joins them, and a range of one day as that day", async () => {
         const { rangeText } = await import("./calendar-text")
         const words = { from: en.date_range_from, until: en.date_range_until }
-        expect(rangeText("2026-11-06", "2026-11-10", "en", words)).toBe("6–10 Nov 2026")
-        expect(rangeText("2026-10-28", "2026-11-03", "en", words)).toBe("28 Oct – 3 Nov 2026")
-        expect(rangeText("2026-12-28", "2027-01-03", "en", words)).toBe("28 Dec 2026 – 3 Jan 2027")
+        expectRange(rangeText("2026-11-06", "2026-11-10", "en", words), "6–10 Nov 2026")
+        expectRange(rangeText("2026-10-28", "2026-11-03", "en", words), "28 Oct – 3 Nov 2026")
+        expectRange(rangeText("2026-12-28", "2027-01-03", "en", words), "28 Dec 2026 – 3 Jan 2027")
         expect(rangeText("2026-11-06", "2026-11-06", "en", words)).toBe("6 Nov 2026")
-        expect(rangeText("2026-11-06", "2026-11-10", "ar", { from: ar.date_range_from, until: ar.date_range_until })).toBe("٦–١٠ نوفمبر ٢٠٢٦")
-        inZone("America/Los_Angeles", () => expect(rangeText("2026-10-01", "2026-10-20", "en", words)).toBe("1–20 Oct 2026"))
+        expectRange(rangeText("2026-11-06", "2026-11-10", "ar", { from: ar.date_range_from, until: ar.date_range_until }), "٦–١٠ نوفمبر ٢٠٢٦")
+        inZone("America/Los_Angeles", () => expectRange(rangeText("2026-10-01", "2026-10-20", "en", words), "1–20 Oct 2026"))
     })
 
     it("are From or Until when a range has one end only, and none with neither", async () => {
@@ -76,7 +84,7 @@ describe("a date's words (lib/calendar-text.ts)", () => {
         expect(dayIso("2026-11-02T06:00:00.000Z")).toBe("2026-11-02")
         expect(dayText("2026-11-02T06:00:00.000Z", "en")).toBe("2 Nov 2026")
         expect(rangeText("2026-11-02T06:00:00.000Z", "", "en", words)).toBe("From 2 Nov 2026")
-        expect(rangeText("2026-11-02T06:00:00.000Z", "2026-11-05", "en", words)).toBe("2–5 Nov 2026")
+        expectRange(rangeText("2026-11-02T06:00:00.000Z", "2026-11-05", "en", words), "2–5 Nov 2026")
         // What names no day is shown as it is, or as no end of a range.
         expect(dayIso("someday")).toBeNull()
         expect(dayIso("2026-02-30")).toBeNull()
@@ -88,7 +96,7 @@ describe("a date's words (lib/calendar-text.ts)", () => {
     it("put a range given the wrong way round the right way round", async () => {
         // Intl writes "10–6 Nov 2026" for one, as an address can hold it.
         const { rangeText } = await import("./calendar-text")
-        expect(rangeText("2026-11-10", "2026-11-06", "en", { from: "", until: "" })).toBe("6–10 Nov 2026")
+        expectRange(rangeText("2026-11-10", "2026-11-06", "en", { from: "", until: "" }), "6–10 Nov 2026")
     })
 
     it("name the month and its year, and each day in full", async () => {
@@ -264,8 +272,8 @@ describe("the date fields", () => {
     it("show a range as Intl joins it, or what to pick", async () => {
         const { default: DateRangePicker } = await import("@/components/DateRangePicker")
         const field = (dateFrom: string, dateTo: string, locale: "en" | "ar" = "en") => render(h(DateRangePicker, { label: "Dates", dateFrom, dateTo, onChange: () => {} }), locale)
-        expect(words(field("2026-11-06", "2026-11-10"))).toBe("6–10 Nov 2026")
-        expect(words(field("2026-11-06", "2026-11-10", "ar"))).toBe("٦–١٠ نوفمبر ٢٠٢٦")
+        expectRange(words(field("2026-11-06", "2026-11-10")), "6–10 Nov 2026")
+        expectRange(words(field("2026-11-06", "2026-11-10", "ar")), "٦–١٠ نوفمبر ٢٠٢٦")
         expect(words(field("2026-11-06", ""))).toBe("From 6 Nov 2026")
         expect(words(field("", "2026-11-10"))).toBe("Until 10 Nov 2026")
         expect(words(field("", ""))).toBe(en.select_date_range)

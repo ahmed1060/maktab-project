@@ -37,7 +37,8 @@ describe("a picked calendar day", () => {
         process.env.TZ = "America/Los_Angeles"
         const { default: DateRangePicker } = await import("@/components/DateRangePicker")
         const html = renderToStaticMarkup(h(DateRangePicker, { dateFrom: "2026-10-01", dateTo: "2026-10-20", onChange: () => {}, label: "Dates" }))
-        expect(html).toContain("1–20 Oct 2026")
+        // Whatever spaces this Node's Intl puts round the dash: Node 24's, which CI runs, puts spaces round it.
+        expect(html.replace(/\s*–\s*/g, "–")).toContain("1–20 Oct 2026")
     })
 })
 
