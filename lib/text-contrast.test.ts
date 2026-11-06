@@ -58,9 +58,8 @@ describe("text contrast, light theme", () => {
         const offenders = [...tsx("app"), ...tsx("components")].filter(f =>
             /background: 'var\(--danger-bg(-subtle)?\)',\s*color: 'var\(--danger-solid-hover\)'/.test(readFileSync(f, "utf8")))
         expect(offenders).toEqual([])
-        for (const bg of ["danger-bg", "danger-bg-subtle"]) {
-            expect(ratio(token("danger-fg-strong"), token(bg))).toBeGreaterThanOrEqual(4.5)
-        }
+        // The subtler red went with the last thing on it, the old calendar's Reset (PR 208).
+        expect(ratio(token("danger-fg-strong"), token("danger-bg"))).toBeGreaterThanOrEqual(4.5)
     })
 
     it("small text isn't faded below 4.5:1", () => {

@@ -383,7 +383,7 @@ export function AskPermission({ today, initial, onCancel, onAsked }: {
 
     return (
         <form className="ui-form" noValidate onSubmit={submit}>
-            <DatePickerSingle asField label={t('date_label')} value={date} error={errors.date}
+            <DatePickerSingle label={t('date_label')} value={date} error={errors.date}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
             {limits && <p className="ui-hint" aria-live="polite">{limits}</p>}
             <Field label={t('requests_permission_type')}>{p => (
@@ -468,7 +468,7 @@ export function ReportMissingPunch({ today, initial, onCancel, onReported }: {
     return (
         <form className="ui-form" noValidate onSubmit={submit}>
             <p className="ui-hint">{t('req_missing_hint')}</p>
-            <DatePickerSingle asField label={t('date_label')} value={date} maxDate={today} error={errors.date}
+            <DatePickerSingle label={t('date_label')} value={date} maxDate={today} error={errors.date}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
             <Field label={t('punch_time')} error={errors.time}>{p => (
                 <TextInput {...p} name="time" type="time" autoComplete="off" value={time} onChange={e => { setTime(e.target.value); setErrors(x => ({ ...x, time: undefined })) }} />

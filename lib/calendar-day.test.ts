@@ -5,6 +5,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { calendarDay } from "./calendar-day"
 
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
+// As the browser has the fields once hydrated: they say their day only there (lib/date-fields.test.ts).
+vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
 
 /**
  * A day picked in a form, such as a record's expiry date, shows as that day
@@ -24,23 +26,25 @@ describe("a picked calendar day", () => {
     })
 
     it("is what the date picker shows", () => {
-        const picker = readFileSync("components/DatePickerSingle.tsx", "utf8")
-        expect(picker).toContain("return calendarDay(dateStr).toLocaleDateString(")
-        expect(picker).not.toContain("const date = new Date(dateStr)")
+        // Both pickers say their days through lib/calendar-text.ts, which reads each as calendarDay does.
+        const words = readFileSync("lib/calendar-text.ts", "utf8")
+        expect(words).toContain("dayFormat(locale).format(calendarDay(iso))")
+        expect(words).not.toMatch(/new Date\((iso|from|to)\)/)
+        expect(readFileSync("components/DatePickerSingle.tsx", "utf8")).toContain("dayText(value, locale)")
     })
 
     it("is what the date range picker shows, west of UTC too", async () => {
         process.env.TZ = "America/Los_Angeles"
         const { default: DateRangePicker } = await import("@/components/DateRangePicker")
         const html = renderToStaticMarkup(h(DateRangePicker, { dateFrom: "2026-10-01", dateTo: "2026-10-20", onChange: () => {}, label: "Dates" }))
-        expect(html).toContain("Oct 1, 2026 → Oct 20, 2026")
+        expect(html).toContain("1–20 Oct 2026")
     })
 })
 
 describe("the date picker while its form saves", () => {
     it("can't be opened, so the day shown is the day saved", async () => {
         const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
-        const html = (disabled: boolean) => renderToStaticMarkup(h(DatePickerSingle, { value: "2026-10-20", onChange: () => {}, label: "Expiry date", asField: true, disabled }))
+        const html = (disabled: boolean) => renderToStaticMarkup(h(DatePickerSingle, { value: "2026-10-20", onChange: () => {}, label: "Expiry date", disabled }))
         expect(html(true)).toMatch(/<button type="button"[^>]*class="ui-input ui-date-trigger"[^>]*disabled="">/)
         expect(html(false)).not.toContain('disabled=""')
         expect(readFileSync("components/records/RecordForm.tsx", "utf8")).toContain("onChange={setExpiryDate} disabled={saving} />")

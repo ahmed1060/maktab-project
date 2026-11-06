@@ -21,7 +21,7 @@ const describedError = (html: string) => {
 describe("a date picker's error", () => {
     it("is under the single day's picker, and read with it", async () => {
         const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
-        const html = renderToStaticMarkup(h(DatePickerSingle, { asField: true, label: "Date", value: "", onChange: () => {}, error: "Pick a day" }))
+        const html = renderToStaticMarkup(h(DatePickerSingle, { label: "Date", value: "", onChange: () => {}, error: "Pick a day" }))
         const { trigger, error } = describedError(html)
         expect(trigger).not.toContain("aria-invalid")
         expect(error).toBe("Pick a day")
@@ -29,14 +29,14 @@ describe("a date picker's error", () => {
 
     it("is under the range's picker too", async () => {
         const { default: DateRangePicker } = await import("@/components/DateRangePicker")
-        const html = renderToStaticMarkup(h(DateRangePicker, { asField: true, label: "Dates", dateFrom: "", dateTo: "", onChange: () => {}, error: "Pick the days" }))
+        const html = renderToStaticMarkup(h(DateRangePicker, { label: "Dates", dateFrom: "", dateTo: "", onChange: () => {}, error: "Pick the days" }))
         const { error } = describedError(html)
         expect(error).toBe("Pick the days")
     })
 
     it("isn't there when there's nothing wrong", async () => {
         const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
-        const html = renderToStaticMarkup(h(DatePickerSingle, { asField: true, label: "Date", value: "", onChange: () => {} }))
+        const html = renderToStaticMarkup(h(DatePickerSingle, { label: "Date", value: "", onChange: () => {} }))
         expect(html).not.toContain("aria-describedby")
         expect(html).not.toContain("ui-error")
     })
@@ -52,13 +52,13 @@ describe("a date picker's hint", () => {
 
     it("is under the picker, as a field's is, and read with it", async () => {
         const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
-        const html = renderToStaticMarkup(h(DatePickerSingle, { asField: true, label: "Payment date", value: "2026-10-15", onChange: () => {}, hint: "It can’t be a future day." }))
+        const html = renderToStaticMarkup(h(DatePickerSingle, { label: "Payment date", value: "2026-10-15", onChange: () => {}, hint: "It can’t be a future day." }))
         expect(described(html, "hint")).toBe("It can’t be a future day.")
     })
 
     it("gives way to an error, as a field's does", async () => {
         const { default: DatePickerSingle } = await import("@/components/DatePickerSingle")
-        const html = renderToStaticMarkup(h(DatePickerSingle, { asField: true, label: "Payment date", value: "", onChange: () => {}, hint: "It can’t be a future day.", error: "Pick a day" }))
+        const html = renderToStaticMarkup(h(DatePickerSingle, { label: "Payment date", value: "", onChange: () => {}, hint: "It can’t be a future day.", error: "Pick a day" }))
         expect(described(html, "error")).toBe("Pick a day")
         expect(html).not.toContain("ui-hint")
     })

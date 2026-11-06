@@ -123,7 +123,7 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
 
                 {defaultFrom !== undefined && (
                     <div className="ui-field">
-                        <DatePickerSingle asField label={t('attendance_from_when')} value={from} error={message(errors.from)} hint={t('attendance_policy_from_hint')} onChange={changeFrom} />
+                        <DatePickerSingle label={t('attendance_from_when')} value={from} error={message(errors.from)} hint={t('attendance_policy_from_hint')} onChange={changeFrom} />
                         {today && (
                             <div className="ui-form-actions">
                                 <Button size="sm" variant="quiet" onClick={() => changeFrom(today)}>{t('attendance_from_today')}</Button>

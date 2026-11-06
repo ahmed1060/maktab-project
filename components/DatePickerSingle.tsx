@@ -1,11 +1,12 @@
 'use client'
-import { useState, useRef, useEffect, useId } from 'react'
-import { createPortal } from 'react-dom'
-import { useLanguage } from '@/context/LanguageContext'
-import { useHydrated } from '@/lib/useHydrated'
-import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
-import { calendarDay } from '@/lib/calendar-day'
+import { useState, useRef, useId } from 'react'
 import { CalendarBlankIcon } from '@phosphor-icons/react/ssr'
+import { useLanguage } from '@/context/LanguageContext'
+import { usePickerKeyboard, startDay } from '@/lib/usePickerKeyboard'
+import { useHydrated } from '@/lib/useHydrated'
+import { dayIso, dayText } from '@/lib/calendar-text'
+import { Button } from '@/components/ui/Button'
+import { CalendarMonth, CalendarPopup } from '@/components/ui/Calendar'
 import { Icon } from '@/components/ui/Icon'
 
 interface DatePickerSingleProps {
@@ -14,268 +15,74 @@ interface DatePickerSingleProps {
     label?: string
     minDate?: string
     maxDate?: string
-    /** Looks like a building-block field (DESIGN.md §5.3), for pages built from them. */
-    asField?: boolean
     /** Can't be changed, as while the form it's in is saving. */
     disabled?: boolean
-    /** With asField, what's wrong with it, under it as a field's error is (DESIGN.md §5.3). */
+    /** What's wrong with it, under it as a field's error is (DESIGN.md §5.3). */
     error?: string
-    /** With asField, what to know about it, under it as a field's hint is; an error takes its place. */
+    /** What to know about it, under it as a field's hint is; an error takes its place. */
     hint?: string
 }
 
-export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, asField = false, disabled = false, error, hint }: DatePickerSingleProps) {
+/**
+ * A date (DESIGN.md §5.3): a field whose button shows the day in the page's
+ * language and opens the calendar. Picking a day closes it; Clear empties
+ * the field.
+ */
+export default function DatePickerSingle({ value, onChange, label, minDate, maxDate, disabled = false, error, hint }: DatePickerSingleProps) {
     const { t, locale } = useLanguage()
     const [isOpen, setIsOpen] = useState(false)
-    const mounted = useHydrated()
-    const [isMobile, setIsMobile] = useState(false)
-    const [currentMonth, setCurrentMonth] = useState(new Date())
-    const containerRef = useRef<HTMLDivElement>(null)
-    const portalRef = useRef<HTMLDivElement>(null)
+    // The month shown: the day to start on's, once it opens.
+    const [currentMonth, setCurrentMonth] = useState(() => new Date())
+    const opener = useRef<HTMLButtonElement>(null)
+    const popupRef = useRef<HTMLDivElement>(null)
     const openerId = useId()
     const isDayDisabled = (iso: string) => !!((minDate && iso < minDate) || (maxDate && iso > maxDate))
-    const keys = usePickerKeyboard({ isOpen, close: () => setIsOpen(false), currentMonth, setCurrentMonth, isDisabled: isDayDisabled, rtl: locale === 'ar', popupRef: portalRef })
+    const keys = usePickerKeyboard({ isOpen, close: () => setIsOpen(false), currentMonth, setCurrentMonth, isDisabled: isDayDisabled, rtl: locale === 'ar', popupRef })
     const toggleOpen = () => {
         if (isOpen) return setIsOpen(false)
         if (disabled) return
-        keys.opened(startDay(value || null, minDate ?? null, maxDate ?? null))
+        keys.opened(startDay(dayIso(value), minDate ?? null, maxDate ?? null))
         setIsOpen(true)
     }
 
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth <= 768)
-        }
-        checkMobile()
-        window.addEventListener('resize', checkMobile)
-        return () => window.removeEventListener('resize', checkMobile)
-    }, [])
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as Node;
-            const isClickInsideTrigger = containerRef.current?.contains(target);
-            const isClickInsidePortal = portalRef.current?.contains(target);
-
-            if (!isClickInsideTrigger && !isClickInsidePortal) {
-                if (!isMobile) setIsOpen(false)
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [isMobile])
-
-    const formatDate = (dateStr: string) => {
-        if (!dateStr) return ''
-        return calendarDay(dateStr).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    }
-
-    const getDaysInMonth = (date: Date) => {
-        const year = date.getFullYear()
-        const month = date.getMonth()
-        const firstDay = new Date(year, month, 1)
-        const lastDay = new Date(year, month + 1, 0)
-        const daysInMonth = lastDay.getDate()
-        const startingDayOfWeek = firstDay.getDay()
-
-        const days = []
-        for (let i = 0; i < startingDayOfWeek; i++) {
-            days.push(null)
-        }
-        for (let day = 1; day <= daysInMonth; day++) {
-            days.push(new Date(year, month, day))
-        }
-        return days
-    }
-
-    const formatToLocalISO = (date: Date) => {
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        return `${year}-${month}-${day}`
-    }
-
-    const handleDateClick = (date: Date) => {
-        const dateStr = formatToLocalISO(date)
-        if (isDayDisabled(dateStr)) return
-        onChange(dateStr)
+    const pick = (iso: string) => {
+        if (isDayDisabled(iso)) return
+        onChange(iso)
         setIsOpen(false)
     }
 
-    const handleReset = () => {
+    const clear = () => {
         onChange('')
         setIsOpen(false)
     }
 
-    const isSelected = (date: Date) => {
-        return formatToLocalISO(date) === value
-    }
+    const described = error ? `${openerId}-error` : hint ? `${openerId}-hint` : undefined
+    // The day it holds, though it be given as a time in full.
+    const picked = dayIso(value)
+    // Said once in the browser, as SafeDate's dates are: the server's Intl can
+    // write it otherwise, and the page would be drawn again.
+    const hydrated = useHydrated()
 
-    const days = getDaysInMonth(currentMonth)
-    const monthYear = currentMonth.toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', year: 'numeric' })
-
-    const weekdaysAr = ['أح', 'اث', 'ثل', 'أر', 'خم', 'جم', 'سب']
-    const weekdaysEn = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-    const weekdays = locale === 'ar' ? weekdaysAr : weekdaysEn
-
-    const pickerContent = (
-        <div
-            {...keys.popupProps}
-            aria-label={label || t('select_date' as any)}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-                position: 'relative',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: '0.75rem',
-                boxShadow: '0 10px 25px var(--shadow-weak)',
-                padding: '1rem',
-                zIndex: 10001,
-                width: isMobile ? 'min(calc(100vw - 3rem), 400px)' : '350px',
-                animation: 'fadeIn 0.2s ease-out',
-                direction: locale === 'ar' ? 'rtl' : 'ltr'
-            }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <button
-                    type="button"
-                    aria-label={t(locale === 'ar' ? 'calendar_next_month' : 'calendar_prev_month' as any)}
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (locale === 'ar' ? -1 : 1)))}
-                    style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-soft)' }}
-                >
-                    {locale === 'ar' ? '›' : '‹'}
-                </button>
-                <div style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-soft)' }}>{monthYear}</div>
-                <button
-                    type="button"
-                    aria-label={t(locale === 'ar' ? 'calendar_prev_month' : 'calendar_next_month' as any)}
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + (locale === 'ar' ? -1 : 1)))}
-                    style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-soft)' }}
-                >
-                    {locale === 'ar' ? '‹' : '›'}
-                </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                {weekdays.map(day => (
-                    <div key={day} style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-faint)', fontWeight: '600', padding: '0.25rem' }}>{day}</div>
-                ))}
-            </div>
-
-            <div {...keys.gridProps} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.25rem' }}>
-                {days.map((date, index) => {
-                    if (!date) return <div key={`empty-${index}`} />
-                    const selected = isSelected(date)
-                    const isToday = date.toDateString() === new Date().toDateString()
-                    const dateStr = formatToLocalISO(date)
-                    const isDisabled = isDayDisabled(dateStr)
-
-                    return (
-                        <button
-                            key={index}
-                            type="button"
-                            {...keys.dayProps(dateStr, selected)}
-                            onClick={() => handleDateClick(date)}
-                            style={{
-                                padding: '0.5rem',
-                                border: 'none',
-                                borderRadius: '50%',
-                                background: selected ? 'var(--info-fill)' : 'transparent',
-                                color: selected ? 'white' : isToday ? 'var(--warn-fg-mid)' : isDisabled ? 'var(--border)' : 'var(--text-main)',
-                                fontSize: '0.875rem',
-                                cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                fontWeight: selected || isToday ? '600' : '400',
-                                opacity: isDisabled ? 0.5 : 1
-                            }}
-                        >
-                            {date.getDate()}
-                        </button>
-                    )
-                })}
-            </div>
-
-            <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--surface-sunk)', display: 'flex', justifyContent: 'flex-end' }}>
-                {value && (
-                    <button
-                        type="button"
-                        onClick={handleReset}
-                        style={{ background: 'var(--danger-bg-subtle)', color: 'var(--danger-fg-strong)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
-                    >
-                        {t('reset' as any)}
-                    </button>
-                )}
-            </div>
-        </div>
-    )
-
-    const portal = isOpen && mounted && createPortal(
-        <div
-            onClick={() => setIsOpen(false)}
-            style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'var(--scrim)',
-                zIndex: 10000,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-            }}>
-            {pickerContent}
-        </div>,
-        document.body
-    )
-
-    if (asField) return (
-        <div ref={containerRef} className="ui-field">
+    return (
+        <div className="ui-field">
             {label && <label htmlFor={openerId} className="ui-label">{label}</label>}
             <span className="ui-control has-start-icon">
                 <Icon icon={CalendarBlankIcon} size={16} />
-                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} onClick={toggleOpen} className="ui-input ui-date-trigger" data-empty={!value || undefined} disabled={disabled}
-                    aria-describedby={error ? `${openerId}-error` : hint ? `${openerId}-hint` : undefined}>
-                    {value ? formatDate(value) : t('select_date' as any)}
+                <button type="button" id={openerId} aria-haspopup="dialog" aria-expanded={isOpen} ref={opener} onClick={toggleOpen}
+                    className="ui-input ui-date-trigger" data-empty={!value || undefined} data-invalid={error ? true : undefined} disabled={disabled}
+                    aria-describedby={described}>
+                    {value ? (hydrated ? dayText(value, locale) : null) : t('select_date')}
                 </button>
             </span>
             {error ? <span id={`${openerId}-error`} className="ui-error">{error}</span> : hint && <span id={`${openerId}-hint`} className="ui-hint">{hint}</span>}
-            {portal}
-        </div>
-    )
-
-    return (
-        <div ref={containerRef} style={{ position: 'relative', direction: locale === 'ar' ? 'rtl' : 'ltr', textAlign: locale === 'ar' ? 'right' : 'left' }}>
-            {label && <label htmlFor={openerId} style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '0.875rem' }}>{label}</label>}
-            <button
-                type="button"
-                id={openerId}
-                aria-haspopup="dialog"
-                aria-expanded={isOpen}
-                onClick={toggleOpen}
-                disabled={disabled}
-                style={{
-                    width: '100%',
-                    font: 'inherit',
-                    color: 'inherit',
-                    textAlign: 'inherit',
-                    padding: '0 1rem',
-                    borderRadius: '1.25rem',
-                    border: '1px solid var(--border)',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    background: 'var(--surface)',
-                    height: '48px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                }}
-            >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span aria-hidden="true" style={{ color: 'var(--text-faint)' }}>📅</span>
-                    <span style={{ color: value ? 'var(--text-main)' : 'var(--text-faint)' }}>
-                        {value ? formatDate(value) : t('select_date' as any)}
-                    </span>
-                </span>
-                <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>{isOpen ? '▲' : '▼'}</span>
-            </button>
-
-            {portal}
+            <CalendarPopup open={isOpen} onClose={() => setIsOpen(false)} opener={opener} keys={keys} label={label || t('select_date')}>
+                <CalendarMonth month={currentMonth} onMonth={setCurrentMonth} keys={keys} onPick={pick} look={iso => ({ picked: iso === picked })} />
+                {value && (
+                    <div className="ui-calendar-foot">
+                        <Button variant="quiet" size="sm" onClick={clear}>{t('date_clear')}</Button>
+                    </div>
+                )}
+            </CalendarPopup>
         </div>
     )
 }

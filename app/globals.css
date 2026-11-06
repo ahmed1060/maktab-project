@@ -76,7 +76,6 @@
   --ok-fg: #166534;
 
   --danger-bg: #fee2e2;
-  --danger-bg-subtle: #fef2f2;
   --danger-border: #fecaca;
   --danger-fg: #991b1b;
   --danger-fg-strong: #b91c1c;
@@ -115,7 +114,6 @@
 
   --info-bg-indigo: #dbeafe;
   --info-border-indigo: #a5b4fc;
-  --info-fg-indigo: #1e40af;
 
   --accent-solid: #a855f7;
 
@@ -1089,7 +1087,6 @@ input::-webkit-credentials-auto-fill-button {
     --ok-border: #1c5c3a;
 
     --danger-bg: #3a161a;
-    --danger-bg-subtle: #2a1013;
     --danger-border: #6b2328;
     --danger-border-firm: #8a2d33;
     --danger-fg: #ff9d9d;
@@ -1114,7 +1111,6 @@ input::-webkit-credentials-auto-fill-button {
     --info-solid-hover: #3d8cc4;
     --info-bg-indigo: #16243f;
     --info-border-indigo: #3d4b7a;
-    --info-fg-indigo: #9db4f0;
 
     --accent-solid: #a86ef0;
     --brand-primary-text: #a5b4fc;

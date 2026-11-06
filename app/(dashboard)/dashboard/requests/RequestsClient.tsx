@@ -442,7 +442,7 @@ export default function RequestsClient({
                     )}</Field>
                 )}
                 {dayOffOnly && (
-                    <DateRangePicker asField hideLabel label={t('requests_leave_dates')} dateFrom={filters.from} dateTo={filters.to}
+                    <DateRangePicker hideLabel label={t('requests_leave_dates')} dateFrom={filters.from} dateTo={filters.to}
                         onChange={(from, to) => go({ from, to })} />
                 )}
             </FilterBar>

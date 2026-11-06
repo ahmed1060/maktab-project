@@ -37,7 +37,7 @@ export function DefaultDialog({ schedule, today, busy, onClose, onSubmit }: {
         <Dialog open onClose={() => { if (!busy) onClose() }} title={t('attendance_make_default_title').replace('{name}', schedule.name)}>
             <form ref={form} className="ui-form" noValidate onSubmit={submit}>
                 <p>{t('attendance_default_hint')}</p>
-                <DatePickerSingle asField label={t('attendance_from_when')} value={from} error={error} onChange={day => { setFrom(day); setError('') }} />
+                <DatePickerSingle label={t('attendance_from_when')} value={from} error={error} onChange={day => { setFrom(day); setError('') }} />
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
                     <Button type="submit" variant="primary" busy={busy}>{t('save')}</Button>
@@ -92,7 +92,7 @@ export function MoveDialog({ data, active, busy, onClose, onSubmit }: {
                     <Select {...p} name="scheduleId" value={scheduleId} disabled={busy} onChange={e => setScheduleId(e.target.value)}
                         options={active.map(s => ({ value: s.id, label: s.name }))} />
                 )}</Field>
-                <DatePickerSingle asField label={t('attendance_from')} value={from} error={errors.from} disabled={busy}
+                <DatePickerSingle label={t('attendance_from')} value={from} error={errors.from} disabled={busy}
                     onChange={day => { setFrom(day); setErrors(x => ({ ...x, from: undefined })) }} />
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
@@ -128,7 +128,7 @@ export function HolidayDialog({ busy, onClose, onSubmit }: {
     return (
         <Dialog open onClose={() => { if (!busy) onClose() }} title={t('attendance_add_holiday')}>
             <form ref={form} className="ui-form" noValidate onSubmit={submit}>
-                <DatePickerSingle asField label={t('date')} value={date} error={errors.date} disabled={busy}
+                <DatePickerSingle label={t('date')} value={date} error={errors.date} disabled={busy}
                     onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
                 <Field label={t('name')} error={errors.name}>{p => (
                     <TextInput {...p} name="name" autoComplete="off" maxLength={120} value={name} disabled={busy}

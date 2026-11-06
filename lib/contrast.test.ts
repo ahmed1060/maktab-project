@@ -48,7 +48,10 @@ function ratio(a: string, b: string): number {
     return (hi + 0.05) / (lo + 0.05)
 }
 
-/** Text pairs, held to AA 4.5:1. */
+/**
+ * Text pairs, held to AA 4.5:1. The indigo text went with the last thing
+ * written in it, a range's days in the old calendar (PR 208).
+ */
 const TEXT_PAIRS: [string, string][] = [
     ["--ok-fg", "--ok-bg"],
     ["--danger-fg", "--danger-bg"],
@@ -56,7 +59,6 @@ const TEXT_PAIRS: [string, string][] = [
     ["--warn-fg", "--warn-bg"],
     ["--warn-fg-warm", "--warn-bg-warm"],
     ["--info-fg", "--info-bg"],
-    ["--info-fg-indigo", "--info-bg-indigo"],
 ]
 
 /** Body text against the surfaces it actually sits on. */

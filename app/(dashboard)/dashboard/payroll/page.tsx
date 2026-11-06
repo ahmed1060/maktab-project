@@ -467,7 +467,7 @@ export default function PayrollRegisterPage() {
                                     {/* A date rather than a switch: a transfer made on the
                                         25th is usually recorded on the 27th, and stamping
                                         the 27th makes the record disagree with the bank. */}
-                                    <DatePickerSingle asField label={t('payroll_paid_date')} hint={t('payroll_paid_date_hint')} value={paidAt} maxDate={today} onChange={setPaidAt} disabled={action.running} />
+                                    <DatePickerSingle label={t('payroll_paid_date')} hint={t('payroll_paid_date_hint')} value={paidAt} maxDate={today} onChange={setPaidAt} disabled={action.running} />
                                     <div className="ui-form-actions">
                                         <Button onClick={() => setConfirming({ kind: 'paid' })} disabled={action.running}>{t('payroll_mark_paid')}</Button>
                                     </div>

@@ -240,7 +240,7 @@ export default function AuditLogsPage() {
                             { label: t('audit_actions'), options: sorted('audit_action_', AUDIT_ACTIONS) },
                         ]} />
                 )}</Field>
-                <DateRangePicker asField hideLabel dateFrom={filters.startDate} dateTo={filters.endDate} onChange={(startDate, endDate) => go({ startDate, endDate })} />
+                <DateRangePicker hideLabel dateFrom={filters.startDate} dateTo={filters.endDate} onChange={(startDate, endDate) => go({ startDate, endDate })} />
             </FilterBar>
             {list}
         </Page>

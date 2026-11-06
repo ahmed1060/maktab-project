@@ -180,7 +180,7 @@ export default function PublicHolidaysPage() {
                 {draft && (
                     <form className="ui-form" noValidate onSubmit={save}>
                         {/* Moving a holiday says what it moves. */}
-                        <DatePickerSingle asField label={t('date')} value={draft.date} error={errors.date} disabled={action.running}
+                        <DatePickerSingle label={t('date')} value={draft.date} error={errors.date} disabled={action.running}
                             hint={draft.id ? t('public_holidays_move_hint') : undefined}
                             onChange={day => { setDraft({ ...draft, date: day }); setErrors(x => ({ ...x, date: undefined })) }} />
                         <Field label={t('public_holidays_name_en')} error={errors.name}>{p => (
