@@ -1083,10 +1083,13 @@ These are built once, in the building-blocks PR, and every page uses them
   page while the work open on it is saved, as the language switch's does.
   - In its middle, as an empty state: its icon, what happened, why, and
     what happens next: signing out, or the maintenance page. Nothing
-    turns (§8).
+    turns (§8). A why longer than the screen, as the Super Admins'
+    maintenance message can be, scrolls from its top, and a link in it
+    breaks where it must.
   - It's a dialog with no buttons, above everything: the focus goes to it
     and stays, screen readers hear it at once, and Escape does nothing,
-    as there's nothing to go back to.
+    as there's nothing to go back to. It draws no focus ring, as nothing
+    on it can be used.
 - **A note above the page,** for something true on every page for now: a
   company's free trial or its grace, or a role a Super Admin is
   previewing. It's a level-1 panel at the page's width, above the page
@@ -1752,3 +1755,7 @@ changed:
   wrong, and its minutes were in Western digits in Arabic. When an account
   was suspended or maintenance started, a dark screen with a turning ring
   covered the page, titled in Title Case, and screen readers weren't told.
+  Found in the web interface audit, before review: a long maintenance
+  message on a phone on its side started above the screen's top, out of
+  the scroll's reach, a link in it ran off the side, and a focus ring was
+  drawn round its message.
