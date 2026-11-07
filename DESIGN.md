@@ -1124,7 +1124,7 @@ These are built once, in the building-blocks PR, and every page uses them
 - **When the app itself broke,** before even the side bar could be drawn,
   the whole screen says the same, in the page's colour, with the same
   buttons and reference, in the language and theme the person chose and
-  in the app's own fonts.
+  in the app's own fonts, and at a phone's own width, as every page is.
 - **A note above the page,** for something true on every page for now: a
   company's free trial or its grace, or a role a Super Admin is
   previewing. It's a level-1 panel at the page's width, above the page
@@ -1808,4 +1808,5 @@ changed:
   went to another page, until the page was reloaded. When the app itself
   broke, its screen was in English only, its Try Again in Title Case,
   and the app's styles, fonts and the theme the person chose didn't reach
-  it.
+  it. Found in the browser flows: it didn't say how wide to be, so a phone
+  could draw it at a computer's width, its words too small to read.
