@@ -1041,7 +1041,10 @@ These are built once, in the building-blocks PR, and every page uses them
   - only what changed is marked, never a word that stayed, shown taken
     out and put back;
   - the text keeps its own direction (§7) and its line breaks, and a word
-    with no space in it breaks where it must.
+    with no space in it breaks where it must;
+  - the buttons that open it stay until the person says they've seen the
+    change, so it can be opened again, and closing it gives the focus back
+    to its button.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one. When why it's empty isn't plain, a
   second line says why, and who can change it: a Team Leader with no one
@@ -1776,4 +1779,5 @@ changed:
   alone to a screen reader, an added word only a green background; the
   text took the page's direction, not its own, so English in Arabic ran
   right to left; its line breaks were lost; and its spaces were margins
-  set by the language, not the text's own.
+  set by the language, not the text's own. Found in the browser flows: its
+  button went as it was opened, so closing it left the focus on nothing.
