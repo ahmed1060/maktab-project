@@ -1,94 +1,38 @@
 'use client'
 
-import React, { Component, ErrorInfo, ReactNode } from 'react'
-import { reportClientError } from '@/lib/client-error-report'
-import { clearStorageKeepingPhone } from '@/lib/mobile/kept-storage'
+import { catchError, type ErrorInfo } from 'next/error'
+import { Page } from '@/components/ui'
+import { ErrorScreen } from '@/components/ErrorScreen'
+import { useLanguage } from '@/context/LanguageContext'
+import { ERROR_SCREEN_KEYS, type ErrorScreenWords } from '@/lib/error-screen'
 
-interface Props {
-    children: ReactNode
+/**
+ * A page that broke (DESIGN.md §5.5): its place says so, in the page's
+ * language, with Reload page and Start again (components/ErrorScreen.tsx).
+ * In the dashboard the side bar and top bar stay around it; on a page with no
+ * side bar, such as signing in, it has the whole screen (`standalone`).
+ *
+ * Next's own boundary (catchError, from next/error), as its docs advise for
+ * one that isn't a route's error.js: going to another page leaves it behind,
+ * and a redirect or Not found thrown below passes through it to the boundary
+ * that handles it.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, PR 219): it was a card of its
+ * own making, in English only, under a warning emoji. It told of "a
+ * client-side exception", offered Reload Page and a red Reset Settings &
+ * Reload, which also switched the app to English, and screen readers weren't
+ * told. A class of its own, it stayed when the person went to another page,
+ * until the page was reloaded.
+ */
+export function BrokenPage({ error, standalone = false }: { error: unknown; standalone?: boolean }) {
+    const { t } = useLanguage()
+    const words = Object.fromEntries(ERROR_SCREEN_KEYS.map(key => [key, t(key)])) as ErrorScreenWords
+    const screen = <ErrorScreen error={error} words={words} />
+    return standalone ? <main className="ui-error-page">{screen}</main> : <Page>{screen}</Page>
 }
 
-interface State {
-    hasError: boolean
-    ref: string | null
+function pageBroke({ standalone }: { standalone?: boolean }, { error }: ErrorInfo) {
+    return <BrokenPage error={error} standalone={standalone} />
 }
 
-export default class DashboardErrorBoundary extends Component<Props, State> {
-    public state: State = {
-        hasError: false,
-        ref: null
-    }
-
-    public static getDerivedStateFromError(error: Error): Partial<State> {
-        console.error('[ErrorBoundary] Error caught:', error.message)
-        return { hasError: true }
-    }
-
-    private handleReset = () => {
-        // Clear potentially corrupted state, but not what the phone keeps about itself
-        document.cookie = 'NEXT_LOCALE=en;path=/;max-age=31536000'
-        clearStorageKeepingPhone(localStorage)
-        window.location.reload()
-    }
-
-    public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error('[ErrorBoundary] Full error log:', error, errorInfo)
-        // Best-effort — this is a diagnostic report, not something the
-        // already-broken screen should wait on or fail harder over.
-        reportClientError(error, undefined, errorInfo.componentStack || undefined)
-            .then(ref => { if (ref) this.setState({ ref }) })
-    }
-
-    public render() {
-        if (this.state.hasError) {
-            return (
-                <div style={{
-                    padding: '2rem',
-                    textAlign: 'center',
-                    background: 'var(--veil-60)',
-                    backdropFilter: 'blur(10px)',
-                    borderRadius: '1.5rem',
-                    border: '1px solid var(--veil-40)',
-                    margin: '2rem',
-                    boxShadow: '0 20px 25px -5px var(--shadow-weak)'
-                }}>
-                    <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
-                    <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontWeight: '800' }}>Something went wrong</h2>
-                    <p style={{ color: 'var(--text-soft)', marginBottom: '2rem', lineHeight: '1.6' }}>
-                        A client-side exception has occurred in this section.<br />
-                        This is often caused by a loading mismatch or a session error.
-                    </p>
-                    {this.state.ref && (
-                        <p style={{ color: 'var(--text-faint)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
-                            If this keeps happening, share this reference with your admin: <b>{this.state.ref}</b>
-                        </p>
-                    )}
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="btn btn-primary"
-                            style={{ padding: '0.75rem 1.5rem', fontWeight: 'bold' }}
-                        >
-                            Reload Page
-                        </button>
-                        <button
-                            onClick={this.handleReset}
-                            className="btn"
-                            style={{
-                                padding: '0.75rem 1.5rem',
-                                background: 'var(--danger-bg)',
-                                color: 'var(--danger-fg)',
-                                fontWeight: 'bold',
-                                border: '1px solid var(--danger-border)'
-                            }}
-                        >
-                            Reset Settings & Reload
-                        </button>
-                    </div>
-                </div>
-            )
-        }
-
-        return this.props.children
-    }
-}
+export default catchError(pageBroke)

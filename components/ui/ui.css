@@ -577,6 +577,41 @@
   outline: none;
 }
 
+/* ── A page that broke, and the app itself (§5.5; components/ErrorScreen.tsx) ──
+   In the dashboard it's the page's own panel, inside the side bar and top bar.
+   When the app itself broke, or a page with no side bar did, such as signing
+   in, it has the whole screen, in the page's colour, the panel in its middle. */
+.ui-error-page {
+  display: grid;
+  place-items: center;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  padding: var(--space-4);
+  background: var(--page);
+}
+.ui-error-page > .ui-panel {
+  inline-size: min(100%, 560px);
+}
+/* A heading, as the page's own went with it, that looks like an empty
+   state's title. */
+.ui-error-title {
+  font-weight: inherit;
+}
+/* The screen puts the focus there, to be heard where the page was. Nothing
+   on it is used, so it draws no ring. */
+.ui-error-title:focus {
+  outline: none;
+}
+.ui-error-actions {
+  justify-content: center;
+}
+/* The reference, picked up whole to share. */
+.ui-error-code {
+  -webkit-user-select: all;
+  user-select: all;
+}
+/* end of a page that broke */
+
 /* ── Dialog (§5.5) ── */
 .ui-dialog-backdrop {
   position: fixed;
