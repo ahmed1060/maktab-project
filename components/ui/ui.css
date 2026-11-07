@@ -19,6 +19,7 @@
 .ui-photo,
 .ui-page,
 .ui-signin,
+.ui-legal,
 .ui-menu,
 .ui-selectionbar,
 .ui-donut {
@@ -47,7 +48,9 @@
 .ui-notice,
 .ui-toast-close,
 .ui-camera-close,
-.ui-side-legal a {
+.ui-side-legal a,
+.ui-legal-brand,
+.ui-legal-foot a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1939,6 +1942,180 @@ a.ui-file-open:focus-visible,
     min-height: 44px;
   }
 }
+
+/* ── Public documents (§5.5): the privacy policy and the terms of service ──
+   Read by anyone, signed in or not, with no side bar and no top bar
+   (app/(legal)/layout.tsx): Nizmo's mark and name, the document on a sheet,
+   and the links under it, in one column at reading width on the page's flat
+   colour. */
+.ui-legal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  padding: var(--space-8) var(--space-8) var(--space-12);
+  background: var(--page);
+  color: var(--ink);
+}
+.ui-legal-head,
+.ui-legal-main,
+.ui-legal-foot {
+  inline-size: 100%;
+  max-inline-size: 736px;
+}
+/* As the side bar's head shows a company without a logo (§5.1). */
+.ui-legal-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--ink);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 500;
+  text-decoration: none;
+}
+/* A document's sheet (§5.5, Document), its text read through rather than
+   scanned. A long address, such as an email, breaks rather than run off it. */
+.ui-legal-doc {
+  padding: var(--space-8);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  color: var(--ink-2);
+  overflow-wrap: break-word;
+}
+.ui-legal-doc .ui-page-subtitle {
+  margin-block: var(--space-1) var(--space-8);
+}
+.ui-legal-doc .ui-legal-lede {
+  margin-block: 0 var(--space-8);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  color: var(--ink);
+}
+.ui-legal-doc h2 {
+  margin-block: var(--space-8) var(--space-3);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 500;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.ui-legal-doc p,
+.ui-legal-doc ul,
+.ui-legal-doc dl {
+  margin-block: 0 var(--space-4);
+}
+.ui-legal-doc ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-6);
+}
+.ui-legal-doc li::marker {
+  color: var(--muted);
+}
+.ui-legal-doc dt,
+.ui-legal-doc strong {
+  font-weight: 500;
+  color: var(--ink);
+}
+.ui-legal-doc dt {
+  margin-block-start: var(--space-4);
+}
+.ui-legal-doc dt:first-child {
+  margin-block-start: 0;
+}
+.ui-legal-doc dd {
+  margin: 0;
+}
+/* In its sentences, so underlined: never told by colour alone. */
+.ui-legal-doc a {
+  color: var(--brand-text);
+}
+/* What to know, such as that English governs: a bar on its start edge, as a
+   document's note has (§5.5, Document). */
+.ui-legal-note {
+  margin-block: var(--space-6);
+  padding: var(--space-2) var(--space-4);
+  border-inline-start: 3px solid var(--status-neutral-fg);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+}
+.ui-legal-doc .ui-legal-note p:last-child,
+.ui-legal-doc > :last-child {
+  margin-block-end: 0;
+}
+.ui-legal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-6);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-legal-foot a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 24px;
+  color: var(--brand-text);
+}
+.ui-legal-doc a:focus-visible,
+.ui-legal-brand:focus-visible,
+.ui-legal-foot a:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* Phones: the page's 16px edge, 16px inside the sheet, and the mark and name
+   and the links under it tall enough to tap (§9). */
+@media (max-width: 767px) {
+  .ui-legal {
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-4) var(--space-8);
+  }
+  .ui-legal-doc {
+    padding: var(--space-4);
+  }
+  .ui-legal-brand,
+  .ui-legal-foot a {
+    min-block-size: 44px;
+  }
+}
+/* Printed, the document is all there is, black on white from dark mode too.
+   The app's print styles hide all but a paper it issues (app/globals.css),
+   which left these blank; these load after them. */
+@media print {
+  .ui-legal {
+    display: block;
+    min-block-size: 0;
+    padding: 0;
+    background: none;
+  }
+  .ui-legal-head,
+  .ui-legal-foot {
+    display: none;
+  }
+  .ui-legal-main {
+    max-inline-size: none;
+  }
+  .ui-legal-doc,
+  .ui-legal-doc * {
+    visibility: visible;
+  }
+  .ui-legal-doc {
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: var(--paper);
+    --ink: var(--ink-on-paper);
+    --ink-2: var(--ink-on-paper);
+    --muted: var(--ink-on-paper);
+    --brand-text: var(--ink-on-paper);
+    --status-neutral-fg: var(--neutral-on-paper);
+  }
+}
+/* end of the public documents */
 
 /* ── The face check's camera (§5.5) ── */
 /* The front camera's picture, the whole screen, mirrored as a mirror is,
@@ -3834,13 +4011,16 @@ a.ui-donut-row:focus-visible {
   max-width: 48ch;
 }
 
-/* ── Arabic (§3.2, §7): never letter-spaced, a little more line height. ── */
-html[lang="ar"] .ui-page-title {
+/* ── Arabic (§3.2, §7): never letter-spaced, a little more line height. ──
+   Keyed to the text's language, not the page's: the privacy policy and the
+   terms are English inside the page of someone using the app in Arabic
+   (§5.5), and keyed to the page, their title lost its spacing. */
+.ui-page-title:lang(ar) {
   letter-spacing: 0;
 }
-html[lang="ar"] .ui-table,
-html[lang="ar"] .ui-page-subtitle,
-html[lang="ar"] .ui-empty-title {
+.ui-table:lang(ar),
+.ui-page-subtitle:lang(ar),
+.ui-empty-title:lang(ar) {
   line-height: 1.6;
 }
 

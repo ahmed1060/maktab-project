@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { buildTitle } from '@/lib/page-title'
 
 export const metadata: Metadata = {
-    title: 'Privacy Policy — Nizmo',
+    title: buildTitle('Privacy policy'),
     description: 'What Nizmo collects, where it is stored, who can see it, and how long it is kept.',
 }
 
@@ -18,10 +19,10 @@ export const metadata: Metadata = {
 export default function PrivacyPolicy() {
     return (
         <>
-            <h1>Privacy Policy</h1>
-            <p className="legal-updated">Last updated 17 September 2026</p>
+            <h1 className="ui-page-title">Privacy policy</h1>
+            <p className="ui-page-subtitle">Last updated 17 September 2026</p>
 
-            <p className="legal-lede">
+            <p className="ui-legal-lede">
                 Nizmo is workplace software sold to employers. Most of the personal data in it is put
                 there by your employer about you, rather than by you about yourself. This page explains
                 what the system holds, where it lives, who can reach it and how long it is kept.
@@ -91,7 +92,7 @@ export default function PrivacyPolicy() {
             <p>
                 Nizmo does not track you. It has no background location access and cannot see where you
                 are between check-ins. Your position is read <strong>only</strong> at the moment you
-                press Check In on a task, and only if your browser and device permit it — you can
+                press Check in on a task, and only if your browser and device permit it — you can
                 refuse, and the browser will not ask again until you change that.
             </p>
             <p>
@@ -101,9 +102,10 @@ export default function PrivacyPolicy() {
                 administrator sets, and marks the check-in as matching or not matching. That mark is
                 visible to your managers and can be reviewed by a person.
             </p>
-            <div className="legal-note">
+            <div className="ui-legal-note">
                 <p>
-                    To turn coordinates into a readable address we send them to HERE, a mapping
+                    To turn coordinates into a readable address we send them to{' '}
+                    <span translate="no">HERE</span>, a mapping
                     provider. We send the position only; we do not send your name, your email or
                     anything identifying you alongside it.
                 </p>
@@ -185,7 +187,7 @@ export default function PrivacyPolicy() {
                 <dt>Google Drive</dt>
                 <dd>Storage of the encrypted backups described above.</dd>
 
-                <dt>HERE</dt>
+                <dt translate="no">HERE</dt>
                 <dd>Turning a set of coordinates into a street address.</dd>
 
                 <dt>Gmail</dt>
@@ -242,7 +244,7 @@ export default function PrivacyPolicy() {
                 your own records should go to your employer&rsquo;s administrator first.
             </p>
 
-            <div className="legal-note">
+            <div className="ui-legal-note">
                 <p>
                     This document is published in English, and the English version governs. Any
                     translation is provided for convenience.
