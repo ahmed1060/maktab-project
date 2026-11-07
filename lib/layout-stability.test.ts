@@ -15,7 +15,8 @@ describe("the dashboard's layout on a phone", () => {
     const ui = readFileSync("components/ui/ui.css", "utf8")
 
     it("is decided by CSS, so the first paint is already right", () => {
-        expect(shell).toContain('<main className="shell-main"')
+        // The frame is the building blocks' (lib/dashboard-frame-blocks.test.ts, PR 221).
+        expect(shell).toContain('<main className="ui-shell-main">')
         // The side bar is in the page's flow on a computer, beside it, so the
         // page keeps no margin in step with its width (DESIGN.md §5.1).
         expect(shell).not.toContain("--shell-sidebar")

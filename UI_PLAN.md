@@ -569,7 +569,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      leave, merged in #217 on 2026-11-07; then what an edit changed on a
      task's page, merged in #218 on 2026-11-07; then a page that broke
      and the app itself, merged in #219 on 2026-11-07; then the privacy
-     policy and the terms of service, in #220;
+     policy and the terms of service, merged in #220 on 2026-11-07; then
+     what was left of the dashboard's frame, in #221;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4909,3 +4910,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - found in the web interface audit: a browser's translation, which the
     documents allow, could turn HERE, the mapping provider, into the word
     for "here". Its name is kept from translation (`translate="no"`).
+- **2026-11-07:** What was left of the dashboard's frame on the building
+  blocks (#221; `DESIGN.md` §5.1, and §5.5, Loading):
+  - `components/DashboardShell.tsx` has no inline styles left: the frame
+    is `.ui-shell` and `.ui-shell-main` in `components/ui/ui.css`, and the
+    page's direction is the page's own, set with its language, where the
+    shell set one of its own on the page's column;
+  - the "Powered by" signature keeps its look, as the product owner decided
+    on 2026-11-05: its sizes, colours and gradient are written in
+    `app/globals.css`, beside where it sits, as they were drawn inline.
+    Its transition of everything and a hover nothing could reach, as it
+    takes no pointer, are gone, and its name is kept from a browser's
+    translation, as its preview on System settings keeps it. In the
+    browser, every pixel of it is as it was, in English and Arabic, light
+    and dark, on a computer and a phone;
+  - while the frame waits, the page says it's loading as every page does
+    (`components/PageLoading.tsx`, which the dashboard's own loading
+    screen is now too), in the page's language. It said "Loading
+    section..." in English, in classes no stylesheet had.
