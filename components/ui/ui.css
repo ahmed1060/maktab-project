@@ -46,6 +46,7 @@
 .ui-company-picker-button,
 .ui-notice,
 .ui-toast-close,
+.ui-camera-close,
 .ui-side-legal a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -1840,8 +1841,9 @@ a.ui-file-open:focus-visible,
   color: var(--cam-ink);
   font-family: var(--font-ui);
 }
-/* Focused itself only when Close can't be: no ring around the screen. */
-.ui-camera:focus {
+/* Focused itself only when Close can't be: no ring around the screen for a
+   tap, as a dialog has none for a click (found in the interface audit). */
+.ui-camera:focus:not(:focus-visible) {
   outline: none;
 }
 .ui-camera-video,
@@ -1939,6 +1941,14 @@ a.ui-file-open:focus-visible,
   background: color-mix(in srgb, var(--cam-ground) 55%, transparent);
   color: var(--cam-ink);
   cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+/* Darker under a pointer, so its X stands out more; not on a phone, where a
+   tap would leave it so (found in the interface audit). */
+@media (hover: hover) {
+  .ui-camera-close:hover {
+    background: color-mix(in srgb, var(--cam-ground) 72%, transparent);
+  }
 }
 .ui-camera-close:focus-visible {
   outline: 2px solid var(--cam-ink);
@@ -1952,6 +1962,8 @@ a.ui-file-open:focus-visible,
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   text-align: center;
+  /* Its two lines even: "only." stood alone on the second (found in the interface audit). */
+  text-wrap: balance;
 }
 /* The step's card and the line, at the bottom, clear of the home bar. */
 .ui-camera-bottom {
@@ -1996,10 +2008,16 @@ a.ui-file-open:focus-visible,
 }
 .ui-camera-time > span {
   display: block;
-  inline-size: calc(var(--left) * 100%);
   block-size: 100%;
   background: var(--cam-ink);
-  transition: inline-size 200ms linear;
+  /* By transform, so it moves without the page's layout (found in the
+     interface audit): its share of the bar, from its start. */
+  transform: scaleX(var(--left));
+  transform-origin: 0 50%;
+  transition: transform 200ms linear;
+}
+[dir="rtl"] .ui-camera-time > span {
+  transform-origin: 100% 50%;
 }
 /* Its last quarter. */
 .ui-camera-time[data-late] > span {
@@ -2024,18 +2042,27 @@ a.ui-file-open:focus-visible,
 .ui-camera-turn-mark + .ui-camera-turn-mark {
   inset-inline-start: calc(90% - 1.5px);
 }
+/* The dot's way: as wide as the gauge, so its share of the gauge's width
+   moves the dot in its middle, by transform, without the page's layout
+   (found in the interface audit). */
 .ui-camera-turn-dot {
   position: absolute;
+  inset: 0;
+  transform: translateX(calc(var(--turn) * -40%));
+  transition: transform 100ms linear;
+}
+.ui-camera-turn-dot::before {
+  content: "";
+  position: absolute;
   inset-block-start: -4px;
-  inset-inline-start: calc(50% - var(--turn) * 40%);
+  inset-inline-start: 50%;
   inline-size: 18px;
   block-size: 18px;
   margin-inline-start: -9px;
   border-radius: var(--radius-pill);
   background: var(--cam-ink);
-  transition: inset-inline-start 100ms linear;
 }
-.ui-camera-turn-dot[data-enough] {
+.ui-camera-turn-dot[data-enough]::before {
   background: var(--cam-done);
 }
 /* What to do, heard by screen readers. */
@@ -2050,6 +2077,10 @@ a.ui-file-open:focus-visible,
   line-height: var(--leading-xl);
   font-weight: 600;
   text-align: center;
+  /* Its lines even, and the download's share one width as its digits
+     change (found in the interface audit). */
+  text-wrap: balance;
+  font-variant-numeric: tabular-nums;
 }
 /* ── end of the face check's camera ── */
 
@@ -3860,7 +3891,8 @@ html[lang="ar"] .ui-empty-title {
   .ui-toast-close,
   .ui-camera-ring,
   .ui-camera-time > span,
-  .ui-camera-turn-dot {
+  .ui-camera-turn-dot,
+  .ui-camera-close {
     transition: none;
   }
   .ui-control[data-busy]::after,

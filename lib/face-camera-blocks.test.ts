@@ -56,8 +56,9 @@ describe("the face check's camera", () => {
 
     it("shows the picture mirrored, the oval, the picture dimmed outside it, and the ring, drawn by ui.css", async () => {
         const html = await screen({ ring: 0.5 })
-        // React writes playsInline as it's spelled; HTML reads attribute names in any case.
-        expect(html).toContain('<video class="ui-camera-video" playsInline="" muted=""></video>')
+        // React writes playsInline as it's spelled; HTML reads attribute names in any case. The live picture
+        // says nothing to a screen reader, which the line speaks to (web interface audit).
+        expect(html).toContain('<video class="ui-camera-video" aria-hidden="true" playsInline="" muted=""></video>')
         expect(html).toContain('<svg aria-hidden="true" class="ui-camera-guide" viewBox="0 0 100 133" preserveAspectRatio="xMidYMid slice">')
         expect(html).toContain('<rect class="ui-camera-mask-show" x="-50" y="-50" width="200" height="233"></rect>')
         expect(html).toContain('<ellipse class="ui-camera-mask-hide" cx="50" cy="58" rx="31" ry="41"></ellipse>')
@@ -199,11 +200,41 @@ describe("the camera's look (ui.css)", () => {
         expect(rule(".ui-camera-bottom")).toContain("padding-block-end: max(env(safe-area-inset-bottom), var(--space-6));")
     })
 
-    it("places the time left and the turn's dot from their shares, the dot in the done colour once far enough", () => {
-        expect(rule(".ui-camera-time > span")).toContain("inline-size: calc(var(--left) * 100%);")
+    it("moves the time left and the turn's dot from their shares by transform, without layout, the dot in the done colour once far enough (web interface audit)", () => {
+        const time = rule(".ui-camera-time > span")
+        expect(time).toContain("transform: scaleX(var(--left));")
+        expect(time).toContain("transform-origin: 0 50%;")
+        expect(time).toContain("transition: transform 200ms linear;")
+        // From its start, the right, in Arabic.
+        expect(rule('[dir="rtl"] .ui-camera-time > span')).toContain("transform-origin: 100% 50%;")
         expect(rule(".ui-camera-time[data-late] > span")).toContain("background: var(--cam-warn);")
-        expect(rule(".ui-camera-turn-dot")).toContain("inset-inline-start: calc(50% - var(--turn) * 40%);")
-        expect(rule(".ui-camera-turn-dot[data-enough]")).toContain("background: var(--cam-done);")
+        // As wide as the gauge, so its share of the gauge's width moves the dot in its middle.
+        const dot = rule(".ui-camera-turn-dot")
+        expect(dot).toContain("inset: 0;")
+        expect(dot).toContain("transform: translateX(calc(var(--turn) * -40%));")
+        expect(dot).toContain("transition: transform 100ms linear;")
+        expect(rule(".ui-camera-turn-dot::before")).toContain("inset-inline-start: 50%;")
+        expect(rule(".ui-camera-turn-dot[data-enough]::before")).toContain("background: var(--cam-done);")
+        expect(block()).not.toMatch(/transition: (inline-size|inset-inline-start)/)
+    })
+
+    it("lets the keyboard's focus show on the screen itself, as a dialog does, and hides the ring only from a tap (web interface audit)", () => {
+        expect(UI).not.toContain("\n.ui-camera:focus {")
+        expect(rule(".ui-camera:focus:not(:focus-visible)")).toContain("outline: none;")
+    })
+
+    it("gives Close a hover, darker so its X stands out more, and a tap without the zoom's wait or a flash (web interface audit)", () => {
+        expect(rule(".ui-camera-close")).toContain("transition: background-color 150ms ease-out;")
+        const hover = UI.slice(UI.indexOf("@media (hover: hover) {\n  .ui-camera-close:hover {"))
+        expect(hover.slice(0, hover.indexOf("\n}\n"))).toContain("background: color-mix(in srgb, var(--cam-ground) 72%, transparent);")
+        const touch = UI.slice(0, UI.indexOf("  touch-action: manipulation;\n  -webkit-tap-highlight-color: transparent;"))
+        expect(touch.slice(touch.lastIndexOf("}"))).toContain(".ui-camera-close")
+    })
+
+    it("balances the pill's and the line's lines, the pill left no word alone, and keeps the share's digits one width (web interface audit)", () => {
+        expect(rule(".ui-camera-note")).toContain("text-wrap: balance;")
+        expect(rule(".ui-camera-line")).toContain("text-wrap: balance;")
+        expect(rule(".ui-camera-line")).toContain("font-variant-numeric: tabular-nums;")
     })
 
     it("uses logical properties and tokens only", () => {
@@ -217,7 +248,7 @@ describe("the camera's look (ui.css)", () => {
         // The shared block, the one that stills the donut's arcs.
         const start = UI.lastIndexOf("@media (prefers-reduced-motion: reduce) {", UI.indexOf("  .ui-donut-arc,"))
         const block = UI.slice(start, UI.indexOf("\n}\n", start))
-        for (const s of [".ui-camera-ring", ".ui-camera-time > span", ".ui-camera-turn-dot", ".ui-camera-tick"]) expect(block, s).toContain(s)
+        for (const s of [".ui-camera-ring", ".ui-camera-time > span", ".ui-camera-turn-dot", ".ui-camera-close", ".ui-camera-tick"]) expect(block, s).toContain(s)
         // The tick's pop moved from app/globals.css.
         expect(GLOBALS).not.toContain("face-cam-tick")
         expect(GLOBALS).not.toContain("face-cam-pop")

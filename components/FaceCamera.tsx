@@ -84,7 +84,8 @@ export function CameraScreen({ video, line, progress, ring, tone, done, onClose 
     const step = progress?.steps.find(s => s.current)?.challenge
     return (
         <div {...dialog.panelProps} className="ui-camera">
-            <video ref={video} className="ui-camera-video" playsInline muted />
+            {/* The live picture says nothing to a screen reader: the line below speaks to it. */}
+            <video ref={video} className="ui-camera-video" aria-hidden="true" playsInline muted />
             {/* The picture dimmed outside the oval, the oval's edge, and the share of the capture done around it. */}
             <svg aria-hidden="true" className="ui-camera-guide" viewBox="0 0 100 133" preserveAspectRatio="xMidYMid slice">
                 <defs>
